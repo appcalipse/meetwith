@@ -129,7 +129,7 @@ const MeetingTypeModal: FC<IProps> = props => {
   )
   const [title, setTitle] = React.useState(props.initialValues?.title || '')
   const [description, setDescription] = React.useState(
-    props.initialValues?.description
+    props.initialValues?.description || ''
   )
   const [customBookingLink, setCustomBookingLink] = React.useState(
     props.initialValues?.slug || ''
@@ -196,6 +196,7 @@ const MeetingTypeModal: FC<IProps> = props => {
       MeetingProvider.ZOOM,
       MeetingProvider.HUDDLE,
       MeetingProvider.JITSI_MEET,
+      MeetingProvider.CUSTOM,
     ]
   }, [])
   const [customLink, setCustomLink] = useState<string>(
@@ -254,18 +255,35 @@ const MeetingTypeModal: FC<IProps> = props => {
     value: MeetingProvider | 'ALL' | 'RESET'
   ) => {
     setSelectedProviders(prevProviders => {
+      let val: MeetingProvider[]
       switch (value) {
         case 'ALL':
-          return [...PROVIDERS]
-
+          val = [...PROVIDERS]
+          break
         case 'RESET':
-          return []
-
+          val = []
+          break
         default:
-          return prevProviders.includes(value)
+          val = prevProviders.includes(value)
             ? prevProviders.filter(provider => provider !== value)
             : [...prevProviders, value]
       }
+      if (!!errors.meeting_platforms) {
+        const { isValid, error } = validateField('meeting_platforms', val)
+        if (!isValid && error) {
+          dispatchErrors({
+            type: 'SET_ERROR',
+            field: 'meeting_platforms',
+            message: error,
+          })
+        } else {
+          dispatchErrors({
+            type: 'CLEAR_ERROR',
+            field: 'meeting_platforms',
+          })
+        }
+      }
+      return val
     })
   }
   const handleSave = async () => {
@@ -854,28 +872,80 @@ const MeetingTypeModal: FC<IProps> = props => {
                   Choose your default Meeting Platform
                 </Text>
               </VStack>
-
-              <HStack gap={5} flexWrap="wrap" width="100%">
-                {PROVIDERS.map(provider => (
+              <FormControl
+                display="flex"
+                flexDirection="column"
+                isInvalid={!!errors.meeting_platforms}
+              >
+                <HStack gap={5} flexWrap="wrap" width="100%">
+                  {PROVIDERS.map(provider => (
+                    <Checkbox
+                      key={provider}
+                      borderRadius={8}
+                      borderWidth={1}
+                      maxW={200}
+                      borderColor={
+                        !!errors.meeting_platforms
+                          ? 'red.500'
+                          : selectedProviders.includes(provider)
+                          ? 'primary.200'
+                          : 'neutral.0'
+                      }
+                      colorScheme="primary"
+                      value={provider}
+                      p={4}
+                      isChecked={selectedProviders.includes(provider)}
+                      onChange={e => {
+                        handleMeetingPlatformChange(
+                          e.target.value as MeetingProvider
+                        )
+                      }}
+                      flexDirection="row-reverse"
+                      justifyContent="space-between"
+                      w="100%"
+                    >
+                      <Text
+                        fontWeight="600"
+                        color={
+                          !!errors.meeting_platforms
+                            ? 'red.500'
+                            : selectedProviders.includes(provider)
+                            ? 'primary.200'
+                            : 'neutral.0'
+                        }
+                        cursor="pointer"
+                      >
+                        {renderProviderName(provider)}
+                      </Text>
+                    </Checkbox>
+                  ))}
+                </HStack>
+              </FormControl>
+              <VStack alignItems="flex-start" width="100%" gap={5} mt={5}>
+                <FormControl
+                  display="flex"
+                  flexDirection="column"
+                  isInvalid={!!errors.meeting_platforms}
+                >
                   <Checkbox
-                    key={provider}
                     borderRadius={8}
                     borderWidth={1}
-                    maxW={200}
+                    maxW={{ md: 420, base: '75%' }}
                     borderColor={
-                      selectedProviders.includes(provider)
+                      !!errors.meeting_platforms
+                        ? 'red.500'
+                        : selectedProviders.includes(MeetingProvider.CUSTOM)
                         ? 'primary.200'
                         : 'neutral.0'
                     }
                     colorScheme="primary"
-                    value={provider}
                     p={4}
-                    isChecked={selectedProviders.includes(provider)}
-                    onChange={e => {
-                      handleMeetingPlatformChange(
-                        e.target.value as MeetingProvider
-                      )
-                    }}
+                    isChecked={selectedProviders.includes(
+                      MeetingProvider.CUSTOM
+                    )}
+                    onChange={() =>
+                      handleMeetingPlatformChange(MeetingProvider.CUSTOM)
+                    }
                     flexDirection="row-reverse"
                     justifyContent="space-between"
                     w="100%"
@@ -883,49 +953,23 @@ const MeetingTypeModal: FC<IProps> = props => {
                     <Text
                       fontWeight="600"
                       color={
-                        selectedProviders.includes(provider)
+                        !!errors.meeting_platforms
+                          ? 'red.500'
+                          : selectedProviders.includes(MeetingProvider.CUSTOM)
                           ? 'primary.200'
                           : 'neutral.0'
                       }
                       cursor="pointer"
                     >
-                      {renderProviderName(provider)}
+                      Allow guest to add custom location
                     </Text>
                   </Checkbox>
-                ))}
-              </HStack>
-              <VStack alignItems="flex-start" width="100%" gap={5} mt={5}>
-                <Checkbox
-                  borderRadius={8}
-                  borderWidth={1}
-                  maxW={{ md: 420, base: '75%' }}
-                  borderColor={
-                    selectedProviders.includes(MeetingProvider.CUSTOM)
-                      ? 'primary.200'
-                      : 'neutral.0'
-                  }
-                  colorScheme="primary"
-                  p={4}
-                  isChecked={selectedProviders.includes(MeetingProvider.CUSTOM)}
-                  onChange={() =>
-                    handleMeetingPlatformChange(MeetingProvider.CUSTOM)
-                  }
-                  flexDirection="row-reverse"
-                  justifyContent="space-between"
-                  w="100%"
-                >
-                  <Text
-                    fontWeight="600"
-                    color={
-                      selectedProviders.includes(MeetingProvider.CUSTOM)
-                        ? 'primary.200'
-                        : 'neutral.0'
-                    }
-                    cursor="pointer"
-                  >
-                    Allow guest to add custom location
-                  </Text>
-                </Checkbox>
+                  {!!errors.meeting_platforms && (
+                    <FormErrorMessage>
+                      {errors.meeting_platforms}
+                    </FormErrorMessage>
+                  )}
+                </FormControl>
                 <FormControl
                   display="flex"
                   flexDirection="column"

@@ -667,7 +667,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                     >
                       Close
                     </Button>
-                    <HStack spacing={4}>
+                    <HStack spacing={4} width={{ base: '100%', sm: 'auto' }}>
                       {!isEditing && !duplicatingBlockId && (
                         <Button
                           colorScheme="orange"
@@ -695,6 +695,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                           onClick={onShowDeleteConfirmation}
                           px={6}
                           height="48px"
+                          width="100%"
                           borderRadius={8}
                           fontSize={16}
                           fontWeight={700}

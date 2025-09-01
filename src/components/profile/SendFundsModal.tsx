@@ -15,9 +15,10 @@ import {
   Spinner,
   Stack,
   Text,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { erc20Abi } from 'abitype/abis'
 import React, { useEffect, useState } from 'react'
 import { FiArrowLeft } from 'react-icons/fi'
@@ -31,31 +32,46 @@ import {
 import { useActiveWallet } from 'thirdweb/react'
 import { formatUnits } from 'viem'
 
+import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import {
   AcceptedToken,
   AcceptedTokenInfo,
   ChainInfo,
   getChainInfo,
   getNetworkDisplayName,
-  getTokenDecimals,
   getTokenIcon,
   getTokenName,
   getTokenSymbol,
   SupportedChain,
   supportedChains,
 } from '@/types/chains'
-import { createCryptoTransaction } from '@/utils/api_helper'
-import { PaymentType, TokenType } from '@/utils/constants/meeting-types'
-import { parseUnits } from '@/utils/generic_utils'
+import {
+  createCryptoTransaction,
+  getNotificationSubscriptions,
+  getPaymentPreferences,
+  sendEnablePinLink,
+  verifyPin,
+  verifyVerificationCode,
+} from '@/utils/api_helper'
+import {
+  PaymentType,
+  supportedPaymentChains,
+} from '@/utils/constants/meeting-types'
+import { TokenType } from '@/utils/constants/meeting-types'
+import { handleApiError } from '@/utils/error_helper'
+import { parseUnits, zeroAddress } from '@/utils/generic_utils'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { useToastHelpers } from '@/utils/toasts'
-import { getTokenInfo } from '@/utils/token.service'
+import { getTokenDecimals, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
+
+import MagicLinkModal from './components/MagicLinkModal'
+import TransactionVerificationModal from './components/TransactionVerificationModal'
 
 interface SendFundsModalProps {
   isOpen: boolean
   onClose: () => void
-  selectedNetwork?: string
+  selectedNetwork: SupportedChain
   isFromTokenView?: boolean
   selectedCryptoNetwork?: string
 }
@@ -76,42 +92,74 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   selectedNetwork,
   isFromTokenView = false,
 }) => {
-  const handleClose = () => {
-    setSelectedToken(null)
-    setRecipientAddress('')
-    setAmount('')
-    setProgress(0)
-    setIsLoading(false)
-    onClose()
-  }
   const [selectedToken, setSelectedToken] = useState<Token | null>(null)
-  const NETWORK_CONFIG = {
-    Celo: SupportedChain.CELO,
-    Arbitrum: SupportedChain.ARBITRUM,
-    'Arbitrum Sepolia': SupportedChain.ARBITRUM_SEPOLIA,
-  } as const
 
-  const [sendNetwork, setSendNetwork] = useState<SupportedChain>(
-    NETWORK_CONFIG[selectedNetwork as keyof typeof NETWORK_CONFIG] ||
-      SupportedChain.CELO
-  )
+  const NETWORK_CONFIG = supportedPaymentChains.reduce((acc, chain) => {
+    acc[getNetworkDisplayName(chain)] = chain
+    return acc
+  }, {} as Record<string, SupportedChain>)
+
+  const [sendNetwork, setSendNetwork] =
+    useState<SupportedChain>(selectedNetwork)
   const [recipientAddress, setRecipientAddress] = useState('')
   const [amount, setAmount] = useState('')
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false)
   const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
+
+  // PIN protection state
+  const {
+    isOpen: isMagicLinkOpen,
+    onOpen: onMagicLinkOpen,
+    onClose: onMagicLinkClose,
+  } = useDisclosure()
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
+  const [notificationEmail, setNotificationEmail] = useState<string | null>(
+    null
+  )
 
   const activeWallet = useActiveWallet()
   const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
   const queryClient = useQueryClient()
+  const { needsReconnection, attemptReconnection } = useSmartReconnect()
+
+  // Fetch payment preferences to check if PIN is set
+  const { data: paymentPreferences } = useQuery(
+    ['paymentPreferences'],
+    () => getPaymentPreferences(),
+    {
+      enabled: isOpen,
+    }
+  )
+
+  // Fetch notification subscriptions to get email
+  const { data: notificationSubscriptions } = useQuery(
+    ['notificationSubscriptions'],
+    () => getNotificationSubscriptions(),
+    {
+      enabled: isOpen,
+    }
+  )
+
+  const handleClose = () => {
+    setSelectedToken(null)
+    setRecipientAddress('')
+    setAmount('')
+    setProgress(0)
+    setIsLoading(false)
+    setIsVerificationModalOpen(false)
+    onMagicLinkClose()
+    setIsSendingMagicLink(false)
+    setNotificationEmail(null)
+    onClose()
+  }
 
   // Update sendNetwork when selectedNetwork prop changes
   useEffect(() => {
-    const newNetwork =
-      NETWORK_CONFIG[selectedNetwork as keyof typeof NETWORK_CONFIG] ||
-      SupportedChain.CELO
-    setSendNetwork(newNetwork)
+    setSendNetwork(selectedNetwork)
   }, [selectedNetwork])
 
   // Get chain info and available tokens
@@ -119,32 +167,20 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     val => val.chain === sendNetwork
   ) as ChainInfo
 
-  // Filter tokens to match the original getTokensForNetwork function
-  const getAvailableTokens = (chain: ChainInfo): AcceptedTokenInfo[] => {
-    switch (chain.chain) {
-      case SupportedChain.CELO:
-        return chain.acceptableTokens.filter(
-          token =>
-            token.token === AcceptedToken.CUSD ||
-            token.token === AcceptedToken.USDC ||
-            token.token === AcceptedToken.USDT
-        )
-      case SupportedChain.ARBITRUM:
-        return chain.acceptableTokens.filter(
-          token =>
-            token.token === AcceptedToken.USDC ||
-            token.token === AcceptedToken.USDT
-        )
-      case SupportedChain.ARBITRUM_SEPOLIA:
-        return chain.acceptableTokens.filter(
-          token => token.token === AcceptedToken.USDC
-        )
-      default:
-        return []
-    }
-  }
-
-  const availableTokens = chain ? getAvailableTokens(chain) : []
+  // Get available tokens dynamically from chain configuration (excluding native tokens)
+  const availableTokens = chain
+    ? chain.acceptableTokens
+        .filter(token => token.contractAddress !== zeroAddress)
+        .filter(token => {
+          if (sendNetwork === SupportedChain.CELO) {
+            return (
+              token.token !== AcceptedToken.CELO &&
+              token.token !== AcceptedToken.CEUR
+            )
+          }
+          return true
+        })
+    : []
 
   // Validate recipient address
   const isValidAddress = (address: string): boolean => {
@@ -157,23 +193,64 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     return !isNaN(num) && num > 0
   }
 
+  const handleTokenSelection = async (token: AcceptedTokenInfo) => {
+    if (!chain) return
+
+    try {
+      const decimals = await getTokenDecimals(
+        token.contractAddress,
+        sendNetwork
+      )
+
+      setSelectedToken({
+        name: getTokenName(token.token),
+        symbol: getTokenSymbol(token.token),
+        icon: getTokenIcon(token.token) || '/assets/chains/ethereum.svg',
+        address: token.contractAddress,
+        chain: sendNetwork,
+        decimals: decimals,
+        chainId: chain.id,
+      })
+    } catch (error) {
+      console.error('Error fetching token decimals:', error)
+      handleApiError('Token Information Failed', error)
+    }
+  }
+
   const handleSend = async () => {
     if (!selectedToken || !recipientAddress || !amount) {
       showErrorToast(
-        'Missing Information',
+        'Missing Required Fields',
         'Please fill in all required fields'
       )
       return
     }
 
     if (!isValidAddress(recipientAddress)) {
-      showErrorToast('Invalid Address', 'Please enter a valid wallet address')
+      showErrorToast(
+        'Invalid Wallet Address',
+        'Please enter a valid wallet address'
+      )
       return
     }
 
     if (!isValidAmount(amount)) {
-      showErrorToast('Invalid Amount', 'Please enter a valid amount')
+      showErrorToast(
+        'Invalid Amount',
+        'Please enter a valid amount greater than 0'
+      )
       return
+    }
+
+    if (needsReconnection) {
+      const reconnectedWallet = await attemptReconnection()
+      if (!reconnectedWallet) {
+        showErrorToast(
+          'Wallet Reconnection Failed',
+          'Please reconnect your wallet and try again'
+        )
+        return
+      }
     }
 
     if (!activeWallet) {
@@ -181,6 +258,82 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
         'Wallet Not Connected',
         'Please connect your wallet to send funds'
       )
+      return
+    }
+
+    // Check if user has a transaction PIN set up
+    if (!paymentPreferences?.hasPin) {
+      // User doesn't have a PIN, show magic link modal
+      if (notificationSubscriptions?.notification_types) {
+        const emailSub = notificationSubscriptions.notification_types.find(
+          (sub: { channel: string; disabled: boolean }) =>
+            sub.channel === 'email' && !sub.disabled
+        )
+
+        if (emailSub?.destination) {
+          setNotificationEmail(emailSub.destination)
+          onMagicLinkOpen()
+        } else {
+          showErrorToast(
+            'Notification Email Required',
+            'You need to set up a notification email first to enable your transaction PIN'
+          )
+        }
+      } else {
+        showErrorToast(
+          'Notification Email Required',
+          'You need to set up a notification email first to enable your transaction PIN'
+        )
+      }
+      return
+    }
+
+    // User has a PIN, proceed with verification
+    setIsVerificationModalOpen(true)
+  }
+
+  const handleVerificationComplete = async (
+    pin: string,
+    verificationCode: string
+  ) => {
+    setIsVerifying(true)
+    try {
+      // First verify the PIN
+      const pinVerification = await verifyPin(pin)
+      if (!pinVerification.valid) {
+        showErrorToast('Incorrect PIN', 'The PIN you entered is incorrect')
+        return
+      }
+
+      // Verify the verification code
+      try {
+        const result = await verifyVerificationCode(verificationCode)
+
+        if (!result.success) {
+          showErrorToast(
+            'Invalid Code',
+            'The verification code you entered is incorrect or expired'
+          )
+          return
+        }
+
+        // Both PIN and verification code are valid
+        setIsVerificationModalOpen(false)
+        await processTransaction()
+      } catch (error) {
+        handleApiError('Code Verification Failed', error)
+        return
+      }
+    } catch (error) {
+      handleApiError('Verification Failed', error)
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const processTransaction = async () => {
+    if (!selectedToken || !activeWallet) {
+      showErrorToast('Transaction Setup Failed', 'Please try again')
       return
     }
 
@@ -304,12 +457,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
       } else {
         throw new Error('Transaction failed')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Send transaction failed:', error)
-      showErrorToast(
-        'Transaction Failed',
-        error.message || 'Failed to send funds'
-      )
+      handleApiError('Transaction Failed', error)
     } finally {
       setIsLoading(false)
       setProgress(0)
@@ -318,49 +468,69 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={handleClose} size="md" isCentered>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        size={{ base: 'full', md: 'md' }}
+        isCentered
+      >
         <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
         <ModalContent
           bg="neutral.900"
-          borderRadius="12px"
+          borderRadius={{ base: '0', md: '12px' }}
           border="1px solid"
           borderColor="neutral.825"
-          maxW="500px"
+          maxW={{ base: '100%', md: '500px' }}
+          mx={{ base: 0, md: 'auto' }}
+          my={{ base: 0, md: 'auto' }}
+          boxShadow="none"
         >
           {/* Header */}
-          <ModalHeader pb={4}>
+          <ModalHeader pb={{ base: 3, md: 4 }}>
             <HStack spacing={2} align="center">
               <Icon
                 as={FiArrowLeft}
                 color="primary.400"
-                fontSize="20px"
+                fontSize={{ base: '18px', md: '20px' }}
                 cursor="pointer"
                 onClick={handleClose}
                 _hover={{ color: 'primary.300' }}
               />
-              <Text color="white" fontSize="20px" fontWeight="600">
+              <Text
+                color="white"
+                fontSize={{ base: '18px', md: '20px' }}
+                fontWeight="600"
+              >
                 Send funds
               </Text>
             </HStack>
           </ModalHeader>
 
-          <ModalBody pb={6}>
-            <VStack spacing={6} align="stretch">
+          <ModalBody pb={{ base: 4, md: 6 }}>
+            <VStack spacing={{ base: 4, md: 6 }} align="stretch">
               {/* Progress Bar */}
               {isLoading && (
                 <Box>
-                  <HStack justify="space-between" mb={2}>
-                    <Text color="white" fontSize="14px" fontWeight="500">
+                  <HStack justify="space-between" mb={{ base: 1, md: 2 }}>
+                    <Text
+                      color="white"
+                      fontSize={{ base: '12px', md: '14px' }}
+                      fontWeight="500"
+                    >
                       Processing transaction...
                     </Text>
-                    <Text color="primary.400" fontSize="14px" fontWeight="500">
+                    <Text
+                      color="primary.400"
+                      fontSize={{ base: '12px', md: '14px' }}
+                      fontWeight="500"
+                    >
                       {progress.toString()}%
                     </Text>
                   </HStack>
                   <Box
                     bg="neutral.800"
                     borderRadius="full"
-                    h="4px"
+                    h={{ base: '3px', md: '4px' }}
                     overflow="hidden"
                   >
                     <Box
@@ -376,14 +546,19 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
               {/* Select Token */}
               <Box>
-                <Text color="white" fontSize="16px" fontWeight="600" mb={3}>
+                <Text
+                  color="white"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="600"
+                  mb={{ base: 2, md: 3 }}
+                >
                   Select token
                 </Text>
                 <Box
                   bg="neutral.825"
-                  borderRadius="12px"
-                  px={4}
-                  py={3}
+                  borderRadius={{ base: '8px', md: '12px' }}
+                  px={{ base: 3, md: 4 }}
+                  py={{ base: 2, md: 3 }}
                   display="flex"
                   alignItems="center"
                   gap={3}
@@ -399,23 +574,30 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                       <Image
                         src={selectedToken.icon}
                         alt={selectedToken.symbol}
-                        w="24px"
-                        h="24px"
+                        w={{ base: '20px', md: '24px' }}
+                        h={{ base: '20px', md: '24px' }}
                         borderRadius="full"
                       />
-                      <Text color="white" fontSize="16px" fontWeight="500">
+                      <Text
+                        color="white"
+                        fontSize={{ base: '14px', md: '16px' }}
+                        fontWeight="500"
+                      >
                         {selectedToken.symbol}
                       </Text>
                     </>
                   ) : (
-                    <Text color="neutral.400" fontSize="16px">
+                    <Text
+                      color="neutral.400"
+                      fontSize={{ base: '14px', md: '16px' }}
+                    >
                       Select a token
                     </Text>
                   )}
                   <Icon
                     as={IoChevronDown}
                     color="neutral.300"
-                    fontSize="16px"
+                    fontSize={{ base: '14px', md: '16px' }}
                     ml="auto"
                   />
                 </Box>
@@ -424,14 +606,19 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
               {/* Select Network - Only show if not from token view */}
               {!isFromTokenView && (
                 <Box>
-                  <Text color="white" fontSize="16px" fontWeight="600" mb={3}>
+                  <Text
+                    color="white"
+                    fontSize={{ base: '14px', md: '16px' }}
+                    fontWeight="600"
+                    mb={{ base: 2, md: 3 }}
+                  >
                     Select network
                   </Text>
                   <Box
                     bg="neutral.825"
-                    borderRadius="12px"
-                    px={4}
-                    py={3}
+                    borderRadius={{ base: '8px', md: '12px' }}
+                    px={{ base: 3, md: 4 }}
+                    py={{ base: 2, md: 3 }}
                     display="flex"
                     alignItems="center"
                     gap={3}
@@ -442,13 +629,17 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                     borderColor="neutral.700"
                     opacity={isLoading ? 0.6 : 1}
                   >
-                    <Text color="white" fontSize="16px" fontWeight="500">
+                    <Text
+                      color="white"
+                      fontSize={{ base: '14px', md: '16px' }}
+                      fontWeight="500"
+                    >
                       {getNetworkDisplayName(sendNetwork)}
                     </Text>
                     <Icon
                       as={IoChevronDown}
                       color="neutral.300"
-                      fontSize="16px"
+                      fontSize={{ base: '14px', md: '16px' }}
                       ml="auto"
                     />
                   </Box>
@@ -457,7 +648,12 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
               {/* Recipient Address */}
               <Box>
-                <Text color="white" fontSize="16px" fontWeight="600" mb={3}>
+                <Text
+                  color="white"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="600"
+                  mb={{ base: 2, md: 3 }}
+                >
                   Receive (enter wallet address)
                 </Text>
                 <Input
@@ -467,9 +663,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                   bg="neutral.825"
                   border="1px solid"
                   borderColor="neutral.700"
-                  borderRadius="12px"
+                  borderRadius={{ base: '8px', md: '12px' }}
                   color="white"
-                  fontSize="16px"
+                  fontSize={{ base: '14px', md: '16px' }}
                   _placeholder={{ color: 'neutral.400' }}
                   _focus={{
                     borderColor: 'primary.400',
@@ -482,13 +678,17 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
               {/* Warning Message */}
               <Box
                 bg="orange.900"
-                borderRadius="8px"
-                px={4}
-                py={3}
+                borderRadius={{ base: '6px', md: '8px' }}
+                px={{ base: 3, md: 4 }}
+                py={{ base: 2, md: 3 }}
                 border="1px solid"
                 borderColor="orange.700"
               >
-                <Text color="orange.200" fontSize="14px" fontWeight="500">
+                <Text
+                  color="orange.200"
+                  fontSize={{ base: '12px', md: '14px' }}
+                  fontWeight="500"
+                >
                   Ensure you&apos;re sending the funds to{' '}
                   {getNetworkDisplayName(sendNetwork).toLowerCase() ===
                     'arbitrum' ||
@@ -505,7 +705,12 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
               {/* Amount */}
               <Box>
-                <Text color="white" fontSize="16px" fontWeight="600" mb={3}>
+                <Text
+                  color="white"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="600"
+                  mb={{ base: 2, md: 3 }}
+                >
                   Amount
                 </Text>
                 <Input
@@ -515,9 +720,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                   bg="neutral.825"
                   border="1px solid"
                   borderColor="neutral.700"
-                  borderRadius="12px"
+                  borderRadius={{ base: '8px', md: '12px' }}
                   color="white"
-                  fontSize="16px"
+                  fontSize={{ base: '14px', md: '16px' }}
                   _placeholder={{ color: 'neutral.400' }}
                   _focus={{
                     borderColor: 'primary.400',
@@ -531,10 +736,10 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
               <Button
                 bg="primary.500"
                 color="white"
-                fontSize="16px"
+                fontSize={{ base: '14px', md: '16px' }}
                 fontWeight="600"
-                py={4}
-                borderRadius="12px"
+                py={{ base: 3, md: 4 }}
+                borderRadius={{ base: '8px', md: '12px' }}
                 _hover={{ bg: isLoading ? 'primary.500' : 'primary.600' }}
                 _active={{ bg: isLoading ? 'primary.500' : 'primary.700' }}
                 onClick={handleSend}
@@ -551,7 +756,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                 {isLoading ? (
                   <HStack spacing={2}>
                     <Spinner size="sm" />
-                    <Text>Sending...</Text>
+                    <Text fontSize={{ base: '14px', md: '16px' }}>
+                      Sending...
+                    </Text>
                   </HStack>
                 ) : (
                   'Send'
@@ -582,23 +789,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
           <ModalBody pb={6}>
             <RadioGroup
               value={selectedToken?.symbol || ''}
-              onChange={value => {
+              onChange={async value => {
                 const token = availableTokens.find(
                   (t: AcceptedTokenInfo) => getTokenSymbol(t.token) === value
                 )
 
-                if (token && chain) {
-                  setSelectedToken({
-                    name: getTokenName(token.token),
-                    symbol: getTokenSymbol(token.token),
-                    icon:
-                      getTokenIcon(token.token) ||
-                      '/assets/chains/ethereum.svg',
-                    address: token.contractAddress,
-                    chain: sendNetwork,
-                    decimals: getTokenDecimals(token.token),
-                    chainId: chain.id,
-                  })
+                if (token) {
+                  await handleTokenSelection(token)
                 }
                 setIsTokenModalOpen(false)
               }}
@@ -715,6 +912,47 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      {/* Transaction Verification Modal */}
+      <TransactionVerificationModal
+        isOpen={isVerificationModalOpen}
+        onClose={() => setIsVerificationModalOpen(false)}
+        onVerificationComplete={handleVerificationComplete}
+        isLoading={isVerifying}
+        userEmail={
+          notificationSubscriptions?.notification_types?.find(
+            (sub: { channel: string; disabled: boolean }) =>
+              sub.channel === 'email' && !sub.disabled
+          )?.destination || ''
+        }
+      />
+
+      {/* Magic Link Modal for PIN Protection */}
+      <MagicLinkModal
+        isOpen={isMagicLinkOpen}
+        onClose={onMagicLinkClose}
+        onConfirm={async () => {
+          if (notificationEmail) {
+            setIsSendingMagicLink(true)
+            try {
+              await sendEnablePinLink(notificationEmail)
+              showSuccessToast(
+                'Success',
+                'A magic link has been sent to your email to set up your transaction PIN'
+              )
+              onMagicLinkClose()
+            } catch (error) {
+              handleApiError('Magic Link Error', error)
+            } finally {
+              setIsSendingMagicLink(false)
+            }
+          }
+        }}
+        title="Enable Transaction PIN"
+        message="You need to set up a transaction PIN to send funds. A magic link will be sent to your notification email to set up your transaction PIN. This ensures the security of your account."
+        confirmButtonText="Send Magic Link"
+        isLoading={isSendingMagicLink}
+      />
     </>
   )
 }

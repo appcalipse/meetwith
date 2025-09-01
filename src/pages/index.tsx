@@ -48,8 +48,6 @@ Home.getInitialProps = async ctx => {
   if (!!ctx.req) {
     const session = await getIronSession(ctx.req, ctx.res!, sessionOptions)
     if (session.account) {
-      const redirectQueryParam = ctx.query.redirect as string
-      delete ctx.query.redirect
       let query = ''
       if (Object.keys(ctx.query).length !== 0) {
         const queryString = Object.keys(ctx.query)
@@ -63,13 +61,7 @@ Home.getInitialProps = async ctx => {
           .join('&')
         query = `?${queryString}`
       }
-      return redirectTo(
-        redirectQueryParam
-          ? `${redirectQueryParam}${query}`
-          : `/dashboard/meetings${query}`,
-        302,
-        ctx
-      )
+      return redirectTo(`/dashboard/meetings${query}`, 302, ctx)
     }
   }
 

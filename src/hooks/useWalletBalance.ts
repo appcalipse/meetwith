@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { getTotalWalletBalance } from '@/utils/api_helper'
+import { getTotalWalletBalance } from '@/utils/token.service'
 
 import useAccountContext from './useAccountContext'
 
@@ -27,10 +27,11 @@ export const useWalletBalance = (currency = 'USD'): WalletBalance => {
       return result
     },
     enabled: !!currentAccount?.address,
-    staleTime: 30000,
-    cacheTime: 60000,
+    staleTime: 0,
+    cacheTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    refetchInterval: 10000,
   })
 
   return {

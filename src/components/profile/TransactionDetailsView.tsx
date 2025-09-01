@@ -1,18 +1,47 @@
 import { Box, Flex, HStack, Icon, Text, VStack } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 import { FiArrowLeft } from 'react-icons/fi'
 
 import { Transaction } from '@/types/Transactions'
+import { formatCurrency } from '@/utils/generic_utils'
+import { CurrencyService } from '@/utils/services/currency.service'
 
 interface TransactionDetailsViewProps {
   transaction: Transaction
   onBack: () => void
+  selectedCurrency?: string
 }
 
 const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
   transaction,
   onBack,
+  selectedCurrency = 'USD',
 }) => {
+  // Currency conversion hook
+  const { data: exchangeRate } = useQuery(
+    ['exchangeRate', selectedCurrency],
+    () => CurrencyService.getExchangeRate(selectedCurrency),
+    {
+      enabled: selectedCurrency !== 'USD',
+      staleTime: 1000 * 60 * 60,
+      cacheTime: 1000 * 60 * 60 * 24,
+    }
+  )
+
+  // Convert USD amount to selected currency
+  const convertCurrency = (usdAmount: number): number => {
+    if (selectedCurrency === 'USD' || !exchangeRate) {
+      return usdAmount
+    }
+    return usdAmount * exchangeRate
+  }
+
+  const formatCurrencyDisplay = (usdAmount: number): string => {
+    const convertedAmount = convertCurrency(usdAmount)
+    return formatCurrency(convertedAmount, selectedCurrency, 2)
+  }
+
   // Get guest information from meeting sessions
   const meetingSession = transaction.meeting_sessions?.[0]
   const guestEmail = meetingSession?.guest_email
@@ -76,54 +105,146 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
         divider={<Box h="1px" bg="neutral.600" width="100%" />}
       >
         {transaction.direction === 'debit' ? (
-          // For debit transactions (sent), show receiver address
-          <Flex justify="space-between" align="start" py={6} width="100%">
-            <Text
-              color="neutral.300"
-              fontSize="16px"
-              fontWeight="700"
-              width="50%"
+          // For debit transactions (sent), show receiver address and host name for meetings
+          <>
+            <Flex
+              justify="space-between"
+              align="start"
+              py={6}
+              width="100%"
+              borderBottom="1px solid"
+              borderColor="neutral.600"
             >
-              Receiver
-            </Text>
-            <Text
-              color="white"
-              fontSize="16px"
-              fontWeight="500"
-              textAlign="left"
-              width="50%"
-            >
-              {transaction.metadata?.receiver_address || 'N/A'}
-            </Text>
-          </Flex>
+              <Text
+                color="neutral.300"
+                fontSize="16px"
+                fontWeight="700"
+                width="50%"
+              >
+                Receiver
+              </Text>
+              <Text
+                color="white"
+                fontSize="16px"
+                fontWeight="500"
+                textAlign="left"
+                width="50%"
+              >
+                {transaction.metadata?.receiver_address || 'N/A'}
+              </Text>
+            </Flex>
+
+            {/* Host Name - show for meeting debit transactions */}
+            {transaction.meeting_type_id && transaction.counterparty_name && (
+              <Flex justify="space-between" align="start" py={6} width="100%">
+                <Text
+                  color="neutral.300"
+                  fontSize="16px"
+                  fontWeight="700"
+                  width="50%"
+                >
+                  Host Name
+                </Text>
+                <Text
+                  color="white"
+                  fontSize="16px"
+                  fontWeight="500"
+                  textAlign="left"
+                  width="50%"
+                >
+                  {transaction.counterparty_name}
+                </Text>
+              </Flex>
+            )}
+          </>
         ) : (
-          // For credit transactions (received), show meeting-related fields
-          // Guest Email
-          <Flex justify="space-between" align="start" py={6} width="100%">
-            <Text
-              color="neutral.300"
-              fontSize="16px"
-              fontWeight="700"
-              width="50%"
+          // For credit transactions (received), show sender and meeting-related fields
+          <>
+            {/* Sender - show for all credit transactions */}
+            <Flex
+              justify="space-between"
+              align="start"
+              py={6}
+              width="100%"
+              borderBottom="1px solid"
+              borderColor="neutral.600"
             >
-              Guest Email
-            </Text>
-            <Text
-              color="white"
-              fontSize="16px"
-              fontWeight="500"
-              textAlign="left"
-              width="50%"
-            >
-              {guestEmail || 'N/A'}
-            </Text>
-          </Flex>
+              <Text
+                color="neutral.300"
+                fontSize="16px"
+                fontWeight="700"
+                width="50%"
+              >
+                Sender
+              </Text>
+              <Text
+                color="white"
+                fontSize="16px"
+                fontWeight="500"
+                textAlign="left"
+                width="50%"
+              >
+                {transaction.initiator_address || 'N/A'}
+              </Text>
+            </Flex>
+
+            {/* Guest Name - show for meeting credit transactions */}
+            {transaction.meeting_type_id && meetingSession?.guest_name && (
+              <Flex
+                justify="space-between"
+                align="start"
+                py={6}
+                width="100%"
+                borderBottom="1px solid"
+                borderColor="neutral.600"
+              >
+                <Text
+                  color="neutral.300"
+                  fontSize="16px"
+                  fontWeight="700"
+                  width="50%"
+                >
+                  Guest Name
+                </Text>
+                <Text
+                  color="white"
+                  fontSize="16px"
+                  fontWeight="500"
+                  textAlign="left"
+                  width="50%"
+                >
+                  {meetingSession.guest_name}
+                </Text>
+              </Flex>
+            )}
+
+            {/* Guest Email - show for meeting credit transactions */}
+            {transaction.meeting_type_id && guestEmail && (
+              <Flex justify="space-between" align="start" py={6} width="100%">
+                <Text
+                  color="neutral.300"
+                  fontSize="16px"
+                  fontWeight="700"
+                  width="50%"
+                >
+                  Guest Email
+                </Text>
+                <Text
+                  color="white"
+                  fontSize="16px"
+                  fontWeight="500"
+                  textAlign="left"
+                  width="50%"
+                >
+                  {guestEmail}
+                </Text>
+              </Flex>
+            )}
+          </>
         )}
 
-        {/* Plan - show for credit transactions and meeting-related debit transactions */}
-        {(transaction.direction === 'credit' ||
-          (transaction.direction === 'debit' &&
-            transaction.meeting_type_id)) && (
+        {/* Plan - show only for actual meeting-related transactions */}
+        {transaction.meeting_type_id && meetingTypeTitle && (
           <Flex justify="space-between" align="start" py={6} width="100%">
             <Text
               color="neutral.300"
@@ -140,15 +261,13 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
               textAlign="left"
               width="50%"
             >
-              {meetingTypeTitle || 'N/A'}
+              {meetingTypeTitle}
             </Text>
           </Flex>
         )}
 
-        {/* Number of Sessions - show for credit transactions and meeting-related debit transactions */}
-        {(transaction.direction === 'credit' ||
-          (transaction.direction === 'debit' &&
-            transaction.meeting_type_id)) && (
+        {/* Number of Sessions - show only for actual meeting-related transactions */}
+        {transaction.meeting_type_id && sessionNumber && (
           <Flex justify="space-between" align="start" py={6} width="100%">
             <Text
               color="neutral.300"
@@ -165,7 +284,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
               textAlign="left"
               width="50%"
             >
-              {sessionNumber || 'N/A'}
+              {sessionNumber}
             </Text>
           </Flex>
         )}
@@ -187,7 +306,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             textAlign="left"
             width="50%"
           >
-            {transaction.amount} {transaction.currency}
+            {formatCurrencyDisplay(transaction.amount)}
           </Text>
         </Flex>
 

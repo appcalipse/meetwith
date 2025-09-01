@@ -161,6 +161,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       {
         label: 'Add to Google Calendar',
         link: generateGoogleCalendarUrl(
+          decryptedMeeting?.id || '',
           decryptedMeeting?.start,
           decryptedMeeting?.end,
           decryptedMeeting?.title || 'No Title',
@@ -173,6 +174,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       {
         label: 'Add to Office 365 Calendar',
         link: generateOffice365CalendarUrl(
+          decryptedMeeting?.id || '',
           decryptedMeeting?.start,
           decryptedMeeting?.end,
           decryptedMeeting?.title || 'No Title',

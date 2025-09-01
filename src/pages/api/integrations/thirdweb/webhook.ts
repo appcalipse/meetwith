@@ -33,8 +33,7 @@ export default async function handler(
       const payload: WebhookPayload = await Bridge.Webhook.parse(
         JSON.stringify(req.body),
         headerRecord,
-        process.env.THIRDWEB_WEBHOOK_SECRET!,
-        10000
+        process.env.THIRDWEB_WEBHOOK_SECRET!
       )
       console.log(payload)
       if (

@@ -101,6 +101,7 @@ const ScheduleBase = () => {
     handleCancel,
     isDeleting,
     canDelete,
+    canCancel,
     isScheduler,
     selectedPermissions,
     setSelectedPermissions,
@@ -752,7 +753,7 @@ const ScheduleBase = () => {
               ? 'Update Meeting'
               : 'Schedule now'}
           </Button>
-          {query.intent === Intents.UPDATE_MEETING && isScheduler && (
+          {query.intent === Intents.UPDATE_MEETING && canCancel && (
             <Button
               w="100%"
               py={3}

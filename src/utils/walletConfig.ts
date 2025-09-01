@@ -1,9 +1,9 @@
-import {
-  AcceptedToken,
-  getChainId,
-  getTokenAddress,
-  SupportedChain,
-} from '@/types/chains'
+import { getChainId, SupportedChain, supportedChains } from '@/types/chains'
+import { supportedPaymentChains } from '@/utils/constants/meeting-types'
+import { getPriceForChain } from '@/utils/services/chainlink.service'
+
+import { isProduction } from './constants'
+import { zeroAddress } from './generic_utils'
 
 export interface Currency {
   name: string
@@ -24,12 +24,13 @@ export interface CryptoAsset {
   price: string
   balance: string
   usdValue: string
-  fullBalance?: string
-  currencyIcon?: string
   tokenAddress: string
   chainId: number
+  fullBalance?: string
+  currencyIcon?: string
   networkName?: string
   isLoading?: boolean
+  error?: unknown
 }
 
 export interface CryptoConfig {
@@ -37,12 +38,13 @@ export interface CryptoConfig {
   symbol: string
   icon: string
   price: string
-  tokenAddress: string
-  celoChainId: number
-  arbitrumTokenAddress?: string
-  arbitrumChainId?: number
-  arbitrumSepoliaTokenAddress?: string
-  arbitrumSepoliaChainId?: number
+  // Dynamic chain information - no more hardcoded chain properties
+  chains: {
+    [chainName: string]: {
+      tokenAddress: string
+      chainId: number
+    }
+  }
 }
 
 // Centralized currency configuration
@@ -56,139 +58,137 @@ export const CURRENCIES: Currency[] = [
   },
 ]
 
-// Centralized network configuration using chains.ts
-export const NETWORKS: Network[] = [
-  {
-    name: 'Celo',
-    icon: '/assets/chains/Celo.svg',
-    chainId: getChainId(SupportedChain.CELO),
-  },
-  {
-    name: 'Arbitrum',
-    icon: '/assets/chains/Arbitrum.svg',
-    chainId: getChainId(SupportedChain.ARBITRUM),
-  },
-  {
-    name: 'Arbitrum Sepolia',
-    icon: '/assets/chains/Arbitrum.svg',
-    chainId: getChainId(SupportedChain.ARBITRUM_SEPOLIA),
-  },
-]
+export const NETWORKS: Network[] = supportedChains
+  .filter(
+    chain =>
+      chain.walletSupported && supportedPaymentChains.includes(chain.chain)
+  )
+  .map(chain => ({
+    name: chain.name,
+    icon: chain.image,
+    chainId: chain.id,
+  }))
 
-export const CRYPTO_CONFIG: CryptoConfig[] = [
-  {
-    name: 'Celo Dollar',
-    symbol: 'cUSD',
-    icon: '/assets/tokens/CUSD.png',
-    price: '1 USD',
-    tokenAddress: getTokenAddress(SupportedChain.CELO, AcceptedToken.CUSD),
-    celoChainId: getChainId(SupportedChain.CELO),
-  },
-  {
-    name: 'US Dollar Coin',
-    symbol: 'USDC',
-    icon: '/assets/tokens/USDC.svg',
-    price: '1 USD',
-    tokenAddress: getTokenAddress(SupportedChain.CELO, AcceptedToken.USDC),
-    celoChainId: getChainId(SupportedChain.CELO),
-    arbitrumTokenAddress: getTokenAddress(
-      SupportedChain.ARBITRUM,
-      AcceptedToken.USDC
-    ),
-    arbitrumChainId: getChainId(SupportedChain.ARBITRUM),
-    arbitrumSepoliaTokenAddress: getTokenAddress(
-      SupportedChain.ARBITRUM_SEPOLIA,
-      AcceptedToken.USDC
-    ),
-    arbitrumSepoliaChainId: getChainId(SupportedChain.ARBITRUM_SEPOLIA),
-  },
-  {
-    name: 'Tether',
-    symbol: 'USDT',
-    icon: '/assets/tokens/USDT.svg',
-    price: '1 USD',
-    tokenAddress: getTokenAddress(SupportedChain.CELO, AcceptedToken.USDT),
-    celoChainId: getChainId(SupportedChain.CELO),
-    arbitrumTokenAddress: getTokenAddress(
-      SupportedChain.ARBITRUM,
-      AcceptedToken.USDT
-    ),
-    arbitrumChainId: getChainId(SupportedChain.ARBITRUM),
-  },
-]
+export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
+  // Get wallet-supported chains from chains.ts that are also in supportedPaymentChains
+  const walletSupportedChains = supportedChains.filter(
+    chain =>
+      chain.walletSupported &&
+      supportedPaymentChains.includes(chain.chain) &&
+      (isProduction ? chain.isProduction : !chain.isProduction)
+  )
 
-export const getCryptoAssetsForNetwork = (
+  const configs: CryptoConfig[] = []
+
+  for (const chain of walletSupportedChains) {
+    // Get tokens for this chain
+    const chainTokens = chain.acceptableTokens.filter(
+      token => token.contractAddress !== zeroAddress // Exclude native tokens
+    )
+
+    for (const tokenInfo of chainTokens) {
+      // Skip tokens that are not wallet-supported
+      if (!tokenInfo.walletSupported) {
+        continue
+      }
+
+      const existingConfig = configs.find(
+        config => config.symbol === tokenInfo.token
+      )
+
+      if (existingConfig) {
+        // Add additional chain info to existing config dynamically
+        existingConfig.chains[chain.name] = {
+          tokenAddress: tokenInfo.contractAddress,
+          chainId: chain.id,
+        }
+      } else {
+        // Create new config
+        const config: CryptoConfig = {
+          name: tokenInfo.displayName || tokenInfo.token,
+          symbol: tokenInfo.token,
+          icon: tokenInfo.icon || '',
+          price: await getPriceForChain(chain.chain, tokenInfo.token),
+          chains: {
+            [chain.name]: {
+              tokenAddress: tokenInfo.contractAddress,
+              chainId: chain.id,
+            },
+          },
+        }
+        configs.push(config)
+      }
+    }
+  }
+
+  return configs
+}
+
+export const getCryptoAssetsForNetwork = async (
   networkName: string
-): CryptoAsset[] => {
+): Promise<CryptoAsset[]> => {
   const network = NETWORKS.find(n => n.name === networkName)
   if (!network) return []
 
-  return CRYPTO_CONFIG.map(crypto => ({
-    ...crypto,
-    balance: '0 ' + crypto.symbol,
-    usdValue: '$0',
-    fullBalance: '0',
-    currencyIcon: crypto.icon,
-    chainId: network.chainId,
-    networkName: networkName,
-  }))
+  try {
+    const cryptoConfig = await getCryptoConfig()
+    return cryptoConfig.map(crypto => {
+      const chainInfo = crypto.chains[networkName]
+      return {
+        ...crypto,
+        balance: '0 ' + crypto.symbol,
+        usdValue: '$0',
+        fullBalance: '0',
+        currencyIcon: crypto.icon,
+        tokenAddress: chainInfo?.tokenAddress || '',
+        chainId: chainInfo?.chainId || network.chainId,
+        networkName: networkName,
+      }
+    })
+  } catch (error) {
+    console.warn('Failed to get dynamic crypto config:', error)
+    return []
+  }
 }
 
-export const getTokenAddressForNetwork = (
+export const getTokenAddressForNetwork = async (
   tokenSymbol: string,
   networkName: string
-): string => {
-  // Map token symbols to AcceptedToken enum
-  const tokenMap: Record<string, AcceptedToken> = {
-    cUSD: AcceptedToken.CUSD,
-    USDC: AcceptedToken.USDC,
-    USDT: AcceptedToken.USDT,
+): Promise<string> => {
+  try {
+    const configs = await getCryptoConfig()
+    const config = configs.find(c => c.symbol === tokenSymbol)
+    if (!config || !config.chains[networkName]) return ''
+    return config.chains[networkName].tokenAddress
+  } catch {
+    return ''
   }
-
-  const token = tokenMap[tokenSymbol]
-  if (!token) return ''
-
-  // Map network names to SupportedChain enum
-  const networkMap: Record<string, SupportedChain> = {
-    Celo: SupportedChain.CELO,
-    Arbitrum: SupportedChain.ARBITRUM,
-    'Arbitrum Sepolia': SupportedChain.ARBITRUM_SEPOLIA,
-  }
-
-  const chain = networkMap[networkName]
-  if (!chain) return ''
-
-  return getTokenAddress(chain, token)
 }
 
 // Helper function to get chain ID for a specific network and token
-export const getChainIdForNetwork = (
+export const getChainIdForNetwork = async (
   tokenSymbol: string,
   networkName: string
-): number => {
-  // Map network names to SupportedChain enum
-  const networkMap: Record<string, SupportedChain> = {
-    Celo: SupportedChain.CELO,
-    Arbitrum: SupportedChain.ARBITRUM,
-    'Arbitrum Sepolia': SupportedChain.ARBITRUM_SEPOLIA,
+): Promise<number> => {
+  try {
+    const configs = await getCryptoConfig()
+    const config = configs.find(c => c.symbol === tokenSymbol)
+    if (!config || !config.chains[networkName])
+      return getChainId(SupportedChain.ARBITRUM)
+    return config.chains[networkName].chainId
+  } catch {
+    return getChainId(SupportedChain.ARBITRUM)
   }
-
-  const chain = networkMap[networkName]
-  if (!chain) return getChainId(SupportedChain.CELO) // Default to Celo
-
-  return getChainId(chain)
 }
 
 // Helper function to get supported tokens for a network
 export const getSupportedTokensForNetwork = (networkName: string): string[] => {
-  switch (networkName) {
-    case 'Celo':
-      return ['cUSD', 'USDC', 'USDT']
-    case 'Arbitrum':
-      return ['USDC', 'USDT']
-    case 'Arbitrum Sepolia':
-      return ['USDC']
-    default:
-      return []
-  }
+  const chain = supportedChains.find(
+    c => c.name === networkName && c.walletSupported
+  )
+  if (!chain) return []
+
+  return chain.acceptableTokens
+    .filter(token => token.contractAddress !== zeroAddress) // Exclude native tokens
+    .map(token => token.token)
 }
