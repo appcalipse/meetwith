@@ -30,6 +30,8 @@ export interface Transaction extends BaseTransaction {
   created_at?: Date
   meeting_sessions?: MeetingSession[]
   meeting_types?: { title: string }[]
+  counterparty_name?: string
+  counterparty_address?: string
 }
 
 export interface BaseMeetingSession {

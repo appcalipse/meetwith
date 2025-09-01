@@ -116,7 +116,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
       px={{ base: 2, sm: 4, md: 6, lg: 4, xl: 6, '2xl': 10 }}
     >
       <Heading fontSize="2xl" color="neutral.0" width="100%">
-        My Availability
+        Availabilities
       </Heading>
 
       <Box

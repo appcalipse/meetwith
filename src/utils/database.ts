@@ -6,9 +6,9 @@ import {
   extractOnRampStatus,
   getOnrampMoneyTokenAddress,
 } from '@utils/services/onramp.money'
+import * as argon2 from 'argon2'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
   Encrypted,
@@ -26,6 +26,7 @@ import {
   DiscordConnectedAccounts,
   MeetingType,
   PaidMeetingTypes,
+  PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,
   TgConnectedAccounts,
@@ -34,6 +35,7 @@ import {
 import {
   AccountNotifications,
   NotificationChannel,
+  VerificationChannel,
 } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
@@ -41,7 +43,13 @@ import {
   ConnectedCalendar,
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
-import { getChainInfo, getTokenAddress, SupportedChain } from '@/types/chains'
+import {
+  getChainDisplayName,
+  getChainInfo,
+  getTokenAddress,
+  resolveTokenSymbolFromAddress,
+  SupportedChain,
+} from '@/types/chains'
 import {
   ContactSearch,
   DBContact,
@@ -72,7 +80,6 @@ import {
   GroupMeetingRequest,
   GroupNotificationType,
   MeetingAccessType,
-  MeetingDecrypted,
   MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
@@ -110,6 +117,7 @@ import {
   OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
+import { PaymentNotificationType } from '@/utils/constants'
 import {
   NO_MEETING_TYPE,
   PaymentDirection,
@@ -172,11 +180,15 @@ import {
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_sync_helpers'
-import { apiUrl, appUrl, isProduction, WEBHOOK_URL } from './constants'
+import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
-import { sendReceiptEmail } from './email_helper'
+import {
+  sendCryptoDebitEmail,
+  sendReceiptEmail,
+  sendSessionBookingIncomeEmail,
+} from './email_helper'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { CalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
@@ -185,6 +197,8 @@ import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
+
+const PIN_SALT = process.env.PIN_SALT
 
 // TODO: better typing
 type SupabaseRecords = { ready: boolean } & Record<string, SupabaseClient>
@@ -426,14 +440,16 @@ const findAccountByIdentifier = async (
     Sentry.captureException(error)
     return []
   }
-  return await Promise.all(
-    data.map(async account => {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
+  return data?.length > 0
+    ? await Promise.all(
+        data?.map(async account => {
+          account.preferences = await getAccountPreferences(
+            account.address.toLowerCase()
+          )
+          return account
+        })
       )
-      return account
-    })
-  )
+    : []
 }
 
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
@@ -592,9 +608,20 @@ async function getExistingAccountsFromDB(
   if (fullInformation) {
     queryString += `
       ,calendars: connected_calendars(provider),
-      preferences: account_preferences(*)
+      preferences: account_preferences(
+      *,
+      default_availability:availabilities!account_preferences_availaibility_id_fkey(
+          id,
+          title,
+          timezone,
+          weekly_availability,
+          created_at,
+          updated_at
+        )
+      )
       `
   }
+
   const { data, error } = await db.supabase
     .from('accounts')
     .select(queryString)
@@ -609,6 +636,12 @@ async function getExistingAccountsFromDB(
   for (const account of data) {
     if (account.calendars) {
       account.isCalendarConnected = account?.calendars?.length > 0
+      const { default_availability, ...preferences } = account.preferences
+      if (default_availability) {
+        preferences.availabilities = default_availability.weekly_availability
+        preferences.timezone = default_availability.timezone
+      }
+      account.preferences = preferences
       delete account.calendars
     }
   }
@@ -819,7 +852,7 @@ const isSlotAvailable = async (
   txHash?: Address | null,
   meeting_id?: string
 ): Promise<boolean> => {
-  if (meetingTypeId !== 'no_type') {
+  if (meetingTypeId !== NO_MEETING_TYPE) {
     const meetingType = await getMeetingTypeFromDB(meetingTypeId)
     const minTime = meetingType.min_notice_minutes
     if (meetingType?.plan) {
@@ -872,7 +905,6 @@ const isSlotAvailable = async (
       DateTime.fromJSDate(new Date(slot.end))
     )
   )
-
   const isAvailable = busySlots.every(slot => !slot.overlaps(interval))
   return isAvailable
 }
@@ -1263,20 +1295,32 @@ const saveMeeting = async (
             meeting.meetingTypeId,
             meeting.txHash
           ))
-        const isTimeAvailable = () =>
+        let isTimeAvailable = () =>
           ownerAccount &&
           isTimeInsideAvailabilities(
-            utcToZonedTime(
-              meeting.start,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            utcToZonedTime(
-              meeting.end,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            ownerAccount?.preferences.availabilities || []
+            new Date(meeting.start),
+            new Date(meeting.end),
+            ownerAccount?.preferences.availabilities || [],
+            ownerAccount?.preferences.timezone
           )
-        // TODO: check slots by meeting type and not users default Availaibility
+        if (
+          meeting.meetingTypeId &&
+          meeting.meetingTypeId !== NO_MEETING_TYPE
+        ) {
+          const accountAvailabilities =
+            await getTypeMeetingAvailabilityTypeFromDB(meeting.meetingTypeId)
+          isTimeAvailable = () =>
+            ownerAccount &&
+            accountAvailabilities?.some(availability =>
+              isTimeInsideAvailabilities(
+                new Date(meeting.start),
+                new Date(meeting.end),
+                availability?.weekly_availability || [],
+                availability?.timezone
+              )
+            )
+        }
+        // TODO: check slots by meeting type and not users default Availability
         if (
           participantIsOwner &&
           ownerIsNotScheduler &&
@@ -2405,30 +2449,29 @@ const addOrUpdateConnectedCalendar = async (
   }
   const calendar = data[0] as ConnectedCalendar
 
-  if (!isProduction) {
-    try {
-      const integration = getConnectedCalendarIntegration(
-        address.toLowerCase(),
+  try {
+    const integration = getConnectedCalendarIntegration(
+      address.toLowerCase(),
+      email,
+      provider,
+      payload
+    )
+    for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+      // don't parellelize this as it can make us hit google's rate limit
+      await handleWebHook(cal.calendarId, calendar.id, integration)
+    }
+  } catch (e) {
+    Sentry.captureException(e, {
+      extra: {
+        calendarId: calendar.id,
+        accountAddress: address,
         email,
         provider,
-        payload
-      )
-      for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
-        // don't parellelize this as it can make us hit google's rate limit
-        await handleWebHook(cal.calendarId, calendar.id, integration)
-      }
-    } catch (e) {
-      Sentry.captureException(e, {
-        extra: {
-          calendarId: calendar.id,
-          accountAddress: address,
-          email,
-          provider,
-        },
-      })
-      console.error('Error adding new calendar to existing meeting types:', e)
-    }
+      },
+    })
+    console.error('Error adding new calendar to existing meeting types:', e)
   }
+
   return calendar
 }
 
@@ -2940,19 +2983,33 @@ const updateMeeting = async (
             meetingUpdateRequest.meeting_id
           ))
 
-        const isTimeAvailable = () =>
+        let isTimeAvailable = () =>
           ownerAccount &&
           isTimeInsideAvailabilities(
-            utcToZonedTime(
-              meetingUpdateRequest.start,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            utcToZonedTime(
-              meetingUpdateRequest.end,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            ownerAccount?.preferences.availabilities
+            new Date(meetingUpdateRequest.start),
+            new Date(meetingUpdateRequest.end),
+            ownerAccount?.preferences.availabilities || [],
+            ownerAccount?.preferences.timezone
           )
+        if (
+          meetingUpdateRequest.meetingTypeId &&
+          meetingUpdateRequest.meetingTypeId !== NO_MEETING_TYPE
+        ) {
+          const accountAvailabilities =
+            await getTypeMeetingAvailabilityTypeFromDB(
+              meetingUpdateRequest.meetingTypeId
+            )
+          isTimeAvailable = () =>
+            ownerAccount &&
+            accountAvailabilities?.some(availability =>
+              isTimeInsideAvailabilities(
+                new Date(meetingUpdateRequest.start),
+                new Date(meetingUpdateRequest.end),
+                availability?.weekly_availability || [],
+                availability?.timezone
+              )
+            )
+        }
 
         if (
           participantIsOwner &&
@@ -4196,6 +4253,7 @@ export const getAvailabilityBlocks = async (account_address: string) => {
 
   return sortedBlocks
 }
+
 const getMeetingTypesLean = async (
   account_address: string
 ): Promise<Array<MeetingType> | null> => {
@@ -4585,6 +4643,32 @@ const updateAvailabilityBlockMeetingTypes = async (
   )
 }
 
+const getTypeMeetingAvailabilityTypeFromDB = async (
+  id: string
+): Promise<MeetingType['availabilities'] | null> => {
+  if (id === NO_MEETING_TYPE) return null
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .select(
+      `
+    *,
+    availabilities: meeting_type_availabilities(availabilities(*))
+    `
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new MeetingTypeNotFound()
+  }
+  return data?.availabilities?.map(
+    (availability: { availabilities: MeetingType['availabilities'][0] }) =>
+      availability.availabilities
+  )
+}
 const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
   const { data, error } = await db.supabase
     .from('meeting_type')
@@ -4619,14 +4703,15 @@ export const getWalletTransactions = async (
   tokenAddress?: string,
   chainId?: number,
   limit = 50,
-  offset = 0
+  offset = 0,
+  searchQuery?: string
 ) => {
   // Build base query for count
   let countQuery = db.supabase
     .from('transactions')
     .select('*', { count: 'exact', head: true })
     .or(
-      `initiator_address.eq.${walletAddress},metadata->>sender_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
+      `initiator_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
     )
 
   // Apply optional token and chain filters to count query
@@ -4649,7 +4734,7 @@ export const getWalletTransactions = async (
     .from('transactions')
     .select('*')
     .or(
-      `initiator_address.eq.${walletAddress},metadata->>sender_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
+      `initiator_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
     )
 
   // Apply optional token and chain filters
@@ -4673,82 +4758,140 @@ export const getWalletTransactions = async (
   const transactionsWithMeetingData = await Promise.all(
     (transactions || []).map(async tx => {
       if (tx.meeting_type_id) {
-        // Get meeting type data
-        const { data: meetingTypeData } = await db.supabase
-          .from('meeting_types')
-          .select('title')
+        // Get meeting type data with joined meeting sessions
+        let meetingQuery = db.supabase
+          .from('meeting_type')
+          .select(
+            `
+            id, 
+            title, 
+            account_owner_address, 
+            description,
+            meeting_sessions!inner(
+              id, 
+              guest_email, 
+              guest_name, 
+              session_number, 
+              created_at, 
+              updated_at
+            )
+          `
+          )
           .eq('id', tx.meeting_type_id)
-          .single()
+          .eq('meeting_sessions.transaction_id', tx.id)
 
-        // Get meeting session data
-        const { data: meetingSessionData } = await db.supabase
-          .from('meeting_sessions')
-          .select('guest_email, session_number')
-          .eq('transaction_id', tx.id)
-          .single()
+        if (searchQuery && searchQuery.trim()) {
+          meetingQuery = meetingQuery.filter(
+            'meeting_sessions.guest_name',
+            'ilike',
+            `%${searchQuery.trim().toLowerCase()}%`
+          )
+        }
+
+        const { data: meetingTypeData, error: typeError } =
+          await meetingQuery.single()
+
+        if (typeError) {
+          console.error('Error fetching meeting type:', typeError)
+        }
+
+        let meeting_host_name: string | null = null
+        if (meetingTypeData?.account_owner_address) {
+          const ownerAddr = meetingTypeData.account_owner_address.toLowerCase()
+          const { data: hostPrefs } = await db.supabase
+            .from('account_preferences')
+            .select('name')
+            .eq('owner_account_address', ownerAddr)
+            .single()
+          meeting_host_name = hostPrefs?.name || null
+          if (!meeting_host_name && ownerAddr) {
+            meeting_host_name = `${ownerAddr.slice(0, 3)}***${ownerAddr.slice(
+              -2
+            )}`
+          }
+        }
+
+        const meetingSessions = meetingTypeData?.meeting_sessions || []
 
         return {
           ...tx,
-          meeting_types: meetingTypeData || null,
-          meeting_sessions: meetingSessionData || null,
+          meeting_types: meetingTypeData
+            ? [
+                {
+                  id: meetingTypeData.id,
+                  title: meetingTypeData.title,
+                  account_owner_address: meetingTypeData.account_owner_address,
+                  description: meetingTypeData.description,
+                },
+              ]
+            : [],
+          meeting_sessions: meetingSessions,
+          meeting_host_name,
         }
       } else {
         return {
           ...tx,
-          meeting_types: null,
-          meeting_sessions: null,
+          meeting_types: [],
+          meeting_sessions: [],
         }
       }
     })
   )
 
-  const processedTransactions = transactionsWithMeetingData.map(tx => {
+  const transactionsToProcess =
+    searchQuery && searchQuery.trim()
+      ? transactionsWithMeetingData.filter(
+          tx => tx.meeting_sessions && tx.meeting_sessions.length > 0
+        )
+      : transactionsWithMeetingData
+
+  const processedTransactions = transactionsToProcess.map(tx => {
     const metadata = tx.metadata
 
-    const hasMetadata = metadata?.sender_address && metadata?.receiver_address
-
-    let isSender = false
-    let isReceiver = false
-
-    if (hasMetadata) {
-      isSender =
-        metadata.sender_address.toLowerCase() === walletAddress.toLowerCase()
-      isReceiver =
-        metadata.receiver_address.toLowerCase() === walletAddress.toLowerCase()
-    } else {
-      isSender =
-        tx.initiator_address.toLowerCase() === walletAddress.toLowerCase()
-      isReceiver = false
-    }
+    const isSender =
+      tx.initiator_address.toLowerCase() === walletAddress.toLowerCase()
+    const isReceiver =
+      metadata?.receiver_address?.toLowerCase() === walletAddress.toLowerCase()
 
     // Determine direction based on whether current wallet is sender or receiver
     let direction: 'debit' | 'credit' | 'unknown' = 'unknown'
     let counterparty_address: string | undefined
+    let counterparty_name: string | undefined
 
     if (isSender) {
       direction = 'debit'
       counterparty_address = metadata?.receiver_address
     } else if (isReceiver) {
       direction = 'credit'
-      counterparty_address = metadata?.sender_address
+      counterparty_address = tx.initiator_address
     } else {
       direction = 'unknown'
       counterparty_address = undefined
+    }
+
+    if (tx.meeting_type_id) {
+      if (direction === 'credit') {
+        counterparty_name = tx?.meeting_sessions?.[0]?.guest_name || undefined
+      } else if (direction === 'debit') {
+        counterparty_name = tx?.meeting_host_name || undefined
+      }
     }
 
     return {
       ...tx,
       direction,
       counterparty_address,
-      has_full_metadata: !!(
-        metadata?.sender_address && metadata?.receiver_address
-      ),
+      counterparty_name,
+      has_full_metadata: !!(tx.initiator_address && metadata?.receiver_address),
     }
   })
 
   return {
     transactions: processedTransactions,
-    totalCount: totalCount || 0,
+    totalCount:
+      searchQuery && searchQuery.trim()
+        ? transactionsToProcess.length
+        : totalCount || 0,
   }
 }
 
@@ -4768,6 +4911,63 @@ export const getWalletTransactionsByToken = async (
   )
 }
 
+const sendWalletDebitEmail = async (
+  initiatorAddress: string,
+  tx: ConfirmCryptoTransactionRequest,
+  fallbackReceiver?: string | null
+) => {
+  try {
+    // Respect user preferences: only send if 'send-tokens' is enabled
+    const prefs = await getPaymentPreferences(initiatorAddress)
+    const notifications = prefs?.notification || []
+    if (!notifications.includes(PaymentNotificationType.SEND_TOKENS)) return
+
+    const senderEmail = await getAccountNotificationSubscriptionEmail(
+      initiatorAddress
+    )
+    if (!senderEmail) return
+
+    await sendCryptoDebitEmail(senderEmail, {
+      amount: tx.fiat_equivalent,
+      tokenSymbol: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      chainName: getChainDisplayName(tx.chain),
+      transactionHash: tx.transaction_hash,
+      recipientAddress: tx.receiver_address || fallbackReceiver || '',
+    })
+  } catch (e) {
+    console.warn('Failed to send wallet transfer email:', e)
+  }
+}
+
+const sendSessionIncomeEmail = async (
+  meetingType: MeetingType | undefined | null,
+  tx: ConfirmCryptoTransactionRequest
+) => {
+  try {
+    const hostAddress = meetingType?.account_owner_address
+    if (!hostAddress) return
+
+    // Respect host preferences: only send if 'receive-tokens' is enabled
+    const prefs = await getPaymentPreferences(hostAddress)
+    const notifications = prefs?.notification || []
+    if (!notifications.includes('receive-tokens')) return
+
+    const hostEmail = await getAccountNotificationSubscriptionEmail(hostAddress)
+    if (!hostEmail) return
+
+    await sendSessionBookingIncomeEmail(hostEmail, {
+      guestName: tx.guest_name || 'Guest',
+      amount: tx.fiat_equivalent,
+      tokenSymbol: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      chainName: getChainDisplayName(tx.chain),
+      transactionHash: tx.transaction_hash,
+      meetingTypeTitle: meetingType?.title,
+    })
+  } catch (e) {
+    console.warn('Failed to send session booking income email:', e)
+  }
+}
+
 const createCryptoTransaction = async (
   transactionRequest: ConfirmCryptoTransactionRequest,
   account_address?: string
@@ -4776,10 +4976,26 @@ const createCryptoTransaction = async (
   if (!chainInfo?.id) {
     throw new ChainNotFound(transactionRequest.chain)
   }
-  const { feeInUSD, gasUsed } = await getTransactionFeeThirdweb(
-    transactionRequest.transaction_hash,
-    transactionRequest.chain
-  )
+  // Fallback if RPC is unavailable
+  let feeInUSD = 0
+  let gasUsed = '0'
+  let receiverAddress: string | null = null
+
+  try {
+    const feeDetails = await getTransactionFeeThirdweb(
+      transactionRequest.transaction_hash,
+      transactionRequest.chain
+    )
+    feeInUSD = feeDetails.feeInUSD
+    gasUsed = feeDetails.gasUsed
+    receiverAddress = feeDetails.receiverAddress
+  } catch (error) {
+    console.warn('Failed to fetch transaction details from RPC:', error)
+    // Use fallback values - transaction will still be created
+    feeInUSD = 0
+    gasUsed = '0'
+    receiverAddress = transactionRequest.receiver_address || null
+  }
 
   // Determine payment direction based on transaction type
   const isWalletTransfer = !transactionRequest.meeting_type_id
@@ -4805,11 +5021,8 @@ const createCryptoTransaction = async (
     currency: Currency.USD,
     total_fee: transactionRequest.total_fee || feeInUSD,
     metadata: {
-      ...(account_address && {
-        sender_address: account_address.toLowerCase(),
-      }),
-      ...(transactionRequest.receiver_address && {
-        receiver_address: transactionRequest.receiver_address.toLowerCase(),
+      ...(receiverAddress && {
+        receiver_address: receiverAddress.toLowerCase(),
       }),
     },
     fee_breakdown: {
@@ -4825,10 +5038,19 @@ const createCryptoTransaction = async (
     throw new Error(error.message)
   }
 
+  // Notify parties via email
+  if (isWalletTransfer) {
+    await sendWalletDebitEmail(
+      account_address!,
+      transactionRequest,
+      receiverAddress
+    )
+  }
+
   // Only create meeting sessions and send receipt if this is a meeting-related transaction
-  if (transactionRequest.meeting_type_id) {
+  if (!isWalletTransfer) {
     const meetingType = await getMeetingTypeFromDB(
-      transactionRequest.meeting_type_id
+      transactionRequest.meeting_type_id!
     )
     const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
 
@@ -4897,6 +5119,9 @@ const createCryptoTransaction = async (
         console.error(e)
       }
     }
+
+    // Notify host about income
+    await sendSessionIncomeEmail(meetingType, transactionRequest)
   }
   return data[0]
 }
@@ -5416,23 +5641,325 @@ const recordOffRampTransaction = async (event: OnrampMoneyWebhook) => {
   //TODO: send notification
 }
 
+const getPaymentPreferences = async (
+  owner_account_address: string
+): Promise<PaymentPreferences | null> => {
+  const { data, error } = await db.supabase
+    .from('payment_preferences')
+    .select(
+      'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
+    )
+    .eq('owner_account_address', owner_account_address.toLowerCase())
+    .single()
+
+  if (error) {
+    console.error('Database error in getPaymentPreferences:', error)
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
+    Sentry.captureException(error)
+    throw new Error('Could not get payment preferences')
+  }
+
+  // Transform the data to include hasPin without exposing pin_hash
+  if (data) {
+    const { pin_hash, ...rest } = data
+    return {
+      ...rest,
+      hasPin: !!pin_hash,
+    }
+  }
+
+  return null
+}
+
+const createPaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >
+): Promise<PaymentPreferences> => {
+  try {
+    let insertData: typeof data & { pin_hash?: string } = { ...data }
+    if ('pin' in data && typeof data.pin === 'string') {
+      const pinHash = await createPinHash(data.pin)
+      insertData = { ...data, pin_hash: pinHash }
+      delete insertData.pin
+    }
+
+    const { data: result, error } = await db.supabase
+      .from('payment_preferences')
+      .insert({
+        owner_account_address: owner_account_address.toLowerCase(),
+        ...insertData,
+      })
+      .select(
+        'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
+      )
+      .single()
+
+    if (error) {
+      console.error('Database error in createPaymentPreferences:', error)
+      Sentry.captureException(error)
+      throw new Error('Could not create payment preferences')
+    }
+
+    if (!result) {
+      throw new Error('No data returned from database operation')
+    }
+
+    const { pin_hash, ...rest } = result
+    return {
+      ...rest,
+      hasPin: !!pin_hash,
+    }
+  } catch (error) {
+    console.error('Unexpected error in createPaymentPreferences:', error)
+    Sentry.captureException(error)
+    throw error instanceof Error
+      ? error
+      : new Error('Could not create payment preferences')
+  }
+}
+
+const updatePaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >
+): Promise<PaymentPreferences> => {
+  try {
+    let updateData: typeof data & { pin_hash?: string | null } = { ...data }
+    if ('pin' in data) {
+      if (data.pin === null) {
+        updateData = { ...data, pin_hash: null }
+        delete updateData.pin
+      } else if (typeof data.pin === 'string') {
+        const pinHash = await createPinHash(data.pin)
+        updateData = { ...data, pin_hash: pinHash }
+        delete updateData.pin
+      }
+    }
+
+    const { data: result, error } = await db.supabase
+      .from('payment_preferences')
+      .update(updateData)
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .select(
+        'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
+      )
+      .single()
+
+    if (error) {
+      console.error('Database error in updatePaymentPreferences:', error)
+      Sentry.captureException(error)
+      throw new Error('Could not update payment preferences')
+    }
+
+    if (!result) {
+      throw new Error('No data returned from database operation')
+    }
+
+    const { pin_hash, ...rest } = result
+    return {
+      ...rest,
+      hasPin: !!pin_hash,
+    }
+  } catch (error) {
+    console.error('Unexpected error in updatePaymentPreferences:', error)
+    Sentry.captureException(error)
+    throw error instanceof Error
+      ? error
+      : new Error('Could not update payment preferences')
+  }
+}
+
+const createPinHash = async (pin: string): Promise<string> => {
+  const pinWithSalt = `${pin}${PIN_SALT}`
+  return await argon2.hash(pinWithSalt, {
+    type: argon2.argon2id,
+    memoryCost: 2 ** 16,
+    timeCost: 3,
+    parallelism: 1,
+  })
+}
+
+const verifyUserPin = async (
+  owner_account_address: string,
+  pin: string
+): Promise<boolean> => {
+  try {
+    // Get raw data including pin_hash for verification
+    const { data, error } = await db.supabase
+      .from('payment_preferences')
+      .select('pin_hash')
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .single()
+
+    if (error) {
+      console.error('Error fetching PIN for verification:', error)
+      return false
+    }
+
+    if (!data?.pin_hash) {
+      return false
+    }
+
+    const pinWithSalt = `${pin}${PIN_SALT}`
+    const isValid = await argon2.verify(data.pin_hash, pinWithSalt)
+    return isValid
+  } catch (error) {
+    console.error('Unexpected error in verifyUserPin:', error)
+    return false
+  }
+}
+
+const createVerification = async (
+  owner_account_address: string,
+  code: string,
+  channel: VerificationChannel,
+  expiresAt: Date
+): Promise<void> => {
+  try {
+    const { error } = await db.supabase.from('verifications').insert({
+      owner_account_address: owner_account_address,
+      code_hash: await createPinHash(code),
+      channel: channel,
+      expires_at: expiresAt.toISOString(),
+    })
+
+    if (error) {
+      console.error('Error creating verification:', error)
+      throw new Error('Failed to create verification')
+    }
+  } catch (error) {
+    console.error('Error in createVerification:', error)
+    throw error
+  }
+}
+
+const verifyVerificationCode = async (
+  owner_account_address: string,
+  code: string,
+  channel: VerificationChannel
+): Promise<boolean> => {
+  try {
+    const { data, error } = await db.supabase
+      .from('verifications')
+      .select('*')
+      .eq('owner_account_address', owner_account_address)
+      .eq('channel', channel)
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error('Error fetching verification:', error)
+      return false
+    }
+
+    if (!data || data.length === 0) {
+      return false
+    }
+
+    const verification = data[0]
+
+    const codeWithSalt = `${code}${PIN_SALT}`
+    const isValid = await argon2.verify(verification.code_hash, codeWithSalt)
+
+    if (isValid) {
+      await deleteVerifications(verification.id)
+      return true
+    }
+
+    return false
+  } catch (error) {
+    console.error('Error in verifyVerificationCode:', error)
+    throw error
+  }
+}
+
+const cleanupExpiredVerifications = async (): Promise<void> => {
+  try {
+    const { error } = await db.supabase
+      .from('verifications')
+      .delete()
+      .lt('expires_at', new Date().toISOString())
+
+    if (error) {
+      console.error('Error cleaning up expired verifications:', error)
+      throw new Error('Failed to clean up expired verifications')
+    }
+  } catch (error) {
+    console.error('Error in cleanupExpiredVerifications:', error)
+    throw error
+  }
+}
+
+const invalidatePreviousVerifications = async (
+  owner_account_address: string,
+  channel: VerificationChannel
+): Promise<void> => {
+  try {
+    const { error } = await db.supabase
+      .from('verifications')
+      .update({ expires_at: new Date().toISOString() })
+      .eq('owner_account_address', owner_account_address)
+      .eq('channel', channel)
+      .gt('expires_at', new Date().toISOString())
+
+    if (error) {
+      console.error('Error invalidating previous verifications:', error)
+      throw new Error('Failed to invalidate previous verifications')
+    }
+  } catch (error) {
+    console.error('Error in invalidatePreviousVerifications:', error)
+    throw error
+  }
+}
+
+const deleteVerifications = async (verificationId: string): Promise<void> => {
+  try {
+    const { error } = await db.supabase
+      .from('verifications')
+      .delete()
+      .eq('id', verificationId)
+
+    if (error) {
+      console.error('Error deleting verification:', error)
+      throw new Error('Failed to delete verification')
+    }
+
+    await cleanupExpiredVerifications()
+  } catch (error) {
+    console.error('Error in deleteVerifications:', error)
+    throw error
+  }
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
   addUserToGroup,
   changeGroupRole,
   checkContactExists,
+  cleanupExpiredVerifications,
   connectedCalendarExists,
   contactInviteByEmailExists,
   createCryptoTransaction,
   createMeetingType,
+  createPaymentPreferences,
+  createPinHash,
   createTgConnection,
+  createVerification,
   deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
   deleteMeetingType,
   deleteTgConnection,
+  deleteVerifications,
   editGroup,
   findAccountByIdentifier,
   findAccountsByText,
@@ -5475,6 +6002,7 @@ export {
   getOrCreateContactInvite,
   getOwnerPublicUrlServer,
   getPaidSessionsByMeetingType,
+  getPaymentPreferences,
   getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
@@ -5488,6 +6016,7 @@ export {
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
+  invalidatePreviousVerifications,
   isGroupAdmin,
   isSlotAvailable as isSlotFree,
   isUserContact,
@@ -5516,8 +6045,11 @@ export {
   updateCustomSubscriptionDomain,
   updateMeeting,
   updateMeetingType,
+  updatePaymentPreferences,
   updatePreferenceAvatar,
   updateRecurringSlots,
   upsertGateCondition,
+  verifyUserPin,
+  verifyVerificationCode,
   workMeetingTypeGates,
 }

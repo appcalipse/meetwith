@@ -3,10 +3,14 @@ import React, {
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from 'react'
 
+import { SupportedChain, supportedChains } from '@/types/chains'
 import { Transaction } from '@/types/Transactions'
+import { getPaymentPreferences } from '@/utils/api_helper'
+import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 
 interface CryptoAsset {
   name: string
@@ -37,8 +41,8 @@ interface WalletContextType {
   // Selection states
   selectedCurrency: string
   setSelectedCurrency: (currency: string) => void
-  selectedNetwork: string
-  setSelectedNetwork: (network: string) => void
+  selectedNetwork: SupportedChain
+  setSelectedNetwork: (network: SupportedChain) => void
   selectedTransaction: Transaction | null
   setSelectedTransaction: (transaction: Transaction | null) => void
   selectedCrypto: CryptoAsset | null
@@ -82,7 +86,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Selection states
   const [selectedCurrency, setSelectedCurrency] = useState('USD')
-  const [selectedNetwork, setSelectedNetwork] = useState('Celo')
+  const [selectedNetwork, setSelectedNetwork] = useState<SupportedChain>(() => {
+    // Fallback to first available wallet-supported chain
+    const fallbackChain = supportedChains.find(
+      chain =>
+        chain.walletSupported && supportedPaymentChains.includes(chain.chain)
+    )
+    return fallbackChain ? fallbackChain.chain : SupportedChain.ARBITRUM_SEPOLIA
+  })
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null)
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoAsset | null>(null)
@@ -97,6 +108,54 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedCryptoCurrentPage, setSelectedCryptoCurrentPage] = useState(1)
+
+  // Fetch user's preferred network from payment preferences
+  useEffect(() => {
+    const fetchPreferredNetwork = async () => {
+      try {
+        const preferences = await getPaymentPreferences()
+        if (preferences?.default_chain_id) {
+          // Find the chain by ID
+          const preferredChain = supportedChains.find(
+            chain => chain.id === preferences.default_chain_id
+          )
+          // Check if it's wallet-supported and in supportedPaymentChains
+          if (
+            preferredChain &&
+            preferredChain.walletSupported &&
+            supportedPaymentChains.includes(preferredChain.chain)
+          ) {
+            setSelectedNetwork(preferredChain.chain)
+            return
+          }
+        }
+
+        // If no preferred network or invalid preference, set fallback
+        const fallbackChain = supportedChains.find(
+          chain =>
+            chain.walletSupported &&
+            supportedPaymentChains.includes(chain.chain)
+        )
+        if (fallbackChain) {
+          setSelectedNetwork(fallbackChain.chain)
+        }
+      } catch (error) {
+        console.warn('Failed to get payment preferences:', error)
+
+        // On error, also set fallback
+        const fallbackChain = supportedChains.find(
+          chain =>
+            chain.walletSupported &&
+            supportedPaymentChains.includes(chain.chain)
+        )
+        if (fallbackChain) {
+          setSelectedNetwork(fallbackChain.chain)
+        }
+      }
+    }
+
+    fetchPreferredNetwork()
+  }, [setSelectedNetwork])
 
   const resetPagination = useCallback(() => {
     setCurrentPage(1)

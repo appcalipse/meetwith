@@ -10,6 +10,7 @@ const config: ThemeConfig = {
 export const colors = {
   primary: {
     50: '#FCDACF',
+    75: '#FDE5DD',
     100: '#FBC7B7',
     200: '#F9B19A',
     300: '#F78C69',
@@ -68,6 +69,7 @@ export const colors = {
   dark: {
     900: '#141A1F',
     800: '#191D27',
+    700: '#131418',
   },
 }
 

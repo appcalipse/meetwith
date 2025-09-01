@@ -15,6 +15,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       chain_id,
       limit = 50,
       offset = 0,
+      search_query,
     } = req.body
 
     if (!wallet_address) {
@@ -26,7 +27,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       token_address,
       chain_id,
       limit,
-      offset
+      offset,
+      search_query
     )
 
     return res.status(200).json(transactions)

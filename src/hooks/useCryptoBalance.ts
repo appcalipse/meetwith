@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { getChainId, SupportedChain } from '@/types/chains'
-import { getTokenBalance } from '@/utils/api_helper'
+import { getCryptoTokenBalance } from '@/utils/token.service'
 
 import useAccountContext from './useAccountContext'
 
@@ -43,13 +43,14 @@ export const useCryptoBalance = (
         return { balance: 0 }
 
       // Get token balance from blockchain
-      return getTokenBalance(currentAccount.address, tokenAddress, chain)
+      return getCryptoTokenBalance(currentAccount.address, tokenAddress, chain)
     },
     enabled: !!currentAccount?.address && !!tokenAddress && chainId !== 0,
     staleTime: 30000,
     cacheTime: 60000,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    refetchInterval: 10000,
   })
 
   return {

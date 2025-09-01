@@ -114,11 +114,8 @@ export function SchedulePickTime() {
       const minutesFromStart = i * (scheduleDuration || 30)
       const start = DateTime.fromJSDate(time)
         .setZone(timezone)
-        .set({
-          hour: Math.floor(minutesFromStart / 60),
-          minute: minutesFromStart % 60,
-          second: 0,
-        })
+        .startOf('day')
+        .plus({ minutes: minutesFromStart })
       const slot = Interval.after(start, { minute: scheduleDuration || 30 })
       if (slot.isValid) slots.push(slot)
     }
@@ -204,11 +201,7 @@ export function SchedulePickTime() {
       const slots = getEmptySlots(date, scheduleDuration)
       date = DateTime.fromJSDate(date)
         .setZone(timezone)
-        .set({
-          hour: 0,
-          minute: 0,
-          second: 0,
-        })
+        .startOf('day')
         .toJSDate()
 
       return {

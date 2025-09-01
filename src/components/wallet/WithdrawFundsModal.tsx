@@ -28,13 +28,16 @@ import { useQuery } from '@tanstack/react-query'
 import React, { useState } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
+import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import {
   AcceptedToken,
   getSupportedChainFromId,
   getTokenIcon,
 } from '@/types/chains'
+import { Address } from '@/types/Transactions'
 import { formatUnits } from '@/utils/generic_utils'
 import { getOnRampMoneyNetworkAndCoinCode } from '@/utils/services/onramp.money'
+import { useToastHelpers } from '@/utils/toasts'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 import { NETWORKS } from '@/utils/walletConfig'
 
@@ -46,6 +49,8 @@ type Props = {
 
 const WithdrawFundsModal = (props: Props) => {
   const currentAccount = useAccountContext()
+  const { needsReconnection, attemptReconnection } = useSmartReconnect()
+  const { showErrorToast } = useToastHelpers()
   const [processLoading, setProcessLoading] = useState(false)
   const activeChainId =
     NETWORKS.find(network => network.name === props.selectedNetwork)?.chainId ||
@@ -87,11 +92,11 @@ const WithdrawFundsModal = (props: Props) => {
       const [balance, tokenInfo] = await Promise.all([
         getTokenBalance(
           currentAccount.address,
-          selectedAssetInfo.contractAddress,
+          selectedAssetInfo.contractAddress as Address,
           selectedNetworkInfo?.chain
         ),
         getTokenInfo(
-          selectedAssetInfo.contractAddress,
+          selectedAssetInfo.contractAddress as Address,
           selectedNetworkInfo?.chain
         ),
       ])
@@ -111,6 +116,17 @@ const WithdrawFundsModal = (props: Props) => {
   })
 
   const handleShowWithdrawWidget = async () => {
+    if (needsReconnection) {
+      const reconnectedWallet = await attemptReconnection()
+      if (!reconnectedWallet) {
+        showErrorToast(
+          'Wallet Reconnection Failed',
+          'Please reconnect your wallet and try again'
+        )
+        return
+      }
+    }
+
     if (
       amount > formatUnits(data?.balance || 0n, data?.tokenInfo?.decimals || 6)
     ) {
@@ -271,7 +287,7 @@ const WithdrawFundsModal = (props: Props) => {
               )}
             </FormControl>
             <FormControl>
-              <FormLabel>Select Asset</FormLabel>
+              <FormLabel>Amount</FormLabel>
               <Input
                 placeholder="Enter amount to withdraw"
                 borderColor="neutral.400"
