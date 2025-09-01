@@ -39,7 +39,7 @@ import {
   toUnits,
   waitForReceipt,
 } from 'thirdweb'
-import { useActiveWallet } from 'thirdweb/react'
+import { BuyWidget, CheckoutWidget, useActiveWallet } from 'thirdweb/react'
 import { Wallet } from 'thirdweb/wallets'
 import { v4 } from 'uuid'
 import { Address, formatUnits } from 'viem'
@@ -69,6 +69,8 @@ import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
+import CheckoutWidgetModal from './CheckoutWidget'
+
 const ConfirmPaymentInfo = () => {
   const {
     setPaymentType,
@@ -92,9 +94,9 @@ const ConfirmPaymentInfo = () => {
     title,
     doSendEmailReminders,
     scheduleType,
-    userEmail,
     meetingUrl,
     pickedTime,
+    userEmail,
     guestEmail,
   } = useContext(ScheduleStateContext)
   const toast = useToast({ position: 'top', isClosable: true })
@@ -110,6 +112,8 @@ const ConfirmPaymentInfo = () => {
   const [email, setEmail] = React.useState(guestEmail || userEmail)
   const { openConnection } = useContext(OnboardingModalContext)
   const [isInvoiceLoading, setIsInvoiceLoading] = React.useState(false)
+  const messageChannel = `onramp:${v4()}`
+
   const [progress, setProgress] = React.useState(0)
 
   const chain = supportedChains.find(
@@ -121,6 +125,9 @@ const ConfirmPaymentInfo = () => {
   )?.contractAddress as Address
   const tokenPriceFeed = new PriceFeedService()
   const [loading, setLoading] = React.useState(false)
+  const amount =
+    (selectedType?.plan?.price_per_slot || 0) *
+    (selectedType?.plan?.no_of_slot || 0)
   const handlePay = async () => {
     dispatchErrors({ type: 'CLEAR_ALL' })
     try {
@@ -146,9 +153,6 @@ const ConfirmPaymentInfo = () => {
 
     setLoading(true)
     try {
-      const amount =
-        (selectedType?.plan?.price_per_slot || 0) *
-        (selectedType?.plan?.no_of_slot || 0)
       if (paymentType === PaymentType.CRYPTO) {
         if (!currentAccount?.address) {
           openConnection(undefined, false)
@@ -529,6 +533,13 @@ const ConfirmPaymentInfo = () => {
         <ArrowBackIcon w={6} h={6} />
         <Text fontSize={16}>Back</Text>
       </HStack>
+      <CheckoutWidgetModal
+        chain={chain}
+        activeWallet={wallet}
+        amount={amount}
+        email={email}
+        messageChannel={messageChannel}
+      />
       <Heading size="md">Confirm Payment Info</Heading>
       <VStack alignItems="flex-start" w={{ base: '100%', md: '30%' }} gap={4}>
         <FormControl
