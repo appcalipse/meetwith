@@ -12,18 +12,22 @@ import {
 } from '@utils/constants/meeting-types'
 import { subscribeToMessages } from '@utils/pub-sub.helper'
 import { useRouter } from 'next/router'
-import React, { useContext, useMemo } from 'react'
+import React, { useContext, useEffect, useMemo } from 'react'
 import { v4 } from 'uuid'
 
-import CheckoutWidgetModal from './CheckoutWidget'
+import CheckoutWidgetModal from './CheckoutWidgetModal'
 
 const MakeYourPayment = () => {
-  const { setCurrentStep } = useContext(PublicScheduleContext)
+  const { setCurrentStep, selectedType } = useContext(PublicScheduleContext)
   const handleBack = () => {
     setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
   }
   const { query } = useRouter()
-  const messageChannel = useMemo(() => `crypto:${v4()}`, [])
+
+  const messageChannel = useMemo(
+    () => `onramp:${v4()}:${selectedType?.id || ''}`,
+    [selectedType]
+  )
   const { isOpen, onOpen, onClose } = useDisclosure()
   const paymentMethods = useMemo(() => {
     const methods = [
@@ -58,9 +62,6 @@ const MakeYourPayment = () => {
     }
     return methods
   }, [query])
-  useEffect(() => {
-    subscribeToMessages()
-  }, [isOpen, messageChannel])
 
   return (
     <VStack alignItems="flex-start" w={'100%'}>
