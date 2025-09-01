@@ -69,7 +69,7 @@ import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
-import CheckoutWidgetModal from './CheckoutWidget'
+import CheckoutWidgetModal from './CheckoutWidgetModal'
 
 const ConfirmPaymentInfo = () => {
   const {
@@ -533,13 +533,6 @@ const ConfirmPaymentInfo = () => {
         <ArrowBackIcon w={6} h={6} />
         <Text fontSize={16}>Back</Text>
       </HStack>
-      <CheckoutWidgetModal
-        chain={chain}
-        activeWallet={wallet}
-        amount={amount}
-        email={email}
-        messageChannel={messageChannel}
-      />
       <Heading size="md">Confirm Payment Info</Heading>
       <VStack alignItems="flex-start" w={{ base: '100%', md: '30%' }} gap={4}>
         <FormControl
