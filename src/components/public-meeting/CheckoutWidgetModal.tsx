@@ -1,17 +1,22 @@
-import { Modal, ModalContent, ModalOverlay, useToast } from '@chakra-ui/react'
+import {
+  Modal,
+  ModalCloseButton,
+  ModalContent,
+  ModalOverlay,
+  useToast,
+} from '@chakra-ui/react'
 import { MeetingReminders } from '@meta/common'
 import {
   DEFAULT_MESSAGE_NAME,
   subscribeToMessages,
+  unSubscribeToMessages,
 } from '@utils/pub-sub.helper'
-import React, { useContext, useEffect, useState } from 'react'
-import { Bridge, toUnits } from 'thirdweb'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { CheckoutWidget, useActiveWallet } from 'thirdweb/react'
-import { Wallet, WalletId } from 'thirdweb/wallets'
-import { v4 } from 'uuid'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { ChainInfo, supportedChains } from '@/types/chains'
-import { Address, Transaction } from '@/types/Transactions'
+import { Address, IPurchaseData, Transaction } from '@/types/Transactions'
 import { thirdWebClient } from '@/utils/user_manager'
 
 import { PublicScheduleContext, ScheduleStateContext } from '.'
@@ -29,6 +34,7 @@ const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
     chain: selectedChain,
     token,
     handleNavigateToBook,
+    setIsAwaitingScheduling,
   } = useContext(PublicScheduleContext)
   const {
     confirmSchedule,
@@ -46,6 +52,8 @@ const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
     userEmail,
     guestEmail,
   } = useContext(ScheduleStateContext)
+  const currentAccount = useAccountContext()
+  const subscriptionRef = useRef<boolean>(false)
   const wallet = useActiveWallet()
   const [progress, setProgress] = useState(0)
   const chain = supportedChains.find(
@@ -60,80 +68,87 @@ const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
     acceptedToken => acceptedToken.token === token
   )?.contractAddress as Address
   const listenForTransaction = async () => {
-    const transaction = await new Promise<Transaction>(
-      async (resolve, reject) => {
-        await subscribeToMessages(
-          messageChannel,
-          DEFAULT_MESSAGE_NAME,
-          message => {
-            const transaction = JSON.parse(message.data) as Transaction
-            resolve(transaction)
-          }
-        )
-        const preparedOnramp = await Bridge.Onramp.prepare({
-          client: thirdWebClient,
-          onramp: 'transak',
-          chainId: chain?.id,
-          tokenAddress: NATIVE_TOKEN_ADDRESS,
-          receiver: (selectedType?.plan?.payment_address ||
-            account.address) as Address,
-          amount: toUnits(amount.toString(), 6),
-          currency: 'USD',
-          purchaseData: {
-            meetingId: selectedType?.id || '',
-            messageChannel,
-            guestEmail: email,
-            guestName: name,
-          },
-        })
-        window.open(preparedOnramp.link, '_blank', 'noopener,noreferrer')
-        setProgress(40)
+    try {
+      if (subscriptionRef.current) {
+        return
       }
-    )
-    if (transaction.transaction_hash) {
-      setProgress(100)
-      handleNavigateToBook(transaction.transaction_hash)
-      // persist the transaction in localStorage in-case the schedule fails
-      localStorage.setItem(
-        `${selectedType?.id || ''}:transaction`,
-        JSON.stringify(transaction)
+      subscriptionRef.current = true
+
+      const transaction = await new Promise<Transaction>(
+        async (resolve, reject) => {
+          await subscribeToMessages(
+            messageChannel,
+            DEFAULT_MESSAGE_NAME,
+            message => {
+              const transaction = JSON.parse(message.data) as Transaction
+              resolve(transaction)
+            }
+          )
+          setProgress(40)
+        }
       )
-      await confirmSchedule(
-        scheduleType!,
-        pickedTime!,
-        guestEmail,
-        name,
-        content,
-        meetingUrl,
-        doSendEmailReminders ? userEmail : undefined,
-        title,
-        participants,
-        meetingProvider,
-        meetingNotification.map(n => n.value as MeetingReminders),
-        meetingRepeat.value,
-        transaction.transaction_hash
-      )
-    } else {
-      toast({
-        title: 'Payment Failed',
-        description: 'Transaction was not found on the blockchain',
-        status: 'error',
-        duration: 5000,
-      })
+      setIsAwaitingScheduling(true)
+
+      await unSubscribeToMessages(messageChannel, DEFAULT_MESSAGE_NAME)
+      if (transaction.transaction_hash) {
+        setProgress(100)
+        handleNavigateToBook(transaction.transaction_hash)
+        // persist the transaction in localStorage in-case the schedule fails
+        localStorage.setItem(
+          `${selectedType?.id || ''}:transaction`,
+          JSON.stringify(transaction)
+        )
+        await confirmSchedule(
+          scheduleType!,
+          pickedTime!,
+          guestEmail,
+          name,
+          content,
+          meetingUrl,
+          doSendEmailReminders ? userEmail : undefined,
+          title,
+          participants,
+          meetingProvider,
+          meetingNotification.map(n => n.value as MeetingReminders),
+          meetingRepeat.value,
+          transaction.transaction_hash
+        )
+      } else {
+        subscriptionRef.current = false
+        toast({
+          title: 'Payment Failed',
+          description: 'Transaction was not found on the blockchain',
+          status: 'error',
+          duration: 5000,
+        })
+        void listenForTransaction()
+      }
+      setIsAwaitingScheduling(false)
+    } catch (e) {
+      console.error(e)
     }
   }
   useEffect(() => {
     void listenForTransaction()
   }, [messageChannel])
+  const metadata: IPurchaseData = {
+    meeting_type_id: selectedType?.id || '',
+    message_channel: messageChannel,
+    guest_email: email,
+    guest_name: name,
+    guest_address: currentAccount?.address,
+  }
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => {}}
+      onClose={onClose}
       blockScrollOnMount={false}
       size={'lg'}
       isCentered
     >
-      <ModalOverlay bg="blackAlpha.900" />
+      <ModalOverlay bg="blackAlpha.900">
+        <ModalCloseButton top={10} right={10} size={'45'} />
+      </ModalOverlay>
       <ModalContent
         p="6"
         bg={'transparent'}
@@ -152,16 +167,18 @@ const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
           }
           name={selectedType?.title}
           description={selectedType?.description}
-          image={account?.preferences?.avatar_url || '/logo.svg'}
-          purchaseData={{
-            meetingId: selectedType?.id || '',
-            messageChannel,
-            guestEmail: email,
-            guestName: name,
-          }}
-          onSuccess={() => {
-            alert('Purchase successful!')
-            // Redirect or update UI
+          purchaseData={metadata}
+          onSuccess={() => setIsAwaitingScheduling(true)}
+          onError={(error: Error) => {
+            toast({
+              title: 'Payment Failed',
+              description: error.message,
+              status: 'error',
+              duration: 5000,
+            })
+            setIsAwaitingScheduling(false)
+            onClose()
+            subscriptionRef.current = false
           }}
         />
       </ModalContent>
