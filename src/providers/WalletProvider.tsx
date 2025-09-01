@@ -41,12 +41,13 @@ interface WalletContextType {
   // Selection states
   selectedCurrency: string
   setSelectedCurrency: (currency: string) => void
-  selectedNetwork: SupportedChain
+  selectedNetwork: SupportedChain | null
   setSelectedNetwork: (network: SupportedChain) => void
   selectedTransaction: Transaction | null
   setSelectedTransaction: (transaction: Transaction | null) => void
   selectedCrypto: CryptoAsset | null
   setSelectedCrypto: (crypto: CryptoAsset | null) => void
+  isNetworkLoading: boolean
 
   // Modal states
   isCurrencyModalOpen: boolean
@@ -86,14 +87,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Selection states
   const [selectedCurrency, setSelectedCurrency] = useState('USD')
-  const [selectedNetwork, setSelectedNetwork] = useState<SupportedChain>(() => {
-    // Fallback to first available wallet-supported chain
-    const fallbackChain = supportedChains.find(
-      chain =>
-        chain.walletSupported && supportedPaymentChains.includes(chain.chain)
-    )
-    return fallbackChain ? fallbackChain.chain : SupportedChain.ARBITRUM_SEPOLIA
-  })
+  const [selectedNetwork, setSelectedNetwork] = useState<SupportedChain | null>(
+    null
+  )
+  const [isNetworkLoading, setIsNetworkLoading] = useState(true)
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null)
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoAsset | null>(null)
@@ -126,6 +123,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             supportedPaymentChains.includes(preferredChain.chain)
           ) {
             setSelectedNetwork(preferredChain.chain)
+            setIsNetworkLoading(false)
             return
           }
         }
@@ -139,6 +137,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         if (fallbackChain) {
           setSelectedNetwork(fallbackChain.chain)
         }
+        setIsNetworkLoading(false)
       } catch (error) {
         console.warn('Failed to get payment preferences:', error)
 
@@ -151,11 +150,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         if (fallbackChain) {
           setSelectedNetwork(fallbackChain.chain)
         }
+        setIsNetworkLoading(false)
       }
     }
 
     fetchPreferredNetwork()
-  }, [setSelectedNetwork])
+  }, [])
 
   const resetPagination = useCallback(() => {
     setCurrentPage(1)
@@ -192,6 +192,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     setSelectedTransaction,
     selectedCrypto,
     setSelectedCrypto,
+
+    // Loading state
+    isNetworkLoading,
 
     // Modal states
     isCurrencyModalOpen,

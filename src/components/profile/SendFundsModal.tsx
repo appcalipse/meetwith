@@ -109,6 +109,12 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   const [progress, setProgress] = useState(0)
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [isNetworkSwitchModalOpen, setIsNetworkSwitchModalOpen] =
+    useState(false)
+  const [networkMismatch, setNetworkMismatch] = useState<{
+    expected: SupportedChain
+    actual: SupportedChain | null
+  } | null>(null)
 
   // PIN protection state
   const {
@@ -151,6 +157,8 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     setProgress(0)
     setIsLoading(false)
     setIsVerificationModalOpen(false)
+    setIsNetworkSwitchModalOpen(false)
+    setNetworkMismatch(null)
     onMagicLinkClose()
     setIsSendingMagicLink(false)
     setNotificationEmail(null)
@@ -217,6 +225,33 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     }
   }
 
+  const checkNetworkMatch = async (): Promise<boolean> => {
+    if (!activeWallet) return false
+
+    try {
+      const currentChain = await activeWallet.getChain()
+      const currentChainId = currentChain?.id
+      const expectedChain = supportedChains.find(c => c.chain === sendNetwork)
+
+      if (!expectedChain) return false
+
+      if (currentChainId !== expectedChain.id) {
+        const actualChain = supportedChains.find(c => c.id === currentChainId)
+        setNetworkMismatch({
+          expected: sendNetwork,
+          actual: actualChain?.chain || null,
+        })
+        setIsNetworkSwitchModalOpen(true)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error checking network:', error)
+      return false
+    }
+  }
+
   const handleSend = async () => {
     if (!selectedToken || !recipientAddress || !amount) {
       showErrorToast(
@@ -261,6 +296,12 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
       return
     }
 
+    // Check if wallet is on the correct network
+    const isNetworkCorrect = await checkNetworkMatch()
+    if (!isNetworkCorrect) {
+      return
+    }
+
     // Check if user has a transaction PIN set up
     if (!paymentPreferences?.hasPin) {
       // User doesn't have a PIN, show magic link modal
@@ -290,6 +331,30 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
     // User has a PIN, proceed with verification
     setIsVerificationModalOpen(true)
+  }
+
+  const handleNetworkSwitch = async () => {
+    if (!activeWallet || !networkMismatch) return
+
+    try {
+      const expectedChain = supportedChains.find(
+        c => c.chain === networkMismatch.expected
+      )
+      if (!expectedChain) return
+
+      await activeWallet.switchChain(expectedChain.thirdwebChain)
+
+      setIsNetworkSwitchModalOpen(false)
+      setNetworkMismatch(null)
+
+      handleSend()
+    } catch (error) {
+      console.error('Failed to switch network:', error)
+      showErrorToast(
+        'Network Switch Failed',
+        'Please manually switch your wallet to the correct network and try again'
+      )
+    }
   }
 
   const handleVerificationComplete = async (
@@ -675,7 +740,6 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                 />
               </Box>
 
-              {/* Warning Message */}
               <Box
                 bg="orange.900"
                 borderRadius={{ base: '6px', md: '8px' }}
@@ -684,23 +748,25 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                 border="1px solid"
                 borderColor="orange.700"
               >
-                <Text
-                  color="orange.200"
-                  fontSize={{ base: '12px', md: '14px' }}
-                  fontWeight="500"
-                >
-                  Ensure you&apos;re sending the funds to{' '}
-                  {getNetworkDisplayName(sendNetwork).toLowerCase() ===
-                    'arbitrum' ||
-                  getNetworkDisplayName(sendNetwork).toLowerCase() ===
-                    'arbitrum sepolia'
-                    ? 'an'
-                    : 'a'}{' '}
-                  <Text as="span" color="orange.100" fontWeight="700">
-                    {getNetworkDisplayName(sendNetwork)}
-                  </Text>{' '}
-                  network wallet address to avoid loss of funds.
-                </Text>
+                <VStack spacing={2} align="start">
+                  <Text
+                    color="orange.200"
+                    fontSize={{ base: '12px', md: '14px' }}
+                    fontWeight="500"
+                  >
+                    Ensure you&apos;re sending the funds to{' '}
+                    {getNetworkDisplayName(sendNetwork).toLowerCase() ===
+                      'arbitrum' ||
+                    getNetworkDisplayName(sendNetwork).toLowerCase() ===
+                      'arbitrum sepolia'
+                      ? 'an'
+                      : 'a'}{' '}
+                    <Text as="span" color="orange.100" fontWeight="700">
+                      {getNetworkDisplayName(sendNetwork)}
+                    </Text>{' '}
+                    network wallet address to avoid loss of funds.
+                  </Text>
+                </VStack>
               </Box>
 
               {/* Amount */}
@@ -926,6 +992,97 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
           )?.destination || ''
         }
       />
+
+      {/* Network Switch Modal */}
+      <Modal
+        isOpen={isNetworkSwitchModalOpen}
+        onClose={() => setIsNetworkSwitchModalOpen(false)}
+        size="md"
+        isCentered
+      >
+        <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
+        <ModalContent
+          bg="neutral.850"
+          borderRadius="12px"
+          border="1px solid"
+          borderColor="neutral.800"
+        >
+          <ModalHeader color="white" fontSize="20px" fontWeight="600" pb={2}>
+            Wrong Network Detected
+          </ModalHeader>
+          <ModalBody pb={6}>
+            <VStack spacing={6} align="stretch">
+              <Box>
+                <Text color="white" fontSize="16px" mb={3}>
+                  Your wallet is connected to the wrong network for this
+                  transaction.
+                </Text>
+                <VStack spacing={2} align="start">
+                  <Text color="neutral.400" fontSize="14px">
+                    <Text as="span" color="red.400" fontWeight="600">
+                      Current Network:
+                    </Text>{' '}
+                    {networkMismatch?.actual
+                      ? getNetworkDisplayName(networkMismatch.actual)
+                      : 'Unknown'}
+                  </Text>
+                  <Text color="neutral.400" fontSize="14px">
+                    <Text as="span" color="green.400" fontWeight="600">
+                      Required Network:
+                    </Text>{' '}
+                    {getNetworkDisplayName(
+                      networkMismatch?.expected || sendNetwork
+                    )}
+                  </Text>
+                </VStack>
+              </Box>
+
+              <Box
+                bg="orange.900"
+                borderRadius="8px"
+                px={4}
+                py={3}
+                border="1px solid"
+                borderColor="orange.700"
+              >
+                <Text color="orange.200" fontSize="14px">
+                  <Text as="span" color="orange.100" fontWeight="600">
+                    ⚠️ Warning:
+                  </Text>{' '}
+                  Sending funds on the wrong network can result in permanent
+                  loss of funds.
+                </Text>
+              </Box>
+
+              <HStack spacing={4} pt={2}>
+                <Button
+                  bg="primary.500"
+                  color="white"
+                  onClick={handleNetworkSwitch}
+                  size="lg"
+                  borderRadius="8px"
+                  flex={1}
+                  _hover={{ bg: 'primary.600' }}
+                >
+                  Switch Network
+                </Button>
+                <Button
+                  variant="outline"
+                  borderColor="neutral.600"
+                  color="neutral.300"
+                  onClick={() => setIsNetworkSwitchModalOpen(false)}
+                  size="lg"
+                  borderRadius="8px"
+                  flex={1}
+                  _hover={{ bg: 'neutral.800' }}
+                >
+                  Cancel
+                </Button>
+              </HStack>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
 
       {/* Magic Link Modal for PIN Protection */}
       <MagicLinkModal
