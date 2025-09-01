@@ -412,3 +412,9 @@ export class GuestRescheduleForbiddenError extends Error {
     this.name = 'GuestRescheduleForbiddenError'
   }
 }
+export class MeetingSessionNotFoundError extends Error {
+  constructor(meeting_id: string) {
+    super(`Meeting session not found for id: ${meeting_id}`)
+    this.name = 'MeetingSessionNotFoundError'
+  }
+}

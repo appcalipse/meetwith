@@ -1,4 +1,4 @@
-import Ably from 'ably'
+import Ably, { InboundMessage } from 'ably'
 const ably = new Ably.Realtime(process.env.NEXT_PUBLIC_ABLY_API_KEY || '')
 export const DEFAULT_MESSAGE_NAME = 'webhook-event'
 let isReady = false
@@ -22,7 +22,7 @@ const getChannel = async (channel: string): Promise<Ably.RealtimeChannel> => {
 export const publishMessage = async (
   channel: string,
   name = DEFAULT_MESSAGE_NAME,
-  message: unknown
+  message: string
 ) => {
   const channelInstance = await getChannel(channel)
   channelInstance.publish(name, message)
@@ -31,7 +31,7 @@ export const publishMessage = async (
 export const subscribeToMessages = async (
   channel: string,
   name = DEFAULT_MESSAGE_NAME,
-  callback: (message: unknown) => void
+  callback: (message: InboundMessage) => void
 ) => {
   const channelInstance = await getChannel(channel)
   channelInstance.subscribe(name, callback)
