@@ -243,6 +243,10 @@ export interface ConfirmCryptoTransactionRequest {
   guest_name?: string
   payment_method: PaymentType
   provider_reference_id?: string
+  total_fee?: number
+  fee_breakdown?: {
+    [key: string]: number
+  }
 }
 
 export interface RequestInvoiceRequest {
