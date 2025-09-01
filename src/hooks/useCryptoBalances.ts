@@ -2,7 +2,7 @@ import { useQueries } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { SupportedChain, supportedChains } from '@/types/chains'
+import { getTokenIcon, SupportedChain, supportedChains } from '@/types/chains'
 import { zeroAddress } from '@/utils/generic_utils'
 import { getCryptoTokenBalance } from '@/utils/token.service'
 import { CryptoConfig } from '@/utils/walletConfig'
@@ -22,6 +22,7 @@ export const useCryptoBalances = ({
   const config = cryptoConfig || []
 
   const chainInfo = useMemo(() => {
+    if (!selectedChain) return null
     return supportedChains.find(chain => chain.chain === selectedChain)
   }, [selectedChain])
 
@@ -40,7 +41,7 @@ export const useCryptoBalances = ({
   }, [walletSupportedChains])
 
   const chainTokens = useMemo(() => {
-    if (!chainInfo) {
+    if (!chainInfo || !selectedChain) {
       return []
     }
 
@@ -83,7 +84,13 @@ export const useCryptoBalances = ({
 
   // Combine crypto assets with real balances
   const cryptoAssetsWithBalances = useMemo(() => {
-    if (!config || config.length === 0 || isConfigLoading || !chainInfo) {
+    if (
+      !config ||
+      config.length === 0 ||
+      isConfigLoading ||
+      !chainInfo ||
+      !selectedChain
+    ) {
       return []
     }
 
@@ -104,7 +111,7 @@ export const useCryptoBalances = ({
       return {
         name: configItem?.name || tokenInfo.token,
         symbol: configItem?.symbol || tokenInfo.token,
-        icon: configItem?.icon || '',
+        icon: configItem?.icon || getTokenIcon(tokenInfo.token) || '',
         price: configItem?.price || '0',
         tokenAddress,
         chainId,
@@ -113,7 +120,7 @@ export const useCryptoBalances = ({
           : `0 ${tokenInfo.token}`,
         usdValue: balance ? `$${balance.toLocaleString()}` : '$0',
         fullBalance: balance ? balance.toString() : '0',
-        currencyIcon: configItem?.icon,
+        currencyIcon: configItem?.icon || getTokenIcon(tokenInfo.token) || '',
         networkName: chainInfo?.name || selectedChain,
         isLoading: isLoading || isConfigLoading,
         error,

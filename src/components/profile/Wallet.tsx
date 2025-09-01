@@ -39,7 +39,7 @@ import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { useWalletTransactions } from '@/hooks/useWalletTransactions'
 import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
-import { getChainId, supportedChains } from '@/types/chains'
+import { getChainId, SupportedChain, supportedChains } from '@/types/chains'
 import { getPaymentPreferences } from '@/utils/api_helper'
 import { sendEnablePinLink } from '@/utils/api_helper'
 import { getNotificationSubscriptions } from '@/utils/api_helper'
@@ -116,6 +116,9 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     selectedCrypto,
     setSelectedCrypto,
 
+    // Loading state
+    isNetworkLoading,
+
     // Modal states
     isCurrencyModalOpen,
     setIsCurrencyModalOpen,
@@ -177,7 +180,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
   // Use the centralized crypto balances hook
   const { cryptoAssetsWithBalances } = useCryptoBalances({
-    selectedChain: selectedNetwork,
+    selectedChain: selectedNetwork || SupportedChain.ARBITRUM,
   })
 
   // Currency conversion hooks
@@ -232,7 +235,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
       px={{ base: 4, md: 0 }}
     >
       <WithdrawFundsModal
-        selectedNetwork={selectedNetwork}
+        selectedNetwork={selectedNetwork || SupportedChain.ARBITRUM}
         isOpen={isOpen}
         onClose={onClose}
       />
@@ -1031,51 +1034,108 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       align="center"
                       gap={{ base: 3, md: 5 }}
                     >
-                      <Box
-                        bg="neutral.825"
-                        borderRadius={{ base: '8px', md: '12px' }}
-                        px={{ base: 3, md: 4 }}
-                        py={2}
-                        display="flex"
-                        alignItems="center"
-                        gap={2}
-                        cursor="pointer"
-                        onClick={() => setIsNetworkModalOpen(true)}
-                        _hover={{ opacity: 0.8 }}
-                        border="1px solid"
-                        borderColor="neutral.400"
-                      >
-                        <Image
-                          src={
-                            networks.find(
-                              n => n.chainId === getChainId(selectedNetwork)
-                            )?.icon
-                          }
-                          alt={
-                            networks.find(
-                              n => n.chainId === getChainId(selectedNetwork)
-                            )?.name || selectedNetwork
-                          }
-                          borderRadius="full"
-                          w={{ base: '16px', md: '20px' }}
-                          h={{ base: '16px', md: '20px' }}
-                        />
-                        <Text
-                          color="white"
-                          fontSize={{ base: '14px', md: '16px' }}
-                          fontWeight="700"
-                          pr={{ base: 2, md: 4 }}
+                      {isNetworkLoading ? (
+                        <Box
+                          bg="neutral.825"
+                          borderRadius={{ base: '8px', md: '12px' }}
+                          px={{ base: 3, md: 4 }}
+                          py={2}
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                          border="1px solid"
+                          borderColor="neutral.400"
                         >
-                          {networks.find(
-                            n => n.chainId === getChainId(selectedNetwork)
-                          )?.name || selectedNetwork}
-                        </Text>
-                        <Icon
-                          as={IoChevronDown}
-                          color="neutral.0"
-                          fontSize={{ base: '14px', md: '16px' }}
-                        />
-                      </Box>
+                          <Spinner size="sm" color="neutral.400" />
+                          <Text
+                            color="neutral.400"
+                            fontSize={{ base: '14px', md: '16px' }}
+                            fontWeight="700"
+                            pr={{ base: 2, md: 4 }}
+                          >
+                            Loading network...
+                          </Text>
+                        </Box>
+                      ) : selectedNetwork ? (
+                        <Box
+                          bg="neutral.825"
+                          borderRadius={{ base: '8px', md: '12px' }}
+                          px={{ base: 3, md: 4 }}
+                          py={2}
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                          cursor="pointer"
+                          onClick={() =>
+                            !isNetworkLoading && setIsNetworkModalOpen(true)
+                          }
+                          _hover={{ opacity: 0.8 }}
+                          border="1px solid"
+                          borderColor="neutral.400"
+                        >
+                          <Image
+                            src={
+                              networks.find(
+                                n => n.chainId === getChainId(selectedNetwork)
+                              )?.icon
+                            }
+                            alt={
+                              networks.find(
+                                n => n.chainId === getChainId(selectedNetwork)
+                              )?.name || selectedNetwork
+                            }
+                            borderRadius="full"
+                            w={{ base: '16px', md: '20px' }}
+                            h={{ base: '16px', md: '20px' }}
+                          />
+                          <Text
+                            color="white"
+                            fontSize={{ base: '14px', md: '16px' }}
+                            fontWeight="700"
+                            pr={{ base: 2, md: 4 }}
+                          >
+                            {networks.find(
+                              n => n.chainId === getChainId(selectedNetwork)
+                            )?.name || selectedNetwork}
+                          </Text>
+                          <Icon
+                            as={IoChevronDown}
+                            color="neutral.0"
+                            fontSize={{ base: '16px', md: '16px' }}
+                          />
+                        </Box>
+                      ) : (
+                        <Box
+                          bg="neutral.825"
+                          borderRadius={{ base: '8px', md: '12px' }}
+                          px={{ base: 3, md: 4 }}
+                          py={2}
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                          border="1px solid"
+                          borderColor="neutral.400"
+                          cursor="pointer"
+                          onClick={() =>
+                            !isNetworkLoading && setIsNetworkModalOpen(true)
+                          }
+                          _hover={{ opacity: 0.8 }}
+                        >
+                          <Text
+                            color="neutral.400"
+                            fontSize={{ base: '14px', md: '16px' }}
+                            fontWeight="700"
+                            pr={{ base: 2, md: 4 }}
+                          >
+                            Select network
+                          </Text>
+                          <Icon
+                            as={IoChevronDown}
+                            color="neutral.400"
+                            fontSize={{ base: '16px', md: '16px' }}
+                          />
+                        </Box>
+                      )}
 
                       <Tooltip
                         label="Show all transactions"
@@ -1114,7 +1174,178 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
               {/* Crypto Assets */}
               <VStack spacing={4} mt={5}>
-                {cryptoAssetsWithBalances.length === 0
+                {isNetworkLoading
+                  ? // Show skeleton cards while loading network
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <Box
+                        key={`skeleton-${index}`}
+                        bg="neutral.825"
+                        borderRadius="12px"
+                        p={4}
+                        width="100%"
+                        position="relative"
+                        overflow="hidden"
+                        _before={{
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: '-100%',
+                          width: '100%',
+                          height: '100%',
+                          background:
+                            'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
+                          animation: 'shimmer 2s ease-in-out infinite',
+                          zIndex: 1,
+                        }}
+                        sx={{
+                          '@keyframes shimmer': {
+                            '0%': {
+                              left: '-100%',
+                              opacity: 0.3,
+                            },
+                            '50%': {
+                              left: '100%',
+                              opacity: 0.8,
+                            },
+                            '100%': {
+                              left: '100%',
+                              opacity: 0.3,
+                            },
+                          },
+                        }}
+                      >
+                        <Flex
+                          justify="space-between"
+                          align="center"
+                          position="relative"
+                          zIndex={2}
+                        >
+                          <HStack spacing={3}>
+                            <Box
+                              w="48px"
+                              h="48px"
+                              borderRadius="full"
+                              bg="neutral.800"
+                              position="relative"
+                              overflow="hidden"
+                              _before={{
+                                content: '""',
+                                position: 'absolute',
+                                top: 0,
+                                left: '-100%',
+                                width: '100%',
+                                height: '100%',
+                                background:
+                                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                animation: 'shimmer 1.5s infinite',
+                              }}
+                            />
+                            <VStack align="start" spacing={0}>
+                              <Box
+                                w="120px"
+                                h="20px"
+                                borderRadius="4px"
+                                bg="neutral.800"
+                                position="relative"
+                                overflow="hidden"
+                                _before={{
+                                  content: '""',
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: '-100%',
+                                  width: '100%',
+                                  height: '100%',
+                                  background:
+                                    'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                  animation: 'shimmer 1.5s infinite',
+                                }}
+                              />
+                              <HStack spacing={3}>
+                                <Box
+                                  w="60px"
+                                  h="16px"
+                                  borderRadius="4px"
+                                  bg="neutral.800"
+                                  position="relative"
+                                  overflow="hidden"
+                                  _before={{
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: '-100%',
+                                    width: '100%',
+                                    height: '100%',
+                                    background:
+                                      'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                    animation: 'shimmer 1.5s infinite',
+                                  }}
+                                />
+                                <Box
+                                  w="40px"
+                                  h="16px"
+                                  borderRadius="4px"
+                                  bg="neutral.800"
+                                  position="relative"
+                                  overflow="hidden"
+                                  _before={{
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: '-100%',
+                                    width: '100%',
+                                    height: '100%',
+                                    background:
+                                      'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                    animation: 'shimmer 1.5s infinite',
+                                  }}
+                                />
+                              </HStack>
+                            </VStack>
+                          </HStack>
+                          <VStack align="end" spacing={0}>
+                            <Box
+                              w="80px"
+                              h="20px"
+                              borderRadius="4px"
+                              bg="neutral.800"
+                              position="relative"
+                              overflow="hidden"
+                              _before={{
+                                content: '""',
+                                position: 'absolute',
+                                top: 0,
+                                left: '-100%',
+                                width: '100%',
+                                height: '100%',
+                                background:
+                                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                animation: 'shimmer 1.5s infinite',
+                              }}
+                            />
+                            <Box
+                              w="60px"
+                              h="16px"
+                              borderRadius="4px"
+                              bg="neutral.800"
+                              position="relative"
+                              overflow="hidden"
+                              _before={{
+                                content: '""',
+                                position: 'absolute',
+                                top: 0,
+                                left: '-100%',
+                                width: '100%',
+                                height: '100%',
+                                background:
+                                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                animation: 'shimmer 1.5s infinite',
+                              }}
+                            />
+                          </VStack>
+                        </Flex>
+                      </Box>
+                    ))
+                  : cryptoAssetsWithBalances.length === 0
                   ? // Show skeleton cards while loading
                     Array.from({ length: 3 }).map((_, index) => (
                       <Box
@@ -1491,7 +1722,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
       {/* Network Selection Modal */}
       <Modal
-        isOpen={isNetworkModalOpen}
+        isOpen={isNetworkModalOpen && !isNetworkLoading}
         onClose={() => setIsNetworkModalOpen(false)}
         size="md"
         isCentered
@@ -1508,7 +1739,9 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
           </ModalHeader>
           <ModalBody pb={6}>
             <RadioGroup
-              value={getChainId(selectedNetwork).toString()}
+              value={
+                selectedNetwork ? getChainId(selectedNetwork).toString() : ''
+              }
               onChange={value => {
                 const chain = networks.find(n => n.chainId === parseInt(value))
                 if (chain) {
@@ -1565,7 +1798,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
       <SendFundsModal
         isOpen={isSendModalOpen}
         onClose={() => setIsSendModalOpen(false)}
-        selectedNetwork={selectedNetwork}
+        selectedNetwork={selectedNetwork || SupportedChain.ARBITRUM}
         isFromTokenView={showCryptoDetails && selectedCrypto !== null}
         selectedCryptoNetwork={
           showCryptoDetails && selectedCrypto !== null

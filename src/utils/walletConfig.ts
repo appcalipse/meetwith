@@ -1,4 +1,10 @@
-import { getChainId, SupportedChain, supportedChains } from '@/types/chains'
+import {
+  AcceptedToken,
+  getChainId,
+  getTokenIcon,
+  SupportedChain,
+  supportedChains,
+} from '@/types/chains'
 import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 import { getPriceForChain } from '@/utils/services/chainlink.service'
 
@@ -102,12 +108,20 @@ export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
           tokenAddress: tokenInfo.contractAddress,
           chainId: chain.id,
         }
+
+        if (!existingConfig.icon && tokenInfo.icon) {
+          existingConfig.icon = tokenInfo.icon
+        }
+
+        if (!existingConfig.icon) {
+          existingConfig.icon = getTokenIcon(tokenInfo.token) || ''
+        }
       } else {
         // Create new config
         const config: CryptoConfig = {
           name: tokenInfo.displayName || tokenInfo.token,
           symbol: tokenInfo.token,
-          icon: tokenInfo.icon || '',
+          icon: tokenInfo.icon || getTokenIcon(tokenInfo.token) || '',
           price: await getPriceForChain(chain.chain, tokenInfo.token),
           chains: {
             [chain.name]: {
@@ -139,7 +153,8 @@ export const getCryptoAssetsForNetwork = async (
         balance: '0 ' + crypto.symbol,
         usdValue: '$0',
         fullBalance: '0',
-        currencyIcon: crypto.icon,
+        currencyIcon:
+          crypto.icon || getTokenIcon(crypto.symbol as AcceptedToken) || '',
         tokenAddress: chainInfo?.tokenAddress || '',
         chainId: chainInfo?.chainId || network.chainId,
         networkName: networkName,
