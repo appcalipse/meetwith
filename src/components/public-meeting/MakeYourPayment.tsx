@@ -1,5 +1,5 @@
 import { ArrowBackIcon } from '@chakra-ui/icons'
-import { Heading, HStack, Text, VStack } from '@chakra-ui/react'
+import { Heading, HStack, Text, useDisclosure, VStack } from '@chakra-ui/react'
 import ChainLogo from '@components/icons/ChainLogo'
 import FiatLogo from '@components/icons/FiatLogo'
 import InvoiceIcon from '@components/icons/InvoiceIcon'
@@ -10,8 +10,12 @@ import {
   PaymentType,
   PublicSchedulingSteps,
 } from '@utils/constants/meeting-types'
+import { subscribeToMessages } from '@utils/pub-sub.helper'
 import { useRouter } from 'next/router'
 import React, { useContext, useMemo } from 'react'
+import { v4 } from 'uuid'
+
+import CheckoutWidgetModal from './CheckoutWidget'
 
 const MakeYourPayment = () => {
   const { setCurrentStep } = useContext(PublicScheduleContext)
@@ -19,7 +23,8 @@ const MakeYourPayment = () => {
     setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
   }
   const { query } = useRouter()
-
+  const messageChannel = useMemo(() => `crypto:${v4()}`, [])
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const paymentMethods = useMemo(() => {
     const methods = [
       {
@@ -28,6 +33,7 @@ const MakeYourPayment = () => {
         step: PaymentStep.SELECT_CRYPTO_NETWORK,
         icon: ChainLogo,
         type: PaymentType.CRYPTO,
+        onClick: onOpen,
       },
       {
         id: 'pay-with-card',
@@ -52,6 +58,9 @@ const MakeYourPayment = () => {
     }
     return methods
   }, [query])
+  useEffect(() => {
+    subscribeToMessages()
+  }, [isOpen, messageChannel])
 
   return (
     <VStack alignItems="flex-start" w={'100%'}>
@@ -66,6 +75,11 @@ const MakeYourPayment = () => {
         <ArrowBackIcon w={6} h={6} />
         <Text fontSize={16}>Back</Text>
       </HStack>
+      <CheckoutWidgetModal
+        messageChannel={messageChannel}
+        isOpen={isOpen}
+        onClose={onClose}
+      />
       <Heading size="lg">Make your Payment</Heading>
       <Text fontWeight={700}>Select payment method</Text>
       <HStack
