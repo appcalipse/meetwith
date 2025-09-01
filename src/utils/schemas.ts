@@ -45,7 +45,7 @@ export const baseMeetingSchema = z.object({
       }), // PlanType enum
       price_per_slot: z
         .number({ message: 'Price per slot is required.' })
-        .min(0.1, 'Price per slot must be greater than 0.'), // Positive price
+        .min(0.05, 'Price per slot must be greater than 0.05'), // Positive price
 
       no_of_slot: z
         .number({ message: 'Number of slots is required.' })
