@@ -6,6 +6,8 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import LogoModalLoading from '@components/Loading/LogoModalLoading'
+import ModalLoading from '@components/Loading/ModalLoading'
 import MeetingScheduledDialog from '@components/meeting/MeetingScheduledDialog'
 import BasePage from '@components/public-meeting/BasePage'
 import BookingComponent from '@components/public-meeting/BookingComponent'
@@ -65,7 +67,7 @@ import { getAccountDisplayName } from '@utils/user_manager'
 import { addMinutes } from 'date-fns'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
-import React, { FC, useEffect, useMemo, useState } from 'react'
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react'
 import { v4 } from 'uuid'
 
 import useAccountContext from '@/hooks/useAccountContext'
@@ -135,6 +137,8 @@ interface IContext {
   setIsContact: React.Dispatch<React.SetStateAction<boolean>>
   showHeader: boolean
   setShowHeader: React.Dispatch<React.SetStateAction<boolean>>
+  isAwaitingScheduling: boolean
+  setIsAwaitingScheduling: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 interface IScheduleContext {
@@ -172,7 +176,7 @@ interface IScheduleContext {
     meetingReminders?: Array<MeetingReminders>,
     meetingRepeat?: MeetingRepeat,
     txHash?: Address | null
-  ) => Promise<boolean>
+  ) => Promise<boolean | undefined | null>
   participants: Array<ParticipantInfo>
   setParticipants: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
   meetingProvider: MeetingProvider
@@ -248,6 +252,8 @@ const baseState: IContext = {
   setIsContact: () => {},
   showHeader: true,
   setShowHeader: () => {},
+  isAwaitingScheduling: false,
+  setIsAwaitingScheduling: () => {},
 }
 const scheduleBaseState: IScheduleContext = {
   currentMonth: new Date(),
@@ -327,6 +333,7 @@ const PublicPage: FC<IProps> = props => {
   const { query, push, isReady, beforePopState, replace, asPath } = useRouter()
   const [pageGettingReady, setPageGettingReady] = useState(true)
   const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
+  const [isAwaitingScheduling, setIsAwaitingScheduling] = useState(false)
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState<
     MeetingDecrypted | undefined
   >(undefined)
@@ -417,7 +424,8 @@ const PublicPage: FC<IProps> = props => {
   const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
   const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
   const [showEmailConfirm, setShowEmailConfirm] = useState(false)
-
+  const lastCallTimeRef = useRef<number>(0)
+  const DEBOUNCE_DELAY = 2000 // 2 seconds
   const [cachedRange, setCachedRange] = useState<{
     startDate: Date
     endDate: Date
@@ -541,7 +549,7 @@ const PublicPage: FC<IProps> = props => {
     }
   }
   useEffect(() => {
-    if (!isReady) return
+    if (!isReady || ongoingRequestRef.current) return
     setPageGettingReady(true)
     if (query.address) {
       const meeting_type = Array.isArray(query.address)
@@ -698,7 +706,6 @@ const PublicPage: FC<IProps> = props => {
     void getSlotInfo()
     setPageGettingReady(false)
   }, [query])
-  useEffect(() => {}, [])
 
   useEffect(() => {
     const handleBackButton = () => {
@@ -788,6 +795,8 @@ const PublicPage: FC<IProps> = props => {
     setIsContact,
     showHeader,
     setShowHeader,
+    isAwaitingScheduling,
+    setIsAwaitingScheduling,
   }
   const getSelfAvailableSlots = async () => {
     if (currentAccount) {
@@ -933,6 +942,7 @@ const PublicPage: FC<IProps> = props => {
     setNotificationSubs(subs.notification_types?.length)
     setHasConnectedCalendar(validCals)
   }
+  const ongoingRequestRef = useRef<Promise<boolean> | null>(null)
   const confirmSchedule = async (
     scheduleType: SchedulingType,
     startTime: Date,
@@ -948,227 +958,236 @@ const PublicPage: FC<IProps> = props => {
     meetingRepeat?: MeetingRepeat,
     txHash?: Address | null
   ): Promise<boolean> => {
-    if (!selectedType) return false
-    setIsScheduling(true)
-
-    const start = new Date(startTime)
-    const end = addMinutes(new Date(start), selectedType.duration_minutes)
-
-    if (scheduleType !== SchedulingType.GUEST && !name) {
-      name = getAccountDisplayName(currentAccount!)
+    if (ongoingRequestRef.current) {
+      return ongoingRequestRef.current
     }
+    if (!selectedType || isScheduling) return false
+    ongoingRequestRef.current = (async () => {
+      setIsScheduling(true)
+      setIsScheduling(true)
 
-    const participants: ParticipantInfo[] = [...(otherParticipants || [])]
+      const start = new Date(startTime)
+      const end = addMinutes(new Date(start), selectedType.duration_minutes)
 
-    participants.push({
-      account_address: props.account?.address,
-      name: '',
-      type: ParticipantType.Owner,
-      status: ParticipationStatus.Accepted,
-      slot_id: '',
-      meeting_id: '',
-    })
-
-    setSchedulingType(scheduleType)
-
-    participants.push({
-      account_address: currentAccount?.address,
-      ...(scheduleType === SchedulingType.GUEST && {
-        guest_email: guestEmail!,
-      }),
-      name,
-      type: ParticipantType.Scheduler,
-      status: ParticipationStatus.Accepted,
-      slot_id: '',
-      meeting_id: '',
-    })
-
-    try {
-      let meeting: MeetingDecrypted
-
-      if (meetingSlotId) {
-        meeting = await updateMeetingAsGuest(
-          meetingSlotId,
-          selectedType?.id,
-          start,
-          end,
-          participants,
-          meetingProvider || MeetingProvider.HUDDLE,
-          content,
-          meetingUrl,
-          title,
-          meetingReminders,
-          meetingRepeat
-        )
-      } else {
-        meeting = await scheduleMeeting(
-          false,
-          scheduleType,
-          selectedType?.id,
-          start,
-          end,
-          participants,
-          meetingProvider || MeetingProvider.HUDDLE,
-          currentAccount,
-          content,
-          meetingUrl,
-          emailToSendReminders,
-          title,
-          meetingReminders,
-          meetingRepeat,
-          undefined,
-          txHash
-        )
-        localStorage.removeItem(
-          `${selectedType?.id || ''}:transaction` // Clear the guest persisted transaction from localStorage after successful confirmation
-        )
+      if (scheduleType !== SchedulingType.GUEST && !name) {
+        name = getAccountDisplayName(currentAccount!)
       }
 
-      await getAvailableSlots(true)
-      currentAccount && saveMeetingsScheduled(currentAccount!.address)
-      currentAccount && (await fetchNotificationSubscriptions())
+      const participants: ParticipantInfo[] = [...(otherParticipants || [])]
 
-      setLastScheduledMeeting(meeting)
-      logEvent('Scheduled a meeting', {
-        fromPublicCalendar: true,
-        participantsSize: meeting.participants.length,
+      participants.push({
+        account_address: props.account?.address,
+        name: '',
+        type: ParticipantType.Owner,
+        status: ParticipationStatus.Accepted,
+        slot_id: '',
+        meeting_id: '',
       })
-      setIsScheduling(false)
-      return true
-    } catch (e) {
-      setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
-      if (e instanceof MeetingWithYourselfError) {
-        toast({
-          title: "Ops! Can't do that",
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof ServiceUnavailableError) {
-        toast({
-          title: 'Service Unavailable',
-          description:
-            'We’re having trouble connecting at the moment. Please try again shortly.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof TimeNotAvailableError) {
-        if (selectedType?.plan) {
-          setShowTimeNotAvailable(true)
+
+      setSchedulingType(scheduleType)
+
+      participants.push({
+        account_address: currentAccount?.address,
+        ...(scheduleType === SchedulingType.GUEST && {
+          guest_email: guestEmail!,
+        }),
+        name,
+        type: ParticipantType.Scheduler,
+        status: ParticipationStatus.Accepted,
+        slot_id: '',
+        meeting_id: '',
+      })
+
+      try {
+        let meeting: MeetingDecrypted
+
+        if (meetingSlotId) {
+          meeting = await updateMeetingAsGuest(
+            meetingSlotId,
+            selectedType?.id,
+            start,
+            end,
+            participants,
+            meetingProvider || MeetingProvider.HUDDLE,
+            content,
+            meetingUrl,
+            title,
+            meetingReminders,
+            meetingRepeat
+          )
+        } else {
+          meeting = await scheduleMeeting(
+            false,
+            scheduleType,
+            selectedType?.id,
+            start,
+            end,
+            participants,
+            meetingProvider || MeetingProvider.HUDDLE,
+            currentAccount,
+            content,
+            meetingUrl,
+            emailToSendReminders,
+            title,
+            meetingReminders,
+            meetingRepeat,
+            undefined,
+            txHash
+          )
+          localStorage.removeItem(
+            `${selectedType?.id || ''}:transaction` // Clear the guest persisted transaction from localStorage after successful confirmation
+          )
         }
-        toast({
-          title: 'Failed to schedule meeting',
-          description: 'The selected time is not available anymore',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
+
+        await getAvailableSlots(true)
+        currentAccount && saveMeetingsScheduled(currentAccount!.address)
+        currentAccount && (await fetchNotificationSubscriptions())
+
+        setLastScheduledMeeting(meeting)
+        logEvent('Scheduled a meeting', {
+          fromPublicCalendar: true,
+          participantsSize: meeting.participants.length,
         })
-      } else if (e instanceof GateConditionNotValidError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof MeetingCreationError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description:
-            'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof MultipleSchedulersError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description: 'A meeting must have only one scheduler',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof InvalidURL) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description: 'Please provide a valid url/link for your meeting.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof Huddle01ServiceUnavailable) {
-        toast({
-          title: 'Failed to create video meeting',
-          description:
-            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof ZoomServiceUnavailable) {
-        toast({
-          title: 'Failed to create video meeting',
-          description:
-            'Zoom seems to be offline. Please select a different meeting location, or try again.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof GoogleServiceUnavailable) {
-        toast({
-          title: 'Failed to create video meeting',
-          description:
-            'Google seems to be offline. Please select a different meeting location, or try again.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof UrlCreationError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description:
-            'There was an issue generating a meeting url for your meeting. try using a different location',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof AllMeetingSlotsUsedError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description:
-            'You’ve used all your available meeting slots. Please purchase a new slot to schedule a meeting.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof TransactionIsRequired) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description:
-            'This meeting type requires payment before scheduling. Please purchase a slot to continue.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
+        setIsScheduling(false)
+        return true
+      } catch (e) {
+        setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
+        if (e instanceof MeetingWithYourselfError) {
+          toast({
+            title: "Ops! Can't do that",
+            description: e.message,
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof TimeNotAvailableError) {
+          if (selectedType?.plan) {
+            setShowTimeNotAvailable(true)
+          }
+          toast({
+            title: 'Failed to schedule meeting',
+            description: 'The selected time is not available anymore',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof GateConditionNotValidError) {
+          toast({
+            title: 'Failed to schedule meeting',
+            description: e.message,
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof MeetingCreationError) {
+          toast({
+            title: 'Failed to schedule meeting',
+            description:
+              'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof MultipleSchedulersError) {
+          toast({
+            title: 'Failed to schedule meeting',
+            description: 'A meeting must have only one scheduler',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof InvalidURL) {
+          toast({
+            title: 'Failed to schedule meeting',
+            description: 'Please provide a valid url/link for your meeting.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof Huddle01ServiceUnavailable) {
+          toast({
+            title: 'Failed to create video meeting',
+            description:
+              'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof ZoomServiceUnavailable) {
+          toast({
+            title: 'Failed to create video meeting',
+            description:
+              'Zoom seems to be offline. Please select a different meeting location, or try again.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof GoogleServiceUnavailable) {
+          toast({
+            title: 'Failed to create video meeting',
+            description:
+              'Google seems to be offline. Please select a different meeting location, or try again.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof UrlCreationError) {
+          toast({
+            title: 'Failed to schedule meeting',
+            description:
+              'There was an issue generating a meeting url for your meeting. try using a different location',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof AllMeetingSlotsUsedError) {
+          toast({
+            title: 'Failed to schedule meeting',
+            description:
+              'You’ve used all your available meeting slots. Please purchase a new slot to schedule a meeting.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof TransactionIsRequired) {
+          toast({
+            title: 'Failed to schedule meeting',
+            description:
+              'This meeting type requires payment before scheduling. Please purchase a slot to continue.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof ServiceUnavailableError) {
+          toast({
+            title: 'Service Unavailable',
+            description:
+              'We’re having trouble connecting at the moment. Please try again shortly.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        }
+        return false
+      } finally {
+        setIsScheduling(false)
+        ongoingRequestRef.current = null
       }
-    }
-    setIsScheduling(false)
-    return false
+    })()
+    return ongoingRequestRef.current
   }
   const scheduleContext: IScheduleContext = {
     currentMonth,
@@ -1249,6 +1268,7 @@ const PublicPage: FC<IProps> = props => {
   return (
     <PublicScheduleContext.Provider value={context}>
       <ScheduleStateContext.Provider value={scheduleContext}>
+        <LogoModalLoading isOpen={isAwaitingScheduling} />
         <HeadMeta account={props.account} url={props.url} />
         <VStack mb={36} gap={1} key={key}>
           <Container

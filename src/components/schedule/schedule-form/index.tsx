@@ -544,7 +544,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             }
             setMeetingNotification(meetingNotification)
           }}
-          className="hideBorder"
+          className="noLeftBorder timezone-select"
           placeholder="Select Notification Alerts"
           isMulti
           tagVariant={'solid'}

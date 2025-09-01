@@ -1,8 +1,16 @@
 import { ArrowBackIcon } from '@chakra-ui/icons'
-import { Heading, HStack, Text, VStack } from '@chakra-ui/react'
+import {
+  Heading,
+  HStack,
+  Text,
+  useDisclosure,
+  useToast,
+  VStack,
+} from '@chakra-ui/react'
 import ChainLogo from '@components/icons/ChainLogo'
 import FiatLogo from '@components/icons/FiatLogo'
 import InvoiceIcon from '@components/icons/InvoiceIcon'
+import ModalLoading from '@components/Loading/ModalLoading'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import PaymentMethod from '@components/public-meeting/PaymentMethod'
 import {
@@ -10,16 +18,53 @@ import {
   PaymentType,
   PublicSchedulingSteps,
 } from '@utils/constants/meeting-types'
+import { subscribeToMessages } from '@utils/pub-sub.helper'
 import { useRouter } from 'next/router'
-import React, { useContext, useMemo } from 'react'
+import React, { useContext, useEffect, useMemo } from 'react'
+import { v4 } from 'uuid'
+
+import useAccountContext from '@/hooks/useAccountContext'
+import { useSmartReconnect } from '@/hooks/useSmartReconnect'
+
+import CheckoutWidgetModal from './CheckoutWidgetModal'
 
 const MakeYourPayment = () => {
-  const { setCurrentStep } = useContext(PublicScheduleContext)
+  const {
+    setCurrentStep,
+    selectedType,
+    isAwaitingScheduling,
+    setIsAwaitingScheduling,
+  } = useContext(PublicScheduleContext)
+  const toast = useToast()
+  const currentAccount = useAccountContext()
+  const { needsReconnection, attemptReconnection } = useSmartReconnect()
+
   const handleBack = () => {
     setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
   }
   const { query } = useRouter()
 
+  const messageChannel = useMemo(
+    () =>
+      'onramp:f560b8db-cc1b-42c2-b895-33c433610b05:7bf1302a-978e-4f71-959a-8db97a869bfe',
+    [selectedType]
+  )
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const handleOpen = async () => {
+    if ((selectedType?.plan?.no_of_slot || 0) > 1) {
+      toast({
+        title: 'Account Not Found',
+        description:
+          'You have to be logged in to pay for multiple slots, Please login to proceed.',
+        status: 'error',
+      })
+      return
+    }
+    if (currentAccount?.address && needsReconnection) {
+      await attemptReconnection()
+    }
+    onOpen()
+  }
   const paymentMethods = useMemo(() => {
     const methods = [
       {
@@ -28,6 +73,8 @@ const MakeYourPayment = () => {
         step: PaymentStep.SELECT_CRYPTO_NETWORK,
         icon: ChainLogo,
         type: PaymentType.CRYPTO,
+        onClick: handleOpen,
+        loading: isOpen,
       },
       {
         id: 'pay-with-card',
@@ -36,6 +83,7 @@ const MakeYourPayment = () => {
         step: PaymentStep.CONFIRM_PAYMENT,
         icon: FiatLogo,
         type: PaymentType.FIAT,
+        disabled: true,
       },
       {
         id: 'pay-with-invoice',
@@ -51,7 +99,7 @@ const MakeYourPayment = () => {
       )
     }
     return methods
-  }, [query])
+  }, [query, isOpen])
 
   return (
     <VStack alignItems="flex-start" w={'100%'}>
@@ -66,6 +114,11 @@ const MakeYourPayment = () => {
         <ArrowBackIcon w={6} h={6} />
         <Text fontSize={16}>Back</Text>
       </HStack>
+      <CheckoutWidgetModal
+        messageChannel={messageChannel}
+        isOpen={isOpen}
+        onClose={onClose}
+      />
       <Heading size="lg">Make your Payment</Heading>
       <Text fontWeight={700}>Select payment method</Text>
       <HStack
