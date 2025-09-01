@@ -4803,7 +4803,7 @@ const createCryptoTransaction = async (
     confirmed_at: new Date().toISOString(),
     provider_reference_id: transactionRequest.provider_reference_id,
     currency: Currency.USD,
-    total_fee: feeInUSD,
+    total_fee: transactionRequest.total_fee || feeInUSD,
     metadata: {
       ...(account_address && {
         sender_address: account_address.toLowerCase(),
@@ -4815,6 +4815,7 @@ const createCryptoTransaction = async (
     fee_breakdown: {
       gas_used: gasUsed,
       fee_in_usd: feeInUSD,
+      ...transactionRequest.fee_breakdown,
     },
   }
   const { data, error } = await db.supabase
@@ -4887,7 +4888,7 @@ const createCryptoTransaction = async (
             number_of_sessions: totalNoOfSlots.toString(),
             price: transactionRequest.amount.toString(),
             payment_method: transactionRequest.payment_method,
-            transaction_fee: '0',
+            transaction_fee: String(transactionRequest.total_fee || 0),
             transaction_status: PaymentStatus.COMPLETED,
             transaction_hash: transactionRequest.transaction_hash,
           }
