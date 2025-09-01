@@ -3,6 +3,7 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 import puppeteer from 'puppeteer'
+import { CreateEmailOptions, Resend } from 'resend'
 
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
@@ -14,6 +15,7 @@ import {
 } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingChange } from '@/types/Requests'
+import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
 import { getConnectedCalendars } from '@/utils/database'
 import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
 
@@ -29,11 +31,6 @@ import { getOwnerPublicUrlServer } from './database'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = process.env.FROM_MAIL!
-
-import { CreateEmailOptions, Resend } from 'resend'
-
-import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
-
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
   from: FROM,
