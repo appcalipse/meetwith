@@ -31,12 +31,15 @@ const redirectBasedOnLogin = async (
   redirectType: AuthRedirect
 ): Promise<Account | null> => {
   const currentAccount = await validateAuthentication(ctx)
-
+  const currentRoute =
+    ctx.asPath || ctx.pathname || (ctx.req ? ctx.req.url : '')
   const shouldRedirect =
     redirectType === AuthRedirect.REDIRECT_IF_AUTHED
       ? !!currentAccount
       : !currentAccount
-
+  if (currentRoute) {
+    route = `${route}?redirect=${encodeURIComponent(currentRoute)}`
+  }
   // Only redirect here if we are on server side
   if (!!ctx.req && shouldRedirect) {
     // https://github.com/zeit/next.js/wiki/Redirecting-in-%60getInitialProps%60
@@ -64,6 +67,10 @@ const withAuthRedirect =
       // On the client side, if the user is not logged in,
       // then redirect it to the equivalent endpoint
       if (!logged && redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED) {
+        const currentRoute = router.asPath
+        if (currentRoute) {
+          route = `${route}?redirect=${encodeURIComponent(currentRoute)}`
+        }
         router.push(route)
 
         return (
@@ -90,7 +97,6 @@ const withAuthRedirect =
           </Flex>
         )
       }
-
       return <Page {...props} />
     }
 

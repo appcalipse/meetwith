@@ -1,30 +1,35 @@
-import { getSupportedChainFromId, getTokenFromName } from '@meta/chains'
+import {
+  AcceptedToken,
+  getSupportedChainFromId,
+  getTokenFromName,
+  getTokenName,
+} from '@meta/chains'
 
+import { getCoinConfig } from '../api_helper'
+export const getOnRampMoneyNetworkAndCoinCode = async (
+  chainId: number,
+  token: AcceptedToken
+) => {
+  const coinConfig = await getCoinConfig()
+  const tokenName = getTokenName(token)
+  const [coinId] =
+    Object.entries(coinConfig.allCoinConfig).find(
+      ([, c]) => c.coinName.toLowerCase() === tokenName.toLowerCase()
+    ) || []
+
+  const network = Object.values(coinConfig.networkConfig).find(
+    n => n.networkId === chainId
+  )?.chainSymbol
+  return { coinId, network: network || null }
+}
 export const getOnrampMoneyTokenAddress = async (
   coinId: number,
   chainId: number
 ): Promise<string | null> => {
-  const response = await fetch(
-    'https://api.onramp.money/onramp/api/v2/sell/public/allConfig'
-  )
+  const coinConfig = await getCoinConfig()
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch token name: ${response.statusText}`)
-  }
-
-  const data = await response.json()
-  const coinConfig = data.data.allCoinConfig as {
-    [x: string]: {
-      coinId: number
-      networks: number[]
-      coinName: string
-      coinIcon: string
-      balanceFloatPlaces: number
-      tradeFloatPlaces: number
-    }
-  }
-  const coin = Object.values(coinConfig).find(
-    c => c.coinId === coinId && c.networks.push(chainId)
+  const coin = Object.values(coinConfig.allCoinConfig).find(
+    c => c.coinId === coinId
   )
   if (!coin) {
     return null

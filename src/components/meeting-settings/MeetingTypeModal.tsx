@@ -502,15 +502,13 @@ const MeetingTypeModal: FC<IProps> = props => {
           </HStack>
           <Heading fontSize={'24px'} mt={6} fontWeight={700}>
             {props?.initialValues?.id
-              ? 'New Session and Plan'
+              ? 'Edit Session Type'
               : 'Create Session and Plan'}
           </Heading>
         </ModalHeader>
         <ModalBody p={'0'} w="100%">
           <Text color={'neutral.400'}>
-            {props?.initialValues?.id
-              ? 'Edit session type'
-              : 'Create new session type'}
+            {props?.initialValues?.id ? '' : 'Create new session type'}
           </Text>
           <VStack mt={4} alignItems={'flex-start'} spacing={4} w="100%">
             <FormControl

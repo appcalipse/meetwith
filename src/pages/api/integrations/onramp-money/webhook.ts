@@ -9,6 +9,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const payload = req.headers['x-onramp-payload'] as string
       const signature = req.headers['x-onramp-signature'] as string
+
       const localSignature = CryptoJS.enc.Hex.stringify(
         CryptoJS.HmacSHA512(payload, process.env.NEXT_ONRAMP_MONEY_API_SECRET!)
       )
@@ -16,6 +17,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(403).send('Invalid signature')
       }
       const event = req.body as OnrampMoneyWebhook
+      // eslint-disable-next-line no-restricted-syntax
+      console.log(event)
       await recordOffRampTransaction(event)
       res.status(200).send('OK')
     } catch (e) {
