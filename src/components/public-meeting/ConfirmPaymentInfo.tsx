@@ -39,7 +39,6 @@ import {
   toUnits,
   waitForReceipt,
 } from 'thirdweb'
-import { arbitrum } from 'thirdweb/chains'
 import { BuyWidget, CheckoutWidget, useActiveWallet } from 'thirdweb/react'
 import { Wallet } from 'thirdweb/wallets'
 import { v4 } from 'uuid'
@@ -94,9 +93,9 @@ const ConfirmPaymentInfo = () => {
     title,
     doSendEmailReminders,
     scheduleType,
-    userEmail,
     meetingUrl,
     pickedTime,
+    userEmail,
     guestEmail,
   } = useContext(ScheduleStateContext)
   const toast = useToast({ position: 'top', isClosable: true })
