@@ -1170,17 +1170,17 @@ const PublicPage: FC<IProps> = props => {
             position: 'top',
             isClosable: true,
           })
-      } else if (e instanceof ServiceUnavailableError) {
-        toast({
-          title: 'Service Unavailable',
-          description:
-            'We’re having trouble connecting at the moment. Please try again shortly.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      }
+        } else if (e instanceof ServiceUnavailableError) {
+          toast({
+            title: 'Service Unavailable',
+            description:
+              'We’re having trouble connecting at the moment. Please try again shortly.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        }
         return false
       } finally {
         setIsScheduling(false)
