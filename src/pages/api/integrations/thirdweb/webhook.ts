@@ -72,9 +72,11 @@ export default async function handler(
               : payload.data.transactions
                   .filter(val => val.chainId === chainId)
                   .at(-1)?.transactionHash
+
           if (!transactionHash && payload.type === 'pay.onchain-transaction') {
             transactionHash = payload.data.transactions.at(-1)?.transactionHash
           }
+
           const amount =
             payload.type === 'pay.onramp-transaction'
               ? payload.data.amount
