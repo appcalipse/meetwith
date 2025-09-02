@@ -244,6 +244,7 @@ export interface ConfirmCryptoTransactionRequest {
   payment_method: PaymentType
   provider_reference_id?: string
   total_fee?: number
+  metadata?: Record<string, unknown>
   fee_breakdown?: {
     [key: string]: number
   }
