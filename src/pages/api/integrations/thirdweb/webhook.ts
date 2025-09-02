@@ -29,7 +29,11 @@ export default async function handler(
           headerRecord[key] = value[0] // Take first value if array
         }
       }
-      console.log(process.env.THIRDWEB_WEBHOOK_SECRET)
+      console.log(
+        process.env.THIRDWEB_WEBHOOK_SECRET,
+        JSON.stringify(req.body),
+        headerRecord
+      )
       const payload: WebhookPayload = await Bridge.Webhook.parse(
         JSON.stringify(req.body),
         headerRecord,
