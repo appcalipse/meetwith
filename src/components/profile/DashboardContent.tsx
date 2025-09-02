@@ -64,14 +64,17 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         width="100%"
         maxWidth="100%"
         justifyContent="space-between"
+        pl={{ base: 0, lg: !isSettings ? '296px' : 0 }}
       >
         <RedirectHandler />
         {!isSettings && (
           <Box
             flex={{ base: '0', lg: '4' }}
             mr={{ base: 0, lg: 18 }}
-            position="sticky"
-            top={40}
+            position="fixed"
+            left={0}
+            top={0}
+            zIndex={10}
           >
             <NavMenu currentSection={currentSection} />
           </Box>
@@ -82,6 +85,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
           flex={isSettings ? 1 : { base: '1', md: '8' }}
           marginLeft={{ base: '0 !important', md: isSettings ? 0 : 2 }}
           marginInlineStart={{ base: '0 !important', md: isSettings ? 0 : 2 }}
+          pt={{ base: '60px', lg: 0 }}
         >
           {renderSelected()}
         </Box>
