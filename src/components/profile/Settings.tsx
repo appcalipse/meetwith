@@ -6,6 +6,7 @@ import {
   HStack,
   Icon,
   Text,
+  useMediaQuery,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
@@ -56,6 +57,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
     SettingsSection.ACCOUNT_DETAILS
   )
   const router = useRouter()
+  const [isMobile] = useMediaQuery('(max-width: 1024px)')
 
   const renderContent = () => {
     switch (activeSection) {
@@ -103,65 +105,96 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
   }, [router.asPath])
 
   return (
-    <Flex gap={6} width="100%" minH="600px">
-      {/* Settings Navigation Sidebar */}
-      <Box
-        width="324px"
-        flexShrink={0}
-        bg="neutral.900"
-        borderRadius="16px"
-        p={6}
-        pt={10}
-        mb={10}
-        display={{ base: 'none', lg: 'block' }}
-        maxH="600px"
-        position="sticky"
-        top={0}
-      >
-        {/* Back inside sidebar */}
-        <HStack
-          spacing={2}
-          color="primary.400"
-          cursor="pointer"
-          mb={6}
-          ml={3}
-          onClick={handleBack}
+    <>
+      {/* Fixed Settings Navigation Sidebar */}
+      {!isMobile && (
+        <Box
+          width={{ base: '100vw', lg: '21%' }}
+          height="100vh"
+          position="fixed"
+          left={0}
+          top={0}
+          zIndex={10}
+          bg="neutral.900"
+          borderRadius={12}
+          p={6}
+          pt={10}
+          display="flex"
+          flexDirection="column"
         >
-          <Icon as={FaArrowLeft} />
-          <Text fontWeight={600}>Go Back</Text>
-        </HStack>
+          {/* Back inside sidebar */}
+          <HStack
+            spacing={2}
+            color="primary.400"
+            cursor="pointer"
+            mb={6}
+            ml={3}
+            onClick={handleBack}
+          >
+            <Icon as={FaArrowLeft} />
+            <Text fontWeight={600}>Go Back</Text>
+          </HStack>
 
-        <Heading fontSize="xl" ml={3} mb={8} color="white">
-          Settings
-        </Heading>
-        <VStack spacing={2} align="stretch">
-          {settingsNavItems.map(item => {
-            const isActive = activeSection === item.section
-            return (
-              <Button
-                key={item.section}
-                variant="ghost"
-                justifyContent="flex-start"
-                alignItems="center"
-                onClick={() => setActiveSection(item.section)}
-                color={isActive ? 'primary.200' : 'white'}
-                fontWeight={isActive ? 'semibold' : 'normal'}
-                px={3}
-                py={2.5}
-                borderRadius="8px"
-              >
-                <Text>{item.name}</Text>
-              </Button>
-            )
-          })}
-        </VStack>
-      </Box>
+          <Heading fontSize="xl" ml={3} mb={8} color="white">
+            Settings
+          </Heading>
+
+          {/* Scrollable navigation items */}
+          <VStack
+            spacing={2}
+            align="stretch"
+            flex={1}
+            overflowY="auto"
+            css={{
+              '&::-webkit-scrollbar': {
+                width: '4px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'transparent',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '2px',
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: 'rgba(255, 255, 255, 0.3)',
+              },
+            }}
+          >
+            {settingsNavItems.map(item => {
+              const isActive = activeSection === item.section
+              return (
+                <Button
+                  key={item.section}
+                  variant="ghost"
+                  justifyContent="flex-start"
+                  alignItems="center"
+                  onClick={() => setActiveSection(item.section)}
+                  color={isActive ? 'primary.200' : 'white'}
+                  fontWeight={isActive ? 'semibold' : 'normal'}
+                  px={3}
+                  py={2.5}
+                  borderRadius="8px"
+                >
+                  <Text>{item.name}</Text>
+                </Button>
+              )
+            })}
+          </VStack>
+        </Box>
+      )}
 
       {/* Settings Content */}
-      <Box flex={1} overflowY="auto" mb={10}>
+      <Box
+        flex={1}
+        overflowY="auto"
+        mb={10}
+        pl={{ base: 0, lg: '21%' }}
+        pt={{ base: '70px', lg: 0 }}
+      >
         {renderContent()}
       </Box>
-    </Flex>
+    </>
   )
 }
 
