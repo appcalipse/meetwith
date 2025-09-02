@@ -810,11 +810,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                 _active={{ bg: isLoading ? 'primary.500' : 'primary.700' }}
                 onClick={handleSend}
                 isDisabled={
-                  !selectedToken ||
-                  !recipientAddress ||
-                  !amount ||
-                  isLoading ||
-                  !activeWallet
+                  !selectedToken || !recipientAddress || !amount || isLoading
                 }
                 isLoading={isLoading}
                 loadingText="Sending..."

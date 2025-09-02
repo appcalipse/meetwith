@@ -9,6 +9,7 @@ import {
   setAccountNotificationSubscriptions,
   verifyVerificationCode,
 } from '@/utils/database'
+import { sendEmailChangeSuccessEmail } from '@/utils/email_helper'
 
 interface TokenPayload {
   type: string
@@ -103,6 +104,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       account_address,
       updatedNotifications
     )
+
+    const oldEmail = emailChannel.destination
+
+    try {
+      await sendEmailChangeSuccessEmail(newEmail, oldEmail, newEmail)
+    } catch (emailError) {
+      console.error('Failed to send email change success email:', emailError)
+    }
 
     return res.status(200).json({
       success: true,
