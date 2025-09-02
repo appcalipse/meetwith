@@ -99,6 +99,7 @@ export default async function handler(
 
           let fee_breakdown
           let total_fee
+          let metadata
           if (payload.type === 'pay.onchain-transaction') {
             fee_breakdown = {
               network:
@@ -117,6 +118,14 @@ export default async function handler(
               (acc, fee) => acc + fee,
               0
             )
+            const filteredTransactions = payload.data.transactions.filter(
+              val => val.transactionHash === transactionHash
+            )
+            if (filteredTransactions.length > 0) {
+              metadata = {
+                peerTransactions: filteredTransactions,
+              }
+            }
           }
           const transactionRequest: ConfirmCryptoTransactionRequest = {
             transaction_hash: transactionHash as Address,
@@ -133,6 +142,7 @@ export default async function handler(
             provider_reference_id,
             fee_breakdown,
             total_fee,
+            metadata,
           }
           // Log so we can track in case of misses
           // eslint-disable-next-line no-restricted-syntax

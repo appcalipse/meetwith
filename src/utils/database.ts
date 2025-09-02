@@ -5021,6 +5021,7 @@ const createCryptoTransaction = async (
     currency: Currency.USD,
     total_fee: transactionRequest.total_fee || feeInUSD,
     metadata: {
+      ...transactionRequest.metadata,
       ...(receiverAddress && {
         receiver_address: receiverAddress.toLowerCase(),
       }),
