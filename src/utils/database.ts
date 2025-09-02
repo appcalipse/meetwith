@@ -4929,10 +4929,11 @@ const sendWalletDebitEmail = async (
 
     await sendCryptoDebitEmail(senderEmail, {
       amount: tx.fiat_equivalent,
-      tokenSymbol: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
-      chainName: getChainDisplayName(tx.chain),
-      transactionHash: tx.transaction_hash,
-      recipientAddress: tx.receiver_address || fallbackReceiver || '',
+      currency: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      recipientName:
+        tx.receiver_address || fallbackReceiver || 'Unknown Recipient',
+      transactionId: tx.transaction_hash,
+      transactionDate: new Date().toLocaleString(),
     })
   } catch (e) {
     console.warn('Failed to send wallet transfer email:', e)
@@ -4956,12 +4957,11 @@ const sendSessionIncomeEmail = async (
     if (!hostEmail) return
 
     await sendSessionBookingIncomeEmail(hostEmail, {
-      guestName: tx.guest_name || 'Guest',
       amount: tx.fiat_equivalent,
-      tokenSymbol: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
-      chainName: getChainDisplayName(tx.chain),
-      transactionHash: tx.transaction_hash,
-      meetingTypeTitle: meetingType?.title,
+      currency: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      senderName: tx.guest_name || 'Guest',
+      transactionId: tx.transaction_hash,
+      transactionDate: new Date().toLocaleString(),
     })
   } catch (e) {
     console.warn('Failed to send session booking income email:', e)

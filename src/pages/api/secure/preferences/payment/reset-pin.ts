@@ -5,9 +5,11 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { VerificationChannel } from '@/types/AccountNotifications'
 import {
+  getAccountNotificationSubscriptionEmail,
   updatePaymentPreferences,
   verifyVerificationCode,
 } from '@/utils/database'
+import { sendPinResetSuccessEmail } from '@/utils/email_helper'
 
 interface ResetPinBody {
   newPin: string
@@ -80,6 +82,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const result = await updatePaymentPreferences(account_address, {
       pin: newPin,
     })
+
+    try {
+      const email = await getAccountNotificationSubscriptionEmail(
+        account_address
+      )
+      if (email) {
+        await sendPinResetSuccessEmail(email)
+      }
+    } catch (emailError) {
+      console.error('Failed to send PIN reset success email:', emailError)
+    }
 
     return res.status(200).json(result)
   } catch (error) {
