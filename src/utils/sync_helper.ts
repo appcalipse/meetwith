@@ -5,20 +5,20 @@ import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { getConnectedCalendars, getMeetingTypeFromDB } from './database'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
-
-const syncCreatedEventWithCalendar = async (
+const getCalendars = async (
   targetAccount: Account['address'],
-  meetingDetails: MeetingCreationSyncRequest
+  meeting_type_id?: string
 ) => {
   let calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
     activeOnly: true,
   })
-  if (meetingDetails.meeting_type_id) {
-    const meetingType = await getMeetingTypeFromDB(
-      meetingDetails.meeting_type_id
-    )
-    if (meetingType.calendars) {
+  if (meeting_type_id) {
+    const meetingType = await getMeetingTypeFromDB(meeting_type_id)
+    if (
+      meetingType.calendars &&
+      meetingType.account_owner_address === targetAccount
+    ) {
       calendars = meetingType.calendars
         ? calendars.filter(calendar =>
             meetingType.calendars?.some(c => c.id === calendar.id)
@@ -26,6 +26,17 @@ const syncCreatedEventWithCalendar = async (
         : calendars
     }
   }
+  return calendars
+}
+const syncCreatedEventWithCalendar = async (
+  targetAccount: Account['address'],
+  meetingDetails: MeetingCreationSyncRequest
+) => {
+  const calendars = await getCalendars(
+    targetAccount,
+    meetingDetails.meeting_type_id
+  )
+
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
       calendar.account_address,
@@ -57,23 +68,11 @@ const syncUpdatedEventWithCalendar = async (
   meetingDetails: MeetingCreationSyncRequest,
   meeting_id: string
 ) => {
-  let calendars = await getConnectedCalendars(targetAccount, {
-    syncOnly: true,
-    activeOnly: true,
-  })
+  const calendars = await getCalendars(
+    targetAccount,
+    meetingDetails.meeting_type_id
+  )
 
-  if (meetingDetails.meeting_type_id) {
-    const meetingType = await getMeetingTypeFromDB(
-      meetingDetails.meeting_type_id
-    )
-    if (meetingType.calendars) {
-      calendars = meetingType.calendars
-        ? calendars.filter(calendar =>
-            meetingType.calendars?.some(c => c.id === calendar.id)
-          )
-        : calendars
-    }
-  }
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
       calendar.account_address,
