@@ -139,10 +139,12 @@ export interface OnrampMoneyWebhook {
 }
 
 export interface IPurchaseData {
-  meetingId: string
-  messageChannel: string
-  guestEmail: string
-  guestName: string
+  meeting_type_id: string
+  message_channel: string
+  guest_email?: string
+  guest_name: string
+  guest_address?: string
+  [key: string]: unknown
 }
 export interface ICoinConfig {
   allCoinConfig: {

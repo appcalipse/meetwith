@@ -4,7 +4,6 @@ import {
   Button,
   Flex,
   Icon,
-  Image,
   Text,
   useBreakpointValue,
 } from '@chakra-ui/react'
@@ -24,6 +23,7 @@ interface NavBarLoggedProfileProps {
   currentSection?: EditMode
   handleSetActiveLink: (id: string) => void
   isOpen?: boolean
+  disableNavMenu?: boolean
 }
 const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
   const accountName = ellipsizeAddress(props.account.address)
@@ -37,7 +37,9 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
     props.handleSetActiveLink('/dashboard')
   }
   const openMenu = () => {
-    setNavOpen(true)
+    if (!props.disableNavMenu) {
+      setNavOpen(true)
+    }
   }
 
   const variantAction = useBreakpointValue({
@@ -86,7 +88,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         </Text>
       </Flex>
 
-      {navOpen && (
+      {navOpen && !props.disableNavMenu && (
         <NavMenu
           currentSection={section as EditMode}
           isMenuOpen={navOpen}

@@ -97,10 +97,14 @@ const Home: NextPage = () => {
       window.opener.location.href = session.peer.metadata.url
     } catch (error) {
       console.error('Failed to approve session:', error)
-      await walletKit.rejectSession({
-        id: proposal.id,
-        reason: getSdkError('USER_REJECTED'),
-      })
+      try {
+        await walletKit.rejectSession({
+          id: proposal.id,
+          reason: getSdkError('USER_REJECTED'),
+        })
+      } catch (error) {
+        console.error('Failed to reject session:', error)
+      }
       window.opener.location.href = proposal?.verifyContext?.verified?.origin
     }
     window.close()
