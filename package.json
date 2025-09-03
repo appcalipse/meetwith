@@ -108,7 +108,7 @@
     "spacetime": "^7.7.0",
     "styled-components": "^4.2.0",
     "swiper": "^8.4.5",
-    "thirdweb": "^5.103.0",
+    "thirdweb": "5.105.40",
     "timezone-soft": "^1.5.2",
     "tsdav": "^2.0.2",
     "usehooks-ts": "^2.6.0",

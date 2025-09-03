@@ -29,11 +29,22 @@ export const ThemeSwitcher: React.FC = () => {
         />
         <Switch
           data-testid="change-theme"
-          colorScheme="primary"
+          colorScheme="orange"
           size="md"
           onChange={doToggle}
           defaultChecked={colorMode === 'light' ? false : true}
           isChecked={colorMode === 'light' ? false : true}
+          sx={{
+            '& .chakra-switch__track': {
+              bg: colorMode === 'light' ? 'gray.200' : 'gray.600',
+            },
+            '& .chakra-switch__thumb': {
+              bg: colorMode === 'light' ? 'white' : 'white',
+            },
+            '& .chakra-switch__track[data-checked]': {
+              bg: 'primary.400',
+            },
+          }}
         />
         <MoonIcon
           color={colorMode === 'dark' ? 'primary.400' : 'neutral.300'}
