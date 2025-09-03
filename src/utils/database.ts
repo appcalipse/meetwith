@@ -2414,30 +2414,27 @@ const addOrUpdateConnectedCalendar = async (
     throw new Error(error.message)
   }
   const calendar = data[0] as ConnectedCalendar
-
-  if (!isProduction) {
-    try {
-      const integration = getConnectedCalendarIntegration(
-        address.toLowerCase(),
+  try {
+    const integration = getConnectedCalendarIntegration(
+      address.toLowerCase(),
+      email,
+      provider,
+      payload
+    )
+    for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+      // don't parellelize this as it can make us hit google's rate limit
+      await handleWebHook(cal.calendarId, calendar.id, integration)
+    }
+  } catch (e) {
+    Sentry.captureException(e, {
+      extra: {
+        calendarId: calendar.id,
+        accountAddress: address,
         email,
         provider,
-        payload
-      )
-      for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
-        // don't parellelize this as it can make us hit google's rate limit
-        await handleWebHook(cal.calendarId, calendar.id, integration)
-      }
-    } catch (e) {
-      Sentry.captureException(e, {
-        extra: {
-          calendarId: calendar.id,
-          accountAddress: address,
-          email,
-          provider,
-        },
-      })
-      console.error('Error adding new calendar to existing meeting types:', e)
-    }
+      },
+    })
+    console.error('Error adding new calendar to existing meeting types:', e)
   }
   return calendar
 }
