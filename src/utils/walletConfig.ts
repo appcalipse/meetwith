@@ -76,12 +76,9 @@ export const NETWORKS: Network[] = supportedChains
   }))
 
 export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
-  // Get wallet-supported chains from chains.ts that are also in supportedPaymentChains
   const walletSupportedChains = supportedChains.filter(
     chain =>
-      chain.walletSupported &&
-      supportedPaymentChains.includes(chain.chain) &&
-      (isProduction ? chain.isProduction : !chain.isProduction)
+      chain.walletSupported && supportedPaymentChains.includes(chain.chain)
   )
 
   const configs: CryptoConfig[] = []
@@ -117,12 +114,13 @@ export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
           existingConfig.icon = getTokenIcon(tokenInfo.token) || ''
         }
       } else {
-        // Create new config
+        const price = await getPriceForChain(chain.chain, tokenInfo.token)
+
         const config: CryptoConfig = {
           name: tokenInfo.displayName || tokenInfo.token,
           symbol: tokenInfo.token,
           icon: tokenInfo.icon || getTokenIcon(tokenInfo.token) || '',
-          price: await getPriceForChain(chain.chain, tokenInfo.token),
+          price: price,
           chains: {
             [chain.name]: {
               tokenAddress: tokenInfo.contractAddress,
