@@ -32,7 +32,9 @@ import {
 import { useActiveWallet } from 'thirdweb/react'
 import { formatUnits } from 'viem'
 
+import { useCryptoBalance } from '@/hooks/useCryptoBalance'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
+import { useWallet } from '@/providers/WalletProvider'
 import {
   AcceptedToken,
   AcceptedTokenInfo,
@@ -59,8 +61,9 @@ import {
 } from '@/utils/constants/meeting-types'
 import { TokenType } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
-import { parseUnits, zeroAddress } from '@/utils/generic_utils'
+import { formatCurrency, parseUnits, zeroAddress } from '@/utils/generic_utils'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
+import { CurrencyService } from '@/utils/services/currency.service'
 import { useToastHelpers } from '@/utils/toasts'
 import { getTokenDecimals, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
@@ -131,6 +134,32 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
   const queryClient = useQueryClient()
   const { needsReconnection, attemptReconnection } = useSmartReconnect()
+  const { selectedCurrency } = useWallet()
+
+  const { balance: tokenBalance, isLoading: isBalanceLoading } =
+    useCryptoBalance(selectedToken?.address || '', selectedToken?.chainId || 0)
+
+  const { data: exchangeRate } = useQuery(
+    ['exchangeRate', selectedCurrency],
+    () => CurrencyService.getExchangeRate(selectedCurrency),
+    {
+      enabled: selectedCurrency !== 'USD',
+      staleTime: 1000 * 60 * 60,
+      cacheTime: 1000 * 60 * 60 * 24,
+    }
+  )
+
+  const convertCurrency = (usdAmount: number): number => {
+    if (selectedCurrency === 'USD' || !exchangeRate) {
+      return usdAmount
+    }
+    return usdAmount * exchangeRate
+  }
+
+  const formatCurrencyDisplay = (usdAmount: number): string => {
+    const convertedAmount = convertCurrency(usdAmount)
+    return formatCurrency(convertedAmount, selectedCurrency, 2)
+  }
 
   // Fetch payment preferences to check if PIN is set
   const { data: paymentPreferences } = useQuery(
@@ -666,6 +695,29 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                     ml="auto"
                   />
                 </Box>
+
+                {/* Token balance and network info */}
+                {selectedToken && (
+                  <HStack justify="space-between" mt={2}>
+                    <Text
+                      color="neutral.400"
+                      fontSize={{ base: '10px', md: '12px' }}
+                      fontWeight="400"
+                    >
+                      Token balance:
+                      {isBalanceLoading
+                        ? ' Loading...'
+                        : ' ' + formatCurrencyDisplay(tokenBalance)}
+                    </Text>
+                    <Text
+                      color="neutral.400"
+                      fontSize={{ base: '10px', md: '12px' }}
+                      fontWeight="400"
+                    >
+                      Network: {getNetworkDisplayName(sendNetwork)}
+                    </Text>
+                  </HStack>
+                )}
               </Box>
 
               {/* Select Network - Only show if not from token view */}
