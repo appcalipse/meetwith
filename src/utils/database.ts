@@ -4951,7 +4951,7 @@ const sendSessionIncomeEmail = async (
     // Respect host preferences: only send if 'receive-tokens' is enabled
     const prefs = await getPaymentPreferences(hostAddress)
     const notifications = prefs?.notification || []
-    if (!notifications.includes('receive-tokens')) return
+    if (!notifications.includes(PaymentNotificationType.RECEIVE_TOKENS)) return
 
     const hostEmail = await getAccountNotificationSubscriptionEmail(hostAddress)
     if (!hostEmail) return
@@ -5687,6 +5687,14 @@ const createPaymentPreferences = async (
       const pinHash = await createPinHash(data.pin)
       insertData = { ...data, pin_hash: pinHash }
       delete insertData.pin
+    }
+
+    // Set default notification preferences if not provided
+    if (!insertData.notification || insertData.notification.length === 0) {
+      insertData.notification = [
+        PaymentNotificationType.SEND_TOKENS,
+        PaymentNotificationType.RECEIVE_TOKENS,
+      ]
     }
 
     const { data: result, error } = await db.supabase
