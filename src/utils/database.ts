@@ -4929,10 +4929,11 @@ const sendWalletDebitEmail = async (
 
     await sendCryptoDebitEmail(senderEmail, {
       amount: tx.fiat_equivalent,
-      tokenSymbol: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
-      chainName: getChainDisplayName(tx.chain),
-      transactionHash: tx.transaction_hash,
-      recipientAddress: tx.receiver_address || fallbackReceiver || '',
+      currency: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      recipientName:
+        tx.receiver_address || fallbackReceiver || 'Unknown Recipient',
+      transactionId: tx.transaction_hash,
+      transactionDate: new Date().toLocaleString(),
     })
   } catch (e) {
     console.warn('Failed to send wallet transfer email:', e)
@@ -4950,18 +4951,17 @@ const sendSessionIncomeEmail = async (
     // Respect host preferences: only send if 'receive-tokens' is enabled
     const prefs = await getPaymentPreferences(hostAddress)
     const notifications = prefs?.notification || []
-    if (!notifications.includes('receive-tokens')) return
+    if (!notifications.includes(PaymentNotificationType.RECEIVE_TOKENS)) return
 
     const hostEmail = await getAccountNotificationSubscriptionEmail(hostAddress)
     if (!hostEmail) return
 
     await sendSessionBookingIncomeEmail(hostEmail, {
-      guestName: tx.guest_name || 'Guest',
       amount: tx.fiat_equivalent,
-      tokenSymbol: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
-      chainName: getChainDisplayName(tx.chain),
-      transactionHash: tx.transaction_hash,
-      meetingTypeTitle: meetingType?.title,
+      currency: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      senderName: tx.guest_name || 'Guest',
+      transactionId: tx.transaction_hash,
+      transactionDate: new Date().toLocaleString(),
     })
   } catch (e) {
     console.warn('Failed to send session booking income email:', e)
@@ -5687,6 +5687,14 @@ const createPaymentPreferences = async (
       const pinHash = await createPinHash(data.pin)
       insertData = { ...data, pin_hash: pinHash }
       delete insertData.pin
+    }
+
+    // Set default notification preferences if not provided
+    if (!insertData.notification || insertData.notification.length === 0) {
+      insertData.notification = [
+        PaymentNotificationType.SEND_TOKENS,
+        PaymentNotificationType.RECEIVE_TOKENS,
+      ]
     }
 
     const { data: result, error } = await db.supabase

@@ -28,6 +28,7 @@ export class PriceFeedService {
     this.#PRICE_FEEDS = {
       [SupportedChain.ARBITRUM]: {
         [AcceptedToken.USDC]: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
+        [AcceptedToken.USDT]: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
         [AcceptedToken.ETHER]: '0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612',
       },
       [SupportedChain.ARBITRUM_SEPOLIA]: {
@@ -35,7 +36,8 @@ export class PriceFeedService {
         [AcceptedToken.ETHER]: '0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165',
       },
       [SupportedChain.CELO]: {
-        [AcceptedToken.USDC]: '0xe38A27BE4E7d866327e09736F3C570F256FFd048',
+        [AcceptedToken.USDT]: '0x5e37AF40A7A344ec9b03CCD34a250F3dA9a20B02',
+        [AcceptedToken.CUSD]: '0xe38A27BE4E7d866327e09736F3C570F256FFd048',
         [AcceptedToken.CELO]: '0x0568fD19986748cEfF3301e55c0eb1E729E0Ab7e',
       },
       [SupportedChain.CELO_ALFAJORES]: {
@@ -53,6 +55,7 @@ export class PriceFeedService {
         [AcceptedToken.ETHER]: '0x694AA1769357215DE4FAC081bf1f309aDC325306',
       },
       [SupportedChain.METIS_ANDROMEDA]: {},
+
       [SupportedChain.CUSTOM]: {},
     }
   }

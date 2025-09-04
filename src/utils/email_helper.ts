@@ -950,6 +950,40 @@ export const sendChangeEmailEmail = async (
   return true
 }
 
+export const sendPinResetSuccessEmail = async (
+  toEmail: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'pin_reset_success')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'pin_reset_success',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
 export const sendEnablePinEmail = async (
   toEmail: string,
   enableUrl: string
@@ -1027,10 +1061,11 @@ export const sendCryptoDebitEmail = async (
   toEmail: string,
   locals: {
     amount: number
-    tokenSymbol: string
-    chainName: string
-    transactionHash: string
-    recipientAddress: string
+    currency: string
+    recipientName: string
+    transactionId: string
+    transactionDate: string
+    userName?: string
   }
 ): Promise<boolean> => {
   const email = new Email()
@@ -1054,17 +1089,16 @@ export const sendCryptoDebitEmail = async (
   }
   return true
 }
-
 // New: Session booking income notification to host
 export const sendSessionBookingIncomeEmail = async (
   toEmail: string,
   locals: {
-    guestName: string
     amount: number
-    tokenSymbol: string
-    chainName: string
-    transactionHash: string
-    meetingTypeTitle?: string
+    currency: string
+    senderName: string
+    transactionId: string
+    transactionDate: string
+    userName?: string
   }
 ): Promise<boolean> => {
   const email = new Email()
@@ -1079,6 +1113,52 @@ export const sendSessionBookingIncomeEmail = async (
     text: rendered.text,
     ...defaultResendOptions,
     tags: [{ name: 'wallet', value: 'session_income' }],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+export const sendEmailChangeSuccessEmail = async (
+  toEmail: string,
+  oldEmail: string,
+  newEmail: string,
+  userName?: string
+): Promise<boolean> => {
+  const email = new Email()
+  const now = new Date()
+  const changeDate = now.toLocaleDateString()
+  const changeTime = now.toLocaleTimeString()
+
+  const locals = {
+    userName: userName || 'there',
+    oldEmail,
+    newEmail,
+    changeDate,
+    changeTime,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'email_change_success')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'email_change_success',
+      },
+    ],
   }
   try {
     await resend.emails.send(msg)

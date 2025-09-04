@@ -59,6 +59,12 @@ const TransactionVerificationModal: React.FC<
     }
   }, [isOpen])
 
+  useEffect(() => {
+    if (isOpen && !codeSent) {
+      handleSendVerificationCode()
+    }
+  }, [isOpen])
+
   const clearInputs = () => {
     setPinInput('')
     setVerificationCode('')
@@ -154,7 +160,8 @@ const TransactionVerificationModal: React.FC<
               </Text>
               <Text fontSize="sm" color="gray.400">
                 Enter your transaction PIN and verification code to complete
-                this transaction
+                this transaction. A verification code will be sent to your email
+                automatically.
               </Text>
             </VStack>
 
@@ -217,6 +224,7 @@ const TransactionVerificationModal: React.FC<
                   size="lg"
                   type="number"
                   mask={!showVerificationCode}
+                  isDisabled={isSendingCode && !codeSent}
                 >
                   <PinInputField
                     borderColor="neutral.400"
@@ -250,25 +258,25 @@ const TransactionVerificationModal: React.FC<
                 />
               </HStack>
 
-              {/* Request Code Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                color="primary.400"
-                onClick={handleSendVerificationCode}
-                isLoading={isSendingCode}
-                isDisabled={countdown > 0}
-                _hover={{ bg: 'transparent', color: 'primary.300' }}
-                p={0}
-                minH="auto"
-                h="auto"
-              >
-                {countdown > 0
-                  ? `Request code (${countdown}s)`
-                  : codeSent
-                  ? 'Request code'
-                  : 'Request code'}
-              </Button>
+              {/* Status message and Request Code Button */}
+              <VStack align="flex-start" spacing={2}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  color="primary.400"
+                  onClick={handleSendVerificationCode}
+                  isLoading={isSendingCode}
+                  isDisabled={countdown > 0}
+                  _hover={{ bg: 'transparent', color: 'primary.300' }}
+                  p={0}
+                  minH="auto"
+                  h="auto"
+                >
+                  {countdown > 0
+                    ? `Request new code (${countdown}s)`
+                    : 'Request new code'}
+                </Button>
+              </VStack>
             </VStack>
 
             {/* Action buttons */}
