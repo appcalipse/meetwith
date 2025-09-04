@@ -1,4 +1,10 @@
-import { getChainId, SupportedChain, supportedChains } from '@/types/chains'
+import {
+  AcceptedToken,
+  getChainId,
+  getTokenIcon,
+  SupportedChain,
+  supportedChains,
+} from '@/types/chains'
 import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 import { getPriceForChain } from '@/utils/services/chainlink.service'
 
@@ -70,12 +76,9 @@ export const NETWORKS: Network[] = supportedChains
   }))
 
 export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
-  // Get wallet-supported chains from chains.ts that are also in supportedPaymentChains
   const walletSupportedChains = supportedChains.filter(
     chain =>
-      chain.walletSupported &&
-      supportedPaymentChains.includes(chain.chain) &&
-      (isProduction ? chain.isProduction : !chain.isProduction)
+      chain.walletSupported && supportedPaymentChains.includes(chain.chain)
   )
 
   const configs: CryptoConfig[] = []
@@ -102,13 +105,22 @@ export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
           tokenAddress: tokenInfo.contractAddress,
           chainId: chain.id,
         }
+
+        if (!existingConfig.icon && tokenInfo.icon) {
+          existingConfig.icon = tokenInfo.icon
+        }
+
+        if (!existingConfig.icon) {
+          existingConfig.icon = getTokenIcon(tokenInfo.token) || ''
+        }
       } else {
-        // Create new config
+        const price = await getPriceForChain(chain.chain, tokenInfo.token)
+
         const config: CryptoConfig = {
           name: tokenInfo.displayName || tokenInfo.token,
           symbol: tokenInfo.token,
-          icon: tokenInfo.icon || '',
-          price: await getPriceForChain(chain.chain, tokenInfo.token),
+          icon: tokenInfo.icon || getTokenIcon(tokenInfo.token) || '',
+          price: price,
           chains: {
             [chain.name]: {
               tokenAddress: tokenInfo.contractAddress,
@@ -139,7 +151,8 @@ export const getCryptoAssetsForNetwork = async (
         balance: '0 ' + crypto.symbol,
         usdValue: '$0',
         fullBalance: '0',
-        currencyIcon: crypto.icon,
+        currencyIcon:
+          crypto.icon || getTokenIcon(crypto.symbol as AcceptedToken) || '',
         tokenAddress: chainInfo?.tokenAddress || '',
         chainId: chainInfo?.chainId || network.chainId,
         networkName: networkName,

@@ -77,6 +77,10 @@ export const getTokenIcon = (token: AcceptedToken) => {
       return '/assets/tokens/USDT.svg'
     case AcceptedToken.CUSD:
       return '/assets/tokens/CUSD.png'
+    case AcceptedToken.CELO:
+      return '/assets/chains/Celo.svg'
+    case AcceptedToken.CEUR:
+      return '/assets/chains/Celo.svg'
     case AcceptedToken.METIS:
       return '/assets/chains/Metis.svg'
     case AcceptedToken.MATIC:

@@ -94,7 +94,7 @@ const devChains = [
   // SupportedChain.SEPOLIA,
   SupportedChain.ARBITRUM_SEPOLIA,
   SupportedChain.ARBITRUM,
-  // SupportedChain.CELO,
+  SupportedChain.CELO,
   // SupportedChain.CELO_ALFAJORES,
 ]
 const prodChains = [SupportedChain.ARBITRUM, SupportedChain.CELO]
