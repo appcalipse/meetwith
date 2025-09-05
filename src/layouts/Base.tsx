@@ -12,6 +12,11 @@ import DiscordOnboardingModal from '@/components/onboarding/DiscordOnboardingMod
 import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import { AccountContext } from '@/providers/AccountProvider'
 import customTheme from '@/styles/theme'
+import {
+  DASHBOARD_ROUTE_PREFIX,
+  PUBLIC_ADDRESS_ROUTE,
+  PUBLIC_USERNAME_ROUTE,
+} from '@/utils/constants'
 
 export const BaseLayout: React.FC<{
   children: ReactNode
@@ -24,10 +29,13 @@ export const BaseLayout: React.FC<{
     fallback: false,
   })
 
-  const isDashboardPage = router.pathname.startsWith('/dashboard')
+  const isDashboardPage = router.pathname.startsWith(DASHBOARD_ROUTE_PREFIX)
+  const isPublicPage =
+    router.pathname === PUBLIC_USERNAME_ROUTE ||
+    router.pathname === PUBLIC_ADDRESS_ROUTE
 
-  const navVisible = !(logged && isDashboardPage && !isMobile)
-  const footerVisible = !(logged && isDashboardPage)
+  const navVisible = !(logged && isDashboardPage && !isMobile) && !isPublicPage
+  const footerVisible = !(logged && isDashboardPage) && !isPublicPage
 
   return (
     <ChakraProvider theme={customTheme}>
