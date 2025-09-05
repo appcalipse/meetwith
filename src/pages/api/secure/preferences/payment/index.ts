@@ -12,8 +12,8 @@ import {
 
 interface CreatePaymentPreferencesBody {
   data: Partial<{
-    pin?: string
-    pin_hash?: string
+    pin?: string | null
+    pin_hash?: string | null
     default_chain_id?: number
     notification?: Array<'send-tokens' | 'receive-tokens'>
   }>
@@ -22,8 +22,8 @@ interface CreatePaymentPreferencesBody {
 
 interface UpdatePaymentPreferencesBody {
   updates: Partial<{
-    pin?: string
-    pin_hash?: string
+    pin?: string | null
+    pin_hash?: string | null
     default_chain_id?: number
     notification?: Array<'send-tokens' | 'receive-tokens'>
   }>
@@ -69,22 +69,42 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const { updates, oldPin }: UpdatePaymentPreferencesBody = req.body
 
     try {
-      if (updates.pin && typeof updates.pin === 'string') {
-        if (!oldPin || typeof oldPin !== 'string') {
-          return res.status(400).json({
-            error: 'Current PIN is required to update to a new PIN',
-          })
-        }
+      if ('pin' in updates) {
+        if (updates.pin === null) {
+          // Disabling PIN - validate current PIN first
+          if (!oldPin || typeof oldPin !== 'string') {
+            return res.status(400).json({
+              error: 'Current PIN is required to disable PIN',
+            })
+          }
 
-        const isOldPinValid = await verifyUserPin(account_address, oldPin)
-        if (!isOldPinValid) {
-          return res.status(401).json({
-            error: 'Current PIN is incorrect',
-          })
-        }
+          const isOldPinValid = await verifyUserPin(account_address, oldPin)
+          if (!isOldPinValid) {
+            return res.status(401).json({
+              error: 'Current PIN is incorrect',
+            })
+          }
 
-        updates.pin_hash = await createPinHash(updates.pin)
-        delete updates.pin
+          updates.pin_hash = null
+          delete updates.pin
+        } else if (updates.pin && typeof updates.pin === 'string') {
+          // Setting new PIN - validate current PIN first
+          if (!oldPin || typeof oldPin !== 'string') {
+            return res.status(400).json({
+              error: 'Current PIN is required to update to a new PIN',
+            })
+          }
+
+          const isOldPinValid = await verifyUserPin(account_address, oldPin)
+          if (!isOldPinValid) {
+            return res.status(401).json({
+              error: 'Current PIN is incorrect',
+            })
+          }
+
+          updates.pin_hash = await createPinHash(updates.pin)
+          delete updates.pin
+        }
       }
 
       const updatedPreferences = await updatePaymentPreferences(
