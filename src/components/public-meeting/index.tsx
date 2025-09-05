@@ -2,6 +2,9 @@ import {
   Container,
   Flex,
   HStack,
+  Image,
+  Link,
+  Text,
   useColorModeValue,
   useToast,
   VStack,
@@ -1254,11 +1257,12 @@ const PublicPage: FC<IProps> = props => {
           <Container
             bg={bgColor}
             maxW={{ base: '100%', md: '95%' }}
-            mt={{ md: 36, base: 0 }}
-            pt={{ base: 36, md: 20 }}
+            mt={{ md: 8, base: 0 }}
+            mb={{ md: 8, base: 0 }}
+            pt={24}
             flex={1}
             width={'100%'}
-            pb={24}
+            pb={8}
             marginX="auto"
             borderRadius="lg"
             transitionProperty="width"
@@ -1293,6 +1297,28 @@ const PublicPage: FC<IProps> = props => {
             ) : (
               renderStep()
             )}
+
+            {/* Powered by Meetwith branding */}
+            <Link href="/" _hover={{ textDecoration: 'none' }}>
+              <HStack
+                spacing={2}
+                justify="center"
+                mt={24}
+                mb={0}
+                cursor="pointer"
+                _hover={{ opacity: 0.8 }}
+              >
+                <Image
+                  src="/assets/logo.svg"
+                  alt="Meetwith"
+                  width="36.89px"
+                  height="23px"
+                />
+                <Text fontSize="12.8px" color="neutral.300" fontWeight={500}>
+                  Powered by Meetwith
+                </Text>
+              </HStack>
+            </Link>
           </Container>
         </VStack>
       </ScheduleStateContext.Provider>
