@@ -27,15 +27,8 @@ import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
+import { Avatar } from '../profile/components/Avatar'
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
-
-const Avatar = dynamic(
-  async () => (await import('@ukstv/jazzicon-react')).Jazzicon,
-  {
-    ssr: false,
-    loading: () => <Spinner />,
-  }
-)
 
 interface IGroupMemberCard extends GroupMember {
   currentAccount: Account
@@ -145,7 +138,11 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           display="block"
           flexBasis={{ base: '32px', md: '48px', lg: '64px' }}
         >
-          <Avatar address={props.address || ''} />
+          <Avatar
+            address={props.address || ''}
+            avatar_url={props.avatar_url}
+            name={props.displayName}
+          />
         </Box>
         <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
           <Heading size={{ base: 'xs', md: 'sm' }}>
@@ -161,7 +158,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               design_type="link"
               pl={0}
               maxW="335px"
-              px={{ base: 0, md: 4 }}
+              px={0}
               childStyle={{
                 style: {
                   width: '150px',
