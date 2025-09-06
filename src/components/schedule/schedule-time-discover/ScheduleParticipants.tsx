@@ -11,10 +11,14 @@ import React, { useContext, useMemo } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
-import { ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
+import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
+import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
+import { ellipsizeAddress } from '@/utils/user_manager'
 
 interface ScheduleParticipantsProps {
   isMobile?: boolean
@@ -26,11 +30,11 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
     setGroupAvailability,
     groupParticipants,
     setGroupParticipants,
-    meetingMembers,
     participants,
     groups: allGroups,
-  } = useContext(ScheduleContext)
+  } = useParticipants()
   const { currentAccount } = useContext(AccountContext)
+  const { setInviteModalOpen } = useScheduleNavigation()
   const groups = useMemo(
     () =>
       participants.filter(val => {
@@ -38,12 +42,36 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       }),
     [participants]
   )
-  const allAvailabilities = useMemo(() => {
-    return [...new Set(Object.values(groupAvailability).flat())].map(val =>
-      val.toLowerCase()
-    )
-  }, [groupAvailability])
-  const handleAvailabilityChange = (account_address: string) => {
+  const meetingMembers = useMemo(
+    () =>
+      getMergedParticipants(
+        participants,
+        allGroups,
+        groupParticipants,
+        currentAccount?.address
+      )
+        .concat([
+          {
+            account_address: currentAccount?.address,
+            name: currentAccount?.preferences?.name,
+            type: ParticipantType.Scheduler,
+            status: ParticipationStatus.Accepted,
+            slot_id: '',
+            meeting_id: '',
+          },
+        ])
+        .filter(val => !val.isHidden),
+    [participants, allGroups, groupParticipants]
+  )
+  const allAvailabilities = useMemo(
+    () =>
+      deduplicateArray(Object.values(groupAvailability).flat()).map(val =>
+        val.toLowerCase()
+      ),
+    [groupAvailability]
+  )
+  const handleAvailabilityChange = (account_address?: string) => {
+    if (!account_address) return
     const keys = Object.keys(groupAvailability)
     for (const key of keys) {
       const allGroupParticipants = groupAvailability[key] || []
@@ -130,12 +158,12 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                 <Box
                   onClick={() =>
                     handleAvailabilityChange(
-                      participant.address?.toLowerCase() || ''
+                      participant.account_address?.toLowerCase()
                     )
                   }
                 >
                   {allAvailabilities.includes(
-                    participant.address?.toLowerCase() || ''
+                    participant.account_address?.toLowerCase() || ''
                   ) ? (
                     <AiOutlineEye cursor="pointer" size={30} color="#F9B19A" />
                   ) : (
@@ -163,9 +191,9 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                     textOverflow="ellipsis"
                     w={'fit-content'}
                   >
-                    {participant.preferences.name || 'You'}
+                    {participant.name || participant.guest_email}
                   </Heading>
-                  {currentAccount?.address === participant.address && (
+                  {participant.type === ParticipantType.Scheduler && (
                     <Text fontSize={'sm'} color={'neutral.200'}>
                       Organizer
                     </Text>
@@ -178,7 +206,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                 color="#CBD2D9"
                 onClick={() =>
                   handleParticipantRemove(
-                    participant.address?.toLowerCase() || ''
+                    participant.account_address?.toLowerCase() || ''
                   )
                 }
               />
@@ -186,7 +214,14 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
           )
         })}
       </VStack>
-      <Button variant="outline" colorScheme="primary" w="100%" px={4} py={3}>
+      <Button
+        variant="outline"
+        colorScheme="primary"
+        w="100%"
+        px={4}
+        py={3}
+        onClick={() => setInviteModalOpen(true)}
+      >
         Add more participants
       </Button>
     </VStack>
