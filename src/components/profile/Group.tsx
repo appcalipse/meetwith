@@ -33,6 +33,7 @@ import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
 import Groups, { GroupRef } from '../group/Groups'
+import SearchInput from '../ui/SearchInput'
 interface IGroupModal {
   openLeaveModal: () => void
   pickGroupId: (groupId: string) => void
@@ -183,35 +184,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             md: 'row',
           }}
         >
-          <Box w={{ base: '100%', md: 'fit-content' }} pos="relative" h="100%">
-            <FormLabel
-              display="flex"
-              htmlFor="search"
-              pos="absolute"
-              left={3}
-              insetY={0}
-              h="100%"
-              justifyContent="center"
-              alignItems="center"
-            >
-              <RiSearch2Line color="neutral.400" />
-            </FormLabel>
-            <Input
-              pl={10}
-              w={{ base: '100%', md: 'fit-content' }}
-              h={12}
-              type="search"
-              placeholder="Search for group"
-              id="search"
-              defaultValue={debouncedValue}
-              rounded={6}
-              onChange={e => setValue(e.target.value)}
-              autoComplete="off"
-              _placeholder={{
-                color: 'neutral.400',
-              }}
-            />
-          </Box>
+          <SearchInput
+            setValue={setValue}
+            value={debouncedValue}
+            placeholder="Search for group"
+          />
           <Button
             onClick={() => router.push('/dashboard/create-group')}
             flexShrink={0}
