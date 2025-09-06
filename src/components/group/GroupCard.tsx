@@ -25,12 +25,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { useRouter } from 'next/router'
 import React, { Fragment, useContext, useId, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
-import {
-  IoMdPersonAdd,
-  IoMdSettings,
-  IoMdShare,
-  IoMdShareAlt,
-} from 'react-icons/io'
+import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 import { IoShareSocialOutline } from 'react-icons/io5'
 
 import { GroupContext } from '@/components/group/Groups'
