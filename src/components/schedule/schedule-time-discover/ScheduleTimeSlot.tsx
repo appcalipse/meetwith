@@ -44,6 +44,7 @@ const ScheduleTimeSlot = (props: ScheduleTimeSlotProps) => {
     duration,
     participantAvailabilities,
   } = props
+
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const [state, setState] = React.useState<State>(State.NONE_AVAILABLE)
   const [userState, setUserState] = React.useState<Array<UserState>>([])
