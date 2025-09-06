@@ -7,13 +7,13 @@ import {
   Switch,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useContext, useEffect, useMemo, useState } from 'react'
+import React, { FC, useEffect, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 
 import { Availability } from '@/components/icons/Availability'
 import ScheduleGroupMember from '@/components/schedule/ScheduleGroupMember'
-import { ScheduleContext } from '@/pages/dashboard/schedule'
-import { AccountContext } from '@/providers/AccountProvider'
+import useAccountContext from '@/hooks/useAccountContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { GetGroupsFullResponse, GroupMember } from '@/types/Group'
 import { isGroupParticipant } from '@/types/schedule'
 
@@ -22,7 +22,7 @@ type ScheduleGroupItemProps = GetGroupsFullResponse
 // eslint-disable-next-line react/display-name
 const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
   const [groupMembers, setGroupsMembers] = useState<Array<GroupMember>>([])
-  const { currentAccount } = useContext(AccountContext)
+  const currentAccount = useAccountContext()
 
   const {
     groupAvailability,
@@ -32,7 +32,7 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
     removeGroup,
     participants,
     groupParticipants,
-  } = useContext(ScheduleContext)
+  } = useParticipants()
   const [collapsed, setCollapsed] = useState(true)
   const isExpanded = useMemo(
     () =>
