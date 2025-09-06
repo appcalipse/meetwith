@@ -1,9 +1,8 @@
-import { AddIcon, InfoIcon, WarningTwoIcon } from '@chakra-ui/icons'
+import { WarningTwoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
   Checkbox,
-  Divider,
   Flex,
   FormControl,
   FormHelperText,
@@ -14,9 +13,7 @@ import {
   Input,
   Radio,
   RadioGroup,
-  Select,
   Text,
-  useColorModeValue,
   useDisclosure,
   useToast,
   VStack,
@@ -25,29 +22,27 @@ import DeleteMeetingModal from '@components/schedule/DeleteMeetingModal'
 import ScheduleParticipantsOwnersModal from '@components/schedule/ScheduleParticipantsOwnersModal'
 import ScheduleParticipantsSchedulerModal from '@components/schedule/ScheduleParticipantsSchedulerModal'
 import { Select as ChakraSelect } from 'chakra-react-select'
-import { format } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronDown } from 'react-icons/fa'
 
-import { ChipInput } from '@/components/chip-input'
-import { SingleDatepicker } from '@/components/input-date-picker'
-import { InputTimePicker } from '@/components/input-time-picker'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal'
 import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
-import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
+import { useScheduleActions } from '@/providers/schedule/ActionsContext'
+import {
+  Page,
+  useScheduleNavigation,
+} from '@/providers/schedule/NavigationContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
+import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { isGroupParticipant, Participant } from '@/types/schedule'
-import { durationToHumanReadable } from '@/utils/calendar_manager'
-import { NO_GROUP_KEY } from '@/utils/constants/group'
 import {
-  DEFAULT_GROUP_SCHEDULING_DURATION,
   MeetingNotificationOptions,
   MeetingRepeatOptions,
   MeetingSchedulePermissions,
@@ -61,8 +56,6 @@ const ScheduleBase = () => {
   const { query } = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const [isTitleValid, setIsTitleValid] = useState(true)
-  const [isDurationValid, setIsDurationValid] = useState(true)
-  const [isParticipantsValid, setIsParticipantsValid] = useState(true)
   const toast = useToast()
   const { onOpen, isOpen, onClose } = useDisclosure()
   const {
@@ -75,58 +68,47 @@ const ScheduleBase = () => {
     isOpen: isDeleteOpen,
     onClose: OnSchedulerClose,
   } = useDisclosure()
+  const { handlePageSwitch } = useScheduleNavigation()
+
   const {
-    participants,
-    setParticipants,
-    duration,
     title,
     content,
-    handleContentChange,
-    handleDurationChange,
-    handleTitleChange,
-    handlePageSwitch,
-    handleSchedule,
+    duration,
     pickedTime,
-    handleTimePick,
-    isScheduling,
     meetingProvider,
     meetingUrl,
+    meetingNotification,
+    meetingRepeat,
+    isScheduling,
+    selectedPermissions,
+    setTitle,
     setMeetingProvider,
     setMeetingUrl,
-    setGroupAvailability,
-    meetingNotification,
     setMeetingNotification,
-    meetingRepeat,
     setMeetingRepeat,
-    setGroupParticipants,
-    handleCancel,
+    setSelectedPermissions,
+    setContent,
+  } = useScheduleState()
+  const {
+    groupParticipants,
+    groups,
+    meetingOwners,
+    participants,
+    setMeetingOwners,
+  } = useParticipants()
+  const { handleCancel, handleSchedule } = useScheduleActions()
+  const {
     isDeleting,
     canDelete,
     canCancel,
     isScheduler,
-    selectedPermissions,
-    setSelectedPermissions,
-    groups,
-    groupParticipants,
-    meetingOwners,
-    setMeetingOwners,
     canEditMeetingDetails,
-  } = useContext(ScheduleContext)
+  } = useParticipantPermissions()
   const handleSubmit = () => {
     if (!title) {
       setIsTitleValid(false)
     } else {
       setIsTitleValid(true)
-    }
-    if (!duration) {
-      setIsDurationValid(false)
-    } else {
-      setIsDurationValid(true)
-    }
-    if (participants.length === 0) {
-      setIsParticipantsValid(false)
-    } else {
-      setIsParticipantsValid(true)
     }
     if (!title || !duration || participants.length === 0) {
       return
@@ -142,46 +124,6 @@ const ScheduleBase = () => {
     currentAccount?.preferences?.meetingProviders || []
   ).concat(MeetingProvider.CUSTOM)
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
-  const iconColor = useColorModeValue('gray.800', 'white')
-  const onParticipantsChange = (_participants: Array<ParticipantInfo>) => {
-    setParticipants(_prev => {
-      const oldGroups = _prev.filter(_participantOld =>
-        isGroupParticipant(_participantOld)
-      )
-
-      oldGroups.forEach(oldGroup => {
-        const participants = _participants.filter(_participantOld =>
-          isGroupParticipant(_participantOld)
-        )
-        const isGroupExist = participants.find(val => val.id === oldGroup.id)
-        if (!isGroupExist) {
-          setGroupParticipants(prev => ({
-            ...prev,
-            [oldGroup.id]: [],
-          }))
-          setGroupAvailability(prev => ({
-            ...prev,
-            [oldGroup.id]: [],
-          }))
-        }
-      })
-      return _participants as Array<Participant>
-    })
-    if (_participants.length) {
-      setIsParticipantsValid(true)
-    }
-    const addresses = _participants
-      .map(val => val.account_address)
-      .filter(val => val != undefined)
-    setGroupAvailability(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: addresses as string[],
-    }))
-    setGroupParticipants(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: addresses as string[],
-    }))
-  }
 
   const type = useMemo(
     () =>
@@ -213,9 +155,6 @@ const ScheduleBase = () => {
   }, [currentAccount, duration])
 
   useEffect(() => {
-    if (participants.length > 0) {
-      setIsParticipantsValid(true)
-    }
     const mergedParticipants = getMergedParticipants(
       participants,
       groups,
@@ -317,7 +256,7 @@ const ScheduleBase = () => {
                   if (!isTitleValid && e.target.value) {
                     setIsTitleValid(true)
                   }
-                  return handleTitleChange(e.target.value)
+                  return setTitle(e.target.value)
                 }}
                 errorBorderColor="red.500"
                 isInvalid={!isTitleValid}
@@ -334,7 +273,7 @@ const ScheduleBase = () => {
             <RichTextEditor
               id="info"
               value={content}
-              onValueChange={handleContentChange}
+              onValueChange={setContent}
               placeholder="Any information you want to share prior to the meeting?"
               isDisabled={!canEditMeetingDetails || isScheduling}
             />
