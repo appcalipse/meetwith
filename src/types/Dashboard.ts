@@ -11,6 +11,7 @@ export enum EditMode {
   GATES = 'gates',
   WALLET = 'wallet',
   CLIENTBOARD = 'clientboard',
+  QUICKPOLL = 'quickpoll',
   SIGNOUT = 'signout',
 }
 

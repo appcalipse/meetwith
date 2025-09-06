@@ -25,6 +25,7 @@ import {
   FaWallet,
 } from 'react-icons/fa'
 import { FaUserGroup } from 'react-icons/fa6'
+import { FaUsers } from 'react-icons/fa6'
 
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
@@ -92,6 +93,11 @@ export const NavMenu: React.FC<{
         icon: FaUserGroup,
         mode: EditMode.CONTACTS,
         badge: requestCount,
+      },
+      {
+        name: 'QuickPoll',
+        icon: FaUsers,
+        mode: EditMode.QUICKPOLL,
       },
       {
         name: 'Session Settings',
