@@ -16,7 +16,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         account_address,
         extractQuery(req.query, 'limit'),
         extractQuery(req.query, 'offset'),
-        extractQuery(req.query, 'search')
+        extractQuery(req.query, 'search'),
+        extractQuery(req.query, 'includeInvites') === 'true'
       )
       return res.status(200).json(groups)
     } catch (e) {
