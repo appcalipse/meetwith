@@ -626,9 +626,10 @@ export const syncMeeting = async (
 export const getGroupsFull = async (
   limit?: number,
   offset?: number,
-  search?: string
+  search?: string,
+  includeInvites = true
 ): Promise<Array<GetGroupsFullResponse>> => {
-  let url = `/secure/group/full?limit=${limit}&offset=${offset}`
+  let url = `/secure/group/full?limit=${limit}&offset=${offset}&includeInvites=${includeInvites}`
   if (search) {
     url += `&search=${search}`
   }
