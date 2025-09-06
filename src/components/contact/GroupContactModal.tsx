@@ -23,23 +23,29 @@ import {
   Tr,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
-import { Jazzicon } from '@ukstv/jazzicon-react'
 import React, { useEffect, useState } from 'react'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { LeanContact } from '@/types/Contacts'
 import { getContactsLean } from '@/utils/api_helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
-// TODO: Add coupon countdown
+
+import { Avatar } from '../profile/components/Avatar'
 type Props = {
   isOpen: boolean
   onClose: () => void
   isContactAlreadyAdded: (address: LeanContact) => boolean
   addUserFromContact: (address: LeanContact) => void
   removeUserFromContact: (address: LeanContact) => void
+  title?: string
+  buttonLabel?: string
 }
 
-const GroupContactModal = (props: Props) => {
+const GroupContactModal = ({
+  title = 'Invite Group Members',
+  buttonLabel = 'Add to Group',
+  ...props
+}: Props) => {
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const [result, setResult] = React.useState<Array<LeanContact>>([])
   const [noMoreFetch, setNoMoreFetch] = useState(false)
@@ -73,8 +79,6 @@ const GroupContactModal = (props: Props) => {
     if (search.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
-    // TODO: Write sql function on supabase to handle this search
-
     setResult(search)
   }
   const handleLoadMore = async () => {
@@ -106,7 +110,7 @@ const GroupContactModal = (props: Props) => {
           alignItems="center"
           px={10}
         >
-          <Heading size={'md'}>Invite group members</Heading>
+          <Heading size={'md'}>{title}</Heading>
           <ModalCloseButton />
         </ModalHeader>
         <ModalBody
@@ -168,10 +172,16 @@ const GroupContactModal = (props: Props) => {
                       >
                         <Td colSpan={4}>
                           <HStack>
-                            <Jazzicon
-                              address={account.address || ''}
-                              className="contact-avatar"
-                            />
+                            <Box className="contact-avatar">
+                              <Avatar
+                                avatar_url={account.avatar_url}
+                                address={account.address || ''}
+                                name={
+                                  account.name ||
+                                  ellipsizeAddress(account.address)
+                                }
+                              />
+                            </Box>
                             <Text maxW={200} isTruncated>
                               {account.name || account.address}
                             </Text>
@@ -198,7 +208,7 @@ const GroupContactModal = (props: Props) => {
                               colorScheme="primary"
                               onClick={() => props.addUserFromContact(account)}
                             >
-                              Add to group
+                              {buttonLabel}
                             </Button>
                           )}
                         </Td>
