@@ -47,6 +47,7 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
+  GetGroupsFullRawResponse,
   GetGroupsFullResponse,
   Group,
   GroupInviteFilters,
@@ -1477,9 +1478,10 @@ const getGroupsAndMembers = async (
   address: string,
   limit?: string,
   offset?: string,
-  search?: string
+  search?: string,
+  includeInvites?: boolean
 ): Promise<Array<GetGroupsFullResponse>> => {
-  const { data, error } = await db.supabase.rpc(
+  const { data, error } = await db.supabase.rpc<GetGroupsFullRawResponse>(
     'get_user_groups_with_members',
     {
       user_address: address.toLowerCase(),
@@ -1497,7 +1499,13 @@ const getGroupsAndMembers = async (
     id: group.group_id,
     name: group.group_name,
     slug: group.group_slug,
-    members: group.members || [],
+    members:
+      group.members.filter(member => {
+        if (includeInvites) {
+          return true
+        }
+        return !member.invitePending
+      }) || [],
   })) as GetGroupsFullResponse[]
 }
 
