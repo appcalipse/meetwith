@@ -238,7 +238,11 @@ export const NavMenu: React.FC<{
           <VStack width="100%" gap={6} px={8}>
             <HStack width="100%" textAlign="center">
               <Box width="64px" height="64px">
-                <Avatar account={currentAccount} />
+                <Avatar
+                  address={currentAccount.address}
+                  avatar_url={currentAccount.preferences?.avatar_url || ''}
+                  name={getAccountDisplayName(currentAccount)}
+                />
               </Box>
 
               <VStack ml={2} flex={1} alignItems="flex-start">
@@ -290,7 +294,11 @@ export const NavMenu: React.FC<{
           >
             <VStack width="100%" textAlign="center">
               <Box width="120px" height="120px" mb={2}>
-                <Avatar account={currentAccount} />
+                <Avatar
+                  address={currentAccount.address}
+                  avatar_url={currentAccount.preferences?.avatar_url || ''}
+                  name={getAccountDisplayName(currentAccount)}
+                />
               </Box>
 
               <Text fontSize="lg" fontWeight={500}>
