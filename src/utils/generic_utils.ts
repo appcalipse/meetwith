@@ -187,3 +187,7 @@ export const formatCurrency = (
     minimumFractionDigits,
   }).format(amount)
 }
+
+export const deduplicateArray = <T = string>(arr: T[]): T[] => {
+  return Array.from(new Set(arr))
+}
