@@ -18,19 +18,32 @@ import { Select, SingleValue } from 'chakra-react-select'
 import { addDays, isSameMonth } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
-import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
-import { fetchBusySlotsRawForMultipleAccounts } from '@/utils/api_helper'
+import useAccountContext from '@/hooks/useAccountContext'
+import {
+  Page,
+  useScheduleNavigation,
+} from '@/providers/schedule/NavigationContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
+import { useScheduleState } from '@/providers/schedule/ScheduleContext'
+import {
+  fetchBusySlotsRawForMultipleAccounts,
+  getExistingAccounts,
+} from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import { customSelectComponents } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
+import { deduplicateArray } from '@/utils/generic_utils'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 
+import GroupParticipantsItem from '../participants/GroupParticipantsItem'
 import ScheduleTimeSlot from './ScheduleTimeSlot'
 
 export enum State {
@@ -78,20 +91,26 @@ type Dates = {
 
 export function SchedulePickTime() {
   const {
-    groupAvailability,
     timezone,
     setTimezone,
     currentSelectedDate,
-    handleTimePick,
+    setPickedTime,
     setCurrentSelectedDate,
-    handlePageSwitch,
     pickedTime,
     duration,
-    handleDurationChange,
-    meetingMembers,
-    canEditMeetingDetails,
+    setDuration,
     isScheduling,
-  } = useContext(ScheduleContext)
+  } = useScheduleState()
+  const { canEditMeetingDetails } = useParticipantPermissions()
+  const currentAccount = useAccountContext()
+  const {
+    groupAvailability,
+    meetingMembers,
+    setMeetingMembers,
+    participants,
+    groups,
+  } = useParticipants()
+  const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
   const [isLoading, setIsLoading] = useState(false)
   const [availableSlots, setAvailableSlots] = useState<
@@ -232,12 +251,20 @@ export function SchedulePickTime() {
         .setZone(timezone)
         .endOf('month')
         .toJSDate()
-      const accounts = [...new Set(Object.values(groupAvailability).flat())]
-      const availableSlots = await fetchBusySlotsRawForMultipleAccounts(
-        accounts,
-        monthStart,
-        monthEnd
+      const accounts = deduplicateArray(Object.values(groupAvailability).flat())
+      const allParticipants = getMergedParticipants(
+        participants,
+        groups,
+        groupAvailability,
+        undefined
       )
+        .map(val => val.account_address)
+        .concat([currentAccount?.address]) as string[]
+      const [availableSlots, meetingMembers] = await Promise.all([
+        fetchBusySlotsRawForMultipleAccounts(accounts, monthStart, monthEnd),
+        getExistingAccounts(allParticipants),
+      ])
+      setMeetingMembers(meetingMembers)
       const accountSlots = accounts.map(account => {
         return availableSlots.filter(slot => slot.account_address === account)
       })
@@ -274,12 +301,14 @@ export function SchedulePickTime() {
     setIsLoading(false)
   }
   useEffect(() => {
+    if (inviteModalOpen) return
     handleSlotLoad()
   }, [
     groupAvailability,
     currentSelectedDate.getMonth(),
     duration,
     meetingMembers,
+    inviteModalOpen,
   ])
   useEffect(() => {
     setDates(getDates())
@@ -410,7 +439,9 @@ export function SchedulePickTime() {
             <ChakraSelect
               id="duration"
               placeholder="Duration"
-              onChange={e => handleDurationChange(Number(e.target.value))}
+              onChange={e =>
+                Number(e.target.value) && setDuration(Number(e.target.value))
+              }
               value={duration}
               borderColor="neutral.400"
               width={'max-content'}
@@ -548,7 +579,7 @@ export function SchedulePickTime() {
                               meetingMembers={meetingMembers}
                               participantAvailabilities={availabilityAddresses}
                               handleTimePick={time => {
-                                handleTimePick(time)
+                                setPickedTime(time)
                                 handlePageSwitch(Page.SCHEDULE_DETAILS)
                               }}
                               timezone={timezone}
