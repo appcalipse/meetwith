@@ -639,22 +639,18 @@ export const syncMeeting = async (
     })
   } catch (e) {}
 }
-export const getGroups = async (
-  limit?: number,
-  offset?: number
-): Promise<Array<GetGroupsResponse>> => {
-  const response = await internalFetch<Array<GetGroupsResponse>>(
-    `/secure/group/user?limit=${limit}&offset=${offset}`
-  )
-  return response
-}
+
 export const getGroupsFull = async (
   limit?: number,
-  offset?: number
+  offset?: number,
+  search?: string,
+  includeInvites = true
 ): Promise<Array<GetGroupsFullResponse>> => {
-  const response = await internalFetch<Array<GetGroupsFullResponse>>(
-    `/secure/group/full?limit=${limit}&offset=${offset}`
-  )
+  let url = `/secure/group/full?limit=${limit}&offset=${offset}&includeInvites=${includeInvites}`
+  if (search) {
+    url += `&search=${search}`
+  }
+  const response = await internalFetch<Array<GetGroupsFullResponse>>(url)
   return response
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
@@ -664,10 +660,12 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   return response
 }
 
-export const getGroupsInvites = async (address: string) => {
-  const response = await internalFetch<Array<EmptyGroupsResponse>>(
-    `/secure/group/user/${address}`
-  )
+export const getGroupsInvites = async (search?: string) => {
+  let url = `/secure/group/invites`
+  if (search) {
+    url += `?search=${search}`
+  }
+  const response = await internalFetch<Array<EmptyGroupsResponse>>(url)
   return response
 }
 
@@ -1148,8 +1146,7 @@ export const getSuggestedSlots = async (
   addresses: string[],
   startDate: Date,
   endDate: Date,
-  duration: number,
-  includePast = false
+  duration: number
 ): Promise<Interval[]> => {
   try {
     return (
@@ -1158,7 +1155,6 @@ export const getSuggestedSlots = async (
         startDate,
         endDate,
         duration,
-        includePast,
       })
     ).map(slot => ({
       start: new Date(slot.start),
@@ -1323,6 +1319,10 @@ export const inviteUsers = async (
     Sentry.captureException(e)
     throw e
   }
+}
+
+export const getGroupInviteCount = async () => {
+  return await internalFetch<number>(`/secure/group/invites/metrics`)
 }
 
 export const createTelegramHash = async () => {

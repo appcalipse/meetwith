@@ -167,7 +167,7 @@ export const extractQuery = <T extends string = string>(
     result = value
   }
 
-  if (!result) return undefined
+  if (!result || result === 'undefined') return undefined
 
   // If valid values provided, check against them
   if (validValues && !validValues.includes(result as T)) {
@@ -186,4 +186,8 @@ export const formatCurrency = (
     currency,
     minimumFractionDigits,
   }).format(amount)
+}
+
+export const deduplicateArray = <T = string>(arr: T[]): T[] => {
+  return Array.from(new Set(arr))
 }

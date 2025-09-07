@@ -31,7 +31,7 @@ const redirectBasedOnLogin = async (
   redirectType: AuthRedirect
 ): Promise<Account | null> => {
   const currentAccount = await validateAuthentication(ctx)
-  const currentRoute = ctx.asPath || (ctx.req ? ctx.req.url : '')
+  const currentRoute = ctx.asPath || ''
   const shouldRedirect =
     redirectType === AuthRedirect.REDIRECT_IF_AUTHED
       ? !!currentAccount
@@ -44,7 +44,11 @@ const redirectBasedOnLogin = async (
 
   let redirectUrl = route
   if (currentRoute && currentRoute !== route) {
-    redirectUrl = `${route}?redirect=${encodeURIComponent(currentRoute)}`
+    let redirectQuery = ''
+    if (currentRoute) {
+      redirectQuery = `?redirect=${encodeURIComponent(currentRoute)}`
+    }
+    redirectUrl = `${route}${redirectQuery}`
   }
 
   // Only redirect here if we are on server side
@@ -87,7 +91,11 @@ const withAuthRedirect =
       ) {
         let redirectUrl = route
         if (currentRoute && currentRoute !== route) {
-          redirectUrl = `${route}?redirect=${encodeURIComponent(currentRoute)}`
+          let redirectQuery = ''
+          if (currentRoute) {
+            redirectQuery = `?redirect=${encodeURIComponent(currentRoute)}`
+          }
+          redirectUrl = `${route}${redirectQuery}`
         }
         router.push(redirectUrl)
 

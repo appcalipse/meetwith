@@ -48,6 +48,7 @@ export const CopyLinkButton = ({
         onClick={copyLink}
         style={{
           display: 'flex',
+          padding: design_type === 'link' ? 0 : undefined,
         }}
         {...(withIcon && { rightIcon: <FaLink /> })}
         {...props}

@@ -17,7 +17,7 @@ import {
 import { MeetingProvider } from '@meta/Meeting'
 import React, { FC, useContext, useEffect, useState } from 'react'
 
-import { ScheduleContext } from '@/pages/dashboard/schedule'
+import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { ellipsizeAddress } from '@/utils/user_manager'
 interface IProps {
@@ -26,7 +26,7 @@ interface IProps {
   participants: Array<ParticipantInfo>
 }
 const ScheduleParticipantsSchedulerModal: FC<IProps> = props => {
-  const { handleDelete } = useContext(ScheduleContext)
+  const { handleDelete } = useScheduleActions()
   const [scheduler, setScheduler] = useState<ParticipantInfo | undefined>(
     undefined
   )

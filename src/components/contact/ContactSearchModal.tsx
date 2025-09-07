@@ -66,10 +66,10 @@ const ContactSearchModal = (props: Props) => {
       setPendingForIndex(null)
       reset()
     } else {
-      handleSearch()
+      void handleSearch()
     }
     ;() => {
-      reset()
+      void reset()
     }
   }, [debouncedValue])
   const handleSearch = async (reset = true) => {

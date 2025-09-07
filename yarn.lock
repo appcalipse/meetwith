@@ -16919,7 +16919,7 @@ __metadata:
     lint-staged: "npm:^12.3.1"
     lodash.debounce: "npm:^4.0.8"
     luxon: "npm:^3.5.0"
-    next: "npm:^13.5.11"
+    next: "npm:13.5.11"
     next-sitemap: "npm:^3.1.11"
     patch-package: "npm:^6.4.7"
     path: "npm:^0.12.7"
@@ -17745,7 +17745,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"next@npm:^13.5.11":
+"next@npm:13.5.11":
   version: 13.5.11
   resolution: "next@npm:13.5.11"
   dependencies:

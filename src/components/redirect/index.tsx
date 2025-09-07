@@ -11,7 +11,7 @@ const RedirectHandler: FC = () => {
   const handleRedirect = async () => {
     if (!currentAccount || isRedirecting || state) return
     setIsRedirecting(true)
-    if (redirect) {
+    if (redirect && !redirect?.includes('[section]')) {
       let url = `${redirect}`
       if (intent) {
         url += `&intent=${intent}`
