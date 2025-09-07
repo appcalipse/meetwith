@@ -6,7 +6,6 @@ import {
   FormLabel,
   HStack,
   Icon,
-  IconButton,
   Input,
   Text,
   Textarea,
@@ -18,15 +17,12 @@ import {
 import { useRouter } from 'next/router'
 import React, { FC, FormEvent, useEffect, useState } from 'react'
 import { FaChevronDown } from 'react-icons/fa'
-import { LuLink2 } from 'react-icons/lu'
 
 import InvitedUsersList from '@/components/group/InvitedUsersList'
 import { LeanContact } from '@/types/Contacts'
-import { InviteType } from '@/types/Dashboard'
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
 import { getExistingAccounts, inviteUsers } from '@/utils/api_helper'
-import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
 import { ContactNotFound } from '@/utils/errors'
 import {
@@ -105,7 +101,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       }
       setInvitedUsers([])
       onInviteSuccess?.()
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ContactNotFound) {
         toast({
           title: 'Error',

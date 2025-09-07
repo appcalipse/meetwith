@@ -5,7 +5,6 @@ import {
   ModalContent,
   ModalOverlay,
 } from '@chakra-ui/react'
-import { Account } from '@meta/Account'
 import React from 'react'
 
 import { ScheduleParticipants } from './ScheduleParticipants'

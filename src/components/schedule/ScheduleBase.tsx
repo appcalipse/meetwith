@@ -1,3 +1,4 @@
+/* eslint-disable tailwindcss/no-custom-classname */
 import { WarningTwoIcon } from '@chakra-ui/icons'
 import {
   Box,
@@ -31,7 +32,6 @@ import { FaArrowLeft, FaChevronDown } from 'react-icons/fa'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal'
-import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
 import { AccountContext } from '@/providers/AccountProvider'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import {

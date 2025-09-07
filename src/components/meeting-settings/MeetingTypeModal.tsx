@@ -1,3 +1,4 @@
+/* eslint-disable tailwindcss/no-custom-classname */
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons'
 import { Link } from '@chakra-ui/next-js'
 import {
@@ -307,7 +308,6 @@ const MeetingTypeModal: FC<IProps> = props => {
       description,
       custom_link: customLink,
       fixed_link: fixedLink,
-      // TODO: validate backend request data
       meeting_platforms: selectedProviders,
       plan:
         sessionType.value === SessionType.FREE

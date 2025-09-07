@@ -1,5 +1,4 @@
 import {
-  Box,
   Collapse,
   Heading,
   HStack,

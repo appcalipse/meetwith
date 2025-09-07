@@ -1,9 +1,7 @@
 import {
   Box,
-  Button,
   Divider,
   FormControl,
-  FormErrorMessage,
   FormHelperText,
   FormLabel,
   HStack,
@@ -17,7 +15,6 @@ import {
   Text,
   useDisclosure,
   useToast,
-  VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { FC, useCallback, useMemo, useState } from 'react'
@@ -35,7 +32,7 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
-import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
+import { isGroupParticipant } from '@/types/schedule'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -54,8 +51,6 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
     setParticipants,
     setGroupAvailability,
     setGroupParticipants,
-    groupAvailability,
-    groupParticipants,
   } = useParticipants()
   const groupId = useRouter().query.groupId as string | undefined
   const [loadingStates, setLoadingStates] = useState<Map<string, boolean>>(
