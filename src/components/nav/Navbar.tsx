@@ -24,6 +24,7 @@ import { useActiveWallet } from 'thirdweb/react'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
+import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { useLogin } from '../../session/login'
@@ -102,7 +103,13 @@ const DashboardMobileNavbar = ({
               <ThemeSwitcher />
               {logged && (
                 <Box height={8} width={8}>
-                  {currentAccount && <Avatar account={currentAccount} />}
+                  {currentAccount && (
+                    <Avatar
+                      address={currentAccount.address || ''}
+                      avatar_url={currentAccount.preferences?.avatar_url || ''}
+                      name={getAccountDisplayName(currentAccount)}
+                    />
+                  )}
                 </Box>
               )}
             </HStack>

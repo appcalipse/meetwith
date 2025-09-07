@@ -47,6 +47,7 @@ import { handleApiError } from '@/utils/error_helper'
 import { formatCurrency } from '@/utils/generic_utils'
 import { CurrencyService } from '@/utils/services/currency.service'
 import { useToastHelpers } from '@/utils/toasts'
+import { getAccountDisplayName } from '@/utils/user_manager'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
 
 import WithdrawFundsModal from '../wallet/WithdrawFundsModal'
@@ -928,7 +929,13 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 borderRadius="full"
                                 overflow="hidden"
                               >
-                                <Avatar account={currentAccount} />
+                                <Avatar
+                                  address={currentAccount.address || ''}
+                                  avatar_url={
+                                    currentAccount.preferences?.avatar_url || ''
+                                  }
+                                  name={getAccountDisplayName(currentAccount)}
+                                />
                               </Box>
 
                               {/* Transaction Details */}
