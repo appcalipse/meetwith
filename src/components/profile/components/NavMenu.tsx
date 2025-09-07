@@ -372,7 +372,7 @@ export const NavMenu: React.FC<{
             <VStack width="100%" textAlign="center">
               <Box width="120px" height="120px" mb={2}>
                 <Avatar
-                  address={currentAccount.address}
+                  address={currentAccount.address || ''}
                   avatar_url={currentAccount.preferences?.avatar_url || ''}
                   name={getAccountDisplayName(currentAccount)}
                 />
