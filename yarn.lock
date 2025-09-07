@@ -773,7 +773,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/form-control@npm:2.2.0":
+"@chakra-ui/form-control@npm:2.2.0, @chakra-ui/form-control@npm:^2.2.0":
   version: 2.2.0
   resolution: "@chakra-ui/form-control@npm:2.2.0"
   dependencies:
@@ -803,7 +803,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/icon@npm:3.2.0":
+"@chakra-ui/icon@npm:3.2.0, @chakra-ui/icon@npm:^3.2.0":
   version: 3.2.0
   resolution: "@chakra-ui/icon@npm:3.2.0"
   dependencies:
@@ -856,7 +856,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/layout@npm:2.3.1":
+"@chakra-ui/layout@npm:2.3.1, @chakra-ui/layout@npm:^2.3.1":
   version: 2.3.1
   resolution: "@chakra-ui/layout@npm:2.3.1"
   dependencies:
@@ -889,7 +889,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/media-query@npm:3.3.0":
+"@chakra-ui/media-query@npm:3.3.0, @chakra-ui/media-query@npm:^3.3.0":
   version: 3.3.0
   resolution: "@chakra-ui/media-query@npm:3.3.0"
   dependencies:
@@ -903,7 +903,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/menu@npm:2.2.1":
+"@chakra-ui/menu@npm:2.2.1, @chakra-ui/menu@npm:^2.2.1":
   version: 2.2.1
   resolution: "@chakra-ui/menu@npm:2.2.1"
   dependencies:
@@ -1479,7 +1479,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/spinner@npm:2.1.0":
+"@chakra-ui/spinner@npm:2.1.0, @chakra-ui/spinner@npm:^2.1.0":
   version: 2.1.0
   resolution: "@chakra-ui/spinner@npm:2.1.0"
   dependencies:
@@ -1544,7 +1544,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/system@npm:2.6.2":
+"@chakra-ui/system@npm:2.6.2, @chakra-ui/system@npm:^2.6.2":
   version: 2.6.2
   resolution: "@chakra-ui/system@npm:2.6.2"
   dependencies:
@@ -16816,9 +16816,16 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "meet-with-wallet@workspace:."
   dependencies:
+    "@chakra-ui/form-control": "npm:^2.2.0"
+    "@chakra-ui/icon": "npm:^3.2.0"
     "@chakra-ui/icons": "npm:^2.1.1"
+    "@chakra-ui/layout": "npm:^2.3.1"
+    "@chakra-ui/media-query": "npm:^3.3.0"
+    "@chakra-ui/menu": "npm:^2.2.1"
     "@chakra-ui/next-js": "npm:^2.2.0"
     "@chakra-ui/react": "npm:^2.8.2"
+    "@chakra-ui/spinner": "npm:^2.1.0"
+    "@chakra-ui/system": "npm:^2.6.2"
     "@emotion/react": "npm:^11.10.0"
     "@emotion/styled": "npm:^11"
     "@faker-js/faker": "npm:^6.2.0"
