@@ -1,15 +1,15 @@
 import { Box, Button, Heading, Image, Text, VStack } from '@chakra-ui/react'
 import { formatInTimeZone } from 'date-fns-tz'
 import { useRouter } from 'next/router'
-import React, { useContext } from 'react'
+import React from 'react'
 
-import { ScheduleContext } from '@/pages/dashboard/schedule'
+import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode, Intents } from '@/types/Dashboard'
 
 const ScheduleCompleted = () => {
   const router = useRouter()
   const { intent } = router.query
-  const { title, pickedTime, timezone } = useContext(ScheduleContext)
+  const { title, pickedTime, timezone } = useScheduleState()
   return (
     <VStack maxW={{ base: '300px', md: '400px' }} w="fit-content" m="auto">
       <Box display="flex" justifyContent="center" width="full" mb="32px">

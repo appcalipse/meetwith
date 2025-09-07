@@ -1,3 +1,4 @@
+/* eslint-disable tailwindcss/no-custom-classname */
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons'
 import { Link } from '@chakra-ui/next-js'
 import {
@@ -32,6 +33,7 @@ import { saveMeetingType, updateMeetingType } from '@utils/api_helper'
 import { getAccountDomainUrl } from '@utils/calendar_manager'
 import { appUrl } from '@utils/constants'
 import {
+  BASE_PROVIDERS,
   CryptoNetworkForCardSettlementOptions,
   DurationOptions,
   isPaymentChannel,
@@ -191,13 +193,7 @@ const MeetingTypeModal: FC<IProps> = props => {
   const [isLoading, setIsLoading] = useState(false)
   const bgColor = useColorModeValue('white', 'neutral.900')
   const PROVIDERS = useMemo(() => {
-    return [
-      MeetingProvider.GOOGLE_MEET,
-      MeetingProvider.ZOOM,
-      MeetingProvider.HUDDLE,
-      MeetingProvider.JITSI_MEET,
-      MeetingProvider.CUSTOM,
-    ]
+    return [...BASE_PROVIDERS, MeetingProvider.CUSTOM]
   }, [])
   const [customLink, setCustomLink] = useState<string>(
     props.initialValues?.custom_link || ''
@@ -312,7 +308,6 @@ const MeetingTypeModal: FC<IProps> = props => {
       description,
       custom_link: customLink,
       fixed_link: fixedLink,
-      // TODO: validate backend request data
       meeting_platforms: selectedProviders,
       plan:
         sessionType.value === SessionType.FREE

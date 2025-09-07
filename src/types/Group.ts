@@ -18,6 +18,12 @@ export interface GetGroupsFullResponse {
   slug: string
   members: Array<GroupMember>
 }
+export interface GetGroupsFullRawResponse {
+  group_id: string
+  group_name: string
+  group_slug: string
+  members: Array<GroupMember>
+}
 
 export interface CreateGroupsResponse {
   id: string
@@ -41,6 +47,7 @@ export interface Group {
 export interface GroupMember {
   displayName: string
   address?: string
+  avatar_url?: string
   role: MemberType
   userId?: string
   invitePending: boolean
@@ -138,6 +145,7 @@ export interface GroupInviteFilters {
   discord_id?: string
   limit?: number
   offset?: number
+  search?: string
 }
 
 export interface CreateGroupPayload {

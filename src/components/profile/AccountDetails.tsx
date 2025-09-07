@@ -18,7 +18,8 @@ import { Avatar } from '@components/profile/components/Avatar'
 import EditImageModal from '@components/profile/components/EditImageModal'
 import { handleApiError } from '@utils/error_helper'
 import { readFile } from '@utils/image-utils'
-import { ellipsizeAddress } from '@utils/user_manager'
+import { ellipsizeAddress, getAccountDisplayName } from '@utils/user_manager'
+import { differenceInMonths, format } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import { useActiveWallet } from 'thirdweb/react'
@@ -348,7 +349,13 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           <FormControl pt={2}>
             <HStack width="100%" textAlign="center" mb={6}>
               <Box width="64px" height="64px">
-                <Avatar account={currentAccount} url={avatarUrl} />
+                <Avatar
+                  address={currentAccount.address}
+                  avatar_url={
+                    avatarUrl || currentAccount.preferences?.avatar_url
+                  }
+                  name={getAccountDisplayName(currentAccount)}
+                />
               </Box>
 
               <VStack ml={2} flex={1} alignItems="flex-start">

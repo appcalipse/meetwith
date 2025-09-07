@@ -17,29 +17,35 @@ import {
   TableContainer,
   Tbody,
   Td,
-  Text,
   Th,
   Thead,
   Tr,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
-import { Jazzicon } from '@ukstv/jazzicon-react'
-import React, { useEffect, useState } from 'react'
+import React, { memo, useEffect, useState } from 'react'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { LeanContact } from '@/types/Contacts'
 import { getContactsLean } from '@/utils/api_helper'
-import { ellipsizeAddress } from '@/utils/user_manager'
-// TODO: Add coupon countdown
+
+import GroupContactModalItem from './GroupContactModalItem'
 type Props = {
   isOpen: boolean
   onClose: () => void
   isContactAlreadyAdded: (address: LeanContact) => boolean
-  addUserFromContact: (address: LeanContact) => void
-  removeUserFromContact: (address: LeanContact) => void
+  addUserFromContact: (address: LeanContact) => void | Promise<void>
+  removeUserFromContact: (address: LeanContact) => void | Promise<void>
+  title?: string
+  buttonLabel?: string
+  loadingStates?: Map<string, boolean>
 }
 
-const GroupContactModal = (props: Props) => {
+const GroupContactModal = ({
+  title = 'Invite Group Members',
+  buttonLabel = 'Add to Group',
+  loadingStates = new Map<string, boolean>(),
+  ...props
+}: Props) => {
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const [result, setResult] = React.useState<Array<LeanContact>>([])
   const [noMoreFetch, setNoMoreFetch] = useState(false)
@@ -73,8 +79,6 @@ const GroupContactModal = (props: Props) => {
     if (search.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
-    // TODO: Write sql function on supabase to handle this search
-
     setResult(search)
   }
   const handleLoadMore = async () => {
@@ -106,7 +110,7 @@ const GroupContactModal = (props: Props) => {
           alignItems="center"
           px={10}
         >
-          <Heading size={'md'}>Invite group members</Heading>
+          <Heading size={'md'}>{title}</Heading>
           <ModalCloseButton />
         </ModalHeader>
         <ModalBody
@@ -156,53 +160,27 @@ const GroupContactModal = (props: Props) => {
                   <Thead bg="neutral.900">
                     <Tr color="white">
                       <Th colSpan={4}>User</Th>
-                      <Th colSpan={4}>Account ID</Th>
+                      <Th
+                        colSpan={4}
+                        display={{ base: 'none', md: 'table-cell' }}
+                      >
+                        Account ID
+                      </Th>
                       <Th colSpan={1}>Action</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
                     {result.map((account, index) => (
-                      <Tr
-                        key={index}
-                        bg={index % 2 === 0 ? 'neutral.825' : 'none'}
-                      >
-                        <Td colSpan={4}>
-                          <HStack>
-                            <Jazzicon
-                              address={account.address || ''}
-                              className="contact-avatar"
-                            />
-                            <Text maxW={200} isTruncated>
-                              {account.name || account.address}
-                            </Text>
-                          </HStack>
-                        </Td>
-                        <Td colSpan={4}>
-                          <Text maxW={200} isTruncated>
-                            {ellipsizeAddress(account.address)}
-                          </Text>
-                        </Td>
-                        <Td>
-                          {props.isContactAlreadyAdded(account) ? (
-                            <Button
-                              colorScheme="primary"
-                              onClick={() =>
-                                props.removeUserFromContact(account)
-                              }
-                              variant="outline"
-                            >
-                              Remove
-                            </Button>
-                          ) : (
-                            <Button
-                              colorScheme="primary"
-                              onClick={() => props.addUserFromContact(account)}
-                            >
-                              Add to group
-                            </Button>
-                          )}
-                        </Td>
-                      </Tr>
+                      <GroupContactModalItem
+                        key={`${account.id}-contact-${index}`}
+                        index={index}
+                        isContactAlreadyAdded={props.isContactAlreadyAdded}
+                        addUserFromContact={props.addUserFromContact}
+                        removeUserFromContact={props.removeUserFromContact}
+                        buttonLabel={buttonLabel}
+                        isLoading={!!loadingStates.get(account.id)}
+                        {...account}
+                      />
                     ))}
                     {!noMoreFetch && (
                       <Tr color="white">
@@ -232,4 +210,4 @@ const GroupContactModal = (props: Props) => {
     </Modal>
   )
 }
-export default GroupContactModal
+export default memo(GroupContactModal)

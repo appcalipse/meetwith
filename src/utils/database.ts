@@ -62,6 +62,7 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
+  GetGroupsFullRawResponse,
   GetGroupsFullResponse,
   Group,
   GroupInviteFilters,
@@ -1507,120 +1508,39 @@ const getAccountsNotificationSubscriptionEmails = async (
   return userEmails
 }
 
-const getUserGroups = async (
-  address: string,
-  limit: number,
-  offset: number,
-  email?: string
-): Promise<Array<UserGroups>> => {
-  const { data: invites, error: invitesError } = await db.supabase
-    .from('group_invites')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .or(
-      `user_id.eq.${address.toLowerCase()}${email ? `,email.eq.${email}` : ''}`
-    )
-    .range(
-      offset || 0,
-      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-    )
-  const { data, error } = await db.supabase
-    .from('group_members')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .eq('member_id', address.toLowerCase())
-    .range(
-      offset || 0,
-      (offset || 0) +
-        (limit ? limit - 1 - (invites?.length || 0) : 999_999_999_999_999)
-    )
-
-  if (invitesError) {
-    throw new Error(invitesError.message)
-  }
-  if (error) {
-    throw new Error(error.message)
-  }
-  if (data || invites) {
-    return invites
-      .map(val => ({ ...val, invitePending: true }))
-      .concat(data.map(val => ({ ...val, invitePending: false })))
-  }
-  return []
-}
 const getGroupsAndMembers = async (
   address: string,
-  limit: number,
-  offset: number
+  limit?: string,
+  offset?: string,
+  search?: string,
+  includeInvites?: boolean
 ): Promise<Array<GetGroupsFullResponse>> => {
-  const { data, error } = await db.supabase
-    .from('group_members')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .eq('member_id', address.toLowerCase())
-    .range(
-      offset || 0,
-      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-    )
+  const { data, error } = await db.supabase.rpc<GetGroupsFullRawResponse>(
+    'get_user_groups_with_members',
+    {
+      user_address: address.toLowerCase(),
+      search_term: search || null,
+      limit_count: limit || 1000,
+      offset_count: offset || 0,
+    }
+  )
+
   if (error) {
     throw new Error(error.message)
   }
-  const groups = []
-  for (const group of data) {
-    const { data: membersData, error: membersError } = await db.supabase
-      .from('group_members')
-      .select()
-      .eq('group_id', group.group.id)
-    if (membersError) {
-      throw new Error(membersError.message)
-    }
-    const addresses = membersData.map(
-      (member: GroupMemberQuery) => member.member_id
-    )
-    const { data: members, error } = await db.supabase
-      .from('accounts')
-      .select(
-        `
-         group_members: group_members(*),
-         preferences: account_preferences(name)
-    `
-      )
-      .in('address', addresses)
-      .filter('group_members.group_id', 'eq', group.group.id)
-      .range(
-        offset || 0,
-        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-      )
-    if (error) {
-      throw new Error(error.message)
-    }
 
-    if (data) {
-      groups.push({
-        ...group.group,
-        members: members.map(member => ({
-          userId: member.group_members?.[0]?.id,
-          displayName: member.preferences?.name,
-          address: member.group_members?.[0]?.member_id as string,
-          role: member.group_members?.[0].role,
-          invitePending: false,
-        })),
-      })
-    }
-  }
-  return groups
+  return data.map(group => ({
+    id: group.group_id,
+    name: group.group_name,
+    slug: group.group_slug,
+    members:
+      group.members.filter(member => {
+        if (includeInvites) {
+          return true
+        }
+        return !member.invitePending
+      }) || [],
+  })) as GetGroupsFullResponse[]
 }
 
 async function findGroupsWithSingleMember(
@@ -1724,12 +1644,46 @@ const getGroupInvites = async ({
   discord_id,
   limit,
   offset,
+  search,
 }: GroupInviteFilters): Promise<Array<UserGroups>> => {
-  let query = db.supabase.from('group_invites').select(`
-    id,
-    role,
-    group: groups(id, name, slug)
-  `)
+  const { data, error } = await db.supabase.rpc(
+    'get_group_invites_with_search',
+    {
+      user_address: address || null,
+      target_group_id: group_id || null,
+      target_user_id: user_id || null,
+      target_email: email || null,
+      target_discord_id: discord_id || null,
+      search_term: search || null,
+      limit_count: limit || 1000,
+      offset_count: offset || 0,
+    }
+  )
+
+  if (error) {
+    console.error('Error executing query:', error)
+    throw new Error(error.message)
+  }
+
+  return data.map(item => ({
+    id: item.id,
+    role: item.role,
+    group: {
+      id: item.group_id,
+      name: item.group_name,
+      slug: item.group_slug,
+    },
+    invitePending: item.invite_pending,
+  }))
+}
+const getGroupInvitesCount = async ({
+  address,
+  group_id,
+  user_id,
+  email,
+  discord_id,
+}: GroupInviteFilters): Promise<number | null> => {
+  let query = db.supabase.from('group_invites').select('id', { count: 'exact' })
   let orQuery = ''
   if (address) {
     orQuery = `user_id.eq.${address.toLowerCase()}`
@@ -1748,32 +1702,11 @@ const getGroupInvites = async ({
     orQuery += (orQuery ? ',' : '') + `discord_id.eq.${discord_id}`
   }
   query.or(orQuery)
-  query = query.range(
-    offset || 0,
-    (offset || 0) + (limit ? limit - 1 : 999999999999999)
-  )
-
-  try {
-    const { data, error } = await query
-    if (error) {
-      console.error('Error executing query:', error)
-      throw new Error(error.message)
-    }
-
-    const result = data.map((item: any) => ({
-      ...item,
-      invitePending: true, // Since this is from group_invites, set invitePending to true
-    }))
-    return result
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error('Error in getGroupInvites function:', error.message)
-      throw new Error(error.message)
-    } else {
-      console.error('Unexpected error in getGroupInvites function:', error)
-      throw new Error('An unexpected error occurred')
-    }
+  const { count, error } = await query
+  if (error) {
+    throw new Error(error.message)
   }
+  return count
 }
 const publicGroupJoin = async (group_id: string, address: string) => {
   const groupUsers = await getGroupMembersInternal(group_id)
@@ -5996,6 +5929,7 @@ export {
   getGroup,
   getGroupInternal,
   getGroupInvites,
+  getGroupInvitesCount,
   getGroupName,
   getGroupsAndMembers,
   getGroupsEmpty,
@@ -6018,7 +5952,6 @@ export {
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
-  getUserGroups,
   handleGuestCancel,
   handleMeetingCancelSync,
   handleWebhookEvent,
