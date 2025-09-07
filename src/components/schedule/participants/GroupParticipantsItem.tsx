@@ -3,11 +3,10 @@ import {
   Button,
   Heading,
   HStack,
-  Text,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useContext, useMemo } from 'react'
+import React, { FC, useMemo } from 'react'
 
 import { Avatar } from '@/components/profile/components/Avatar'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'

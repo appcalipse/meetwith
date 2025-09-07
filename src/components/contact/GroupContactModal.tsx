@@ -17,7 +17,6 @@ import {
   TableContainer,
   Tbody,
   Td,
-  Text,
   Th,
   Thead,
   Tr,
@@ -28,9 +27,7 @@ import React, { memo, useEffect, useState } from 'react'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { LeanContact } from '@/types/Contacts'
 import { getContactsLean } from '@/utils/api_helper'
-import { ellipsizeAddress } from '@/utils/user_manager'
 
-import { Avatar } from '../profile/components/Avatar'
 import GroupContactModalItem from './GroupContactModalItem'
 type Props = {
   isOpen: boolean
