@@ -19,3 +19,17 @@ export interface NotificationType {
 export interface DiscordNotificationType extends NotificationType {
   inMWWServer?: boolean
 }
+
+export enum VerificationChannel {
+  TRANSACTION_PIN = 'transaction-pin',
+  RESET_EMAIL = 'reset-email',
+}
+
+export interface Verification {
+  id: string
+  owner_account_address: string
+  expires_at: Date
+  created_at: Date
+  code_hash: string
+  channel: VerificationChannel
+}
