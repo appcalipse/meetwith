@@ -43,7 +43,9 @@ jobs:
           ${{ runner.os }}-yarn-
 
     - name: Install dependencies
-      run: yarn install --immutable
+      env:
+        YARN_ENABLE_IMMUTABLE_INSTALLS: false
+      run: yarn install
 
     - name: Lint
       run: yarn lint
