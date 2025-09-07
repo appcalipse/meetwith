@@ -5,22 +5,28 @@ import React, { useContext } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import MetricStateProvider from '@/providers/MetricStateProvider'
+import ContactStateProvider from '@/providers/ContactInvitesProvider'
+import { WalletProvider } from '@/providers/WalletProvider'
 
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
-import AccountDetails from './AccountDetails'
+import RedirectHandler from '../redirect'
+import Clientboard from './Clientboard'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
 import Contact from './Contact'
 import Group from './Group'
 import Meetings from './Meetings'
 import MeetingSettings from './MeetingSettings'
+import Settings from './Settings'
+import Wallet from './Wallet'
 
 const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
 }) => {
   const { currentAccount } = useContext(AccountContext)
+  const isSettings = currentSection === EditMode.DETAILS
 
   const renderSelected = () => {
     switch (currentSection) {
@@ -33,13 +39,21 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig currentAccount={currentAccount!} />
       case EditMode.DETAILS:
-        return <AccountDetails currentAccount={currentAccount!} />
+        return <Settings currentAccount={currentAccount!} />
       case EditMode.MEETING_SETTINGS:
         return <MeetingSettings currentAccount={currentAccount!} />
       case EditMode.CALENDARS:
         return <ConnectCalendar currentAccount={currentAccount!} />
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig currentAccount={currentAccount!} />
+      case EditMode.WALLET:
+        return (
+          <WalletProvider>
+            <Wallet currentAccount={currentAccount!} />
+          </WalletProvider>
+        )
+      case EditMode.CLIENTBOARD:
+        return <Clientboard currentAccount={currentAccount!} />
     }
   }
 
@@ -50,21 +64,28 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         width="100%"
         maxWidth="100%"
         justifyContent="space-between"
+        pl={{ base: 0, lg: !isSettings ? '296px' : 0 }}
       >
-        <Box
-          flex={{ base: '0', lg: '4' }}
-          mr={{ base: 0, lg: 18 }}
-          position="sticky"
-          top={40}
-        >
-          <NavMenu currentSection={currentSection} />
-        </Box>
+        <RedirectHandler />
+        {!isSettings && (
+          <Box
+            flex={{ base: '0', lg: '4' }}
+            mr={{ base: 0, lg: 18 }}
+            position="fixed"
+            left={0}
+            top={0}
+            zIndex={10}
+          >
+            <NavMenu currentSection={currentSection} />
+          </Box>
+        )}
         <Box
           maxWidth="100%"
           overflow="hidden"
-          flex={{ base: '1', md: '8' }}
-          marginLeft={{ base: '0 !important', md: 2 }}
-          marginInlineStart={{ base: '0 !important', md: 2 }}
+          flex={isSettings ? 1 : { base: '1', md: '8' }}
+          marginLeft={{ base: '0 !important', md: isSettings ? 0 : 2 }}
+          marginInlineStart={{ base: '0 !important', md: isSettings ? 0 : 2 }}
+          pt={{ base: '60px', lg: 0 }}
         >
           {renderSelected()}
         </Box>
