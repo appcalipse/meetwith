@@ -1,11 +1,9 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
 import { EditMode } from '@meta/Dashboard'
-import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import MetricStateProvider from '@/providers/MetricStateProvider'
-import ContactStateProvider from '@/providers/ContactInvitesProvider'
 import { WalletProvider } from '@/providers/WalletProvider'
 
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'

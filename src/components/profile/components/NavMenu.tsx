@@ -372,28 +372,27 @@ export const NavMenu: React.FC<{
             <VStack width="100%" textAlign="center">
               <Box width="120px" height="120px" mb={2}>
                 <Avatar
-                  address={currentAccount.address}
+                  address={currentAccount.address || ''}
                   avatar_url={currentAccount.preferences?.avatar_url || ''}
                   name={getAccountDisplayName(currentAccount)}
                 />
               </Box>
-                <VStack alignItems="flex-start" spacing={2}>
-                  <Text fontSize="lg" fontWeight={500} color="white">
-                    {getAccountDisplayName(currentAccount)}
-                  </Text>
-                  <CopyLinkButton
-                    url={accountUrl}
-                    size="md"
-                    label="Share my calendar"
-                    withIcon
-                    design_type="link"
-                    variant="ghost"
-                    _hover={{ bg: 'transparent' }}
-                    _focus={{ boxShadow: 'none' }}
-                    color="orange.400"
-                  />
-                </VStack>
-              </HStack>
+              <VStack alignItems="flex-start" spacing={2}>
+                <Text fontSize="lg" fontWeight={500} color="white">
+                  {getAccountDisplayName(currentAccount)}
+                </Text>
+                <CopyLinkButton
+                  url={accountUrl}
+                  size="md"
+                  label="Share my calendar"
+                  withIcon
+                  design_type="link"
+                  variant="ghost"
+                  _hover={{ bg: 'transparent' }}
+                  _focus={{ boxShadow: 'none' }}
+                  color="orange.400"
+                />
+              </VStack>
             </VStack>
 
             {/* Main Navigation Items */}
@@ -439,7 +438,11 @@ export const NavMenu: React.FC<{
               <HStack width="100%" justify="space-between" px={8}>
                 <HStack spacing={3} alignItems="center">
                   <Box width={8} height={8}>
-                    <Avatar account={currentAccount} />
+                    <Avatar
+                      address={currentAccount.address}
+                      avatar_url={currentAccount.preferences?.avatar_url || ''}
+                      name={getAccountDisplayName(currentAccount)}
+                    />
                   </Box>
                   <Text fontSize="sm" fontWeight={500} color="white">
                     {getAccountDisplayName(currentAccount)}
