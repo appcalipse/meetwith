@@ -1,4 +1,12 @@
-import { Container, Flex, useDisclosure, useToast } from '@chakra-ui/react'
+import {
+  Container,
+  Flex,
+  TabPanel,
+  TabPanels,
+  Tabs,
+  useDisclosure,
+  useToast,
+} from '@chakra-ui/react'
 import { addMinutes, differenceInMinutes } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import { useRouter } from 'next/router'
@@ -136,17 +144,6 @@ const ScheduleMain: FC<IInitialProps> = ({
   const toast = useToast()
   const router = useRouter()
   const { push } = router
-
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case Page.SCHEDULE_DETAILS:
-        return <ScheduleBase />
-      case Page.SCHEDULE_TIME:
-        return <ScheduleTimeDiscover />
-      case Page.COMPLETED:
-        return <ScheduleCompleted />
-    }
-  }
 
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -323,6 +320,7 @@ const ScheduleMain: FC<IInitialProps> = ({
               label: 'Does not repeat',
             }
       )
+      handlePageSwitch(Page.SCHEDULE_DETAILS)
     } catch (error: unknown) {
       handleApiError('Error fetching meeting information.', error)
     }
@@ -339,8 +337,6 @@ const ScheduleMain: FC<IInitialProps> = ({
     if (intent === Intents.UPDATE_MEETING && meetingId) {
       promises.push(handleFetchMeetingInformation())
     }
-    await Promise.all(promises)
-    setIsPrefetching(false)
     if (promises.length === 0) {
       setGroupAvailability(prev => ({
         ...prev,
@@ -351,6 +347,8 @@ const ScheduleMain: FC<IInitialProps> = ({
         [NO_GROUP_KEY]: [currentAccount?.address || ''],
       }))
     }
+    await Promise.all(promises)
+    setIsPrefetching(false)
   }
   useEffect(() => {
     void handlePrefetch()
@@ -797,7 +795,19 @@ const ScheduleMain: FC<IInitialProps> = ({
             <Loading />
           </Flex>
         ) : (
-          renderCurrentPage()
+          <Tabs index={currentPage} isLazy>
+            <TabPanels>
+              <TabPanel p={0}>
+                <ScheduleTimeDiscover />
+              </TabPanel>
+              <TabPanel p={0}>
+                <ScheduleBase />
+              </TabPanel>
+              <TabPanel p={0}>
+                <ScheduleCompleted />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
         )}
         <CancelMeetingDialog
           isOpen={isOpen}
