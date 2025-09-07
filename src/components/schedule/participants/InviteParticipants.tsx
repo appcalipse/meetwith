@@ -20,7 +20,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { FC } from 'react'
+import React, { FC, useCallback, useMemo, useState } from 'react'
 import { FaChevronDown } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
@@ -58,90 +58,162 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
     groupParticipants,
   } = useParticipants()
   const groupId = useRouter().query.groupId as string | undefined
-
+  const [loadingStates, setLoadingStates] = useState<Map<string, boolean>>(
+    new Map()
+  )
   const {
     isOpen: isContactModalOpen,
     onOpen,
     onClose: onModalClose,
   } = useDisclosure()
   const toast = useToast()
-  const isContactAlreadyAdded = (account: LeanContact) => {
-    return participants.some(
-      user =>
-        !isGroupParticipant(user) && user.account_address === account.address
+  const participantAddressesSet = useMemo(() => {
+    return new Set(
+      participants
+        .filter((user): user is ParticipantInfo => !isGroupParticipant(user))
+        .map(user => user.account_address)
+        .filter(Boolean)
     )
-  }
-  const onParticipantsChange = (_participants: Array<ParticipantInfo>) => {
-    setParticipants(prevUsers => {
-      const groupParticipants = prevUsers.filter(user =>
-        isGroupParticipant(user)
-      )
-      return [...groupParticipants, ..._participants]
-    })
-    setGroupAvailability(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: deduplicateArray<string>([
-        ...(groupAvailability[NO_GROUP_KEY] || []),
-        ..._participants
-          .map(p => p.account_address)
-          .filter((a): a is string => !!a),
-      ]),
-    }))
-    setGroupParticipants(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: deduplicateArray<string>([
-        ...(groupParticipants[NO_GROUP_KEY] || []),
-        ..._participants
-          .map(p => p.account_address)
-          .filter((a): a is string => !!a),
-      ]),
-    }))
-  }
-  const addUserFromContact = (account: LeanContact) => {
-    if (isContactAlreadyAdded(account)) {
-      toast({
-        title: 'User already added',
-        description: 'This user has already been added to the invite list.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-        position: 'top',
-      })
-      return
-    }
+  }, [participants])
 
-    const newUser: ParticipantInfo = {
-      type: ParticipantType.Invitee,
-      account_address: account.address,
-      name: account.name || '',
-      status: ParticipationStatus.Pending,
-      slot_id: '',
-      meeting_id: '',
-    }
-    setParticipants(prev => [...prev, newUser])
-    setGroupAvailability(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: [...(prev[NO_GROUP_KEY] || []), account.address || ''],
-    }))
-  }
-  const removeUserFromContact = (account: LeanContact) => {
-    setParticipants(prevUsers =>
-      prevUsers.filter(user =>
-        !isGroupParticipant(user)
-          ? user.account_address === account.address
-          : true
+  const isContactAlreadyAdded = useCallback(
+    (account: LeanContact) => {
+      return participantAddressesSet.has(account.address)
+    },
+    [participantAddressesSet]
+  )
+  const onParticipantsChange = useCallback(
+    (_participants: Array<ParticipantInfo>) => {
+      const addressesToAdd = _participants
+        .map(p => p.account_address)
+        .filter((a): a is string => !!a)
+
+      React.startTransition(() => {
+        setParticipants(prevUsers => {
+          const groupParticipants = prevUsers.filter(user =>
+            isGroupParticipant(user)
+          )
+          return [...groupParticipants, ..._participants]
+        })
+
+        if (addressesToAdd.length > 0) {
+          setGroupAvailability(prev => ({
+            ...prev,
+            [NO_GROUP_KEY]: deduplicateArray([
+              ...(prev[NO_GROUP_KEY] || []),
+              ...addressesToAdd,
+            ]),
+          }))
+
+          setGroupParticipants(prev => ({
+            ...prev,
+            [NO_GROUP_KEY]: deduplicateArray([
+              ...(prev[NO_GROUP_KEY] || []),
+              ...addressesToAdd,
+            ]),
+          }))
+        }
+      })
+    },
+    [setParticipants, setGroupAvailability, setGroupParticipants]
+  )
+  const addUserFromContact = useCallback(
+    async (account: LeanContact) => {
+      const contactId = account.id
+      setLoadingStates(prev => new Map(prev).set(contactId, true))
+
+      if (isContactAlreadyAdded(account)) {
+        toast({
+          title: 'User already added',
+          description: 'This user has already been added to the invite list.',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+          position: 'top',
+        })
+        return
+      }
+
+      const newUser: ParticipantInfo = {
+        type: ParticipantType.Invitee,
+        account_address: account.address,
+        name: account.name || '',
+        status: ParticipationStatus.Pending,
+        slot_id: '',
+        meeting_id: '',
+      }
+      React.startTransition(() => {
+        setParticipants(prev => [...prev, newUser])
+        if (account.address) {
+          setGroupParticipants(prev => ({
+            ...prev,
+            [NO_GROUP_KEY]: [...(prev[NO_GROUP_KEY] || []), account.address],
+          }))
+          setGroupAvailability(prev => ({
+            ...prev,
+            [NO_GROUP_KEY]: [...(prev[NO_GROUP_KEY] || []), account.address],
+          }))
+        }
+        setLoadingStates(prev => new Map(prev).set(contactId, false))
+      })
+    },
+    [
+      isContactAlreadyAdded,
+      setParticipants,
+      setGroupParticipants,
+      setGroupAvailability,
+      toast,
+    ]
+  )
+  const removeUserFromContact = async (account: LeanContact) => {
+    const contactId = account.id
+    setLoadingStates(prev => new Map(prev).set(contactId, true))
+
+    React.startTransition(() => {
+      setParticipants(prevUsers =>
+        prevUsers.filter(user =>
+          !isGroupParticipant(user)
+            ? user.account_address !== account.address
+            : true
+        )
       )
-    )
-    setGroupAvailability(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: prev[NO_GROUP_KEY]?.filter(
-        address => address !== account.address
-      ),
-    }))
+      if (account.address) {
+        setGroupParticipants(prev => ({
+          ...prev,
+          [NO_GROUP_KEY]: prev[NO_GROUP_KEY]?.filter(
+            address => address !== account.address
+          ),
+        }))
+
+        setGroupAvailability(prev => ({
+          ...prev,
+          [NO_GROUP_KEY]: prev[NO_GROUP_KEY]?.filter(
+            address => address !== account.address
+          ),
+        }))
+      }
+      setLoadingStates(prev => new Map(prev).set(contactId, false))
+    })
   }
+  const renderParticipantItem = useCallback((p: ParticipantInfo) => {
+    if (p.account_address) {
+      return p.name || ellipsizeAddress(p.account_address)
+    } else if (p.name && p.guest_email) {
+      return `${p.name} - ${p.guest_email}`
+    } else if (p.name) {
+      return p.name
+    } else {
+      return p.guest_email!
+    }
+  }, [])
+  const nonGroupParticipants = useMemo(
+    () => participants.filter(participant => !isGroupParticipant(participant)),
+    [participants]
+  )
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalOverlay />
+      <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
       <ModalContent
         maxWidth="500px"
         width="500px"
@@ -163,6 +235,7 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
             removeUserFromContact={removeUserFromContact}
             buttonLabel="Add to Meeting"
             title="Add from Contact List"
+            loadingStates={loadingStates}
           />
           {isGroupPrefetching ? (
             <Loading />
@@ -207,22 +280,10 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
             </FormLabel>
             <Box w="100%" maxW="100%">
               <ChipInput
-                currentItems={participants.filter(
-                  participant => !isGroupParticipant(participant)
-                )}
+                currentItems={nonGroupParticipants}
                 placeholder="Enter participants"
                 onChange={onParticipantsChange}
-                renderItem={p => {
-                  if (p.account_address) {
-                    return p.name || ellipsizeAddress(p.account_address!)
-                  } else if (p.name && p.guest_email) {
-                    return `${p.name} - ${p.guest_email}`
-                  } else if (p.name) {
-                    return `${p.name}`
-                  } else {
-                    return p.guest_email!
-                  }
-                }}
+                renderItem={renderParticipantItem}
                 inputProps={{
                   pr: 180,
                   errorBorderColor: 'red.500',
