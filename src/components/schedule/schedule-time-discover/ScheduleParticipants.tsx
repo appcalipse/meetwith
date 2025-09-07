@@ -14,7 +14,11 @@ import { IoMdClose } from 'react-icons/io'
 import { AccountContext } from '@/providers/AccountProvider'
 import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
-import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
@@ -31,6 +35,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
     groupParticipants,
     setGroupParticipants,
     participants,
+    setParticipants,
     groups: allGroups,
   } = useParticipants()
   const { currentAccount } = useContext(AccountContext)
@@ -74,14 +79,16 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
     if (!account_address) return
     const keys = Object.keys(groupAvailability)
     for (const key of keys) {
-      const allGroupParticipants = groupAvailability[key] || []
-      const newParticipants = allAvailabilities.includes(account_address)
-        ? allGroupParticipants.filter(val => val !== account_address)
-        : [...allGroupParticipants, account_address]
-      setGroupAvailability(prev => ({
-        ...prev,
-        [key]: newParticipants,
-      }))
+      setGroupAvailability(prev => {
+        const allGroupParticipants = prev[key] || []
+        const newParticipants = allAvailabilities.includes(account_address)
+          ? allGroupParticipants.filter(val => val !== account_address)
+          : [...allGroupParticipants, account_address]
+        return {
+          ...prev,
+          [key]: newParticipants,
+        }
+      })
     }
   }
   const totalParticipantsCount = useMemo(() => {
@@ -93,32 +100,59 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
     )
     return participantsMerged.length + 1
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
-  const handleParticipantRemove = (account_address: string) => {
-    if (account_address === currentAccount?.address) return
-    const keys = Object.keys(groupAvailability)
-    for (const key of keys) {
-      const allGroupParticipants = groupParticipants[key] || []
-      const newParticipants = allAvailabilities.includes(account_address)
-        ? allGroupParticipants.filter(val => val !== account_address)
-        : [...allGroupParticipants, account_address]
-      setGroupParticipants(prev => ({
-        ...prev,
-        [key]: newParticipants,
-      }))
-    }
+  const handleParticipantRemove = (participant: ParticipantInfo) => {
+    React.startTransition(() => {
+      setParticipants(prev =>
+        prev.filter(p =>
+          isGroupParticipant(p)
+            ? true
+            : p.account_address?.toLowerCase() !==
+              participant.account_address?.toLowerCase()
+        )
+      )
+      const account_address = participant.account_address?.toLowerCase()
+      if (account_address === currentAccount?.address || !account_address)
+        return
+      const keys = Object.keys(groupAvailability)
+      for (const key of keys) {
+        setGroupParticipants(prev => {
+          const allGroupParticipants = prev[key] || []
+          const newParticipants = allGroupParticipants.includes(account_address)
+            ? allGroupParticipants.filter(val => val !== account_address)
+            : [...allGroupParticipants, account_address]
+          return {
+            ...prev,
+            [key]: newParticipants,
+          }
+        })
+
+        setGroupAvailability(prev => {
+          const allGroupAvailability = prev[key] || []
+          const newAvailability = allGroupAvailability.includes(account_address)
+            ? allGroupAvailability.filter(val => val !== account_address)
+            : [...allGroupAvailability, account_address]
+          return {
+            ...prev,
+            [key]: newAvailability,
+          }
+        })
+      }
+    })
   }
   return (
     <VStack
       py={isMobile ? 10 : 7}
       px={5}
       borderWidth={1}
+      borderColor={'neutral.400'}
       rounded={12}
       gap={5}
       minH="80vh"
       maxH={'90vh'}
       overflowY={'auto'}
       w="fit-content"
-      minW={'410px'}
+      bg="neutral.845"
+      minW={isMobile ? 'none' : '315px'}
       display={{
         base: isMobile ? 'flex' : 'none',
         lg: 'flex',
@@ -148,7 +182,6 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
           return (
             <HStack
               key={index}
-              gap={9}
               width={'100%'}
               justifyContent={'space-between'}
               alignItems={'center'}
@@ -191,7 +224,9 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                     textOverflow="ellipsis"
                     w={'fit-content'}
                   >
-                    {participant.name || participant.guest_email}
+                    {participant.name ||
+                      participant.guest_email ||
+                      ellipsizeAddress(participant.account_address || '')}
                   </Heading>
                   {participant.type === ParticipantType.Scheduler && (
                     <Text fontSize={'sm'} color={'neutral.200'}>
@@ -201,14 +236,11 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                 </VStack>
               </HStack>
               <IoMdClose
-                size={30}
+                size={20}
+                display="block"
                 cursor="pointer"
                 color="#CBD2D9"
-                onClick={() =>
-                  handleParticipantRemove(
-                    participant.account_address?.toLowerCase() || ''
-                  )
-                }
+                onClick={() => handleParticipantRemove(participant)}
               />
             </HStack>
           )
