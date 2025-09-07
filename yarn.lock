@@ -598,7 +598,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/button@npm:2.1.0":
+"@chakra-ui/button@npm:2.1.0, @chakra-ui/button@npm:^2.1.0":
   version: 2.1.0
   resolution: "@chakra-ui/button@npm:2.1.0"
   dependencies:
@@ -1530,7 +1530,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/switch@npm:2.1.2":
+"@chakra-ui/switch@npm:2.1.2, @chakra-ui/switch@npm:^2.1.2":
   version: 2.1.2
   resolution: "@chakra-ui/switch@npm:2.1.2"
   dependencies:
@@ -16816,6 +16816,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "meet-with-wallet@workspace:."
   dependencies:
+    "@chakra-ui/button": "npm:^2.1.0"
     "@chakra-ui/form-control": "npm:^2.2.0"
     "@chakra-ui/icon": "npm:^3.2.0"
     "@chakra-ui/icons": "npm:^2.1.1"
@@ -16825,6 +16826,7 @@ __metadata:
     "@chakra-ui/next-js": "npm:^2.2.0"
     "@chakra-ui/react": "npm:^2.8.2"
     "@chakra-ui/spinner": "npm:^2.1.0"
+    "@chakra-ui/switch": "npm:^2.1.2"
     "@chakra-ui/system": "npm:^2.6.2"
     "@emotion/react": "npm:^11.10.0"
     "@emotion/styled": "npm:^11"
