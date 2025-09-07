@@ -1,4 +1,5 @@
 import {
+  Box,
   Modal,
   ModalCloseButton,
   ModalContent,
@@ -24,10 +25,18 @@ const MobileScheduleParticipantModal: React.FC<
       blockScrollOnMount={false}
       size={'lg'}
       isCentered
+      closeOnOverlayClick
     >
-      <ModalOverlay />
-      <ModalContent w="fit-content" h="fit-content">
-        <ModalCloseButton />
+      <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
+      <ModalContent
+        w="fit-content"
+        maxW="90%"
+        h="fit-content"
+        bg="none"
+        shadow="none"
+      >
+        <ModalCloseButton zIndex={90} size={'25'} />
+        <Box height={10} w={'100%'} bg="none" />
         <ScheduleParticipants isMobile />
       </ModalContent>
     </Modal>
