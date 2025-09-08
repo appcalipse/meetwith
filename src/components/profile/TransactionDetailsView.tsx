@@ -1,8 +1,9 @@
-import { Box, Flex, HStack, Icon, Text, VStack } from '@chakra-ui/react'
+import { Box, Flex, HStack, Icon, Link, Text, VStack } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import React from 'react'
-import { FiArrowLeft } from 'react-icons/fi'
+import { FiArrowLeft, FiExternalLink } from 'react-icons/fi'
 
+import { getSupportedChainFromId } from '@/types/chains'
 import { Transaction } from '@/types/Transactions'
 import { formatCurrency } from '@/utils/generic_utils'
 import { CurrencyService } from '@/utils/services/currency.service'
@@ -76,11 +77,18 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
     <Box
       bg="neutral.900"
       borderRadius="12px"
-      p={12}
+      p={{ base: 4, md: 12 }}
       border="1px solid"
       borderColor="neutral.825"
     >
-      <HStack gap={6} align="center" mb={8}>
+      <Flex
+        gap={6}
+        align="center"
+        mb={{ base: 2, md: 8 }}
+        flexDirection={{ base: 'column', md: 'row' }}
+        justifyContent="flex-start"
+        alignItems={{ base: 'flex-start', md: 'center' }}
+      >
         <HStack
           spacing={2}
           cursor="pointer"
@@ -94,10 +102,14 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
           </Text>
         </HStack>
 
-        <Text fontSize="24px" fontWeight="700" color="neutral.0">
+        <Text
+          fontSize={{ base: '20px', md: '24px' }}
+          fontWeight="700"
+          color="neutral.0"
+        >
           Transaction Details
         </Text>
-      </HStack>
+      </Flex>
 
       {/* Transaction Information */}
       <VStack
@@ -108,8 +120,9 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
           // For debit transactions (sent), show receiver address and host name for meetings
           <>
             <Flex
-              justify="space-between"
-              align="start"
+              direction={{ base: 'column', md: 'row' }}
+              justify={{ base: 'flex-start', md: 'space-between' }}
+              align={{ base: 'flex-start', md: 'start' }}
               py={6}
               width="100%"
               borderBottom="1px solid"
@@ -119,7 +132,8 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                 color="neutral.300"
                 fontSize="16px"
                 fontWeight="700"
-                width="50%"
+                width={{ base: '100%', md: '50%' }}
+                mb={{ base: 2, md: 0 }}
               >
                 Receiver
               </Text>
@@ -128,7 +142,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                 fontSize="16px"
                 fontWeight="500"
                 textAlign="left"
-                width="50%"
+                width={{ base: '100%', md: '50%' }}
               >
                 {transaction.metadata?.receiver_address || 'N/A'}
               </Text>
@@ -136,12 +150,19 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
 
             {/* Host Name - show for meeting debit transactions */}
             {transaction.meeting_type_id && transaction.counterparty_name && (
-              <Flex justify="space-between" align="start" py={6} width="100%">
+              <Flex
+                direction={{ base: 'column', md: 'row' }}
+                justify={{ base: 'flex-start', md: 'space-between' }}
+                align={{ base: 'flex-start', md: 'start' }}
+                py={6}
+                width="100%"
+              >
                 <Text
                   color="neutral.300"
                   fontSize="16px"
                   fontWeight="700"
-                  width="50%"
+                  width={{ base: '100%', md: '50%' }}
+                  mb={{ base: 2, md: 0 }}
                 >
                   Host Name
                 </Text>
@@ -150,7 +171,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                   fontSize="16px"
                   fontWeight="500"
                   textAlign="left"
-                  width="50%"
+                  width={{ base: '100%', md: '50%' }}
                 >
                   {transaction.counterparty_name}
                 </Text>
@@ -162,8 +183,9 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
           <>
             {/* Sender - show for all credit transactions */}
             <Flex
-              justify="space-between"
-              align="start"
+              direction={{ base: 'column', md: 'row' }}
+              justify={{ base: 'flex-start', md: 'space-between' }}
+              align={{ base: 'flex-start', md: 'start' }}
               py={6}
               width="100%"
               borderBottom="1px solid"
@@ -173,7 +195,8 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                 color="neutral.300"
                 fontSize="16px"
                 fontWeight="700"
-                width="50%"
+                width={{ base: '100%', md: '50%' }}
+                mb={{ base: 2, md: 0 }}
               >
                 Sender
               </Text>
@@ -182,7 +205,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                 fontSize="16px"
                 fontWeight="500"
                 textAlign="left"
-                width="50%"
+                width={{ base: '100%', md: '50%' }}
               >
                 {transaction.initiator_address || 'N/A'}
               </Text>
@@ -191,8 +214,9 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             {/* Guest Name - show for meeting credit transactions */}
             {transaction.meeting_type_id && meetingSession?.guest_name && (
               <Flex
-                justify="space-between"
-                align="start"
+                direction={{ base: 'column', md: 'row' }}
+                justify={{ base: 'flex-start', md: 'space-between' }}
+                align={{ base: 'flex-start', md: 'start' }}
                 py={6}
                 width="100%"
                 borderBottom="1px solid"
@@ -202,7 +226,8 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                   color="neutral.300"
                   fontSize="16px"
                   fontWeight="700"
-                  width="50%"
+                  width={{ base: '100%', md: '50%' }}
+                  mb={{ base: 2, md: 0 }}
                 >
                   Guest Name
                 </Text>
@@ -211,7 +236,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                   fontSize="16px"
                   fontWeight="500"
                   textAlign="left"
-                  width="50%"
+                  width={{ base: '100%', md: '50%' }}
                 >
                   {meetingSession.guest_name}
                 </Text>
@@ -220,12 +245,19 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
 
             {/* Guest Email - show for meeting credit transactions */}
             {transaction.meeting_type_id && guestEmail && (
-              <Flex justify="space-between" align="start" py={6} width="100%">
+              <Flex
+                direction={{ base: 'column', md: 'row' }}
+                justify={{ base: 'flex-start', md: 'space-between' }}
+                align={{ base: 'flex-start', md: 'start' }}
+                py={6}
+                width="100%"
+              >
                 <Text
                   color="neutral.300"
                   fontSize="16px"
                   fontWeight="700"
-                  width="50%"
+                  width={{ base: '100%', md: '50%' }}
+                  mb={{ base: 2, md: 0 }}
                 >
                   Guest Email
                 </Text>
@@ -234,7 +266,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                   fontSize="16px"
                   fontWeight="500"
                   textAlign="left"
-                  width="50%"
+                  width={{ base: '100%', md: '50%' }}
                 >
                   {guestEmail}
                 </Text>
@@ -245,12 +277,19 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
 
         {/* Plan - show only for actual meeting-related transactions */}
         {transaction.meeting_type_id && meetingTypeTitle && (
-          <Flex justify="space-between" align="start" py={6} width="100%">
+          <Flex
+            direction={{ base: 'column', md: 'row' }}
+            justify={{ base: 'flex-start', md: 'space-between' }}
+            align={{ base: 'flex-start', md: 'start' }}
+            py={6}
+            width="100%"
+          >
             <Text
               color="neutral.300"
               fontSize="16px"
               fontWeight="700"
-              width="50%"
+              width={{ base: '100%', md: '50%' }}
+              mb={{ base: 2, md: 0 }}
             >
               Plan
             </Text>
@@ -259,7 +298,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
               fontSize="16px"
               fontWeight="500"
               textAlign="left"
-              width="50%"
+              width={{ base: '100%', md: '50%' }}
             >
               {meetingTypeTitle}
             </Text>
@@ -268,12 +307,19 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
 
         {/* Number of Sessions - show only for actual meeting-related transactions */}
         {transaction.meeting_type_id && sessionNumber && (
-          <Flex justify="space-between" align="start" py={6} width="100%">
+          <Flex
+            direction={{ base: 'column', md: 'row' }}
+            justify={{ base: 'flex-start', md: 'space-between' }}
+            align={{ base: 'flex-start', md: 'start' }}
+            py={6}
+            width="100%"
+          >
             <Text
               color="neutral.300"
               fontSize="16px"
               fontWeight="700"
-              width="50%"
+              width={{ base: '100%', md: '50%' }}
+              mb={{ base: 2, md: 0 }}
             >
               Number of Sessions
             </Text>
@@ -282,7 +328,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
               fontSize="16px"
               fontWeight="500"
               textAlign="left"
-              width="50%"
+              width={{ base: '100%', md: '50%' }}
             >
               {sessionNumber}
             </Text>
@@ -290,12 +336,19 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
         )}
 
         {/* Amount */}
-        <Flex justify="space-between" align="start" py={6} width="100%">
+        <Flex
+          direction={{ base: 'column', md: 'row' }}
+          justify={{ base: 'flex-start', md: 'space-between' }}
+          align={{ base: 'flex-start', md: 'start' }}
+          py={6}
+          width="100%"
+        >
           <Text
             color="neutral.300"
             fontSize="16px"
             fontWeight="700"
-            width="50%"
+            width={{ base: '100%', md: '50%' }}
+            mb={{ base: 2, md: 0 }}
           >
             Amount
           </Text>
@@ -304,19 +357,26 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             fontSize="16px"
             fontWeight="500"
             textAlign="left"
-            width="50%"
+            width={{ base: '100%', md: '50%' }}
           >
             {formatCurrencyDisplay(transaction.amount)}
           </Text>
         </Flex>
 
         {/* Direction */}
-        <Flex justify="space-between" align="start" py={6} width="100%">
+        <Flex
+          direction={{ base: 'column', md: 'row' }}
+          justify={{ base: 'flex-start', md: 'space-between' }}
+          align={{ base: 'flex-start', md: 'start' }}
+          py={6}
+          width="100%"
+        >
           <Text
             color="neutral.300"
             fontSize="16px"
             fontWeight="700"
-            width="50%"
+            width={{ base: '100%', md: '50%' }}
+            mb={{ base: 2, md: 0 }}
           >
             Direction
           </Text>
@@ -325,7 +385,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             fontSize="16px"
             fontWeight="500"
             textAlign="left"
-            width="50%"
+            width={{ base: '100%', md: '50%' }}
           >
             {transaction.direction.charAt(0).toUpperCase() +
               transaction.direction.slice(1)}
@@ -333,12 +393,19 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
         </Flex>
 
         {/* Transaction Status */}
-        <Flex justify="space-between" align="start" py={6} width="100%">
+        <Flex
+          direction={{ base: 'column', md: 'row' }}
+          justify={{ base: 'flex-start', md: 'space-between' }}
+          align={{ base: 'flex-start', md: 'start' }}
+          py={6}
+          width="100%"
+        >
           <Text
             color="neutral.300"
             fontSize="16px"
             fontWeight="700"
-            width="50%"
+            width={{ base: '100%', md: '50%' }}
+            mb={{ base: 2, md: 0 }}
           >
             Transaction Status
           </Text>
@@ -347,31 +414,67 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             fontSize="16px"
             fontWeight="500"
             textAlign="left"
-            width="50%"
+            width={{ base: '100%', md: '50%' }}
           >
             {formatStatus(transaction.status || 'pending')}
           </Text>
         </Flex>
 
         {/* Transaction Hash */}
-        <Flex justify="space-between" align="start" py={6} width="100%">
+        <Flex
+          direction={{ base: 'column', md: 'row' }}
+          justify={{ base: 'flex-start', md: 'space-between' }}
+          align={{ base: 'flex-start', md: 'start' }}
+          py={6}
+          width="100%"
+        >
           <Text
             color="neutral.300"
             fontSize="16px"
             fontWeight="700"
-            width="50%"
+            width={{ base: '100%', md: '50%' }}
+            mb={{ base: 2, md: 0 }}
           >
             Transaction Hash
           </Text>
-          <Text
-            color="white"
-            fontSize="16px"
-            fontWeight="500"
-            textAlign="left"
-            width="50%"
-          >
-            {transaction.transaction_hash || 'N/A'}
-          </Text>
+          <Box width={{ base: '100%', md: '50%' }}>
+            {transaction.transaction_hash ? (
+              <HStack spacing={2} align="center">
+                <Text
+                  color="white"
+                  fontSize="16px"
+                  fontWeight="500"
+                  textAlign="left"
+                  whiteSpace="wrap"
+                  wordBreak="break-word"
+                >
+                  {transaction.transaction_hash}
+                </Text>
+                {transaction.chain_id && (
+                  <Link
+                    href={`${
+                      getSupportedChainFromId(transaction.chain_id)
+                        ?.blockExplorerUrl
+                    }/tx/${transaction.transaction_hash}`}
+                    isExternal
+                    color="primary.400"
+                    _hover={{ color: 'primary.300' }}
+                  >
+                    <Icon as={FiExternalLink} fontSize="16px" />
+                  </Link>
+                )}
+              </HStack>
+            ) : (
+              <Text
+                color="white"
+                fontSize="16px"
+                fontWeight="500"
+                textAlign="left"
+              >
+                N/A
+              </Text>
+            )}
+          </Box>
         </Flex>
       </VStack>
     </Box>

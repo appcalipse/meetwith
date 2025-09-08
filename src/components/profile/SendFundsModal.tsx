@@ -5,6 +5,7 @@ import {
   Icon,
   Image,
   Input,
+  Link,
   Modal,
   ModalBody,
   ModalContent,
@@ -41,6 +42,7 @@ import {
   ChainInfo,
   getChainInfo,
   getNetworkDisplayName,
+  getSupportedChainFromId,
   getTokenIcon,
   getTokenName,
   getTokenSymbol,
@@ -118,6 +120,15 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     expected: SupportedChain
     actual: SupportedChain | null
   } | null>(null)
+
+  // Add success state
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
+  const [successTransactionHash, setSuccessTransactionHash] =
+    useState<string>('')
+  const [successAmount, setSuccessAmount] = useState<string>('')
+  const [successToken, setSuccessToken] = useState<string>('')
+  const [successRecipient, setSuccessRecipient] = useState<string>('')
+  const [successChainId, setSuccessChainId] = useState<number | null>(null) // Add this
 
   // PIN protection state
   const {
@@ -537,17 +548,20 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
         setProgress(100)
 
-        showSuccessToast(
-          'Transaction Successful!',
-          'Funds have been sent successfully'
-        )
+        // Set success data and show success modal
+        setSuccessTransactionHash(transactionHash)
+        setSuccessAmount(amount)
+        setSuccessToken(selectedToken.symbol)
+        setSuccessRecipient(recipientAddress)
+        setSuccessChainId(chainInfo.id) // Store the chain ID
+        setIsSuccessModalOpen(true)
 
-        // Reset form and close modal
+        // Reset form but don't close modal yet
         setSelectedToken(null)
         setRecipientAddress('')
         setAmount('')
         setProgress(0)
-        handleClose()
+        setIsLoading(false)
       } else {
         throw new Error('Transaction failed')
       }
@@ -560,10 +574,31 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     }
   }
 
+  const handleSuccessClose = () => {
+    setIsSuccessModalOpen(false)
+    setSuccessTransactionHash('')
+    setSuccessAmount('')
+    setSuccessToken('')
+    setSuccessRecipient('')
+    setSuccessChainId(null) // Reset chain ID
+    handleClose()
+  }
+
+  const handleViewInExplorer = () => {
+    if (successTransactionHash && successChainId) {
+      const chainInfo = getSupportedChainFromId(successChainId)
+      if (chainInfo?.blockExplorerUrl) {
+        return `${chainInfo.blockExplorerUrl}/tx/${successTransactionHash}`
+      }
+    }
+    return '#'
+  }
+
   return (
     <>
+      {/* Main Send Funds Modal */}
       <Modal
-        isOpen={isOpen}
+        isOpen={isOpen && !isSuccessModalOpen}
         onClose={handleClose}
         size={{ base: 'full', md: 'md' }}
         isCentered
@@ -878,6 +913,104 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                   'Send'
                 )}
               </Button>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={isSuccessModalOpen}
+        onClose={handleSuccessClose}
+        size={{ base: 'full', md: 'md' }}
+        isCentered
+      >
+        <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
+        <ModalContent
+          bg="neutral.900"
+          borderRadius={{ base: '0', md: '12px' }}
+          border="1px solid"
+          borderColor="neutral.825"
+          maxW={{ base: '100%', md: '500px' }}
+          mx={{ base: 0, md: 'auto' }}
+          my={{ base: 0, md: 'auto' }}
+          boxShadow="none"
+          minH="425px"
+        >
+          <ModalBody p={{ base: 6, md: 8 }}>
+            <VStack spacing={0} align="flex-start" textAlign="center">
+              {/* Back Button */}
+              <HStack
+                spacing={2}
+                align="center"
+                cursor="pointer"
+                onClick={handleSuccessClose}
+                color="primary.400"
+                _hover={{ color: 'primary.300' }}
+                mb={4}
+              >
+                <Icon as={FiArrowLeft} fontSize="20px" />
+                <Text fontSize="16px" fontWeight="600">
+                  Back
+                </Text>
+              </HStack>
+
+              {/* Success Icon */}
+              <Image
+                src="/assets/successful.svg"
+                alt="Success"
+                borderRadius="full"
+                mt={2}
+              />
+
+              {/* Success Title */}
+              <Text
+                fontSize="24px"
+                fontWeight="700"
+                color="white"
+                mb={2}
+                mt={4}
+              >
+                Transaction successful
+              </Text>
+
+              {/* Transaction Details */}
+              <Text
+                fontSize="16px"
+                color="white"
+                fontWeight="500"
+                lineHeight="1.4"
+                mt={1}
+                alignSelf="flex-start"
+                textAlign="left"
+              >
+                You have successfully sent {successAmount} {successToken} to{' '}
+                {successRecipient.slice(0, 6)}...{successRecipient.slice(-4)}
+              </Text>
+
+              {/* View in Explorer Button */}
+              <Link
+                href={handleViewInExplorer()}
+                isExternal
+                _hover={{ textDecoration: 'none' }}
+                _focus={{ boxShadow: 'none' }}
+              >
+                <Button
+                  bg="transparent"
+                  border="2px solid"
+                  borderColor="primary.200"
+                  color="primary.200"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="700"
+                  py={{ base: 3, md: 5 }}
+                  px={4}
+                  borderRadius="8px"
+                  onClick={handleViewInExplorer}
+                  mt={8}
+                >
+                  View transaction in explorer
+                </Button>
+              </Link>
             </VStack>
           </ModalBody>
         </ModalContent>
