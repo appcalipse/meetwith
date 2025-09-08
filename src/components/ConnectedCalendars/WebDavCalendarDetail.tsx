@@ -10,6 +10,7 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { v4 } from 'uuid'
 
@@ -30,7 +31,7 @@ interface WebDavDetailsPanelProps {
 }
 
 const APPLE_DISCLAIMER = (
-  <Text align={'justify'}>
+  <Text>
     Generate an app specific password to use with <b>Meetwith</b> at{' '}
     <Link
       rel="nofollow"
@@ -55,7 +56,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
   const [loading, setLoading] = useState<boolean>(false)
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const onShowPassword = () => setShowPassword(value => !value)
-
+  const router = useRouter()
   const [url, setUrl] = useState(isApple ? APPLE_WEBDAV_URL : payload?.url)
   const [username, setUsername] = useState(payload?.username)
   const [password, setPassword] = useState(payload?.password)
@@ -140,7 +141,6 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
             }
           }),
         })
-        window.location.href = '/dashboard/calendars?calendarResult=success'
       } else {
         if (!username || !password || !url) {
           toast({
@@ -172,8 +172,16 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
             }
           }),
         })
-        window.location.href = '/dashboard/calendars?calendarResult=success'
       }
+      router.push(
+        '/dashboard/calendars?calendarResult=success',
+        {
+          query: router.query,
+        },
+        {
+          shallow: true,
+        }
+      )
       !!onSuccess && onSuccess()
     } finally {
       setLoading(false)
