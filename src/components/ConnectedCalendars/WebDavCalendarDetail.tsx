@@ -173,15 +173,9 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           }),
         })
       }
-      router.push(
-        '/dashboard/calendars?calendarResult=success',
-        {
-          query: router.query,
-        },
-        {
-          shallow: true,
-        }
-      )
+      router.push('/dashboard/calendars?calendarResult=success', {
+        query: router.query,
+      })
       !!onSuccess && onSuccess()
     } finally {
       setLoading(false)
