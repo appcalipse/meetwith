@@ -123,12 +123,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
   // Add success state
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
-  const [successTransactionHash, setSuccessTransactionHash] =
-    useState<string>('')
-  const [successAmount, setSuccessAmount] = useState<string>('')
-  const [successToken, setSuccessToken] = useState<string>('')
-  const [successRecipient, setSuccessRecipient] = useState<string>('')
-  const [successChainId, setSuccessChainId] = useState<number | null>(null) // Add this
+  const [successData, setSuccessData] = useState<{
+    transactionHash: string
+    amount: string
+    token: string
+    recipient: string
+    chainId: number
+  } | null>(null)
 
   // PIN protection state
   const {
@@ -549,11 +550,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
         setProgress(100)
 
         // Set success data and show success modal
-        setSuccessTransactionHash(transactionHash)
-        setSuccessAmount(amount)
-        setSuccessToken(selectedToken.symbol)
-        setSuccessRecipient(recipientAddress)
-        setSuccessChainId(chainInfo.id) // Store the chain ID
+        setSuccessData({
+          transactionHash,
+          amount,
+          token: selectedToken.symbol,
+          recipient: recipientAddress,
+          chainId: chainInfo.id,
+        })
         setIsSuccessModalOpen(true)
 
         // Reset form but don't close modal yet
@@ -576,19 +579,15 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
   const handleSuccessClose = () => {
     setIsSuccessModalOpen(false)
-    setSuccessTransactionHash('')
-    setSuccessAmount('')
-    setSuccessToken('')
-    setSuccessRecipient('')
-    setSuccessChainId(null) // Reset chain ID
+    setSuccessData(null)
     handleClose()
   }
 
   const handleViewInExplorer = () => {
-    if (successTransactionHash && successChainId) {
-      const chainInfo = getSupportedChainFromId(successChainId)
+    if (successData?.transactionHash && successData?.chainId) {
+      const chainInfo = getSupportedChainFromId(successData.chainId)
       if (chainInfo?.blockExplorerUrl) {
-        return `${chainInfo.blockExplorerUrl}/tx/${successTransactionHash}`
+        return `${chainInfo.blockExplorerUrl}/tx/${successData.transactionHash}`
       }
     }
     return '#'
@@ -984,8 +983,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                 alignSelf="flex-start"
                 textAlign="left"
               >
-                You have successfully sent {successAmount} {successToken} to{' '}
-                {successRecipient.slice(0, 6)}...{successRecipient.slice(-4)}
+                You have successfully sent {successData?.amount}{' '}
+                {successData?.token} to {successData?.recipient.slice(0, 6)}...
+                {successData?.recipient.slice(-4)}
               </Text>
 
               {/* View in Explorer Button */}
