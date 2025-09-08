@@ -14,6 +14,7 @@ import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { v4 } from 'uuid'
 
+import { EditMode } from '@/types/Dashboard'
 import {
   addOrUpdateICloud,
   addOrUpdateWebdav,
@@ -60,7 +61,6 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
   const [url, setUrl] = useState(isApple ? APPLE_WEBDAV_URL : payload?.url)
   const [username, setUsername] = useState(payload?.username)
   const [password, setPassword] = useState(payload?.password)
-
   const toast = useToast()
 
   const checkWebDav = async () => {
@@ -173,19 +173,14 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           }),
         })
       }
-      if (router.query.section) {
-        delete router.query.section
-      }
-      router.push({
-        pathname: '/dashboard/calendars',
-        query: {
-          ...router.query,
-          calendarResult: 'success',
-        },
-      })
       !!onSuccess && onSuccess()
     } finally {
       setLoading(false)
+      let url = `/dashboard/${EditMode.CALENDARS}?calendarResult=success`
+      if (router.query.state) {
+        url += `&state=${router.query.state}`
+      }
+      window.location.href = url
     }
   }
 
