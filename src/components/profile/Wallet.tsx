@@ -35,6 +35,7 @@ import { TbSettings2 } from 'react-icons/tb'
 
 import { useCryptoBalance } from '@/hooks/useCryptoBalance'
 import { useCryptoBalances } from '@/hooks/useCryptoBalances'
+import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { useWalletTransactions } from '@/hooks/useWalletTransactions'
 import { useWallet } from '@/providers/WalletProvider'
@@ -143,6 +144,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const { isOpen, onClose, onOpen } = useDisclosure()
   const { totalBalance, isLoading: balanceLoading } = useWalletBalance('USD')
 
+  const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
+
   const {
     transactions,
     isLoading: transactionsLoading,
@@ -153,7 +156,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     transactionsPerPage,
     (currentPage - 1) * transactionsPerPage,
     selectedCurrency,
-    searchQuery
+    debouncedSearchQuery
   )
 
   // Token-specific data for crypto details view
@@ -172,7 +175,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     transactionsPerPage,
     (selectedCryptoCurrentPage - 1) * transactionsPerPage,
     selectedCurrency,
-    searchQuery
+    debouncedSearchQuery
   )
 
   // Use centralized configurations
@@ -229,11 +232,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   return (
     <Box
       maxW={{ base: '100%', md: '685px' }}
-      ml={{ base: 0, md: '70px' }}
+      mx="auto"
       overflowY="auto"
       height="100%"
       pb={{ base: 4, md: 8 }}
-      px={{ base: 4, md: 0 }}
+      px={0}
     >
       <WithdrawFundsModal
         selectedNetwork={selectedNetwork || SupportedChain.ARBITRUM}
@@ -381,18 +384,18 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             <HStack justify="center" spacing={{ base: 3, md: 6 }}>
               <WalletActionButton
                 icon={PiArrowCircleUpRight}
-                label="Withdraw funds"
+                label="Withdraw"
                 onClick={() => handleShowWithdrawWidget()}
               />
               <WalletActionButton
                 icon={PiPlusCircleLight}
-                label="Receive funds"
+                label="Receive"
                 isActive
                 onClick={() => setIsReceiveModalOpen(true)}
               />
               <WalletActionButton
                 icon={PiArrowCircleRight}
-                label="Send funds"
+                label="Send"
                 onClick={() => setIsSendModalOpen(true)}
               />
             </HStack>
@@ -513,13 +516,15 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   h={{ base: '32px', md: '40px' }}
                                   borderRadius="full"
                                   overflow="hidden"
+                                  flexShrink={0}
                                 >
-                                  <Image
-                                    src={transaction.userImage}
-                                    alt={transaction.user}
-                                    w={{ base: '32px', md: '40px' }}
-                                    h={{ base: '32px', md: '40px' }}
-                                    objectFit="cover"
+                                  <Avatar
+                                    address={currentAccount.address || ''}
+                                    avatar_url={
+                                      currentAccount.preferences?.avatar_url ||
+                                      ''
+                                    }
+                                    name={getAccountDisplayName(currentAccount)}
                                   />
                                 </Box>
 
@@ -778,18 +783,18 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             <HStack justify="center" spacing={{ base: 8, md: 16 }}>
               <WalletActionButton
                 icon={PiArrowCircleUpRight}
-                label="Withdraw funds"
+                label="Withdraw"
                 onClick={() => handleShowWithdrawWidget()}
               />
               <WalletActionButton
                 icon={PiPlusCircleLight}
-                label="Receive funds"
+                label="Receive"
                 isActive
                 onClick={() => setIsReceiveModalOpen(true)}
               />
               <WalletActionButton
                 icon={PiArrowCircleRight}
-                label="Send funds"
+                label="Send"
                 onClick={() => setIsSendModalOpen(true)}
               />
             </HStack>
@@ -928,6 +933,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 h={{ base: '32px', md: '40px' }}
                                 borderRadius="full"
                                 overflow="hidden"
+                                flexShrink={0}
                               >
                                 <Avatar
                                   address={currentAccount.address || ''}
@@ -1528,7 +1534,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                         key={index}
                         bg="neutral.825"
                         borderRadius="12px"
-                        p={4}
+                        px={{ base: 2, md: 4 }}
+                        py={4}
                         width="100%"
                         cursor="pointer"
                         _hover={{ bg: 'neutral.800' }}
@@ -1647,6 +1654,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   color="white"
                                   fontSize={{ base: '16px', md: '20px' }}
                                   fontWeight="700"
+                                  textAlign="right"
                                 >
                                   {asset.balance}
                                 </Text>
@@ -1654,6 +1662,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   fontSize={{ base: '12px', md: '16px' }}
                                   fontWeight="500"
                                   color="white"
+                                  textAlign="right"
                                 >
                                   {asset.usdValue
                                     ? formatCurrencyDisplay(

@@ -191,3 +191,12 @@ export const formatCurrency = (
 export const deduplicateArray = <T = string>(arr: T[]): T[] => {
   return Array.from(new Set(arr))
 }
+
+export const formatCountdown = (seconds: number): string => {
+  if (seconds >= 60) {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+  return `${seconds}s`
+}
