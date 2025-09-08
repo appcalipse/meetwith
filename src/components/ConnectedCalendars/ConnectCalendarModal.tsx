@@ -18,6 +18,8 @@ import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
 } from '@/utils/api_helper'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 
 import WebDavDetailsPanel from './WebDavCalendarDetail'
 
@@ -38,7 +40,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   >()
   const selectOption = (provider: TimeSlotSource) => async () => {
     setLoading(provider)
-
+    await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
     switch (provider) {
       case TimeSlotSource.GOOGLE:
         const googleResponse = await getGoogleAuthConnectUrl(state)
