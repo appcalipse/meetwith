@@ -1280,11 +1280,14 @@ const PublicPage: FC<IProps> = props => {
             mt={{ md: 8, base: 0 }}
             mb={{ md: 8, base: 0 }}
             pt={24}
-            flex={1}
             width={'100%'}
             pb={8}
             marginX="auto"
             borderRadius="lg"
+            display="flex"
+            flexDirection="column"
+            justifyContent="space-between"
+            minH="100vh"
             transitionProperty="width"
             transitionDuration="2s"
             transitionTimingFunction="ease-in-out"
