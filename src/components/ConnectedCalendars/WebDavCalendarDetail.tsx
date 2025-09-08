@@ -176,7 +176,8 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
       if (router.query.section) {
         delete router.query.section
       }
-      router.push('/dashboard/calendars', {
+      router.push({
+        pathname: '/dashboard/calendars',
         query: {
           ...router.query,
           calendarResult: 'success',
