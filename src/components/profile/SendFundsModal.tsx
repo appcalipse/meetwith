@@ -72,6 +72,7 @@ import { thirdWebClient } from '@/utils/user_manager'
 
 import MagicLinkModal from './components/MagicLinkModal'
 import TransactionVerificationModal from './components/TransactionVerificationModal'
+import TransactionSuccessModal from './TransactionSuccessModal'
 
 interface SendFundsModalProps {
   isOpen: boolean
@@ -583,16 +584,6 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     handleClose()
   }
 
-  const handleViewInExplorer = () => {
-    if (successData?.transactionHash && successData?.chainId) {
-      const chainInfo = getSupportedChainFromId(successData.chainId)
-      if (chainInfo?.blockExplorerUrl) {
-        return `${chainInfo.blockExplorerUrl}/tx/${successData.transactionHash}`
-      }
-    }
-    return '#'
-  }
-
   return (
     <>
       {/* Main Send Funds Modal */}
@@ -918,103 +909,17 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
       </Modal>
 
       {/* Success Modal */}
-      <Modal
-        isOpen={isSuccessModalOpen}
-        onClose={handleSuccessClose}
-        size={{ base: 'full', md: 'md' }}
-        isCentered
-      >
-        <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
-        <ModalContent
-          bg="neutral.900"
-          borderRadius={{ base: '0', md: '12px' }}
-          border="1px solid"
-          borderColor="neutral.825"
-          maxW={{ base: '100%', md: '500px' }}
-          mx={{ base: 0, md: 'auto' }}
-          my={{ base: 0, md: 'auto' }}
-          boxShadow="none"
-          minH="425px"
-        >
-          <ModalBody p={{ base: 6, md: 8 }}>
-            <VStack spacing={0} align="flex-start" textAlign="center">
-              {/* Back Button */}
-              <HStack
-                spacing={2}
-                align="center"
-                cursor="pointer"
-                onClick={handleSuccessClose}
-                color="primary.400"
-                _hover={{ color: 'primary.300' }}
-                mb={4}
-              >
-                <Icon as={FiArrowLeft} fontSize="20px" />
-                <Text fontSize="16px" fontWeight="600">
-                  Back
-                </Text>
-              </HStack>
-
-              {/* Success Icon */}
-              <Image
-                src="/assets/successful.svg"
-                alt="Success"
-                borderRadius="full"
-                mt={2}
-              />
-
-              {/* Success Title */}
-              <Text
-                fontSize="24px"
-                fontWeight="700"
-                color="white"
-                mb={2}
-                mt={4}
-              >
-                Transaction successful
-              </Text>
-
-              {/* Transaction Details */}
-              <Text
-                fontSize="16px"
-                color="white"
-                fontWeight="500"
-                lineHeight="1.4"
-                mt={1}
-                alignSelf="flex-start"
-                textAlign="left"
-              >
-                You have successfully sent {successData?.amount}{' '}
-                {successData?.token} to {successData?.recipient.slice(0, 6)}...
-                {successData?.recipient.slice(-4)}
-              </Text>
-
-              {/* View in Explorer Button */}
-              <Link
-                href={handleViewInExplorer()}
-                isExternal
-                _hover={{ textDecoration: 'none' }}
-                _focus={{ boxShadow: 'none' }}
-              >
-                <Button
-                  bg="transparent"
-                  border="2px solid"
-                  borderColor="primary.200"
-                  color="primary.200"
-                  fontSize={{ base: '14px', md: '16px' }}
-                  fontWeight="700"
-                  py={{ base: 3, md: 5 }}
-                  px={4}
-                  borderRadius="8px"
-                  onClick={handleViewInExplorer}
-                  mt={8}
-                >
-                  View transaction in explorer
-                </Button>
-              </Link>
-            </VStack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+      {successData && (
+        <TransactionSuccessModal
+          isOpen={isSuccessModalOpen}
+          onClose={handleSuccessClose}
+          transactionHash={successData.transactionHash}
+          amount={successData.amount}
+          token={successData.token}
+          recipient={successData.recipient}
+          chainId={successData.chainId}
+        />
+      )}
 
       {/* Token Selection Modal */}
       <Modal

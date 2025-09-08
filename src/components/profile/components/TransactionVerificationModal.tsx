@@ -136,6 +136,7 @@ const TransactionVerificationModal: React.FC<
         p={8}
         maxW="592px"
         width="592px"
+        shadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">
