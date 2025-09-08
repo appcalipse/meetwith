@@ -173,8 +173,14 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           }),
         })
       }
-      router.push('/dashboard/calendars?calendarResult=success', {
-        query: router.query,
+      if (router.query.section) {
+        delete router.query.section
+      }
+      router.push('/dashboard/calendars', {
+        query: {
+          ...router.query,
+          calendarResult: 'success',
+        },
       })
       !!onSuccess && onSuccess()
     } finally {
