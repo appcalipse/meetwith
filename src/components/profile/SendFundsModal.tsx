@@ -5,6 +5,7 @@ import {
   Icon,
   Image,
   Input,
+  Link,
   Modal,
   ModalBody,
   ModalContent,
@@ -41,6 +42,7 @@ import {
   ChainInfo,
   getChainInfo,
   getNetworkDisplayName,
+  getSupportedChainFromId,
   getTokenIcon,
   getTokenName,
   getTokenSymbol,
@@ -70,6 +72,7 @@ import { thirdWebClient } from '@/utils/user_manager'
 
 import MagicLinkModal from './components/MagicLinkModal'
 import TransactionVerificationModal from './components/TransactionVerificationModal'
+import TransactionSuccessModal from './TransactionSuccessModal'
 
 interface SendFundsModalProps {
   isOpen: boolean
@@ -117,6 +120,16 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   const [networkMismatch, setNetworkMismatch] = useState<{
     expected: SupportedChain
     actual: SupportedChain | null
+  } | null>(null)
+
+  // Add success state
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
+  const [successData, setSuccessData] = useState<{
+    transactionHash: string
+    amount: string
+    token: string
+    recipient: string
+    chainId: number
   } | null>(null)
 
   // PIN protection state
@@ -537,17 +550,22 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
         setProgress(100)
 
-        showSuccessToast(
-          'Transaction Successful!',
-          'Funds have been sent successfully'
-        )
+        // Set success data and show success modal
+        setSuccessData({
+          transactionHash,
+          amount,
+          token: selectedToken.symbol,
+          recipient: recipientAddress,
+          chainId: chainInfo.id,
+        })
+        setIsSuccessModalOpen(true)
 
-        // Reset form and close modal
+        // Reset form but don't close modal yet
         setSelectedToken(null)
         setRecipientAddress('')
         setAmount('')
         setProgress(0)
-        handleClose()
+        setIsLoading(false)
       } else {
         throw new Error('Transaction failed')
       }
@@ -560,10 +578,17 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     }
   }
 
+  const handleSuccessClose = () => {
+    setIsSuccessModalOpen(false)
+    setSuccessData(null)
+    handleClose()
+  }
+
   return (
     <>
+      {/* Main Send Funds Modal */}
       <Modal
-        isOpen={isOpen}
+        isOpen={isOpen && !isSuccessModalOpen}
         onClose={handleClose}
         size={{ base: 'full', md: 'md' }}
         isCentered
@@ -882,6 +907,19 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      {/* Success Modal */}
+      {successData && (
+        <TransactionSuccessModal
+          isOpen={isSuccessModalOpen}
+          onClose={handleSuccessClose}
+          transactionHash={successData.transactionHash}
+          amount={successData.amount}
+          token={successData.token}
+          recipient={successData.recipient}
+          chainId={successData.chainId}
+        />
+      )}
 
       {/* Token Selection Modal */}
       <Modal

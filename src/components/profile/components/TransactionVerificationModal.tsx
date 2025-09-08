@@ -15,6 +15,8 @@ import React, { useEffect, useState } from 'react'
 import { FiArrowLeft, FiEye, FiEyeOff } from 'react-icons/fi'
 
 import { sendVerificationCode } from '@/utils/api_helper'
+import { VERIFICATION_CODE_COUNTDOWN_SECONDS } from '@/utils/constants'
+import { formatCountdown } from '@/utils/generic_utils'
 import { useToastHelpers } from '@/utils/toasts'
 
 interface TransactionVerificationModalProps {
@@ -84,7 +86,7 @@ const TransactionVerificationModal: React.FC<
           'A 5-digit verification code has been sent to your email'
         )
         setCodeSent(true)
-        setCountdown(60)
+        setCountdown(VERIFICATION_CODE_COUNTDOWN_SECONDS)
       } else {
         showErrorToast(
           'Failed to Send Code',
@@ -134,6 +136,7 @@ const TransactionVerificationModal: React.FC<
         p={8}
         maxW="592px"
         width="592px"
+        shadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">
@@ -273,7 +276,7 @@ const TransactionVerificationModal: React.FC<
                   h="auto"
                 >
                   {countdown > 0
-                    ? `Request new code (${countdown}s)`
+                    ? `Request new code (${formatCountdown(countdown)})`
                     : 'Request new code'}
                 </Button>
               </VStack>
