@@ -153,23 +153,16 @@ const OnboardingModal = () => {
 
         // 3rd Case
         // Don't have any origin, just created Account
-      } else if (!origin) {
-        const isNewUser =
-          !currentAccount.preferences?.name ||
-          (currentAccount.created_at &&
-            new Date(currentAccount.created_at).toDateString() ===
-              new Date().toDateString())
-
-        if (isNewUser || signedUp) {
-          openOnboarding()
-          onboardingStarted()
-        }
       }
+    } else if (!origin && signedUp) {
+      openOnboarding()
+      onboardingStarted()
+    }
 
-      // If not, we check if any origin is passed in and if the user its not logged in
-      // and connection modal is not open this way we will trigger the wallet connection
-      // modal
-    } else if (
+    // If not, we check if any origin is passed in and if the user its not logged in
+    // and connection modal is not open this way we will trigger the wallet connection
+    // modal
+    else if (
       !currentAccount?.address &&
       !!origin &&
       !didOpenConnectWallet &&
