@@ -2414,7 +2414,7 @@ const addOrUpdateConnectedCalendar = async (
     throw new Error(error.message)
   }
   const calendar = data[0] as ConnectedCalendar
-  if (provider === TimeSlotSource.GOOGLE) {
+  if (provider === TimeSlotSource.GOOGLE && !isProduction) {
     try {
       const integration = getConnectedCalendarIntegration(
         address.toLowerCase(),
