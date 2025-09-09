@@ -68,7 +68,6 @@ const OnboardingModal = () => {
       : {}
   const origin = stateObject.origin as OnboardingSubject | undefined
   const skipNextSteps = stateObject.skipNextSteps as boolean | undefined
-
   const [signedUp, setSignedUp] = useState<string>(
     stateObject.signedUp || false
   )
@@ -153,12 +152,11 @@ const OnboardingModal = () => {
 
         // 3rd Case
         // Don't have any origin, just created Account
+      } else if (!origin && signedUp) {
+        openOnboarding()
+        onboardingStarted()
       }
-    } else if (!origin && signedUp) {
-      openOnboarding()
-      onboardingStarted()
     }
-
     // If not, we check if any origin is passed in and if the user its not logged in
     // and connection modal is not open this way we will trigger the wallet connection
     // modal

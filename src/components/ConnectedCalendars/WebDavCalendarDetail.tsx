@@ -22,6 +22,8 @@ import {
   addOrUpdateWebdav,
   validateWebdav,
 } from '@/utils/api_helper'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 
 interface WebDavDetailsPanelProps {
   isApple: boolean
@@ -175,6 +177,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           }),
         })
       }
+      await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
       !!onSuccess && (await onSuccess())
       onboardingContext.reload()
       toast({
