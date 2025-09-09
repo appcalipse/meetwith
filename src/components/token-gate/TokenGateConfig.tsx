@@ -1,4 +1,3 @@
-import { Link } from '@chakra-ui/next-js'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -6,14 +5,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogOverlay,
-  Avatar,
   AvatarGroup,
   Box,
   Button,
   Heading,
   HStack,
-  IconButton,
-  Image,
+  Link,
   Skeleton,
   Spinner,
   Stack,
@@ -22,13 +19,8 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import src from '@tiptap/extension-bubble-menu'
-import { max } from 'date-fns'
-import { useContext, useEffect, useRef, useState } from 'react'
-import { FaEdit, FaTrash } from 'react-icons/fa'
-import { size } from 'viem'
+import { useEffect, useRef, useState } from 'react'
 
-import { AccountContext } from '@/providers/AccountProvider'
 import { Account } from '@/types/Account'
 import { getChainImage, SupportedChain } from '@/types/chains'
 import { GateConditionObject } from '@/types/TokenGating'
