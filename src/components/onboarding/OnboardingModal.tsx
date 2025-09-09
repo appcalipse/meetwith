@@ -299,6 +299,7 @@ const OnboardingModal = () => {
   const {
     data: calendarConnectionsData,
     isFetching: isFetchingCalendarConnections,
+    refetch: refetchCalendarConnections,
   } = useQuery({
     queryKey: ['calendars'],
     enabled: activeStep === 1,
@@ -781,7 +782,13 @@ const OnboardingModal = () => {
                           X
                         </Button>
                       </Flex>
-                      <WebDavDetailsPanel isApple={true} />
+                      <WebDavDetailsPanel
+                        isApple={true}
+                        onSuccess={async () => {
+                          await refetchCalendarConnections()
+                          setIsAppleCalDavOpen(false)
+                        }}
+                      />
                     </Flex>
                   )}
 
@@ -866,7 +873,13 @@ const OnboardingModal = () => {
                           X
                         </Button>
                       </Flex>
-                      <WebDavDetailsPanel isApple={false} />
+                      <WebDavDetailsPanel
+                        isApple={false}
+                        onSuccess={async () => {
+                          await refetchCalendarConnections()
+                          setIsCalDavOpen(false)
+                        }}
+                      />
                     </Flex>
                   )}
 
