@@ -101,7 +101,11 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
       <Box>
         <HStack gap={{ md: 4, base: 2 }} alignItems="center">
           <Box w={{ md: 55, base: 10 }} h={{ md: 55, base: 10 }} mb={4}>
-            <Avatar account={props.account} />
+            <Avatar
+              address={props.account.address}
+              avatar_url={props.account.preferences?.avatar_url || ''}
+              name={getAccountDisplayName(props.account)}
+            />
           </Box>
           <Text fontSize={{ md: 'lg', base: 'medium' }} fontWeight="500" mb={5}>
             {getAccountDisplayName(props.account)}

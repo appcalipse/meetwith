@@ -22,6 +22,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const results: Array<ContactInvite> = dbResults.result || []
       return res.status(200).json(results)
     } catch (e) {
+      console.error(e)
       return res.status(500).send(e)
     }
   }

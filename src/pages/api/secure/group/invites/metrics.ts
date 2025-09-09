@@ -2,11 +2,12 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
-import { GetGroupsResponse } from '@/types/Group'
+import { InvitedGroupsResponse } from '@/types/Group'
 import {
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
-  getUserGroups,
+  getGroupInvites,
+  getGroupInvitesCount,
   initDB,
 } from '@/utils/database'
 
@@ -21,21 +22,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const userEmail = await getAccountNotificationSubscriptionEmail(
         account_address
       )
-      const groups = await getUserGroups(
-        account_address,
-        Number(req.query.limit as string),
-        Number(req.query.offset as string),
-        userEmail
-      )
-      const responseJson: Array<GetGroupsResponse> = groups.map(group => ({
-        id: group.group.id,
-        name: group.group.name,
-        slug: group.group.slug,
-        role: group.role,
-        invitePending: group.invitePending,
-      }))
+      const count = await getGroupInvitesCount({
+        address: account_address,
+        email: userEmail,
+      })
 
-      return res.status(200).json(responseJson)
+      return res.status(200).json(count)
     } catch (e) {
       return res.status(500).send(e)
     }

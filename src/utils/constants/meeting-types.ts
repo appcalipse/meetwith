@@ -1,5 +1,6 @@
 import { MeetingType } from '@/types/Account'
 import { SupportedChain, supportedChains } from '@/types/chains'
+import { MeetingProvider } from '@/types/Meeting'
 import { isProduction } from '@/utils/constants'
 
 export enum SessionType {
@@ -23,6 +24,12 @@ if (!isProduction) {
     label: 'Paid',
   })
 }
+export const BASE_PROVIDERS = [
+  MeetingProvider.GOOGLE_MEET,
+  MeetingProvider.ZOOM,
+  MeetingProvider.HUDDLE,
+  MeetingProvider.JITSI_MEET,
+]
 export const MinNoticeTimeOptions = [
   {
     value: 'minutes',
@@ -94,12 +101,10 @@ const devChains = [
   // SupportedChain.SEPOLIA,
   SupportedChain.ARBITRUM_SEPOLIA,
   SupportedChain.ARBITRUM,
+  SupportedChain.CELO,
   // SupportedChain.CELO_ALFAJORES,
 ]
-const prodChains = [
-  SupportedChain.ARBITRUM,
-  //SupportedChain.CELO
-]
+const prodChains = [SupportedChain.ARBITRUM, SupportedChain.CELO]
 export const supportedPaymentChains = isProduction ? prodChains : devChains
 
 export const CryptoNetworkForCardSettlementOptions = supportedChains
@@ -173,10 +178,6 @@ export const getDefaultValues = (): Partial<MeetingType> => ({
     id: '',
   },
 })
-
-export enum Currency {
-  USD = 'USD',
-}
 
 export const networkOptions = supportedChains
   .filter(val => (supportedPaymentChains || []).includes(val.chain))
