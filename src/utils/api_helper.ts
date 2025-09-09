@@ -977,6 +977,7 @@ export const deleteConnectedCalendar = async (
   email: string,
   provider: TimeSlotSource
 ): Promise<ConnectedCalendarCore[]> => {
+  await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
   return (await internalFetch(`/secure/calendar_integrations`, 'DELETE', {
     email,
     provider,
@@ -988,6 +989,7 @@ export const updateConnectedCalendar = async (
   provider: TimeSlotSource,
   calendars: CalendarSyncInfo[]
 ): Promise<ConnectedCalendar> => {
+  await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
   return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
     email,
     provider,

@@ -68,7 +68,6 @@ const OnboardingModal = () => {
       : {}
   const origin = stateObject.origin as OnboardingSubject | undefined
   const skipNextSteps = stateObject.skipNextSteps as boolean | undefined
-
   const [signedUp, setSignedUp] = useState<string>(
     stateObject.signedUp || false
   )
@@ -167,11 +166,11 @@ const OnboardingModal = () => {
         openOnboarding()
         onboardingStarted()
       }
-
-      // If not, we check if any origin is passed in and if the user its not logged in
-      // and connection modal is not open this way we will trigger the wallet connection
-      // modal
-    } else if (
+    }
+    // If not, we check if any origin is passed in and if the user its not logged in
+    // and connection modal is not open this way we will trigger the wallet connection
+    // modal
+    else if (
       !currentAccount?.address &&
       !!origin &&
       !didOpenConnectWallet &&
@@ -310,6 +309,7 @@ const OnboardingModal = () => {
   const {
     data: calendarConnectionsData,
     isFetching: isFetchingCalendarConnections,
+    refetch: refetchCalendarConnections,
   } = useQuery({
     queryKey: ['calendars'],
     enabled: activeStep === 1,
@@ -792,7 +792,13 @@ const OnboardingModal = () => {
                           X
                         </Button>
                       </Flex>
-                      <WebDavDetailsPanel isApple={true} />
+                      <WebDavDetailsPanel
+                        isApple={true}
+                        onSuccess={async () => {
+                          await refetchCalendarConnections()
+                          setIsAppleCalDavOpen(false)
+                        }}
+                      />
                     </Flex>
                   )}
 
@@ -877,7 +883,13 @@ const OnboardingModal = () => {
                           X
                         </Button>
                       </Flex>
-                      <WebDavDetailsPanel isApple={false} />
+                      <WebDavDetailsPanel
+                        isApple={false}
+                        onSuccess={async () => {
+                          await refetchCalendarConnections()
+                          setIsCalDavOpen(false)
+                        }}
+                      />
                     </Flex>
                   )}
 
