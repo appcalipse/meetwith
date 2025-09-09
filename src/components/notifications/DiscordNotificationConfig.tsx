@@ -1,5 +1,12 @@
-import { Link } from '@chakra-ui/next-js'
-import { Button, HStack, Spinner, Switch, Text, VStack } from '@chakra-ui/react'
+import {
+  Button,
+  HStack,
+  Link,
+  Spinner,
+  Switch,
+  Text,
+  VStack,
+} from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 
 import { Account } from '@/types/Account'
