@@ -68,7 +68,6 @@ const OnboardingModal = () => {
       : {}
   const origin = stateObject.origin as OnboardingSubject | undefined
   const skipNextSteps = stateObject.skipNextSteps as boolean | undefined
-
   const [signedUp, setSignedUp] = useState<string>(
     stateObject.signedUp || false
   )
@@ -153,23 +152,15 @@ const OnboardingModal = () => {
 
         // 3rd Case
         // Don't have any origin, just created Account
-      } else if (!origin) {
-        const isNewUser =
-          !currentAccount.preferences?.name ||
-          (currentAccount.created_at &&
-            new Date(currentAccount.created_at).toDateString() ===
-              new Date().toDateString())
-
-        if (isNewUser || signedUp) {
-          openOnboarding()
-          onboardingStarted()
-        }
+      } else if (!origin && signedUp) {
+        openOnboarding()
+        onboardingStarted()
       }
-
-      // If not, we check if any origin is passed in and if the user its not logged in
-      // and connection modal is not open this way we will trigger the wallet connection
-      // modal
-    } else if (
+    }
+    // If not, we check if any origin is passed in and if the user its not logged in
+    // and connection modal is not open this way we will trigger the wallet connection
+    // modal
+    else if (
       !currentAccount?.address &&
       !!origin &&
       !didOpenConnectWallet &&
@@ -306,6 +297,7 @@ const OnboardingModal = () => {
   const {
     data: calendarConnectionsData,
     isFetching: isFetchingCalendarConnections,
+    refetch: refetchCalendarConnections,
   } = useQuery({
     queryKey: ['calendars'],
     enabled: activeStep === 1,
@@ -421,21 +413,9 @@ const OnboardingModal = () => {
     setLoadingSave(true)
 
     try {
-      // Get the default availability block ID
-      let defaultBlockId = currentAccount.preferences?.availaibility_id
-
-      // If no default block exists, we need to create one
-      if (!defaultBlockId) {
-        // Create a new default availability block
-        const newBlock = await createAvailabilityBlock({
-          title: availabilityFormState.title,
-          timezone: availabilityFormState.timezone || 'UTC',
-          weekly_availability: availabilityFormState.availabilities,
-          is_default: true,
-        })
-        defaultBlockId = newBlock.id
-      } else {
-        // Update the existing default availability block
+      // default type is generated at account creation so no need to check for it here
+      const defaultBlockId = currentAccount.preferences?.availaibility_id
+      if (defaultBlockId) {
         await updateAvailabilityBlock({
           id: defaultBlockId,
           title: availabilityFormState.title,
@@ -443,14 +423,13 @@ const OnboardingModal = () => {
           weekly_availability: availabilityFormState.availabilities,
           is_default: true,
         })
-      }
 
-      // Update meeting type associations if any are selected
-      if (selectedMeetingTypeIds.length > 0 && defaultBlockId) {
-        await updateAvailabilityBlockMeetingTypes({
-          availability_block_id: defaultBlockId,
-          meeting_type_ids: selectedMeetingTypeIds,
-        })
+        if (selectedMeetingTypeIds.length > 0) {
+          await updateAvailabilityBlockMeetingTypes({
+            availability_block_id: defaultBlockId,
+            meeting_type_ids: selectedMeetingTypeIds,
+          })
+        }
       }
 
       const updatedAccount = await saveAccountChanges({
@@ -788,7 +767,13 @@ const OnboardingModal = () => {
                           X
                         </Button>
                       </Flex>
-                      <WebDavDetailsPanel isApple={true} />
+                      <WebDavDetailsPanel
+                        isApple={true}
+                        onSuccess={async () => {
+                          await refetchCalendarConnections()
+                          setIsAppleCalDavOpen(false)
+                        }}
+                      />
                     </Flex>
                   )}
 
@@ -873,7 +858,13 @@ const OnboardingModal = () => {
                           X
                         </Button>
                       </Flex>
-                      <WebDavDetailsPanel isApple={false} />
+                      <WebDavDetailsPanel
+                        isApple={false}
+                        onSuccess={async () => {
+                          await refetchCalendarConnections()
+                          setIsCalDavOpen(false)
+                        }}
+                      />
                     </Flex>
                   )}
 
