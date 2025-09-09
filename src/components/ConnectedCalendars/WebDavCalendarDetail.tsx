@@ -11,9 +11,11 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { v4 } from 'uuid'
 
+import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import {
   addOrUpdateICloud,
@@ -61,6 +63,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
   const [username, setUsername] = useState(payload?.username)
   const [password, setPassword] = useState(payload?.password)
   const toast = useToast()
+  const onboardingContext = useContext(OnboardingContext)
 
   const checkWebDav = async () => {
     if (!url || !username || !password) {
@@ -173,6 +176,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
         })
       }
       !!onSuccess && (await onSuccess())
+      onboardingContext.reload()
       toast({
         title: 'Calendar connected',
         description: "You've just connected a new calendar provider.",
