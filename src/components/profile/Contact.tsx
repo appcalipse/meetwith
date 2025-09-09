@@ -1,4 +1,3 @@
-import { Link } from '@chakra-ui/next-js'
 import {
   Badge,
   Box,
@@ -8,6 +7,7 @@ import {
   Heading,
   HStack,
   Input,
+  Link,
   Tab,
   TableContainer,
   TabList,
