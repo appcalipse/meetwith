@@ -1,5 +1,4 @@
 import { CloseIcon } from '@chakra-ui/icons'
-import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
@@ -8,6 +7,7 @@ import {
   Flex,
   HStack,
   Icon,
+  Link,
   Stack,
   Text,
   useColorModeValue,
