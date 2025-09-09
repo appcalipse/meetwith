@@ -1,4 +1,4 @@
-import { Address, MeetingSession } from '@meta/Transactions'
+import { Address, ICoinConfig, MeetingSession } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -6,6 +6,8 @@ import {
   Account,
   MeetingType,
   PaidMeetingTypes,
+  PartialPaymentPreferences,
+  PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
@@ -91,6 +93,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  MeetingSessionNotFoundError,
   MeetingSlugAlreadyExists,
   NoActiveSubscription,
   OwnInviteError,
@@ -174,8 +177,8 @@ export const getAccount = async (
 
 export const getOwnAccount = async (identifier: string): Promise<Account> => {
   try {
-    const account = await internalFetch('/secure/accounts')
-    return account as Account
+    const account = await internalFetch<Account>('/secure/accounts')
+    return account
   } catch (e: unknown) {
     if (e instanceof ApiFetchError && e.status === 404) {
       throw new AccountNotFoundError(identifier)
@@ -359,17 +362,23 @@ export const updateMeetingAsGuest = async (
       'PUT',
       meeting
     )) as DBSlot
-  } catch (e: any) {
-    if (e.status && e.status === 409) {
-      throw new TimeNotAvailableError()
-    } else if (e.status && e.status === 412) {
-      throw new MeetingCreationError()
-    } else if (e.status && e.status === 417) {
-      throw new MeetingChangeConflictError()
-    } else if (e.status && e.status === 404) {
-      throw new MeetingNotFoundError(slotId)
-    } else if (e.status && e.status === 401) {
-      throw new UnauthorizedError()
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status && e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status && e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status && e.status === 404) {
+        throw e.message === 'MeetingSessionNotFoundError'
+          ? new MeetingSessionNotFoundError(slotId)
+          : new MeetingNotFoundError(slotId)
+      } else if (e.status && e.status === 401) {
+        throw new UnauthorizedError()
+      }
     }
     throw e
   }
@@ -388,12 +397,20 @@ export const updateMeeting = async (
     await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
     return response
   } catch (e: unknown) {
-    if (e instanceof ApiFetchError && e.status && e.status === 409) {
-      throw new TimeNotAvailableError()
-    } else if (e instanceof ApiFetchError && e.status === 412) {
-      throw new MeetingCreationError()
-    } else if (e instanceof ApiFetchError && e.status === 417) {
-      throw new MeetingChangeConflictError()
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status === 404) {
+        throw new MeetingNotFoundError(slotId)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      }
     }
     throw e
   }
@@ -622,22 +639,18 @@ export const syncMeeting = async (
     })
   } catch (e) {}
 }
-export const getGroups = async (
-  limit?: number,
-  offset?: number
-): Promise<Array<GetGroupsResponse>> => {
-  const response = await internalFetch<Array<GetGroupsResponse>>(
-    `/secure/group/user?limit=${limit}&offset=${offset}`
-  )
-  return response
-}
+
 export const getGroupsFull = async (
   limit?: number,
-  offset?: number
+  offset?: number,
+  search?: string,
+  includeInvites = true
 ): Promise<Array<GetGroupsFullResponse>> => {
-  const response = await internalFetch<Array<GetGroupsFullResponse>>(
-    `/secure/group/full?limit=${limit}&offset=${offset}`
-  )
+  let url = `/secure/group/full?limit=${limit}&offset=${offset}&includeInvites=${includeInvites}`
+  if (search) {
+    url += `&search=${search}`
+  }
+  const response = await internalFetch<Array<GetGroupsFullResponse>>(url)
   return response
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
@@ -647,10 +660,12 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   return response
 }
 
-export const getGroupsInvites = async (address: string) => {
-  const response = await internalFetch<Array<EmptyGroupsResponse>>(
-    `/secure/group/user/${address}`
-  )
+export const getGroupsInvites = async (search?: string) => {
+  let url = `/secure/group/invites`
+  if (search) {
+    url += `?search=${search}`
+  }
+  const response = await internalFetch<Array<EmptyGroupsResponse>>(url)
   return response
 }
 
@@ -1133,8 +1148,7 @@ export const getSuggestedSlots = async (
   addresses: string[],
   startDate: Date,
   endDate: Date,
-  duration: number,
-  includePast = false
+  duration: number
 ): Promise<Interval[]> => {
   try {
     return (
@@ -1143,7 +1157,6 @@ export const getSuggestedSlots = async (
         startDate,
         endDate,
         duration,
-        includePast,
       })
     ).map(slot => ({
       start: new Date(slot.start),
@@ -1308,6 +1321,10 @@ export const inviteUsers = async (
     Sentry.captureException(e)
     throw e
   }
+}
+
+export const getGroupInviteCount = async () => {
+  return await internalFetch<number>(`/secure/group/invites/metrics`)
 }
 
 export const createTelegramHash = async () => {
@@ -1590,6 +1607,10 @@ export const getMeetingTypes = async (
   )
 }
 
+export const getMeetingType = async (id: string): Promise<MeetingType> => {
+  return await internalFetch<MeetingType>(`/secure/meetings/type/${id}`)
+}
+
 export const createCryptoTransaction = async (
   transaction: ConfirmCryptoTransactionRequest
 ): Promise<{ success: true }> => {
@@ -1660,5 +1681,176 @@ export const requestInvoice = async (
     `/transactions/invoice`,
     'POST',
     payload
+  )
+}
+
+export const getWalletTransactions = async (
+  wallet_address: string,
+  token_address?: string,
+  chain_id?: number,
+  limit?: number,
+  offset?: number,
+  search_query?: string
+) => {
+  return await internalFetch(`/secure/transactions/wallet`, 'POST', {
+    wallet_address,
+    token_address,
+    chain_id,
+    limit,
+    offset,
+    search_query,
+  })
+}
+
+export const getPaymentPreferences =
+  async (): Promise<PaymentPreferences | null> => {
+    try {
+      return await internalFetch<PaymentPreferences>(
+        '/secure/preferences/payment'
+      )
+    } catch (e) {
+      if (e instanceof ApiFetchError && e.status === 404) {
+        return null
+      }
+      throw e
+    }
+  }
+
+export const createPaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >
+): Promise<PaymentPreferences> => {
+  return await internalFetch<PaymentPreferences>(
+    '/secure/preferences/payment',
+    'POST',
+    { data }
+  )
+}
+
+export const updatePaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >,
+  oldPin?: string
+): Promise<PaymentPreferences> => {
+  const requestBody: { updates: typeof data; oldPin?: string } = {
+    updates: data,
+  }
+
+  if (oldPin) {
+    requestBody.oldPin = oldPin
+  }
+
+  return await internalFetch<PaymentPreferences>(
+    '/secure/preferences/payment',
+    'PATCH',
+    requestBody
+  )
+}
+
+export const verifyPin = async (pin: string): Promise<{ valid: boolean }> => {
+  return await internalFetch<{ valid: boolean }>(
+    '/secure/payments/pin/verify',
+    'POST',
+    {
+      pin,
+    }
+  )
+}
+
+export const sendResetPinLink = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/pin/reset',
+    'POST',
+    {
+      email,
+    }
+  )
+}
+
+export const sendChangeEmailLink = async (
+  currentEmail: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/change',
+    'POST',
+    {
+      currentEmail,
+    }
+  )
+}
+
+export const sendEnablePinLink = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/pin/enable',
+    'POST',
+    {
+      email,
+    }
+  )
+}
+
+export const changeEmailWithToken = async (
+  newEmail: string,
+  token: string
+): Promise<{ success: boolean; message: string; account: Account }> => {
+  return await internalFetch(`/secure/accounts/change-email`, 'POST', {
+    newEmail,
+    token,
+  })
+}
+
+export const enablePinWithToken = async (
+  pin: string,
+  token: string
+): Promise<PaymentPreferences> => {
+  return await internalFetch(`/secure/preferences/payment/enable-pin`, 'POST', {
+    pin,
+    token,
+  })
+}
+
+export const resetPinWithToken = async (
+  newPin: string,
+  token: string
+): Promise<PaymentPreferences> => {
+  return await internalFetch(`/secure/preferences/payment/reset-pin`, 'POST', {
+    newPin,
+    token,
+  })
+}
+
+export const sendVerificationCode = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/verification',
+    'POST',
+    { email }
+  )
+}
+
+export const verifyVerificationCode = async (
+  code: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/verify',
+    'POST',
+    { code }
+  )
+}
+
+export const getCoinConfig = async (): Promise<ICoinConfig> => {
+  // bypass cors
+  return internalFetch<ICoinConfig>(
+    '/integrations/onramp-money/all-config',
+    'GET'
   )
 }

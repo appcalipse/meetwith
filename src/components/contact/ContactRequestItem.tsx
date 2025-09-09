@@ -2,7 +2,7 @@ import { Button, HStack, Text, Th, Tr, useToast } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import React, { FC, useContext } from 'react'
 
-import { ContactStateContext } from '@/providers/ContactInvitesProvider'
+import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { ContactInvite } from '@/types/Contacts'
 import { acceptContactInvite } from '@/utils/api_helper'
 import {
@@ -12,6 +12,8 @@ import {
   OwnInviteError,
 } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
+
+import { ContactStateContext } from '../profile/Contact'
 
 type Props = {
   index: number
@@ -30,8 +32,8 @@ const ContactRequestItem: FC<Props> = ({
 }) => {
   const [isAccepting, setIsAccepting] = React.useState(false)
 
-  const { setSelectedContact, fetchRequestCount } =
-    useContext(ContactStateContext)
+  const { fetchContactsRequestCount } = useContext(MetricStateContext)
+  const { setSelectedContact } = useContext(ContactStateContext)
 
   const toast = useToast()
   const handleAccept = async () => {
@@ -90,7 +92,7 @@ const ContactRequestItem: FC<Props> = ({
     } finally {
       setIsAccepting(false)
     }
-    fetchRequestCount()
+    fetchContactsRequestCount()
   }
 
   const handleRemove = async () => {

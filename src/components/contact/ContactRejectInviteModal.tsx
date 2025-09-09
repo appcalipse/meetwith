@@ -17,7 +17,7 @@ import { Jazzicon } from '@ukstv/jazzicon-react'
 import { logEvent } from '@utils/analytics'
 import React, { useContext } from 'react'
 
-import { ContactStateContext } from '@/providers/ContactInvitesProvider'
+import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { acceptContactInvite, rejectContactInvite } from '@/utils/api_helper'
 import {
   ContactAlreadyExists,
@@ -25,6 +25,8 @@ import {
   ContactInviteNotFound,
   OwnInviteError,
 } from '@/utils/errors'
+
+import { ContactStateContext } from '../profile/Contact'
 
 export interface IContactRejectInviteModal {
   onClose: () => void
@@ -35,7 +37,8 @@ export interface IContactRejectInviteModal {
 
 const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
   const [declining, setDeclining] = React.useState(false)
-  const { selectedContact, fetchRequestCount } = useContext(ContactStateContext)
+  const { selectedContact } = useContext(ContactStateContext)
+  const { fetchContactsRequestCount } = useContext(MetricStateContext)
   const toast = useToast()
 
   const [isAccepting, setIsAccepting] = React.useState(false)
@@ -109,7 +112,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
       setDeclining(false)
       props.onClose()
     }
-    fetchRequestCount()
+    fetchContactsRequestCount()
   }
   const handleAccept = async () => {
     if (!selectedContact) return
@@ -169,7 +172,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
       setIsAccepting(false)
     }
     props.onClose()
-    fetchRequestCount()
+    fetchContactsRequestCount()
   }
   return (
     <Modal

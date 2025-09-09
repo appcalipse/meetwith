@@ -83,8 +83,8 @@ const DeleteGroupModal: React.FC<IGroupInviteCardModal> = props => {
             >
               <WarningTwoIcon w={5} h={5} />
               <Text fontWeight="500">
-                Confirm that you would like to delete this group by typing the
-                group name below.
+                Confirm that you would like to delete this group by typing{' '}
+                <b>DELETE</b> below.
               </Text>
             </HStack>
             <FormControl>
@@ -108,7 +108,7 @@ const DeleteGroupModal: React.FC<IGroupInviteCardModal> = props => {
                 isLoading={isDeleting}
                 onClick={handleDeleteGroup}
                 colorScheme="primary"
-                isDisabled={input !== props.groupName}
+                isDisabled={input !== 'DELETE' || isDeleting}
               >
                 Delete group
               </Button>

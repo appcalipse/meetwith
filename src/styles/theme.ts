@@ -10,6 +10,7 @@ const config: ThemeConfig = {
 export const colors = {
   primary: {
     50: '#FCDACF',
+    75: '#FDE5DD',
     100: '#FBC7B7',
     200: '#F9B19A',
     300: '#F78C69',
@@ -23,6 +24,7 @@ export const colors = {
   neutral: {
     0: '#FFFFFF',
     50: '#F5F7FA',
+    75: '#EAFBF2',
     100: '#E4E7EB',
     200: '#CBD2D9',
     300: '#9AA5B1',
@@ -33,10 +35,12 @@ export const colors = {
     700: '#3E4C59',
     800: '#323F4B',
     825: '#1F2933',
+    845: '#1D2630',
     850: '#181F24',
     900: '#131A20',
   },
   green: {
+    600: '#00B576',
     500: '#34C759',
     400: '#00ce5d',
     300: '#55de93',
@@ -52,11 +56,15 @@ export const colors = {
     300: '#CBD2D9',
   },
   yellow: {
+    100: '#FFF899',
     300: '#FFC700',
+    400: '#FF9500',
+    600: '#F9E800',
   },
   red: {
     500: '#FF0000',
     600: '#EB001B',
+    700: '#E40004',
   },
   orange: {
     400: '#FF8A65',
@@ -64,6 +72,7 @@ export const colors = {
   dark: {
     900: '#141A1F',
     800: '#191D27',
+    700: '#131418',
   },
 }
 
