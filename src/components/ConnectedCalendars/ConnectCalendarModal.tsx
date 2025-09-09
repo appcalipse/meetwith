@@ -8,6 +8,7 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import React, { useState } from 'react'
@@ -27,14 +28,17 @@ interface ConnectCalendarProps {
   isOpen: boolean
   onClose: () => void
   state?: string | null
+  refetch?: () => Promise<void>
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   isOpen,
   onClose,
   state,
+  refetch,
 }) => {
   const [loading, setLoading] = useState<TimeSlotSource | undefined>()
+  const toast = useToast()
   const [selectedProvider, setSelectedProvider] = useState<
     TimeSlotSource | undefined
   >()
@@ -61,7 +65,13 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
     setSelectedProvider(provider)
     setLoading(undefined)
   }
-
+  const handleWebDavSuccess = async () => {
+    if (refetch) {
+      await refetch()
+    }
+    setSelectedProvider(undefined)
+    onClose()
+  }
   return (
     <Modal
       isOpen={isOpen}
@@ -130,14 +140,20 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 p="10"
                 pt="0"
               >
-                <WebDavDetailsPanel isApple={true} />
+                <WebDavDetailsPanel
+                  isApple={true}
+                  onSuccess={handleWebDavSuccess}
+                />
               </VStack>
               <VStack
                 hidden={selectedProvider !== TimeSlotSource.WEBDAV}
                 p="10"
                 pt="0"
               >
-                <WebDavDetailsPanel isApple={false} />
+                <WebDavDetailsPanel
+                  isApple={false}
+                  onSuccess={handleWebDavSuccess}
+                />
               </VStack>
             </VStack>
           </ModalBody>

@@ -11,9 +11,11 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { v4 } from 'uuid'
 
+import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import {
   addOrUpdateICloud,
@@ -28,7 +30,7 @@ interface WebDavDetailsPanelProps {
     username: string
     password: string
   }
-  onSuccess?: () => void
+  onSuccess: () => Promise<void>
 }
 
 const APPLE_DISCLAIMER = (
@@ -57,11 +59,11 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
   const [loading, setLoading] = useState<boolean>(false)
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const onShowPassword = () => setShowPassword(value => !value)
-  const router = useRouter()
   const [url, setUrl] = useState(isApple ? APPLE_WEBDAV_URL : payload?.url)
   const [username, setUsername] = useState(payload?.username)
   const [password, setPassword] = useState(payload?.password)
   const toast = useToast()
+  const onboardingContext = useContext(OnboardingContext)
 
   const checkWebDav = async () => {
     if (!url || !username || !password) {
@@ -173,16 +175,16 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           }),
         })
       }
-      const { section, ...restQuery } = router.query
-
-      await router.push({
-        pathname: '/dashboard/calendars',
-        query: {
-          ...restQuery,
-          calendarResult: 'success',
-        },
+      !!onSuccess && (await onSuccess())
+      onboardingContext.reload()
+      toast({
+        title: 'Calendar connected',
+        description: "You've just connected a new calendar provider.",
+        status: 'success',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
       })
-      !!onSuccess && onSuccess()
     } finally {
       setLoading(false)
     }
