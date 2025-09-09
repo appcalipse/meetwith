@@ -168,7 +168,11 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         onDelete={loadCalendars}
       />
 
-      <ConnectCalendarModal isOpen={isOpen} onClose={onClose} />
+      <ConnectCalendarModal
+        isOpen={isOpen}
+        onClose={onClose}
+        refetch={loadCalendars}
+      />
 
       <Button
         onClick={onOpen}
