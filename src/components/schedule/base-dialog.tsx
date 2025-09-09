@@ -1,4 +1,3 @@
-import { Link } from '@chakra-ui/next-js'
 import {
   Alert,
   AlertDescription,
@@ -12,6 +11,7 @@ import {
   Heading,
   HStack,
   Input,
+  Link,
   Modal,
   ModalBody,
   ModalCloseButton,

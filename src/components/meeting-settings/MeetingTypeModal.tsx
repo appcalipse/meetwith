@@ -1,6 +1,5 @@
 /* eslint-disable tailwindcss/no-custom-classname */
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons'
-import { Link } from '@chakra-ui/next-js'
 import {
   Button,
   Checkbox,
@@ -14,6 +13,7 @@ import {
   InputGroup,
   InputLeftAddon,
   InputRightElement,
+  Link,
   Modal,
   ModalBody,
   ModalContent,

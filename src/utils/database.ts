@@ -163,7 +163,7 @@ import {
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_sync_helpers'
-import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
+import { apiUrl, appUrl, isProduction, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
@@ -236,9 +236,20 @@ const initAccountDBForWallet = async (
   if (createdUserAccount.error) {
     throw new Error(createdUserAccount.error.message)
   }
+
+  if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
+    throw new Error('User account not created')
+  }
+  const user_account: Account = createdUserAccount.data[0]
   const defaultMeetingType = generateDefaultMeetingType()
   const defaultAvailabilities = generateEmptyAvailabilities()
-
+  const defaultBlock = await createAvailabilityBlock(
+    user_account.address,
+    'Default',
+    timezone,
+    defaultAvailabilities,
+    false // don't set as default yet
+  )
   const preferences: AccountPreferences = {
     availableTypes: [defaultMeetingType],
     description: '',
@@ -246,13 +257,8 @@ const initAccountDBForWallet = async (
     socialLinks: [],
     timezone,
     meetingProviders: [MeetingProvider.GOOGLE_MEET],
+    availaibility_id: defaultBlock.id,
   }
-
-  if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
-    throw new Error('User account not created')
-  }
-  const user_account = createdUserAccount.data[0]
-
   try {
     const responsePrefs = await db.supabase.from('account_preferences').insert({
       ...preferences,
@@ -263,26 +269,6 @@ const initAccountDBForWallet = async (
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
-
-    // Create default availability block for new users
-    const defaultWeeklyAvailability = generateDefaultAvailabilities()
-
-    const defaultBlock = await createAvailabilityBlock(
-      user_account.address,
-      'Default',
-      timezone,
-      defaultWeeklyAvailability,
-      true // Set as default
-    )
-
-    // Update account preferences to reference the default availability block
-    await db.supabase
-      .from('account_preferences')
-      .update({
-        availaibility_id: defaultBlock.id,
-      })
-      .eq('owner_account_address', user_account.address)
-
     user_account.preferences = preferences
     user_account.is_invited = is_invited || false
 
@@ -2347,30 +2333,30 @@ const addOrUpdateConnectedCalendar = async (
     throw new Error(error.message)
   }
   const calendar = data[0] as ConnectedCalendar
-
-  try {
-    const integration = getConnectedCalendarIntegration(
-      address.toLowerCase(),
-      email,
-      provider,
-      payload
-    )
-    for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
-      // don't parellelize this as it can make us hit google's rate limit
-      await handleWebHook(cal.calendarId, calendar.id, integration)
-    }
-  } catch (e) {
-    Sentry.captureException(e, {
-      extra: {
-        calendarId: calendar.id,
-        accountAddress: address,
+  if (provider === TimeSlotSource.GOOGLE) {
+    try {
+      const integration = getConnectedCalendarIntegration(
+        address.toLowerCase(),
         email,
         provider,
-      },
-    })
-    console.error('Error adding new calendar to existing meeting types:', e)
+        payload
+      )
+      for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+        // don't parellelize this as it can make us hit google's rate limit
+        await handleWebHook(cal.calendarId, calendar.id, integration)
+      }
+    } catch (e) {
+      Sentry.captureException(e, {
+        extra: {
+          calendarId: calendar.id,
+          accountAddress: address,
+          email,
+          provider,
+        },
+      })
+      console.error('Error adding new calendar to existing meeting types:', e)
+    }
   }
-
   return calendar
 }
 
