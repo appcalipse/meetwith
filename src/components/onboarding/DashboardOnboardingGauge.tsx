@@ -55,7 +55,7 @@ const DashboardOnboardingGauge: FC = () => {
     defineAvailabilitiesSet()
     defineProgress()
     defineOnboardComplete()
-  }, [currentAccount])
+  }, [currentAccount, onboardingContext])
 
   const links = [
     {

@@ -8,6 +8,7 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import React, { useState } from 'react'
@@ -18,6 +19,8 @@ import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
 } from '@/utils/api_helper'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 
 import WebDavDetailsPanel from './WebDavCalendarDetail'
 
@@ -25,20 +28,23 @@ interface ConnectCalendarProps {
   isOpen: boolean
   onClose: () => void
   state?: string | null
+  refetch?: () => Promise<void>
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   isOpen,
   onClose,
   state,
+  refetch,
 }) => {
   const [loading, setLoading] = useState<TimeSlotSource | undefined>()
+  const toast = useToast()
   const [selectedProvider, setSelectedProvider] = useState<
     TimeSlotSource | undefined
   >()
   const selectOption = (provider: TimeSlotSource) => async () => {
     setLoading(provider)
-
+    await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
     switch (provider) {
       case TimeSlotSource.GOOGLE:
         const googleResponse = await getGoogleAuthConnectUrl(state)
@@ -59,7 +65,13 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
     setSelectedProvider(provider)
     setLoading(undefined)
   }
-
+  const handleWebDavSuccess = async () => {
+    if (refetch) {
+      await refetch()
+    }
+    setSelectedProvider(undefined)
+    onClose()
+  }
   return (
     <Modal
       isOpen={isOpen}
@@ -128,14 +140,20 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 p="10"
                 pt="0"
               >
-                <WebDavDetailsPanel isApple={true} />
+                <WebDavDetailsPanel
+                  isApple={true}
+                  onSuccess={handleWebDavSuccess}
+                />
               </VStack>
               <VStack
                 hidden={selectedProvider !== TimeSlotSource.WEBDAV}
                 p="10"
                 pt="0"
               >
-                <WebDavDetailsPanel isApple={false} />
+                <WebDavDetailsPanel
+                  isApple={false}
+                  onSuccess={handleWebDavSuccess}
+                />
               </VStack>
             </VStack>
           </ModalBody>

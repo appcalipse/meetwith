@@ -90,6 +90,7 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
   const {
     data: calendarConnectionsData,
     isFetching: isFetchingCalendarConnections,
+    refetch: refetchCalendarConnections,
   } = useQuery({
     queryKey: ['calendars'],
     queryFn: () => listConnectedCalendars(),
@@ -468,7 +469,13 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
                       X
                     </Button>
                   </Flex>
-                  <WebDavDetailsPanel isApple={true} />
+                  <WebDavDetailsPanel
+                    isApple={true}
+                    onSuccess={async () => {
+                      await refetchCalendarConnections()
+                      setIsAppleCalDavOpen(false)
+                    }}
+                  />
                 </Flex>
               )}
 
@@ -553,7 +560,13 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
                       X
                     </Button>
                   </Flex>
-                  <WebDavDetailsPanel isApple={false} />
+                  <WebDavDetailsPanel
+                    isApple={false}
+                    onSuccess={async () => {
+                      await refetchCalendarConnections()
+                      setIsCalDavOpen(false)
+                    }}
+                  />
                 </Flex>
               )}
 
