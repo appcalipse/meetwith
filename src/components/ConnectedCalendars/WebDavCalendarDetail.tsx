@@ -173,14 +173,18 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           }),
         })
       }
+      const { section, ...restQuery } = router.query
+
+      await router.push({
+        pathname: '/dashboard/calendars',
+        query: {
+          ...restQuery,
+          calendarResult: 'success',
+        },
+      })
       !!onSuccess && onSuccess()
     } finally {
       setLoading(false)
-      let url = `/dashboard/${EditMode.CALENDARS}?calendarResult=success`
-      if (router.query.state) {
-        url += `&state=${router.query.state}`
-      }
-      window.location.href = url
     }
   }
 
