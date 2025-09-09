@@ -1,8 +1,7 @@
-import { Link } from '@chakra-ui/next-js'
 import {
-  Box,
   Button,
   HStack,
+  Link,
   Spinner,
   Switch,
   Text,

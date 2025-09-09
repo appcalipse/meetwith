@@ -953,20 +953,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chakra-ui/next-js@npm:^2.2.0":
-  version: 2.2.0
-  resolution: "@chakra-ui/next-js@npm:2.2.0"
-  dependencies:
-    "@emotion/cache": "npm:^11.11.0"
-  peerDependencies:
-    "@chakra-ui/react": ">=2.4.0"
-    "@emotion/react": ">=11"
-    next: ">=13"
-    react: ">=18"
-  checksum: 10c0/c3658cadc2b511befefa255f602a4af27986216b1016a650a983434ec66db20a9c259d6817bdcba11bc05a6e7e36bbefcfeab6da52259aad52f27df607a0edba
-  languageName: node
-  linkType: hard
-
 "@chakra-ui/number-input@npm:2.1.2":
   version: 2.1.2
   resolution: "@chakra-ui/number-input@npm:2.1.2"
@@ -1863,7 +1849,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@emotion/cache@npm:^11.11.0, @emotion/cache@npm:^11.14.0, @emotion/cache@npm:^11.4.0":
+"@emotion/cache@npm:^11.14.0, @emotion/cache@npm:^11.4.0":
   version: 11.14.0
   resolution: "@emotion/cache@npm:11.14.0"
   dependencies:
@@ -16823,7 +16809,6 @@ __metadata:
     "@chakra-ui/layout": "npm:^2.3.1"
     "@chakra-ui/media-query": "npm:^3.3.0"
     "@chakra-ui/menu": "npm:^2.2.1"
-    "@chakra-ui/next-js": "npm:^2.2.0"
     "@chakra-ui/react": "npm:^2.8.2"
     "@chakra-ui/spinner": "npm:^2.1.0"
     "@chakra-ui/switch": "npm:^2.1.2"

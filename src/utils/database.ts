@@ -260,9 +260,20 @@ const initAccountDBForWallet = async (
   if (createdUserAccount.error) {
     throw new Error(createdUserAccount.error.message)
   }
+
+  if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
+    throw new Error('User account not created')
+  }
+  const user_account: Account = createdUserAccount.data[0]
   const defaultMeetingType = generateDefaultMeetingType()
   const defaultAvailabilities = generateEmptyAvailabilities()
-
+  const defaultBlock = await createAvailabilityBlock(
+    user_account.address,
+    'Default',
+    timezone,
+    defaultAvailabilities,
+    false // don't set as default yet
+  )
   const preferences: AccountPreferences = {
     availableTypes: [defaultMeetingType],
     description: '',
@@ -270,13 +281,8 @@ const initAccountDBForWallet = async (
     socialLinks: [],
     timezone,
     meetingProviders: [MeetingProvider.GOOGLE_MEET],
+    availaibility_id: defaultBlock.id,
   }
-
-  if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
-    throw new Error('User account not created')
-  }
-  const user_account = createdUserAccount.data[0]
-
   try {
     const responsePrefs = await db.supabase.from('account_preferences').insert({
       ...preferences,
@@ -287,26 +293,6 @@ const initAccountDBForWallet = async (
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
-
-    // Create default availability block for new users
-    const defaultWeeklyAvailability = generateDefaultAvailabilities()
-
-    const defaultBlock = await createAvailabilityBlock(
-      user_account.address,
-      'Default',
-      timezone,
-      defaultWeeklyAvailability,
-      true // Set as default
-    )
-
-    // Update account preferences to reference the default availability block
-    await db.supabase
-      .from('account_preferences')
-      .update({
-        availaibility_id: defaultBlock.id,
-      })
-      .eq('owner_account_address', user_account.address)
-
     user_account.preferences = preferences
     user_account.is_invited = is_invited || false
 
