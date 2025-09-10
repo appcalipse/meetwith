@@ -22,6 +22,7 @@ import {
   Contact,
   ContactInvite,
   ContactSearch,
+  InviteGroupMember,
   LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
@@ -92,6 +93,7 @@ import {
   MeetingCreationError,
   MeetingNotFoundError,
   MeetingSlugAlreadyExists,
+  MemberDoesNotExist,
   NoActiveSubscription,
   OwnInviteError,
   ServiceUnavailableError,
@@ -1411,6 +1413,27 @@ export const sendContactListInvite = async (
       }
       if (e.status && e.status === 403) {
         throw new CantInviteYourself()
+      } else if (e.status && e.status === 409) {
+        throw new ContactInviteAlreadySent()
+      }
+    }
+  }
+}
+export const addGroupMemberToContact = async (payload: InviteGroupMember) => {
+  try {
+    return await internalFetch<{ success: boolean; message: string }>(
+      `/secure/contact/add-group-member`,
+      'POST',
+      payload
+    )
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 400) {
+        throw new ContactAlreadyExists()
+      } else if (e.status && e.status === 403) {
+        throw new CantInviteYourself()
+      } else if (e.status && e.status === 404) {
+        throw new MemberDoesNotExist()
       } else if (e.status && e.status === 409) {
         throw new ContactInviteAlreadySent()
       }
