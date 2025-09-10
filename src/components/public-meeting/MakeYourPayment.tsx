@@ -45,8 +45,7 @@ const MakeYourPayment = () => {
   const { query } = useRouter()
 
   const messageChannel = useMemo(
-    () =>
-      'onramp:f560b8db-cc1b-42c2-b895-33c433610b05:7bf1302a-978e-4f71-959a-8db97a869bfe',
+    () => `onramp:${v4()}:${selectedType?.id || ''}`,
     [selectedType]
   )
   const { isOpen, onOpen, onClose } = useDisclosure()
@@ -119,6 +118,7 @@ const MakeYourPayment = () => {
         isOpen={isOpen}
         onClose={onClose}
       />
+
       <Heading size="lg">Make your Payment</Heading>
       <Text fontWeight={700}>Select payment method</Text>
       <HStack
