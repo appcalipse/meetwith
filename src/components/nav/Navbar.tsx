@@ -28,6 +28,7 @@ import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 import { AccountContext } from '../../providers/AccountProvider'
 import { useLogin } from '../../session/login'
 import ConnectWalletDialog from '../ConnectWalletDialog'
+import { NavMenu } from '../profile/components/NavMenu'
 import NavBarLoggedProfile from '../profile/NavBarLoggedProfile'
 import { ThemeSwitcher } from '../ThemeSwitcher'
 
@@ -40,11 +41,25 @@ export const Navbar = () => {
   const { currentAccount, logged, loginIn } = useLogin()
 
   const [backdropFilterValue, setBackdropFilterValue] = useState<string>('0')
+  const [dashboardNavOpen, setDashboardNavOpen] = useState(false)
   const [activeLink, setActiveLink] = useState('')
   const bgColor = useColorModeValue('transparent', 'neutral.900')
   const borderColor = useColorModeValue('neutral.300', 'neutral.800')
   const signInButtonColor = useColorModeValue('primary.600', 'white')
   const signInBorderColor = useColorModeValue('primary.600', 'transparent')
+
+  const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
+    ssr: true,
+    fallback: false,
+  })
+
+  const openDashboardNav = () => {
+    setDashboardNavOpen(true)
+  }
+
+  const closeDashboardNav = () => {
+    setDashboardNavOpen(false)
+  }
 
   function handleSetActiveLink(id: string) {
     if (id === '/') {
@@ -72,10 +87,6 @@ export const Navbar = () => {
     changeNavbarBackground()
   }, [])
   const params = new URLSearchParams(query as Record<string, string>)
-  const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
-    ssr: true,
-    fallback: false, // return false on the server, and re-evaluate on the client side
-  })
   const queryString = params.toString()
   const handleConnectionOpen = () => {
     openConnection(
@@ -188,6 +199,7 @@ export const Navbar = () => {
                 <NavBarLoggedProfile
                   account={currentAccount!}
                   handleSetActiveLink={handleSetActiveLink}
+                  disableNavMenu={true}
                 />
               ) : (
                 <Button
@@ -207,7 +219,7 @@ export const Navbar = () => {
                 </Button>
               )}
               <Button
-                onClick={onToggle}
+                onClick={logged ? openDashboardNav : onToggle}
                 width={10}
                 height={10}
                 display={{ base: 'flex', lg: 'none' }}
@@ -236,65 +248,20 @@ export const Navbar = () => {
           activeLink={activeLink}
         />
       </Collapse>
+      {dashboardNavOpen && (
+        <NavMenu
+          currentSection={query.section as EditMode}
+          isMenuOpen={dashboardNavOpen}
+          closeMenu={closeDashboardNav}
+        />
+      )}
       <ConnectWalletDialog isOpen={loginIn} />
     </Box>
   )
 }
 
-interface DesktopNavProps {
-  pathname: string
-  activeLink: string
-  handleSetActiveLink: (id: string) => void
-}
-
-const DesktopNav = ({
-  pathname,
-  handleSetActiveLink,
-  activeLink,
-}: DesktopNavProps) => {
-  const { logged } = useContext(AccountContext)
-  const linkHoverColor = 'primary.500'
-  const linkColor = useColorModeValue('neutral.800', 'neutral.0')
-
-  return (
-    <Stack
-      id="navbar-desktop"
-      direction={'row'}
-      spacing={4}
-      alignItems="center"
-    >
-      {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
-        navItem => (
-          <Box key={navItem.label}>
-            <Link
-              href={navItem.href ?? '#'}
-              p={2}
-              fontWeight={activeLink === navItem.href ? 700 : 500}
-              onClick={() => handleSetActiveLink(navItem.href)}
-              color={
-                shouldEnforceColorOnPath(pathname)
-                  ? activeLink === navItem.href
-                    ? linkHoverColor
-                    : 'neutral.0'
-                  : pathname.includes(navItem.href)
-                  ? linkHoverColor
-                  : linkColor
-              }
-              _hover={{
-                textDecoration: 'none',
-                color: linkHoverColor,
-              }}
-            >
-              {navItem.label}
-            </Link>
-          </Box>
-        )
-      )}
-    </Stack>
-  )
-}
-
 interface MobileNavProps {
+  openDashboardNav?: () => void
   onToggle: () => void
   onOpenModal: () => void
   handleSetActiveLink: (id: string) => void
@@ -304,6 +271,7 @@ interface MobileNavProps {
 }
 
 const MobileNav = ({
+  openDashboardNav,
   onToggle,
   onOpenModal,
   handleSetActiveLink,
@@ -365,7 +333,7 @@ const MobileNav = ({
           _hover={{ bgColor: 'transparent' }}
         >
           <Icon
-            onClick={onToggle}
+            onClick={logged ? openDashboardNav : onToggle}
             as={CloseIcon}
             width={6}
             height={6}
@@ -397,6 +365,7 @@ const MobileNav = ({
               isOpen={isOpen}
               account={currentAccount!}
               handleSetActiveLink={handleSetActiveLink}
+              disableNavMenu={true}
             />
             <Button onClick={doLogout} variant="link">
               Logout
@@ -469,6 +438,60 @@ const MobileNavItem = ({
     </Stack>
   )
 }
+
+interface DesktopNavProps {
+  pathname: string
+  activeLink: string
+  handleSetActiveLink: (id: string) => void
+}
+
+const DesktopNav = ({
+  pathname,
+  handleSetActiveLink,
+  activeLink,
+}: DesktopNavProps) => {
+  const { logged } = useContext(AccountContext)
+  const linkHoverColor = 'primary.500'
+  const linkColor = useColorModeValue('neutral.800', 'neutral.0')
+
+  return (
+    <Stack
+      id="navbar-desktop"
+      direction={'row'}
+      spacing={4}
+      alignItems="center"
+    >
+      {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
+        navItem => (
+          <Box key={navItem.label}>
+            <Link
+              href={navItem.href ?? '#'}
+              p={2}
+              fontWeight={activeLink === navItem.href ? 700 : 500}
+              onClick={() => handleSetActiveLink(navItem.href)}
+              color={
+                shouldEnforceColorOnPath(pathname)
+                  ? activeLink === navItem.href
+                    ? linkHoverColor
+                    : 'neutral.0'
+                  : pathname.includes(navItem.href)
+                  ? linkHoverColor
+                  : linkColor
+              }
+              _hover={{
+                textDecoration: 'none',
+                color: linkHoverColor,
+              }}
+            >
+              {navItem.label}
+            </Link>
+          </Box>
+        )
+      )}
+    </Stack>
+  )
+}
+
 type NavItem = {
   label: string
   href: string

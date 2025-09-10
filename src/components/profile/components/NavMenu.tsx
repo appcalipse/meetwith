@@ -1,9 +1,14 @@
+import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import {
   Box,
   CloseButton,
+  Divider,
   HStack,
+  IconButton,
   Slide,
+  Switch,
   Text,
+  useColorMode,
   useColorModeValue,
   useToast,
   VStack,
@@ -12,13 +17,12 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo } from 'react'
 import { IconType } from 'react-icons'
 import {
-  FaBell,
   FaCalendarAlt,
   FaCalendarDay,
-  FaCalendarPlus,
   FaCalendarWeek,
   FaCog,
   FaSignOutAlt,
+  FaWallet,
 } from 'react-icons/fa'
 import { FaUserGroup } from 'react-icons/fa6'
 
@@ -34,9 +38,10 @@ import { getAccountCalendarUrl } from '@/utils/calendar_manager'
 import { getNotificationTime, saveNotificationTime } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
+import { ThemeSwitcher } from '../../ThemeSwitcher'
 import { Avatar } from './Avatar'
 import { CopyLinkButton } from './CopyLinkButton'
-import { NavItem } from './NavItem'
+import { NavDropdownItem, NavItem } from './NavItem'
 
 interface LinkItemProps {
   name: string
@@ -44,6 +49,12 @@ interface LinkItemProps {
   mode: EditMode
   locked?: boolean
   badge?: number
+  isDropdownItem?: boolean
+  subItems?: Array<{
+    text: string
+    icon: IconType
+    mode: EditMode
+  }>
 }
 
 export const NavMenu: React.FC<{
@@ -53,6 +64,7 @@ export const NavMenu: React.FC<{
 }> = ({ currentSection, isMenuOpen, closeMenu }) => {
   const { currentAccount } = useContext(AccountContext)
   const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
+  const { toggleColorMode } = useColorMode()
   const router = useRouter()
   const toast = useToast()
   const [noOfInvitedGroups, setNoOfInvitedGroups] = React.useState<number>(0)
@@ -61,6 +73,12 @@ export const NavMenu: React.FC<{
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'neutral.900')
+  const dividerColor = useColorModeValue('neutral.200', 'neutral.700')
+  const scrollbarThumbColor = useColorModeValue('gray.300', 'gray.600')
+  const scrollbarThumbHoverColor = useColorModeValue('gray.400', 'gray.500')
+  const switchTrackBg = useColorModeValue('gray.200', 'gray.600')
+  const isDarkMode = useColorModeValue(false, true)
+
   const LinkItems: Array<LinkItemProps> = useMemo(
     () => [
       { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
@@ -87,21 +105,11 @@ export const NavMenu: React.FC<{
         mode: EditMode.AVAILABILITY,
       },
       {
-        name: 'Notifications',
-        icon: FaBell,
-        mode: EditMode.NOTIFICATIONS,
+        name: 'Wallet',
+        icon: FaWallet,
+        mode: EditMode.WALLET,
       },
-      {
-        name: 'Connected Calendars',
-        icon: FaCalendarPlus,
-        mode: EditMode.CALENDARS,
-      },
-      { name: 'Account Settings', icon: FaCog, mode: EditMode.DETAILS },
-      {
-        name: 'Sign Out',
-        icon: FaSignOutAlt,
-        mode: EditMode.SIGNOUT,
-      },
+      { name: 'Settings', icon: FaCog, mode: EditMode.DETAILS },
     ],
     [groupInvitesCount, contactsRequestCount]
   )
@@ -213,29 +221,37 @@ export const NavMenu: React.FC<{
 
   const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })
-    if (mode === EditMode.SIGNOUT) {
-      await router.push(`/logout`)
-    } else {
-      await router.push(`/dashboard/${mode}`)
-      isMenuOpen && closeMenu!()
-    }
+    await router.push(`/dashboard/${mode}`)
+    isMenuOpen && closeMenu!()
+  }
+
+  const handleSignOut = async () => {
+    await router.push(`/logout`)
   }
 
   return (
-    <Box borderRadius={{ base: 0, md: 16 }} bgColor={menuBg} mb={8} zIndex="10">
+    <Box
+      bgColor={menuBg}
+      zIndex="10"
+      width={{ base: '100vw', lg: '21%' }}
+      height="100vh"
+      position="fixed"
+      left={0}
+      top={0}
+      display={isMenuOpen ? 'flex' : { base: 'none', lg: 'flex' }}
+      flexDirection="column"
+      borderRadius={12}
+    >
       {!isMenuOpen ? (
         <VStack
           alignItems="center"
-          flex={1}
-          spacing={8}
-          py={12}
+          height="100vh"
+          spacing={0}
           overflow="hidden"
-          borderRadius={16}
           display={{ base: 'none', lg: 'flex' }}
-          // TO-DO: replace by new dark/light color scheme
           backgroundColor={'transparent'}
         >
-          <VStack width="100%" gap={6} px={8}>
+          <VStack width="100%" gap={6} px={5} py={12} flexShrink={0}>
             <HStack width="100%" textAlign="center">
               <Box width="64px" height="64px">
                 <Avatar
@@ -262,19 +278,80 @@ export const NavMenu: React.FC<{
             <DashboardOnboardingGauge />
           </VStack>
 
-          <VStack width="100%">
-            {LinkItems.map(link => (
-              <NavItem
-                selected={currentSection === link.mode}
-                key={link.name}
-                text={link.name}
-                icon={link.icon}
-                mode={link.mode}
-                badge={link.badge}
-                locked={link.locked || false}
-                changeMode={menuClicked}
-              ></NavItem>
-            ))}
+          {/* Main Navigation Items */}
+          <VStack
+            width="100%"
+            flex={1}
+            spacing={2}
+            overflowY="auto"
+            px={0}
+            sx={{
+              '&::-webkit-scrollbar': {
+                width: '4px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'transparent',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: scrollbarThumbColor,
+                borderRadius: '2px',
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: scrollbarThumbHoverColor,
+              },
+            }}
+          >
+            {LinkItems.map(link =>
+              link.isDropdownItem ? (
+                <NavDropdownItem
+                  key={link.name}
+                  text={link.name}
+                  icon={link.icon}
+                  subItems={link.subItems || []}
+                  changeMode={menuClicked}
+                  currentSection={currentSection}
+                />
+              ) : (
+                <NavItem
+                  selected={currentSection === link.mode}
+                  key={link.name}
+                  text={link.name}
+                  icon={link.icon}
+                  mode={link.mode}
+                  badge={link.badge}
+                  locked={link.locked || false}
+                  changeMode={menuClicked}
+                />
+              )
+            )}
+          </VStack>
+
+          <VStack width="100%" spacing={4} py={8} flexShrink={0}>
+            <Divider borderColor={dividerColor} />
+
+            <HStack width="100%" justify="space-between" px={8}>
+              <HStack spacing={3} cursor="pointer" onClick={handleSignOut}>
+                <Box color="primary.500">
+                  <FaSignOutAlt size={16} />
+                </Box>
+                <Text fontSize="sm" fontWeight={500} color="primary.500">
+                  Sign out
+                </Text>
+              </HStack>
+
+              <HStack spacing={1}>
+                <IconButton
+                  aria-label="Settings"
+                  icon={<FaCog />}
+                  size="sm"
+                  variant="ghost"
+                  color="neutral.300"
+                  _hover={{ bg: 'whiteAlpha.100' }}
+                  onClick={() => menuClicked(EditMode.DETAILS)}
+                />
+                <ThemeSwitcher />
+              </HStack>
+            </HStack>
           </VStack>
         </VStack>
       ) : (
@@ -295,40 +372,124 @@ export const NavMenu: React.FC<{
             <VStack width="100%" textAlign="center">
               <Box width="120px" height="120px" mb={2}>
                 <Avatar
-                  address={currentAccount.address}
+                  address={currentAccount.address || ''}
                   avatar_url={currentAccount.preferences?.avatar_url || ''}
                   name={getAccountDisplayName(currentAccount)}
                 />
               </Box>
-
-              <Text fontSize="lg" fontWeight={500}>
-                {getAccountDisplayName(currentAccount)}
-              </Text>
+              <VStack alignItems="flex-start" spacing={2}>
+                <Text fontSize="lg" fontWeight={500} color="white">
+                  {getAccountDisplayName(currentAccount)}
+                </Text>
+                <CopyLinkButton
+                  url={accountUrl}
+                  size="md"
+                  label="Share my calendar"
+                  withIcon
+                  design_type="link"
+                  variant="ghost"
+                  _hover={{ bg: 'transparent' }}
+                  _focus={{ boxShadow: 'none' }}
+                  color="orange.400"
+                />
+              </VStack>
             </VStack>
 
-            <Box>
-              <CopyLinkButton
-                url={accountUrl}
-                size="md"
-                label="Share my calendar"
-                withIcon
+            {/* Main Navigation Items */}
+            <VStack py={2} width="100%" flex={1} spacing={2}>
+              {LinkItems.map(link =>
+                link.isDropdownItem ? (
+                  <NavDropdownItem
+                    key={link.name}
+                    text={link.name}
+                    icon={link.icon}
+                    subItems={link.subItems || []}
+                    changeMode={menuClicked}
+                    currentSection={currentSection}
+                  />
+                ) : (
+                  <NavItem
+                    selected={currentSection === link.mode}
+                    key={link.name}
+                    text={link.name}
+                    icon={link.icon}
+                    mode={link.mode}
+                    locked={link.locked || false}
+                    changeMode={menuClicked}
+                    badge={link.badge}
+                  />
+                )
+              )}
+
+              <NavItem
+                selected={false}
+                text="Sign out"
+                icon={FaSignOutAlt}
+                mode={EditMode.MEETINGS}
+                locked={false}
+                changeMode={handleSignOut}
               />
-            </Box>
-
-            <VStack py={2} width="100%">
-              {LinkItems.map(link => (
-                <NavItem
-                  selected={currentSection === link.mode}
-                  key={link.name}
-                  text={link.name}
-                  icon={link.icon}
-                  mode={link.mode}
-                  locked={link.locked || false}
-                  changeMode={menuClicked}
-                  badge={link.badge}
-                ></NavItem>
-              ))}
             </VStack>
+
+            {/* Mobile Bottom Section - Display Name, Settings, Theme Toggle */}
+            <VStack width="100%" spacing={4} mt="auto">
+              <Divider borderColor={dividerColor} />
+
+              <HStack width="100%" justify="space-between" px={8}>
+                <HStack spacing={3} alignItems="center">
+                  <Box width={8} height={8}>
+                    <Avatar
+                      address={currentAccount.address}
+                      avatar_url={currentAccount.preferences?.avatar_url || ''}
+                      name={getAccountDisplayName(currentAccount)}
+                    />
+                  </Box>
+                  <Text fontSize="sm" fontWeight={500} color="white">
+                    {getAccountDisplayName(currentAccount)}
+                  </Text>
+                </HStack>
+
+                <HStack spacing={3}>
+                  <IconButton
+                    aria-label="Settings"
+                    icon={<FaCog />}
+                    size="sm"
+                    variant="ghost"
+                    color="white"
+                    _hover={{ bg: 'whiteAlpha.100' }}
+                    onClick={() => menuClicked(EditMode.DETAILS)}
+                  />
+                  <HStack spacing={2} alignItems="center">
+                    <Box color="neutral.300" fontSize="sm">
+                      <SunIcon />
+                    </Box>
+                    <Switch
+                      colorScheme="orange"
+                      size="sm"
+                      onChange={() => {
+                        toggleColorMode()
+                      }}
+                      isChecked={isDarkMode}
+                      sx={{
+                        '& .chakra-switch__track': {
+                          bg: switchTrackBg,
+                        },
+                        '& .chakra-switch__thumb': {
+                          bg: 'white',
+                        },
+                        '& .chakra-switch__track[data-checked]': {
+                          bg: 'primary.400',
+                        },
+                      }}
+                    />
+                    <Box color="neutral.300" fontSize="sm">
+                      <MoonIcon color="primary.400" />
+                    </Box>
+                  </HStack>
+                </HStack>
+              </HStack>
+            </VStack>
+
             {isMenuOpen && (
               <CloseButton
                 onClick={closeMenu}
