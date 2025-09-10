@@ -292,6 +292,12 @@ export class CantInviteYourself extends Error {
     this.name = 'CantInviteYourself'
   }
 }
+export class MemberDoesNotExist extends Error {
+  constructor() {
+    super(`Member does not exist in this group`)
+    this.name = 'MemberDoesNotExist'
+  }
+}
 
 export class PermissionDenied extends Error {
   constructor(message = `You do not have permission to perform this action`) {
