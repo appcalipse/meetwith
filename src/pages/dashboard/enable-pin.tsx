@@ -63,7 +63,7 @@ const EnablePinPage = () => {
     return (
       <Box
         minH="100vh"
-        bg="dark.900"
+        bg="bg-surface"
         display="flex"
         alignItems="center"
         justifyContent="center"
@@ -76,7 +76,7 @@ const EnablePinPage = () => {
   return (
     <Box
       minH="100vh"
-      bg="dark.900"
+      bg="bg-surface"
       display="flex"
       alignItems="center"
       justifyContent="center"

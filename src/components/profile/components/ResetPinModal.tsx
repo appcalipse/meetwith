@@ -9,7 +9,6 @@ import {
   PinInput,
   PinInputField,
   Text,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import React, { useEffect, useState } from 'react'
@@ -34,8 +33,8 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
   const [showNewPin, setShowNewPin] = useState(false)
   const [showConfirmPin, setShowConfirmPin] = useState(false)
 
-  const textColor = useColorModeValue('gray.900', 'white')
-  const mutedColor = useColorModeValue('gray.600', 'gray.400')
+  const textColor = 'text-primary'
+  const mutedColor = 'text-muted'
   const primaryColor = '#F46739'
 
   // Clear inputs whenever modal closes (for security)
@@ -79,12 +78,13 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
     <Modal isOpen={isOpen} onClose={handleCancel} size="md" isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
       <ModalContent
-        bg="dark.700"
+        bg="dark-bg"
         borderRadius="12px"
         p={8}
         maxW="592px"
         width="592px"
         boxShadow="none"
+        shadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">
@@ -128,24 +128,24 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
                   mask={!showNewPin}
                 >
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                 </PinInput>
                 <IconButton
@@ -154,8 +154,8 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
                   onClick={() => setShowNewPin(!showNewPin)}
                   variant="ghost"
                   size="sm"
-                  color="neutral.400"
-                  _hover={{ bg: 'transparent', color: 'white' }}
+                  color="text-muted"
+                  _hover={{ bg: 'transparent', color: 'text-primary' }}
                 />
               </HStack>
             </VStack>
@@ -174,24 +174,24 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
                   mask={!showConfirmPin}
                 >
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                 </PinInput>
                 <IconButton
@@ -200,8 +200,8 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
                   onClick={() => setShowConfirmPin(!showConfirmPin)}
                   variant="ghost"
                   size="sm"
-                  color="neutral.400"
-                  _hover={{ bg: 'transparent', color: 'white' }}
+                  color="text-muted"
+                  _hover={{ bg: 'transparent', color: 'text-primary' }}
                 />
               </HStack>
             </VStack>
@@ -233,7 +233,7 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
               <Button
                 variant="outline"
                 border="1px solid"
-                bg="neutral.825"
+                bg="bg-surface-tertiary"
                 borderColor="primary.300"
                 color="primary.300"
                 onClick={handleCancel}
