@@ -102,7 +102,7 @@ const GroupContactModal = ({
       size={'2xl'}
     >
       <ModalOverlay backdropFilter="blur(10px)" bg="rgba(0, 0, 0, 0.6)" />
-      <ModalContent p={0} bg="neutral.900" rounded={12}>
+      <ModalContent p={0} bg="bg-surface" rounded={12}>
         <ModalHeader
           pt={10}
           display="flex"
@@ -157,8 +157,8 @@ const GroupContactModal = ({
             result?.length > 0 && (
               <TableContainer>
                 <Table variant="unstyled" colorScheme="whiteAlpha">
-                  <Thead bg="neutral.900">
-                    <Tr color="white">
+                  <Thead bg="bg-surface">
+                    <Tr color="text-primary">
                       <Th colSpan={4}>User</Th>
                       <Th
                         colSpan={4}

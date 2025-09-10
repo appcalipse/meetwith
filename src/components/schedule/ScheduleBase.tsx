@@ -186,7 +186,7 @@ const ScheduleBase = () => {
     [participants, groups, groupParticipants]
   )
   return (
-    <Box>
+    <Box w="100%">
       <DiscoverATimeInfoModal
         isOpen={openWhatIsThis}
         onClose={() => setOpenWhatIsThis(false)}
@@ -213,7 +213,7 @@ const ScheduleBase = () => {
       <VStack
         gap={6}
         w={{
-          base: '95%',
+          base: '90%',
           md: '600px',
         }}
         m="auto"
@@ -239,7 +239,7 @@ const ScheduleBase = () => {
               <b>{getAllParticipantsDisplayName(meetingParticipants)}</b>
               {canEditMeetingDetails && (
                 <Text
-                  color="primary.200"
+                  color="border-default-primary"
                   fontWeight={700}
                   display="inline"
                   ml={1}
@@ -278,7 +278,7 @@ const ScheduleBase = () => {
             </Text>
             {canEditMeetingDetails && (
               <Text
-                color="primary.200"
+                color="border-default-primary"
                 fontWeight={700}
                 mt={2}
                 textDecor="underline"
@@ -305,9 +305,9 @@ const ScheduleBase = () => {
             </HStack>
           )}
         </VStack>
-        <Divider borderColor="neutral.400" w="80%" />
+        <Divider borderColor="neutral.400" w={{ base: '100%', md: '80%' }} />
 
-        <VStack w="80%" gap={6} alignItems="flex-start">
+        <VStack w={{ base: '100%', md: '80%' }} gap={6} alignItems="flex-start">
           <Heading fontSize="x-large">
             {query.intent === Intents.UPDATE_MEETING
               ? 'Update meeting'
@@ -385,7 +385,7 @@ const ScheduleBase = () => {
                       >
                         <Text
                           fontWeight="600"
-                          color={'primary.200'}
+                          color={'border-default-primary'}
                           cursor="pointer"
                         >
                           {renderProviderName(provider)}
@@ -520,7 +520,7 @@ const ScheduleBase = () => {
                     flexDir="row-reverse"
                     justifyContent={'space-between'}
                     fontWeight={700}
-                    color="primary.200"
+                    color="border-default-primary"
                     fontSize="16px"
                     size={'lg'}
                     p={0}

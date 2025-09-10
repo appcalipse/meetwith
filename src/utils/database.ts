@@ -62,7 +62,6 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
-  GetGroupsFullRawResponse,
   GetGroupsFullResponse,
   Group,
   GroupInviteFilters,
@@ -1501,7 +1500,7 @@ const getGroupsAndMembers = async (
   search?: string,
   includeInvites?: boolean
 ): Promise<Array<GetGroupsFullResponse>> => {
-  const { data, error } = await db.supabase.rpc<GetGroupsFullRawResponse>(
+  const { data, error } = await db.supabase.rpc<GetGroupsFullResponse>(
     'get_user_groups_with_members',
     {
       user_address: address.toLowerCase(),
@@ -1516,9 +1515,9 @@ const getGroupsAndMembers = async (
   }
 
   return data.map(group => ({
-    id: group.group_id,
-    name: group.group_name,
-    slug: group.group_slug,
+    id: group.id,
+    name: group.name,
+    slug: group.slug,
     members:
       group.members.filter(member => {
         if (includeInvites) {
@@ -3457,7 +3456,21 @@ const findAccountsByText = async (
   }
   return data?.[0]
 }
-
+const getGroupMembersOrInvite = async (
+  group_id: string,
+  address: string,
+  state: 'pending' | 'accepted'
+) => {
+  const { data, error: searchError } = await db.supabase
+    .from(state === 'accepted' ? 'group_members' : 'group_invites')
+    .select()
+    .eq('group_id', group_id)
+    .eq(state === 'accepted' ? 'member_id' : 'user_id', address)
+  if (searchError) {
+    throw new Error(searchError.message)
+  }
+  return data?.[0]
+}
 const getOrCreateContactInvite = async (
   owner_address: string,
   address?: string,
@@ -3781,6 +3794,38 @@ const acceptContactInvite = async (
     .in('destination', [account_address, invite?.account_owner_address])
   if (deleteError) {
     throw new Error(deleteError.message)
+  }
+}
+const addContactInvite = async (
+  account_address: string,
+  contact_address: string
+) => {
+  const { error: insertError } = await db.supabase.from('contact').insert([
+    {
+      account_owner_address: account_address,
+      contact_address,
+      status: ContactStatus.ACTIVE,
+    },
+    {
+      account_owner_address: contact_address,
+      contact_address: account_address,
+      status: ContactStatus.ACTIVE,
+    },
+  ])
+
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
+  // clean up old status contacts
+  const { error: contactClearError } = await db.supabase
+    .from('contact')
+    .delete()
+    .in('account_owner_address', [account_address, contact_address])
+    .in('contact_address', [account_address, contact_address])
+    .eq('status', ContactStatus.INACTIVE)
+
+  if (contactClearError) {
+    throw new Error(contactClearError.message)
   }
 }
 const rejectContactInvite = async (
@@ -5868,6 +5913,7 @@ const deleteVerifications = async (verificationId: string): Promise<void> => {
 
 export {
   acceptContactInvite,
+  addContactInvite,
   addOrUpdateConnectedCalendar,
   addUserToGroup,
   changeGroupRole,
@@ -5916,6 +5962,7 @@ export {
   getGroupInternal,
   getGroupInvites,
   getGroupInvitesCount,
+  getGroupMembersOrInvite,
   getGroupName,
   getGroupsAndMembers,
   getGroupsEmpty,

@@ -30,6 +30,7 @@ export const colors = {
     300: '#9AA5B1',
     400: '#7B8794',
     450: '#2F3847',
+    475: '#2D3748',
     500: '#616E7C',
     600: '#52606D',
     700: '#3E4C59',
@@ -114,6 +115,110 @@ const newTheme = {
       baseStyle: (props: ThemeProviderProps) => ({
         color: mode('gray.700', 'white')(props),
       }),
+    },
+  },
+  semanticTokens: {
+    colors: {
+      'bg-canvas': {
+        default: 'gray.50',
+        _dark: 'neutral.850',
+      },
+      'bg-canvas-subtle': {
+        default: 'neutral.100',
+        _dark: 'neutral.475',
+      },
+      'bg-surface': {
+        default: 'white',
+        _dark: 'neutral.900',
+      },
+      'bg-surface-secondary': {
+        default: 'white',
+        _dark: 'neutral.850',
+      },
+      'bg-surface-tertiary': {
+        default: 'gray.50',
+        _dark: 'neutral.825',
+      },
+      'bg-surface-tertiary-2': {
+        default: 'neutral.100',
+        _dark: 'neutral.800',
+      },
+      'input-bg-subtle': {
+        default: 'neutral.100',
+        _dark: 'neutral.450',
+      },
+      'border-default': {
+        default: 'neutral.200',
+        _dark: 'neutral.600',
+      },
+      'border-subtle': {
+        default: 'neutral.100',
+        _dark: 'neutral.700',
+      },
+      'border-inverted-subtle': {
+        default: 'neutral.700',
+        _dark: 'neutral.0',
+      },
+      'border-emphasis': {
+        default: 'neutral.300',
+        _dark: 'neutral.500',
+      },
+      'border-default-primary': {
+        default: 'primary.600',
+        _dark: 'primary.200',
+      },
+      'border-subtle-primary': {
+        default: 'primary.100',
+        _dark: 'primary.700',
+      },
+      'border-emphasis-primary': {
+        default: 'primary.300',
+        _dark: 'primary.500',
+      },
+      'text-primary': {
+        default: 'gray.800',
+        _dark: 'white',
+      },
+      'text-highlight-primary': {
+        default: 'gray.900',
+        _dark: 'neutral.200',
+      },
+      'text-secondary': {
+        default: 'gray.600',
+        _dark: 'gray.300',
+      },
+      'text-tertiary': {
+        default: 'gray.500',
+        _dark: 'gray.400',
+      },
+      'text-muted': {
+        default: 'gray.400',
+        _dark: 'gray.500',
+      },
+      'text-subtle': {
+        default: 'neutral.600',
+        _dark: 'neutral.400',
+      },
+      'icon-default': {
+        default: 'gray.600',
+        _dark: 'gray.300',
+      },
+      'icon-secondary': {
+        default: 'gray.500',
+        _dark: 'gray.400',
+      },
+      'icon-emphasis': {
+        default: 'gray.700',
+        _dark: 'white',
+      },
+      'select-bg': {
+        default: 'white',
+        _dark: 'inherit',
+      },
+      'input-border': {
+        default: 'neutral.200',
+        _dark: 'neutral.400',
+      },
     },
   },
 }

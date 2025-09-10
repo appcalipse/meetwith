@@ -40,7 +40,7 @@ const GroupCard: FC<IGroupCard> = props => {
       width="100%"
       key={`${id}-${props.id}`}
       my={3}
-      borderColor="neutral.400"
+      borderColor="text-subtle"
       borderWidth={1}
       borderRadius="0.375rem"
       id={props.id}
@@ -48,7 +48,7 @@ const GroupCard: FC<IGroupCard> = props => {
       {({ isExpanded }) => (
         <>
           <AccordionButton
-            color={isExpanded ? 'white' : 'neutral.400'}
+            color={isExpanded ? 'text-primary' : 'text-subtle'}
             cursor="pointer"
             justifyContent="space-between"
             py={5}
@@ -69,7 +69,7 @@ const GroupCard: FC<IGroupCard> = props => {
               {props.currentGroupId === props.id && (
                 <Badge
                   color="white"
-                  bg="neutral.600"
+                  bg="border-default"
                   ml={2}
                   px={1.5}
                   rounded="8px"
