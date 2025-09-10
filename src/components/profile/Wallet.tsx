@@ -262,8 +262,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
           fontWeight="500"
           width={{ base: '100%', md: '600px' }}
         >
-          A wallet to receive session booking payments, spend your funds and
-          participate in DeFi
+          A wallet to receive session booking payments, and spend your funds.
         </Text>
       </VStack>
 
