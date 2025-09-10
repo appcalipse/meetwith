@@ -28,8 +28,8 @@ const MobileScheduleParticipantModal: React.FC<
     >
       <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
       <ModalContent
-        w="fit-content"
-        maxW="90%"
+        w="85%"
+        justifyContent="center"
         h="fit-content"
         bg="none"
         shadow="none"
