@@ -44,7 +44,7 @@ yarn-error.log*
 #vscode
 /.vscode
 
-.yarn
+.yarn/install-state.gz
 .idea
 bun.lockb
 package-lock.json

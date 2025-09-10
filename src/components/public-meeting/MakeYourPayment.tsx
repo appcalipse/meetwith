@@ -118,6 +118,7 @@ const MakeYourPayment = () => {
         isOpen={isOpen}
         onClose={onClose}
       />
+
       <Heading size="lg">Make your Payment</Heading>
       <Text fontWeight={700}>Select payment method</Text>
       <HStack
