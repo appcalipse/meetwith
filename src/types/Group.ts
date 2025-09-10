@@ -18,12 +18,6 @@ export interface GetGroupsFullResponse {
   slug: string
   members: Array<GroupMember>
 }
-export interface GetGroupsFullRawResponse {
-  group_id: string
-  group_name: string
-  group_slug: string
-  members: Array<GroupMember>
-}
 
 export interface CreateGroupsResponse {
   id: string
@@ -52,6 +46,7 @@ export interface GroupMember {
   userId?: string
   invitePending: boolean
   domain?: string
+  isContact: boolean
 }
 
 export interface UpdateGroupPayload {
