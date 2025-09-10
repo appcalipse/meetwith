@@ -9,7 +9,6 @@ import {
   PinInput,
   PinInputField,
   Text,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import React, { useEffect, useState } from 'react'
@@ -42,8 +41,8 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
   const [showNewPin, setShowNewPin] = useState(false)
   const [showConfirmPin, setShowConfirmPin] = useState(false)
 
-  const textColor = useColorModeValue('gray.900', 'white')
-  const mutedColor = useColorModeValue('gray.600', 'gray.400')
+  const textColor = 'text-primary'
+  const mutedColor = 'text-muted'
   const primaryColor = '#F46739'
 
   const getModalTitle = (
@@ -167,12 +166,13 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
     <Modal isOpen={isOpen} onClose={handleCancel} size="md" isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
       <ModalContent
-        bg="dark.700"
+        bg="dark-bg"
         borderRadius="12px"
         p={8}
         maxW="592px"
         width="592px"
         boxShadow="none"
+        shadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">
@@ -217,24 +217,24 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
                     mask={!showCurrentPin}
                   >
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                   </PinInput>
                   <IconButton
@@ -243,8 +243,8 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
                     onClick={() => setShowCurrentPin(!showCurrentPin)}
                     variant="ghost"
                     size="sm"
-                    color="neutral.400"
-                    _hover={{ bg: 'transparent', color: 'white' }}
+                    color="text-muted"
+                    _hover={{ bg: 'transparent', color: 'text-primary' }}
                   />
                 </HStack>
               </VStack>
@@ -265,24 +265,24 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
                     mask={!showNewPin}
                   >
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                   </PinInput>
                   <IconButton
@@ -291,8 +291,8 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
                     onClick={() => setShowNewPin(!showNewPin)}
                     variant="ghost"
                     size="sm"
-                    color="neutral.400"
-                    _hover={{ bg: 'transparent', color: 'white' }}
+                    color="text-muted"
+                    _hover={{ bg: 'transparent', color: 'text-primary' }}
                   />
                 </HStack>
               </VStack>
@@ -313,24 +313,24 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
                     mask={!showConfirmPin}
                   >
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                     <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
+                      borderColor="border-subtle"
+                      _hover={{ borderColor: 'border-default' }}
                     />
                   </PinInput>
                   <IconButton
@@ -339,8 +339,8 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
                     onClick={() => setShowConfirmPin(!showConfirmPin)}
                     variant="ghost"
                     size="sm"
-                    color="neutral.400"
-                    _hover={{ bg: 'transparent', color: 'white' }}
+                    color="text-muted"
+                    _hover={{ bg: 'transparent', color: 'text-primary' }}
                   />
                 </HStack>
               </VStack>
@@ -357,7 +357,7 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
             <HStack spacing={4} pt={4} justifyContent="space-between" pb={10}>
               <Button
                 bg="primary.300"
-                color="dark.800"
+                color="text-primary"
                 _hover={{ bg: 'primary.400' }}
                 onClick={handleAction}
                 size="md"
@@ -381,7 +381,7 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
               <Button
                 variant="outline"
                 border="1px solid"
-                bg="neutral.825"
+                bg="bg-surface-tertiary"
                 borderColor="primary.300"
                 color="primary.300"
                 onClick={handleCancel}

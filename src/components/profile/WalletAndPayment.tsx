@@ -439,8 +439,12 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
 
         <VStack align="stretch" spacing={4}>
           <Box mt={2}>
-            <Text fontSize="md" fontWeight="medium" mb={3} color="neutral.0">
-              Transaction Pin
+            <Text fontSize="md" fontWeight="medium" mb={3} color="text-primary">
+              {paymentPreferences?.hasPin ||
+              isPreferencesLoading ||
+              isPreferencesFetching
+                ? 'Transaction Pin'
+                : "Enable Transaction PIN - You'll need this to send and withdraw funds from your wallet."}
             </Text>
 
             {isPreferencesLoading || isPreferencesFetching ? (
@@ -448,8 +452,8 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                 <Button
                   isLoading
                   loadingText="Loading..."
-                  bg="neutral.600"
-                  color="neutral.300"
+                  bg="bg-surface-tertiary-2"
+                  color="text-secondary"
                   size="md"
                   px={6}
                   isDisabled
@@ -516,7 +520,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
           </Heading>
 
           <FormControl>
-            <FormLabel fontSize="md" color="neutral.0">
+            <FormLabel fontSize="md" color="text-primary">
               Network to receive payment
             </FormLabel>
 
@@ -526,12 +530,10 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                 as={Button}
                 rightIcon={<ChevronDownIcon />}
                 variant="outline"
-                borderColor="neutral.825"
-                bg="neutral.900"
+                borderColor="border-default"
+                bg="bg-surface"
                 height="44px"
                 width="390px"
-                _hover={{ bg: 'neutral.900', borderColor: 'neutral.700' }}
-                _active={{ bg: 'neutral.900' }}
                 justifyContent="flex-start"
                 px={4}
                 isDisabled={isPreferencesLoading || isPreferencesFetching}
@@ -558,20 +560,20 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                       />
                     ) : null}
                   </Box>
-                  <Text fontWeight="600" color="white">
+                  <Text fontWeight="600" color="text-primary">
                     {isPreferencesLoading
                       ? 'Loading...'
                       : selected?.name || 'Select network'}
                   </Text>
                 </HStack>
               </MenuButton>
-              <MenuList bg="neutral.850" borderColor="neutral.800">
+              <MenuList bg="bg-surface-secondary" borderColor="border-default">
                 {paymentNetworkOptions.map(option => (
                   <MenuItem
                     key={option.value}
                     onClick={() => setSelectedNetwork(option.value)}
-                    bg="neutral.850"
-                    _hover={{ bg: 'neutral.800' }}
+                    bg="bg-surface-secondary"
+                    _hover={{ bg: 'bg-surface-tertiary' }}
                   >
                     <HStack spacing={3}>
                       <Box
@@ -590,7 +592,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                           h="100%"
                         />
                       </Box>
-                      <Text color="white">{option.name}</Text>
+                      <Text color="text-primary">{option.name}</Text>
                     </HStack>
                   </MenuItem>
                 ))}
@@ -605,7 +607,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
             Payment & Wallet notifications
           </Heading>
 
-          <Text fontSize="md" fontWeight="500" mb={4} color="neutral.0">
+          <Text fontSize="md" fontWeight="500" mb={4} color="text-primary">
             Notifications
           </Text>
 
@@ -619,15 +621,15 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
               sx={{
                 '.chakra-checkbox__control': {
                   bg: 'transparent',
-                  borderColor: 'neutral.600',
+                  borderColor: 'border-subtle',
                   _checked: {
                     bg: 'primary.200',
                     borderColor: 'primary.200',
-                    color: 'neutral.900',
+                    color: 'text-primary',
                   },
                 },
                 '.chakra-checkbox__label': {
-                  color: 'neutral.0',
+                  color: 'text-primary',
                   fontSize: 'md',
                 },
               }}
@@ -644,15 +646,15 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
               sx={{
                 '.chakra-checkbox__control': {
                   bg: 'transparent',
-                  borderColor: 'neutral.600',
+                  borderColor: 'border-subtle',
                   _checked: {
                     bg: 'primary.200',
                     borderColor: 'primary.200',
-                    color: 'neutral.900',
+                    color: 'text-primary',
                   },
                 },
                 '.chakra-checkbox__label': {
-                  color: 'neutral.0',
+                  color: 'text-primary',
                   fontSize: 'md',
                 },
               }}
