@@ -240,7 +240,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
         </HStack>
       ) : decryptedMeeting ? (
         <Box
-          shadow="md"
+          shadow="sm"
           width="100%"
           borderRadius="lg"
           position="relative"
