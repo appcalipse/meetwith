@@ -25,7 +25,7 @@ const GroupContactModalItem: FC<IGroupModalItem> = ({
   ...account
 }) => {
   return (
-    <Tr bg={index % 2 === 0 ? 'neutral.825' : 'none'}>
+    <Tr bg={index % 2 === 0 ? 'bg-surface-tertiary' : 'none'}>
       <Td colSpan={4} maxWidth={'250px'}>
         <HStack>
           <Box className="contact-avatar">

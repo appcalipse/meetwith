@@ -100,7 +100,10 @@ const ContactRequestItem: FC<Props> = ({
     openRejectModal()
   }
   return (
-    <Tr bg={index % 2 === 0 ? 'neutral.825' : 'none'} color="white">
+    <Tr
+      bg={index % 2 === 0 ? 'bg-surface-tertiary' : 'none'}
+      color="text-primary"
+    >
       <Th w="fit-content" py={8}>
         <HStack w="fit-content">
           <Jazzicon
