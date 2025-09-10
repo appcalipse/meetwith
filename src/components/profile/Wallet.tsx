@@ -251,13 +251,13 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
       >
         <Text
           fontSize={{ base: 'xl', md: '2xl' }}
-          color="neutral.0"
+          color="text-primary"
           fontWeight="700"
         >
           My Wallet
         </Text>
         <Text
-          color="neutral.200"
+          color="text-tertiary"
           fontSize={{ base: '14px', md: '16px' }}
           fontWeight="500"
           width={{ base: '100%', md: '600px' }}
@@ -276,11 +276,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
         />
       ) : showCryptoDetails && selectedCrypto ? (
         <Box
-          bg="neutral.900"
+          bg="bg-surface"
           borderRadius={{ base: '8px', md: '12px' }}
           p={{ base: 6, md: 12 }}
           border="1px solid"
-          borderColor="neutral.825"
+          borderColor="border-wallet-subtle"
         >
           {/* Header with Back Link and Title */}
           <Box position="relative" mb={{ base: 6, md: 8 }}>
@@ -304,7 +304,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             <Text
               fontSize={{ base: '20px', md: '24px' }}
               fontWeight="700"
-              color="neutral.0"
+              color="text-primary"
               textAlign="center"
               width="100%"
             >
@@ -314,7 +314,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
           {/* Wallet Balance Card */}
           <Box
-            bg="neutral.825"
+            bg="bg-surface-tertiary"
             borderRadius={{ base: '8px', md: '12px' }}
             p={{ base: 4, md: 6 }}
             mb={{ base: 4, md: 6 }}
@@ -324,7 +324,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               w={{ base: '40px', md: '48px' }}
               h={{ base: '40px', md: '48px' }}
               borderRadius="full"
-              bg="neutral.800"
+              bg="bg-surface-tertiary-2"
               display="flex"
               alignItems="center"
               justifyContent="center"
@@ -343,13 +343,10 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             <VStack spacing={1} mb={{ base: 4, md: 6 }}>
               {selectedCryptoBalance.isLoading ? (
                 <HStack spacing={3} align="center">
-                  <Spinner
-                    color="neutral.400"
-                    size={{ base: 'sm', md: 'md' }}
-                  />
+                  <Spinner color="text-muted" size={{ base: 'sm', md: 'md' }} />
                   <Text
                     fontSize={{ base: '14px', md: '16px' }}
-                    color="neutral.400"
+                    color="text-muted"
                     fontWeight="500"
                   >
                     Loading balance...
@@ -360,7 +357,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   <Text
                     fontSize={{ base: '32px', md: '48px' }}
                     fontWeight="500"
-                    color="white"
+                    color="text-primary"
                     lineHeight="1"
                   >
                     {selectedCryptoBalance.balance
@@ -369,7 +366,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   </Text>
                   <Text
                     fontSize={{ base: '14px', md: '16px' }}
-                    color="neutral.300"
+                    color="text-secondary"
                     fontWeight="500"
                   >
                     {selectedCryptoBalance.balance
@@ -403,7 +400,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
           {/* Search Bar */}
           <Box
-            bg="dark.900"
+            bg="bg-surface-tertiary"
             borderRadius="6px"
             px={{ base: 3, md: 4 }}
             py={{ base: 2, md: 2 }}
@@ -412,11 +409,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             display="flex"
             alignItems="center"
             border="1px solid"
-            borderColor="neutral.400"
+            borderColor="border-subtle"
           >
             <Icon
               as={FiSearch}
-              color="neutral.400"
+              color="text-muted"
               fontSize={{ base: '16px', md: '20px' }}
               mr={{ base: 1, md: 2 }}
             />
@@ -429,7 +426,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 background: 'transparent',
                 border: 'none',
                 outline: 'none',
-                color: 'neutral.400',
+                color: 'text-muted',
                 fontSize: '14px',
                 width: '100%',
                 fontWeight: '500',
@@ -443,7 +440,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 <Text
                   fontSize={{ base: '20px', md: '24px' }}
                   fontWeight="700"
-                  color="neutral.0"
+                  color="text-primary"
                   mb={{ base: 3, md: 4 }}
                   textAlign="left"
                 >
@@ -455,11 +452,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   {selectedCryptoTransactionsLoading ? (
                     <Box textAlign="center" py={{ base: 6, md: 8 }}>
                       <Spinner
-                        color="neutral.400"
+                        color="text-muted"
                         size={{ base: 'sm', md: 'md' }}
                       />
                       <Text
-                        color="neutral.400"
+                        color="text-muted"
                         fontSize={{ base: '14px', md: '16px' }}
                         mt={2}
                       >
@@ -469,7 +466,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   ) : selectedCryptoTransactions.length === 0 ? (
                     <Box textAlign="center" py={{ base: 6, md: 8 }}>
                       <Text
-                        color="neutral.400"
+                        color="text-muted"
                         fontSize={{ base: '14px', md: '16px' }}
                       >
                         {searchQuery
@@ -482,12 +479,12 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       {selectedCryptoTransactions.map(transaction => (
                         <Box
                           key={transaction.id}
-                          bg="neutral.825"
+                          bg="bg-surface-tertiary"
                           borderRadius={{ base: '12px', md: '16px' }}
                           p={{ base: 3, md: 4 }}
                           width="100%"
                           cursor="pointer"
-                          _hover={{ bg: 'neutral.800' }}
+                          _hover={{ bg: 'bg-surface-tertiary-2' }}
                           transition="all 0.2s"
                           onClick={() => {
                             // Use the original transaction directly
@@ -531,7 +528,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 {/* Transaction Details */}
                                 <Box>
                                   <Text
-                                    color="white"
+                                    color="text-primary"
                                     fontSize={{ base: '14px', md: '16px' }}
                                     fontWeight="500"
                                   >
@@ -554,14 +551,14 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   <Text
                                     fontSize={{ base: '12px', md: '14px' }}
                                     fontWeight="500"
-                                    color="white"
+                                    color="text-primary"
                                   >
                                     {transaction.status}
                                   </Text>
                                 </Box>
                                 <Text
                                   fontSize={{ base: '14px', md: '16px' }}
-                                  color="neutral.0"
+                                  color="text-primary"
                                   fontWeight="500"
                                 >
                                   {transaction.date} {transaction.time}
@@ -593,11 +590,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
       ) : (
         /* Main Wallet Container */
         <Box
-          bg="neutral.900"
+          bg="bg-surface"
           borderRadius={{ base: '8px', md: '12px' }}
           p={{ base: 6, md: 12 }}
           border="1px solid"
-          borderColor="neutral.825"
+          borderColor="border-wallet-subtle"
         >
           {/* Top Row */}
           <VStack
@@ -612,7 +609,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               width="100%"
             >
               <Box
-                bg="neutral.825"
+                bg="bg-surface-tertiary"
                 borderRadius={{ base: '8px', md: '12px' }}
                 p={{ base: '8px', md: '10px' }}
                 display="flex"
@@ -622,11 +619,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 <HStack spacing={1}>
                   <Icon
                     as={TbWallet}
-                    color="white"
+                    color="text-primary"
                     fontSize={{ base: '16px', md: '20px' }}
                   />
                   <Text
-                    color="white"
+                    color="text-primary"
                     fontSize={{ base: '14px', md: '16px' }}
                     fontWeight="500"
                   >
@@ -636,7 +633,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               </Box>
 
               <Box
-                bg="neutral.825"
+                bg="bg-surface-tertiary"
                 borderRadius={{ base: '8px', md: '12px' }}
                 px={{ base: 2, md: 3 }}
                 py={{ base: '8px', md: '10px' }}
@@ -654,18 +651,18 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   h={{ base: '16px', md: '20px' }}
                 />
                 <Text
-                  color="white"
+                  color="text-primary"
                   fontSize={{ base: '14px', md: '16px' }}
                   fontWeight="500"
                 >
                   {selectedCurrency}
                   {selectedCurrency !== 'USD' && !exchangeRate && (
-                    <Spinner size="xs" ml={1} color="neutral.400" />
+                    <Spinner size="xs" ml={1} color="text-muted" />
                   )}
                 </Text>
                 <Icon
                   as={IoChevronDown}
-                  color="neutral.300"
+                  color="text-secondary"
                   fontSize={{ base: '14px', md: '16px' }}
                 />
               </Box>
@@ -677,7 +674,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               >
                 <Icon
                   as={TbSettings2}
-                  color="neutral.0"
+                  color="text-primary"
                   cursor="pointer"
                   fontSize={{ base: '20px', md: '24px' }}
                   onClick={handleSettingsClick}
@@ -690,7 +687,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
           {/* Wallet Card */}
           <Box
-            bg="neutral.825"
+            bg="bg-surface-tertiary"
             borderRadius={{ base: '8px', md: '12px' }}
             p={{ base: 4, md: 6 }}
             mb={{ base: 4, md: 6 }}
@@ -704,23 +701,23 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               <HStack spacing={2}>
                 <Text
                   fontSize={{ base: '14px', md: '16px' }}
-                  color="white"
+                  color="text-primary"
                   fontWeight="500"
                 >
                   Wallet balance
                   {selectedCurrency !== 'USD' && (
-                    <Text as="span" color="neutral.400" fontSize="12px" ml={2}>
+                    <Text as="span" color="text-muted" fontSize="12px" ml={2}>
                       (in {selectedCurrency})
                     </Text>
                   )}
                 </Text>
                 <Icon
                   as={showBalance ? BsEye : BsEyeSlash}
-                  color="neutral.400"
+                  color="text-muted"
                   fontSize={{ base: '14px', md: '16px' }}
                   cursor="pointer"
                   onClick={() => setShowBalance(!showBalance)}
-                  _hover={{ color: 'neutral.300' }}
+                  _hover={{ color: 'text-secondary' }}
                 />
               </HStack>
               {balanceLoading ||
@@ -730,7 +727,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     w={{ base: '160px', md: '200px' }}
                     h={{ base: '36px', md: '48px' }}
                     borderRadius={{ base: '6px', md: '8px' }}
-                    bg="neutral.800"
+                    bg="bg-surface-tertiary-2"
                     position="relative"
                     overflow="hidden"
                     _before={{
@@ -749,7 +746,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     w={{ base: '100px', md: '120px' }}
                     h={{ base: '12px', md: '16px' }}
                     borderRadius={{ base: '3px', md: '4px' }}
-                    bg="neutral.800"
+                    bg="bg-surface-tertiary-2"
                     position="relative"
                     overflow="hidden"
                     _before={{
@@ -769,7 +766,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 <Text
                   fontSize={{ base: '32px', md: '48px' }}
                   fontWeight="500"
-                  color="white"
+                  color="text-primary"
                   lineHeight="1"
                 >
                   {showBalance
@@ -832,7 +829,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
                 {/* Search Bar */}
                 <Box
-                  bg="dark.900"
+                  bg="bg-surface-tertiary"
                   borderRadius="6px"
                   px={{ base: 3, md: 4 }}
                   py={{ base: 2, md: 2 }}
@@ -841,11 +838,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   display="flex"
                   alignItems="center"
                   border="1px solid"
-                  borderColor="neutral.400"
+                  borderColor="border-subtle"
                 >
                   <Icon
                     as={FiSearch}
-                    color="neutral.400"
+                    color="text-muted"
                     fontSize={{ base: '16px', md: '20px' }}
                     mr={{ base: 1, md: 2 }}
                   />
@@ -858,7 +855,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       background: 'transparent',
                       border: 'none',
                       outline: 'none',
-                      color: 'neutral.400',
+                      color: 'text-muted',
                       fontSize: '14px',
                       width: '100%',
                       fontWeight: '500',
@@ -871,7 +868,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               <Text
                 fontSize={{ base: '20px', md: '24px' }}
                 fontWeight="700"
-                color="neutral.0"
+                color="text-primary"
                 mb={{ base: 1, md: 2 }}
               >
                 Transaction History
@@ -881,14 +878,14 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               <VStack spacing={3}>
                 {transactionsLoading ? (
                   <Box textAlign="center" py={8}>
-                    <Spinner color="neutral.400" size="md" />
-                    <Text color="neutral.400" fontSize="16px" mt={2}>
+                    <Spinner color="text-muted" size="md" />
+                    <Text color="text-muted" fontSize="16px" mt={2}>
                       Loading transactions...
                     </Text>
                   </Box>
                 ) : transactions.length === 0 ? (
                   <Box textAlign="center" py={8}>
-                    <Text color="neutral.400" fontSize="16px">
+                    <Text color="text-muted" fontSize="16px">
                       {searchQuery
                         ? 'No transactions found'
                         : 'No transactions yet'}
@@ -899,12 +896,12 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     {transactions.map(transaction => (
                       <Box
                         key={transaction.id}
-                        bg="neutral.825"
+                        bg="bg-surface-tertiary"
                         borderRadius={{ base: '12px', md: '16px' }}
                         p={{ base: 3, md: 4 }}
                         width="100%"
                         cursor="pointer"
-                        _hover={{ bg: 'neutral.800' }}
+                        _hover={{ bg: 'bg-surface-tertiary-2' }}
                         transition="all 0.2s"
                         onClick={() => {
                           // Use the original transaction directly
@@ -947,7 +944,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                               {/* Transaction Details */}
                               <Box>
                                 <Text
-                                  color="white"
+                                  color="text-primary"
                                   fontSize={{ base: '14px', md: '16px' }}
                                   fontWeight="500"
                                 >
@@ -970,14 +967,14 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 <Text
                                   fontSize={{ base: '12px', md: '14px' }}
                                   fontWeight="500"
-                                  color="white"
+                                  color="text-primary"
                                 >
                                   {transaction.status}
                                 </Text>
                               </Box>
                               <Text
                                 fontSize={{ base: '14px', md: '16px' }}
-                                color="neutral.0"
+                                color="text-primary"
                                 fontWeight="500"
                               >
                                 {transaction.date} {transaction.time}
@@ -1022,19 +1019,19 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   >
                     <Box
                       p={1.5}
-                      bg="neutral.825"
+                      bg="bg-surface-tertiary"
                       borderRadius={{ base: '8px', md: '12px' }}
                       display={{ base: 'none', md: 'block' }}
                     >
                       <Box
-                        bg="neutral.600"
-                        color="white"
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
                         px={{ base: 4, md: 5 }}
                         py={1.5}
                         borderRadius={{ base: '8px', md: '12px' }}
                         fontSize={{ base: '14px', md: '16px' }}
                         fontWeight="700"
-                        _hover={{ bg: 'neutral.600', opacity: 0.8 }}
+                        _hover={{ bg: 'bg-surface-tertiary-2', opacity: 0.8 }}
                         display={{ base: 'none', md: 'block' }}
                       >
                         Crypto
@@ -1049,7 +1046,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     >
                       {isNetworkLoading ? (
                         <Box
-                          bg="neutral.825"
+                          bg="bg-surface-tertiary"
                           borderRadius={{ base: '8px', md: '12px' }}
                           px={{ base: 3, md: 4 }}
                           py={2}
@@ -1057,11 +1054,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           alignItems="center"
                           gap={2}
                           border="1px solid"
-                          borderColor="neutral.400"
+                          borderColor="border-subtle"
                         >
-                          <Spinner size="sm" color="neutral.400" />
+                          <Spinner size="sm" color="text-muted" />
                           <Text
-                            color="neutral.400"
+                            color="text-muted"
                             fontSize={{ base: '14px', md: '16px' }}
                             fontWeight="700"
                             pr={{ base: 2, md: 4 }}
@@ -1071,7 +1068,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                         </Box>
                       ) : selectedNetwork ? (
                         <Box
-                          bg="neutral.825"
+                          bg="bg-surface-tertiary"
                           borderRadius={{ base: '8px', md: '12px' }}
                           px={{ base: 3, md: 4 }}
                           py={2}
@@ -1084,7 +1081,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           }
                           _hover={{ opacity: 0.8 }}
                           border="1px solid"
-                          borderColor="neutral.400"
+                          borderColor="border-subtle"
                         >
                           <Image
                             src={
@@ -1102,7 +1099,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                             h={{ base: '16px', md: '20px' }}
                           />
                           <Text
-                            color="white"
+                            color="text-primary"
                             fontSize={{ base: '14px', md: '16px' }}
                             fontWeight="700"
                             pr={{ base: 2, md: 4 }}
@@ -1113,13 +1110,13 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           </Text>
                           <Icon
                             as={IoChevronDown}
-                            color="neutral.0"
+                            color="text-primary"
                             fontSize={{ base: '16px', md: '16px' }}
                           />
                         </Box>
                       ) : (
                         <Box
-                          bg="neutral.825"
+                          bg="bg-surface-tertiary"
                           borderRadius={{ base: '8px', md: '12px' }}
                           px={{ base: 3, md: 4 }}
                           py={2}
@@ -1127,7 +1124,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           alignItems="center"
                           gap={2}
                           border="1px solid"
-                          borderColor="neutral.400"
+                          borderColor="border-subtle"
                           cursor="pointer"
                           onClick={() =>
                             !isNetworkLoading && setIsNetworkModalOpen(true)
@@ -1135,7 +1132,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           _hover={{ opacity: 0.8 }}
                         >
                           <Text
-                            color="neutral.400"
+                            color="text-muted"
                             fontSize={{ base: '14px', md: '16px' }}
                             fontWeight="700"
                             pr={{ base: 2, md: 4 }}
@@ -1144,7 +1141,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           </Text>
                           <Icon
                             as={IoChevronDown}
-                            color="neutral.400"
+                            color="text-muted"
                             fontSize={{ base: '16px', md: '16px' }}
                           />
                         </Box>
@@ -1154,8 +1151,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                         label="Show all transactions"
                         placement="top"
                         hasArrow
-                        bg="neutral.825"
-                        color="neutral.0"
+                        bg="bg-surface-tertiary"
+                        color="text-primary"
                         borderRadius="8px"
                         px={3}
                         py={2}
@@ -1192,7 +1189,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     Array.from({ length: 3 }).map((_, index) => (
                       <Box
                         key={`skeleton-${index}`}
-                        bg="neutral.825"
+                        bg="bg-surface-tertiary"
                         borderRadius="12px"
                         p={4}
                         width="100%"
@@ -1238,7 +1235,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                               w="48px"
                               h="48px"
                               borderRadius="full"
-                              bg="neutral.800"
+                              bg="bg-surface-tertiary-2"
                               position="relative"
                               overflow="hidden"
                               _before={{
@@ -1258,7 +1255,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 w="120px"
                                 h="20px"
                                 borderRadius="4px"
-                                bg="neutral.800"
+                                bg="bg-surface-tertiary-2"
                                 position="relative"
                                 overflow="hidden"
                                 _before={{
@@ -1278,7 +1275,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   w="60px"
                                   h="16px"
                                   borderRadius="4px"
-                                  bg="neutral.800"
+                                  bg="bg-surface-tertiary-2"
                                   position="relative"
                                   overflow="hidden"
                                   _before={{
@@ -1297,7 +1294,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   w="40px"
                                   h="16px"
                                   borderRadius="4px"
-                                  bg="neutral.800"
+                                  bg="bg-surface-tertiary-2"
                                   position="relative"
                                   overflow="hidden"
                                   _before={{
@@ -1320,7 +1317,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                               w="80px"
                               h="20px"
                               borderRadius="4px"
-                              bg="neutral.800"
+                              bg="bg-surface-tertiary-2"
                               position="relative"
                               overflow="hidden"
                               _before={{
@@ -1339,7 +1336,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                               w="60px"
                               h="16px"
                               borderRadius="4px"
-                              bg="neutral.800"
+                              bg="bg-surface-tertiary-2"
                               position="relative"
                               overflow="hidden"
                               _before={{
@@ -1363,7 +1360,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     Array.from({ length: 3 }).map((_, index) => (
                       <Box
                         key={`skeleton-${index}`}
-                        bg="neutral.825"
+                        bg="bg-surface-tertiary"
                         borderRadius="12px"
                         p={4}
                         width="100%"
@@ -1409,7 +1406,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                               w="48px"
                               h="48px"
                               borderRadius="full"
-                              bg="neutral.800"
+                              bg="bg-surface-tertiary-2"
                               position="relative"
                               overflow="hidden"
                               _before={{
@@ -1429,7 +1426,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 w="120px"
                                 h="20px"
                                 borderRadius="4px"
-                                bg="neutral.800"
+                                bg="bg-surface-tertiary-2"
                                 position="relative"
                                 overflow="hidden"
                                 _before={{
@@ -1449,7 +1446,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   w="60px"
                                   h="16px"
                                   borderRadius="4px"
-                                  bg="neutral.800"
+                                  bg="bg-surface-tertiary-2"
                                   position="relative"
                                   overflow="hidden"
                                   _before={{
@@ -1468,7 +1465,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   w="40px"
                                   h="16px"
                                   borderRadius="4px"
-                                  bg="neutral.800"
+                                  bg="bg-surface-tertiary-2"
                                   position="relative"
                                   overflow="hidden"
                                   _before={{
@@ -1491,7 +1488,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                               w="80px"
                               h="20px"
                               borderRadius="4px"
-                              bg="neutral.800"
+                              bg="bg-surface-tertiary-2"
                               position="relative"
                               overflow="hidden"
                               _before={{
@@ -1510,7 +1507,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                               w="60px"
                               h="16px"
                               borderRadius="4px"
-                              bg="neutral.800"
+                              bg="bg-surface-tertiary-2"
                               position="relative"
                               overflow="hidden"
                               _before={{
@@ -1532,13 +1529,13 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   : cryptoAssetsWithBalances.map((asset, index) => (
                       <Box
                         key={index}
-                        bg="neutral.825"
+                        bg="bg-surface-tertiary"
                         borderRadius="12px"
                         px={{ base: 2, md: 4 }}
                         py={4}
                         width="100%"
                         cursor="pointer"
-                        _hover={{ bg: 'neutral.800' }}
+                        _hover={{ bg: 'bg-surface-tertiary-2' }}
                         transition="all 0.2s"
                         onClick={() => {
                           setSelectedCrypto(asset)
@@ -1563,12 +1560,12 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 w="24px"
                                 h="24px"
                                 borderRadius="full"
-                                bg="neutral.900"
+                                bg="bg-surface"
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
                                 border="1px solid"
-                                borderColor="neutral.800"
+                                borderColor="border-wallet-subtle"
                                 zIndex={10}
                                 backgroundSize="cover"
                                 overflow="hidden"
@@ -1589,7 +1586,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                             </Box>
                             <VStack align="start" spacing={0}>
                               <Text
-                                color="white"
+                                color="text-primary"
                                 fontSize={{ base: '16px', md: '20px' }}
                                 fontWeight="700"
                               >
@@ -1599,7 +1596,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 <Text
                                   fontSize={{ base: '12px', md: '16px' }}
                                   fontWeight="500"
-                                  color="white"
+                                  color="text-primary"
                                 >
                                   {asset.price}
                                 </Text>
@@ -1613,7 +1610,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   w="80px"
                                   h="20px"
                                   borderRadius="4px"
-                                  bg="neutral.800"
+                                  bg="bg-surface-tertiary-2"
                                   position="relative"
                                   overflow="hidden"
                                   _before={{
@@ -1632,7 +1629,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   w="60px"
                                   h="16px"
                                   borderRadius="4px"
-                                  bg="neutral.800"
+                                  bg="bg-surface-tertiary-2"
                                   position="relative"
                                   overflow="hidden"
                                   _before={{
@@ -1651,7 +1648,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                             ) : (
                               <>
                                 <Text
-                                  color="white"
+                                  color="text-primary"
                                   fontSize={{ base: '16px', md: '20px' }}
                                   fontWeight="700"
                                   textAlign="right"
@@ -1661,7 +1658,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 <Text
                                   fontSize={{ base: '12px', md: '16px' }}
                                   fontWeight="500"
-                                  color="white"
+                                  color="text-primary"
                                   textAlign="right"
                                 >
                                   {asset.usdValue
@@ -1693,12 +1690,18 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
       >
         <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
         <ModalContent
-          bg="neutral.850"
+          bg="bg-surface-secondary"
           borderRadius="12px"
           border="1px solid"
-          borderColor="neutral.800"
+          borderColor="border-wallet-subtle"
+          shadow="none"
         >
-          <ModalHeader color="white" fontSize="20px" fontWeight="600" pb={2}>
+          <ModalHeader
+            color="text-primary"
+            fontSize="20px"
+            fontWeight="600"
+            pb={2}
+          >
             Show value in
           </ModalHeader>
           <ModalBody pb={6}>
@@ -1724,7 +1727,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                         h="24px"
                         borderRadius="full"
                       />
-                      <Text color="white" fontSize="16px">
+                      <Text color="text-primary" fontSize="16px">
                         {currency.name}
                       </Text>
                     </HStack>
@@ -1745,12 +1748,18 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
       >
         <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
         <ModalContent
-          bg="neutral.850"
+          bg="bg-surface-secondary"
           borderRadius="12px"
           border="1px solid"
-          borderColor="neutral.800"
+          borderColor="border-wallet-subtle"
+          shadow="none"
         >
-          <ModalHeader color="white" fontSize="20px" fontWeight="600" pb={2}>
+          <ModalHeader
+            color="text-primary"
+            fontSize="20px"
+            fontWeight="600"
+            pb={2}
+          >
             Choose Network
           </ModalHeader>
           <ModalBody pb={6}>
@@ -1785,7 +1794,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                         w="24px"
                         h="24px"
                         borderRadius="full"
-                        bg="neutral.800"
+                        bg="bg-surface-tertiary-2"
                         display="flex"
                         alignItems="center"
                         justifyContent="center"
@@ -1798,7 +1807,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           h="16px"
                         />
                       </Box>
-                      <Text color="white" fontSize="16px">
+                      <Text color="text-primary" fontSize="16px">
                         {network.name}
                       </Text>
                     </HStack>
