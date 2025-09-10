@@ -75,7 +75,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   willStartScheduling,
   isGateValid,
   notificationsSubs,
-  preferences,
 }) => {
   const { logged } = useContext(AccountContext)
   const {
@@ -544,7 +543,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             }
             setMeetingNotification(meetingNotification)
           }}
-          className="hideBorder"
+          className="noLeftBorder timezone-select"
           placeholder="Select Notification Alerts"
           isMulti
           tagVariant={'solid'}
@@ -553,12 +552,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           chakraStyles={{
             container: provided => ({
               ...provided,
-              border: '1px solid',
-              borderTopColor: 'currentColor',
-              borderLeftColor: 'currentColor',
-              borderRightColor: 'currentColor',
-              borderBottomColor: 'currentColor',
-              borderColor: 'inherit',
               borderRadius: 'md',
               maxW: '100%',
               display: 'block',
@@ -603,7 +596,14 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           }}
         />
       </FormControl>
-      <FormControl textAlign="left" w="100%" maxW="100%">
+      <FormControl
+        textAlign="left"
+        w="100%"
+        maxW={{
+          base: 'calc(100vw - 4rem)',
+          md: '550px',
+        }}
+      >
         <FormLabel>What is this meeting about? </FormLabel>
         <RichTextEditor
           isDisabled={isSchedulingExternal}
