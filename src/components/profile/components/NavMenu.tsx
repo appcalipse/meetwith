@@ -369,8 +369,8 @@ export const NavMenu: React.FC<{
             height={'100vh'}
             overflowY="auto"
           >
-            <VStack width="100%" textAlign="center">
-              <Box width="120px" height="120px" mb={2}>
+            <HStack width="100%" spacing={4} alignItems="flex-start" ml={16}>
+              <Box width="65px" height="65px" mb={2}>
                 <Avatar
                   address={currentAccount.address || ''}
                   avatar_url={currentAccount.preferences?.avatar_url || ''}
@@ -393,7 +393,7 @@ export const NavMenu: React.FC<{
                   color="orange.400"
                 />
               </VStack>
-            </VStack>
+            </HStack>
 
             {/* Main Navigation Items */}
             <VStack py={2} width="100%" flex={1} spacing={2}>
@@ -420,15 +420,6 @@ export const NavMenu: React.FC<{
                   />
                 )
               )}
-
-              <NavItem
-                selected={false}
-                text="Sign out"
-                icon={FaSignOutAlt}
-                mode={EditMode.MEETINGS}
-                locked={false}
-                changeMode={handleSignOut}
-              />
             </VStack>
 
             {/* Mobile Bottom Section - Display Name, Settings, Theme Toggle */}
@@ -436,16 +427,12 @@ export const NavMenu: React.FC<{
               <Divider borderColor={dividerColor} />
 
               <HStack width="100%" justify="space-between" px={8}>
-                <HStack spacing={3} alignItems="center">
-                  <Box width={8} height={8}>
-                    <Avatar
-                      address={currentAccount.address}
-                      avatar_url={currentAccount.preferences?.avatar_url || ''}
-                      name={getAccountDisplayName(currentAccount)}
-                    />
+                <HStack spacing={3} cursor="pointer" onClick={handleSignOut}>
+                  <Box color="primary.500">
+                    <FaSignOutAlt size={16} />
                   </Box>
-                  <Text fontSize="sm" fontWeight={500} color="white">
-                    {getAccountDisplayName(currentAccount)}
+                  <Text fontSize="sm" fontWeight={500} color="primary.500">
+                    Sign out
                   </Text>
                 </HStack>
 
