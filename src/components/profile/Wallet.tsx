@@ -22,6 +22,7 @@ import { useRouter } from 'next/router'
 import React from 'react'
 import { useState } from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
+import { FaCircleInfo } from 'react-icons/fa6'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
 import { GrDocumentTime } from 'react-icons/gr'
 import { IoChevronDown } from 'react-icons/io5'
@@ -1066,53 +1067,77 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           </Text>
                         </Box>
                       ) : selectedNetwork ? (
-                        <Box
-                          bg="bg-surface-tertiary"
-                          borderRadius={{ base: '8px', md: '12px' }}
-                          px={{ base: 3, md: 4 }}
-                          py={2}
-                          display="flex"
-                          alignItems="center"
-                          gap={2}
-                          cursor="pointer"
-                          onClick={() =>
-                            !isNetworkLoading && setIsNetworkModalOpen(true)
-                          }
-                          _hover={{ opacity: 0.8 }}
-                          border="1px solid"
-                          borderColor="border-subtle"
-                        >
-                          <Image
-                            src={
-                              networks.find(
-                                n => n.chainId === getChainId(selectedNetwork)
-                              )?.icon
+                        <HStack spacing={2}>
+                          <Box
+                            bg="bg-surface-tertiary"
+                            borderRadius={{ base: '8px', md: '12px' }}
+                            px={{ base: 3, md: 4 }}
+                            py={2}
+                            display="flex"
+                            alignItems="center"
+                            gap={2}
+                            cursor="pointer"
+                            onClick={() =>
+                              !isNetworkLoading && setIsNetworkModalOpen(true)
                             }
-                            alt={
-                              networks.find(
-                                n => n.chainId === getChainId(selectedNetwork)
-                              )?.name || selectedNetwork
-                            }
-                            borderRadius="full"
-                            w={{ base: '16px', md: '20px' }}
-                            h={{ base: '16px', md: '20px' }}
-                          />
-                          <Text
-                            color="text-primary"
-                            fontSize={{ base: '14px', md: '16px' }}
-                            fontWeight="700"
-                            pr={{ base: 2, md: 4 }}
+                            _hover={{ opacity: 0.8 }}
+                            border="1px solid"
+                            borderColor="border-subtle"
                           >
-                            {networks.find(
-                              n => n.chainId === getChainId(selectedNetwork)
-                            )?.name || selectedNetwork}
-                          </Text>
-                          <Icon
-                            as={IoChevronDown}
+                            <Image
+                              src={
+                                networks.find(
+                                  n => n.chainId === getChainId(selectedNetwork)
+                                )?.icon
+                              }
+                              alt={
+                                networks.find(
+                                  n => n.chainId === getChainId(selectedNetwork)
+                                )?.name || selectedNetwork
+                              }
+                              borderRadius="full"
+                              w={{ base: '16px', md: '20px' }}
+                              h={{ base: '16px', md: '20px' }}
+                            />
+                            <Text
+                              color="text-primary"
+                              fontSize={{ base: '14px', md: '16px' }}
+                              fontWeight="700"
+                              pr={{ base: 2, md: 4 }}
+                            >
+                              {networks.find(
+                                n => n.chainId === getChainId(selectedNetwork)
+                              )?.name || selectedNetwork}
+                            </Text>
+                            <Icon
+                              as={IoChevronDown}
+                              color="text-primary"
+                              fontSize={{ base: '16px', md: '16px' }}
+                            />
+                          </Box>
+
+                          <Tooltip
+                            label="Switch between blockchain networks. Each network operates independently with its own tokens, fees, and supported features. Make sure you're on the correct network for your transaction."
+                            placement="top"
+                            hasArrow
+                            bg="bg-surface-tertiary"
                             color="text-primary"
-                            fontSize={{ base: '16px', md: '16px' }}
-                          />
-                        </Box>
+                            borderRadius="8px"
+                            px={3}
+                            py={2}
+                            fontSize="sm"
+                          >
+                            <Box
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                              cursor="pointer"
+                              _hover={{ opacity: 0.8 }}
+                            >
+                              <FaCircleInfo color="text-primary" />
+                            </Box>
+                          </Tooltip>
+                        </HStack>
                       ) : (
                         <Box
                           bg="bg-surface-tertiary"
