@@ -157,7 +157,6 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       userId: props.userId,
       invitePending: props.invitePending,
       domain: props.domain,
-      isContact: props.isContact,
     })
     openRemoveModal()
   }
