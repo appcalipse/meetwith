@@ -108,7 +108,7 @@
     "spacetime": "^7.7.0",
     "styled-components": "^4.2.0",
     "swiper": "^8.4.5",
-    "thirdweb": "patch:thirdweb@npm%3A5.105.43#~/.yarn/patches/thirdweb-npm-5.105.43-61a6b6abee.patch",
+    "thirdweb": "patch:thirdweb@npm%3A5.105.43#~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch",
     "timezone-soft": "^1.5.2",
     "tsdav": "^2.0.2",
     "usehooks-ts": "^2.6.0",
