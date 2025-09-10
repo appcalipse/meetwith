@@ -480,6 +480,13 @@ export function SchedulePickTime() {
               className="noLeftBorder timezone-select"
               options={tzOptions}
               components={customSelectComponents}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  borderColor: 'input-border',
+                  bg: 'select-bg',
+                }),
+              }}
             />
           </VStack>
           <VStack
@@ -497,6 +504,13 @@ export function SchedulePickTime() {
               className="noLeftBorder timezone-select"
               options={months}
               components={customSelectComponents}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  borderColor: 'input-border',
+                  bg: 'select-bg',
+                }),
+              }}
             />
           </VStack>
           <FormControl
@@ -516,10 +530,11 @@ export function SchedulePickTime() {
                 Number(e.target.value) && setDuration(Number(e.target.value))
               }
               value={duration}
-              borderColor="neutral.400"
+              borderColor="input-border"
               width={'max-content'}
               maxW="350px"
               errorBorderColor="red.500"
+              bg="select-bg"
             >
               {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
                 <option key={type.id} value={type.duration}>
@@ -583,6 +598,7 @@ export function SchedulePickTime() {
           px={{ md: 6, base: 2 }}
           py={4}
           rounded={12}
+          bg="bg-surface-secondary"
         >
           <HStack w="100%" justify={'space-between'}>
             <IconButton
@@ -623,6 +639,7 @@ export function SchedulePickTime() {
                           base: 'small',
                           md: 'medium',
                         }}
+                        color="text-primary"
                       >
                         {guide.description.split(' ')[0]}
                       </Text>
@@ -641,7 +658,7 @@ export function SchedulePickTime() {
                     boxShadow="md"
                     py={3}
                     px={4}
-                    bg="neutral.800"
+                    bg="bg-surface-tertiary-2"
                     rounded={'10px'}
                   >
                     <VStack w="fit-content" gap={1} align={'flex-start'}>
@@ -659,6 +676,7 @@ export function SchedulePickTime() {
                                 base: 'small',
                                 md: 'medium',
                               }}
+                              color="text-primary"
                             >
                               {guide.description}
                             </Text>
@@ -754,6 +772,7 @@ export function SchedulePickTime() {
                         borderWidth={1}
                         borderRadius={5}
                         gap={'-1px'}
+                        bg="bg-canvas-subtle"
                         p={1}
                       >
                         {date.slots.map(slotData => {

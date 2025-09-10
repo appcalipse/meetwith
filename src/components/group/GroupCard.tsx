@@ -150,7 +150,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
       border={0}
       borderRadius="lg"
       mt={2}
-      bgColor={bgColor}
+      bgColor={'bg-surface'}
       id={props.id}
     >
       {({ isExpanded }) => (
@@ -292,6 +292,46 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 <Heading size="sm" flexBasis="57%" fontWeight={800}>
                   Contact
                 </Heading>
+                <Flex
+                  alignItems="center"
+                  gap={0.5}
+                  align="flex-start"
+                  flexBasis="30%"
+                >
+                  <Heading size="sm" fontWeight={800}>
+                    Contact Connection{' '}
+                  </Heading>
+                  <Tooltip.Provider delayDuration={400}>
+                    <Tooltip.Root>
+                      <Tooltip.Trigger>
+                        <Flex
+                          w="16px"
+                          h="16px"
+                          borderRadius="50%"
+                          bgColor={iconColor}
+                          justifyContent="center"
+                          alignItems="center"
+                          ml={1}
+                        >
+                          <Icon w={1} color={itemsBgColor} as={FaInfo} />
+                        </Flex>
+                      </Tooltip.Trigger>
+                      <Tooltip.Content>
+                        <Text
+                          fontSize="sm"
+                          p={4}
+                          maxW="200px"
+                          bgColor={itemsBgColor}
+                          shadow="lg"
+                        >
+                          This shows whether the member is in your contacts list
+                          or has already been sent a contact invite from you.
+                        </Text>
+                        <Tooltip.Arrow />
+                      </Tooltip.Content>
+                    </Tooltip.Root>
+                  </Tooltip.Provider>
+                </Flex>
                 <Flex
                   alignItems="center"
                   gap={0.5}

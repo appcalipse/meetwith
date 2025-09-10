@@ -213,8 +213,8 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
         maxWidth="500px"
         width="500px"
         border={1}
-        borderColor="neutral.600"
-        bg="neutral.900"
+        borderColor="border-default"
+        bg="bg-surface"
         py={6}
       >
         <ModalHeader fontSize="24px" py={0}>
@@ -247,10 +247,10 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
             </FormLabel>
             <HStack
               onClick={onOpen}
-              borderColor="neutral.400"
+              borderColor="text-subtle"
               borderWidth={1}
               cursor="pointer"
-              color="neutral.400"
+              color="text-subtle"
               justifyContent="space-between"
               borderRadius="0.375rem"
               height={10}

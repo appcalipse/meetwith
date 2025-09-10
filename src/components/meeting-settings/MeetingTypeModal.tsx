@@ -484,7 +484,7 @@ const MeetingTypeModal: FC<IProps> = props => {
       isCentered
     >
       <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
-      <ModalContent p="6" bg="neutral.900">
+      <ModalContent p="6" bg="bg-surface">
         <ModalHeader p={'0'}>
           <HStack
             w={'100%'}
@@ -883,8 +883,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.meeting_platforms
                           ? 'red.500'
                           : selectedProviders.includes(provider)
-                          ? 'primary.200'
-                          : 'neutral.0'
+                          ? 'border-default-primary'
+                          : 'border-inverted-subtle'
                       }
                       colorScheme="primary"
                       value={provider}
@@ -905,8 +905,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                           !!errors.meeting_platforms
                             ? 'red.500'
                             : selectedProviders.includes(provider)
-                            ? 'primary.200'
-                            : 'neutral.0'
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
                         }
                         cursor="pointer"
                       >
@@ -930,8 +930,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                       !!errors.meeting_platforms
                         ? 'red.500'
                         : selectedProviders.includes(MeetingProvider.CUSTOM)
-                        ? 'primary.200'
-                        : 'neutral.0'
+                        ? 'border-default-primary'
+                        : 'border-inverted-subtle'
                     }
                     colorScheme="primary"
                     p={4}
@@ -951,8 +951,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.meeting_platforms
                           ? 'red.500'
                           : selectedProviders.includes(MeetingProvider.CUSTOM)
-                          ? 'primary.200'
-                          : 'neutral.0'
+                          ? 'border-default-primary'
+                          : 'border-inverted-subtle'
                       }
                       cursor="pointer"
                     >
@@ -978,8 +978,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                       !!errors.custom_link
                         ? 'red.300'
                         : fixedLink
-                        ? 'primary.200'
-                        : 'neutral.0'
+                        ? 'border-default-primary'
+                        : 'border-inverted-subtle'
                     }
                     w="100%"
                     borderRadius={8}
@@ -996,7 +996,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                       value={customLink}
                       onChange={e => setCustomLink(e.target.value)}
                       onBlur={() => handleBlur('custom_link')}
-                      bg={'neutral.450'}
+                      bg={'input-bg-subtle'}
                       border={'none'}
                       borderRadius={8}
                       isDisabled={!fixedLink}

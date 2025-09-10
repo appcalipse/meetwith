@@ -4,6 +4,7 @@ import {
   Divider,
   Heading,
   HStack,
+  Icon,
   Text,
   VStack,
 } from '@chakra-ui/react'
@@ -150,8 +151,9 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       minH="80vh"
       maxH={'90vh'}
       overflowY={'auto'}
-      w="fit-content"
-      bg="neutral.845"
+      w={isMobile ? '100%' : 'fit-content'}
+      mx={isMobile ? 'auto' : 0}
+      bg="bg-surface-secondary"
       minW={isMobile ? 'none' : '315px'}
       display={{
         base: isMobile ? 'flex' : 'none',
@@ -195,17 +197,20 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                     )
                   }
                 >
-                  {allAvailabilities.includes(
-                    participant.account_address?.toLowerCase() || ''
-                  ) ? (
-                    <AiOutlineEye cursor="pointer" size={30} color="#F9B19A" />
-                  ) : (
-                    <AiOutlineEyeInvisible
-                      cursor="pointer"
-                      size={30}
-                      color="#F9B19A"
-                    />
-                  )}
+                  <Icon
+                    as={
+                      allAvailabilities.includes(
+                        participant.account_address?.toLowerCase() || ''
+                      )
+                        ? AiOutlineEye
+                        : AiOutlineEyeInvisible
+                    }
+                    cursor="pointer"
+                    boxSize={6}
+                    color="border-default-primary"
+                    w={6}
+                    h={6}
+                  />
                 </Box>
                 <VStack
                   alignItems="flex-start"
@@ -229,17 +234,19 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                       ellipsizeAddress(participant.account_address || '')}
                   </Heading>
                   {participant.type === ParticipantType.Scheduler && (
-                    <Text fontSize={'sm'} color={'neutral.200'}>
+                    <Text fontSize={'sm'} color={'text-highlight-primary'}>
                       Organizer
                     </Text>
                   )}
                 </VStack>
               </HStack>
-              <IoMdClose
-                size={20}
+              <Icon
+                as={IoMdClose}
+                w={5}
+                h={5}
                 display="block"
                 cursor="pointer"
-                color="#CBD2D9"
+                color="text-highlight-primary"
                 onClick={() => handleParticipantRemove(participant)}
               />
             </HStack>

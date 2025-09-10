@@ -1,25 +1,21 @@
 import {
   Badge,
-  Box,
   Button,
   Flex,
-  FormLabel,
   Heading,
   HStack,
-  Input,
   Tab,
   TabList,
   TabPanel,
   TabPanels,
   Tabs,
   Text,
+  useColorModeValue,
   useDisclosure,
-  VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
-import { RiSearch2Line } from 'react-icons/ri'
 
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
@@ -203,7 +199,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           </Button>
           <TabList
             w={{ base: '100%', md: 'auto' }}
-            bg="neutral.850"
+            bg="bg-surface-secondary"
             p={1}
             borderWidth={1}
             rounded={6}
