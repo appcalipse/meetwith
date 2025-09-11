@@ -52,14 +52,15 @@ const TransactionSuccessModal: React.FC<TransactionSuccessModalProps> = ({
     >
       <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
       <ModalContent
-        bg="neutral.900"
+        bg="bg-surface"
         borderRadius={{ base: '0', md: '12px' }}
         border="1px solid"
-        borderColor="neutral.825"
+        borderColor="border-wallet-subtle"
         maxW={{ base: '100%', md: '500px' }}
         mx={{ base: 0, md: 'auto' }}
         my={{ base: 0, md: 'auto' }}
         boxShadow="none"
+        shadow="none"
         minH="425px"
       >
         <ModalBody p={{ base: 6, md: 8 }}>
@@ -89,14 +90,20 @@ const TransactionSuccessModal: React.FC<TransactionSuccessModalProps> = ({
             />
 
             {/* Success Title */}
-            <Text fontSize="24px" fontWeight="700" color="white" mb={2} mt={4}>
+            <Text
+              fontSize="24px"
+              fontWeight="700"
+              color="text-primary"
+              mb={2}
+              mt={4}
+            >
               Transaction successful
             </Text>
 
             {/* Transaction Details */}
             <Text
               fontSize="16px"
-              color="white"
+              color="text-primary"
               fontWeight="500"
               lineHeight="1.4"
               mt={1}

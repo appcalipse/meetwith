@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Flex,
   Heading,
   HStack,
   Icon,
@@ -115,7 +114,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
           left={0}
           top={0}
           zIndex={10}
-          bg="neutral.900"
+          bg="bg-surface"
           borderRadius={12}
           p={6}
           pt={10}
@@ -135,7 +134,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
             <Text fontWeight={600}>Go Back</Text>
           </HStack>
 
-          <Heading fontSize="xl" ml={3} mb={8} color="white">
+          <Heading fontSize="xl" ml={3} mb={8} color="text-primary">
             Settings
           </Heading>
 
@@ -170,7 +169,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
                   justifyContent="flex-start"
                   alignItems="center"
                   onClick={() => setActiveSection(item.section)}
-                  color={isActive ? 'primary.200' : 'white'}
+                  color={isActive ? 'primary.200' : 'text-primary'}
                   fontWeight={isActive ? 'semibold' : 'normal'}
                   px={3}
                   py={2.5}

@@ -75,11 +75,11 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
 
   return (
     <Box
-      bg="neutral.900"
+      bg="bg-surface"
       borderRadius="12px"
       p={{ base: 4, md: 12 }}
       border="1px solid"
-      borderColor="neutral.825"
+      borderColor="border-wallet-subtle"
     >
       <Flex
         gap={6}
@@ -105,7 +105,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
         <Text
           fontSize={{ base: '20px', md: '24px' }}
           fontWeight="700"
-          color="neutral.0"
+          color="text-primary"
         >
           Transaction Details
         </Text>
@@ -114,7 +114,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
       {/* Transaction Information */}
       <VStack
         spacing={0}
-        divider={<Box h="1px" bg="neutral.600" width="100%" />}
+        divider={<Box h="1px" bg="border-subtle" width="100%" />}
       >
         {transaction.direction === 'debit' ? (
           // For debit transactions (sent), show receiver address and host name for meetings
@@ -125,11 +125,9 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
               align={{ base: 'flex-start', md: 'start' }}
               py={6}
               width="100%"
-              borderBottom="1px solid"
-              borderColor="neutral.600"
             >
               <Text
-                color="neutral.300"
+                color="text-secondary"
                 fontSize="16px"
                 fontWeight="700"
                 width={{ base: '100%', md: '50%' }}
@@ -138,7 +136,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                 Receiver
               </Text>
               <Text
-                color="white"
+                color="text-primary"
                 fontSize="16px"
                 fontWeight="500"
                 textAlign="left"
@@ -158,7 +156,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                 width="100%"
               >
                 <Text
-                  color="neutral.300"
+                  color="text-secondary"
                   fontSize="16px"
                   fontWeight="700"
                   width={{ base: '100%', md: '50%' }}
@@ -167,7 +165,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                   Host Name
                 </Text>
                 <Text
-                  color="white"
+                  color="text-primary"
                   fontSize="16px"
                   fontWeight="500"
                   textAlign="left"
@@ -188,11 +186,9 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
               align={{ base: 'flex-start', md: 'start' }}
               py={6}
               width="100%"
-              borderBottom="1px solid"
-              borderColor="neutral.600"
             >
               <Text
-                color="neutral.300"
+                color="text-secondary"
                 fontSize="16px"
                 fontWeight="700"
                 width={{ base: '100%', md: '50%' }}
@@ -201,7 +197,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                 Sender
               </Text>
               <Text
-                color="white"
+                color="text-primary"
                 fontSize="16px"
                 fontWeight="500"
                 textAlign="left"
@@ -220,10 +216,10 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                 py={6}
                 width="100%"
                 borderBottom="1px solid"
-                borderColor="neutral.600"
+                borderColor="border-subtle"
               >
                 <Text
-                  color="neutral.300"
+                  color="text-secondary"
                   fontSize="16px"
                   fontWeight="700"
                   width={{ base: '100%', md: '50%' }}
@@ -232,7 +228,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                   Guest Name
                 </Text>
                 <Text
-                  color="white"
+                  color="text-primary"
                   fontSize="16px"
                   fontWeight="500"
                   textAlign="left"
@@ -253,7 +249,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                 width="100%"
               >
                 <Text
-                  color="neutral.300"
+                  color="text-secondary"
                   fontSize="16px"
                   fontWeight="700"
                   width={{ base: '100%', md: '50%' }}
@@ -262,7 +258,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
                   Guest Email
                 </Text>
                 <Text
-                  color="white"
+                  color="text-primary"
                   fontSize="16px"
                   fontWeight="500"
                   textAlign="left"
@@ -285,7 +281,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             width="100%"
           >
             <Text
-              color="neutral.300"
+              color="text-secondary"
               fontSize="16px"
               fontWeight="700"
               width={{ base: '100%', md: '50%' }}
@@ -294,7 +290,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
               Plan
             </Text>
             <Text
-              color="white"
+              color="text-primary"
               fontSize="16px"
               fontWeight="500"
               textAlign="left"
@@ -315,7 +311,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             width="100%"
           >
             <Text
-              color="neutral.300"
+              color="text-secondary"
               fontSize="16px"
               fontWeight="700"
               width={{ base: '100%', md: '50%' }}
@@ -324,7 +320,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
               Number of Sessions
             </Text>
             <Text
-              color="white"
+              color="text-primary"
               fontSize="16px"
               fontWeight="500"
               textAlign="left"
@@ -344,7 +340,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
           width="100%"
         >
           <Text
-            color="neutral.300"
+            color="text-secondary"
             fontSize="16px"
             fontWeight="700"
             width={{ base: '100%', md: '50%' }}
@@ -353,7 +349,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             Amount
           </Text>
           <Text
-            color="white"
+            color="text-primary"
             fontSize="16px"
             fontWeight="500"
             textAlign="left"
@@ -372,7 +368,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
           width="100%"
         >
           <Text
-            color="neutral.300"
+            color="text-secondary"
             fontSize="16px"
             fontWeight="700"
             width={{ base: '100%', md: '50%' }}
@@ -381,7 +377,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             Direction
           </Text>
           <Text
-            color="white"
+            color="text-primary"
             fontSize="16px"
             fontWeight="500"
             textAlign="left"
@@ -401,7 +397,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
           width="100%"
         >
           <Text
-            color="neutral.300"
+            color="text-secondary"
             fontSize="16px"
             fontWeight="700"
             width={{ base: '100%', md: '50%' }}
@@ -429,7 +425,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
           width="100%"
         >
           <Text
-            color="neutral.300"
+            color="text-secondary"
             fontSize="16px"
             fontWeight="700"
             width={{ base: '100%', md: '50%' }}
@@ -441,7 +437,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             {transaction.transaction_hash ? (
               <HStack spacing={2} align="center">
                 <Text
-                  color="white"
+                  color="text-primary"
                   fontSize="16px"
                   fontWeight="500"
                   textAlign="left"
@@ -466,7 +462,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
               </HStack>
             ) : (
               <Text
-                color="white"
+                color="text-primary"
                 fontSize="16px"
                 fontWeight="500"
                 textAlign="left"

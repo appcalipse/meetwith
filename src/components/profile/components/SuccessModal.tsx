@@ -6,7 +6,6 @@ import {
   ModalContent,
   ModalOverlay,
   Text,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import React from 'react'
@@ -28,8 +27,6 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
   buttonText = 'Go back to Dashboard',
   onButtonClick,
 }) => {
-  const textColor = useColorModeValue('gray.900', 'white')
-
   const handleButtonClick = () => {
     if (onButtonClick) {
       onButtonClick()
@@ -42,22 +39,23 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
       <ModalContent
-        bg="dark.700"
+        bg="dark-bg"
         borderRadius="12px"
         p={8}
         maxW="592px"
         width="592px"
         boxShadow="none"
+        shadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch" textAlign="center">
             {/* Title */}
-            <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+            <Text fontSize="2xl" fontWeight="bold" color="text-primary">
               {title}
             </Text>
 
             {/* Message */}
-            <Text fontSize="md" color={textColor}>
+            <Text fontSize="md" color="text-primary">
               {message}
             </Text>
 
@@ -65,7 +63,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
             <Box pt={4} pb={10}>
               <Button
                 bg="primary.300"
-                color="dark.800"
+                color="text-primary"
                 _hover={{ bg: 'primary.400' }}
                 onClick={handleButtonClick}
                 size="md"
