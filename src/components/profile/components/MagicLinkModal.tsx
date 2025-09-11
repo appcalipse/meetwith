@@ -31,9 +31,6 @@ const MagicLinkModal: React.FC<MagicLinkModalProps> = ({
   confirmButtonText,
   isLoading = false,
 }) => {
-  const textColor = 'text-primary'
-  const mutedColor = 'text-muted'
-
   return (
     <Modal
       isOpen={isOpen}
@@ -73,10 +70,10 @@ const MagicLinkModal: React.FC<MagicLinkModalProps> = ({
 
             {/* Title and message */}
             <VStack align="flex-start" spacing={3}>
-              <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+              <Text fontSize="2xl" fontWeight="bold" color="text-primary">
                 {title}
               </Text>
-              <Text fontSize="md" color={mutedColor} lineHeight="1.6">
+              <Text fontSize="md" color="text-muted" lineHeight="1.6">
                 {message}
               </Text>
             </VStack>

@@ -41,10 +41,6 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
   const [showNewPin, setShowNewPin] = useState(false)
   const [showConfirmPin, setShowConfirmPin] = useState(false)
 
-  const textColor = 'text-primary'
-  const mutedColor = 'text-muted'
-  const primaryColor = '#F46739'
-
   const getModalTitle = (
     modalMode: 'create' | 'change' | 'disable'
   ): string => {
@@ -185,7 +181,7 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
                 onClick={handleCancel}
                 _hover={{ bg: 'transparent' }}
               >
-                <FaArrowLeft color={primaryColor} size={20} />
+                <FaArrowLeft color="#F46739" size={20} />
               </Button>
               <Text fontSize="sm" color="primary.400" fontWeight="medium">
                 Back
@@ -194,10 +190,10 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
 
             {/* Title and description */}
             <VStack align="flex-start" spacing={2}>
-              <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+              <Text fontSize="2xl" fontWeight="bold" color="text-primary">
                 {getModalTitle(mode)}
               </Text>
-              <Text fontSize="sm" color={mutedColor}>
+              <Text fontSize="sm" color="text-muted">
                 {getModalDescription(mode)}
               </Text>
             </VStack>
@@ -205,7 +201,7 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
             {/* Current PIN input - only for change and disable modes */}
             {(mode === 'change' || mode === 'disable') && (
               <VStack align="flex-start" spacing={3}>
-                <Text fontSize="sm" fontWeight="medium" color={textColor}>
+                <Text fontSize="sm" fontWeight="medium" color="text-primary">
                   Current Pin
                 </Text>
                 <HStack spacing={3}>
@@ -253,7 +249,7 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
             {/* New PIN input - only for create and change modes */}
             {(mode === 'create' || mode === 'change') && (
               <VStack align="flex-start" spacing={3}>
-                <Text fontSize="sm" fontWeight="medium" color={textColor}>
+                <Text fontSize="sm" fontWeight="medium" color="text-primary">
                   New Pin
                 </Text>
                 <HStack spacing={3}>
@@ -301,7 +297,7 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
             {/* Confirm PIN input - only for create and change modes */}
             {(mode === 'create' || mode === 'change') && (
               <VStack align="flex-start" spacing={3}>
-                <Text fontSize="sm" fontWeight="medium" color={textColor}>
+                <Text fontSize="sm" fontWeight="medium" color="text-primary">
                   Confirm Pin
                 </Text>
                 <HStack spacing={3}>

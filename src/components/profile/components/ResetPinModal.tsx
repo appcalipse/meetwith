@@ -33,10 +33,6 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
   const [showNewPin, setShowNewPin] = useState(false)
   const [showConfirmPin, setShowConfirmPin] = useState(false)
 
-  const textColor = 'text-primary'
-  const mutedColor = 'text-muted'
-  const primaryColor = '#F46739'
-
   // Clear inputs whenever modal closes (for security)
   useEffect(() => {
     if (!isOpen) {
@@ -97,7 +93,7 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
                 onClick={handleCancel}
                 _hover={{ bg: 'transparent' }}
               >
-                <FaArrowLeft color={primaryColor} size={20} />
+                <FaArrowLeft color="#F46739" size={20} />
               </Button>
               <Text fontSize="sm" color="primary.400" fontWeight="medium">
                 Back
@@ -106,17 +102,17 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
 
             {/* Title and description */}
             <VStack align="flex-start" spacing={2}>
-              <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+              <Text fontSize="2xl" fontWeight="bold" color="text-primary">
                 Reset your transaction pin
               </Text>
-              <Text fontSize="sm" color={mutedColor}>
+              <Text fontSize="sm" color="text-muted">
                 Create a new transaction pin for your transactions
               </Text>
             </VStack>
 
             {/* New PIN input */}
             <VStack align="flex-start" spacing={3}>
-              <Text fontSize="sm" fontWeight="medium" color={textColor}>
+              <Text fontSize="sm" fontWeight="medium" color="text-primary">
                 New Pin
               </Text>
               <HStack spacing={3}>
@@ -162,7 +158,7 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
 
             {/* Confirm PIN input */}
             <VStack align="flex-start" spacing={3}>
-              <Text fontSize="sm" fontWeight="medium" color={textColor}>
+              <Text fontSize="sm" fontWeight="medium" color="text-primary">
                 Confirm New Pin
               </Text>
               <HStack spacing={3}>
