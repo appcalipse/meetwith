@@ -31,9 +31,6 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
   const [newEmail, setNewEmail] = useState('')
   const [error, setError] = useState('')
 
-  const textColor = 'text-primary'
-  const primaryColor = '#F46739'
-
   // Clear inputs whenever modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -90,7 +87,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
                 minW="auto"
                 onClick={handleCancel}
                 _hover={{ bg: 'transparent' }}
-                leftIcon={<FaArrowLeft color={primaryColor} size={20} />}
+                leftIcon={<FaArrowLeft color="#F46739" size={20} />}
                 color="primary.400"
                 fontWeight="medium"
                 fontSize="sm"
@@ -101,7 +98,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
 
             {/* Title */}
             <VStack align="flex-start" spacing={2}>
-              <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+              <Text fontSize="2xl" fontWeight="bold" color="text-primary">
                 Update your account email
               </Text>
             </VStack>
@@ -109,7 +106,11 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
             {/* Email input */}
             <VStack align="flex-start" spacing={3}>
               <FormControl>
-                <FormLabel fontSize="sm" fontWeight="medium" color={textColor}>
+                <FormLabel
+                  fontSize="sm"
+                  fontWeight="medium"
+                  color="text-primary"
+                >
                   New Email address
                 </FormLabel>
                 <Input

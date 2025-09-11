@@ -27,8 +27,6 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
   buttonText = 'Go back to Dashboard',
   onButtonClick,
 }) => {
-  const textColor = 'text-primary'
-
   const handleButtonClick = () => {
     if (onButtonClick) {
       onButtonClick()
@@ -52,12 +50,12 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch" textAlign="center">
             {/* Title */}
-            <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+            <Text fontSize="2xl" fontWeight="bold" color="text-primary">
               {title}
             </Text>
 
             {/* Message */}
-            <Text fontSize="md" color={textColor}>
+            <Text fontSize="md" color="text-primary">
               {message}
             </Text>
 
