@@ -195,13 +195,7 @@ export const Navbar = () => {
               spacing={4}
             >
               {!shouldEnforceColorOnPath(pathname) && <ThemeSwitcher />}
-              {logged ? (
-                <NavBarLoggedProfile
-                  account={currentAccount!}
-                  handleSetActiveLink={handleSetActiveLink}
-                  disableNavMenu={true}
-                />
-              ) : (
+              {!logged && (
                 <Button
                   size="md"
                   onClick={handleConnectionOpen}
