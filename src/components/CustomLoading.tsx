@@ -22,7 +22,7 @@ const CustomLoading: React.FC<{ text?: string }> = ({
       />
       <HStack spacing={3}>
         <Spinner size="md" />
-        <Text fontSize="lg" color="neutral.300">
+        <Text fontSize="lg" color="text-primary">
           {text}
         </Text>
       </HStack>

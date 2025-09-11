@@ -98,7 +98,7 @@ const DiscordNotificationConfig: React.FC<Props> = ({
               py={1.5}
               borderRadius="full"
               bg={isActive ? 'green.200' : 'primary.75'}
-              color={isActive ? 'green.400' : 'primary.500'}
+              color={isActive ? 'green.600' : 'primary.500'}
               fontSize="xs"
             >
               {isActive ? 'Active' : 'Inactive'}

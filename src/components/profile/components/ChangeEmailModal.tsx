@@ -10,7 +10,6 @@ import {
   ModalContent,
   ModalOverlay,
   Text,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import React, { useEffect, useState } from 'react'
@@ -31,9 +30,6 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
 }) => {
   const [newEmail, setNewEmail] = useState('')
   const [error, setError] = useState('')
-
-  const textColor = useColorModeValue('gray.900', 'white')
-  const primaryColor = '#F46739'
 
   // Clear inputs whenever modal closes
   useEffect(() => {
@@ -73,12 +69,13 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
     <Modal isOpen={isOpen} onClose={handleCancel} size="md" isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
       <ModalContent
-        bg="dark.700"
+        bg="dark-bg"
         borderRadius="12px"
         p={8}
         maxW="592px"
         width="592px"
         boxShadow="none"
+        shadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">
@@ -90,7 +87,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
                 minW="auto"
                 onClick={handleCancel}
                 _hover={{ bg: 'transparent' }}
-                leftIcon={<FaArrowLeft color={primaryColor} size={20} />}
+                leftIcon={<FaArrowLeft color="#F46739" size={20} />}
                 color="primary.400"
                 fontWeight="medium"
                 fontSize="sm"
@@ -101,7 +98,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
 
             {/* Title */}
             <VStack align="flex-start" spacing={2}>
-              <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+              <Text fontSize="2xl" fontWeight="bold" color="text-primary">
                 Update your account email
               </Text>
             </VStack>
@@ -109,7 +106,11 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
             {/* Email input */}
             <VStack align="flex-start" spacing={3}>
               <FormControl>
-                <FormLabel fontSize="sm" fontWeight="medium" color={textColor}>
+                <FormLabel
+                  fontSize="sm"
+                  fontWeight="medium"
+                  color="text-primary"
+                >
                   New Email address
                 </FormLabel>
                 <Input
@@ -119,8 +120,8 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
                   placeholder="Enter your new email address"
                   size="lg"
                   bg="transparent"
-                  borderColor="neutral.400"
-                  _hover={{ borderColor: 'gray.400' }}
+                  borderColor="border-subtle"
+                  _hover={{ borderColor: 'border-default' }}
                   _focus={{ borderColor: 'primary.300', boxShadow: 'none' }}
                 />
               </FormControl>
@@ -137,7 +138,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
             <HStack spacing={4} pt={4} justifyContent="space-between" pb={10}>
               <Button
                 bg="primary.300"
-                color="dark.800"
+                color="text-primary"
                 _hover={{ bg: 'primary.400' }}
                 onClick={handleEmailChange}
                 size="md"
@@ -153,7 +154,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
               <Button
                 variant="outline"
                 border="1px solid"
-                bg="neutral.825"
+                bg="bg-surface-tertiary"
                 borderColor="primary.300"
                 color="primary.300"
                 onClick={handleCancel}

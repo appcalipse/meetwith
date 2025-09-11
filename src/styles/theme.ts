@@ -68,7 +68,9 @@ export const colors = {
     700: '#E40004',
   },
   orange: {
+    200: '#FCD6CA',
     400: '#FF8A65',
+    700: '#D93F0C',
   },
   dark: {
     900: '#141A1F',
@@ -137,6 +139,10 @@ const newTheme = {
       },
       'bg-surface-tertiary': {
         default: 'gray.50',
+        _dark: 'neutral.825',
+      },
+      'border-wallet-subtle': {
+        default: 'neutral.100',
         _dark: 'neutral.825',
       },
       'bg-surface-tertiary-2': {
@@ -218,6 +224,18 @@ const newTheme = {
       'input-border': {
         default: 'neutral.200',
         _dark: 'neutral.400',
+      },
+      'warning-bg': {
+        default: 'orange.200',
+        _dark: 'orange.200',
+      },
+      'warning-text': {
+        default: 'orange.700',
+        _dark: 'orange.700',
+      },
+      'dark-bg': {
+        default: 'neutral.0',
+        _dark: 'dark.700',
       },
     },
   },
