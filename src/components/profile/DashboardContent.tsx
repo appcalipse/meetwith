@@ -83,7 +83,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
           flex={isSettings ? 1 : { base: '1', md: '8' }}
           marginLeft={{ base: '0 !important', md: isSettings ? 0 : 2 }}
           marginInlineStart={{ base: '0 !important', md: isSettings ? 0 : 2 }}
-          pt={{ base: '60px', lg: 0 }}
+          pt={{ base: isSettings ? '0' : '60px', lg: 0 }}
         >
           {renderSelected()}
         </Box>

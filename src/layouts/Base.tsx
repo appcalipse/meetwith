@@ -16,6 +16,7 @@ import {
   DASHBOARD_ROUTE_PREFIX,
   PUBLIC_ADDRESS_ROUTE,
   PUBLIC_USERNAME_ROUTE,
+  SETTINGS_ROUTE_PREFIX,
 } from '@/utils/constants'
 
 export const BaseLayout: React.FC<{
@@ -30,11 +31,15 @@ export const BaseLayout: React.FC<{
   })
 
   const isDashboardPage = router.pathname.startsWith(DASHBOARD_ROUTE_PREFIX)
+  const isSettingsPage = router.asPath.startsWith(SETTINGS_ROUTE_PREFIX)
   const isPublicPage =
     router.pathname === PUBLIC_USERNAME_ROUTE ||
     router.pathname === PUBLIC_ADDRESS_ROUTE
 
-  const navVisible = !(logged && isDashboardPage && !isMobile) && !isPublicPage
+  const navVisible =
+    !(logged && isDashboardPage && !isMobile) &&
+    !isPublicPage &&
+    !isSettingsPage
   const footerVisible = !(logged && isDashboardPage) && !isPublicPage
 
   return (
