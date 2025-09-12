@@ -73,7 +73,8 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
         borderRadius="12px"
         p={8}
         maxW="592px"
-        width="592px"
+        width={{ base: '100%', md: '592px' }}
+        height={{ base: '100%', md: 'auto' }}
         boxShadow="none"
         shadow="none"
       >

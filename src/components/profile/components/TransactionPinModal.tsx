@@ -166,7 +166,8 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
         borderRadius="12px"
         p={8}
         maxW="592px"
-        width="592px"
+        width={{ base: '100%', md: '592px' }}
+        height={{ base: '100%', md: 'auto' }}
         boxShadow="none"
         shadow="none"
       >
@@ -353,7 +354,7 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
             <HStack spacing={4} pt={4} justifyContent="space-between" pb={10}>
               <Button
                 bg="primary.300"
-                color="text-primary"
+                color="neutral.900"
                 _hover={{ bg: 'primary.400' }}
                 onClick={handleAction}
                 size="md"

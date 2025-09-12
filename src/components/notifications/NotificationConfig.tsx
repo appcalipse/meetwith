@@ -223,7 +223,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
       mb={8}
       spacing={6}
       bg="bg-surface"
-      p={8}
+      p={{ base: 6, md: 8 }}
       borderRadius={16}
     >
       <Heading fontSize="2xl">Notifications</Heading>
