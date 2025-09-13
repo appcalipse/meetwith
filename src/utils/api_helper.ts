@@ -37,6 +37,7 @@ import {
   GroupInvitePayload,
   GroupMember,
 } from '@/types/Group'
+import { UserLocale } from '@/types/Locale'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -1851,4 +1852,9 @@ export const getCoinConfig = async (): Promise<ICoinConfig> => {
     '/integrations/onramp-money/all-config',
     'GET'
   )
+}
+export const getUserLocale = async (): Promise<UserLocale> => {
+  return (await fetch('https://ipapi.co/json/').then(res =>
+    res.json()
+  )) as UserLocale
 }
