@@ -152,7 +152,6 @@ import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
-  generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
   noNoReplyEmailForAccount,
@@ -162,11 +161,12 @@ import {
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_sync_helpers'
-import { apiUrl, appUrl, isProduction, WEBHOOK_URL } from './constants'
+import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import { sendReceiptEmail } from './email_helper'
+import { deduplicateArray } from './generic_utils'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { CalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
@@ -240,7 +240,7 @@ const initAccountDBForWallet = async (
     throw new Error('User account not created')
   }
   const user_account: Account = createdUserAccount.data[0]
-  const defaultMeetingType = generateDefaultMeetingType()
+  const defaultMeetingType = generateDefaultMeetingType(user_account.address)
   const defaultAvailabilities = generateEmptyAvailabilities()
   const defaultBlock = await createAvailabilityBlock(
     user_account.address,
@@ -249,8 +249,13 @@ const initAccountDBForWallet = async (
     defaultAvailabilities,
     false // don't set as default yet
   )
+  const meetingType: CreateMeetingTypeRequest = {
+    ...defaultMeetingType,
+    availability_ids: [defaultBlock.id],
+    calendars: [],
+  }
+  await createMeetingType(user_account.address, meetingType)
   const preferences: AccountPreferences = {
-    availableTypes: [defaultMeetingType],
     description: '',
     availabilities: defaultAvailabilities,
     socialLinks: [],
@@ -423,8 +428,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     url: link.url?.trim(),
   }))
 
-  await workMeetingTypeGates(account.preferences.availableTypes || [])
-
   const responsePrefsUpdate = await db.supabase
     .from('account_preferences')
     .update({
@@ -433,7 +436,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       availabilities: preferences.availabilities,
       name: preferences.name,
       socialLinks: preferences.socialLinks,
-      availableTypes: preferences.availableTypes,
       meetingProviders: preferences.meetingProviders,
     })
     .match({ owner_account_address: account.address.toLowerCase() })
@@ -672,7 +674,7 @@ const getSlotsForAccount = async (
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
     .order('start')
 
   if (error) {
@@ -699,7 +701,7 @@ const getSlotsForAccountMinimal = async (
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
     .order('start')
 
   if (error) {
@@ -1853,10 +1855,7 @@ const getGroupUsers = async (
       .in('address', addresses)
       .filter('group_members.group_id', 'eq', group_id)
       .filter('group_invites.group_id', 'eq', group_id)
-      .range(
-        offset || 0,
-        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-      )
+      .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
     if (error) {
       throw new Error(error.message)
     }
@@ -3458,7 +3457,6 @@ const getOrCreateContactInvite = async (
   if (address) {
     channel = ChannelType.ACCOUNT
   }
-
   const { data: insertData, error: insertError } = await db.supabase
     .from('contact_invite')
     .insert([
@@ -3498,7 +3496,7 @@ const isUserContact = async (owner_address: string, address: string) => {
 const getContacts = async (
   address: string,
   query = '',
-  limit = 10,
+  limit = 1000,
   offset = 0
 ): Promise<DBContact> => {
   const { data, error } = await db.supabase.rpc('search_contacts', {
@@ -3510,13 +3508,13 @@ const getContacts = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContact
+  return Array.isArray(data) ? data[0] : data
 }
 
 const getContactLean = async (
   address: string,
   query = '',
-  limit = 10,
+  limit = 1000,
   offset = 0
 ): Promise<DBContactLean> => {
   const { data, error } = await db.supabase.rpc<DBContactLean>(
@@ -3531,7 +3529,7 @@ const getContactLean = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContactLean
+  return Array.isArray(data) ? data[0] : data
 }
 
 const checkContactExists = async (
@@ -3548,7 +3546,7 @@ const checkContactExists = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContactLean
+  return Array.isArray(data) ? data[0] : data
 }
 
 const getContactById = async (
@@ -3599,7 +3597,7 @@ const getContactInvites = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContactInvite
+  return Array.isArray(data) ? data[0] : data
 }
 const _getContactByAddress = async (
   owner_address: string,
@@ -3751,7 +3749,15 @@ const acceptContactInvite = async (
       account_address,
       invite?.account_owner_address,
     ])
-    .in('destination', [account_address, invite?.account_owner_address])
+    .in(
+      'destination',
+      deduplicateArray([
+        account_address,
+        invite?.account_owner_address,
+        invite.destination,
+      ])
+    )
+
   if (deleteError) {
     throw new Error(deleteError.message)
   }
@@ -3820,6 +3826,21 @@ const rejectContactInvite = async (
     .from('contact_invite')
     .delete()
     .eq('id', invite_identifier)
+  await db.supabase
+    .from('contact_invite')
+    .delete()
+    .in('account_owner_address', [
+      account_address,
+      invite?.account_owner_address,
+    ])
+    .in(
+      'destination',
+      deduplicateArray([
+        account_address,
+        invite?.account_owner_address,
+        invite.destination,
+      ])
+    )
   if (deleteError) {
     throw new Error(deleteError.message)
   }
