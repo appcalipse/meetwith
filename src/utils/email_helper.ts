@@ -44,7 +44,7 @@ const defaultResendOptions = {
 
 export const sendBatchEmails = async (msgs: CreateEmailOptions[]) => {
   try {
-    await resend.batch.send(msgs).then(console.log)
+    await resend.batch.send(msgs)
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
@@ -650,6 +650,191 @@ export const cancelledMeetingEmailContent = async (
   return msg
 }
 
+export const updateMeetingEmail = async (
+  toEmail: string,
+  currentActorDisplayName: string,
+  participantType: ParticipantType,
+  participants: ParticipantInfo[],
+  timezone: string,
+  start: Date,
+  end: Date,
+  meeting_id: string,
+  slot_id: string,
+  meetingTypeId?: string,
+  destinationAccountAddress?: string,
+  meetingUrl?: string,
+  title?: string,
+  description?: string,
+  created_at?: Date,
+  changes?: MeetingChange,
+  meetingProvider?: MeetingProvider,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat?: MeetingRepeat,
+  guestInfoEncrypted?: string,
+  meetingPermissions?: Array<MeetingPermissions>
+): Promise<boolean> => {
+  if (!changes?.dateChange) {
+    return false
+  }
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(participantType)
+
+  const canSeeGuestList =
+    meetingPermissions === undefined ||
+    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
+    isSchedulerOrOwner
+
+  // Find the owner's account address for generating the public calendar URL
+  const ownerParticipant = participants.find(
+    p => p.type === ParticipantType.Owner
+  )
+  const ownerAccountAddress = ownerParticipant?.account_address
+
+  const changeUrl = await generateChangeUrl(
+    destinationAccountAddress,
+    ownerAccountAddress,
+    slot_id,
+    participantType,
+    participants,
+    meetingTypeId,
+    guestInfoEncrypted
+  )
+
+  const email = new Email()
+  const newDuration = differenceInMinutes(end, start)
+  const oldDuration = changes?.dateChange
+    ? differenceInMinutes(
+        new Date(changes?.dateChange?.oldEnd),
+        new Date(changes?.dateChange?.oldStart)
+      )
+    : null
+
+  const locals = {
+    currentActorDisplayName,
+    participantsDisplay: getAllParticipantsDisplayName(
+      participants,
+      destinationAccountAddress,
+      canSeeGuestList
+    ),
+    meeting: {
+      start: dateToHumanReadable(start, timezone, true),
+      duration: durationToHumanReadable(newDuration),
+      url: meetingUrl,
+      title,
+      description,
+    },
+    // Only include reschedule link for guests
+    changeUrl,
+    cancelUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
+      : guestInfoEncrypted
+      ? `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
+          guestInfoEncrypted || ''
+        )}`
+      : undefined,
+    changes: {
+      oldStart:
+        changes?.dateChange?.oldStart &&
+        new Date(changes.dateChange?.oldStart).getTime() !== start.getTime()
+          ? dateToHumanReadable(
+              new Date(changes!.dateChange!.oldStart),
+              timezone,
+              false
+            )
+          : null,
+      oldDuration:
+        oldDuration && oldDuration !== newDuration
+          ? durationToHumanReadable(oldDuration)
+          : null,
+    },
+  }
+
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'meeting_updated')}`,
+    locals
+  )
+  let hasCalendarSyncing
+  const ownerAddress =
+    participants.find(p => p.type === ParticipantType.Owner)?.account_address ||
+    ''
+  if (destinationAccountAddress || ownerAddress) {
+    const accountCalendar = await getConnectedCalendars(
+      destinationAccountAddress || ownerAddress,
+      {
+        syncOnly: true,
+      }
+    )
+    hasCalendarSyncing = accountCalendar.some(val => {
+      return val.calendars?.some(cal => cal.enabled && cal.sync)
+    })
+  }
+  const icsFile = generateIcs(
+    {
+      meeting_url: meetingUrl as string,
+      start: new Date(start),
+      end: new Date(end),
+      id: meeting_id,
+      meeting_id,
+      title,
+      created_at: new Date(created_at as Date),
+      participants,
+      version: 0,
+      related_slot_ids: [],
+      meeting_info_encrypted: mockEncrypted,
+      reminders: meetingReminders,
+      recurrence: meetingRepeat,
+    },
+    destinationAccountAddress || '',
+    MeetingChangeType.UPDATE,
+    changeUrl,
+    false,
+    destinationAccountAddress
+      ? {
+          accountAddress: destinationAccountAddress,
+          email: toEmail,
+        }
+      : undefined,
+    hasCalendarSyncing
+  )
+
+  if (icsFile.error) {
+    Sentry.captureException(icsFile.error)
+    return false
+  }
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    attachments: icsFile.value
+      ? [
+          {
+            content: icsFile.value,
+            filename: `meeting_${meeting_id}.ics`,
+            contentType: `text/calendar; method=REQUEST; charset=UTF-8; name=meeting_${meeting_id}.ics`,
+          },
+        ]
+      : [],
+    tags: [
+      {
+        name: 'meeting',
+        value: 'updated',
+      },
+    ],
+  }
+
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
 export const updateMeetingEmailContent = async (
   toEmail: string,
   currentActorDisplayName: string,
