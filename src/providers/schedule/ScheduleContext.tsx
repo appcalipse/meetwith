@@ -84,7 +84,7 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     MeetingDecrypted | undefined
   >(undefined)
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    MeetingProvider.HUDDLE
+    MeetingProvider.GOOGLE_MEET
   )
   const [meetingUrl, setMeetingUrl] = useState('')
   const [meetingNotification, setMeetingNotification] = useState<
