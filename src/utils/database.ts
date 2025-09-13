@@ -3238,7 +3238,7 @@ const findAccountsByText = async (
   const { data, error } = await db.supabase.rpc<ContactSearch>(
     'search_accounts',
     {
-      search,
+      search: search?.trim() || '',
       max_results: limit,
       skip: offset,
       current_address,

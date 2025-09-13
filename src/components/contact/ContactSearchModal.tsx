@@ -74,7 +74,7 @@ const ContactSearchModal = (props: Props) => {
   }, [debouncedValue])
   const handleSearch = async (reset = true) => {
     const search = await mutateAsync({
-      query: debouncedValue,
+      query: debouncedValue.trim(),
       offset: reset ? 0 : result?.result?.length,
     })
 
