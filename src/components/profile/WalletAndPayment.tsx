@@ -431,7 +431,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
       <Heading fontSize="2xl">Wallet & Payments</Heading>
 
       {/* Wallet Section */}
-      <Block>
+      <Block p={{ base: 6, md: 8 }}>
         {/* Wallet */}
         <Heading fontSize="xl" mb={4}>
           Wallet
@@ -533,7 +533,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                 borderColor="border-default"
                 bg="bg-surface"
                 height="44px"
-                width="390px"
+                width={{ base: '100%', md: '390px' }}
                 justifyContent="flex-start"
                 px={4}
                 isDisabled={isPreferencesLoading || isPreferencesFetching}
@@ -607,7 +607,13 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
             Payment & Wallet notifications
           </Heading>
 
-          <Text fontSize="md" fontWeight="500" mb={4} color="text-primary">
+          <Text
+            fontSize="md"
+            fontWeight="500"
+            mb={4}
+            mt={{ base: 4, md: 0 }}
+            color="text-primary"
+          >
             Notifications
           </Text>
 
@@ -625,7 +631,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                   _checked: {
                     bg: 'primary.200',
                     borderColor: 'primary.200',
-                    color: 'text-primary',
+                    color: 'neutral.900',
                   },
                 },
                 '.chakra-checkbox__label': {
@@ -650,7 +656,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                   _checked: {
                     bg: 'primary.200',
                     borderColor: 'primary.200',
-                    color: 'text-primary',
+                    color: 'neutral.900',
                   },
                 },
                 '.chakra-checkbox__label': {
