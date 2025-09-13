@@ -106,7 +106,6 @@ export interface TimeRange {
 export interface AccountPreferences {
   id?: string
   timezone: string | undefined
-  availableTypes: MeetingType[]
   description?: string
   availabilities: DayAvailability[]
   availaibility_id?: string

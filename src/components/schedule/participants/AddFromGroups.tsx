@@ -9,6 +9,7 @@ import {
 import { useRouter } from 'next/router'
 import React, { useMemo, useState } from 'react'
 
+import Loading from '@/components/Loading'
 import SearchInput from '@/components/ui/SearchInput'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
@@ -17,7 +18,7 @@ import { GetGroupsFullResponse } from '@/types/Group'
 import GroupCard from './GroupCard'
 
 const AddFromGroups = () => {
-  const { groups } = useParticipants()
+  const { groups, isGroupPrefetching } = useParticipants()
   const groupId = useRouter().query.groupId as string
   const currentAccount = useAccountContext()
   const [search, setSearch] = useState('')
@@ -49,7 +50,11 @@ const AddFromGroups = () => {
     }
   }, [groupId, groups, search])
 
-  return (
+  return isGroupPrefetching ? (
+    <VStack mb={6} w="100%" justifyContent="center">
+      <Loading />
+    </VStack>
+  ) : groups.length > 0 ? (
     <>
       <Text>Add from Groups</Text>
       <VStack alignItems="flex-start" mt={4} mb={6} width="100%" gap={4}>
@@ -111,6 +116,8 @@ const AddFromGroups = () => {
         </Accordion>
       </VStack>
     </>
+  ) : (
+    <Text>No groups available. Please create a group first.</Text>
   )
 }
 

@@ -6,6 +6,7 @@ import {
   Heading,
   HStack,
   Input,
+  Link,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -17,12 +18,15 @@ import {
   TableContainer,
   Tbody,
   Td,
+  Text,
   Th,
   Thead,
   Tr,
+  VStack,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
-import React, { memo, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { FaPlus } from 'react-icons/fa'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { LeanContact } from '@/types/Contacts'
@@ -79,7 +83,7 @@ const GroupContactModal = ({
     if (search.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
-    setResult(search)
+    setResult(search || [])
   }
   const handleLoadMore = async () => {
     setMoreLoading(true)
@@ -153,61 +157,76 @@ const GroupContactModal = ({
                 size="xl"
               />
             </HStack>
-          ) : (
-            result?.length > 0 && (
-              <TableContainer>
-                <Table variant="unstyled" colorScheme="whiteAlpha">
-                  <Thead bg="bg-surface">
-                    <Tr color="text-primary">
-                      <Th colSpan={4}>User</Th>
-                      <Th
-                        colSpan={4}
-                        display={{ base: 'none', md: 'table-cell' }}
-                      >
-                        Account ID
-                      </Th>
-                      <Th colSpan={1}>Action</Th>
+          ) : result?.length > 0 ? (
+            <TableContainer>
+              <Table variant="unstyled" colorScheme="whiteAlpha">
+                <Thead bg="bg-surface">
+                  <Tr color="text-primary">
+                    <Th colSpan={4}>User</Th>
+                    <Th
+                      colSpan={4}
+                      display={{ base: 'none', md: 'table-cell' }}
+                    >
+                      Account ID
+                    </Th>
+                    <Th colSpan={1}>Action</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {result.map((account, index) => (
+                    <GroupContactModalItem
+                      key={`${account.id}-contact-${index}`}
+                      index={index}
+                      isContactAlreadyAdded={props.isContactAlreadyAdded}
+                      addUserFromContact={props.addUserFromContact}
+                      removeUserFromContact={props.removeUserFromContact}
+                      buttonLabel={buttonLabel}
+                      isLoading={!!loadingStates.get(account.id)}
+                      {...account}
+                    />
+                  ))}
+                  {!noMoreFetch && (
+                    <Tr color="white">
+                      <Td justifyContent="center" colSpan={9}>
+                        <HStack justifyItems="center">
+                          <Button
+                            isLoading={isMoreLoading}
+                            colorScheme="primary"
+                            variant="outline"
+                            my={4}
+                            onClick={handleLoadMore}
+                            mx="auto"
+                          >
+                            Load more
+                          </Button>
+                        </HStack>
+                      </Td>
                     </Tr>
-                  </Thead>
-                  <Tbody>
-                    {result.map((account, index) => (
-                      <GroupContactModalItem
-                        key={`${account.id}-contact-${index}`}
-                        index={index}
-                        isContactAlreadyAdded={props.isContactAlreadyAdded}
-                        addUserFromContact={props.addUserFromContact}
-                        removeUserFromContact={props.removeUserFromContact}
-                        buttonLabel={buttonLabel}
-                        isLoading={!!loadingStates.get(account.id)}
-                        {...account}
-                      />
-                    ))}
-                    {!noMoreFetch && (
-                      <Tr color="white">
-                        <Td justifyContent="center" colSpan={9}>
-                          <HStack justifyItems="center">
-                            <Button
-                              isLoading={isMoreLoading}
-                              colorScheme="primary"
-                              variant="outline"
-                              my={4}
-                              onClick={handleLoadMore}
-                              mx="auto"
-                            >
-                              Load more
-                            </Button>
-                          </HStack>
-                        </Td>
-                      </Tr>
-                    )}
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            )
+                  )}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <VStack alignItems="center" justifyContent="center" p={10}>
+              <Text color="text-secondary" mb={4} textAlign="center">
+                You haven’t added any contacts yet. Add people to your contacts
+                to easily invite them to groups and meetings.
+              </Text>
+              <Button
+                flexShrink={0}
+                as={Link}
+                href="/dashboard/contacts?action=add&source=group-modal"
+                colorScheme="primary"
+                leftIcon={<FaPlus />}
+                _hover={{ textDecoration: 'none' }}
+              >
+                Add new contact
+              </Button>
+            </VStack>
           )}
         </ModalBody>
       </ModalContent>
     </Modal>
   )
 }
-export default memo(GroupContactModal)
+export default GroupContactModal

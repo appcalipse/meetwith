@@ -14,6 +14,8 @@ import {
   TagLabel,
   TagLeftIcon,
   Text,
+  Th,
+  Tr,
   useColorModeValue,
   useToast,
   VStack,
@@ -135,7 +137,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             props.handleIsAdminChange(newRole === MemberType.ADMIN)
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         handleApiError('Error changing roles', error)
       }
       setLoading(false)
@@ -235,168 +237,189 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   }
   const isActor = props.currentAccount.address === props.address
   return (
-    <HStack
+    <Tr
       width="100%"
-      justifyContent="space-between"
       borderBottomWidth={1}
       borderBottomColor={borderColor}
       pb={3}
     >
-      <HStack flexBasis={{ md: '57%' }} overflow="hidden">
-        <Box
-          width={{ base: '32px', md: '48px', lg: '64px' }}
-          height={{ base: '32px', md: '48px', lg: '64px' }}
-          display="block"
-          flexBasis={{ base: '32px', md: '48px', lg: '64px' }}
-        >
-          <Avatar
-            address={props.address || ''}
-            avatar_url={props.avatar_url}
-            name={props.displayName}
-          />
-        </Box>
-        <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
-          <Heading size={{ base: 'xs', md: 'sm' }}>
-            {props.displayName || ellipsizeAddress(props.address || '')}{' '}
-            {isActor && '(You)'}
-          </Heading>
-          {!props.invitePending ? (
-            <CopyLinkButton
-              url={`${appUrl}/${props.domain || props.address}`}
-              size={{ base: 'sm', md: 'md' }}
-              label={`${appUrl}/${props.domain || props.address}`}
-              withIcon
-              design_type="link"
-              pl={0}
-              maxW="335px"
-              px={0}
-              childStyle={{
-                style: {
-                  width: '150px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                },
-              }}
-            />
-          ) : (
-            <HStack alignItems="center">
-              <Box
-                h={5}
-                w="fit-content"
-                borderRadius="99px"
-                px={2.5}
-                py="3"
-                display="grid"
-                placeContent="center"
-                bg={tagColor}
-              >
-                <Text size={{ base: 'xs', md: 'sm' }}>Pending</Text>
-              </Box>
-            </HStack>
-          )}
-        </VStack>
-      </HStack>
-      <Flex alignItems="center" gap={0.5} align="flex-start" flexBasis="30%">
-        {props?.isContact || isSuccess || isActor ? (
-          <Tag size={'sm'} variant="subtle">
-            <TagLeftIcon
-              boxSize="12px"
-              w={5}
-              h={5}
-              as={GoDotFill}
-              color="green.500"
-            />
-            <TagLabel px="2px">My contact</TagLabel>
-          </Tag>
-        ) : (
-          <Button
-            colorScheme="primary"
-            onClick={handleAddToContacts}
-            isLoading={isAddLoading || isInviteLoading}
-            isDisabled={isSuccess}
-            _disabled={{
-              bg: isSuccess ? 'neutral.400' : '',
-            }}
-            _hover={{
-              bg: isSuccess ? 'neutral.400' : '',
-            }}
+      <Th px={0}>
+        <HStack>
+          <Box
+            width={{ base: '32px', md: '48px', lg: '64px' }}
+            height={{ base: '32px', md: '48px', lg: '64px' }}
+            display="block"
+            flexBasis={{ base: '32px', md: '48px', lg: '64px' }}
           >
-            Add to Contacts
-          </Button>
-        )}
-      </Flex>
-      <HStack
-        display="flex"
-        flexBasis={{ md: '30%' }}
-        justifyContent="space-between"
-      >
-        <HStack overflow="hidden" maxW={'150px'}>
-          {loading ? (
-            <Spinner marginInline="auto" />
-          ) : (
-            <Menu>
-              <MenuButton
-                as={Button}
-                rightIcon={
-                  <FaChevronDown
-                    style={{
-                      marginLeft:
-                        currentRole === MemberType.ADMIN ? '0px' : '15px',
-                    }}
-                  />
-                }
-                variant="ghost"
-                gap={12}
-                width="100px"
-                pr={4}
+            <Avatar
+              address={props.address || ''}
+              avatar_url={props.avatar_url}
+              name={props.displayName}
+            />
+          </Box>
+          <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
+            <Heading size={{ base: 'xs', md: 'sm' }}>
+              {props.displayName || ellipsizeAddress(props.address || '')}{' '}
+              {isActor && '(You)'}
+            </Heading>
+            {!props.invitePending ? (
+              <CopyLinkButton
+                url={`${appUrl}/${props.domain || props.address}`}
+                size={{ base: 'sm', md: 'md' }}
+                label={`${appUrl}/${props.domain || props.address}`}
+                withIcon
+                design_type="link"
                 pl={0}
-                textTransform="capitalize"
-                isDisabled={!props.isAdmin}
-              >
-                {currentRole}
-              </MenuButton>
-              <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
-                <MenuItem
-                  width="100px"
-                  textTransform="capitalize"
-                  borderBottom={`2px solid neutral.200`}
-                  backgroundColor={
-                    currentRole === MemberType.ADMIN
-                      ? activeMenuColor
-                      : menuBgColor
-                  }
-                  onClick={handleRoleChange(
-                    MemberType.MEMBER,
-                    MemberType.ADMIN
-                  )}
-                  disabled={currentRole === MemberType.ADMIN}
+                maxW="335px"
+                px={0}
+                childStyle={{
+                  style: {
+                    width: '150px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  },
+                }}
+              />
+            ) : (
+              <HStack alignItems="center">
+                <Box
+                  h={5}
+                  w="fit-content"
+                  borderRadius="99px"
+                  px={2.5}
+                  py="3"
+                  display="grid"
+                  placeContent="center"
+                  bg={tagColor}
                 >
-                  {MemberType.ADMIN}
-                </MenuItem>
-                <MenuItem
-                  width="100px"
-                  textTransform="capitalize"
-                  backgroundColor={
-                    currentRole === MemberType.MEMBER
-                      ? activeMenuColor
-                      : menuBgColor
-                  }
-                  disabled={currentRole === MemberType.MEMBER}
-                  onClick={handleRoleChange(
-                    MemberType.ADMIN,
-                    MemberType.MEMBER,
-                    currentRole === MemberType.ADMIN &&
-                      props.groupRoles.filter(role => role === MemberType.ADMIN)
-                        .length === 1
-                  )}
-                >
-                  {MemberType.MEMBER}
-                </MenuItem>
-              </MenuList>
-            </Menu>
-          )}
+                  <Text size={{ base: 'xs', md: 'sm' }}>Pending</Text>
+                </Box>
+              </HStack>
+            )}
+          </VStack>
         </HStack>
+      </Th>
+      <Th pl={0}>
+        <Flex alignItems="center" gap={0.5} align="flex-start">
+          {props?.isContact || isSuccess || isActor ? (
+            <Tag size={'sm'} variant="subtle">
+              <TagLeftIcon
+                boxSize="12px"
+                w={5}
+                h={5}
+                as={GoDotFill}
+                color="green.500"
+              />
+              <TagLabel px="2px">
+                {isActor ? 'This is me' : 'My contact'}
+              </TagLabel>
+            </Tag>
+          ) : props?.hasContactInvite ? (
+            <Tag size={'sm'} variant="subtle">
+              <TagLeftIcon
+                boxSize="12px"
+                w={5}
+                h={5}
+                as={GoDotFill}
+                color="yellow.500"
+              />
+              <TagLabel px="2px">Pending</TagLabel>
+            </Tag>
+          ) : (
+            <Button
+              colorScheme="primary"
+              onClick={handleAddToContacts}
+              isLoading={isAddLoading || isInviteLoading}
+              isDisabled={isSuccess}
+              _disabled={{
+                bg: isSuccess ? 'neutral.400' : '',
+              }}
+              _hover={{
+                bg: isSuccess ? 'neutral.400' : '',
+              }}
+            >
+              Add to Contacts
+            </Button>
+          )}
+        </Flex>
+      </Th>
+      <Th pl={0}>
+        <HStack display="flex" justifyContent="space-between">
+          <HStack overflow="hidden" maxW={'150px'}>
+            {loading ? (
+              <Spinner marginInline="auto" />
+            ) : (
+              <Menu>
+                <MenuButton
+                  as={Button}
+                  rightIcon={
+                    <FaChevronDown
+                      style={{
+                        marginLeft:
+                          currentRole === MemberType.ADMIN ? '0px' : '15px',
+                      }}
+                    />
+                  }
+                  variant="ghost"
+                  gap={12}
+                  width="100px"
+                  pr={4}
+                  pl={0}
+                  textTransform="capitalize"
+                  isDisabled={!props.isAdmin}
+                >
+                  {currentRole}
+                </MenuButton>
+                <MenuList
+                  width="10px"
+                  minWidth="fit-content"
+                  overflowX="hidden"
+                >
+                  <MenuItem
+                    width="100px"
+                    textTransform="capitalize"
+                    borderBottom={`2px solid neutral.200`}
+                    backgroundColor={
+                      currentRole === MemberType.ADMIN
+                        ? activeMenuColor
+                        : menuBgColor
+                    }
+                    onClick={handleRoleChange(
+                      MemberType.MEMBER,
+                      MemberType.ADMIN
+                    )}
+                    disabled={currentRole === MemberType.ADMIN}
+                  >
+                    {MemberType.ADMIN}
+                  </MenuItem>
+                  <MenuItem
+                    width="100px"
+                    textTransform="capitalize"
+                    backgroundColor={
+                      currentRole === MemberType.MEMBER
+                        ? activeMenuColor
+                        : menuBgColor
+                    }
+                    disabled={currentRole === MemberType.MEMBER}
+                    onClick={handleRoleChange(
+                      MemberType.ADMIN,
+                      MemberType.MEMBER,
+                      currentRole === MemberType.ADMIN &&
+                        props.groupRoles.filter(
+                          role => role === MemberType.ADMIN
+                        ).length === 1
+                    )}
+                  >
+                    {MemberType.MEMBER}
+                  </MenuItem>
+                </MenuList>
+              </Menu>
+            )}
+          </HStack>
+        </HStack>
+      </Th>
+      <Th px={0}>
         <HStack>
           {
             // no one can leave an empty group
@@ -423,8 +446,8 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               ) : null)
           }
         </HStack>
-      </HStack>
-    </HStack>
+      </Th>
+    </Tr>
   )
 }
 export default GroupMemberCard

@@ -10,7 +10,12 @@ interface IProps {
 
 const SearchInput: FC<IProps> = ({ setValue, value, placeholder }) => {
   return (
-    <Box w={{ base: '100%', md: 'fit-content' }} pos="relative" h="100%">
+    <Box
+      w={{ base: '100%', md: 'fit-content' }}
+      minW={{ md: '300px' }}
+      pos="relative"
+      h="100%"
+    >
       <FormLabel
         display="flex"
         htmlFor="search"
@@ -25,7 +30,7 @@ const SearchInput: FC<IProps> = ({ setValue, value, placeholder }) => {
       </FormLabel>
       <Input
         pl={10}
-        w={{ base: '100%', md: 'fit-content' }}
+        w={'100%'}
         h={12}
         type="search"
         placeholder={placeholder}
