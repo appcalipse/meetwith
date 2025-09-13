@@ -1,4 +1,11 @@
-import React, { createContext, ReactNode, useContext, useState } from 'react'
+import { useRouter } from 'next/router'
+import React, {
+  createContext,
+  ReactNode,
+  useContext,
+  useMemo,
+  useState,
+} from 'react'
 
 interface IPermissionsContext {
   isDeleting: boolean
@@ -11,6 +18,7 @@ interface IPermissionsContext {
   setCanCancel: React.Dispatch<React.SetStateAction<boolean>>
   setIsScheduler: React.Dispatch<React.SetStateAction<boolean>>
   setCanEditMeetingDetails: React.Dispatch<React.SetStateAction<boolean>>
+  isUpdatingMeeting: boolean
 }
 
 const PermissionsContext = createContext<IPermissionsContext | undefined>(
@@ -39,6 +47,8 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
   const [canCancel, setCanCancel] = useState(true)
   const [isScheduler, setIsScheduler] = useState(true)
   const [canEditMeetingDetails, setCanEditMeetingDetails] = useState(true)
+  const query = useRouter().query
+  const isUpdatingMeeting = useMemo(() => !!query.meetingId, [query.meetingId])
 
   const value = {
     isDeleting,
@@ -51,6 +61,7 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
     setIsScheduler,
     canEditMeetingDetails,
     setCanEditMeetingDetails,
+    isUpdatingMeeting,
   }
   return (
     <PermissionsContext.Provider value={value}>

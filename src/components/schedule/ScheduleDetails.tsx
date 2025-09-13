@@ -126,22 +126,6 @@ const ScheduleDetails = () => {
   const optionalGroupMembers = groupMembers.filter(
     val => !allAvailabilities.includes(val.account_address || '')
   )
-  const type = useMemo(
-    () =>
-      currentAccount?.preferences.availableTypes.find(
-        type => type.duration_minutes === duration
-      ),
-    [duration]
-  )
-  useEffect(() => {
-    const type = currentAccount?.preferences.availableTypes.find(
-      type => type.duration_minutes === duration
-    )
-    if (type?.custom_link) {
-      setMeetingProvider(MeetingProvider.CUSTOM)
-      setMeetingUrl(type.custom_link)
-    }
-  }, [currentAccount, duration])
   return (
     <Flex
       width="fit-content"
@@ -234,49 +218,47 @@ const ScheduleDetails = () => {
               )}
             </HStack>
           </VStack>
-          {(type?.fixed_link || !type?.custom_link) && (
-            <VStack alignItems="start" w={'100%'} gap={4}>
-              <Text fontSize="18px" fontWeight={500}>
-                Location
-              </Text>
-              <RadioGroup
-                onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-                value={meetingProvider}
-                w={'100%'}
-              >
-                <VStack w={'100%'} gap={4}>
-                  {meetingProviders.map(provider => (
-                    <Radio
-                      flexDirection="row-reverse"
-                      justifyContent="space-between"
-                      w="100%"
-                      colorScheme="primary"
-                      value={provider}
-                      key={provider}
+          <VStack alignItems="start" w={'100%'} gap={4}>
+            <Text fontSize="18px" fontWeight={500}>
+              Location
+            </Text>
+            <RadioGroup
+              onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+              value={meetingProvider}
+              w={'100%'}
+            >
+              <VStack w={'100%'} gap={4}>
+                {meetingProviders.map(provider => (
+                  <Radio
+                    flexDirection="row-reverse"
+                    justifyContent="space-between"
+                    w="100%"
+                    colorScheme="primary"
+                    value={provider}
+                    key={provider}
+                  >
+                    <Text
+                      fontWeight="600"
+                      color={'primary.200'}
+                      cursor="pointer"
                     >
-                      <Text
-                        fontWeight="600"
-                        color={'primary.200'}
-                        cursor="pointer"
-                      >
-                        {renderProviderName(provider)}
-                      </Text>
-                    </Radio>
-                  ))}
-                </VStack>
-              </RadioGroup>
-              {meetingProvider === MeetingProvider.CUSTOM && (
-                <Input
-                  type="text"
-                  placeholder="insert a custom meeting url"
-                  isDisabled={isScheduling}
-                  my={4}
-                  value={meetingUrl}
-                  onChange={e => setMeetingUrl(e.target.value)}
-                />
-              )}
-            </VStack>
-          )}
+                      {renderProviderName(provider)}
+                    </Text>
+                  </Radio>
+                ))}
+              </VStack>
+            </RadioGroup>
+            {meetingProvider === MeetingProvider.CUSTOM && (
+              <Input
+                type="text"
+                placeholder="insert a custom meeting url"
+                isDisabled={isScheduling}
+                my={4}
+                value={meetingUrl}
+                onChange={e => setMeetingUrl(e.target.value)}
+              />
+            )}
+          </VStack>
           <FormControl w="100%" maxW="100%">
             <FormLabel>Meeting reminders</FormLabel>
             <ChakraSelect

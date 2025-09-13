@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { NotificationChannel } from '@/types/AccountNotifications'
 import { Contact, LeanContact } from '@/types/Contacts'
 import { getContactLean, getContacts, initDB } from '@/utils/database'
 
@@ -27,7 +26,21 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             req.query.limit ? Number(req.query.limit as string) : undefined,
             req.query.offset ? Number(req.query.offset as string) : undefined
           ))
-      const results: Array<Contact | LeanContact> = dbResults.result || []
+      let results: Array<Contact | LeanContact> = dbResults.result || []
+      const inDependentSet = new Set<string>()
+
+      for (const contact of results) {
+        inDependentSet.add(contact.address)
+      }
+      results = results
+        .map(contact => {
+          if (inDependentSet.has(contact.address)) {
+            inDependentSet.delete(contact.address)
+            return contact
+          }
+        })
+        .filter((contact): contact is Contact | LeanContact => Boolean(contact))
+
       return res.status(200).json(results)
     } catch (e) {
       return res.status(500).send(e)

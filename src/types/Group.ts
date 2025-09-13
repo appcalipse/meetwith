@@ -47,6 +47,7 @@ export interface GroupMember {
   invitePending: boolean
   domain?: string
   isContact?: boolean
+  hasContactInvite?: boolean
 }
 
 export interface UpdateGroupPayload {

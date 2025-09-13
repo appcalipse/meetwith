@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { NotificationChannel } from '@/types/AccountNotifications'
 import { ContactInvite } from '@/types/Contacts'
 import { getContactInvites, initDB } from '@/utils/database'
 
@@ -19,7 +18,20 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         req.query.limit ? Number(req.query.limit as string) : undefined,
         req.query.offset ? Number(req.query.offset as string) : undefined
       )
-      const results: Array<ContactInvite> = dbResults.result || []
+      const inDependentSet = new Set<string>()
+      let results: Array<ContactInvite> = dbResults.result || []
+      for (const invite of results) {
+        inDependentSet.add(invite.address)
+      }
+      results = results
+        .map(invite => {
+          if (inDependentSet.has(invite.address)) {
+            inDependentSet.delete(invite.address)
+            return invite
+          }
+        })
+        .filter((invite): invite is ContactInvite => Boolean(invite))
+
       return res.status(200).json(results)
     } catch (e) {
       console.error(e)

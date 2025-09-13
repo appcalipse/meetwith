@@ -2,8 +2,8 @@ import {
   AccordionButton,
   AccordionItem,
   AccordionPanel,
-  Badge,
   Box,
+  Button,
   Heading,
   HStack,
   IconButton,
@@ -11,39 +11,39 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
+import Link from 'next/link'
 import React, { FC, useId, useState } from 'react'
-import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
+import { FaChevronDown, FaChevronUp, FaPlus } from 'react-icons/fa'
 
 import SearchInput from '@/components/ui/SearchInput'
 import { Account } from '@/types/Account'
-import { GetGroupsFullResponse } from '@/types/Group'
+import { LeanContact } from '@/types/Contacts'
 
-import GroupParticipantsItem from './GroupParticipantsItem'
+import ContactMemberItem from './ContactMemberItem'
 
-export interface IGroupCard extends GetGroupsFullResponse {
+export interface IContactsCard {
   currentAccount?: Account | null
-  currentGroupId?: string
+  contacts: Array<LeanContact>
 }
 
-const GroupCard: FC<IGroupCard> = props => {
+const ContactsCard: FC<IContactsCard> = props => {
   const id = useId()
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const [search, setSearch] = useState('')
-  const members = props.members.filter(
+  const members = props.contacts.filter(
     member =>
-      member.displayName?.toLowerCase().includes(search.toLowerCase()) ||
-      member.address?.toLowerCase().includes(search.toLowerCase()) ||
-      member.domain?.toLowerCase().includes(search.toLowerCase())
+      member.name?.toLowerCase().includes(search.toLowerCase()) ||
+      member.address?.toLowerCase().includes(search.toLowerCase())
   )
   return (
     <AccordionItem
       width="100%"
-      key={`${id}-${props.id}`}
+      key={`${id}-${props.contacts.length}`}
       my={3}
       borderColor="text-subtle"
       borderWidth={1}
       borderRadius="0.375rem"
-      id={props.id}
+      id={props.contacts.length.toString()}
     >
       {({ isExpanded }) => (
         <>
@@ -56,30 +56,15 @@ const GroupCard: FC<IGroupCard> = props => {
             fontSize="16"
             px={isExpanded ? 6 : 4}
           >
-            <HStack gap={1}>
-              <Text
-                fontSize={isExpanded ? 'lg' : 'base'}
-                fontWeight={isExpanded ? 700 : 500}
-                lineHeight={'120%'}
-                transition="all 0.2s"
-                transitionTimingFunction={'isExpanded ? ease-in : ease-out'}
-              >
-                {props.name}
-              </Text>
-              {props.currentGroupId === props.id && (
-                <Badge
-                  color="white"
-                  bg="border-default"
-                  ml={2}
-                  px={1.5}
-                  rounded="8px"
-                  fontSize={'10px'}
-                  py={1}
-                >
-                  Current Group
-                </Badge>
-              )}
-            </HStack>
+            <Text
+              fontSize={isExpanded ? 'lg' : 'base'}
+              fontWeight={isExpanded ? 700 : 500}
+              lineHeight={'120%'}
+              transition="all 0.2s"
+              transitionTimingFunction={'isExpanded ? ease-in : ease-out'}
+            >
+              Select member
+            </Text>
             <IconButton
               width="fit-content"
               m={0}
@@ -105,7 +90,7 @@ const GroupCard: FC<IGroupCard> = props => {
                 <SearchInput
                   setValue={setSearch}
                   value={search}
-                  placeholder="Search from group"
+                  placeholder="Search from contacts"
                 />
               </Box>
               <HStack
@@ -126,20 +111,28 @@ const GroupCard: FC<IGroupCard> = props => {
               </HStack>
               {members.length > 0 ? (
                 members.map(member => (
-                  <GroupParticipantsItem
+                  <ContactMemberItem
                     key={member.address}
                     currentAccount={props.currentAccount!}
-                    groupId={props.id}
-                    groupName={props.name}
-                    address={member?.address || ''}
                     {...member}
                   />
                 ))
               ) : (
-                <VStack width="100%" alignItems="center" my={6}>
-                  <Text px={6} py={4} color="neutral.400">
-                    No members found.
+                <VStack alignItems="center" justifyContent="center" p={10}>
+                  <Text color="text-secondary" mb={4} textAlign="center">
+                    You haven’t added any contacts yet. Add people to your
+                    contacts to easily invite them to groups and meetings.
                   </Text>
+                  <Button
+                    flexShrink={0}
+                    as={Link}
+                    href="/dashboard/contacts?action=add&source=group-modal"
+                    colorScheme="primary"
+                    leftIcon={<FaPlus />}
+                    _hover={{ textDecoration: 'none' }}
+                  >
+                    Add new contact
+                  </Button>
                 </VStack>
               )}
             </VStack>
@@ -150,4 +143,4 @@ const GroupCard: FC<IGroupCard> = props => {
   )
 }
 
-export default GroupCard
+export default ContactsCard
