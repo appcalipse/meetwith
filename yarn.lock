@@ -17069,7 +17069,7 @@ __metadata:
     spacetime: "npm:^7.7.0"
     styled-components: "npm:^4.2.0"
     swiper: "npm:^8.4.5"
-    thirdweb: "patch:thirdweb@npm%3A5.105.43#~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch"
+    thirdweb: "patch:thirdweb@patch%3Athirdweb@npm%253A5.105.43%23~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch%3A%3Aversion=5.105.43&hash=8fd311#~/patches/thirdweb-patch-c45de60fca.patch"
     timezone-soft: "npm:^1.5.2"
     ts-jest: "npm:^29.1.0"
     tsdav: "npm:^2.0.2"
@@ -21908,7 +21908,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"thirdweb@patch:thirdweb@npm%3A5.105.43#~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch":
+"thirdweb@patch:thirdweb@npm%3A5.105.43#~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch::version=5.105.43&hash=8fd311":
   version: 5.105.43
   resolution: "thirdweb@patch:thirdweb@npm%3A5.105.43#~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch::version=5.105.43&hash=8fd311"
   dependencies:
@@ -21995,6 +21995,96 @@ __metadata:
     thirdweb: dist/esm/cli/bin.js
     thirdweb-cli: dist/esm/cli/bin.js
   checksum: 10c0/3028c66cd0a805d28e11e9a27e4dafc5f59399df0bea75bb6e1e0afc3f725cf623cf3f2a1cc36f196c34021eaceeb4e25d2d080d1ea383722549dcfa0ba8a446
+  languageName: node
+  linkType: hard
+
+"thirdweb@patch:thirdweb@patch%3Athirdweb@npm%253A5.105.43%23~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch%3A%3Aversion=5.105.43&hash=8fd311#~/patches/thirdweb-patch-c45de60fca.patch":
+  version: 5.105.43
+  resolution: "thirdweb@patch:thirdweb@patch%3Athirdweb@npm%253A5.105.43%23~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch%3A%3Aversion=5.105.43&hash=8fd311#~/patches/thirdweb-patch-c45de60fca.patch::version=5.105.43&hash=f20f70"
+  dependencies:
+    "@coinbase/wallet-sdk": "npm:4.3.0"
+    "@emotion/react": "npm:11.14.0"
+    "@emotion/styled": "npm:11.14.1"
+    "@noble/curves": "npm:1.8.2"
+    "@noble/hashes": "npm:1.7.2"
+    "@passwordless-id/webauthn": "npm:^2.1.2"
+    "@radix-ui/react-dialog": "npm:1.1.14"
+    "@radix-ui/react-focus-scope": "npm:1.1.7"
+    "@radix-ui/react-icons": "npm:1.3.2"
+    "@radix-ui/react-tooltip": "npm:1.2.7"
+    "@storybook/react": "npm:9.0.15"
+    "@tanstack/react-query": "npm:5.81.5"
+    "@thirdweb-dev/engine": "npm:3.2.1"
+    "@thirdweb-dev/insight": "npm:1.1.1"
+    "@walletconnect/sign-client": "npm:2.20.1"
+    "@walletconnect/universal-provider": "npm:2.21.4"
+    abitype: "npm:1.0.8"
+    cross-spawn: "npm:7.0.6"
+    fuse.js: "npm:7.1.0"
+    input-otp: "npm:^1.4.1"
+    mipd: "npm:0.0.7"
+    open: "npm:10.1.1"
+    ora: "npm:8.2.0"
+    ox: "npm:0.7.0"
+    prompts: "npm:2.4.2"
+    qrcode: "npm:1.5.3"
+    toml: "npm:3.0.0"
+    uqr: "npm:0.1.2"
+    viem: "npm:2.33.2"
+    zod: "npm:3.25.75"
+  peerDependencies:
+    "@aws-sdk/client-lambda": ^3
+    "@aws-sdk/credential-providers": ^3
+    "@coinbase/wallet-mobile-sdk": ^1
+    "@mobile-wallet-protocol/client": ^1
+    "@react-native-async-storage/async-storage": ^1 || ^2
+    ethers: ^5 || ^6
+    expo-linking: ^6 || ^7
+    expo-web-browser: ^13 || ^14
+    react: ^18 || ^19
+    react-native: "*"
+    react-native-aes-gcm-crypto: ^0.2
+    react-native-passkey: ^3
+    react-native-quick-crypto: ">=0.7.0-rc.6 || >=0.7"
+    react-native-svg: ^15
+    typescript: ">=5.0.4"
+  peerDependenciesMeta:
+    "@aws-sdk/client-kms":
+      optional: true
+    "@aws-sdk/client-lambda":
+      optional: true
+    "@aws-sdk/credential-providers":
+      optional: true
+    "@coinbase/wallet-mobile-sdk":
+      optional: true
+    "@mobile-wallet-protocol/client":
+      optional: true
+    "@react-native-async-storage/async-storage":
+      optional: true
+    ethers:
+      optional: true
+    expo-linking:
+      optional: true
+    expo-web-browser:
+      optional: true
+    react:
+      optional: true
+    react-native:
+      optional: true
+    react-native-aes-gcm-crypto:
+      optional: true
+    react-native-passkey:
+      optional: true
+    react-native-quick-crypto:
+      optional: true
+    react-native-svg:
+      optional: true
+    typescript:
+      optional: true
+  bin:
+    thirdweb: dist/esm/cli/bin.js
+    thirdweb-cli: dist/esm/cli/bin.js
+  checksum: 10c0/a46d2b754f8ec6083dc09f4e5de277589b0a08599fef76fc7e7b19daca62953930abc5bd895c2502482435c59232632b648aee1028655388504022cf1b100dd2
   languageName: node
   linkType: hard
 
