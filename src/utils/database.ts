@@ -231,7 +231,6 @@ const initAccountDBForWallet = async (
       is_invited: is_invited || false,
     },
   ])
-
   if (createdUserAccount.error) {
     throw new Error(createdUserAccount.error.message)
   }
@@ -249,12 +248,13 @@ const initAccountDBForWallet = async (
     defaultAvailabilities,
     false // don't set as default yet
   )
+
   const meetingType: CreateMeetingTypeRequest = {
     ...defaultMeetingType,
+    fixed_link: false,
     availability_ids: [defaultBlock.id],
     calendars: [],
   }
-  await createMeetingType(user_account.address, meetingType)
   const preferences: AccountPreferences = {
     description: '',
     availabilities: defaultAvailabilities,
@@ -268,6 +268,7 @@ const initAccountDBForWallet = async (
       ...preferences,
       owner_account_address: user_account.address,
     })
+    await createMeetingType(user_account.address, meetingType)
 
     if (responsePrefs.error) {
       Sentry.captureException(responsePrefs.error)
