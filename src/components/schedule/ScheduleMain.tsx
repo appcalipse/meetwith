@@ -140,7 +140,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     setIsScheduler,
     setCanEditMeetingDetails,
   } = useParticipantPermissions()
-  const [isPrefetching, setIsPrefetching] = useState(false)
+  const [isPrefetching, setIsPrefetching] = useState(true)
   const toast = useToast()
   const router = useRouter()
   const { push } = router
@@ -174,7 +174,6 @@ const ScheduleMain: FC<IInitialProps> = ({
     } catch (error: unknown) {
       handleApiError('Error prefetching group.', error)
     }
-    setIsPrefetching(false)
   }
   const handleContactPrefetch = async () => {
     if (!contactId) return
