@@ -247,7 +247,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
             mt={'6'}
             gap={'4'}
             justifyContent="space-between"
-            bg="neutral.825"
+            bg="bg-surface-tertiary"
             px="6"
             borderTop={'1px solid'}
             borderColor="neutral.400"
