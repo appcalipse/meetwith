@@ -25,9 +25,15 @@ type Props = {
   isOpen: boolean
   onClose: () => void
   messageChannel: string
+  country?: string
 }
 
-const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
+const CheckoutWidgetModal = ({
+  isOpen,
+  onClose,
+  messageChannel,
+  country,
+}: Props) => {
   const {
     selectedType,
     account,
@@ -162,6 +168,7 @@ const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
           amount={amount.toString()}
           tokenAddress={NATIVE_TOKEN_ADDRESS}
           activeWallet={wallet}
+          country={country}
           seller={
             (selectedType?.plan?.payment_address || account.address) as Address
           }
