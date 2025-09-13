@@ -7,10 +7,11 @@ import React, {
 } from 'react'
 
 import { Account } from '@/types/Account'
+import { LeanContact } from '@/types/Contacts'
 import { GetGroupsFullResponse } from '@/types/Group'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
-import { getGroupsFull } from '@/utils/api_helper'
+import { getContactsLean, getGroupsFull } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
 interface IParticipantsContext {
@@ -21,6 +22,8 @@ interface IParticipantsContext {
   meetingOwners: Array<ParticipantInfo>
   groups: Array<GetGroupsFullResponse>
   isGroupPrefetching: boolean
+  isContactsPrefetching: boolean
+  contacts: Array<LeanContact>
   setGroups: React.Dispatch<React.SetStateAction<Array<GetGroupsFullResponse>>>
   setParticipants: React.Dispatch<
     React.SetStateAction<Array<ParticipantInfo | IGroupParticipant>>
@@ -70,6 +73,8 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
   const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
+  const [contacts, setContacts] = useState<Array<LeanContact>>([])
+  const [isContactsPrefetching, setIsContactsPrefetching] = useState(false)
 
   const addGroup = (group: IGroupParticipant) => {
     setParticipants(prev => {
@@ -123,9 +128,22 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
       setIsGroupPrefetching(false)
     }
   }
-
+  const fetchContacts = async () => {
+    setIsContactsPrefetching(true)
+    try {
+      const newContacts = await getContactsLean()
+      setContacts(newContacts)
+    } catch (error) {
+      handleApiError('Error fetching groups.', error)
+    } finally {
+      setIsContactsPrefetching(false)
+    }
+  }
+  const handlePrefetchContacts = async () => {
+    await Promise.all([fetchContacts(), fetchGroups()])
+  }
   useEffect(() => {
-    void fetchGroups()
+    void handlePrefetchContacts()
   }, [])
   const value = {
     participants,
@@ -144,6 +162,8 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     setIsGroupPrefetching,
     addGroup,
     removeGroup,
+    contacts,
+    isContactsPrefetching,
   }
 
   return (
