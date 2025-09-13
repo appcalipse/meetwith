@@ -15,6 +15,7 @@ import {
   Text,
   useDisclosure,
   useToast,
+  VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { FC, useCallback, useMemo, useState } from 'react'
@@ -37,6 +38,7 @@ import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
+import AddFromContact from './AddFromContact'
 import AddFromGroups from './AddFromGroups'
 interface IProps {
   isOpen: boolean
@@ -53,30 +55,7 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
     setGroupParticipants,
   } = useParticipants()
   const groupId = useRouter().query.groupId as string | undefined
-  const [loadingStates, setLoadingStates] = useState<Map<string, boolean>>(
-    new Map()
-  )
-  const {
-    isOpen: isContactModalOpen,
-    onOpen,
-    onClose: onModalClose,
-  } = useDisclosure()
-  const toast = useToast()
-  const participantAddressesSet = useMemo(() => {
-    return new Set(
-      participants
-        .filter((user): user is ParticipantInfo => !isGroupParticipant(user))
-        .map(user => user.account_address)
-        .filter(Boolean)
-    )
-  }, [participants])
 
-  const isContactAlreadyAdded = useCallback(
-    (account: LeanContact) => {
-      return participantAddressesSet.has(account.address)
-    },
-    [participantAddressesSet]
-  )
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
       const addressesToAdd = _participants
@@ -112,84 +91,6 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
     },
     [setParticipants, setGroupAvailability, setGroupParticipants]
   )
-  const addUserFromContact = useCallback(
-    async (account: LeanContact) => {
-      const contactId = account.id
-      setLoadingStates(prev => new Map(prev).set(contactId, true))
-
-      if (isContactAlreadyAdded(account)) {
-        toast({
-          title: 'User already added',
-          description: 'This user has already been added to the invite list.',
-          status: 'warning',
-          duration: 3000,
-          isClosable: true,
-          position: 'top',
-        })
-        return
-      }
-
-      const newUser: ParticipantInfo = {
-        type: ParticipantType.Invitee,
-        account_address: account.address,
-        name: account.name || '',
-        status: ParticipationStatus.Pending,
-        slot_id: '',
-        meeting_id: '',
-      }
-      React.startTransition(() => {
-        setParticipants(prev => [...prev, newUser])
-        if (account.address) {
-          setGroupParticipants(prev => ({
-            ...prev,
-            [NO_GROUP_KEY]: [...(prev[NO_GROUP_KEY] || []), account.address],
-          }))
-          setGroupAvailability(prev => ({
-            ...prev,
-            [NO_GROUP_KEY]: [...(prev[NO_GROUP_KEY] || []), account.address],
-          }))
-        }
-        setLoadingStates(prev => new Map(prev).set(contactId, false))
-      })
-    },
-    [
-      isContactAlreadyAdded,
-      setParticipants,
-      setGroupParticipants,
-      setGroupAvailability,
-      toast,
-    ]
-  )
-  const removeUserFromContact = async (account: LeanContact) => {
-    const contactId = account.id
-    setLoadingStates(prev => new Map(prev).set(contactId, true))
-
-    React.startTransition(() => {
-      setParticipants(prevUsers =>
-        prevUsers.filter(user =>
-          !isGroupParticipant(user)
-            ? user.account_address !== account.address
-            : true
-        )
-      )
-      if (account.address) {
-        setGroupParticipants(prev => ({
-          ...prev,
-          [NO_GROUP_KEY]: prev[NO_GROUP_KEY]?.filter(
-            address => address !== account.address
-          ),
-        }))
-
-        setGroupAvailability(prev => ({
-          ...prev,
-          [NO_GROUP_KEY]: prev[NO_GROUP_KEY]?.filter(
-            address => address !== account.address
-          ),
-        }))
-      }
-      setLoadingStates(prev => new Map(prev).set(contactId, false))
-    })
-  }
   const renderParticipantItem = useCallback((p: ParticipantInfo) => {
     if (p.account_address) {
       return p.name || ellipsizeAddress(p.account_address)
@@ -222,48 +123,17 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <GroupContactModal
-            addUserFromContact={addUserFromContact}
-            isOpen={isContactModalOpen}
-            onClose={onModalClose}
-            isContactAlreadyAdded={isContactAlreadyAdded}
-            removeUserFromContact={removeUserFromContact}
-            buttonLabel="Add to Meeting"
-            title="Add from Contact List"
-            loadingStates={loadingStates}
-          />
           {isGroupPrefetching ? (
-            <Loading />
+            <VStack mb={6} w="100%" justifyContent="center">
+              <Loading />
+            </VStack>
           ) : groups.length > 0 ? (
             <AddFromGroups />
           ) : (
             <Text>No groups available. Please create a group first.</Text>
           )}
           <Divider my={6} borderColor="neutral.400" />
-
-          <FormControl>
-            <FormLabel display="flex" alignItems="center">
-              Add from Contact list
-            </FormLabel>
-            <HStack
-              onClick={onOpen}
-              borderColor="text-subtle"
-              borderWidth={1}
-              cursor="pointer"
-              color="text-subtle"
-              justifyContent="space-between"
-              borderRadius="0.375rem"
-              height={10}
-              fontSize="16"
-              px={4}
-            >
-              <Text userSelect="none">Select member</Text>
-              <Icon as={FaChevronDown} w={4} h={4} />
-            </HStack>
-            <FormHelperText fontSize="12px" color="neutral.400">
-              Select members from your contact list
-            </FormHelperText>
-          </FormControl>
+          <AddFromContact />
           <Divider my={6} borderColor="neutral.400" />
           <FormControl w="100%" maxW="100%">
             <FormLabel htmlFor="participants">
@@ -276,7 +146,7 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
             <Box w="100%" maxW="100%">
               <ChipInput
                 currentItems={nonGroupParticipants}
-                placeholder="Enter participants"
+                placeholder="Enter email, wallet address or ENS of user"
                 onChange={onParticipantsChange}
                 renderItem={renderParticipantItem}
                 inputProps={{
