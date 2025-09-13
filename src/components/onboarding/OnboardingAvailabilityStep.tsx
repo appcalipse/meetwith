@@ -52,7 +52,7 @@ export const OnboardingAvailabilityStep: React.FC<
   onAvailabilityChange,
   onMeetingTypesChange,
 }) => {
-  const [useDirectInput, setUseDirectInput] = useState(false)
+  const [isDirectInput, setIsDirectInput] = useState(false)
   const [_validationErrors, setValidationErrors] = useState<Set<number>>(
     new Set()
   )
@@ -108,7 +108,7 @@ export const OnboardingAvailabilityStep: React.FC<
   const placeholderColor = useColorModeValue('gray.400', 'gray.400')
 
   const toggleInputMode = () => {
-    setUseDirectInput(!useDirectInput)
+    setIsDirectInput(!isDirectInput)
   }
 
   return (
@@ -183,11 +183,11 @@ export const OnboardingAvailabilityStep: React.FC<
           </Text>
           <HStack spacing={2}>
             <Text color={placeholderColor} fontSize={14}>
-              {useDirectInput ? 'Direct input mode' : 'Dropdown mode'}
+              {isDirectInput ? 'Direct input mode' : 'Dropdown mode'}
             </Text>
             <Tooltip
               label={
-                useDirectInput
+                isDirectInput
                   ? 'Switch to dropdown mode'
                   : 'Switch to direct input mode'
               }
@@ -204,7 +204,7 @@ export const OnboardingAvailabilityStep: React.FC<
                 color={placeholderColor}
                 aria-label="toggle input mode"
                 icon={
-                  useDirectInput ? (
+                  isDirectInput ? (
                     <MdMouse size={16} />
                   ) : (
                     <MdKeyboard size={16} />
@@ -225,7 +225,7 @@ export const OnboardingAvailabilityStep: React.FC<
                 dayAvailability={availability}
                 onChange={onAvailabilityChange}
                 onCopyToDays={handleCopyToDaysLocal}
-                useDirectInput={useDirectInput}
+                useDirectInput={isDirectInput}
                 onValidationChange={handleValidationChange}
               />
             )
