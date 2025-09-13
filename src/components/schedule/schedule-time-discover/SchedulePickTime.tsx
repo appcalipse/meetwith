@@ -108,7 +108,8 @@ export function SchedulePickTime() {
     setDuration,
     isScheduling,
   } = useScheduleState()
-  const { canEditMeetingDetails } = useParticipantPermissions()
+  const { canEditMeetingDetails, isUpdatingMeeting } =
+    useParticipantPermissions()
   const currentAccount = useAccountContext()
   const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
@@ -543,23 +544,25 @@ export function SchedulePickTime() {
               ))}
             </ChakraSelect>
           </FormControl>
-          <Button
-            rightIcon={<FaArrowRight />}
-            colorScheme="primary"
-            _disabled={{
-              bg: 'neutral.400',
-            }}
-            isDisabled={!pickedTime}
-            onClick={() => handlePageSwitch(Page.SCHEDULE_DETAILS)}
-          >
-            Continue scheduling
-          </Button>
+          {isUpdatingMeeting && (
+            <Button
+              rightIcon={<FaArrowRight />}
+              colorScheme="primary"
+              _disabled={{
+                bg: 'neutral.400',
+              }}
+              isDisabled={!pickedTime}
+              onClick={() => handlePageSwitch(Page.SCHEDULE_DETAILS)}
+            >
+              Continue scheduling
+            </Button>
+          )}
         </Flex>
         <HStack
           color="primary.500"
           alignSelf="flex-start"
           display={{
-            md: 'none',
+            lg: 'none',
             base: 'flex',
           }}
           cursor="pointer"
@@ -575,22 +578,27 @@ export function SchedulePickTime() {
             />
           </HStack>
         </HStack>
-        {(isMobile || isTablet) && (
-          <VStack gap={4} w="100%" alignItems="flex-start">
-            <Box maxW="350px" textAlign="center" mx="auto">
-              <Heading fontSize="20px" fontWeight={700}>
-                Select time from available slots
-              </Heading>
-              <Text fontSize="12px">
-                All time slots shown below are the available times between you
-                and the required participants.
-              </Text>
-            </Box>
-            <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-              Jump to Best Slot
-            </Button>
-          </VStack>
-        )}
+
+        <VStack
+          gap={4}
+          w="100%"
+          alignItems={{ base: 'flex-start', md: 'center' }}
+          display={{ base: 'flex', lg: 'none' }}
+        >
+          <Box maxW="350px" textAlign="center" mx="auto">
+            <Heading fontSize="20px" fontWeight={700}>
+              Select time from available slots
+            </Heading>
+            <Text fontSize="12px">
+              All time slots shown below are the available times between you and
+              the required participants.
+            </Text>
+          </Box>
+          <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
+            Jump to Best Slot
+          </Button>
+        </VStack>
+
         <VStack
           gap={6}
           w="100%"
@@ -600,29 +608,35 @@ export function SchedulePickTime() {
           rounded={12}
           bg="bg-surface-secondary"
         >
-          <HStack w="100%" justify={'space-between'}>
+          <HStack w="100%" justify={'space-between'} position="relative">
             <IconButton
               aria-label={'left-icon'}
               icon={<FaChevronLeft />}
               onClick={handleScheduledTimeBack}
               isDisabled={isBackDisabled}
+              gap={0}
             />
-            {!(isMobile || isTablet) && (
-              <>
-                <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-                  Jump to Best Slot
-                </Button>
-                <Box maxW="350px" textAlign="center">
-                  <Heading fontSize="20px" fontWeight={700}>
-                    Select time from available slots
-                  </Heading>
-                  <Text fontSize="12px">
-                    All time slots shown below are the available times between
-                    you and the required participants.
-                  </Text>
-                </Box>
-              </>
-            )}
+            <Button
+              colorScheme="primary"
+              onClick={handleJumpToBestSlot}
+              display={{ lg: 'block', base: 'none' }}
+            >
+              Jump to Best Slot
+            </Button>
+            <Box
+              maxW="350px"
+              textAlign="center"
+              display={{ lg: 'block', base: 'none' }}
+            >
+              <Heading fontSize="20px" fontWeight={700}>
+                Select time from available slots
+              </Heading>
+              <Text fontSize="12px">
+                All time slots shown below are the available times between you
+                and the required participants.
+              </Text>
+            </Box>
+
             <HStack gap={0}>
               <Grid
                 gridTemplateColumns={'1fr 1fr'}
@@ -693,6 +707,10 @@ export function SchedulePickTime() {
               aria-label={'left-icon'}
               icon={<FaChevronRight />}
               onClick={handleScheduledTimeNext}
+              position="sticky"
+              top={28}
+              bg="bg-surface-secondary"
+              zIndex={1}
             />
           </HStack>
           {isLoading ? (
@@ -746,7 +764,16 @@ export function SchedulePickTime() {
                     style={{ flex: 1 }}
                   >
                     <VStack flex={1} align={'flex-start'} gap={2}>
-                      <VStack align={'center'} w="100%" h={12} gap={0}>
+                      <VStack
+                        align={'center'}
+                        w="100%"
+                        h={12}
+                        gap={0}
+                        position="sticky"
+                        top={28}
+                        bg="bg-surface-secondary"
+                        zIndex={1}
+                      >
                         <Text
                           fontWeight={'700'}
                           fontSize={{
