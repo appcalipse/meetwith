@@ -135,7 +135,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             props.handleIsAdminChange(newRole === MemberType.ADMIN)
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         handleApiError('Error changing roles', error)
       }
       setLoading(false)
@@ -307,7 +307,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               as={GoDotFill}
               color="green.500"
             />
-            <TagLabel px="2px">My contact</TagLabel>
+            <TagLabel px="2px">
+              {isActor ? 'This is me' : 'My contact'}
+            </TagLabel>
           </Tag>
         ) : (
           <Button
