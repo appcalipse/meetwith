@@ -650,7 +650,7 @@ export const cancelledMeetingEmailContent = async (
   return msg
 }
 
-export const updateMeetingEmail = async (
+export const updateMeetingEmailContent = async (
   toEmail: string,
   currentActorDisplayName: string,
   participantType: ParticipantType,

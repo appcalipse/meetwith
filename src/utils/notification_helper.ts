@@ -36,14 +36,12 @@ import {
   getGroupInternal,
 } from './database'
 import {
-  cancelledMeetingEmail,
   cancelledMeetingEmailContent,
   newGroupInviteEmail,
   newGroupRejectEmail,
-  newMeetingEmail,
   newMeetingEmailContent,
   sendBatchEmails,
-  updateMeetingEmail,
+  updateMeetingEmailContent,
 } from './email_helper'
 import { dmAccount } from './services/discord.helper'
 import { sendDm } from './services/telegram.helper'
@@ -479,7 +477,7 @@ const getEmailNotification = async (
         description // reason for cancelling meeting if any
       )
     case MeetingChangeType.UPDATE:
-      return updateMeetingEmail(
+      return updateMeetingEmailContent(
         toEmail,
         getParticipantActingDisplayName(participantActing, participant),
         participant.type,
