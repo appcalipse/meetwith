@@ -1,3 +1,4 @@
+/* eslint-disable tailwindcss/no-custom-classname */
 import { Text } from '@chakra-ui/layout'
 import {
   Button,
@@ -24,8 +25,11 @@ import { IoMdTimer } from 'react-icons/io'
 
 import Loading from '@/components/Loading'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
-import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
+import { useScheduleActions } from '@/providers/schedule/ActionsContext'
+import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
@@ -44,23 +48,20 @@ import {
   customSelectComponents,
   noClearCustomSelectComponent,
 } from '@/utils/constants/select'
-import { renderProviderName } from '@/utils/generic_utils'
+import { deduplicateArray, renderProviderName } from '@/utils/generic_utils'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
+
+import { Page } from './ScheduleMain'
 
 const ScheduleDetails = () => {
   const {
-    handlePageSwitch,
     title,
     duration,
     timezone,
-    participants,
-    groupAvailability,
-    groupParticipants,
     content,
-    handleContentChange,
+    setContent,
     isScheduling,
     pickedTime,
-    handleSchedule,
     meetingProvider,
     meetingUrl,
     setMeetingProvider,
@@ -69,7 +70,11 @@ const ScheduleDetails = () => {
     setMeetingNotification,
     meetingRepeat,
     setMeetingRepeat,
-  } = useContext(ScheduleContext)
+  } = useScheduleState()
+  const { participants, groupAvailability, groupParticipants } =
+    useParticipants()
+  const { handlePageSwitch } = useScheduleNavigation()
+  const { handleSchedule } = useScheduleActions()
   const { currentAccount } = useContext(AccountContext)
   const { query } = useRouter()
   const [groupMembers, setGroupsMembers] = useState<Array<ParticipantInfo>>([])
@@ -86,7 +91,9 @@ const ScheduleDetails = () => {
   })
   const fetchGroupMembers = async () => {
     setLoading(true)
-    const actualMembers = [...new Set(Object.values(groupParticipants).flat())]
+    const actualMembers = deduplicateArray<string>(
+      Object.values(groupParticipants).flat()
+    )
     const members = await getExistingAccounts(actualMembers)
     setGroupsMembers(
       members.map(val => ({
@@ -106,9 +113,9 @@ const ScheduleDetails = () => {
   const getNamesDisplay = (participants: Array<ParticipantInfo>) => {
     return getAllParticipantsDisplayName(participants, currentAccount!.address)
   }
-  const allAvailabilities = [
-    ...new Set(Object.values(groupAvailability).flat()),
-  ]
+  const allAvailabilities = deduplicateArray(
+    Object.values(groupAvailability).flat()
+  )
 
   const currentParticipant = participants.filter(
     val => !isGroupParticipant(val)
@@ -362,7 +369,7 @@ const ScheduleDetails = () => {
             <RichTextEditor
               id="info"
               value={content}
-              onValueChange={handleContentChange}
+              onValueChange={setContent}
               placeholder="Any information you want to share prior to the meeting?"
             />
           </FormControl>

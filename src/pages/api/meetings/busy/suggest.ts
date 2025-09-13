@@ -6,9 +6,8 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { Account } from '@/types/Account'
 import { ConditionRelation } from '@/types/common'
 import { getAccountFromDB } from '@/utils/database'
-import { parseMonthAvailabilitiesToDate } from '@/utils/date_helper'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
-import { generateTimeSlots } from '@/utils/slots.helper'
+import { suggestBestSlots } from '@/utils/slots.helper'
 import { isValidEVMAddress } from '@/utils/validations'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -20,7 +19,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const startDate = new Date(body.startDate)
       const endDate = new Date(body.endDate)
       const duration = body.duration
-      const includePast = body.includePast
 
       const sanitizedAddresses = addresses.filter(address =>
         isValidEVMAddress(address)
@@ -40,14 +38,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         promises.push(getAccount(address))
       }
       await Promise.all(promises)
-      const allSlots: Interval<true>[] = generateTimeSlots(
-        startDate,
-        duration || 30,
-        true,
-        undefined,
-        endDate
-      ).filter(slot => slot.isValid)
-      const suggestedTimes: DateFnsInterval[] = []
 
       const busySlots: Interval[] =
         await CalendarBackendHelper.getMergedBusySlotsForMultipleAccounts(
@@ -63,46 +53,14 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             )
           })
         )
-      for (const slot of allSlots) {
-        let validSlot = true
-        if (slot.start < DateTime.now() && !includePast) {
-          validSlot = false
-          break
-        }
-        for (const account of accounts) {
-          const tz = account.preferences.timezone
-          const availabilities = parseMonthAvailabilitiesToDate(
-            account.preferences.availabilities || [],
-            slot.start?.startOf('day').setZone(tz).toJSDate(),
-            slot.end?.endOf('day').setZone(tz).toJSDate(),
-            account.preferences.timezone || 'UTC'
-          )
-
-          if (
-            !availabilities.some(availability => availability.overlaps(slot))
-          ) {
-            validSlot = false
-            break
-          }
-        }
-
-        if (validSlot) {
-          let overLappingSlot = false
-          for (const busySlot of busySlots) {
-            if (busySlot.overlaps(slot)) {
-              overLappingSlot = true
-              break
-            }
-          }
-          if (!overLappingSlot) {
-            suggestedTimes.push({
-              start: slot.start.toJSDate(),
-              end: slot.end.toJSDate(),
-            })
-          }
-        }
-      }
-
+      const suggestedTimes = suggestBestSlots(
+        startDate,
+        duration,
+        endDate,
+        'UTC',
+        busySlots,
+        accounts
+      )
       return res.status(200).json(suggestedTimes)
     } catch (e) {
       Sentry.captureException(e, {

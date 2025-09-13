@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import ContactStateProvider from '@/providers/ContactInvitesProvider'
+import MetricStateProvider from '@/providers/MetricStateProvider'
 
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
@@ -13,10 +13,9 @@ import AccountDetails from './AccountDetails'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
 import Contact from './Contact'
+import Group from './Group'
 import Meetings from './Meetings'
 import MeetingSettings from './MeetingSettings'
-
-const GroupWithNoSSR = dynamic(() => import('./Group'), { ssr: false })
 
 const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
@@ -28,7 +27,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       case EditMode.MEETINGS:
         return <Meetings currentAccount={currentAccount!} />
       case EditMode.GROUPS:
-        return <GroupWithNoSSR currentAccount={currentAccount!} />
+        return <Group currentAccount={currentAccount!} />
       case EditMode.CONTACTS:
         return <Contact currentAccount={currentAccount!} />
       case EditMode.AVAILABILITY:
@@ -45,7 +44,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   }
 
   return currentAccount ? (
-    <ContactStateProvider currentAccount={currentAccount}>
+    <MetricStateProvider currentAccount={currentAccount}>
       <HStack
         alignItems="start"
         width="100%"
@@ -70,7 +69,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
           {renderSelected()}
         </Box>
       </HStack>
-    </ContactStateProvider>
+    </MetricStateProvider>
   ) : (
     <Flex
       width="100%"
