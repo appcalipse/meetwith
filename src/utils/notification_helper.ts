@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
+import { CreateEmailOptions } from 'resend'
 
 import { MeetingReminders } from '@/types/common'
 import { Group, MemberType } from '@/types/Group'
@@ -36,9 +37,12 @@ import {
 } from './database'
 import {
   cancelledMeetingEmail,
+  cancelledMeetingEmailContent,
   newGroupInviteEmail,
   newGroupRejectEmail,
   newMeetingEmail,
+  newMeetingEmailContent,
+  sendBatchEmails,
   updateMeetingEmail,
 } from './email_helper'
 import { dmAccount } from './services/discord.helper'
@@ -216,7 +220,7 @@ const workNotifications = async (
   meetingTypeId?: string
 ): Promise<Promise<boolean>[]> => {
   const promises: Promise<boolean>[] = []
-
+  const emailNotificationContentsPromise = []
   try {
     for (let i = 0; i < participantsInfo.length; i++) {
       const participant = participantsInfo[i]
@@ -227,7 +231,7 @@ const workNotifications = async (
           process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
           JSON.stringify(guestInfo)
         )
-        promises.push(
+        emailNotificationContentsPromise.push(
           getEmailNotification(
             changeType,
             participantActing,
@@ -264,7 +268,7 @@ const workNotifications = async (
           if (!notification_type.disabled) {
             switch (notification_type.channel) {
               case NotificationChannel.EMAIL:
-                promises.push(
+                emailNotificationContentsPromise.push(
                   getEmailNotification(
                     changeType,
                     participantActing,
@@ -328,6 +332,14 @@ const workNotifications = async (
     }
   } catch (error) {
     Sentry.captureException(error)
+  }
+  const emailContent = await Promise.all(emailNotificationContentsPromise)
+  if (emailContent.length > 0) {
+    promises.push(
+      sendBatchEmails(
+        emailContent.filter((c): c is CreateEmailOptions => c !== null)
+      )
+    )
   }
   return promises
 }
@@ -411,7 +423,7 @@ const getEmailNotification = async (
   guestInfoEncrypted?: string,
   meetingPermissions?: Array<MeetingPermissions>,
   meetingTypeId?: string
-): Promise<boolean> => {
+): Promise<CreateEmailOptions | null> => {
   const toEmail =
     participant.guest_email ||
     participant.notifications!.notification_types.filter(
@@ -424,7 +436,7 @@ const getEmailNotification = async (
       : _changeType
   switch (changeType) {
     case MeetingChangeType.CREATE:
-      return newMeetingEmail(
+      return newMeetingEmailContent(
         toEmail,
         participant.type,
         participants,
@@ -450,7 +462,7 @@ const getEmailNotification = async (
         participantActing,
         participant
       )
-      return cancelledMeetingEmail(
+      return cancelledMeetingEmailContent(
         displayName,
         toEmail,
         participant.timezone,
@@ -492,7 +504,7 @@ const getEmailNotification = async (
       )
     default:
   }
-  return Promise.resolve(false)
+  return Promise.resolve(null)
 }
 
 const getDiscordNotification = async (
