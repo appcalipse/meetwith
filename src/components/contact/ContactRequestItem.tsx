@@ -1,5 +1,4 @@
-import { Button, HStack, Text, Th, Tr, useToast } from '@chakra-ui/react'
-import { Jazzicon } from '@ukstv/jazzicon-react'
+import { Box, Button, HStack, Text, Th, Tr, useToast } from '@chakra-ui/react'
 import React, { FC, useContext } from 'react'
 
 import { MetricStateContext } from '@/providers/MetricStateProvider'
@@ -13,12 +12,13 @@ import {
 } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
+import { Avatar } from '../profile/components/Avatar'
 import { ContactStateContext } from '../profile/Contact'
 
 type Props = {
   index: number
   account: ContactInvite
-  refetch: () => void
+  refetch: () => Promise<void>
   syncAccept: () => void
   openRejectModal: () => void
 }
@@ -41,6 +41,14 @@ const ContactRequestItem: FC<Props> = ({
     try {
       await acceptContactInvite(account.id)
       syncAccept()
+      await refetch()
+      toast({
+        title: 'Success',
+        description: 'Contact invite accepted successfully',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      })
     } catch (e) {
       if (e instanceof ContactAlreadyExists) {
         toast({
@@ -88,7 +96,6 @@ const ContactRequestItem: FC<Props> = ({
           position: 'top',
         })
       }
-      refetch()
     } finally {
       setIsAccepting(false)
     }
@@ -106,12 +113,17 @@ const ContactRequestItem: FC<Props> = ({
     >
       <Th w="fit-content" py={8}>
         <HStack w="fit-content">
-          <Jazzicon
-            address={account.address || ''}
-            className="contact-avatar"
-          />
+          <Box className="contact-avatar">
+            <Avatar
+              avatar_url={account.avatar_url}
+              address={account.address || ''}
+              name={account.name || ellipsizeAddress(account.address)}
+            />
+          </Box>
           <Text maxW={200} isTruncated>
-            {account.name || account.address || account.email_address}
+            {account.name ||
+              account.email_address ||
+              `No Name - ${ellipsizeAddress(account.address)}`}
           </Text>
         </HStack>
       </Th>

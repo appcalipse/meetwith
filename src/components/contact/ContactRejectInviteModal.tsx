@@ -13,7 +13,6 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { Jazzicon } from '@ukstv/jazzicon-react'
 import { logEvent } from '@utils/analytics'
 import React, { useContext } from 'react'
 
@@ -25,7 +24,9 @@ import {
   ContactInviteNotFound,
   OwnInviteError,
 } from '@/utils/errors'
+import { ellipsizeAddress } from '@/utils/user_manager'
 
+import { Avatar } from '../profile/components/Avatar'
 import { ContactStateContext } from '../profile/Contact'
 
 export interface IContactRejectInviteModal {
@@ -210,10 +211,16 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
                 <VStack alignItems="flex-start" gap={4}>
                   <Text>User</Text>
                   <HStack w="fit-content">
-                    <Jazzicon
-                      address={selectedContact.address || ''}
-                      className="contact-avatar"
-                    />
+                    <Box className="contact-avatar">
+                      <Avatar
+                        avatar_url={selectedContact.avatar_url}
+                        address={selectedContact.address || ''}
+                        name={
+                          selectedContact.name ||
+                          ellipsizeAddress(selectedContact.address)
+                        }
+                      />
+                    </Box>
                     <Text maxW={200} isTruncated>
                       {selectedContact.name ||
                         selectedContact.address ||
