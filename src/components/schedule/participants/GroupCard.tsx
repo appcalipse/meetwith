@@ -105,7 +105,7 @@ const GroupCard: FC<IGroupCard> = props => {
                 <SearchInput
                   setValue={setSearch}
                   value={search}
-                  placeholder="Search for person in groups"
+                  placeholder="Search from group"
                 />
               </Box>
               <HStack
@@ -136,9 +136,11 @@ const GroupCard: FC<IGroupCard> = props => {
                   />
                 ))
               ) : (
-                <Text px={6} py={4} color="neutral.400">
-                  No members found.
-                </Text>
+                <VStack width="100%" alignItems="center" my={6}>
+                  <Text px={6} py={4} color="neutral.400">
+                    No members found.
+                  </Text>
+                </VStack>
               )}
             </VStack>
           </AccordionPanel>
