@@ -1,3 +1,4 @@
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -53,3 +54,6 @@ package-lock.json
 zoom-token.json
 .qodo
 test.http
+sql/get_group_invites_with_search.sql
+sql/get_user_groups_with_members.sql
+sql
