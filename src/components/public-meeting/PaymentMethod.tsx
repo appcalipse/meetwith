@@ -18,15 +18,23 @@ interface IProps {
   icon: ComponentWithAs<'svg', IconProps>
   type: PaymentType
   disabled?: boolean
+  onClick?: () => Promise<void>
 }
 
 const PaymentMethod: FC<IProps> = props => {
-  const { handleSelectPaymentMethod } = useContext(PublicScheduleContext)
+  const { handleSelectPaymentMethod, setPaymentType } = useContext(
+    PublicScheduleContext
+  )
   const [loading, setLoading] = useState(false)
   const tagBg = useColorModeValue('neutral.100', '#2D3748')
   const handleSelect = async () => {
     setLoading(true)
-    await handleSelectPaymentMethod(props.type, props.step)
+    if (props.onClick) {
+      setPaymentType(props.type)
+      await props.onClick()
+    } else {
+      await handleSelectPaymentMethod(props.type, props.step)
+    }
     setLoading(false)
   }
   return (

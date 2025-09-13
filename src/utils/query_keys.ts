@@ -49,4 +49,7 @@ export default class QueryKeys {
   static groups(accountAddress?: string) {
     return ['groups', accountAddress]
   }
+  static exchangeRate(currency: string) {
+    return ['exchangeRate', currency]
+  }
 }

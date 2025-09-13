@@ -69,7 +69,7 @@ const HandlePicker: React.FC<{
     } else {
       setValue({
         label: text,
-        value: '',
+        value: text,
         type: ProfileInfoProvider.CUSTOM,
       })
     }
