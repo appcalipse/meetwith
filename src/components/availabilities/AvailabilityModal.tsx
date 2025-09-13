@@ -339,7 +339,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                           .map(block => (
                             <Box
                               key={block.id}
-                              bg="neutral.850"
+                              bg="bg-surface-tertiary"
                               borderRadius={8}
                               p={4}
                               border="1px solid"
