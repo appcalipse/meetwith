@@ -39,7 +39,6 @@ import {
   listConnectedCalendars,
 } from '@utils/api_helper'
 import {
-  networkOptions,
   PaymentStep,
   PaymentType,
   PublicSchedulingSteps,
@@ -424,8 +423,6 @@ const PublicPage: FC<IProps> = props => {
   const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
   const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
   const [showEmailConfirm, setShowEmailConfirm] = useState(false)
-  const lastCallTimeRef = useRef<number>(0)
-  const DEBOUNCE_DELAY = 2000 // 2 seconds
   const [cachedRange, setCachedRange] = useState<{
     startDate: Date
     endDate: Date
@@ -467,9 +464,9 @@ const PublicPage: FC<IProps> = props => {
     })
     if (type?.plan) {
       const selectedChain =
-        networkOptions.find(
+        supportedChains.find(
           network => network.id === type?.plan?.default_chain_id
-        )?.value || undefined
+        )?.chain || undefined
       handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
       const localStorageTransaction = localStorage.getItem(
         `${type.id}:transaction`
@@ -568,9 +565,9 @@ const PublicPage: FC<IProps> = props => {
         }
         if (type?.plan) {
           const selectedChain =
-            networkOptions.find(
+            supportedChains.find(
               network => network.id === type?.plan?.default_chain_id
-            )?.value || undefined
+            )?.chain || undefined
           handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
         }
       }
