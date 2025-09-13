@@ -3387,6 +3387,7 @@ const getAccountsWithTgConnected = async (): Promise<
   }
   return data
 }
+
 const getDiscordAccounts = async (): Promise<
   Array<DiscordConnectedAccounts>
 > => {
