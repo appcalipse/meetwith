@@ -11,9 +11,9 @@ export const AvailabilityEmptyState: React.FC<AvailabilityEmptyStateProps> = ({
 }) => {
   return (
     <Box
-      bg="neutral.900"
+      bg="bg-surface"
       border="1px solid"
-      borderColor="neutral.400"
+      borderColor="border-subtle"
       borderRadius={12}
       p={{ base: 6, md: 8 }}
       width="100%"
@@ -26,13 +26,13 @@ export const AvailabilityEmptyState: React.FC<AvailabilityEmptyStateProps> = ({
         <VStack spacing={2}>
           <Heading
             fontSize={{ base: 20, md: 24 }}
-            color="neutral.0"
+            color="text-primary"
             fontWeight={500}
           >
             No availability blocks yet
           </Heading>
           <Text
-            color="neutral.300"
+            color="text-secondary"
             fontSize={{ base: 14, md: 16 }}
             maxW={{ base: '100%', md: '400px' }}
           >
@@ -41,10 +41,10 @@ export const AvailabilityEmptyState: React.FC<AvailabilityEmptyStateProps> = ({
           </Text>
         </VStack>
         <Button
-          leftIcon={<AddIcon color="neutral.800" />}
+          leftIcon={<AddIcon color="text-primary" />}
           colorScheme="orange"
           bg="primary.200"
-          color="neutral.800"
+          color="text-primary"
           _hover={{ bg: 'primary.200' }}
           onClick={onCreateBlock}
           fontSize="sm"
