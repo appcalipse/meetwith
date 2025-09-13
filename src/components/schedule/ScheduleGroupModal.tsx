@@ -15,7 +15,7 @@ import React, { FC, useContext } from 'react'
 
 import Loading from '@/components/Loading'
 import ScheduleGroup from '@/components/schedule/ScheduleGroup'
-import { ScheduleContext } from '@/pages/dashboard/schedule'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { EditMode } from '@/types/Dashboard'
 
 interface IScheduleGroupModal {
@@ -24,7 +24,7 @@ interface IScheduleGroupModal {
 }
 
 const ScheduleGroupModal: FC<IScheduleGroupModal> = props => {
-  const { groups, isGroupPrefetching } = useContext(ScheduleContext)
+  const { groups, isGroupPrefetching } = useParticipants()
   return (
     <Modal
       isOpen={props.isOpen}

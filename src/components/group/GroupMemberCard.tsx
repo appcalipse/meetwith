@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Flex,
   Heading,
   HStack,
   Icon,
@@ -9,33 +10,42 @@ import {
   MenuItem,
   MenuList,
   Spinner,
+  Tag,
+  TagLabel,
+  TagLeftIcon,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
-import dynamic from 'next/dynamic'
+import { useMutation } from '@tanstack/react-query'
 import React, { useContext } from 'react'
 import { BiExit } from 'react-icons/bi'
 import { FaChevronDown } from 'react-icons/fa'
+import { GoDotFill } from 'react-icons/go'
 import { MdDelete } from 'react-icons/md'
 
 import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
+import {
+  addGroupMemberToContact,
+  sendContactListInvite,
+} from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
+import {
+  AccountNotFoundError,
+  CantInviteYourself,
+  ContactAlreadyExists,
+  MemberDoesNotExist,
+} from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
+import { isValidEmail } from '@/utils/validations'
 
+import { Avatar } from '../profile/components/Avatar'
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
-
-const Avatar = dynamic(
-  async () => (await import('@ukstv/jazzicon-react')).Jazzicon,
-  {
-    ssr: false,
-    loading: () => <Spinner />,
-  }
-)
 
 interface IGroupMemberCard extends GroupMember {
   currentAccount: Account
@@ -59,6 +69,27 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const tagColor = useColorModeValue('neutral.100', 'neutral.400')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
+  const {
+    isLoading: isAddLoading,
+    mutateAsync: addGroupMemberToContactAsync,
+    isSuccess: isAddSuccess,
+  } = useMutation({
+    mutationFn: () =>
+      addGroupMemberToContact({
+        address: props.address!,
+        groupId: props.groupID,
+        state: props.invitePending ? 'pending' : 'accepted',
+      }),
+  })
+  const {
+    isLoading: isInviteLoading,
+    mutateAsync: sendInviteAsync,
+    isSuccess: isInviteSuccess,
+  } = useMutation({
+    mutationFn: () => sendContactListInvite(undefined, props.displayName),
+  })
+  const isSuccess = isAddSuccess || isInviteSuccess
+  const toast = useToast()
   const {
     openLeaveModal,
     setToggleAdminChange,
@@ -104,7 +135,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             props.handleIsAdminChange(newRole === MemberType.ADMIN)
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         handleApiError('Error changing roles', error)
       }
       setLoading(false)
@@ -129,7 +160,80 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     })
     openRemoveModal()
   }
-
+  const handleAddToContacts = async () => {
+    try {
+      let description = ''
+      if (props.address) {
+        await addGroupMemberToContactAsync()
+        description = 'Contact added successfully'
+      } else if (props.invitePending && props.displayName) {
+        if (isValidEmail(props.displayName)) {
+          await sendInviteAsync()
+          description = 'Contact invite sent successfully'
+        } else {
+          handleApiError(
+            'Error adding to contacts',
+            'Unable to send invite to email address'
+          )
+          return
+        }
+      }
+      toast({
+        title: 'Success',
+        description,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
+    } catch (e) {
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof AccountNotFoundError) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof CantInviteYourself) {
+        toast({
+          title: 'Error',
+          description: 'You can&apos;t invite yourself',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      } else if (e instanceof MemberDoesNotExist) {
+        toast({
+          title: 'Error',
+          description: 'Member does not exist',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact invite request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      }
+    }
+  }
+  const isActor = props.currentAccount.address === props.address
   return (
     <HStack
       width="100%"
@@ -138,24 +242,34 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       borderBottomColor={borderColor}
       pb={3}
     >
-      <HStack flexBasis="57%" overflow="hidden">
-        <Box width="64px" height="64px" display="block" flexBasis={'64px'}>
-          <Avatar address={props.address || ''} />
+      <HStack flexBasis={{ md: '57%' }} overflow="hidden">
+        <Box
+          width={{ base: '32px', md: '48px', lg: '64px' }}
+          height={{ base: '32px', md: '48px', lg: '64px' }}
+          display="block"
+          flexBasis={{ base: '32px', md: '48px', lg: '64px' }}
+        >
+          <Avatar
+            address={props.address || ''}
+            avatar_url={props.avatar_url}
+            name={props.displayName}
+          />
         </Box>
         <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
-          <Heading size="sm">
+          <Heading size={{ base: 'xs', md: 'sm' }}>
             {props.displayName || ellipsizeAddress(props.address || '')}{' '}
-            {props.currentAccount.address === props.address && '(You)'}
+            {isActor && '(You)'}
           </Heading>
           {!props.invitePending ? (
             <CopyLinkButton
               url={`${appUrl}/${props.domain || props.address}`}
-              size="md"
+              size={{ base: 'sm', md: 'md' }}
               label={`${appUrl}/${props.domain || props.address}`}
               withIcon
               design_type="link"
               pl={0}
               maxW="335px"
+              px={0}
               childStyle={{
                 style: {
                   width: '150px',
@@ -177,13 +291,48 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 placeContent="center"
                 bg={tagColor}
               >
-                <Text size="sm">Pending</Text>
+                <Text size={{ base: 'xs', md: 'sm' }}>Pending</Text>
               </Box>
             </HStack>
           )}
         </VStack>
       </HStack>
-      <HStack display="flex" flexBasis="30%" justifyContent="space-between">
+      <Flex alignItems="center" gap={0.5} align="flex-start" flexBasis="30%">
+        {props?.isContact || isSuccess || isActor ? (
+          <Tag size={'sm'} variant="subtle">
+            <TagLeftIcon
+              boxSize="12px"
+              w={5}
+              h={5}
+              as={GoDotFill}
+              color="green.500"
+            />
+            <TagLabel px="2px">
+              {isActor ? 'This is me' : 'My contact'}
+            </TagLabel>
+          </Tag>
+        ) : (
+          <Button
+            colorScheme="primary"
+            onClick={handleAddToContacts}
+            isLoading={isAddLoading || isInviteLoading}
+            isDisabled={isSuccess}
+            _disabled={{
+              bg: isSuccess ? 'neutral.400' : '',
+            }}
+            _hover={{
+              bg: isSuccess ? 'neutral.400' : '',
+            }}
+          >
+            Add to Contacts
+          </Button>
+        )}
+      </Flex>
+      <HStack
+        display="flex"
+        flexBasis={{ md: '30%' }}
+        justifyContent="space-between"
+      >
         <HStack overflow="hidden" maxW={'150px'}>
           {loading ? (
             <Spinner marginInline="auto" />
@@ -201,6 +350,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 }
                 variant="ghost"
                 gap={12}
+                width="100px"
                 pr={4}
                 pl={0}
                 textTransform="capitalize"

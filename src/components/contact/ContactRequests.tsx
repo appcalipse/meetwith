@@ -18,7 +18,6 @@ import Image from 'next/image'
 import { useRouter } from 'next/router'
 import React, { ReactNode, useContext, useEffect, useState } from 'react'
 
-import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { Account } from '@/types/Account'
 import { ContactInvite } from '@/types/Contacts'
 import { EditMode, Intents } from '@/types/Dashboard'
@@ -28,6 +27,7 @@ import {
 } from '@/utils/api_helper'
 import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
 
+import { ContactStateContext } from '../profile/Contact'
 import ContactAcceptInviteModal from './ContactAcceptInviteModal'
 import ContactRejectInviteModal from './ContactRejectInviteModal'
 import ContactRequestItem from './ContactRequestItem'
@@ -135,7 +135,7 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
   if (firstFetch) {
     content = (
       <Tbody>
-        <Tr color="white">
+        <Tr color="text-primary">
           <Th colSpan={6}>
             <VStack alignItems="center" mb={8}>
               <Image
@@ -156,7 +156,7 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
   } else if (requests.length === 0) {
     content = (
       <Tbody>
-        <Tr color="white">
+        <Tr color="text-primary">
           <Th justifyContent="center" colSpan={6}>
             <Text textAlign="center" w="100%" mx="auto" py={4}>
               You have no contact request
@@ -182,7 +182,7 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
           />
         ))}
         {!noMoreFetch && !firstFetch && (
-          <Tr color="white">
+          <Tr color="text-primary">
             <Th justifyContent="center" colSpan={6}>
               <VStack mb={8}>
                 <Button
@@ -232,8 +232,8 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
         openRejectModal={openRejectModal}
       />
       <Table variant="unstyled" colorScheme="whiteAlpha">
-        <Thead bg="neutral.900">
-          <Tr color="white">
+        <Thead bg="bg-surface">
+          <Tr color="text-primary">
             <Th>User</Th>
             <Th>Description</Th>
             <Th>Account ID</Th>

@@ -109,7 +109,10 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
     }
   }
   return (
-    <Tr bg={index % 2 === 0 ? 'neutral.825' : 'none'} color="white">
+    <Tr
+      bg={index % 2 === 0 ? 'bg-surface-tertiary' : 'none'}
+      color="text-primary"
+    >
       <Th w="fit-content" py={8}>
         <HStack w="fit-content" pos={'relative'}>
           {account.status === ContactStatus.INACTIVE && (

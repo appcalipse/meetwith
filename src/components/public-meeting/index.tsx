@@ -672,7 +672,9 @@ const PublicPage: FC<IProps> = props => {
     void getSlotInfo()
     setPageGettingReady(false)
   }, [query])
-  useEffect(() => {}, [])
+  useEffect(() => {
+    void fetchNotificationSubscriptions()
+  }, [currentAccount])
 
   useEffect(() => {
     const handleBackButton = () => {

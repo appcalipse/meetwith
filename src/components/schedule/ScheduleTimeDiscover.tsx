@@ -1,15 +1,12 @@
-import { Flex, Heading, HStack, Icon, VStack } from '@chakra-ui/react'
-import { Account } from '@meta/Account'
-import { useContext, useEffect, useId, useState } from 'react'
+import { Heading, HStack, Icon, VStack } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
+import { useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
-import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
-import { AccountContext } from '@/providers/AccountProvider'
+import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { getExistingAccounts } from '@/utils/api_helper'
 
 import { Grid4 } from '../icons/Grid4'
-import Loading from '../Loading'
 import MobileScheduleParticipantModal from './schedule-time-discover/MobileScheduleParticipant'
 import { ScheduleParticipants } from './schedule-time-discover/ScheduleParticipants'
 import { SchedulePickTime } from './schedule-time-discover/SchedulePickTime'
@@ -17,46 +14,15 @@ import { SchedulePickTime } from './schedule-time-discover/SchedulePickTime'
 export type MeetingMembers = ParticipantInfo & { isCalendarConnected?: boolean }
 
 const ScheduleTimeDiscover = () => {
-  const {
-    participants,
-    groupParticipants,
-    handlePageSwitch,
-    meetingMembers,
-    setMeetingMembers,
-  } = useContext(ScheduleContext)
-  const id = useId()
   const [isOpen, setIsOpen] = useState(false)
-  const { currentAccount } = useContext(AccountContext)
+  const router = useRouter()
   const handleClose = () => {
-    handlePageSwitch(Page.SCHEDULE)
+    let url = `/dashboard/${EditMode.MEETINGS}`
+    if (router.query.ref === 'group') {
+      url = `/dashboard/${EditMode.GROUPS}`
+    }
+    router.push(url)
   }
-
-  const [loading, setLoading] = useState(false)
-  const fetchGroupMembers = async () => {
-    setLoading(true)
-    const selectedParticipants = participants
-      .map(participant => {
-        const person = participant as ParticipantInfo
-        return person.account_address
-      })
-      .filter(participant => participant !== undefined)
-    const actualMembers = [
-      ...new Set(
-        Object.values(groupParticipants)
-          .flat()
-          .concat(selectedParticipants as string[], [
-            currentAccount?.address as string,
-          ])
-      ),
-    ]
-    const members = await getExistingAccounts(actualMembers)
-
-    setMeetingMembers(members)
-    setLoading(false)
-  }
-  useEffect(() => {
-    fetchGroupMembers()
-  }, [participants, groupParticipants])
 
   return (
     <VStack
@@ -81,32 +47,20 @@ const ScheduleTimeDiscover = () => {
           display={{ base: 'block', lg: 'none' }}
         />
       </HStack>
-      {loading ? (
-        <Flex
-          m={8}
-          justifyContent="center"
-          width="100%"
-          justify={'center'}
-          align={'center'}
-        >
-          <Loading />
-        </Flex>
-      ) : (
-        <HStack
-          width="100%"
-          justifyContent={'flex-start'}
-          align={'flex-start'}
-          height={'fit-content'}
-          gap={'14px'}
-        >
-          <MobileScheduleParticipantModal
-            onClose={() => setIsOpen(false)}
-            isOpen={isOpen}
-          />
-          <ScheduleParticipants />
-          <SchedulePickTime />
-        </HStack>
-      )}
+      <HStack
+        width="100%"
+        justifyContent={'flex-start'}
+        align={'flex-start'}
+        height={'fit-content'}
+        gap={'14px'}
+      >
+        <MobileScheduleParticipantModal
+          onClose={() => setIsOpen(false)}
+          isOpen={isOpen}
+        />
+        <ScheduleParticipants />
+        <SchedulePickTime />
+      </HStack>
     </VStack>
   )
 }

@@ -10,7 +10,7 @@ import {
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime, Interval as LuxonInterval } from 'luxon'
 
-import { DayAvailability } from '@/types/Account'
+import { Account, DayAvailability } from '@/types/Account'
 
 import { parseMonthAvailabilitiesToDate } from './date_helper'
 
@@ -138,3 +138,43 @@ export const getAvailabilitiesForWeekDay = (
   availabilities?: DayAvailability[],
   day?: Date
 ) => availabilities?.find(_ => !!day && _.weekday === getDay(day))?.ranges ?? []
+
+export const suggestBestSlots = (
+  startDate: Date,
+  duration: number,
+  endDate: Date,
+  timezone: string,
+  busySlots: LuxonInterval<true>[],
+  accounts: Account[]
+) => {
+  const accountAvailabilities = accounts.map(account => ({
+    account,
+    availabilities: parseMonthAvailabilitiesToDate(
+      account.preferences.availabilities || [],
+      startDate,
+      endDate,
+      account.preferences.timezone || 'UTC'
+    ),
+  }))
+  const sortedBusySlots = busySlots.sort(
+    (a, b) => a.start.toMillis() - b.start.toMillis()
+  )
+  const now = DateTime.now()
+  const allSlots: LuxonInterval<true>[] = generateTimeSlots(
+    startDate,
+    duration || 30,
+    true,
+    timezone,
+    endDate
+  ).filter(slot => slot.isValid)
+  return allSlots
+    .filter(slot => slot.start >= now)
+    .filter(slot => {
+      return accountAvailabilities.every(({ availabilities }) =>
+        availabilities.some(availability => availability.overlaps(slot))
+      )
+    })
+    .filter(slot => {
+      return !sortedBusySlots.some(busySlot => busySlot.overlaps(slot))
+    })
+}

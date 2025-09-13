@@ -14,7 +14,7 @@ import { useContext, useEffect, useState } from 'react'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { EditMode, Intents } from '@/types/Dashboard'
-import { getGroupExternal, getGroups } from '@/utils/api_helper'
+import { getGroupExternal } from '@/utils/api_helper'
 
 import Loading from '../components/Loading'
 

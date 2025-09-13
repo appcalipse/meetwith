@@ -25,7 +25,7 @@ import { FaUserGroup } from 'react-icons/fa6'
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
-import { ContactStateContext } from '@/providers/ContactInvitesProvider'
+import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
@@ -56,7 +56,8 @@ export const NavMenu: React.FC<{
   const router = useRouter()
   const toast = useToast()
   const [noOfInvitedGroups, setNoOfInvitedGroups] = React.useState<number>(0)
-  const { requestCount } = useContext(ContactStateContext)
+  const { contactsRequestCount, groupInvitesCount } =
+    useContext(MetricStateContext)
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'neutral.900')
@@ -67,13 +68,13 @@ export const NavMenu: React.FC<{
         name: 'My Groups',
         icon: FaUserGroup,
         mode: EditMode.GROUPS,
-        badge: noOfInvitedGroups,
+        badge: groupInvitesCount,
       },
       {
         name: 'My Contacts',
         icon: FaUserGroup,
         mode: EditMode.CONTACTS,
-        badge: requestCount,
+        badge: contactsRequestCount,
       },
       {
         name: 'Session Settings',
@@ -102,7 +103,7 @@ export const NavMenu: React.FC<{
         mode: EditMode.SIGNOUT,
       },
     ],
-    [noOfInvitedGroups, requestCount]
+    [groupInvitesCount, contactsRequestCount]
   )
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
@@ -139,7 +140,7 @@ export const NavMenu: React.FC<{
   }
   const handleGroupInvites = async () => {
     if (!currentAccount?.address) return
-    const invitedGroups = await getGroupsInvites(currentAccount?.address)
+    const invitedGroups = await getGroupsInvites()
     setNoOfInvitedGroups(invitedGroups?.length || 0)
     invitedGroups?.forEach((data, index) => {
       if (!toast.isActive(data.id)) {
@@ -237,7 +238,11 @@ export const NavMenu: React.FC<{
           <VStack width="100%" gap={6} px={8}>
             <HStack width="100%" textAlign="center">
               <Box width="64px" height="64px">
-                <Avatar account={currentAccount} />
+                <Avatar
+                  address={currentAccount.address}
+                  avatar_url={currentAccount.preferences?.avatar_url || ''}
+                  name={getAccountDisplayName(currentAccount)}
+                />
               </Box>
 
               <VStack ml={2} flex={1} alignItems="flex-start">
@@ -289,7 +294,11 @@ export const NavMenu: React.FC<{
           >
             <VStack width="100%" textAlign="center">
               <Box width="120px" height="120px" mb={2}>
-                <Avatar account={currentAccount} />
+                <Avatar
+                  address={currentAccount.address}
+                  avatar_url={currentAccount.preferences?.avatar_url || ''}
+                  name={getAccountDisplayName(currentAccount)}
+                />
               </Box>
 
               <Text fontSize="lg" fontWeight={500}>
