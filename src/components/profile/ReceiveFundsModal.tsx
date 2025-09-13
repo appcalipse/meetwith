@@ -138,7 +138,7 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
           </HStack>
         </ModalHeader>
 
-        <ModalBody pb={{ base: 4, md: 6 }}>
+        <ModalBody pb={{ base: 4, md: 6 }} px={{ base: 2, md: 6 }}>
           <VStack spacing={{ base: 4, md: 6 }} align="center">
             {/* Network Indicator */}
             <Box textAlign="center" mb={2}>

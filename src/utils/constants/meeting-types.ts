@@ -99,8 +99,8 @@ export const PaymentChannelOptions = (address: string) => [
 ]
 const devChains = [
   // SupportedChain.SEPOLIA,
-  SupportedChain.ARBITRUM_SEPOLIA,
-  SupportedChain.ARBITRUM,
+  // SupportedChain.ARBITRUM_SEPOLIA,
+  // SupportedChain.ARBITRUM,
   SupportedChain.CELO,
   // SupportedChain.CELO_ALFAJORES,
 ]

@@ -560,6 +560,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   fontSize={{ base: '14px', md: '16px' }}
                                   color="text-primary"
                                   fontWeight="500"
+                                  textAlign="right"
                                 >
                                   {transaction.date} {transaction.time}
                                 </Text>
@@ -976,6 +977,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 fontSize={{ base: '14px', md: '16px' }}
                                 color="text-primary"
                                 fontWeight="500"
+                                textAlign="right"
                               >
                                 {transaction.date} {transaction.time}
                               </Text>
