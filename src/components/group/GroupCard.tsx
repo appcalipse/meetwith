@@ -15,7 +15,13 @@ import {
   MenuList,
   Portal,
   Spacer,
+  Table,
+  TableContainer,
+  Tbody,
   Text,
+  Th,
+  Thead,
+  Tr,
   useColorModeValue,
   useToast,
   VStack,
@@ -118,29 +124,6 @@ const GroupCard: React.FC<IGroupCard> = props => {
     () => renderPopOverOptions(actor?.role || MemberType.MEMBER),
     [actor?.role]
   )
-  const handlePublicLinkCopy = async () => {
-    try {
-      const publicInviteLink = `${appUrl}/invite-accept?groupId=${props.id}&type=${InviteType.PUBLIC}`
-      await navigator.clipboard.writeText(publicInviteLink)
-      toast({
-        title: 'Link copied',
-        description: 'Public invite link copied to clipboard.',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-        position: 'top',
-      })
-    } catch (e) {
-      toast({
-        title: 'Error copying link',
-        description: 'Please try again.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-        position: 'top',
-      })
-    }
-  }
   return (
     <AccordionItem
       width="100%"
@@ -201,14 +184,6 @@ const GroupCard: React.FC<IGroupCard> = props => {
                   p={'8px 16px'}
                   icon={<IoMdPersonAdd size={20} />}
                   onClick={() => props.onAddNewMember(props.id, props.name)}
-                />
-              )}
-              {isAdmin && (
-                <IconButton
-                  aria-label="Copy Public Link"
-                  p={'8px 16px'}
-                  icon={<IoShareSocialOutline size={20} />}
-                  onClick={handlePublicLinkCopy}
                 />
               )}
               <Menu>
@@ -280,6 +255,124 @@ const GroupCard: React.FC<IGroupCard> = props => {
           </HStack>
           <AccordionPanel px={0} pb={4}>
             <VStack my={6} width="100%" px={0}>
+              <TableContainer width="100%">
+                <Table variant="unstyled" colorScheme="whiteAlpha">
+                  <Thead bg="bg-surface">
+                    <Tr color="text-primary">
+                      <Th alignItems={'start'} px={0}>
+                        <Heading size="sm" fontWeight={800}>
+                          Contact
+                        </Heading>
+                      </Th>
+                      <Th pl={0}>
+                        <Flex alignItems="center" align="flex-start">
+                          <Heading size="sm" fontWeight={800}>
+                            Contact Connection{' '}
+                          </Heading>
+                          <Tooltip.Provider delayDuration={400}>
+                            <Tooltip.Root>
+                              <Tooltip.Trigger>
+                                <Flex
+                                  w="16px"
+                                  h="16px"
+                                  borderRadius="50%"
+                                  bgColor={iconColor}
+                                  justifyContent="center"
+                                  alignItems="center"
+                                  ml={1}
+                                >
+                                  <Icon
+                                    w={1}
+                                    color={itemsBgColor}
+                                    as={FaInfo}
+                                  />
+                                </Flex>
+                              </Tooltip.Trigger>
+                              <Tooltip.Content>
+                                <Text
+                                  fontSize="sm"
+                                  p={4}
+                                  maxW="200px"
+                                  bgColor={itemsBgColor}
+                                  shadow="lg"
+                                >
+                                  This shows whether the member is in your
+                                  contacts list or has already been sent a
+                                  contact invite from you.
+                                </Text>
+                                <Tooltip.Arrow />
+                              </Tooltip.Content>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        </Flex>
+                      </Th>
+                      <Th pl={0}>
+                        <Flex alignItems="center" gap={0.5} align="flex-start">
+                          <Heading size="sm" fontWeight={800}>
+                            Role{' '}
+                          </Heading>
+                          <Tooltip.Provider delayDuration={400}>
+                            <Tooltip.Root>
+                              <Tooltip.Trigger>
+                                <Flex
+                                  w="16px"
+                                  h="16px"
+                                  borderRadius="50%"
+                                  bgColor={iconColor}
+                                  justifyContent="center"
+                                  alignItems="center"
+                                  ml={1}
+                                >
+                                  <Icon
+                                    w={1}
+                                    color={itemsBgColor}
+                                    as={FaInfo}
+                                  />
+                                </Flex>
+                              </Tooltip.Trigger>
+                              <Tooltip.Content>
+                                <Text
+                                  fontSize="sm"
+                                  p={4}
+                                  maxW="200px"
+                                  bgColor={itemsBgColor}
+                                  shadow="lg"
+                                >
+                                  Admins can add and remove members from the
+                                  group, change the group&apos;s name, calendar
+                                  link, and delete group.
+                                </Text>
+                                <Tooltip.Arrow />
+                              </Tooltip.Content>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        </Flex>
+                      </Th>
+                      <Th pl={0}></Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {props.members.map(member => (
+                      <GroupMemberCard
+                        currentAccount={props.currentAccount}
+                        key={member?.address}
+                        isEmpty={props.members.length < 2}
+                        viewerRole={actor?.role || MemberType.MEMBER}
+                        groupRoles={groupRoles}
+                        setGroupRoles={setGroupRoles}
+                        updateRole={updateRole}
+                        groupSlug={props.slug}
+                        groupID={props.id}
+                        groupName={props.name}
+                        resetState={props.resetState}
+                        isAdmin={isAdmin}
+                        handleIsAdminChange={setIsAdmin}
+                        {...member}
+                      />
+                    ))}
+                  </Tbody>
+                </Table>
+              </TableContainer>
               <HStack
                 width="100%"
                 justifyContent="space-between"
@@ -374,26 +467,6 @@ const GroupCard: React.FC<IGroupCard> = props => {
                   </Tooltip.Provider>
                 </Flex>
               </HStack>
-              <VStack width="100%" borderRadius="lg">
-                {props.members.map(member => (
-                  <GroupMemberCard
-                    currentAccount={props.currentAccount}
-                    key={member?.address}
-                    isEmpty={props.members.length < 2}
-                    viewerRole={actor?.role || MemberType.MEMBER}
-                    groupRoles={groupRoles}
-                    setGroupRoles={setGroupRoles}
-                    updateRole={updateRole}
-                    groupSlug={props.slug}
-                    groupID={props.id}
-                    groupName={props.name}
-                    resetState={props.resetState}
-                    isAdmin={isAdmin}
-                    handleIsAdminChange={setIsAdmin}
-                    {...member}
-                  />
-                ))}
-              </VStack>
               {isAdmin && (
                 <>
                   <Spacer />
