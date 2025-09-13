@@ -60,7 +60,7 @@ export const OnboardingAvailabilityStep: React.FC<
     Option<string>[]
   >([])
 
-  const { meetingTypes: allMeetingTypes } = useAllMeetingTypes()
+  const { meetingTypes: allMeetingTypes, isLoading } = useAllMeetingTypes()
 
   const meetingTypeOptions: Option<string>[] = allMeetingTypes.map(type => ({
     value: type.id,
@@ -156,6 +156,7 @@ export const OnboardingAvailabilityStep: React.FC<
           options={meetingTypeOptions}
           isMulti
           placeholder="Select meeting types to associate with this block..."
+          isLoading={isLoading}
           chakraStyles={{
             control: provided => ({
               ...provided,
