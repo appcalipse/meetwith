@@ -28,7 +28,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       //avoid exploding cookie size
       req.session.account.preferences = {
         timezone: '',
-        availableTypes: [],
         availabilities: [],
         meetingProviders: [MeetingProvider.GOOGLE_MEET],
       }
