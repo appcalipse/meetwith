@@ -145,7 +145,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       py={isMobile ? 10 : 7}
       px={5}
       borderWidth={1}
-      borderColor={'neutral.400'}
+      borderColor={'input-border'}
       rounded={12}
       gap={5}
       minH="80vh"
