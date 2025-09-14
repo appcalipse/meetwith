@@ -452,17 +452,32 @@ const OnboardingModal = () => {
           timezone,
         },
       })
-      if (!!email)
-        await setNotificationSubscriptions({
-          account_address: currentAccount.address,
-          notification_types: [
+      try {
+        if (!!email)
+          await setNotificationSubscriptions(
             {
-              channel: NotificationChannel.EMAIL,
-              destination: email,
-              disabled: false,
+              account_address: currentAccount.address,
+              notification_types: [
+                {
+                  channel: NotificationChannel.EMAIL,
+                  destination: email,
+                  disabled: false,
+                },
+              ],
             },
-          ],
+            stateObject.jti
+          )
+      } catch (e) {
+        toast({
+          title: 'Error setting email',
+          description:
+            'There was an error while trying to set your email. Please, check your email preferences in your profile after closing this modal',
+          status: 'error',
+          position: 'top',
+          duration: 8000,
+          isClosable: true,
         })
+      }
       logEvent('Updated account details')
       login(updatedAccount)
 
