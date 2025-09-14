@@ -16,7 +16,6 @@ import {
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingChange } from '@/types/Requests'
 import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
-import { getConnectedCalendars } from '@/utils/database'
 import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
 
 import {
@@ -28,8 +27,8 @@ import { appUrl } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
 import { getOwnerPublicUrlServer } from './database'
-import { getAllParticipantsDisplayName } from './user_manager'
 import { getCalendars } from './sync_helper'
+import { getAllParticipantsDisplayName } from './user_manager'
 const FROM = process.env.FROM_MAIL!
 
 const resend = new Resend(process.env.RESEND_API_KEY)
