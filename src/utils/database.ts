@@ -2366,6 +2366,17 @@ const addOrUpdateConnectedCalendar = async (
     throw new Error(error.message)
   }
   const calendar = data[0] as ConnectedCalendar
+  try {
+    await addNewCalendarToAllExistingMeetingTypes(address, calendar)
+  } catch (e) {
+    Sentry.captureException(e, {
+      extra: {
+        accountAddress: address,
+        email,
+        provider,
+      },
+    })
+  }
   if (provider === TimeSlotSource.GOOGLE) {
     try {
       const integration = getConnectedCalendarIntegration(
