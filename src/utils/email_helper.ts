@@ -34,6 +34,8 @@ import { CreateEmailOptions, Resend } from 'resend'
 
 import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
 
+import { getCalendars } from './sync_helper'
+
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
   from: FROM,
@@ -235,17 +237,24 @@ export const newMeetingEmail = async (
   )
   let hasCalendarSyncing
   const ownerAddress =
-    participants.find(p => p.type === ParticipantType.Owner)?.account_address ||
-    ''
-  if (destinationAccountAddress || ownerAddress) {
-    const accountCalendar = await getConnectedCalendars(
-      destinationAccountAddress || ownerAddress,
-      {
-        syncOnly: true,
-      }
+    participants
+      .filter(p => p.type === ParticipantType.Owner)
+      ?.map(p => p.account_address)
+      .filter((p): p is string => !!p) || []
+  if (destinationAccountAddress) {
+    const accountCalendar = await getCalendars(
+      destinationAccountAddress,
+      meetingTypeId
     )
     hasCalendarSyncing = accountCalendar.some(val => {
       return val.calendars?.some(cal => cal.enabled && cal.sync)
+    })
+  } else {
+    hasCalendarSyncing = ownerAddress.some(async accountAddress => {
+      const accountCalendar = await getCalendars(accountAddress, meetingTypeId)
+      return accountCalendar.some(val => {
+        return val.calendars?.some(cal => cal.enabled && cal.sync)
+      })
     })
   }
   const icsFile = generateIcs(
@@ -509,17 +518,24 @@ export const updateMeetingEmail = async (
   )
   let hasCalendarSyncing
   const ownerAddress =
-    participants.find(p => p.type === ParticipantType.Owner)?.account_address ||
-    ''
-  if (destinationAccountAddress || ownerAddress) {
-    const accountCalendar = await getConnectedCalendars(
-      destinationAccountAddress || ownerAddress,
-      {
-        syncOnly: true,
-      }
+    participants
+      .filter(p => p.type === ParticipantType.Owner)
+      ?.map(p => p.account_address)
+      .filter((p): p is string => !!p) || []
+  if (destinationAccountAddress) {
+    const accountCalendar = await getCalendars(
+      destinationAccountAddress,
+      meetingTypeId
     )
     hasCalendarSyncing = accountCalendar.some(val => {
       return val.calendars?.some(cal => cal.enabled && cal.sync)
+    })
+  } else {
+    hasCalendarSyncing = ownerAddress.some(async accountAddress => {
+      const accountCalendar = await getCalendars(accountAddress, meetingTypeId)
+      return accountCalendar.some(val => {
+        return val.calendars?.some(cal => cal.enabled && cal.sync)
+      })
     })
   }
   const icsFile = generateIcs(
