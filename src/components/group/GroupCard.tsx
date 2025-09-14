@@ -259,7 +259,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 <Table variant="unstyled" colorScheme="whiteAlpha">
                   <Thead bg="bg-surface">
                     <Tr color="text-primary">
-                      <Th alignItems={'start'} px={0}>
+                      <Th alignItems={'start'} pl={0}>
                         <Heading size="sm" fontWeight={800}>
                           Member
                         </Heading>
@@ -348,7 +348,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                           </Tooltip.Provider>
                         </Flex>
                       </Th>
-                      <Th pl={0}></Th>
+                      <Th pr={0}></Th>
                     </Tr>
                   </Thead>
                   <Tbody>
