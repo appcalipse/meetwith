@@ -1,10 +1,10 @@
-import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
   Heading,
   HStack,
   Image,
+  Link,
   Spinner,
   Text,
   useDisclosure,
@@ -168,7 +168,11 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         onDelete={loadCalendars}
       />
 
-      <ConnectCalendarModal isOpen={isOpen} onClose={onClose} />
+      <ConnectCalendarModal
+        isOpen={isOpen}
+        onClose={onClose}
+        refetch={loadCalendars}
+      />
 
       <Button
         onClick={onOpen}

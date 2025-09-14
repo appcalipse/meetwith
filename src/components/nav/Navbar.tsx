@@ -1,5 +1,4 @@
 import { CloseIcon } from '@chakra-ui/icons'
-import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
@@ -8,6 +7,7 @@ import {
   Flex,
   HStack,
   Icon,
+  Link,
   Stack,
   Text,
   useColorModeValue,
@@ -27,99 +27,10 @@ import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { useLogin } from '../../session/login'
-import { Account } from '../../types/Account'
 import ConnectWalletDialog from '../ConnectWalletDialog'
-import { Avatar } from '../profile/components/Avatar'
 import { NavMenu } from '../profile/components/NavMenu'
 import NavBarLoggedProfile from '../profile/NavBarLoggedProfile'
 import { ThemeSwitcher } from '../ThemeSwitcher'
-
-const DashboardMobileNavbar = ({
-  currentAccount,
-  logged,
-}: {
-  onToggle: () => void
-  currentAccount: Account | null | undefined
-  logged: boolean
-}) => {
-  const [navOpen, setNavOpen] = useState(false)
-  const router = useRouter()
-  const { section } = router.query
-
-  const openMenu = () => {
-    setNavOpen(true)
-  }
-
-  const closeMenu = () => {
-    setNavOpen(false)
-  }
-
-  return (
-    <>
-      {!navOpen && (
-        <Box
-          position="fixed"
-          top={0}
-          left={0}
-          right={0}
-          zIndex={999}
-          bg="neutral.900"
-          borderBottom="1px solid"
-          borderColor="neutral.800"
-          px={4}
-          py={3}
-        >
-          <Flex alignItems="center" justifyContent="space-between" width="100%">
-            <Flex alignItems="center" gap={2}>
-              <Button
-                onClick={openMenu}
-                width={15}
-                height={15}
-                bg="transparent"
-                _hover={{ bg: 'transparent' }}
-                p={0}
-                minW="40px"
-              >
-                <Icon as={BiMenuAltRight} width={8} height={8} color="white" />
-              </Button>
-
-              <Flex cursor="pointer">
-                <Image
-                  width={53}
-                  height={33}
-                  alt="Meetwith"
-                  style={{
-                    width: '53px',
-                    height: 'auto',
-                    display: 'block',
-                  }}
-                  src="/assets/logo.svg"
-                />
-              </Flex>
-            </Flex>
-
-            <HStack spacing={3}>
-              <ThemeSwitcher />
-              {logged && (
-                <Box height={8} width={8}>
-                  {currentAccount && <Avatar account={currentAccount} />}
-                </Box>
-              )}
-            </HStack>
-          </Flex>
-        </Box>
-      )}
-
-      {navOpen && (
-        <NavMenu
-          currentSection={section as EditMode}
-          isMenuOpen={navOpen}
-          closeMenu={closeMenu}
-        />
-      )}
-    </>
-  )
-}
 
 export const Navbar = () => {
   const { openConnection } = useContext(OnboardingModalContext)
@@ -130,18 +41,25 @@ export const Navbar = () => {
   const { currentAccount, logged, loginIn } = useLogin()
 
   const [backdropFilterValue, setBackdropFilterValue] = useState<string>('0')
+  const [dashboardNavOpen, setDashboardNavOpen] = useState(false)
   const [activeLink, setActiveLink] = useState('')
   const bgColor = useColorModeValue('transparent', 'neutral.900')
   const borderColor = useColorModeValue('neutral.300', 'neutral.800')
   const signInButtonColor = useColorModeValue('primary.600', 'white')
   const signInBorderColor = useColorModeValue('primary.600', 'transparent')
-  const textColor = useColorModeValue('black', 'white')
 
-  const isDashboardPage = pathname.startsWith('/dashboard')
   const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
     ssr: true,
     fallback: false,
   })
+
+  const openDashboardNav = () => {
+    setDashboardNavOpen(true)
+  }
+
+  const closeDashboardNav = () => {
+    setDashboardNavOpen(false)
+  }
 
   function handleSetActiveLink(id: string) {
     if (id === '/') {
@@ -177,29 +95,6 @@ export const Navbar = () => {
     )
   }
 
-  if (isDashboardPage && isMobile) {
-    return (
-      <>
-        <DashboardMobileNavbar
-          onToggle={onToggle}
-          currentAccount={currentAccount}
-          logged={logged}
-        />
-        <Collapse in={isOpen} animateOpacity>
-          <MobileNav
-            onOpenModal={handleConnectionOpen}
-            onToggle={onToggle}
-            handleSetActiveLink={handleSetActiveLink}
-            isOpen={isOpen}
-            pathname={pathname}
-            activeLink={activeLink}
-          />
-        </Collapse>
-        <ConnectWalletDialog isOpen={loginIn} />
-      </>
-    )
-  }
-
   return (
     <Box
       id="navbar-container"
@@ -222,31 +117,17 @@ export const Navbar = () => {
       borderColor={borderColor}
       justifyContent={'space-between'}
     >
-      <Flex color={textColor} minH={'60px'} py="2" px="4" align={'center'}>
+      <Flex
+        color={useColorModeValue('black', 'white')}
+        minH={'60px'}
+        py="2"
+        px="4"
+        align={'center'}
+      >
         <Container maxW={'8xl'}>
           <Flex alignItems="center">
-            <Flex
-              display={{ base: 'flex', lg: 'none' }}
-              width="100%"
-              justifyContent="space-between"
-              alignItems="center"
-              position="relative"
-            >
-              <Button
-                onClick={onToggle}
-                width={10}
-                height={10}
-                bg="transparent"
-                _hover={{ bg: 'transparent' }}
-                p={0}
-              >
-                <Icon as={BiMenuAltRight} width={6} height={6} color="white" />
-              </Button>
-
+            <Flex ml={{ base: -2 }} display={{ base: 'flex', lg: 'none' }}>
               <Flex
-                position="absolute"
-                left="50%"
-                transform="translateX(-50%)"
                 alignItems="center"
                 onClick={() => {
                   handleSetActiveLink('/')
@@ -258,32 +139,21 @@ export const Navbar = () => {
                   height={33}
                   alt="Meetwith"
                   style={{
-                    width: '75px',
+                    width: isMobile ? '75px' : '100px',
                     height: 'auto',
                     display: 'block',
+                    marginLeft: 'auto',
+                    marginRight: 'auto',
+                    padding: 8,
                   }}
                   src="/assets/logo.svg"
                 />
               </Flex>
-
-              <HStack spacing={3}>
-                {!shouldEnforceColorOnPath(pathname) && <ThemeSwitcher />}
-                {logged && (
-                  <NavBarLoggedProfile
-                    account={currentAccount!}
-                    handleSetActiveLink={handleSetActiveLink}
-                  />
-                )}
-              </HStack>
             </Flex>
-
-            <Flex
-              display={{ base: 'none', lg: 'flex' }}
-              width="100%"
-              alignItems="center"
-            >
+            <Flex flex={{ base: 1 }} justifyContent={'space-between'}>
               <Link
                 href={'/'}
+                display={{ base: 'none', lg: 'flex' }}
                 onClick={() => {
                   handleSetActiveLink('/')
                 }}
@@ -305,8 +175,12 @@ export const Navbar = () => {
                   />
                 </HStack>
               </Link>
-
-              <Flex ml={10} flexBasis={'80%'} justifyContent={'center'}>
+              <Flex
+                display={{ base: 'none', lg: 'flex' }}
+                ml={10}
+                flexBasis={'80%'}
+                justifyContent={'center'}
+              >
                 <DesktopNav
                   pathname={pathname}
                   handleSetActiveLink={handleSetActiveLink}
@@ -314,21 +188,14 @@ export const Navbar = () => {
                 />
               </Flex>
             </Flex>
-
             <Stack
-              display={{ base: 'none', lg: 'flex' }}
-              flex={0}
+              flex={{ base: 1, lg: 0 }}
               justify={'flex-end'}
               direction={'row'}
               spacing={4}
             >
               {!shouldEnforceColorOnPath(pathname) && <ThemeSwitcher />}
-              {logged ? (
-                <NavBarLoggedProfile
-                  account={currentAccount!}
-                  handleSetActiveLink={handleSetActiveLink}
-                />
-              ) : (
+              {!logged && (
                 <Button
                   size="md"
                   onClick={handleConnectionOpen}
@@ -345,6 +212,21 @@ export const Navbar = () => {
                   </Box>
                 </Button>
               )}
+              <Button
+                onClick={logged ? openDashboardNav : onToggle}
+                width={10}
+                height={10}
+                display={{ base: 'flex', lg: 'none' }}
+                zIndex="0"
+                bg="neutral.100"
+              >
+                <Icon
+                  as={BiMenuAltRight}
+                  width={6}
+                  height={6}
+                  color="neutral.800"
+                />
+              </Button>
             </Stack>
           </Flex>
         </Container>
@@ -360,12 +242,20 @@ export const Navbar = () => {
           activeLink={activeLink}
         />
       </Collapse>
+      {dashboardNavOpen && (
+        <NavMenu
+          currentSection={query.section as EditMode}
+          isMenuOpen={dashboardNavOpen}
+          closeMenu={closeDashboardNav}
+        />
+      )}
       <ConnectWalletDialog isOpen={loginIn} />
     </Box>
   )
 }
 
 interface MobileNavProps {
+  openDashboardNav?: () => void
   onToggle: () => void
   onOpenModal: () => void
   handleSetActiveLink: (id: string) => void
@@ -375,6 +265,7 @@ interface MobileNavProps {
 }
 
 const MobileNav = ({
+  openDashboardNav,
   onToggle,
   onOpenModal,
   handleSetActiveLink,
@@ -436,7 +327,7 @@ const MobileNav = ({
           _hover={{ bgColor: 'transparent' }}
         >
           <Icon
-            onClick={onToggle}
+            onClick={logged ? openDashboardNav : onToggle}
             as={CloseIcon}
             width={6}
             height={6}
@@ -468,6 +359,7 @@ const MobileNav = ({
               isOpen={isOpen}
               account={currentAccount!}
               handleSetActiveLink={handleSetActiveLink}
+              disableNavMenu={true}
             />
             <Button onClick={doLogout} variant="link">
               Logout

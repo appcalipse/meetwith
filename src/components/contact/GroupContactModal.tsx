@@ -6,6 +6,7 @@ import {
   Heading,
   HStack,
   Input,
+  Link,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -21,25 +22,34 @@ import {
   Th,
   Thead,
   Tr,
+  VStack,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
-import { Jazzicon } from '@ukstv/jazzicon-react'
 import React, { useEffect, useState } from 'react'
+import { FaPlus } from 'react-icons/fa'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { LeanContact } from '@/types/Contacts'
 import { getContactsLean } from '@/utils/api_helper'
-import { ellipsizeAddress } from '@/utils/user_manager'
-// TODO: Add coupon countdown
+
+import GroupContactModalItem from './GroupContactModalItem'
 type Props = {
   isOpen: boolean
   onClose: () => void
   isContactAlreadyAdded: (address: LeanContact) => boolean
-  addUserFromContact: (address: LeanContact) => void
-  removeUserFromContact: (address: LeanContact) => void
+  addUserFromContact: (address: LeanContact) => void | Promise<void>
+  removeUserFromContact: (address: LeanContact) => void | Promise<void>
+  title?: string
+  buttonLabel?: string
+  loadingStates?: Map<string, boolean>
 }
 
-const GroupContactModal = (props: Props) => {
+const GroupContactModal = ({
+  title = 'Invite Group Members',
+  buttonLabel = 'Add to Group',
+  loadingStates = new Map<string, boolean>(),
+  ...props
+}: Props) => {
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const [result, setResult] = React.useState<Array<LeanContact>>([])
   const [noMoreFetch, setNoMoreFetch] = useState(false)
@@ -73,9 +83,7 @@ const GroupContactModal = (props: Props) => {
     if (search.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
-    // TODO: Write sql function on supabase to handle this search
-
-    setResult(search)
+    setResult(search || [])
   }
   const handleLoadMore = async () => {
     setMoreLoading(true)
@@ -98,7 +106,7 @@ const GroupContactModal = (props: Props) => {
       size={'2xl'}
     >
       <ModalOverlay backdropFilter="blur(10px)" bg="rgba(0, 0, 0, 0.6)" />
-      <ModalContent p={0} bg="neutral.900" rounded={12}>
+      <ModalContent p={0} bg="bg-surface" rounded={12}>
         <ModalHeader
           pt={10}
           display="flex"
@@ -106,7 +114,7 @@ const GroupContactModal = (props: Props) => {
           alignItems="center"
           px={10}
         >
-          <Heading size={'md'}>Invite group members</Heading>
+          <Heading size={'md'}>{title}</Heading>
           <ModalCloseButton />
         </ModalHeader>
         <ModalBody
@@ -149,83 +157,72 @@ const GroupContactModal = (props: Props) => {
                 size="xl"
               />
             </HStack>
-          ) : (
-            result?.length > 0 && (
-              <TableContainer>
-                <Table variant="unstyled" colorScheme="whiteAlpha">
-                  <Thead bg="neutral.900">
+          ) : result?.length > 0 ? (
+            <TableContainer>
+              <Table variant="unstyled" colorScheme="whiteAlpha">
+                <Thead bg="bg-surface">
+                  <Tr color="text-primary">
+                    <Th colSpan={4}>User</Th>
+                    <Th
+                      colSpan={4}
+                      display={{ base: 'none', md: 'table-cell' }}
+                    >
+                      Account ID
+                    </Th>
+                    <Th colSpan={1}>Action</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {result.map((account, index) => (
+                    <GroupContactModalItem
+                      key={`${account.id}-contact-${index}`}
+                      index={index}
+                      isContactAlreadyAdded={props.isContactAlreadyAdded}
+                      addUserFromContact={props.addUserFromContact}
+                      removeUserFromContact={props.removeUserFromContact}
+                      buttonLabel={buttonLabel}
+                      isLoading={!!loadingStates.get(account.id)}
+                      {...account}
+                    />
+                  ))}
+                  {!noMoreFetch && (
                     <Tr color="white">
-                      <Th colSpan={4}>User</Th>
-                      <Th colSpan={4}>Account ID</Th>
-                      <Th colSpan={1}>Action</Th>
+                      <Td justifyContent="center" colSpan={9}>
+                        <HStack justifyItems="center">
+                          <Button
+                            isLoading={isMoreLoading}
+                            colorScheme="primary"
+                            variant="outline"
+                            my={4}
+                            onClick={handleLoadMore}
+                            mx="auto"
+                          >
+                            Load more
+                          </Button>
+                        </HStack>
+                      </Td>
                     </Tr>
-                  </Thead>
-                  <Tbody>
-                    {result.map((account, index) => (
-                      <Tr
-                        key={index}
-                        bg={index % 2 === 0 ? 'neutral.825' : 'none'}
-                      >
-                        <Td colSpan={4}>
-                          <HStack>
-                            <Jazzicon
-                              address={account.address || ''}
-                              className="contact-avatar"
-                            />
-                            <Text maxW={200} isTruncated>
-                              {account.name || account.address}
-                            </Text>
-                          </HStack>
-                        </Td>
-                        <Td colSpan={4}>
-                          <Text maxW={200} isTruncated>
-                            {ellipsizeAddress(account.address)}
-                          </Text>
-                        </Td>
-                        <Td>
-                          {props.isContactAlreadyAdded(account) ? (
-                            <Button
-                              colorScheme="primary"
-                              onClick={() =>
-                                props.removeUserFromContact(account)
-                              }
-                              variant="outline"
-                            >
-                              Remove
-                            </Button>
-                          ) : (
-                            <Button
-                              colorScheme="primary"
-                              onClick={() => props.addUserFromContact(account)}
-                            >
-                              Add to group
-                            </Button>
-                          )}
-                        </Td>
-                      </Tr>
-                    ))}
-                    {!noMoreFetch && (
-                      <Tr color="white">
-                        <Td justifyContent="center" colSpan={9}>
-                          <HStack justifyItems="center">
-                            <Button
-                              isLoading={isMoreLoading}
-                              colorScheme="primary"
-                              variant="outline"
-                              my={4}
-                              onClick={handleLoadMore}
-                              mx="auto"
-                            >
-                              Load more
-                            </Button>
-                          </HStack>
-                        </Td>
-                      </Tr>
-                    )}
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            )
+                  )}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <VStack alignItems="center" justifyContent="center" p={10}>
+              <Text color="text-secondary" mb={4} textAlign="center">
+                You haven’t added any contacts yet. Add people to your contacts
+                to easily invite them to groups and meetings.
+              </Text>
+              <Button
+                flexShrink={0}
+                as={Link}
+                href="/dashboard/contacts?action=add&source=group-modal"
+                colorScheme="primary"
+                leftIcon={<FaPlus />}
+                _hover={{ textDecoration: 'none' }}
+              >
+                Add new contact
+              </Button>
+            </VStack>
           )}
         </ModalBody>
       </ModalContent>

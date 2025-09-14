@@ -54,6 +54,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
         minW="280px"
         w={'100%'}
         alignItems="flex-start"
+        justifyContent={'space-between'}
         height={'100%'}
         bgColor={useColorModeValue('white', 'neutral.900')}
       >
@@ -78,7 +79,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
           <Box role={'group'} minH={10}>
             <HStack
               alignItems="center"
-              bg={'neutral.800'}
+              bg={'bg-surface-tertiary-2'}
               px={2}
               py={1}
               borderRadius={8}

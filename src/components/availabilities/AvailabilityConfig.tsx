@@ -115,7 +115,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
       maxWidth="100%"
       px={0}
     >
-      <Heading fontSize="2xl" color="neutral.0" width="100%">
+      <Heading fontSize="2xl" color="text-primary" width="100%">
         Availabilities
       </Heading>
 
@@ -131,7 +131,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
         }}
         padding={{ base: 4, sm: 6, md: 8, lg: 10, xl: 12, '2xl': 12 }}
         borderRadius={12}
-        background="neutral.900"
+        bg="bg-surface"
         position="relative"
         mx="auto"
       >
@@ -148,10 +148,14 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
             flex={{ md: 1 }}
             minWidth={0}
           >
-            <Heading fontSize={{ base: 18, md: 22 }} color="neutral.0" mb={2}>
+            <Heading
+              fontSize={{ base: 18, md: 22 }}
+              color="text-primary"
+              mb={2}
+            >
               Availability blocks
             </Heading>
-            <Text color="neutral.0" fontSize={{ base: 14, md: 16 }}>
+            <Text color="text-primary" fontSize={{ base: 14, md: 16 }}>
               Define when you&apos;re free to meet. Different{' '}
               <Link href="/dashboard/groups">
                 <Text

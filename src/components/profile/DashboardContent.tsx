@@ -1,10 +1,9 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
 import { EditMode } from '@meta/Dashboard'
-import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import ContactStateProvider from '@/providers/ContactInvitesProvider'
+import MetricStateProvider from '@/providers/MetricStateProvider'
 import { WalletProvider } from '@/providers/WalletProvider'
 
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
@@ -16,12 +15,11 @@ import Clientboard from './Clientboard'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
 import Contact from './Contact'
+import Group from './Group'
 import Meetings from './Meetings'
 import MeetingSettings from './MeetingSettings'
 import Settings from './Settings'
 import Wallet from './Wallet'
-
-const GroupWithNoSSR = dynamic(() => import('./Group'), { ssr: false })
 
 const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
@@ -34,7 +32,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       case EditMode.MEETINGS:
         return <Meetings currentAccount={currentAccount!} />
       case EditMode.GROUPS:
-        return <GroupWithNoSSR currentAccount={currentAccount!} />
+        return <Group currentAccount={currentAccount!} />
       case EditMode.CONTACTS:
         return <Contact currentAccount={currentAccount!} />
       case EditMode.AVAILABILITY:
@@ -61,7 +59,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   }
 
   return currentAccount ? (
-    <ContactStateProvider currentAccount={currentAccount}>
+    <MetricStateProvider currentAccount={currentAccount}>
       <HStack
         alignItems="start"
         width="100%"
@@ -88,12 +86,12 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
           flex={isSettings ? 1 : { base: '1', md: '8' }}
           marginLeft={{ base: '0 !important', md: isSettings ? 0 : 2 }}
           marginInlineStart={{ base: '0 !important', md: isSettings ? 0 : 2 }}
-          pt={{ base: '60px', lg: 0 }}
+          pt={{ base: isSettings ? '0' : '60px', lg: 0 }}
         >
           {renderSelected()}
         </Box>
       </HStack>
-    </ContactStateProvider>
+    </MetricStateProvider>
   ) : (
     <Flex
       width="100%"

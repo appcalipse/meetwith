@@ -40,7 +40,7 @@ const WalletActionButton: React.FC<WalletActionButtonProps> = ({
     </Box>
     <Text
       fontSize={{ base: '14px', md: '16px' }}
-      color="neutral.0"
+      color="text-primary"
       fontWeight="500"
     >
       {label}

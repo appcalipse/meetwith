@@ -151,7 +151,7 @@ export class MeetingCancelConflictError extends Error {
 export class MeetingCancelForbiddenError extends Error {
   constructor() {
     super(
-      `Only the host can cancel the meeting. You can RSPV "no" from the calendar-invite and/or ask the host to reschedule`
+      `Only the host or owners can cancel the meeting. You can RSPV "no" from the calendar-invite and/or ask the host to reschedule`
     )
     this.name = 'MeetingCancelForbiddenError'
   }
@@ -290,6 +290,12 @@ export class CantInviteYourself extends Error {
   constructor() {
     super(`You can't invite yourself`)
     this.name = 'CantInviteYourself'
+  }
+}
+export class MemberDoesNotExist extends Error {
+  constructor() {
+    super(`Member does not exist in this group`)
+    this.name = 'MemberDoesNotExist'
   }
 }
 

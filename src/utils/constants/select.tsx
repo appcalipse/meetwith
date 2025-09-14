@@ -38,11 +38,12 @@ export const fullWidthStyle:
   | undefined = {
   container: provided => ({
     ...provided,
-    borderColor: 'inherit',
+    borderColor: '´∑inherit',
     borderRadius: 'md',
     maxW: '100%',
     display: 'block',
     width: '100% !important',
+    bg: 'select-bg',
   }),
   placeholder: provided => ({
     ...provided,

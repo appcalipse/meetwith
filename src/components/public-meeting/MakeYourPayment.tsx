@@ -10,7 +10,6 @@ import {
 import ChainLogo from '@components/icons/ChainLogo'
 import FiatLogo from '@components/icons/FiatLogo'
 import InvoiceIcon from '@components/icons/InvoiceIcon'
-import ModalLoading from '@components/Loading/ModalLoading'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import PaymentMethod from '@components/public-meeting/PaymentMethod'
 import {
@@ -18,27 +17,22 @@ import {
   PaymentType,
   PublicSchedulingSteps,
 } from '@utils/constants/meeting-types'
-import { subscribeToMessages } from '@utils/pub-sub.helper'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useMemo } from 'react'
+import React, { useContext, useMemo, useState } from 'react'
 import { v4 } from 'uuid'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
+import { getUserLocale } from '@/utils/api_helper'
 
 import CheckoutWidgetModal from './CheckoutWidgetModal'
 
 const MakeYourPayment = () => {
-  const {
-    setCurrentStep,
-    selectedType,
-    isAwaitingScheduling,
-    setIsAwaitingScheduling,
-  } = useContext(PublicScheduleContext)
+  const { setCurrentStep, selectedType } = useContext(PublicScheduleContext)
   const toast = useToast()
   const currentAccount = useAccountContext()
   const { needsReconnection, attemptReconnection } = useSmartReconnect()
-
+  const [country, setCountry] = useState<string | undefined>()
   const handleBack = () => {
     setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
   }
@@ -62,6 +56,10 @@ const MakeYourPayment = () => {
     if (currentAccount?.address && needsReconnection) {
       await attemptReconnection()
     }
+    await getUserLocale()
+      .then(data => setCountry(data.country))
+      .catch(() => setCountry(undefined))
+
     onOpen()
   }
   const paymentMethods = useMemo(() => {
@@ -117,7 +115,9 @@ const MakeYourPayment = () => {
         messageChannel={messageChannel}
         isOpen={isOpen}
         onClose={onClose}
+        country={country}
       />
+
       <Heading size="lg">Make your Payment</Heading>
       <Text fontWeight={700}>Select payment method</Text>
       <HStack

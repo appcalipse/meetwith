@@ -19,7 +19,12 @@ import {
 } from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
-import { Account, DayAvailability, MeetingType } from '@/types/Account'
+import {
+  Account,
+  BaseMeetingType,
+  DayAvailability,
+  MeetingType,
+} from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
@@ -64,7 +69,7 @@ import {
 
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
-import { NO_MEETING_TYPE } from './constants/meeting-types'
+import { NO_MEETING_TYPE, SessionType } from './constants/meeting-types'
 import { MeetingPermissions } from './constants/schedule'
 import { getContentFromEncrypted, simpleHash } from './cryptography'
 import {
@@ -974,14 +979,16 @@ const cancelMeeting = async (
   )
 
   // Only the owner or scheduler of the meeting can cancel it
-  const meetingOwner = existingMeeting!.participants.find(
+  const meetingOwners = existingMeeting!.participants.filter(
     user => user.type === ParticipantType.Owner
   )
   const meetingScheduler = existingMeeting!.participants.find(
     user => user.type === ParticipantType.Scheduler
   )
   if (
-    meetingOwner?.account_address !== currentAccountAddress &&
+    meetingOwners?.every(
+      account => account.account_address !== currentAccountAddress
+    ) &&
     meetingScheduler?.account_address !== currentAccountAddress
   ) {
     throw new MeetingCancelForbiddenError()
@@ -1465,15 +1472,16 @@ export const getOwnerPublicUrl = async (
   }
 }
 
-const generateDefaultMeetingType = (): MeetingType => {
+const generateDefaultMeetingType = (account_owner_address: string) => {
   const title = '30 minutes meeting'
-  const meetingType: MeetingType = {
-    id: uuidv4(),
+  const meetingType = {
     title,
     slug: getSlugFromText(title),
     duration_minutes: 30,
     min_notice_minutes: 60,
-  } as any
+    type: SessionType.FREE,
+    account_owner_address,
+  }
 
   return meetingType
 }

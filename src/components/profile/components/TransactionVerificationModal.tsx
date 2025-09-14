@@ -15,6 +15,8 @@ import React, { useEffect, useState } from 'react'
 import { FiArrowLeft, FiEye, FiEyeOff } from 'react-icons/fi'
 
 import { sendVerificationCode } from '@/utils/api_helper'
+import { VERIFICATION_CODE_COUNTDOWN_SECONDS } from '@/utils/constants'
+import { formatCountdown } from '@/utils/generic_utils'
 import { useToastHelpers } from '@/utils/toasts'
 
 interface TransactionVerificationModalProps {
@@ -84,7 +86,7 @@ const TransactionVerificationModal: React.FC<
           'A 5-digit verification code has been sent to your email'
         )
         setCodeSent(true)
-        setCountdown(60)
+        setCountdown(VERIFICATION_CODE_COUNTDOWN_SECONDS)
       } else {
         showErrorToast(
           'Failed to Send Code',
@@ -129,11 +131,12 @@ const TransactionVerificationModal: React.FC<
     <Modal isOpen={isOpen} onClose={handleCancel} size="md" isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
       <ModalContent
-        bg="dark.700"
+        bg="dark-bg"
         borderRadius="12px"
         p={8}
         maxW="592px"
         width="592px"
+        shadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">
@@ -155,10 +158,10 @@ const TransactionVerificationModal: React.FC<
 
             {/* Title and description */}
             <VStack align="flex-start" spacing={2}>
-              <Text fontSize="2xl" fontWeight="bold" color="white">
+              <Text fontSize="2xl" fontWeight="bold" color="text-primary">
                 Transaction verification
               </Text>
-              <Text fontSize="sm" color="gray.400">
+              <Text fontSize="sm" color="text-secondary">
                 Enter your transaction PIN and verification code to complete
                 this transaction. A verification code will be sent to your email
                 automatically.
@@ -167,7 +170,7 @@ const TransactionVerificationModal: React.FC<
 
             {/* Transaction PIN Input */}
             <VStack align="flex-start" spacing={3}>
-              <Text fontSize="sm" fontWeight="medium" color="white">
+              <Text fontSize="sm" fontWeight="medium" color="text-primary">
                 Enter your transaction pin
               </Text>
               <HStack spacing={3}>
@@ -179,24 +182,24 @@ const TransactionVerificationModal: React.FC<
                   mask={!showPin}
                 >
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                 </PinInput>
                 <IconButton
@@ -205,15 +208,15 @@ const TransactionVerificationModal: React.FC<
                   onClick={() => setShowPin(!showPin)}
                   variant="ghost"
                   size="sm"
-                  color="neutral.400"
-                  _hover={{ bg: 'transparent', color: 'white' }}
+                  color="text-muted"
+                  _hover={{ bg: 'transparent', color: 'text-primary' }}
                 />
               </HStack>
             </VStack>
 
             {/* Verification Code Input */}
             <VStack align="flex-start" spacing={3}>
-              <Text fontSize="sm" fontWeight="medium" color="white">
+              <Text fontSize="sm" fontWeight="medium" color="text-primary">
                 Enter the verification code sent to your email (
                 {userEmail.replace(/(.{2}).*(@.*)/, '$1***$2')})
               </Text>
@@ -227,24 +230,24 @@ const TransactionVerificationModal: React.FC<
                   isDisabled={isSendingCode && !codeSent}
                 >
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                   <PinInputField
-                    borderColor="neutral.400"
-                    _hover={{ borderColor: 'gray.400' }}
+                    borderColor="border-subtle"
+                    _hover={{ borderColor: 'border-default' }}
                   />
                 </PinInput>
                 <IconButton
@@ -253,8 +256,8 @@ const TransactionVerificationModal: React.FC<
                   onClick={() => setShowVerificationCode(!showVerificationCode)}
                   variant="ghost"
                   size="sm"
-                  color="neutral.400"
-                  _hover={{ bg: 'transparent', color: 'white' }}
+                  color="text-muted"
+                  _hover={{ bg: 'transparent', color: 'text-primary' }}
                 />
               </HStack>
 
@@ -273,7 +276,7 @@ const TransactionVerificationModal: React.FC<
                   h="auto"
                 >
                   {countdown > 0
-                    ? `Request new code (${countdown}s)`
+                    ? `Request new code (${formatCountdown(countdown)})`
                     : 'Request new code'}
                 </Button>
               </VStack>
@@ -283,7 +286,7 @@ const TransactionVerificationModal: React.FC<
             <HStack spacing={4} pt={4} justifyContent="space-between" pb={10}>
               <Button
                 bg="primary.300"
-                color="dark.800"
+                color="text-primary"
                 _hover={{ bg: 'primary.400' }}
                 onClick={handleVerify}
                 size="md"
@@ -299,7 +302,7 @@ const TransactionVerificationModal: React.FC<
               <Button
                 variant="outline"
                 border="1px solid"
-                bg="neutral.825"
+                bg="bg-surface-tertiary"
                 borderColor="primary.300"
                 color="primary.300"
                 onClick={handleCancel}

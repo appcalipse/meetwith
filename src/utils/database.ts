@@ -170,7 +170,6 @@ import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 import { thirdWebClient } from '@/utils/user_manager'
 
 import {
-  generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
   noNoReplyEmailForAccount,
@@ -189,6 +188,7 @@ import {
   sendReceiptEmail,
   sendSessionBookingIncomeEmail,
 } from './email_helper'
+import { deduplicateArray } from './generic_utils'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { CalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
@@ -255,57 +255,49 @@ const initAccountDBForWallet = async (
       is_invited: is_invited || false,
     },
   ])
-
   if (createdUserAccount.error) {
     throw new Error(createdUserAccount.error.message)
-  }
-  const defaultMeetingType = generateDefaultMeetingType()
-  const defaultAvailabilities = generateEmptyAvailabilities()
-
-  const preferences: AccountPreferences = {
-    availableTypes: [defaultMeetingType],
-    description: '',
-    availabilities: defaultAvailabilities,
-    socialLinks: [],
-    timezone,
-    meetingProviders: [MeetingProvider.GOOGLE_MEET],
   }
 
   if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
     throw new Error('User account not created')
   }
-  const user_account = createdUserAccount.data[0]
+  const user_account: Account = createdUserAccount.data[0]
+  const defaultMeetingType = generateDefaultMeetingType(user_account.address)
+  const defaultAvailabilities = generateEmptyAvailabilities()
+  const defaultBlock = await createAvailabilityBlock(
+    user_account.address,
+    'Default',
+    timezone,
+    defaultAvailabilities,
+    false // don't set as default yet
+  )
 
+  const meetingType: CreateMeetingTypeRequest = {
+    ...defaultMeetingType,
+    fixed_link: false,
+    availability_ids: [defaultBlock.id],
+    calendars: [],
+  }
+  const preferences: AccountPreferences = {
+    description: '',
+    availabilities: defaultAvailabilities,
+    socialLinks: [],
+    timezone,
+    meetingProviders: [MeetingProvider.GOOGLE_MEET],
+    availaibility_id: defaultBlock.id,
+  }
   try {
     const responsePrefs = await db.supabase.from('account_preferences').insert({
       ...preferences,
       owner_account_address: user_account.address,
     })
+    await createMeetingType(user_account.address, meetingType)
 
     if (responsePrefs.error) {
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
-
-    // Create default availability block for new users
-    const defaultWeeklyAvailability = generateDefaultAvailabilities()
-
-    const defaultBlock = await createAvailabilityBlock(
-      user_account.address,
-      'Default',
-      timezone,
-      defaultWeeklyAvailability,
-      true // Set as default
-    )
-
-    // Update account preferences to reference the default availability block
-    await db.supabase
-      .from('account_preferences')
-      .update({
-        availaibility_id: defaultBlock.id,
-      })
-      .eq('owner_account_address', user_account.address)
-
     user_account.preferences = preferences
     user_account.is_invited = is_invited || false
 
@@ -461,8 +453,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     url: link.url?.trim(),
   }))
 
-  await workMeetingTypeGates(account.preferences.availableTypes || [])
-
   const responsePrefsUpdate = await db.supabase
     .from('account_preferences')
     .update({
@@ -471,7 +461,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       availabilities: preferences.availabilities,
       name: preferences.name,
       socialLinks: preferences.socialLinks,
-      availableTypes: preferences.availableTypes,
       meetingProviders: preferences.meetingProviders,
     })
     .match({ owner_account_address: account.address.toLowerCase() })
@@ -709,7 +698,7 @@ const getSlotsForAccount = async (
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
     .order('start')
 
   if (error) {
@@ -736,7 +725,7 @@ const getSlotsForAccountMinimal = async (
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
     .order('start')
 
   if (error) {
@@ -1507,120 +1496,39 @@ const getAccountsNotificationSubscriptionEmails = async (
   return userEmails
 }
 
-const getUserGroups = async (
-  address: string,
-  limit: number,
-  offset: number,
-  email?: string
-): Promise<Array<UserGroups>> => {
-  const { data: invites, error: invitesError } = await db.supabase
-    .from('group_invites')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .or(
-      `user_id.eq.${address.toLowerCase()}${email ? `,email.eq.${email}` : ''}`
-    )
-    .range(
-      offset || 0,
-      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-    )
-  const { data, error } = await db.supabase
-    .from('group_members')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .eq('member_id', address.toLowerCase())
-    .range(
-      offset || 0,
-      (offset || 0) +
-        (limit ? limit - 1 - (invites?.length || 0) : 999_999_999_999_999)
-    )
-
-  if (invitesError) {
-    throw new Error(invitesError.message)
-  }
-  if (error) {
-    throw new Error(error.message)
-  }
-  if (data || invites) {
-    return invites
-      .map(val => ({ ...val, invitePending: true }))
-      .concat(data.map(val => ({ ...val, invitePending: false })))
-  }
-  return []
-}
 const getGroupsAndMembers = async (
   address: string,
-  limit: number,
-  offset: number
+  limit?: string,
+  offset?: string,
+  search?: string,
+  includeInvites?: boolean
 ): Promise<Array<GetGroupsFullResponse>> => {
-  const { data, error } = await db.supabase
-    .from('group_members')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .eq('member_id', address.toLowerCase())
-    .range(
-      offset || 0,
-      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-    )
+  const { data, error } = await db.supabase.rpc<GetGroupsFullResponse>(
+    'get_user_groups_with_members',
+    {
+      user_address: address.toLowerCase(),
+      search_term: search || null,
+      limit_count: limit || 1000,
+      offset_count: offset || 0,
+    }
+  )
+
   if (error) {
     throw new Error(error.message)
   }
-  const groups = []
-  for (const group of data) {
-    const { data: membersData, error: membersError } = await db.supabase
-      .from('group_members')
-      .select()
-      .eq('group_id', group.group.id)
-    if (membersError) {
-      throw new Error(membersError.message)
-    }
-    const addresses = membersData.map(
-      (member: GroupMemberQuery) => member.member_id
-    )
-    const { data: members, error } = await db.supabase
-      .from('accounts')
-      .select(
-        `
-         group_members: group_members(*),
-         preferences: account_preferences(name)
-    `
-      )
-      .in('address', addresses)
-      .filter('group_members.group_id', 'eq', group.group.id)
-      .range(
-        offset || 0,
-        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-      )
-    if (error) {
-      throw new Error(error.message)
-    }
 
-    if (data) {
-      groups.push({
-        ...group.group,
-        members: members.map(member => ({
-          userId: member.group_members?.[0]?.id,
-          displayName: member.preferences?.name,
-          address: member.group_members?.[0]?.member_id as string,
-          role: member.group_members?.[0].role,
-          invitePending: false,
-        })),
-      })
-    }
-  }
-  return groups
+  return data.map(group => ({
+    id: group.id,
+    name: group.name,
+    slug: group.slug,
+    members:
+      group.members.filter(member => {
+        if (includeInvites) {
+          return true
+        }
+        return !member.invitePending
+      }) || [],
+  })) as GetGroupsFullResponse[]
 }
 
 async function findGroupsWithSingleMember(
@@ -1724,12 +1632,46 @@ const getGroupInvites = async ({
   discord_id,
   limit,
   offset,
+  search,
 }: GroupInviteFilters): Promise<Array<UserGroups>> => {
-  let query = db.supabase.from('group_invites').select(`
-    id,
-    role,
-    group: groups(id, name, slug)
-  `)
+  const { data, error } = await db.supabase.rpc(
+    'get_group_invites_with_search',
+    {
+      user_address: address || null,
+      target_group_id: group_id || null,
+      target_user_id: user_id || null,
+      target_email: email || null,
+      target_discord_id: discord_id || null,
+      search_term: search || null,
+      limit_count: limit || 1000,
+      offset_count: offset || 0,
+    }
+  )
+
+  if (error) {
+    console.error('Error executing query:', error)
+    throw new Error(error.message)
+  }
+
+  return data.map(item => ({
+    id: item.id,
+    role: item.role,
+    group: {
+      id: item.group_id,
+      name: item.group_name,
+      slug: item.group_slug,
+    },
+    invitePending: item.invite_pending,
+  }))
+}
+const getGroupInvitesCount = async ({
+  address,
+  group_id,
+  user_id,
+  email,
+  discord_id,
+}: GroupInviteFilters): Promise<number | null> => {
+  let query = db.supabase.from('group_invites').select('id', { count: 'exact' })
   let orQuery = ''
   if (address) {
     orQuery = `user_id.eq.${address.toLowerCase()}`
@@ -1748,32 +1690,11 @@ const getGroupInvites = async ({
     orQuery += (orQuery ? ',' : '') + `discord_id.eq.${discord_id}`
   }
   query.or(orQuery)
-  query = query.range(
-    offset || 0,
-    (offset || 0) + (limit ? limit - 1 : 999999999999999)
-  )
-
-  try {
-    const { data, error } = await query
-    if (error) {
-      console.error('Error executing query:', error)
-      throw new Error(error.message)
-    }
-
-    const result = data.map((item: any) => ({
-      ...item,
-      invitePending: true, // Since this is from group_invites, set invitePending to true
-    }))
-    return result
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error('Error in getGroupInvites function:', error.message)
-      throw new Error(error.message)
-    } else {
-      console.error('Unexpected error in getGroupInvites function:', error)
-      throw new Error('An unexpected error occurred')
-    }
+  const { count, error } = await query
+  if (error) {
+    throw new Error(error.message)
   }
+  return count
 }
 const publicGroupJoin = async (group_id: string, address: string) => {
   const groupUsers = await getGroupMembersInternal(group_id)
@@ -1969,10 +1890,7 @@ const getGroupUsers = async (
       .in('address', addresses)
       .filter('group_members.group_id', 'eq', group_id)
       .filter('group_invites.group_id', 'eq', group_id)
-      .range(
-        offset || 0,
-        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-      )
+      .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
     if (error) {
       throw new Error(error.message)
     }
@@ -2448,30 +2366,30 @@ const addOrUpdateConnectedCalendar = async (
     throw new Error(error.message)
   }
   const calendar = data[0] as ConnectedCalendar
-
-  try {
-    const integration = getConnectedCalendarIntegration(
-      address.toLowerCase(),
-      email,
-      provider,
-      payload
-    )
-    for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
-      // don't parellelize this as it can make us hit google's rate limit
-      await handleWebHook(cal.calendarId, calendar.id, integration)
-    }
-  } catch (e) {
-    Sentry.captureException(e, {
-      extra: {
-        calendarId: calendar.id,
-        accountAddress: address,
+  if (provider === TimeSlotSource.GOOGLE) {
+    try {
+      const integration = getConnectedCalendarIntegration(
+        address.toLowerCase(),
         email,
         provider,
-      },
-    })
-    console.error('Error adding new calendar to existing meeting types:', e)
+        payload
+      )
+      for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+        // don't parellelize this as it can make us hit google's rate limit
+        await handleWebHook(cal.calendarId, calendar.id, integration)
+      }
+    } catch (e) {
+      Sentry.captureException(e, {
+        extra: {
+          calendarId: calendar.id,
+          accountAddress: address,
+          email,
+          provider,
+        },
+      })
+      console.error('Error adding new calendar to existing meeting types:', e)
+    }
   }
-
   return calendar
 }
 
@@ -3506,6 +3424,7 @@ const getAccountsWithTgConnected = async (): Promise<
   }
   return data
 }
+
 const getDiscordAccounts = async (): Promise<
   Array<DiscordConnectedAccounts>
 > => {
@@ -3538,7 +3457,21 @@ const findAccountsByText = async (
   }
   return data?.[0]
 }
-
+const getGroupMembersOrInvite = async (
+  group_id: string,
+  address: string,
+  state: 'pending' | 'accepted'
+) => {
+  const { data, error: searchError } = await db.supabase
+    .from(state === 'accepted' ? 'group_members' : 'group_invites')
+    .select()
+    .eq('group_id', group_id)
+    .eq(state === 'accepted' ? 'member_id' : 'user_id', address)
+  if (searchError) {
+    throw new Error(searchError.message)
+  }
+  return data?.[0]
+}
 const getOrCreateContactInvite = async (
   owner_address: string,
   address?: string,
@@ -3562,7 +3495,6 @@ const getOrCreateContactInvite = async (
   if (address) {
     channel = ChannelType.ACCOUNT
   }
-
   const { data: insertData, error: insertError } = await db.supabase
     .from('contact_invite')
     .insert([
@@ -3602,7 +3534,7 @@ const isUserContact = async (owner_address: string, address: string) => {
 const getContacts = async (
   address: string,
   query = '',
-  limit = 10,
+  limit = 1000,
   offset = 0
 ): Promise<DBContact> => {
   const { data, error } = await db.supabase.rpc('search_contacts', {
@@ -3614,13 +3546,13 @@ const getContacts = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContact
+  return Array.isArray(data) ? data[0] : data
 }
 
 const getContactLean = async (
   address: string,
   query = '',
-  limit = 10,
+  limit = 1000,
   offset = 0
 ): Promise<DBContactLean> => {
   const { data, error } = await db.supabase.rpc<DBContactLean>(
@@ -3635,7 +3567,7 @@ const getContactLean = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContactLean
+  return Array.isArray(data) ? data[0] : data
 }
 
 const checkContactExists = async (
@@ -3652,7 +3584,7 @@ const checkContactExists = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContactLean
+  return Array.isArray(data) ? data[0] : data
 }
 
 const getContactById = async (
@@ -3705,7 +3637,7 @@ const getContactInvites = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContactInvite
+  return Array.isArray(data) ? data[0] : data
 }
 const _getContactByAddress = async (
   owner_address: string,
@@ -3859,9 +3791,49 @@ const acceptContactInvite = async (
       account_address,
       invite?.account_owner_address,
     ])
-    .in('destination', [account_address, invite?.account_owner_address])
+    .in(
+      'destination',
+      deduplicateArray([
+        account_address,
+        invite?.account_owner_address,
+        invite.destination,
+      ])
+    )
+
   if (deleteError) {
     throw new Error(deleteError.message)
+  }
+}
+const addContactInvite = async (
+  account_address: string,
+  contact_address: string
+) => {
+  const { error: insertError } = await db.supabase.from('contact').insert([
+    {
+      account_owner_address: account_address,
+      contact_address,
+      status: ContactStatus.ACTIVE,
+    },
+    {
+      account_owner_address: contact_address,
+      contact_address: account_address,
+      status: ContactStatus.ACTIVE,
+    },
+  ])
+
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
+  // clean up old status contacts
+  const { error: contactClearError } = await db.supabase
+    .from('contact')
+    .delete()
+    .in('account_owner_address', [account_address, contact_address])
+    .in('contact_address', [account_address, contact_address])
+    .eq('status', ContactStatus.INACTIVE)
+
+  if (contactClearError) {
+    throw new Error(contactClearError.message)
   }
 }
 const rejectContactInvite = async (
@@ -3896,6 +3868,21 @@ const rejectContactInvite = async (
     .from('contact_invite')
     .delete()
     .eq('id', invite_identifier)
+  await db.supabase
+    .from('contact_invite')
+    .delete()
+    .in('account_owner_address', [
+      account_address,
+      invite?.account_owner_address,
+    ])
+    .in(
+      'destination',
+      deduplicateArray([
+        account_address,
+        invite?.account_owner_address,
+        invite.destination,
+      ])
+    )
   if (deleteError) {
     throw new Error(deleteError.message)
   }
@@ -5949,6 +5936,7 @@ const deleteVerifications = async (verificationId: string): Promise<void> => {
 
 export {
   acceptContactInvite,
+  addContactInvite,
   addOrUpdateConnectedCalendar,
   addUserToGroup,
   changeGroupRole,
@@ -5996,6 +5984,8 @@ export {
   getGroup,
   getGroupInternal,
   getGroupInvites,
+  getGroupInvitesCount,
+  getGroupMembersOrInvite,
   getGroupName,
   getGroupsAndMembers,
   getGroupsEmpty,
@@ -6018,7 +6008,6 @@ export {
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
-  getUserGroups,
   handleGuestCancel,
   handleMeetingCancelSync,
   handleWebhookEvent,

@@ -1,10 +1,10 @@
-import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   chakra,
   Flex,
   HStack,
   Image,
+  Link,
   Stack,
   Text,
   useColorModeValue,
