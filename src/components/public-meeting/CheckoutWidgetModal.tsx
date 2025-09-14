@@ -11,7 +11,7 @@ import {
   subscribeToMessages,
   unSubscribeToMessages,
 } from '@utils/pub-sub.helper'
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef } from 'react'
 import { CheckoutWidget, useActiveWallet } from 'thirdweb/react'
 
 import useAccountContext from '@/hooks/useAccountContext'
@@ -25,9 +25,15 @@ type Props = {
   isOpen: boolean
   onClose: () => void
   messageChannel: string
+  country?: string
 }
 
-const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
+const CheckoutWidgetModal = ({
+  isOpen,
+  onClose,
+  messageChannel,
+  country,
+}: Props) => {
   const {
     selectedType,
     account,
@@ -55,7 +61,6 @@ const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
   const currentAccount = useAccountContext()
   const subscriptionRef = useRef<boolean>(false)
   const wallet = useActiveWallet()
-  const [progress, setProgress] = useState(0)
   const chain = supportedChains.find(
     val => val.chain === selectedChain
   ) as ChainInfo
@@ -74,24 +79,20 @@ const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
       }
       subscriptionRef.current = true
 
-      const transaction = await new Promise<Transaction>(
-        async (resolve, reject) => {
-          await subscribeToMessages(
-            messageChannel,
-            DEFAULT_MESSAGE_NAME,
-            message => {
-              const transaction = JSON.parse(message.data) as Transaction
-              resolve(transaction)
-            }
-          )
-          setProgress(40)
-        }
-      )
+      const transaction = await new Promise<Transaction>(async resolve => {
+        await subscribeToMessages(
+          messageChannel,
+          DEFAULT_MESSAGE_NAME,
+          message => {
+            const transaction = JSON.parse(message.data) as Transaction
+            resolve(transaction)
+          }
+        )
+      })
       setIsAwaitingScheduling(true)
 
       await unSubscribeToMessages(messageChannel, DEFAULT_MESSAGE_NAME)
       if (transaction.transaction_hash) {
-        setProgress(100)
         handleNavigateToBook(transaction.transaction_hash)
         // persist the transaction in localStorage in-case the schedule fails
         localStorage.setItem(
@@ -158,10 +159,11 @@ const CheckoutWidgetModal = ({ isOpen, onClose, messageChannel }: Props) => {
       >
         <CheckoutWidget
           client={thirdWebClient}
-          chain={chain.thirdwebChain}
+          chain={chain?.thirdwebChain}
           amount={amount.toString()}
           tokenAddress={NATIVE_TOKEN_ADDRESS}
           activeWallet={wallet}
+          country={country}
           seller={
             (selectedType?.plan?.payment_address || account.address) as Address
           }

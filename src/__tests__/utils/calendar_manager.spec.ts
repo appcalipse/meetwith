@@ -39,7 +39,6 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
     preferences: {
       name: faker.name.firstName(),
       timezone: faker.address.timeZone(),
-      availableTypes: [],
       description: faker.datatype.string(),
       availabilities: [],
       socialLinks: [],

@@ -17,9 +17,9 @@ const Dashboard: NextPage<DashboardProps> = props => {
         base: '100%',
         '2xl': '8xl',
       }}
-      mt={8}
+      mt={{ base: 16, md: 8 }}
       flex={1}
-      px={8}
+      px={{ base: 5, md: 8 }}
     >
       <DashboardContent currentSection={props.section} />
     </Container>

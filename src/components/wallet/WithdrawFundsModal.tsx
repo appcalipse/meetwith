@@ -187,8 +187,16 @@ const WithdrawFundsModal = (props: Props) => {
       size={'lg'}
       isCentered
     >
-      <ModalOverlay />
-      <ModalContent p="6">
+      <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
+      <ModalContent
+        p="6"
+        height={{ base: '100%', md: 'auto' }}
+        borderRadius={{ base: '0', md: '12px' }}
+        border="1px solid"
+        borderColor="border-wallet-subtle"
+        boxShadow="none"
+        bg="bg-surface"
+      >
         <ModalHeader
           p={'0'}
           display="flex"

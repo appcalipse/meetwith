@@ -19,7 +19,8 @@ export default function LogoutPage() {
   const doLogout = async () => {
     queryClient.clear()
     logout(wallet!)
-    await router.push('/', {
+    await router.push({
+      pathname: '/',
       query,
     })
   }

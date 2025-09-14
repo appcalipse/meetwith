@@ -13,7 +13,8 @@ import {
 } from '@chakra-ui/react'
 import React, { useContext } from 'react'
 
-import { ScheduleContext } from '@/pages/dashboard/schedule'
+import { useScheduleActions } from '@/providers/schedule/ActionsContext'
+import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 
 export interface IGroupInviteCardModal {
   onClose: () => void
@@ -23,7 +24,8 @@ export interface IGroupInviteCardModal {
 }
 
 const DeleteMeetingModal: React.FC<IGroupInviteCardModal> = props => {
-  const { handleDelete, isDeleting } = useContext(ScheduleContext)
+  const { handleDelete } = useScheduleActions()
+  const { isDeleting } = useParticipantPermissions()
   const onDelete = () => {
     if (props.isScheduler) {
       props.openSchedulerModal()

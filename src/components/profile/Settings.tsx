@@ -1,10 +1,14 @@
 import {
   Box,
   Button,
-  Flex,
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerOverlay,
   Heading,
   HStack,
   Icon,
+  IconButton,
   Text,
   useMediaQuery,
   VStack,
@@ -12,6 +16,8 @@ import {
 import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
+import { HiOutlineMenuAlt2 } from 'react-icons/hi'
+import { IoCloseOutline } from 'react-icons/io5'
 
 import AccountPlansAndBilling from '@/components/profile/AccountPlansAndBilling'
 import WalletAndPayment from '@/components/profile/WalletAndPayment'
@@ -56,6 +62,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
   const [activeSection, setActiveSection] = useState<SettingsSection>(
     SettingsSection.ACCOUNT_DETAILS
   )
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
   const [isMobile] = useMediaQuery('(max-width: 1024px)')
 
@@ -88,6 +95,19 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
     router.push(`/dashboard/${EditMode.MEETINGS}`)
   }
 
+  const handleMobileMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  const handleMobileMenuClose = () => {
+    setIsMobileMenuOpen(false)
+  }
+
+  const handleMobileMenuItemClick = (section: SettingsSection) => {
+    setActiveSection(section)
+    setIsMobileMenuOpen(false)
+  }
+
   useEffect(() => {
     const hash = router.asPath.split('#')[1] || ''
 
@@ -106,6 +126,95 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
 
   return (
     <>
+      {/* Mobile Settings Menu Drawer */}
+      <Drawer
+        isOpen={isMobileMenuOpen}
+        onClose={handleMobileMenuClose}
+        placement="left"
+        size="full"
+      >
+        <DrawerOverlay />
+        <DrawerContent bg="bg-surface">
+          <DrawerBody p={0}>
+            <Box
+              width="100%"
+              height="100vh"
+              p={6}
+              pt={10}
+              display="flex"
+              flexDirection="column"
+            >
+              {/* Close button */}
+              <HStack justify="flex-end" mb={6}>
+                <IconButton
+                  aria-label="Close settings menu"
+                  icon={<IoCloseOutline size={32} color="#F46739" />}
+                  variant="ghost"
+                  onClick={handleMobileMenuClose}
+                  color="text-primary"
+                />
+              </HStack>
+
+              <Heading
+                fontSize="26px"
+                fontWeight="700"
+                mb={10}
+                color="text-primary"
+                pl={3}
+              >
+                Settings
+              </Heading>
+
+              {/* Settings navigation items */}
+              <VStack
+                spacing={4}
+                align="stretch"
+                flex={1}
+                overflowY="auto"
+                css={{
+                  '&::-webkit-scrollbar': {
+                    width: '4px',
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    background: 'transparent',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    borderRadius: '2px',
+                  },
+                  '&::-webkit-scrollbar-thumb:hover': {
+                    background: 'rgba(255, 255, 255, 0.3)',
+                  },
+                }}
+              >
+                {settingsNavItems.map(item => {
+                  const isActive = activeSection === item.section
+                  return (
+                    <Button
+                      key={item.section}
+                      variant="ghost"
+                      justifyContent="flex-start"
+                      alignItems="center"
+                      onClick={() => handleMobileMenuItemClick(item.section)}
+                      color={isActive ? 'primary.200' : 'text-primary'}
+                      fontWeight={isActive ? 'semibold' : 'normal'}
+                      px={3}
+                      py={2.5}
+                      borderRadius="8px"
+                      fontSize="lg"
+                    >
+                      <Text fontSize="18px" fontWeight="500">
+                        {item.name}
+                      </Text>
+                    </Button>
+                  )
+                })}
+              </VStack>
+            </Box>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
+
       {/* Fixed Settings Navigation Sidebar */}
       {!isMobile && (
         <Box
@@ -115,7 +224,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
           left={0}
           top={0}
           zIndex={10}
-          bg="neutral.900"
+          bg="bg-surface"
           borderRadius={12}
           p={6}
           pt={10}
@@ -135,7 +244,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
             <Text fontWeight={600}>Go Back</Text>
           </HStack>
 
-          <Heading fontSize="xl" ml={3} mb={8} color="white">
+          <Heading fontSize="xl" ml={3} mb={8} color="text-primary">
             Settings
           </Heading>
 
@@ -170,7 +279,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
                   justifyContent="flex-start"
                   alignItems="center"
                   onClick={() => setActiveSection(item.section)}
-                  color={isActive ? 'primary.200' : 'white'}
+                  color={isActive ? 'primary.200' : 'text-primary'}
                   fontWeight={isActive ? 'semibold' : 'normal'}
                   px={3}
                   py={2.5}
@@ -190,8 +299,39 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
         overflowY="auto"
         mb={10}
         pl={{ base: 0, lg: '21%' }}
-        pt={{ base: '70px', lg: 0 }}
+        pt={0}
+        display={{ base: 'flex', lg: 'block' }}
+        flexDirection={{ base: 'column', lg: 'row' }}
       >
+        {/* Mobile Header with Hamburger Menu */}
+        {isMobile && (
+          <Box zIndex={20} p={0} pb={4}>
+            <VStack gap={4} align="flex-start">
+              <HStack
+                spacing={2}
+                color="primary.400"
+                cursor="pointer"
+                onClick={handleBack}
+              >
+                <Icon as={FaArrowLeft} />
+                <Text fontWeight={600}>Go Back</Text>
+              </HStack>
+
+              <HStack spacing={2} align="center" ml={-2} pt={2}>
+                <IconButton
+                  aria-label="Open settings menu"
+                  icon={<HiOutlineMenuAlt2 size={30} />}
+                  variant="ghost"
+                  onClick={handleMobileMenuToggle}
+                  color="text-primary"
+                />
+                <Text fontSize="20px" fontWeight="700" color="text-primary">
+                  Settings
+                </Text>
+              </HStack>
+            </VStack>
+          </Box>
+        )}
         {renderContent()}
       </Box>
     </>

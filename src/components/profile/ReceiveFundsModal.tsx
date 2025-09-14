@@ -108,10 +108,10 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
     >
       <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
       <ModalContent
-        bg="neutral.900"
+        bg="bg-surface"
         borderRadius={{ base: '0', md: '12px' }}
         border="1px solid"
-        borderColor="neutral.825"
+        borderColor="border-wallet-subtle"
         maxW={{ base: '100%', md: '500px' }}
         mx={{ base: 0, md: 'auto' }}
         my={{ base: 0, md: 'auto' }}
@@ -129,7 +129,7 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
               _hover={{ color: 'primary.300' }}
             />
             <Text
-              color="white"
+              color="text-primary"
               fontSize={{ base: '18px', md: '20px' }}
               fontWeight="600"
             >
@@ -138,12 +138,12 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
           </HStack>
         </ModalHeader>
 
-        <ModalBody pb={{ base: 4, md: 6 }}>
+        <ModalBody pb={{ base: 4, md: 6 }} px={{ base: 2, md: 6 }}>
           <VStack spacing={{ base: 4, md: 6 }} align="center">
             {/* Network Indicator */}
             <Box textAlign="center" mb={2}>
               <Text
-                color="neutral.300"
+                color="text-secondary"
                 fontSize={{ base: '12px', md: '14px' }}
                 fontWeight="500"
               >
@@ -171,7 +171,11 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Text color="gray.600" fontSize="12px" textAlign="center">
+                  <Text
+                    color="text-secondary"
+                    fontSize="12px"
+                    textAlign="center"
+                  >
                     Generating QR Code...
                   </Text>
                 </Box>
@@ -188,13 +192,17 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
                 <Box
                   w="100%"
                   h="100%"
-                  bg="gray.200"
+                  bg="bg-surface-tertiary-2"
                   borderRadius="8px"
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Text color="gray.600" fontSize="12px" textAlign="center">
+                  <Text
+                    color="text-secondary"
+                    fontSize="12px"
+                    textAlign="center"
+                  >
                     No QR Code Available
                   </Text>
                 </Box>
@@ -219,7 +227,7 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
             {/* Wallet Address */}
             <Box w="100%">
               <Box
-                bg="neutral.825"
+                bg="bg-surface-tertiary"
                 borderRadius={{ base: '8px', md: '12px' }}
                 px={{ base: 3, md: 4 }}
                 py={{ base: 2, md: 3 }}
@@ -227,10 +235,10 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
                 alignItems="center"
                 gap={3}
                 border="1px solid"
-                borderColor="neutral.700"
+                borderColor="border-default"
               >
                 <Text
-                  color="white"
+                  color="text-primary"
                   fontSize={{ base: '14px', md: '16px' }}
                   fontWeight="500"
                   flex="1"
@@ -239,7 +247,7 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
                 </Text>
                 <Icon
                   as={FiCopy}
-                  color="white"
+                  color="text-primary"
                   fontSize={{ base: '14px', md: '16px' }}
                   cursor="pointer"
                   _hover={{ opacity: 0.8 }}
@@ -250,7 +258,10 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
 
             {/* Instructional Text */}
             <VStack spacing={2} align="center" textAlign="center">
-              <Text color="white" fontSize={{ base: '12px', md: '14px' }}>
+              <Text
+                color="text-primary"
+                fontSize={{ base: '12px', md: '14px' }}
+              >
                 Copy the address to send funds to this wallet.
               </Text>
               <Text

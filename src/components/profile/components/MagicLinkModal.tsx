@@ -7,7 +7,6 @@ import {
   ModalContent,
   ModalOverlay,
   Text,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import React from 'react'
@@ -32,10 +31,6 @@ const MagicLinkModal: React.FC<MagicLinkModalProps> = ({
   confirmButtonText,
   isLoading = false,
 }) => {
-  const textColor = useColorModeValue('gray.900', 'white')
-  const mutedColor = useColorModeValue('gray.600', 'gray.400')
-  const primaryColor = '#F46739'
-
   return (
     <Modal
       isOpen={isOpen}
@@ -45,7 +40,7 @@ const MagicLinkModal: React.FC<MagicLinkModalProps> = ({
     >
       <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
       <ModalContent
-        bg="dark.700"
+        bg="dark-bg"
         borderRadius={{ base: '0', md: '12px' }}
         p={{ base: 6, md: 8 }}
         maxW={{ base: '100%', md: '592px' }}
@@ -64,7 +59,7 @@ const MagicLinkModal: React.FC<MagicLinkModalProps> = ({
                 minW="auto"
                 onClick={onClose}
                 _hover={{ bg: 'transparent' }}
-                leftIcon={<FaArrowLeft color={primaryColor} size={20} />}
+                leftIcon={<FaArrowLeft color="#F46739" size={20} />}
                 color="primary.400"
                 fontWeight="medium"
                 fontSize="sm"
@@ -75,10 +70,10 @@ const MagicLinkModal: React.FC<MagicLinkModalProps> = ({
 
             {/* Title and message */}
             <VStack align="flex-start" spacing={3}>
-              <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+              <Text fontSize="2xl" fontWeight="bold" color="text-primary">
                 {title}
               </Text>
-              <Text fontSize="md" color={mutedColor} lineHeight="1.6">
+              <Text fontSize="md" color="text-muted" lineHeight="1.6">
                 {message}
               </Text>
             </VStack>
@@ -103,7 +98,7 @@ const MagicLinkModal: React.FC<MagicLinkModalProps> = ({
               <Button
                 variant="outline"
                 border="1px solid"
-                bg="neutral.825"
+                bg="bg-surface-tertiary"
                 borderColor="primary.300"
                 color="primary.300"
                 onClick={onClose}

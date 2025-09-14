@@ -10,7 +10,7 @@ import {
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 
-import { ellipsizeAddress } from '@/utils/user_manager'
+import { ellipsizeAddress, getAccountDisplayName } from '@/utils/user_manager'
 
 import { Account } from '../../types/Account'
 import { EditMode } from '../../types/Dashboard'
@@ -76,7 +76,11 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         backgroundColor={'neutral.50'}
       >
         <Box width="24px" height="24px" mr={{ base: 0, lg: 2 }}>
-          <Avatar account={props.account} />
+          <Avatar
+            address={props.account.address}
+            avatar_url={props.account.preferences?.avatar_url || ''}
+            name={getAccountDisplayName(props.account)}
+          />
         </Box>
         {props.isOpen && (
           <Text fontSize={'sm'} ml={2}>

@@ -31,9 +31,9 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
 
   return (
     <Box
-      bg="neutral.900"
+      bg="bg-surface"
       border="1px solid"
-      borderColor="neutral.400"
+      borderColor="border-subtle"
       borderRadius={12}
       p={{ base: 4, md: 6 }}
       width="100%"
@@ -54,14 +54,14 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
           gap={{ base: 4, md: 0 }}
         >
           <HStack spacing={5}>
-            <Heading fontSize={20} fontWeight={500} color="neutral.0">
+            <Heading fontSize={20} fontWeight={500} color="text-primary">
               {block.title}
             </Heading>
             {block.isDefault && (
               <Badge
                 background="green.400"
                 borderRadius={8}
-                color="neutral.0"
+                color="text-primary"
                 fontSize={12.8}
                 textTransform="none"
                 fontWeight={500}
@@ -72,19 +72,19 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
               </Badge>
             )}
           </HStack>
-          <HStack color="neutral.300" fontSize="sm">
+          <HStack color="text-secondary" fontSize="sm">
             <HStack
               spacing={1}
-              background="neutral.800"
+              bg="bg-surface-tertiary-2"
               borderRadius={8}
               fontSize={12.8}
               px={3}
               py={1}
             >
               <Box as="span" fontSize={16}>
-                <AiFillClockCircle color="#ffffff" />
+                <AiFillClockCircle color="text-primary" />
               </Box>
-              <Text color="neutral.0">
+              <Text color="text-primary">
                 {getHoursPerWeek(block.weekly_availability)}
               </Text>
             </HStack>
@@ -97,14 +97,14 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
           direction="column"
           gap={3}
           borderBottom="1px solid"
-          borderColor="neutral.400"
+          borderColor="border-subtle"
           pb={3}
           width="100%"
         >
           {getFormattedSchedule(block.weekly_availability).map(
             (schedule, index) => (
               <Flex key={index} align="center" gap={1}>
-                <Text color="neutral.300" fontWeight={500} fontSize={16}>
+                <Text color="text-secondary" fontWeight={500} fontSize={16}>
                   <span style={{ fontWeight: 900 }}>{schedule.weekdays}</span> :{' '}
                   {schedule.timeRange}
                 </Text>
@@ -113,7 +113,7 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
           )}
         </Flex>
 
-        <Text color="neutral.300" fontWeight={500} fontSize={16}>
+        <Text color="text-secondary" fontWeight={500} fontSize={16}>
           Timezone: {block.timezone}
         </Text>
 
@@ -121,7 +121,7 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
         {meetingTypes.filter(type => type && type.title).length > 0 && (
           <Box width="100%">
             <Flex align="center" gap={2} flexWrap="wrap">
-              <Text color="neutral.300" fontWeight={500} fontSize={16}>
+              <Text color="text-secondary" fontWeight={500} fontSize={16}>
                 Associated Meeting Types:
               </Text>
               <Flex flexWrap="wrap" gap={2}>
@@ -130,8 +130,8 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
                   .map(meetingType => (
                     <Badge
                       key={meetingType.id}
-                      background="neutral.700"
-                      color="neutral.0"
+                      bg="bg-surface-tertiary-2"
+                      color="text-primary"
                       borderRadius={6}
                       fontSize={12}
                       px={2}

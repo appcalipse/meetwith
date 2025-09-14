@@ -1,13 +1,11 @@
-import { Avatar as ChakraAvatar, Image } from '@chakra-ui/react'
+import { Avatar as ChakraAvatar } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
-import { getAccountDisplayName } from '@utils/user_manager'
 import { useEffect, useState } from 'react'
 
-import { Account } from '@/types/Account'
-
 interface AvatarProps {
-  account: Account
-  url?: string
+  avatar_url?: string
+  address?: string
+  name?: string
 }
 
 export const Avatar = (props: AvatarProps) => {
@@ -15,17 +13,16 @@ export const Avatar = (props: AvatarProps) => {
   useEffect(() => {
     setRendered(true)
   }, [])
-  const avatar_url = props?.url || props?.account?.preferences?.avatar_url
   return !rendered ? (
     <div />
-  ) : avatar_url ? (
+  ) : props.avatar_url ? (
     <ChakraAvatar
       w={'100%'}
       h={'100%'}
-      name={getAccountDisplayName(props.account)}
-      src={avatar_url}
+      name={props.name}
+      src={props.avatar_url}
     />
   ) : (
-    <Jazzicon address={props.account.address} />
+    <Jazzicon address={props.address || ''} />
   )
 }

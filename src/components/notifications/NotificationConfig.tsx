@@ -222,8 +222,8 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
       flex={1}
       mb={8}
       spacing={6}
-      bg="neutral.900"
-      p={8}
+      bg="bg-surface"
+      p={{ base: 6, md: 8 }}
       borderRadius={16}
     >
       <Heading fontSize="2xl">Notifications</Heading>
@@ -252,7 +252,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
                   py={1.5}
                   borderRadius="full"
                   bg={emailNotifications ? 'green.200' : 'primary.75'}
-                  color={emailNotifications ? 'green.400' : 'primary.500'}
+                  color={emailNotifications ? 'green.600' : 'primary.500'}
                   fontSize="xs"
                 >
                   {emailNotifications ? 'Active' : 'Inactive'}
@@ -263,7 +263,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             {emailNotifications && (
               <VStack align="stretch" spacing={2}>
                 <FormControl maxW="345px" mt={4}>
-                  <FormLabel fontSize="md" color="neutral.0">
+                  <FormLabel fontSize="md" color="text-primary">
                     Email address
                   </FormLabel>
                   <Input
@@ -272,7 +272,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
                     onChange={e => setTempEmail(e.target.value)}
                     isReadOnly={!isEditingEmail}
                     bg="transparent"
-                    borderColor="neutral.400"
+                    borderColor="border-subtle"
                   />
                 </FormControl>
                 {isEditingEmail ? (
@@ -343,7 +343,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
                     telegramNotificationConfigured ? 'green.200' : 'primary.75'
                   }
                   color={
-                    telegramNotificationConfigured ? 'green.400' : 'primary.500'
+                    telegramNotificationConfigured ? 'green.600' : 'primary.500'
                   }
                   fontSize="xs"
                 >

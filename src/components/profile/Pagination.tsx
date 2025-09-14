@@ -42,10 +42,10 @@ const Pagination: React.FC<PaginationProps> = ({
       alignItems="center"
       py={4}
       px={6}
-      bg="neutral.900"
+      bg="bg-surface"
       borderRadius="12px"
       border="1px solid"
-      borderColor="neutral.825"
+      borderColor="border-wallet-subtle"
     >
       <HStack spacing={4} align="center">
         {/* Previous Button */}
@@ -53,35 +53,37 @@ const Pagination: React.FC<PaginationProps> = ({
           onClick={handlePrevious}
           isDisabled={!canGoPrevious || isLoading}
           bg="transparent"
-          color={canGoPrevious ? 'neutral.300' : 'neutral.600'}
+          color={canGoPrevious ? 'text-secondary' : 'text-muted'}
           _hover={{
-            bg: canGoPrevious ? 'neutral.800' : 'transparent',
-            color: canGoPrevious ? 'neutral.200' : 'neutral.600',
+            bg: canGoPrevious ? 'bg-surface-tertiary' : 'transparent',
+            color: canGoPrevious ? 'text-primary' : 'text-muted',
           }}
           _active={{
-            bg: canGoPrevious ? 'neutral.700' : 'transparent',
+            bg: canGoPrevious ? 'border-default' : 'transparent',
           }}
           borderRadius="8px"
           px={3}
           py={2}
           transition="all 0.2s"
           border="1px solid"
-          borderColor={canGoPrevious ? 'neutral.700' : 'neutral.800'}
+          borderColor={
+            canGoPrevious ? 'border-wallet-subtle' : 'bg-surface-tertiary'
+          }
         >
           <Icon as={FiChevronLeft} fontSize="16px" />
         </Button>
 
         {/* Page Info */}
         <Text
-          color="neutral.300"
+          color="text-secondary"
           fontSize="14px"
           fontWeight="500"
           px={4}
           py={2}
-          bg="neutral.800"
+          bg="bg-surface-tertiary"
           borderRadius="8px"
           border="1px solid"
-          borderColor="neutral.700"
+          borderColor="border-wallet-subtle"
         >
           Page {currentPage} of {totalPages}
         </Text>
@@ -91,20 +93,22 @@ const Pagination: React.FC<PaginationProps> = ({
           onClick={handleNext}
           isDisabled={!canGoNext || isLoading}
           bg="transparent"
-          color={canGoNext ? 'neutral.300' : 'neutral.600'}
+          color={canGoNext ? 'text-secondary' : 'text-muted'}
           _hover={{
-            bg: canGoNext ? 'neutral.800' : 'transparent',
-            color: canGoNext ? 'neutral.200' : 'neutral.600',
+            bg: canGoNext ? 'bg-surface-tertiary' : 'transparent',
+            color: canGoNext ? 'text-primary' : 'text-muted',
           }}
           _active={{
-            bg: canGoNext ? 'neutral.700' : 'transparent',
+            bg: canGoNext ? 'border-wallet-subtle' : 'transparent',
           }}
           borderRadius="8px"
           px={3}
           py={2}
           transition="all 0.2s"
           border="1px solid"
-          borderColor={canGoNext ? 'neutral.700' : 'neutral.800'}
+          borderColor={
+            canGoNext ? 'border-wallet-subtle' : 'bg-surface-tertiary'
+          }
         >
           <Icon as={FiChevronRight} fontSize="16px" />
         </Button>
