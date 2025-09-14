@@ -261,7 +261,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                     <Tr color="text-primary">
                       <Th alignItems={'start'} px={0}>
                         <Heading size="sm" fontWeight={800}>
-                          Contact
+                          Member
                         </Heading>
                       </Th>
                       <Th pl={0}>
@@ -373,100 +373,6 @@ const GroupCard: React.FC<IGroupCard> = props => {
                   </Tbody>
                 </Table>
               </TableContainer>
-              <HStack
-                width="100%"
-                justifyContent="space-between"
-                pb={2}
-                borderBottomWidth={1}
-                borderBottomColor={borderColor}
-                py={3}
-                px={1}
-              >
-                <Heading size="sm" flexBasis="57%" fontWeight={800}>
-                  Contact
-                </Heading>
-                <Flex
-                  alignItems="center"
-                  gap={0.5}
-                  align="flex-start"
-                  flexBasis="30%"
-                >
-                  <Heading size="sm" fontWeight={800}>
-                    Contact Connection{' '}
-                  </Heading>
-                  <Tooltip.Provider delayDuration={400}>
-                    <Tooltip.Root>
-                      <Tooltip.Trigger>
-                        <Flex
-                          w="16px"
-                          h="16px"
-                          borderRadius="50%"
-                          bgColor={iconColor}
-                          justifyContent="center"
-                          alignItems="center"
-                          ml={1}
-                        >
-                          <Icon w={1} color={itemsBgColor} as={FaInfo} />
-                        </Flex>
-                      </Tooltip.Trigger>
-                      <Tooltip.Content>
-                        <Text
-                          fontSize="sm"
-                          p={4}
-                          maxW="200px"
-                          bgColor={itemsBgColor}
-                          shadow="lg"
-                        >
-                          This shows whether the member is in your contacts list
-                          or has already been sent a contact invite from you.
-                        </Text>
-                        <Tooltip.Arrow />
-                      </Tooltip.Content>
-                    </Tooltip.Root>
-                  </Tooltip.Provider>
-                </Flex>
-                <Flex
-                  alignItems="center"
-                  gap={0.5}
-                  align="flex-start"
-                  flexBasis="30%"
-                >
-                  <Heading size="sm" fontWeight={800}>
-                    Role{' '}
-                  </Heading>
-                  <Tooltip.Provider delayDuration={400}>
-                    <Tooltip.Root>
-                      <Tooltip.Trigger>
-                        <Flex
-                          w="16px"
-                          h="16px"
-                          borderRadius="50%"
-                          bgColor={iconColor}
-                          justifyContent="center"
-                          alignItems="center"
-                          ml={1}
-                        >
-                          <Icon w={1} color={itemsBgColor} as={FaInfo} />
-                        </Flex>
-                      </Tooltip.Trigger>
-                      <Tooltip.Content>
-                        <Text
-                          fontSize="sm"
-                          p={4}
-                          maxW="200px"
-                          bgColor={itemsBgColor}
-                          shadow="lg"
-                        >
-                          Admins can add and remove members from the group,
-                          change the group&apos;s name, calendar link, and
-                          delete group.
-                        </Text>
-                        <Tooltip.Arrow />
-                      </Tooltip.Content>
-                    </Tooltip.Root>
-                  </Tooltip.Provider>
-                </Flex>
-              </HStack>
               {isAdmin && (
                 <>
                   <Spacer />
