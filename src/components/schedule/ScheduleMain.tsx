@@ -776,7 +776,7 @@ const ScheduleMain: FC<IInitialProps> = ({
           base: '100%',
           '2xl': '100%',
         }}
-        mt={36}
+        mt={10}
         flex={1}
         pb={16}
         px={{
