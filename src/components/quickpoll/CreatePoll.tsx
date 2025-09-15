@@ -35,7 +35,7 @@ import {
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 const CreatePoll = () => {
-  const router = useRouter()
+  const { push } = useRouter()
   const [isTitleValid, setIsTitleValid] = useState(true)
   const [isDurationValid, setIsDurationValid] = useState(true)
   const [isParticipantsValid, setIsParticipantsValid] = useState(true)
@@ -65,10 +65,6 @@ const CreatePoll = () => {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
     'see_guest_list',
   ])
-
-  const handleBack = () => {
-    router.push('/dashboard/quickpoll')
-  }
 
   const handleSubmit = () => {
     // Form validation
@@ -131,7 +127,7 @@ const CreatePoll = () => {
           <HStack
             color="primary.400"
             cursor="pointer"
-            onClick={handleBack}
+            onClick={() => push('/dashboard/quickpoll')}
             _hover={{ color: 'primary.500' }}
           >
             <Icon as={FaArrowLeft} />
