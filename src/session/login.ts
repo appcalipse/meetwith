@@ -52,7 +52,7 @@ export const useLogin = () => {
         // redirect new accounts to onboarding
         if (account.signedUp) {
           const stateObj: any = { signedUp: true }
-
+          stateObj.jti = account?.jti
           if (wallet.id === 'inApp') {
             // needed due bug in the SDK that returns the last email even if a new EOA signs in
             const email = await getUserEmail({ client: thirdWebClient })
@@ -81,7 +81,6 @@ export const useLogin = () => {
             stateObj.redirectTo = redirectPath
           }
           const state = Buffer.from(JSON.stringify(stateObj)).toString('base64')
-
           shouldRedirect &&
             (await router.push(
               redirectPath

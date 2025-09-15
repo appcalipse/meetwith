@@ -55,6 +55,7 @@ const GroupCard: FC<IGroupCard> = props => {
             height={10}
             fontSize="16"
             px={isExpanded ? 6 : 4}
+            gap={2}
           >
             <HStack gap={1}>
               <Text
@@ -62,6 +63,7 @@ const GroupCard: FC<IGroupCard> = props => {
                 fontWeight={isExpanded ? 700 : 500}
                 lineHeight={'120%'}
                 transition="all 0.2s"
+                textAlign="left"
                 transitionTimingFunction={'isExpanded ? ease-in : ease-out'}
               >
                 {props.name}
@@ -101,11 +103,11 @@ const GroupCard: FC<IGroupCard> = props => {
           </AccordionButton>
           <AccordionPanel px={0} pb={0}>
             <VStack my={0} width="100%" px={0} alignItems="flex-start">
-              <Box px={6}>
+              <Box px={6} mt={2} width="100%">
                 <SearchInput
                   setValue={setSearch}
                   value={search}
-                  placeholder="Search for person in groups"
+                  placeholder="Search from group"
                 />
               </Box>
               <HStack
@@ -136,9 +138,11 @@ const GroupCard: FC<IGroupCard> = props => {
                   />
                 ))
               ) : (
-                <Text px={6} py={4} color="neutral.400">
-                  No members found.
-                </Text>
+                <VStack width="100%" alignItems="center" my={6}>
+                  <Text px={6} py={4} color="neutral.400">
+                    No members found.
+                  </Text>
+                </VStack>
               )}
             </VStack>
           </AccordionPanel>

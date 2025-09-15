@@ -32,14 +32,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       let userEmail = email
       if (address) {
-        const isContact = await isUserContact(account_address, address)
+        const promises = [
+          isUserContact(account_address, address),
+          getAccountNotificationSubscriptionEmail(address),
+        ]
+        const [isContact, accountEmail] = await Promise.all(promises)
         if (isContact) {
           throw new ContactAlreadyExists()
         }
 
-        const accountEmail = await getAccountNotificationSubscriptionEmail(
-          address
-        )
         if (accountEmail) {
           userEmail = accountEmail
         }

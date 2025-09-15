@@ -1,10 +1,12 @@
 import * as Sentry from '@sentry/nextjs'
+import { DateTime } from 'luxon'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { VerificationChannel } from '@/types/AccountNotifications'
 import { MeetingProvider } from '@/types/Meeting'
 import { checkSignature } from '@/utils/cryptography'
-import { initAccountDBForWallet } from '@/utils/database'
+import { createVerification, initAccountDBForWallet } from '@/utils/database'
 
 const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -34,15 +36,28 @@ const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
       //avoid exploding cookie size
       req.session.account.preferences = {
         timezone: '',
-        availableTypes: [],
         availabilities: [],
         meetingProviders: [MeetingProvider.GOOGLE_MEET],
       }
 
       await req.session.save()
+      const expiresAt = DateTime.now()
+        .plus({
+          day: 1,
+        })
+        .toJSDate()
+      const jti = `${account.address}-${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`
 
-      return res.status(200).json(account)
-    } catch (e: any) {
+      await createVerification(
+        account.address,
+        jti,
+        VerificationChannel.RESET_EMAIL,
+        expiresAt
+      )
+      return res.status(200).json({ ...account, jti })
+    } catch (e: unknown) {
       Sentry.captureException(e)
       console.error(e)
       return res.status(500).send('Internal server error')

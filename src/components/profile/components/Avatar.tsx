@@ -1,11 +1,10 @@
-import { Avatar as ChakraAvatar, Image } from '@chakra-ui/react'
+import { Avatar as ChakraAvatar } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
-import { getAccountDisplayName } from '@utils/user_manager'
 import { useEffect, useState } from 'react'
 
 interface AvatarProps {
   avatar_url?: string
-  address: string
+  address?: string
   name?: string
 }
 
@@ -24,6 +23,6 @@ export const Avatar = (props: AvatarProps) => {
       src={props.avatar_url}
     />
   ) : (
-    <Jazzicon address={props.address} />
+    <Jazzicon address={props.address || ''} />
   )
 }

@@ -174,7 +174,6 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
             key={`contact-request-${account.address}`}
             refetch={() => fetchRequests(true, requests.length + 1)}
             syncAccept={() => {
-              setRequests(requests.filter(r => r.address !== account.address))
               reloadContacts()
             }}
             index={index}

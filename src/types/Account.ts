@@ -25,6 +25,7 @@ export interface Account {
   internal_pub_key: string
   encoded_signature: string
   preferences: AccountPreferences
+  paymentPreferences?: PaymentPreferences
   nonce: number
   is_invited: boolean
   subscriptions: Subscription[]
@@ -105,7 +106,6 @@ export interface TimeRange {
 export interface AccountPreferences {
   id?: string
   timezone: string | undefined
-  availableTypes: MeetingType[]
   description?: string
   availabilities: DayAvailability[]
   availaibility_id?: string
@@ -113,6 +113,24 @@ export interface AccountPreferences {
   name?: string
   avatar_url?: string
   meetingProviders: Array<MeetingProvider>
+}
+
+export interface PaymentPreferences {
+  id?: number
+  created_at?: Date
+  owner_account_address: string
+  pin?: string | null
+  hasPin?: boolean
+  default_chain_id?: number
+  notification?: Array<'send-tokens' | 'receive-tokens'>
+}
+
+// For partial updates (e.g., just PIN operations)
+export interface PartialPaymentPreferences {
+  owner_account_address: string
+  pin_hash?: string | null
+  default_chain_id?: number
+  notification?: Array<'send-tokens' | 'receive-tokens'>
 }
 
 export enum SocialLinkType {
