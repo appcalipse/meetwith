@@ -16,7 +16,7 @@ import { FaUsers } from 'react-icons/fa6'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
 const QuickPoll = () => {
-  const router = useRouter()
+  const { push } = useRouter()
 
   const featureCards = [
     {
@@ -40,10 +40,6 @@ const QuickPoll = () => {
       description: 'Review responses and finalise the meeting time',
     },
   ]
-
-  const handleCreatePoll = () => {
-    router.push('/dashboard/quickpoll/create')
-  }
 
   return (
     <Box
@@ -146,7 +142,7 @@ const QuickPoll = () => {
               bg: 'primary.400',
             }}
             transition="all 0.2s ease-in-out"
-            onClick={handleCreatePoll}
+            onClick={() => push('/dashboard/create-poll')}
           >
             Run new poll
           </Button>
