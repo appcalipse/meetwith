@@ -610,7 +610,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               width="100%"
             >
               <Box
-                bg="bg-surface-tertiary"
+                bg="bg-surface-tertiary-3"
                 borderRadius={{ base: '8px', md: '12px' }}
                 p={{ base: '8px', md: '10px' }}
                 display="flex"
@@ -634,7 +634,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               </Box>
 
               <Box
-                bg="bg-surface-tertiary"
+                bg="bg-surface-tertiary-3"
                 borderRadius={{ base: '8px', md: '12px' }}
                 px={{ base: 2, md: 3 }}
                 py={{ base: '8px', md: '10px' }}
@@ -688,7 +688,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
           {/* Wallet Card */}
           <Box
-            bg="bg-surface-tertiary"
+            bg="bg-surface-tertiary-3"
             borderRadius={{ base: '8px', md: '12px' }}
             p={{ base: 4, md: 6 }}
             mb={{ base: 4, md: 6 }}
@@ -1555,7 +1555,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   : cryptoAssetsWithBalances.map((asset, index) => (
                       <Box
                         key={index}
-                        bg="bg-surface-tertiary"
+                        bg="bg-surface-tertiary-3"
                         borderRadius="12px"
                         px={{ base: 2, md: 4 }}
                         py={4}
