@@ -1,7 +1,7 @@
 export class EmailQueue {
   private queue: Array<() => Promise<boolean>> = []
   private processing = false
-  private readonly rateLimit = 500 // 500ms between emails (2 per second)
+  private readonly rateLimit = 500
 
   async add(emailFunction: () => Promise<boolean>): Promise<boolean> {
     return new Promise(resolve => {
