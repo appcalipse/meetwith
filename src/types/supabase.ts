@@ -38,7 +38,6 @@ export type Database = {
       account_preferences: {
         Row: {
           availabilities: Json
-          availableTypes: Json[] | null
           description: string | null
           id: string
           meetingProviders:
@@ -51,7 +50,6 @@ export type Database = {
         }
         Insert: {
           availabilities?: Json
-          availableTypes?: Json[] | null
           description?: string | null
           id?: string
           meetingProviders?:
@@ -64,7 +62,6 @@ export type Database = {
         }
         Update: {
           availabilities?: Json
-          availableTypes?: Json[] | null
           description?: string | null
           id?: string
           meetingProviders?:

@@ -13,6 +13,7 @@ import {
   HStack,
   Icon,
   Input,
+  Link,
   Radio,
   RadioGroup,
   Text,
@@ -42,7 +43,7 @@ import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
-import { Intents } from '@/types/Dashboard'
+import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
@@ -60,7 +61,7 @@ import {
 } from '@/utils/user_manager'
 
 const ScheduleBase = () => {
-  const { query } = useRouter()
+  const { query, push } = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const [isTitleValid, setIsTitleValid] = useState(true)
   const toast = useToast()
@@ -111,17 +112,11 @@ const ScheduleBase = () => {
     canCancel,
     isScheduler,
     canEditMeetingDetails,
+    isUpdatingMeeting,
   } = useParticipantPermissions()
+  const [hasPickedNewTime, setHasPickedNewTime] = useState(false)
   const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM)
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
-
-  const type = useMemo(
-    () =>
-      currentAccount?.preferences.availableTypes.find(
-        type => type.duration_minutes === duration
-      ),
-    [duration]
-  )
   const handleClose = () => {
     handlePageSwitch(Page.SCHEDULE_TIME)
   }
@@ -135,16 +130,6 @@ const ScheduleBase = () => {
       ),
     [participants, groups, groupParticipants]
   )
-
-  useEffect(() => {
-    const type = currentAccount?.preferences.availableTypes.find(
-      type => type.duration_minutes === duration
-    )
-    if (type?.custom_link) {
-      setMeetingProvider(MeetingProvider.CUSTOM)
-      setMeetingUrl(type.custom_link)
-    }
-  }, [currentAccount, duration])
 
   useEffect(() => {
     const mergedParticipants = getMergedParticipants(
@@ -220,7 +205,21 @@ const ScheduleBase = () => {
         alignItems="flex-start"
       >
         <VStack gap={4} width="100%" alignItems="flex-start">
-          {canEditMeetingDetails && (
+          {isUpdatingMeeting && !hasPickedNewTime ? (
+            <Link href={`/dashboard/${EditMode.GROUPS}`}>
+              <HStack
+                alignItems="flex-start"
+                mb={0}
+                cursor="pointer"
+                onClick={handleClose}
+              >
+                <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
+                <Heading fontSize={16} color="primary.500">
+                  Back
+                </Heading>
+              </HStack>
+            </Link>
+          ) : (
             <HStack
               alignItems="flex-start"
               mb={0}
@@ -253,7 +252,10 @@ const ScheduleBase = () => {
               )}
             </Text>
           </HStack>
-          <HStack alignItems="flex-start">
+          <HStack
+            alignItems="flex-start"
+            onClick={() => setHasPickedNewTime(true)}
+          >
             <Text>
               Date:{' '}
               <b>
@@ -362,50 +364,50 @@ const ScheduleBase = () => {
                 isDisabled={!canEditMeetingDetails || isScheduling}
               />
             </FormControl>
-            {(type?.fixed_link || !type?.custom_link) && (
-              <VStack alignItems="start" w={'100%'} gap={4}>
-                <Text fontSize="18px" fontWeight={500}>
-                  Location
-                </Text>
-                <RadioGroup
-                  onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-                  value={meetingProvider}
-                  w={'100%'}
-                  isDisabled={!canEditMeetingDetails || isScheduling}
-                >
-                  <VStack w={'100%'} gap={4}>
-                    {meetingProviders.map(provider => (
-                      <Radio
-                        flexDirection="row-reverse"
-                        justifyContent="space-between"
-                        w="100%"
-                        colorScheme="primary"
-                        value={provider}
-                        key={provider}
+
+            <VStack alignItems="start" w={'100%'} gap={4}>
+              <Text fontSize="18px" fontWeight={500}>
+                Location
+              </Text>
+              <RadioGroup
+                onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+                value={meetingProvider}
+                w={'100%'}
+                isDisabled={!canEditMeetingDetails || isScheduling}
+              >
+                <VStack w={'100%'} gap={4}>
+                  {meetingProviders.map(provider => (
+                    <Radio
+                      flexDirection="row-reverse"
+                      justifyContent="space-between"
+                      w="100%"
+                      colorScheme="primary"
+                      value={provider}
+                      key={provider}
+                    >
+                      <Text
+                        fontWeight="600"
+                        color={'border-default-primary'}
+                        cursor="pointer"
                       >
-                        <Text
-                          fontWeight="600"
-                          color={'border-default-primary'}
-                          cursor="pointer"
-                        >
-                          {renderProviderName(provider)}
-                        </Text>
-                      </Radio>
-                    ))}
-                  </VStack>
-                </RadioGroup>
-                {meetingProvider === MeetingProvider.CUSTOM && (
-                  <Input
-                    type="text"
-                    placeholder="insert a custom meeting url"
-                    isDisabled={isScheduling}
-                    my={4}
-                    value={meetingUrl}
-                    onChange={e => setMeetingUrl(e.target.value)}
-                  />
-                )}
-              </VStack>
-            )}
+                        {renderProviderName(provider)}
+                      </Text>
+                    </Radio>
+                  ))}
+                </VStack>
+              </RadioGroup>
+              {meetingProvider === MeetingProvider.CUSTOM && (
+                <Input
+                  type="text"
+                  placeholder="insert a custom meeting url"
+                  isDisabled={isScheduling}
+                  my={4}
+                  value={meetingUrl}
+                  onChange={e => setMeetingUrl(e.target.value)}
+                />
+              )}
+            </VStack>
+
             <FormControl
               w="100%"
               maxW="100%"
@@ -594,7 +596,6 @@ const ScheduleBase = () => {
                 flex={1}
                 flexBasis="50%"
                 h={'auto'}
-                variant="outline"
                 colorScheme="primary"
                 onClick={handleSchedule}
                 isLoading={isScheduling}

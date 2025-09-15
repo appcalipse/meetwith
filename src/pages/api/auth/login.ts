@@ -32,7 +32,6 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
         // add users name to preferences
         name: account.preferences?.name,
         timezone: '',
-        availableTypes: [],
         availabilities: [],
         meetingProviders: [MeetingProvider.GOOGLE_MEET],
       }

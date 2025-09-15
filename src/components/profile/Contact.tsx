@@ -29,6 +29,7 @@ import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
 import { ContactInvite } from '@/types/Contacts'
+import { logEvent } from '@/utils/analytics'
 
 import ContactRequests from '../contact/ContactRequests'
 import ContactSearchModal from '../contact/ContactSearchModal'
@@ -54,7 +55,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     onOpen: OpenCalendarConnection,
     onClose: closeCalendarConnection,
   } = useDisclosure()
-  const { asPath } = useRouter()
+  const { asPath, query } = useRouter()
   const { contactsRequestCount } = useContext(MetricStateContext)
   const contactListRef = useRef<ContactLisRef>(null)
   const [debouncedValue, setValue] = useDebounceValue('', 500)
@@ -68,6 +69,12 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   useEffect(() => {
     void defineCalendarsConnected()
   }, [currentAccount])
+  useEffect(() => {
+    if (query.action === 'add') {
+      logEvent('add_contact_clicked', { source: query.source || 'unknown' })
+      onOpen()
+    }
+  }, [query])
   const state = useMemo(
     () =>
       Buffer.from(

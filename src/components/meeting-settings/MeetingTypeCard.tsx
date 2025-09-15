@@ -54,6 +54,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
         minW="280px"
         w={'100%'}
         alignItems="flex-start"
+        justifyContent={'space-between'}
         height={'100%'}
         bgColor={useColorModeValue('white', 'neutral.900')}
       >

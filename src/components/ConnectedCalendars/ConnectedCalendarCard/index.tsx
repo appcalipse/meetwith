@@ -118,7 +118,6 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
   return (
     <Stack
       p="4"
-      boxShadow="lg"
       mb="8"
       width="100%"
       borderRadius="lg"

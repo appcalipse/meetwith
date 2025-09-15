@@ -108,7 +108,8 @@ export function SchedulePickTime() {
     setDuration,
     isScheduling,
   } = useScheduleState()
-  const { canEditMeetingDetails } = useParticipantPermissions()
+  const { canEditMeetingDetails, isUpdatingMeeting } =
+    useParticipantPermissions()
   const currentAccount = useAccountContext()
   const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
@@ -543,23 +544,25 @@ export function SchedulePickTime() {
               ))}
             </ChakraSelect>
           </FormControl>
-          <Button
-            rightIcon={<FaArrowRight />}
-            colorScheme="primary"
-            _disabled={{
-              bg: 'neutral.400',
-            }}
-            isDisabled={!pickedTime}
-            onClick={() => handlePageSwitch(Page.SCHEDULE_DETAILS)}
-          >
-            Continue scheduling
-          </Button>
+          {isUpdatingMeeting && (
+            <Button
+              rightIcon={<FaArrowRight />}
+              colorScheme="primary"
+              _disabled={{
+                bg: 'neutral.400',
+              }}
+              isDisabled={!pickedTime}
+              onClick={() => handlePageSwitch(Page.SCHEDULE_DETAILS)}
+            >
+              Continue scheduling
+            </Button>
+          )}
         </Flex>
         <HStack
           color="primary.500"
           alignSelf="flex-start"
           display={{
-            md: 'none',
+            lg: 'none',
             base: 'flex',
           }}
           cursor="pointer"
@@ -575,131 +578,149 @@ export function SchedulePickTime() {
             />
           </HStack>
         </HStack>
-        {(isMobile || isTablet) && (
-          <VStack gap={4} w="100%" alignItems="flex-start">
-            <Box maxW="350px" textAlign="center" mx="auto">
-              <Heading fontSize="20px" fontWeight={700}>
-                Select time from available slots
-              </Heading>
-              <Text fontSize="12px">
-                All time slots shown below are the available times between you
-                and the required participants.
-              </Text>
-            </Box>
-            <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-              Jump to Best Slot
-            </Button>
-          </VStack>
-        )}
+
         <VStack
-          gap={6}
+          gap={4}
           w="100%"
-          borderWidth={1}
-          px={{ md: 6, base: 2 }}
-          py={4}
-          rounded={12}
-          bg="bg-surface-secondary"
+          alignItems={{ base: 'flex-start', md: 'center' }}
+          display={{ base: 'flex', lg: 'none' }}
         >
-          <HStack w="100%" justify={'space-between'}>
-            <IconButton
-              aria-label={'left-icon'}
-              icon={<FaChevronLeft />}
-              onClick={handleScheduledTimeBack}
-              isDisabled={isBackDisabled}
-            />
-            {!(isMobile || isTablet) && (
-              <>
-                <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-                  Jump to Best Slot
-                </Button>
-                <Box maxW="350px" textAlign="center">
-                  <Heading fontSize="20px" fontWeight={700}>
-                    Select time from available slots
-                  </Heading>
-                  <Text fontSize="12px">
-                    All time slots shown below are the available times between
-                    you and the required participants.
-                  </Text>
-                </Box>
-              </>
-            )}
-            <HStack gap={0}>
-              <Grid
-                gridTemplateColumns={'1fr 1fr'}
-                justifyContent={'space-between'}
-                w="fit-content"
-                gap={2}
+          <Box maxW="350px" textAlign="center" mx="auto">
+            <Heading fontSize="20px" fontWeight={700}>
+              Select time from available slots
+            </Heading>
+            <Text fontSize="12px">
+              All time slots shown below are the available times between you and
+              the required participants.
+            </Text>
+          </Box>
+          <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
+            Jump to Best Slot
+          </Button>
+        </VStack>
+
+        <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
+          <VStack
+            pt={4}
+            gap={6}
+            w="100%"
+            py={4}
+            rounded={12}
+            roundedBottom={0}
+            position="sticky"
+            top={0}
+            zIndex={1}
+            bg="bg-surface-secondary"
+            borderWidth={1}
+            borderColor={'input-border'}
+            borderBottomWidth={0}
+            px={{ md: 6, base: 2 }}
+          >
+            <HStack w="100%" justify={'space-between'} position="relative">
+              <IconButton
+                aria-label={'left-icon'}
+                icon={<FaChevronLeft />}
+                onClick={handleScheduledTimeBack}
+                isDisabled={isBackDisabled}
+                gap={0}
+              />
+              <Button
+                colorScheme="primary"
+                onClick={handleJumpToBestSlot}
+                display={{ lg: 'block', base: 'none' }}
               >
-                {GUIDES.map((guide, index) => {
-                  return (
-                    <HStack key={index} gap={2}>
-                      <Box w={5} h={5} bg={guide.color} borderRadius={4} />
-                      <Text
-                        fontSize={{
-                          base: 'small',
-                          md: 'medium',
-                        }}
-                        color="text-primary"
-                      >
-                        {guide.description.split(' ')[0]}
-                      </Text>
-                    </HStack>
-                  )
-                })}
-              </Grid>
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <InfoIcon cursor="pointer" />
-                </Tooltip.Trigger>
-                <Tooltip.Content style={{ zIndex: 10 }}>
-                  <Box
-                    p={2}
-                    borderRadius={4}
-                    boxShadow="md"
-                    py={3}
-                    px={4}
-                    bg="bg-surface-tertiary-2"
-                    rounded={'10px'}
-                  >
-                    <VStack w="fit-content" gap={1} align={'flex-start'}>
-                      {GUIDES.map((guide, index) => {
-                        return (
-                          <HStack key={index} gap={2}>
-                            <Box
-                              w={5}
-                              h={5}
-                              bg={guide.color}
-                              borderRadius={4}
-                            />
-                            <Text
-                              fontSize={{
-                                base: 'small',
-                                md: 'medium',
-                              }}
-                              color="text-primary"
-                            >
-                              {guide.description}
-                            </Text>
-                          </HStack>
-                        )
-                      })}
-                    </VStack>
-                  </Box>
-                  <Tooltip.Arrow color="#323F4B" />
-                </Tooltip.Content>
-              </Tooltip.Root>
+                Jump to Best Slot
+              </Button>
+              <Box
+                maxW="350px"
+                textAlign="center"
+                display={{ lg: 'block', base: 'none' }}
+              >
+                <Heading fontSize="20px" fontWeight={700}>
+                  Select time from available slots
+                </Heading>
+                <Text fontSize="12px">
+                  All time slots shown below are the available times between you
+                  and the required participants.
+                </Text>
+              </Box>
+
+              <HStack gap={0}>
+                <Grid
+                  gridTemplateColumns={'1fr 1fr'}
+                  justifyContent={'space-between'}
+                  w="fit-content"
+                  gap={2}
+                >
+                  {GUIDES.map((guide, index) => {
+                    return (
+                      <HStack key={index} gap={2}>
+                        <Box w={5} h={5} bg={guide.color} borderRadius={4} />
+                        <Text
+                          fontSize={{
+                            base: 'small',
+                            md: 'medium',
+                          }}
+                          color="text-primary"
+                        >
+                          {guide.description.split(' ')[0]}
+                        </Text>
+                      </HStack>
+                    )
+                  })}
+                </Grid>
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <InfoIcon cursor="pointer" />
+                  </Tooltip.Trigger>
+                  <Tooltip.Content style={{ zIndex: 10 }}>
+                    <Box
+                      p={2}
+                      borderRadius={4}
+                      boxShadow="md"
+                      py={3}
+                      px={4}
+                      bg="bg-surface-tertiary-2"
+                      rounded={'10px'}
+                    >
+                      <VStack w="fit-content" gap={1} align={'flex-start'}>
+                        {GUIDES.map((guide, index) => {
+                          return (
+                            <HStack key={index} gap={2}>
+                              <Box
+                                w={5}
+                                h={5}
+                                bg={guide.color}
+                                borderRadius={4}
+                              />
+                              <Text
+                                fontSize={{
+                                  base: 'small',
+                                  md: 'medium',
+                                }}
+                                color="text-primary"
+                              >
+                                {guide.description}
+                              </Text>
+                            </HStack>
+                          )
+                        })}
+                      </VStack>
+                    </Box>
+                    <Tooltip.Arrow color="#323F4B" />
+                  </Tooltip.Content>
+                </Tooltip.Root>
+              </HStack>
+              <IconButton
+                aria-label={'left-icon'}
+                icon={<FaChevronRight />}
+                onClick={handleScheduledTimeNext}
+                position="sticky"
+                top={28}
+                bg="bg-surface-secondary"
+                zIndex={1}
+              />
             </HStack>
-            <IconButton
-              aria-label={'left-icon'}
-              icon={<FaChevronRight />}
-              onClick={handleScheduledTimeNext}
-            />
-          </HStack>
-          {isLoading ? (
-            <HStack>
-              <Loading />
-            </HStack>
-          ) : (
             <HStack
               w="100%"
               justify={{ md: 'space-between' }}
@@ -712,6 +733,73 @@ export function SchedulePickTime() {
                 gap={2}
               >
                 <Box h={'48px'} width={'100%'} />
+              </VStack>
+              {datesSlotsWithAvailability.map((date, index) => {
+                return (
+                  <SlideFade
+                    in={true}
+                    key={'date' + index + date.date.toDateString()}
+                    transition={{ exit: { delay: 0 }, enter: { duration: 1 } }}
+                    style={{ flex: 1 }}
+                  >
+                    <VStack flex={1} w="100%" align={'center'} gap={2}>
+                      <VStack align={'center'} w="100%" h={12} gap={0}>
+                        <Text
+                          fontWeight={'700'}
+                          fontSize={{
+                            base: 'small',
+                            md: 'medium',
+                          }}
+                        >
+                          {formatInTimeZone(date.date, timezone, 'dd')}
+                        </Text>
+                        <Text
+                          fontWeight={'500'}
+                          fontSize={{
+                            base: 'small',
+                            md: 'medium',
+                          }}
+                        >
+                          {formatInTimeZone(date.date, timezone, 'EE')}
+                        </Text>
+                      </VStack>
+                    </VStack>
+                  </SlideFade>
+                )
+              })}
+            </HStack>
+          </VStack>
+          {isLoading ? (
+            <VStack
+              w="100%"
+              borderWidth={1}
+              borderColor={'input-border'}
+              borderTop={0}
+              pb={4}
+              rounded={12}
+              roundedTop={0}
+            >
+              <Loading />
+            </VStack>
+          ) : (
+            <HStack
+              w="100%"
+              justify={{ md: 'space-between' }}
+              gap={{ base: 1, md: 6 }}
+              px={{ md: 6, base: 2 }}
+              borderWidth={1}
+              borderColor={'input-border'}
+              borderTop={0}
+              pb={4}
+              rounded={12}
+              roundedTop={0}
+            >
+              <VStack
+                align={'flex-start'}
+                flex={1}
+                justify={'flex-start'}
+                gap={2}
+              >
                 <VStack align={'flex-start'} p={1} gap={0}>
                   {HOURS_SLOTS.map((slot, index) => {
                     return (
@@ -746,26 +834,6 @@ export function SchedulePickTime() {
                     style={{ flex: 1 }}
                   >
                     <VStack flex={1} align={'flex-start'} gap={2}>
-                      <VStack align={'center'} w="100%" h={12} gap={0}>
-                        <Text
-                          fontWeight={'700'}
-                          fontSize={{
-                            base: 'small',
-                            md: 'medium',
-                          }}
-                        >
-                          {formatInTimeZone(date.date, timezone, 'dd')}
-                        </Text>
-                        <Text
-                          fontWeight={'500'}
-                          fontSize={{
-                            base: 'small',
-                            md: 'medium',
-                          }}
-                        >
-                          {formatInTimeZone(date.date, timezone, 'EE')}
-                        </Text>
-                      </VStack>
                       <VStack
                         width="100%"
                         align={'flex-start'}

@@ -5,7 +5,7 @@ import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { getConnectedCalendars, getMeetingTypeFromDB } from './database'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
-const getCalendars = async (
+export const getCalendars = async (
   targetAccount: Account['address'],
   meeting_type_id?: string
 ) => {
