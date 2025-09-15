@@ -150,6 +150,10 @@ const newTheme = {
         _dark: 'neutral.800',
       },
       'bg-surface-tertiary-3': {
+        default: 'neutral.100',
+        _dark: 'neutral.825',
+      },
+      'bg-surface-tertiary-4': {
         default: 'neutral.50',
         _dark: 'neutral.825',
       },

@@ -610,7 +610,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               width="100%"
             >
               <Box
-                bg="bg-surface-tertiary-3"
+                bg="bg-surface-tertiary-4"
                 borderRadius={{ base: '8px', md: '12px' }}
                 p={{ base: '8px', md: '10px' }}
                 display="flex"
@@ -634,7 +634,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               </Box>
 
               <Box
-                bg="bg-surface-tertiary-3"
+                bg="bg-surface-tertiary-4"
                 borderRadius={{ base: '8px', md: '12px' }}
                 px={{ base: 2, md: 3 }}
                 py={{ base: '8px', md: '10px' }}
