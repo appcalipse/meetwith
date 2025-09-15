@@ -1142,16 +1142,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                 </VStack>
               </Box>
 
-              <Box
-                bg="orange.900"
-                borderRadius="8px"
-                px={4}
-                py={3}
-                border="1px solid"
-                borderColor="orange.700"
-              >
-                <Text color="orange.200" fontSize="14px">
-                  <Text as="span" color="orange.100" fontWeight="600">
+              <Box bg="warning-bg" borderRadius="8px" px={4} py={3}>
+                <Text color="warning-text" fontWeight="500" fontSize="14px">
+                  <Text as="span" color="warning-text" fontWeight="700">
                     ⚠️ Warning:
                   </Text>{' '}
                   Sending funds on the wrong network can result in permanent

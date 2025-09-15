@@ -64,7 +64,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
             <Box pt={4} pb={10}>
               <Button
                 bg="primary.300"
-                color="text-primary"
+                color="neutral.900"
                 _hover={{ bg: 'primary.400' }}
                 onClick={handleButtonClick}
                 size="md"
