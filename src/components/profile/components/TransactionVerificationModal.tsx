@@ -286,7 +286,7 @@ const TransactionVerificationModal: React.FC<
             <HStack spacing={4} pt={4} justifyContent="space-between" pb={10}>
               <Button
                 bg="primary.300"
-                color="text-primary"
+                color="neutral.900"
                 _hover={{ bg: 'primary.400' }}
                 onClick={handleVerify}
                 size="md"
