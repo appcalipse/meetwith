@@ -2,8 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 
 import { MeetingReminders } from '@/types/common'
-import { Group, MemberType } from '@/types/Group'
-import { appUrl } from '@/utils/constants'
+import { Group } from '@/types/Group'
 import { encryptContent } from '@/utils/cryptography'
 
 import {
@@ -45,7 +44,7 @@ import { dmAccount } from './services/discord.helper'
 import { sendDm } from './services/telegram.helper'
 import { isProAccount } from './subscription_manager'
 import { getAllParticipantsDisplayName } from './user_manager'
-
+import { EmailQueue } from './workers/email.queue'
 export interface ParticipantInfoForNotification extends ParticipantInfo {
   timezone: string
   meeting_id: string
@@ -81,7 +80,7 @@ export const notifyForGroupInviteJoinOrReject = async (
 
   return
 }
-
+const emailQueue = new EmailQueue()
 export const notifyForMeetingCancellation = async (
   participantActing: ParticipantBaseInfo,
   guestsToRemove: ParticipantInfo[],
@@ -228,25 +227,27 @@ const workNotifications = async (
           JSON.stringify(guestInfo)
         )
         promises.push(
-          getEmailNotification(
-            changeType,
-            participantActing,
-            participant,
-            participantsInfo,
-            start,
-            end,
-            created_at,
-            participant.timezone,
-            meeting_url,
-            title,
-            description,
-            changes,
-            meetingProvider,
-            meetingReminders,
-            meetingRepeat,
-            guestInfoEncrypted,
-            meetingPermissions,
-            meetingTypeId
+          emailQueue.add(() =>
+            getEmailNotification(
+              changeType,
+              participantActing,
+              participant,
+              participantsInfo,
+              start,
+              end,
+              created_at,
+              participant.timezone,
+              meeting_url,
+              title,
+              description,
+              changes,
+              meetingProvider,
+              meetingReminders,
+              meetingRepeat,
+              guestInfoEncrypted,
+              meetingPermissions,
+              meetingTypeId
+            )
           )
         )
       } else if (
@@ -265,24 +266,26 @@ const workNotifications = async (
             switch (notification_type.channel) {
               case NotificationChannel.EMAIL:
                 promises.push(
-                  getEmailNotification(
-                    changeType,
-                    participantActing,
-                    participant,
-                    participantsInfo,
-                    start,
-                    end,
-                    created_at,
-                    participant.timezone,
-                    meeting_url,
-                    title,
-                    description,
-                    changes,
-                    meetingProvider,
-                    meetingReminders,
-                    meetingRepeat,
-                    undefined,
-                    meetingPermissions
+                  emailQueue.add(() =>
+                    getEmailNotification(
+                      changeType,
+                      participantActing,
+                      participant,
+                      participantsInfo,
+                      start,
+                      end,
+                      created_at,
+                      participant.timezone,
+                      meeting_url,
+                      title,
+                      description,
+                      changes,
+                      meetingProvider,
+                      meetingReminders,
+                      meetingRepeat,
+                      undefined,
+                      meetingPermissions
+                    )
                   )
                 )
                 break

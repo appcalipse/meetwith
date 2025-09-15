@@ -159,6 +159,9 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
         base: isMobile ? 'flex' : 'none',
         lg: 'flex',
       }}
+      position="sticky"
+      top={0}
+      zIndex={1}
     >
       <HStack gap={9} w="100%" justify={'space-between'}>
         <Heading size={'sm'}>Select Participants</Heading>

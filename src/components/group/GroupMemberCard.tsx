@@ -243,7 +243,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       borderBottomColor={borderColor}
       pb={3}
     >
-      <Th px={0}>
+      <Th pl={0}>
         <HStack>
           <Box
             width={{ base: '32px', md: '48px', lg: '64px' }}
@@ -419,7 +419,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           </HStack>
         </HStack>
       </Th>
-      <Th px={0}>
+      <Th pr={0}>
         <HStack>
           {
             // no one can leave an empty group
