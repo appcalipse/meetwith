@@ -56,6 +56,7 @@ interface LinkItemProps {
     icon: IconType
     mode: EditMode
   }>
+  isBeta?: boolean
 }
 
 export const NavMenu: React.FC<{
@@ -88,12 +89,14 @@ export const NavMenu: React.FC<{
         icon: FaUserGroup,
         mode: EditMode.GROUPS,
         badge: groupInvitesCount,
+        isBeta: true,
       },
       {
         name: 'My Contacts',
         icon: FaUserGroup,
         mode: EditMode.CONTACTS,
         badge: contactsRequestCount,
+        isBeta: true,
       },
       {
         name: 'Session Settings',
@@ -325,6 +328,7 @@ export const NavMenu: React.FC<{
                   badge={link.badge}
                   locked={link.locked || false}
                   changeMode={menuClicked}
+                  isBeta={link.isBeta}
                 />
               )
             )}
