@@ -35,6 +35,7 @@ const DASHBOARD_ROUTE_PREFIX = '/dashboard'
 const SETTINGS_ROUTE_PREFIX = '/dashboard/details'
 const PUBLIC_USERNAME_ROUTE = '/[...address]'
 const PUBLIC_ADDRESS_ROUTE = '/address/[...address]'
+const DASHBOARD_SCHEDULE_ROUTE = '/dashboard/schedule'
 
 export enum OnboardingSubject {
   Discord = 'discord',
@@ -89,6 +90,7 @@ export {
   apiUrl,
   appUrl,
   DASHBOARD_ROUTE_PREFIX,
+  DASHBOARD_SCHEDULE_ROUTE,
   DEFAULT_MESSAGE,
   discordRedirectUrl,
   EMAIL_CHANGE_TOKEN_EXPIRY,
