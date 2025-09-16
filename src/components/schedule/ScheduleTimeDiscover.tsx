@@ -59,7 +59,7 @@ const ScheduleTimeDiscover = () => {
           isOpen={isOpen}
         />
         <ScheduleParticipants />
-        <SchedulePickTime />
+        <SchedulePickTime openParticipantModal={() => setIsOpen(true)} />
       </HStack>
     </VStack>
   )
