@@ -30,7 +30,7 @@ export const thirdWebClient = createThirdwebClient({
 export const loginWithAddress = async (
   wallet: Wallet,
   setLoginIn: (loginIn: boolean) => void
-): Promise<Account | undefined> => {
+): Promise<(Account & { jti?: string }) | undefined> => {
   setLoginIn(true)
   try {
     const account = await queryClient.fetchQuery(
@@ -66,7 +66,7 @@ const signDefaultMessage = async (
 const loginOrSignup = async (
   wallet: Wallet,
   timezone: string
-): Promise<Account> => {
+): Promise<Account & { jti?: string }> => {
   let account: Account
 
   const generateSignature = async () => {

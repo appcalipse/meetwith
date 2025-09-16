@@ -13,7 +13,12 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import { AcceptedToken, getTokenIcon, supportedChains } from '@meta/chains'
+import {
+  AcceptedToken,
+  getSupportedChain,
+  getTokenIcon,
+  supportedChains,
+} from '@meta/chains'
 import {
   networkOptions,
   PaymentStep,
@@ -34,7 +39,7 @@ const SelectCryptoNetwork = () => {
     setPaymentStep,
     setPaymentType,
   } = useContext(PublicScheduleContext)
-  const selectedNetworkInfo = supportedChains.find(val => val.chain === chain)
+  const selectedNetworkInfo = getSupportedChain(chain)
   const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(token =>
     [AcceptedToken.USDC, AcceptedToken.CEUR, AcceptedToken.CUSD].includes(
       token.token
@@ -50,18 +55,7 @@ const SelectCryptoNetwork = () => {
       networkOptions.find(
         network => network.id === selectedType?.plan?.default_chain_id
       )?.value || undefined
-    const selectedNetworkInfo = supportedChains.find(
-      val => val.chain === selectedChain
-    )
-    const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(
-      token =>
-        [AcceptedToken.USDC, AcceptedToken.CEUR, AcceptedToken.CUSD].includes(
-          token.token
-        )
-    )
-
-    const selectedToken = acceptedTokens?.[0]?.token || undefined
-    handleSetTokenAndChain(selectedToken, selectedChain)
+    handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
   }, [selectedType])
   const handleContinue = async () => {
     setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
@@ -100,12 +94,12 @@ const SelectCryptoNetwork = () => {
               <HStack>
                 <Image
                   src={selectedNetworkInfo.image}
-                  alt={selectedNetworkInfo.fullName}
+                  alt={selectedNetworkInfo.name}
                   boxSize="20px"
                   borderRadius="full"
                   mr={2}
                 />
-                <Text>{selectedNetworkInfo.fullName}</Text>
+                <Text>{selectedNetworkInfo.name}</Text>
               </HStack>
             ) : (
               'Select Network'

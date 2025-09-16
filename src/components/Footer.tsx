@@ -8,6 +8,7 @@ import {
   Stack,
   Text,
   useColorModeValue,
+  useMediaQuery,
   VisuallyHidden,
   VStack,
 } from '@chakra-ui/react'
@@ -19,9 +20,26 @@ import { MWW_DISCORD_SERVER } from '@/utils/constants'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
 const Logo = () => {
+  const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
+    ssr: true,
+    fallback: false,
+  })
   return (
     <Link href={'/'}>
-      <Image boxSize="100px" src="/assets/logo.svg" alt="Meetwith" />
+      <Image
+        width={53}
+        height={33}
+        alt="Meetwith"
+        style={{
+          width: isMobile ? '75px' : '100px',
+          height: 'auto',
+          display: 'block',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          padding: 8,
+        }}
+        src="/assets/logo.svg"
+      />
     </Link>
   )
 }
