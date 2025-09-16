@@ -1,4 +1,5 @@
 import {
+  Badge,
   Box,
   Collapse,
   Flex,
@@ -25,6 +26,7 @@ interface NavItemProps extends FlexProps {
   locked: boolean
   changeMode: (mode: EditMode) => void
   badge?: number
+  isBeta?: boolean
 }
 
 interface NavDropdownItemProps extends FlexProps {
@@ -198,6 +200,7 @@ export const NavItem = ({
   changeMode,
   locked,
   badge,
+  isBeta,
   ...rest
 }: NavItemProps) => {
   const unlockedColor = useColorModeValue('gray.700', 'gray.200')
@@ -285,6 +288,11 @@ export const NavItem = ({
             >
               {badge}
             </Box>
+          )}
+          {isBeta && selected && (
+            <Badge bg="#00CE5D" position="relative" rounded={'6px'}>
+              Beta
+            </Badge>
           )}
         </HStack>
         {locked && (
