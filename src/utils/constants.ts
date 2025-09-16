@@ -32,9 +32,10 @@ const VERIFICATION_CODE_COUNTDOWN_SECONDS = 300 // 5 minutes
 const VERIFICATION_CODE_EXPIRY_MS = 5 * 60 * 1000
 
 const DASHBOARD_ROUTE_PREFIX = '/dashboard'
-const SETTINGS_ROUTE_PREFIX = '/dashboard/details'
+const SETTINGS_ROUTE_PREFIX = `${DASHBOARD_ROUTE_PREFIX}/details`
+const DASHBOARD_SCHEDULE_ROUTE = `${DASHBOARD_ROUTE_PREFIX}/schedule`
 const PUBLIC_USERNAME_ROUTE = '/[...address]'
-const PUBLIC_ADDRESS_ROUTE = '/address/[...address]'
+const PUBLIC_ADDRESS_ROUTE = `/address${PUBLIC_USERNAME_ROUTE}`
 
 export enum OnboardingSubject {
   Discord = 'discord',
@@ -89,6 +90,7 @@ export {
   apiUrl,
   appUrl,
   DASHBOARD_ROUTE_PREFIX,
+  DASHBOARD_SCHEDULE_ROUTE,
   DEFAULT_MESSAGE,
   discordRedirectUrl,
   EMAIL_CHANGE_TOKEN_EXPIRY,

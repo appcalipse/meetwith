@@ -108,15 +108,16 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
   )
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
       <ModalContent
         maxWidth="500px"
         width="500px"
-        border={1}
-        borderColor="border-default"
+        borderWidth={1}
         bg="bg-surface"
+        borderColor="border-default"
         py={6}
+        shadow="none"
       >
         <ModalHeader fontSize="24px" py={0}>
           Invite Participants

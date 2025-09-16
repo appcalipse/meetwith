@@ -95,8 +95,12 @@ export type Dates = {
   date: Date
   slots: Array<Interval<true>>
 }
-
-export function SchedulePickTime() {
+interface ISchedulePickTimeProps {
+  openParticipantModal: () => void
+}
+export function SchedulePickTime({
+  openParticipantModal,
+}: ISchedulePickTimeProps) {
   const {
     timezone,
     setTimezone,
@@ -566,7 +570,7 @@ export function SchedulePickTime() {
             base: 'flex',
           }}
           cursor="pointer"
-          onClick={() => setInviteModalOpen(true)}
+          onClick={() => openParticipantModal()}
         >
           <Text fontWeight={500}>View participants</Text>
           <HStack gap={0}>
