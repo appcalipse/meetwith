@@ -15,8 +15,14 @@ import { FaCalendarAlt, FaClock, FaLink } from 'react-icons/fa'
 import { FaUsers } from 'react-icons/fa6'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
+import AllPolls from './AllPolls'
+
 const QuickPoll = () => {
   const { push } = useRouter()
+
+  // For demo purposes, we're showing AllPolls
+  // Later this will be driven by backend data (e.g., checking if user has polls)
+  const hasExistingPolls = true // Change this to false to see the intro page
 
   const featureCards = [
     {
@@ -41,6 +47,12 @@ const QuickPoll = () => {
     },
   ]
 
+  // If user has existing polls, show the AllPolls component
+  if (hasExistingPolls) {
+    return <AllPolls />
+  }
+
+  // Otherwise, show the intro/welcome page
   return (
     <Box
       width="100%"
@@ -142,7 +154,7 @@ const QuickPoll = () => {
               bg: 'primary.400',
             }}
             transition="all 0.2s ease-in-out"
-            onClick={() => push('/dashboard/create-poll')}
+            onClick={() => push(`/dashboard/create-poll`)}
           >
             Run new poll
           </Button>
