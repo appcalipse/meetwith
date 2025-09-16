@@ -14,7 +14,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
 import { HiOutlineMenuAlt2 } from 'react-icons/hi'
 import { IoCloseOutline } from 'react-icons/io5'
@@ -23,6 +23,7 @@ import AccountPlansAndBilling from '@/components/profile/AccountPlansAndBilling'
 import WalletAndPayment from '@/components/profile/WalletAndPayment'
 import { Account } from '@/types/Account'
 import { EditMode } from '@/types/Dashboard'
+import { isProduction } from '@/utils/constants'
 
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
@@ -44,21 +45,34 @@ interface SettingsNavItem {
   section: SettingsSection
 }
 
-const settingsNavItems: SettingsNavItem[] = [
-  { name: 'Account details', section: SettingsSection.ACCOUNT_DETAILS },
-  { name: 'Connected calendars', section: SettingsSection.CONNECTED_CALENDARS },
-  { name: 'Connected accounts', section: SettingsSection.CONNECTED_ACCOUNTS },
-  { name: 'Notifications', section: SettingsSection.NOTIFICATIONS },
-  {
-    name: 'Account plans & Billing',
-    section: SettingsSection.ACCOUNT_PLANS_BILLING,
-  },
-  { name: 'Wallet & Payments', section: SettingsSection.WALLET_PAYMENT },
-]
-
 const Settings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
+  const settingsNavItems: SettingsNavItem[] = useMemo(() => {
+    const tabs = [
+      { name: 'Account details', section: SettingsSection.ACCOUNT_DETAILS },
+      {
+        name: 'Connected calendars',
+        section: SettingsSection.CONNECTED_CALENDARS,
+      },
+      {
+        name: 'Connected accounts',
+        section: SettingsSection.CONNECTED_ACCOUNTS,
+      },
+      { name: 'Notifications', section: SettingsSection.NOTIFICATIONS },
+      {
+        name: 'Account plans & Billing',
+        section: SettingsSection.ACCOUNT_PLANS_BILLING,
+      },
+    ]
+    if (!isProduction) {
+      tabs.push({
+        name: 'Wallet & Payments',
+        section: SettingsSection.WALLET_PAYMENT,
+      })
+    }
+    return tabs
+  }, [])
   const [activeSection, setActiveSection] = useState<SettingsSection>(
     SettingsSection.ACCOUNT_DETAILS
   )
