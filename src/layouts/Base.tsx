@@ -14,6 +14,7 @@ import { AccountContext } from '@/providers/AccountProvider'
 import customTheme from '@/styles/theme'
 import {
   DASHBOARD_ROUTE_PREFIX,
+  DASHBOARD_SCHEDULE_ROUTE,
   PUBLIC_ADDRESS_ROUTE,
   PUBLIC_USERNAME_ROUTE,
   SETTINGS_ROUTE_PREFIX,
@@ -31,6 +32,7 @@ export const BaseLayout: React.FC<{
   })
 
   const isDashboardPage = router.pathname.startsWith(DASHBOARD_ROUTE_PREFIX)
+  const isSchedulePage = router.pathname === DASHBOARD_SCHEDULE_ROUTE
   const isSettingsPage = router.asPath.startsWith(SETTINGS_ROUTE_PREFIX)
   const isPublicPage =
     router.pathname === PUBLIC_USERNAME_ROUTE ||
@@ -39,6 +41,7 @@ export const BaseLayout: React.FC<{
   const navVisible =
     !(logged && isDashboardPage && !isMobile) &&
     !isPublicPage &&
+    !isSchedulePage &&
     !isSettingsPage
   const footerVisible = !(logged && isDashboardPage) && !isPublicPage
 

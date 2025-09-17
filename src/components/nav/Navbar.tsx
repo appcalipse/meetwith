@@ -38,7 +38,7 @@ export const Navbar = () => {
 
   const { pathname, asPath, query } = useRouter()
 
-  const { currentAccount, logged, loginIn } = useLogin()
+  const { logged, loginIn } = useLogin()
 
   const [backdropFilterValue, setBackdropFilterValue] = useState<string>('0')
   const [dashboardNavOpen, setDashboardNavOpen] = useState(false)

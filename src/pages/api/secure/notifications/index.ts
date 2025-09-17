@@ -5,15 +5,19 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
   AccountNotifications,
   NotificationChannel,
+  VerificationChannel,
 } from '@/types/AccountNotifications'
 import {
   getAccountNotificationSubscriptions,
   setAccountNotificationSubscriptions,
+  verifyVerificationCode,
 } from '@/utils/database'
+import { extractQuery } from '@/utils/generic_utils'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     const account_address = req.session.account!.address
+    const code = extractQuery<string>(req.query, 'code')
     const newSubscriptions: AccountNotifications =
       req.body as AccountNotifications
 
@@ -31,11 +35,32 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           type => type.channel === NotificationChannel.EMAIL
         )
 
-      if (newEmailNotification && existingEmailNotification) {
-        return res.status(400).json({
-          error:
-            'Email notification already exists. Cannot override existing email.',
-        })
+      const isChangingEmail =
+        existingEmailNotification &&
+        newEmailNotification &&
+        newEmailNotification.destination !==
+          existingEmailNotification.destination
+
+      if (isChangingEmail) {
+        if (!code) {
+          return res.status(400).json({
+            error:
+              'Email notification already exists. Cannot override existing email.',
+          })
+        }
+
+        const isCodeValid = await verifyVerificationCode(
+          account_address,
+          code,
+          VerificationChannel.RESET_EMAIL
+        )
+
+        if (!isCodeValid) {
+          return res.status(400).json({
+            error:
+              'Your onboarding token has expired, please update your email notification from the notifications setting.',
+          })
+        }
       }
 
       const subscriptions = await setAccountNotificationSubscriptions(

@@ -882,10 +882,15 @@ export const getNotificationSubscriptions =
   }
 
 export const setNotificationSubscriptions = async (
-  notifications: AccountNotifications
+  notifications: AccountNotifications,
+  code?: string
 ): Promise<AccountNotifications> => {
+  let url = `/secure/notifications`
+  if (code && code.length > 0) {
+    url += `?code=${code}`
+  }
   return (await internalFetch(
-    `/secure/notifications`,
+    url,
     'POST',
     notifications
   )) as AccountNotifications
@@ -955,13 +960,17 @@ export const signup = async (
   signature: string,
   timezone: string,
   nonce: number
-): Promise<Account> => {
-  return (await internalFetch(`/auth/signup`, 'POST', {
-    address,
-    signature,
-    timezone,
-    nonce,
-  })) as Account
+): Promise<Account & { jti: string }> => {
+  return await internalFetch<Account & { jti: string }>(
+    `/auth/signup`,
+    'POST',
+    {
+      address,
+      signature,
+      timezone,
+      nonce,
+    }
+  )
 }
 
 export const listConnectedCalendars = async (
