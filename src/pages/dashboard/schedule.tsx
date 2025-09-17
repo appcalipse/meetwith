@@ -15,6 +15,7 @@ interface IInitialProps {
   intent: Intents
   meetingId: string
   contactId: string
+  pollId: string
 }
 
 const Schedule: NextPage<IInitialProps> = ({
@@ -22,6 +23,7 @@ const Schedule: NextPage<IInitialProps> = ({
   intent,
   meetingId,
   contactId,
+  pollId,
 }) => {
   return (
     <ScheduleStateProvider>
@@ -33,6 +35,7 @@ const Schedule: NextPage<IInitialProps> = ({
               intent={intent}
               meetingId={meetingId}
               contactId={contactId}
+              pollId={pollId}
             />
           </PermissionsProvider>
         </NavigationProvider>
@@ -46,8 +49,8 @@ const EnhancedSchedule: NextPage = withLoginRedirect(
 )
 
 EnhancedSchedule.getInitialProps = async ctx => {
-  const { groupId, intent, meetingId, contactId } = ctx.query
-  return { groupId, intent, meetingId, contactId }
+  const { groupId, intent, meetingId, contactId, pollId } = ctx.query
+  return { groupId, intent, meetingId, contactId, pollId }
 }
 
 export default withLoginRedirect(EnhancedSchedule)

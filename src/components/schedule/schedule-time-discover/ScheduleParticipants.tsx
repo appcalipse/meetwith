@@ -27,9 +27,57 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 
 interface ScheduleParticipantsProps {
   isMobile?: boolean
+  isQuickPoll?: boolean
 }
 
-export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
+// Fake participants for quickpoll demo
+const FAKE_QUICKPOLL_PARTICIPANTS: ParticipantInfo[] = [
+  {
+    account_address: '0x1234567890123456789012345678901234567890',
+    name: 'Daniel Jackalop',
+    type: ParticipantType.Scheduler,
+    status: ParticipationStatus.Accepted,
+    slot_id: '',
+    meeting_id: '',
+  },
+  {
+    account_address: '0x2345678901234567890123456789012345678901',
+    name: 'Parsa Bolour',
+    type: ParticipantType.Invitee,
+    status: ParticipationStatus.Accepted,
+    slot_id: '',
+    meeting_id: '',
+  },
+  {
+    account_address: '0x3456789012345678901234567890123456789012',
+    name: 'Ramon Canales',
+    type: ParticipantType.Invitee,
+    status: ParticipationStatus.Accepted,
+    slot_id: '',
+    meeting_id: '',
+  },
+  {
+    account_address: '0x4567890123456789012345678901234567890123',
+    name: 'Marco Quintella',
+    type: ParticipantType.Invitee,
+    status: ParticipationStatus.Accepted,
+    slot_id: '',
+    meeting_id: '',
+  },
+  {
+    account_address: '0x5678901234567890123456789012345678901234',
+    name: 'Amanda C',
+    type: ParticipantType.Invitee,
+    status: ParticipationStatus.Accepted,
+    slot_id: '',
+    meeting_id: '',
+  },
+]
+
+export function ScheduleParticipants({
+  isMobile,
+  isQuickPoll,
+}: ScheduleParticipantsProps) {
   const {
     groupAvailability,
     setGroupAvailability,
@@ -41,6 +89,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
   } = useParticipants()
   const { currentAccount } = useContext(AccountContext)
   const { setInviteModalOpen } = useScheduleNavigation()
+
   const groups = useMemo(
     () =>
       participants.filter(val => {
@@ -48,27 +97,38 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       }),
     [participants]
   )
-  const meetingMembers = useMemo(
-    () =>
-      getMergedParticipants(
-        participants,
-        allGroups,
-        groupParticipants,
-        currentAccount?.address
-      )
-        .concat([
-          {
-            account_address: currentAccount?.address,
-            name: currentAccount?.preferences?.name,
-            type: ParticipantType.Scheduler,
-            status: ParticipationStatus.Accepted,
-            slot_id: '',
-            meeting_id: '',
-          },
-        ])
-        .filter(val => !val.isHidden),
-    [participants, allGroups, groupParticipants]
-  )
+
+  // Use fake participants for quickpoll, real participants for group scheduling
+  const meetingMembers = useMemo(() => {
+    if (isQuickPoll) {
+      return FAKE_QUICKPOLL_PARTICIPANTS
+    }
+
+    return getMergedParticipants(
+      participants,
+      allGroups,
+      groupParticipants,
+      currentAccount?.address
+    )
+      .concat([
+        {
+          account_address: currentAccount?.address,
+          name: currentAccount?.preferences?.name,
+          type: ParticipantType.Scheduler,
+          status: ParticipationStatus.Accepted,
+          slot_id: '',
+          meeting_id: '',
+        },
+      ])
+      .filter(val => !val.isHidden)
+  }, [
+    isQuickPoll,
+    participants,
+    allGroups,
+    groupParticipants,
+    currentAccount?.address,
+  ])
+
   const allAvailabilities = useMemo(
     () =>
       deduplicateArray(Object.values(groupAvailability).flat()).map(val =>
@@ -76,6 +136,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       ),
     [groupAvailability]
   )
+
   const handleAvailabilityChange = (account_address?: string) => {
     if (!account_address) return
     const keys = Object.keys(groupAvailability)
@@ -92,7 +153,12 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       })
     }
   }
+
   const totalParticipantsCount = useMemo(() => {
+    if (isQuickPoll) {
+      return FAKE_QUICKPOLL_PARTICIPANTS.length
+    }
+
     const participantsMerged = getMergedParticipants(
       participants,
       allGroups,
@@ -100,8 +166,20 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       currentAccount?.address || ''
     )
     return participantsMerged.length + 1
-  }, [participants, allGroups, groupParticipants, currentAccount?.address])
+  }, [
+    isQuickPoll,
+    participants,
+    allGroups,
+    groupParticipants,
+    currentAccount?.address,
+  ])
+
   const handleParticipantRemove = (participant: ParticipantInfo) => {
+    if (isQuickPoll) {
+      // For quickpoll, we might handle this differently or disable it
+      return
+    }
+
     React.startTransition(() => {
       setParticipants(prev =>
         prev.filter(p =>
@@ -140,6 +218,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       }
     })
   }
+
   return (
     <VStack
       py={isMobile ? 10 : 7}
@@ -164,11 +243,13 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       zIndex={1}
     >
       <HStack gap={9} w="100%" justify={'space-between'}>
-        <Heading size={'sm'}>Select Participants</Heading>
-        <Heading size={'sm'}>Delete</Heading>
+        <Heading size={'sm'}>
+          {isQuickPoll ? 'Participants' : 'Select Participants'}
+        </Heading>
+        {!isQuickPoll && <Heading size={'sm'}>Delete</Heading>}
       </HStack>
       <Divider bg={'neutral.400'} />
-      {groups.length > 0 && totalParticipantsCount > 1 && (
+      {!isQuickPoll && groups.length > 0 && totalParticipantsCount > 1 && (
         <VStack gap={2} alignItems="start">
           {groups.length > 0 && (
             <Text>
@@ -243,29 +324,33 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                   )}
                 </VStack>
               </HStack>
-              <Icon
-                as={IoMdClose}
-                w={5}
-                h={5}
-                display="block"
-                cursor="pointer"
-                color="text-highlight-primary"
-                onClick={() => handleParticipantRemove(participant)}
-              />
+              {!isQuickPoll && (
+                <Icon
+                  as={IoMdClose}
+                  w={5}
+                  h={5}
+                  display="block"
+                  cursor="pointer"
+                  color="text-highlight-primary"
+                  onClick={() => handleParticipantRemove(participant)}
+                />
+              )}
             </HStack>
           )
         })}
       </VStack>
-      <Button
-        variant="outline"
-        colorScheme="primary"
-        w="100%"
-        px={4}
-        py={3}
-        onClick={() => setInviteModalOpen(true)}
-      >
-        Add more participants
-      </Button>
+      {!isQuickPoll && (
+        <Button
+          variant="outline"
+          colorScheme="primary"
+          w="100%"
+          px={4}
+          py={3}
+          onClick={() => setInviteModalOpen(true)}
+        >
+          Add more participants
+        </Button>
+      )}
     </VStack>
   )
 }
