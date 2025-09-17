@@ -15,9 +15,15 @@ import { FaCalendarAlt, FaClock, FaLink } from 'react-icons/fa'
 import { FaUsers } from 'react-icons/fa6'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
+import { Account } from '@/types/Account'
+
 import AllPolls from './AllPolls'
 
-const QuickPoll = () => {
+interface QuickPollProps {
+  currentAccount: Account
+}
+
+const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
   const { push } = useRouter()
 
   // For demo purposes, we're showing AllPolls
