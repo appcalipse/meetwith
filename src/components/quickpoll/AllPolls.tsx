@@ -32,6 +32,17 @@ import { HiMiniPlusCircle } from 'react-icons/hi2'
 
 import { useToastHelpers } from '@/utils/toasts'
 
+interface Poll {
+  id: number
+  title: string
+  status: string
+  dateRange: string
+  host: string
+  pollLink: string
+  closingDate: string
+  isHost: boolean
+}
+
 const AllPolls = () => {
   const { showSuccessToast } = useToastHelpers()
   const { push } = useRouter()
@@ -99,7 +110,7 @@ const AllPolls = () => {
     poll,
     showActions = true,
   }: {
-    poll: any
+    poll: Poll
     showActions?: boolean
   }) => (
     <Card
@@ -183,13 +194,6 @@ const AllPolls = () => {
                 fontSize="14px"
                 fontWeight="600"
                 borderRadius="8px"
-                _hover={{
-                  bg: 'neutral.800',
-                  borderColor: 'neutral.600',
-                }}
-                _active={{
-                  bg: 'neutral.700',
-                }}
               >
                 Edit your availability
               </Button>
