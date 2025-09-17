@@ -10,10 +10,9 @@ import {
   Heading,
   HStack,
   IconButton,
-  Select as ChakraSelect,
   SlideFade,
   Text,
-  useMediaQuery,
+  useBreakpointValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -117,13 +116,15 @@ export function SchedulePickTime({
   const currentAccount = useAccountContext()
   const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
-  const [isMobile, isTablet] = useMediaQuery(
-    ['(max-width: 500px)', '(max-width: 800px)'],
-    {
-      ssr: true,
-      fallback: false, // return false on the server, and re-evaluate on the client side
-    }
-  )
+  const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
+  const SLOT_LENGTH =
+    useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) ?? 3
+
+  useEffect(() => {
+    // Only resolve after client-side rendering
+    const timer = setTimeout(() => setIsBreakpointResolved(true), 100)
+    return () => clearTimeout(timer)
+  }, [])
   const {
     groupAvailability,
     meetingMembers,
@@ -131,10 +132,9 @@ export function SchedulePickTime({
     participants,
     groups,
   } = useParticipants()
-  const { handlePageSwitch, inviteModalOpen, setInviteModalOpen } =
-    useScheduleNavigation()
+  const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [availableSlots, setAvailableSlots] = useState<
     Map<string, Interval<true>[]>
   >(new Map())
@@ -260,10 +260,6 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
-  const SLOT_LENGTH = useMemo(
-    () => (isMobile ? 3 : isTablet ? 5 : 7),
-    [isTablet, isMobile]
-  )
   const getDates = (scheduleDuration = duration) => {
     const days = Array.from({ length: SLOT_LENGTH }, (v, k) => k)
       .map(k => addDays(currentSelectedDate, k))
@@ -291,6 +287,7 @@ export function SchedulePickTime({
   }
 
   async function handleSlotLoad() {
+    if (!isBreakpointResolved) return
     setIsLoading(true)
     try {
       setAvailableSlots(new Map())
@@ -389,10 +386,14 @@ export function SchedulePickTime({
     currentSelectedDate.getMonth(),
     duration,
     inviteModalOpen,
+    isBreakpointResolved,
   ])
   useEffect(() => {
+    handleSlotLoad()
+  }, [SLOT_LENGTH])
+  useEffect(() => {
     setDates(getDates())
-  }, [currentSelectedDate, timezone])
+  }, [currentSelectedDate, timezone, SLOT_LENGTH])
   const handleScheduledTimeBack = () => {
     const currentDate = DateTime.fromJSDate(currentSelectedDate)
       .setZone(timezone)
