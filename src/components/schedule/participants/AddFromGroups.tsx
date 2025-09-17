@@ -26,14 +26,7 @@ const AddFromGroups = () => {
     const previewGroups: GetGroupsFullResponse[] = []
     const restGroups: GetGroupsFullResponse[] = []
     if (search) {
-      const allGroups = groups.filter(group =>
-        group.members.some(
-          member =>
-            member.displayName?.toLowerCase().includes(search.toLowerCase()) ||
-            member.address?.toLowerCase().includes(search.toLowerCase()) ||
-            member.domain?.toLowerCase().includes(search.toLowerCase())
-        )
-      )
+      const allGroups = groups.filter(group => group.name.includes(search))
       previewGroups.push(...allGroups)
       restGroups.splice(0, restGroups.length)
     } else if (groupId) {
@@ -61,7 +54,7 @@ const AddFromGroups = () => {
         <SearchInput
           setValue={setSearch}
           value={search}
-          placeholder="Search for person in groups"
+          placeholder="Search for group"
         />
         <Accordion gap={0} w="100%" allowToggle>
           <AccordionItem border={0} w="100%">

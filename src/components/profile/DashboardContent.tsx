@@ -2,6 +2,7 @@ import { Box, Flex, HStack } from '@chakra-ui/react'
 import { EditMode } from '@meta/Dashboard'
 import React, { useContext } from 'react'
 
+import NotFound from '@/pages/404'
 import { AccountContext } from '@/providers/AccountProvider'
 import MetricStateProvider from '@/providers/MetricStateProvider'
 import { WalletProvider } from '@/providers/WalletProvider'
@@ -55,6 +56,8 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         return <Clientboard currentAccount={currentAccount!} />
       case EditMode.QUICKPOLL:
         return <QuickPoll />
+      default:
+        return <NotFound />
     }
   }
 

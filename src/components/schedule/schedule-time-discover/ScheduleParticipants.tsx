@@ -145,7 +145,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       py={isMobile ? 10 : 7}
       px={5}
       borderWidth={1}
-      borderColor={'neutral.400'}
+      borderColor={'input-border'}
       rounded={12}
       gap={5}
       minH="80vh"
@@ -159,6 +159,9 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
         base: isMobile ? 'flex' : 'none',
         lg: 'flex',
       }}
+      position="sticky"
+      top={0}
+      zIndex={1}
     >
       <HStack gap={9} w="100%" justify={'space-between'}>
         <Heading size={'sm'}>Select Participants</Heading>
