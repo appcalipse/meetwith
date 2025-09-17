@@ -44,7 +44,7 @@ import {
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
-import { customSelectComponents } from '@/utils/constants/select'
+import { customSelectComponents, Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
@@ -228,6 +228,13 @@ export function SchedulePickTime({
           .toJSDate()
       )
     }
+  }
+  const _onChangeDuration = (newValue: unknown) => {
+    if (Array.isArray(newValue)) {
+      return
+    }
+    const duration = newValue as Option<number, string>
+    setDuration(duration?.value ? Number(duration.value) : 30)
   }
 
   const tzOptions = useMemo(
@@ -441,6 +448,14 @@ export function SchedulePickTime({
     const currentDate = DateTime.now().setZone(timezone)
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
+  const durationOptions = useMemo(
+    () =>
+      DEFAULT_GROUP_SCHEDULING_DURATION.map(type => ({
+        value: type.duration,
+        label: durationToHumanReadable(type.duration),
+      })),
+    []
+  )
   const handleJumpToBestSlot = () => {
     if (suggestedTimes.length === 0) {
       toast({
@@ -467,6 +482,7 @@ export function SchedulePickTime({
           flexDir={'row'}
           flexWrap="wrap"
           gap={4}
+          zIndex={2}
         >
           <VStack
             gap={2}
@@ -528,25 +544,24 @@ export function SchedulePickTime({
                 *
               </Text>
             </FormLabel>
-            <ChakraSelect
-              id="duration"
-              placeholder="Duration"
-              onChange={e =>
-                Number(e.target.value) && setDuration(Number(e.target.value))
-              }
-              value={duration}
-              borderColor="input-border"
-              width={'max-content'}
-              maxW="350px"
-              errorBorderColor="red.500"
-              bg="select-bg"
-            >
-              {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                <option key={type.id} value={type.duration}>
-                  {durationToHumanReadable(type.duration)}
-                </option>
-              ))}
-            </ChakraSelect>
+            <Select
+              value={{
+                value: duration,
+                label: durationToHumanReadable(duration),
+              }}
+              colorScheme="primary"
+              onChange={newValue => _onChangeDuration(newValue)}
+              className="noLeftBorder timezone-select"
+              options={durationOptions}
+              components={customSelectComponents}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  borderColor: 'input-border',
+                  bg: 'select-bg',
+                }),
+              }}
+            />
           </FormControl>
           {isUpdatingMeeting && (
             <Button
