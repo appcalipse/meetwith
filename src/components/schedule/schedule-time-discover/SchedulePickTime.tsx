@@ -23,8 +23,14 @@ import { addDays, isSameMonth } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
 import React, { useEffect, useMemo, useState } from 'react'
-import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import {
+  FaArrowRight,
+  FaChevronLeft,
+  FaChevronRight,
+  FaShare,
+} from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
+import { MdShare } from 'react-icons/md'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
@@ -97,9 +103,15 @@ export type Dates = {
 }
 interface ISchedulePickTimeProps {
   openParticipantModal: () => void
+  isQuickPoll?: boolean
+  onSaveAvailability?: () => void
+  onSharePoll?: () => void
 }
 export function SchedulePickTime({
   openParticipantModal,
+  isQuickPoll,
+  onSaveAvailability,
+  onSharePoll,
 }: ISchedulePickTimeProps) {
   const {
     timezone,
@@ -131,8 +143,11 @@ export function SchedulePickTime({
     participants,
     groups,
   } = useParticipants()
-  const { handlePageSwitch, inviteModalOpen, setInviteModalOpen } =
-    useScheduleNavigation()
+  const {
+    handlePageSwitch,
+    inviteModalOpen,
+    setInviteModalOpen: _setInviteModalOpen,
+  } = useScheduleNavigation()
 
   const [isLoading, setIsLoading] = useState(false)
   const [availableSlots, setAvailableSlots] = useState<
@@ -468,6 +483,21 @@ export function SchedulePickTime({
           flexWrap="wrap"
           gap={4}
         >
+          {isQuickPoll && onSaveAvailability && (
+            <Button
+              variant="outline"
+              colorScheme="primary"
+              onClick={onSaveAvailability}
+              px="16px"
+              py="8px"
+              fontSize="16px"
+              fontWeight="700"
+              borderRadius="8px"
+              width="230px"
+            >
+              Save availability
+            </Button>
+          )}
           <VStack
             gap={2}
             alignItems={'flex-start'}
@@ -518,36 +548,56 @@ export function SchedulePickTime({
               }}
             />
           </VStack>
-          <FormControl
-            w={'fit-content'}
-            isDisabled={!canEditMeetingDetails || isScheduling}
-          >
-            <FormLabel htmlFor="date">
-              Duration
-              <Text color="red.500" display="inline">
-                *
-              </Text>
-            </FormLabel>
-            <ChakraSelect
-              id="duration"
-              placeholder="Duration"
-              onChange={e =>
-                Number(e.target.value) && setDuration(Number(e.target.value))
-              }
-              value={duration}
-              borderColor="input-border"
-              width={'max-content'}
-              maxW="350px"
-              errorBorderColor="red.500"
-              bg="select-bg"
+          {!isQuickPoll && (
+            <FormControl
+              w={'fit-content'}
+              isDisabled={!canEditMeetingDetails || isScheduling}
             >
-              {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                <option key={type.id} value={type.duration}>
-                  {durationToHumanReadable(type.duration)}
-                </option>
-              ))}
-            </ChakraSelect>
-          </FormControl>
+              <FormLabel htmlFor="date">
+                Duration
+                <Text color="red.500" display="inline">
+                  *
+                </Text>
+              </FormLabel>
+              <ChakraSelect
+                id="duration"
+                placeholder="Duration"
+                onChange={e =>
+                  Number(e.target.value) && setDuration(Number(e.target.value))
+                }
+                value={duration}
+                borderColor="input-border"
+                width={'max-content'}
+                maxW="350px"
+                errorBorderColor="red.500"
+                bg="select-bg"
+              >
+                {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
+                  <option key={type.id} value={type.duration}>
+                    {durationToHumanReadable(type.duration)}
+                  </option>
+                ))}
+              </ChakraSelect>
+            </FormControl>
+          )}
+
+          {isQuickPoll && (
+            <HStack spacing={3} display={{ base: 'none', lg: 'flex' }}>
+              <Button
+                variant="outline"
+                colorScheme="primary"
+                leftIcon={<MdShare color="#F9B19A" size={20} />}
+                onClick={onSharePoll}
+                px="16px"
+                py="8px"
+                fontSize="16px"
+                fontWeight="700"
+                borderRadius="8px"
+              >
+                Share Poll
+              </Button>
+            </HStack>
+          )}
           {isUpdatingMeeting && (
             <Button
               rightIcon={<FaArrowRight />}
@@ -582,6 +632,49 @@ export function SchedulePickTime({
             />
           </HStack>
         </HStack>
+
+        {/* Mobile quickpoll buttons */}
+        {isQuickPoll && (
+          <HStack
+            spacing={3}
+            alignSelf="flex-start"
+            display={{
+              lg: 'none',
+              base: 'flex',
+            }}
+          >
+            {onSaveAvailability && (
+              <Button
+                colorScheme="primary"
+                size="sm"
+                px={4}
+                py={2}
+                fontSize="14px"
+                fontWeight="600"
+                borderRadius="8px"
+                onClick={onSaveAvailability}
+              >
+                Save availability
+              </Button>
+            )}
+            {onSharePoll && (
+              <Button
+                variant="outline"
+                colorScheme="primary"
+                size="sm"
+                px={4}
+                py={2}
+                fontSize="14px"
+                fontWeight="600"
+                borderRadius="8px"
+                leftIcon={<FaShare />}
+                onClick={onSharePoll}
+              >
+                Share Poll
+              </Button>
+            )}
+          </HStack>
+        )}
 
         <VStack
           gap={4}

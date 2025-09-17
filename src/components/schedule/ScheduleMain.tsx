@@ -85,6 +85,7 @@ interface IInitialProps {
   intent: Intents
   meetingId: string
   contactId: string
+  pollId?: string
 }
 
 const ScheduleMain: FC<IInitialProps> = ({
@@ -92,6 +93,7 @@ const ScheduleMain: FC<IInitialProps> = ({
   intent,
   meetingId,
   contactId,
+  pollId,
 }) => {
   const { currentAccount } = useContext(AccountContext)
   const {
@@ -797,7 +799,7 @@ const ScheduleMain: FC<IInitialProps> = ({
           <Tabs index={currentPage} isLazy>
             <TabPanels>
               <TabPanel p={0}>
-                <ScheduleTimeDiscover />
+                <ScheduleTimeDiscover pollId={pollId} />
               </TabPanel>
               <TabPanel p={0}>
                 <ScheduleBase />

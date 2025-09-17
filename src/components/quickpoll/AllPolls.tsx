@@ -194,6 +194,9 @@ const AllPolls = () => {
                 fontSize="14px"
                 fontWeight="600"
                 borderRadius="8px"
+                onClick={() =>
+                  push(`/dashboard/schedule?ref=quickpoll&pollId=${poll.id}`)
+                }
               >
                 Edit your availability
               </Button>
