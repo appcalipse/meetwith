@@ -125,9 +125,19 @@ const OnboardingModal = () => {
 
   // Modal opening flow
   useEffect(() => {
+    const isStandaloneAuthPage =
+      router.pathname === '/reset-pin' ||
+      router.pathname === '/change-email' ||
+      router.pathname === '/enable-pin'
+
     // When something related to user changes, check if we should open the modal
     // If the user is logged in and modal hans't been opened yet
-    if (!!currentAccount?.address && !onboardingInit && !skipNextSteps) {
+    if (
+      !!currentAccount?.address &&
+      !onboardingInit &&
+      !skipNextSteps &&
+      !isStandaloneAuthPage
+    ) {
       // We check if the user is comming from Discord Onboarding Modal
       // and has its discord account linked
 
@@ -164,7 +174,8 @@ const OnboardingModal = () => {
       !currentAccount?.address &&
       !!origin &&
       !didOpenConnectWallet &&
-      !isOnboardingOpened
+      !isOnboardingOpened &&
+      !isStandaloneAuthPage
     ) {
       // We open the connection modal and avoid it being opened again
       openConnection()
@@ -177,6 +188,7 @@ const OnboardingModal = () => {
     openConnection,
     isOnboardingOpened,
     signedUp,
+    router.pathname,
   ])
 
   useEffect(() => {
@@ -440,17 +452,32 @@ const OnboardingModal = () => {
           timezone,
         },
       })
-      if (!!email)
-        await setNotificationSubscriptions({
-          account_address: currentAccount.address,
-          notification_types: [
+      try {
+        if (!!email)
+          await setNotificationSubscriptions(
             {
-              channel: NotificationChannel.EMAIL,
-              destination: email,
-              disabled: false,
+              account_address: currentAccount.address,
+              notification_types: [
+                {
+                  channel: NotificationChannel.EMAIL,
+                  destination: email,
+                  disabled: false,
+                },
+              ],
             },
-          ],
+            stateObject.jti
+          )
+      } catch (e) {
+        toast({
+          title: 'Error setting email',
+          description:
+            'There was an error while trying to set your email. Please, check your email preferences in your profile after closing this modal',
+          status: 'error',
+          position: 'top',
+          duration: 8000,
+          isClosable: true,
         })
+      }
       logEvent('Updated account details')
       login(updatedAccount)
 

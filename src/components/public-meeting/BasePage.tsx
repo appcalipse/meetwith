@@ -56,7 +56,11 @@ const BasePage: FC = () => {
         >
           <HStack gap={{ md: 4, base: 2 }} alignItems="center">
             <Box w={10} h={10}>
-              <Avatar account={account} />
+              <Avatar
+                address={account.address}
+                avatar_url={account.preferences?.avatar_url || ''}
+                name={getAccountDisplayName(account)}
+              />
             </Box>
             <Text fontSize={{ md: 'lg', base: 'medium' }} fontWeight="500">
               {getAccountDisplayName(account)}

@@ -184,14 +184,20 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         <VStack alignItems="flex-start" width="100%" maxW="100%" gap={2}>
           <HStack
             width="100%"
-            alignItems="flex-start"
+            alignItems={{ base: 'center', md: 'flex-start' }}
             justifyContent="space-between"
           >
-            <Heading fontSize="2xl">Meeting Types</Heading>
+            <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
+              Meeting Types
+            </Heading>
             <Button
               colorScheme="primary"
               onClick={openModal}
               leftIcon={<AddIcon width={15} height={15} />}
+              fontSize={{
+                base: 'xs',
+                md: 'md',
+              }}
             >
               New Meeting Type
             </Button>

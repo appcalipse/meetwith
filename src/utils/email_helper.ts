@@ -3,6 +3,7 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 import puppeteer from 'puppeteer'
+import { CreateEmailOptions, Resend } from 'resend'
 
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
@@ -14,7 +15,7 @@ import {
 } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingChange } from '@/types/Requests'
-import { getConnectedCalendars } from '@/utils/database'
+import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
 import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
 
 import {
@@ -26,13 +27,9 @@ import { appUrl } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
 import { getOwnerPublicUrlServer } from './database'
+import { getCalendars } from './sync_helper'
 import { getAllParticipantsDisplayName } from './user_manager'
-
 const FROM = process.env.FROM_MAIL!
-
-import { CreateEmailOptions, Resend } from 'resend'
-
-import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
@@ -235,17 +232,24 @@ export const newMeetingEmail = async (
   )
   let hasCalendarSyncing
   const ownerAddress =
-    participants.find(p => p.type === ParticipantType.Owner)?.account_address ||
-    ''
-  if (destinationAccountAddress || ownerAddress) {
-    const accountCalendar = await getConnectedCalendars(
-      destinationAccountAddress || ownerAddress,
-      {
-        syncOnly: true,
-      }
+    participants
+      .filter(p => p.type === ParticipantType.Owner)
+      ?.map(p => p.account_address)
+      .filter((p): p is string => !!p) || []
+  if (destinationAccountAddress) {
+    const accountCalendar = await getCalendars(
+      destinationAccountAddress,
+      meetingTypeId
     )
     hasCalendarSyncing = accountCalendar.some(val => {
       return val.calendars?.some(cal => cal.enabled && cal.sync)
+    })
+  } else {
+    hasCalendarSyncing = ownerAddress.some(async accountAddress => {
+      const accountCalendar = await getCalendars(accountAddress, meetingTypeId)
+      return accountCalendar.some(val => {
+        return val.calendars?.some(cal => cal.enabled && cal.sync)
+      })
     })
   }
   const icsFile = generateIcs(
@@ -509,17 +513,24 @@ export const updateMeetingEmail = async (
   )
   let hasCalendarSyncing
   const ownerAddress =
-    participants.find(p => p.type === ParticipantType.Owner)?.account_address ||
-    ''
-  if (destinationAccountAddress || ownerAddress) {
-    const accountCalendar = await getConnectedCalendars(
-      destinationAccountAddress || ownerAddress,
-      {
-        syncOnly: true,
-      }
+    participants
+      .filter(p => p.type === ParticipantType.Owner)
+      ?.map(p => p.account_address)
+      .filter((p): p is string => !!p) || []
+  if (destinationAccountAddress) {
+    const accountCalendar = await getCalendars(
+      destinationAccountAddress,
+      meetingTypeId
     )
     hasCalendarSyncing = accountCalendar.some(val => {
       return val.calendars?.some(cal => cal.enabled && cal.sync)
+    })
+  } else {
+    hasCalendarSyncing = ownerAddress.some(async accountAddress => {
+      const accountCalendar = await getCalendars(accountAddress, meetingTypeId)
+      return accountCalendar.some(val => {
+        return val.calendars?.some(cal => cal.enabled && cal.sync)
+      })
     })
   }
   const icsFile = generateIcs(
@@ -879,4 +890,295 @@ export const sendInvoiceEmail = async (
     console.error(err)
     Sentry.captureException(err)
   }
+}
+
+export const sendResetPinEmail = async (
+  toEmail: string,
+  resetUrl: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    resetUrl,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'reset_pin')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'reset_pin',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+export const sendChangeEmailEmail = async (
+  toEmail: string,
+  changeUrl: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    changeUrl,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'change_email')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'account',
+        value: 'change_email',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+export const sendPinResetSuccessEmail = async (
+  toEmail: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'pin_reset_success')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'pin_reset_success',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+export const sendEnablePinEmail = async (
+  toEmail: string,
+  enableUrl: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    enableUrl,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'enable_pin')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'enable_pin',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+export const sendVerificationCodeEmail = async (
+  toEmail: string,
+  verificationCode: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    verificationCode,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'verification_code')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'verification_code',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+// New: Crypto debit notification email to sender
+export const sendCryptoDebitEmail = async (
+  toEmail: string,
+  locals: {
+    amount: number
+    currency: string
+    recipientName: string
+    transactionId: string
+    transactionDate: string
+    userName?: string
+  }
+): Promise<boolean> => {
+  const email = new Email()
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'crypto_debit')}`,
+    { ...locals, appUrl }
+  )
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [{ name: 'wallet', value: 'crypto_debit' }],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+// New: Session booking income notification to host
+export const sendSessionBookingIncomeEmail = async (
+  toEmail: string,
+  locals: {
+    amount: number
+    currency: string
+    senderName: string
+    transactionId: string
+    transactionDate: string
+    userName?: string
+  }
+): Promise<boolean> => {
+  const email = new Email()
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'session_booking_income')}`,
+    { ...locals, appUrl }
+  )
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [{ name: 'wallet', value: 'session_income' }],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+export const sendEmailChangeSuccessEmail = async (
+  toEmail: string,
+  oldEmail: string,
+  newEmail: string,
+  userName?: string
+): Promise<boolean> => {
+  const email = new Email()
+  const now = new Date()
+  const changeDate = now.toLocaleDateString()
+  const changeTime = now.toLocaleTimeString()
+
+  const locals = {
+    userName: userName || 'there',
+    oldEmail,
+    newEmail,
+    changeDate,
+    changeTime,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'email_change_success')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'email_change_success',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
 }

@@ -14,6 +14,8 @@ import { metis } from 'viem/chains'
 
 import { zeroAddress } from '@/utils/generic_utils'
 
+import { Address } from './Transactions'
+
 export interface ChainInfo {
   chain: SupportedChain
   thirdwebChain: Chain
@@ -24,10 +26,12 @@ export interface ChainInfo {
   testnet: boolean
   nativeTokenSymbol: string
   domainContractAddess: string
-  image: string
   registarContractAddress: string
-  acceptableTokens: AcceptedTokenInfo[]
   blockExplorerUrl: string
+  image: string
+  acceptableTokens: AcceptedTokenInfo[]
+  walletSupported?: boolean
+  isProduction?: boolean
 }
 
 export enum SupportedChain {
@@ -49,6 +53,7 @@ export enum AcceptedToken {
   METIS = 'METIS',
   DAI = 'DAI',
   USDC = 'USDC',
+  USDT = 'USDT',
   EUR = 'EUR',
   CELO = 'CELO',
   CUSD = 'CUSD',
@@ -58,6 +63,9 @@ export enum AcceptedToken {
 export interface AcceptedTokenInfo {
   token: AcceptedToken
   contractAddress: string
+  displayName?: string
+  icon?: string
+  walletSupported?: boolean // Flag for wallet support
 }
 export const getTokenIcon = (token: AcceptedToken) => {
   switch (token) {
@@ -65,8 +73,14 @@ export const getTokenIcon = (token: AcceptedToken) => {
       return '/assets/chains/DAI.svg'
     case AcceptedToken.USDC:
       return '/assets/tokens/USDC.svg'
+    case AcceptedToken.USDT:
+      return '/assets/tokens/USDT.svg'
     case AcceptedToken.CUSD:
       return '/assets/tokens/CUSD.png'
+    case AcceptedToken.CELO:
+      return '/assets/chains/Celo.svg'
+    case AcceptedToken.CEUR:
+      return '/assets/chains/Celo.svg'
     case AcceptedToken.METIS:
       return '/assets/chains/Metis.svg'
     case AcceptedToken.MATIC:
@@ -75,6 +89,60 @@ export const getTokenIcon = (token: AcceptedToken) => {
       return '/assets/chains/ethereum.svg'
     default:
       return
+  }
+}
+
+export const getTokenName = (token: AcceptedToken): string => {
+  switch (token) {
+    case AcceptedToken.ETHER:
+      return 'Ether'
+    case AcceptedToken.MATIC:
+      return 'Polygon'
+    case AcceptedToken.METIS:
+      return 'Metis'
+    case AcceptedToken.DAI:
+      return 'Dai'
+    case AcceptedToken.USDC:
+      return 'USD Coin'
+    case AcceptedToken.USDT:
+      return 'Tether USD'
+    case AcceptedToken.EUR:
+      return 'Euro'
+    case AcceptedToken.CELO:
+      return 'Celo'
+    case AcceptedToken.CUSD:
+      return 'Celo Dollar'
+    case AcceptedToken.CEUR:
+      return 'Celo Euro'
+    default:
+      return 'Unknown Token'
+  }
+}
+
+export const getTokenSymbol = (token: AcceptedToken): string => {
+  switch (token) {
+    case AcceptedToken.ETHER:
+      return 'ETH'
+    case AcceptedToken.MATIC:
+      return 'MATIC'
+    case AcceptedToken.METIS:
+      return 'METIS'
+    case AcceptedToken.DAI:
+      return 'DAI'
+    case AcceptedToken.USDC:
+      return 'USDC'
+    case AcceptedToken.USDT:
+      return 'USDT'
+    case AcceptedToken.EUR:
+      return 'EUR'
+    case AcceptedToken.CELO:
+      return 'CELO'
+    case AcceptedToken.CUSD:
+      return 'cUSD'
+    case AcceptedToken.CEUR:
+      return 'cEUR'
+    default:
+      return 'UNKNOWN'
   }
 }
 
@@ -93,7 +161,7 @@ export interface TokenMeta {
   last_updated: string
 }
 
-export const getNativeDecimals = (chain: SupportedChain): number => {
+export const getNativeDecimals = (_chain: SupportedChain): number => {
   // all supported tokens for now have 18 decimals
   return 18
 }
@@ -112,6 +180,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x2B1a67268BD808781bf5Eb761f1c43987dfa8E33',
     blockExplorerUrl: 'https://sepolia.etherscan.com',
     image: '/assets/chains/ethereum.svg',
+    isProduction: false,
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
@@ -140,6 +209,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x2Fa75727De367844b948172a94B5F752c2af8237',
     blockExplorerUrl: 'https://amoy.polygonscan.com/',
     image: '/assets/chains/Polygon.svg',
+    isProduction: false,
     acceptableTokens: [
       {
         token: AcceptedToken.MATIC,
@@ -164,6 +234,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x7721a7C1472A565534A80511734Bc84fB27eb0a2',
     blockExplorerUrl: 'https://etherscan.com',
     image: '/assets/chains/ethereum.svg',
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
@@ -192,6 +263,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0xf652014545758Bae52A019CAf671a29A6B117759',
     blockExplorerUrl: 'https://polygonscan.com',
     image: '/assets/chains/Polygon.svg',
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.MATIC,
@@ -220,6 +292,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x13B5065B2586f0D457641b4C4FA09C2550843F42',
     blockExplorerUrl: 'https://andromeda-explorer.metis.io',
     image: '/assets/chains/Metis.svg',
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.METIS,
@@ -227,7 +300,7 @@ export const supportedChains: ChainInfo[] = [
       },
       {
         token: AcceptedToken.USDC,
-        contractAddress: '0xea32a96608495e54156ae48931a7c20f0dcc1a21',
+        contractAddress: '0x0ea32a96608495e54156ae48931a7c20f0dcc1a21',
       },
     ],
   },
@@ -244,18 +317,43 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '', // no applicable registar contract on Celo
     blockExplorerUrl: 'https://explorer.celo.org',
     image: '/assets/chains/Celo.svg',
+    walletSupported: true,
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.CELO,
         contractAddress: '0x471EcE3750Da237f93B8E339c536989b8978a438',
+        displayName: 'Celo',
+        icon: '/assets/chains/Celo.svg',
+        walletSupported: false,
       },
       {
         token: AcceptedToken.CUSD,
         contractAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a', // cUSD
+        displayName: 'Celo Dollar',
+        icon: '/assets/tokens/CUSD.png',
+        walletSupported: true,
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C',
+        displayName: 'US Dollar Coin',
+        icon: '/assets/tokens/USDC.svg',
+        walletSupported: true,
+      },
+      {
+        token: AcceptedToken.USDT,
+        contractAddress: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',
+        displayName: 'Tether',
+        icon: '/assets/tokens/USDT.svg',
+        walletSupported: true,
       },
       {
         token: AcceptedToken.CEUR, // cEUR
         contractAddress: '0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73',
+        displayName: 'Celo Euro',
+        icon: '/assets/chains/Celo.svg',
+        walletSupported: false,
       },
     ],
   },
@@ -272,6 +370,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
     blockExplorerUrl: 'https://alfajores.celoscan.io',
     image: '/assets/chains/Celo.svg',
+    isProduction: false,
     acceptableTokens: [
       {
         token: AcceptedToken.CELO,
@@ -296,14 +395,29 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
     blockExplorerUrl: 'https://arbiscan.io',
     image: '/assets/chains/Arbitrum.svg',
+    walletSupported: true, // Supported in wallet
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
         contractAddress: zeroAddress,
+        displayName: 'Ethereum',
+        icon: '/assets/chains/ethereum.svg',
+        walletSupported: false,
       },
       {
         token: AcceptedToken.USDC,
-        contractAddress: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
+        contractAddress: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', // Arbitrum-native USDC :contentReference[oaicite:1]{index_1}
+        displayName: 'US Dollar Coin',
+        icon: '/assets/tokens/USDC.svg',
+        walletSupported: true,
+      },
+      {
+        token: AcceptedToken.USDT,
+        contractAddress: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+        displayName: 'Tether',
+        icon: '/assets/tokens/USDT.svg',
+        walletSupported: true,
       },
     ],
   },
@@ -311,7 +425,7 @@ export const supportedChains: ChainInfo[] = [
     chain: SupportedChain.ARBITRUM_SEPOLIA,
     thirdwebChain: arbitrumSepolia,
     id: 421614,
-    name: 'Arbitrum',
+    name: 'Arbitrum Sepolia',
     fullName: 'Arbitrum Sepolia',
     rpcUrl: 'https://sepolia.arbiscan.io/rpc',
     testnet: true,
@@ -320,14 +434,22 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
     blockExplorerUrl: 'https://sepolia.arbiscan.io',
     image: '/assets/chains/Arbitrum.svg',
+    walletSupported: true, // Supported in wallet
+    isProduction: false,
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
         contractAddress: zeroAddress,
+        displayName: 'Ethereum',
+        icon: '/assets/chains/ethereum.svg',
+        walletSupported: false,
       },
       {
         token: AcceptedToken.USDC,
-        contractAddress: '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
+        contractAddress: '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d', // Arbitrum-native USDC :contentReference[oaicite:1]{index_1}
+        displayName: 'US Dollar Coin',
+        icon: '/assets/tokens/USDC.svg',
+        walletSupported: true,
       },
     ],
   },
@@ -342,6 +464,14 @@ export const getMainnetChains = (): ChainInfo[] => {
   return supportedChains.filter(chain => !chain.testnet)
 }
 
+export const getProductionChains = (): ChainInfo[] => {
+  return supportedChains.filter(chain => chain.isProduction === true)
+}
+
+export const getDevelopmentChains = (): ChainInfo[] => {
+  return supportedChains.filter(chain => chain.isProduction === false)
+}
+
 export const getChainInfo = (chain: SupportedChain): ChainInfo | undefined => {
   return supportedChains.find(c => c.chain === chain)
 }
@@ -351,6 +481,86 @@ export const getSupportedChainFromId = (
 ): ChainInfo | undefined => {
   return supportedChains.find(c => c.id === chainId)
 }
-export const getChainImage = (chain: SupportedChain) => {
-  return supportedChains.find(val => val.chain === chain)?.image
+export const getSupportedChain = (chain?: SupportedChain) => {
+  return supportedChains.find(val => val.chain === chain)
 }
+export const getChainImage = (chain: SupportedChain) => {
+  return getSupportedChain(chain)?.image
+}
+
+export const getNetworkDisplayName = (chain: SupportedChain): string => {
+  const displayNames: Record<SupportedChain, string> = {
+    [SupportedChain.ETHEREUM]: 'Ethereum',
+    [SupportedChain.POLYGON_MATIC]: 'Polygon Matic',
+    [SupportedChain.POLYGON_AMOY]: 'Polygon Amoy',
+    [SupportedChain.SEPOLIA]: 'Sepolia',
+    [SupportedChain.METIS_ANDROMEDA]: 'Metis Andromeda',
+    [SupportedChain.ARBITRUM]: 'Arbitrum',
+    [SupportedChain.ARBITRUM_SEPOLIA]: 'Arbitrum Sepolia',
+    [SupportedChain.CELO_ALFAJORES]: 'Celo Alfajores',
+    [SupportedChain.CELO]: 'Celo',
+    [SupportedChain.CUSTOM]: 'Custom',
+  }
+  return displayNames[chain] || chain
+}
+
+// Helper function to get token address for a specific chain and token
+export const getTokenAddress = (
+  chain: SupportedChain,
+  token: AcceptedToken
+): string => {
+  const chainInfo = getChainInfo(chain)
+  if (!chainInfo) return ''
+
+  const tokenInfo = chainInfo.acceptableTokens.find(t => t.token === token)
+  return tokenInfo?.contractAddress || ''
+}
+
+// Helper function to get chain ID for a specific chain
+export const getChainId = (chain: SupportedChain): number => {
+  const chainInfo = getChainInfo(chain)
+  return chainInfo?.id || 42220
+}
+
+export const getTokenFromName = (tokenName: string): AcceptedToken | null => {
+  const lowerName = tokenName.toLowerCase()
+  switch (lowerName) {
+    case 'ether':
+      return AcceptedToken.ETHER
+    case 'polygon':
+      return AcceptedToken.MATIC
+    case 'metis':
+      return AcceptedToken.METIS
+    case 'dai':
+      return AcceptedToken.DAI
+    case 'usd coin':
+      return AcceptedToken.USDC
+    case 'tether usd':
+      return AcceptedToken.USDT
+    case 'euro':
+      return AcceptedToken.EUR
+    case 'celo':
+      return AcceptedToken.CELO
+    case 'celo dollar':
+      return AcceptedToken.CUSD
+    case 'celo euro':
+      return AcceptedToken.CEUR
+    default:
+      return null
+  }
+}
+
+// Helpers to build email payloads and send notifications
+export const resolveTokenSymbolFromAddress = (
+  chain: SupportedChain,
+  tokenAddress: string
+): string => {
+  const chainInfo = getChainInfo(chain)
+  const match = chainInfo?.acceptableTokens.find(
+    t => (t.contractAddress || '').toLowerCase() === tokenAddress.toLowerCase()
+  )
+  return match ? getTokenSymbol(match.token) : 'UNKNOWN'
+}
+
+export const getChainDisplayName = (chain: SupportedChain): string =>
+  getChainInfo(chain)?.name || String(chain)

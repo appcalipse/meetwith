@@ -57,11 +57,11 @@ export const handleMeetingSchedule = async (
       try {
         const subs = await getAccountNotificationSubscriptions(account_address)
 
-        subs.notification_types = subs.notification_types.filter(
-          type => type.channel !== NotificationChannel.EMAIL
+        const existingEmailNotification = subs.notification_types.find(
+          type => type.channel === NotificationChannel.EMAIL
         )
 
-        if (isValidEmail(email)) {
+        if (!existingEmailNotification && isValidEmail(email)) {
           subs.notification_types.push({
             channel: NotificationChannel.EMAIL,
             destination: email,

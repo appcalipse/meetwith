@@ -167,7 +167,7 @@ export const extractQuery = <T extends string = string>(
     result = value
   }
 
-  if (!result) return undefined
+  if (!result || result === 'undefined') return undefined
 
   // If valid values provided, check against them
   if (validValues && !validValues.includes(result as T)) {
@@ -186,4 +186,17 @@ export const formatCurrency = (
     currency,
     minimumFractionDigits,
   }).format(amount)
+}
+
+export const deduplicateArray = <T = string>(arr: T[]): T[] => {
+  return Array.from(new Set(arr))
+}
+
+export const formatCountdown = (seconds: number): string => {
+  if (seconds >= 60) {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+  return `${seconds}s`
 }

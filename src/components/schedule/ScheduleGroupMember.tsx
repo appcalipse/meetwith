@@ -1,8 +1,8 @@
 import { Box, Checkbox, Heading, HStack, Text, VStack } from '@chakra-ui/react'
-import React, { FC, useContext } from 'react'
+import React, { FC } from 'react'
 
 import { Availability } from '@/components/icons/Availability'
-import { ScheduleContext } from '@/pages/dashboard/schedule'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { Account } from '@/types/Account'
 import { GroupMember } from '@/types/Group'
 
@@ -18,7 +18,7 @@ const ScheduleGroupMember: FC<ScheduleGroupMemberProps> = props => {
     groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
-  } = useContext(ScheduleContext)
+  } = useParticipants()
   const allGroupParticipants = groupParticipants[props.groupId] || []
   const allGroupAvailability = groupAvailability[props.groupId] || []
   const handleParticipantsChange = () => {

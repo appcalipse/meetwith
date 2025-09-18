@@ -77,7 +77,7 @@ const ContactsList = forwardRef<ContactLisRef, Props>(
     if (firstFetch) {
       content = (
         <Tbody>
-          <Tr color="white">
+          <Tr color="text-primary">
             <Th colSpan={6}>
               <VStack alignItems="center" mb={8}>
                 <Image
@@ -98,7 +98,7 @@ const ContactsList = forwardRef<ContactLisRef, Props>(
     } else if (contacts.length === 0) {
       content = (
         <Tbody>
-          <Tr color="white">
+          <Tr color="text-primary">
             <Th justifyContent="center" colSpan={6}>
               <Text textAlign="center" w="100%" mx="auto" py={4}>
                 You have no contacts
@@ -122,7 +122,7 @@ const ContactsList = forwardRef<ContactLisRef, Props>(
             />
           ))}
           {!noMoreFetch && !firstFetch && (
-            <Tr color="white">
+            <Tr color="text-primary">
               <Th justifyContent="center" colSpan={6}>
                 <VStack mb={8}>
                   <Button
@@ -147,8 +147,8 @@ const ContactsList = forwardRef<ContactLisRef, Props>(
     return (
       <TableContainer>
         <Table variant="unstyled" colorScheme="whiteAlpha">
-          <Thead bg="neutral.900">
-            <Tr color="white">
+          <Thead bg="bg-surface">
+            <Tr color="text-primary">
               <Th>User</Th>
               <Th>Description</Th>
               <Th>Account ID</Th>
