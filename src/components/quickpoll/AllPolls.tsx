@@ -114,7 +114,7 @@ const AllPolls = () => {
     showActions?: boolean
   }) => (
     <Card
-      bg="neutral.900"
+      bg="bg-surface"
       border="1px solid"
       borderColor="neutral.800"
       borderRadius="12px"
@@ -136,8 +136,8 @@ const AllPolls = () => {
                 {poll.title}
               </Heading>
               <Badge
-                bg={poll.status === 'ONGOING' ? 'green.100' : 'orange.100'}
-                color={poll.status === 'ONGOING' ? 'green.700' : 'orange.800'}
+                bg={poll.status === 'ONGOING' ? 'green.100' : 'red.100'}
+                color={poll.status === 'ONGOING' ? 'green.700' : 'red.400'}
                 px="10px"
                 py="5px"
                 borderRadius="10px"

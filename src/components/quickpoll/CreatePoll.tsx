@@ -18,20 +18,27 @@ import {
 } from '@chakra-ui/react'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
-import { useState } from 'react'
+import React, { useCallback, useContext, useMemo, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
+import { HiOutlineUserAdd } from 'react-icons/hi'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import InfoTooltip from '@/components/profile/components/Tooltip'
-import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
+import InviteParticipants from '@/components/schedule/participants/InviteParticipants'
+import { AccountContext } from '@/providers/AccountProvider'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { isGroupParticipant } from '@/types/schedule'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import {
   DEFAULT_GROUP_SCHEDULING_DURATION,
   QuickPollPermissionsList,
 } from '@/utils/constants/schedule'
+import { deduplicateArray } from '@/utils/generic_utils'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 const CreatePoll = () => {
@@ -41,10 +48,21 @@ const CreatePoll = () => {
   const [isParticipantsValid, setIsParticipantsValid] = useState(true)
 
   const {
-    isOpen: isGroupModalOpen,
-    onOpen: openGroupModal,
-    onClose: closeGroupModal,
+    isOpen: isInviteModalOpen,
+    onOpen: openInviteModal,
+    onClose: closeInviteModal,
   } = useDisclosure()
+
+  const {
+    participants,
+    setParticipants,
+    groupAvailability,
+    setGroupAvailability,
+    groupParticipants,
+    setGroupParticipants,
+    groups: allGroups,
+  } = useParticipants()
+  const { currentAccount } = useContext(AccountContext)
 
   const [formData, setFormData] = useState({
     title: '',
@@ -56,15 +74,42 @@ const CreatePoll = () => {
     description: '',
   })
 
-  const [groupParticipants, setGroupParticipants] = useState<ParticipantInfo[]>(
-    []
-  )
-  const [contactParticipants, setContactParticipants] = useState<
-    ParticipantInfo[]
-  >([])
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
     'see_guest_list',
   ])
+
+  // Get all participants
+  const allMergedParticipants = useMemo(() => {
+    const merged = getMergedParticipants(
+      participants,
+      allGroups,
+      groupParticipants,
+      currentAccount?.address
+    )
+
+    // Deduplicate by account_address and guest_email
+    const deduplicatedParticipants = merged.reduce(
+      (acc: ParticipantInfo[], current) => {
+        const existing = acc.find(
+          p =>
+            (p.account_address &&
+              current.account_address &&
+              p.account_address.toLowerCase() ===
+                current.account_address.toLowerCase()) ||
+            (p.guest_email &&
+              current.guest_email &&
+              p.guest_email.toLowerCase() === current.guest_email.toLowerCase())
+        )
+        if (!existing) {
+          acc.push(current)
+        }
+        return acc
+      },
+      []
+    )
+
+    return deduplicatedParticipants
+  }, [participants, allGroups, groupParticipants, currentAccount?.address])
 
   const handleSubmit = () => {
     // Form validation
@@ -78,7 +123,7 @@ const CreatePoll = () => {
     } else {
       setIsDurationValid(true)
     }
-    if (groupParticipants.length === 0 && contactParticipants.length === 0) {
+    if (allMergedParticipants.length === 0) {
       setIsParticipantsValid(false)
     } else {
       setIsParticipantsValid(true)
@@ -87,29 +132,137 @@ const CreatePoll = () => {
     if (
       !formData.title ||
       !formData.duration ||
-      (groupParticipants.length === 0 && contactParticipants.length === 0)
+      allMergedParticipants.length === 0
     ) {
       return
     }
-
-    // TODO: Implement poll creation logic
-    // eslint-disable-next-line no-restricted-syntax
-    console.log('Creating poll with data:', formData)
   }
 
-  const onParticipantsChange = (participants: ParticipantInfo[]) => {
-    setGroupParticipants(participants)
-    if (participants.length) {
-      setIsParticipantsValid(true)
-    }
-  }
+  const onParticipantsChange = useCallback(
+    (_participants: Array<ParticipantInfo>) => {
+      const currentMerged = allMergedParticipants
+      const isRemoval = _participants.length < currentMerged.length
 
-  const onContactParticipantsChange = (participants: ParticipantInfo[]) => {
-    setContactParticipants(participants)
-    if (participants.length) {
-      setIsParticipantsValid(true)
-    }
-  }
+      if (isRemoval) {
+        // Find which participant was removed
+        const removedParticipant = currentMerged.find(
+          current =>
+            !_participants.some(
+              newP =>
+                (current.account_address &&
+                  newP.account_address &&
+                  current.account_address.toLowerCase() ===
+                    newP.account_address.toLowerCase()) ||
+                (current.guest_email &&
+                  newP.guest_email &&
+                  current.guest_email.toLowerCase() ===
+                    newP.guest_email.toLowerCase())
+            )
+        )
+
+        if (removedParticipant) {
+          const account_address =
+            removedParticipant.account_address?.toLowerCase()
+          const guest_email = removedParticipant.guest_email?.toLowerCase()
+
+          React.startTransition(() => {
+            setParticipants(prev =>
+              prev.filter(p => {
+                if (isGroupParticipant(p)) return true
+
+                if (
+                  account_address &&
+                  p.account_address?.toLowerCase() === account_address
+                ) {
+                  return false
+                }
+
+                if (
+                  guest_email &&
+                  p.guest_email?.toLowerCase() === guest_email
+                ) {
+                  return false
+                }
+
+                return true
+              })
+            )
+
+            if (
+              account_address &&
+              account_address !== currentAccount?.address
+            ) {
+              const keys = Object.keys(groupAvailability)
+              for (const key of keys) {
+                setGroupParticipants(prev => {
+                  const allGroupParticipants = prev[key] || []
+                  const newParticipants = allGroupParticipants.filter(
+                    val => val !== account_address
+                  )
+                  return {
+                    ...prev,
+                    [key]: newParticipants,
+                  }
+                })
+
+                setGroupAvailability(prev => {
+                  const allGroupAvailability = prev[key] || []
+                  const newAvailability = allGroupAvailability.filter(
+                    val => val !== account_address
+                  )
+                  return {
+                    ...prev,
+                    [key]: newAvailability,
+                  }
+                })
+              }
+            }
+          })
+        }
+      } else {
+        const addressesToAdd = _participants
+          .map(p => p.account_address)
+          .filter((a): a is string => !!a)
+
+        React.startTransition(() => {
+          setParticipants(prevUsers => {
+            const groupParticipants = prevUsers.filter(user =>
+              isGroupParticipant(user)
+            )
+            return [...groupParticipants, ..._participants]
+          })
+
+          if (addressesToAdd.length > 0) {
+            setGroupAvailability(prev => ({
+              ...prev,
+              [NO_GROUP_KEY]: deduplicateArray([
+                ...(prev[NO_GROUP_KEY] || []),
+                ...addressesToAdd,
+              ]),
+            }))
+
+            setGroupParticipants(prev => ({
+              ...prev,
+              [NO_GROUP_KEY]: deduplicateArray([
+                ...(prev[NO_GROUP_KEY] || []),
+                ...addressesToAdd,
+              ]),
+            }))
+          }
+        })
+      }
+
+      if (_participants.length > 0) {
+        setIsParticipantsValid(true)
+      }
+    },
+    [
+      setParticipants,
+      setGroupAvailability,
+      setGroupParticipants,
+      allMergedParticipants,
+    ]
+  )
 
   return (
     <Box
@@ -270,16 +423,16 @@ const CreatePoll = () => {
           {/* Add Guest from Groups */}
           <FormControl w="100%" maxW="100%">
             <FormLabel htmlFor="participants">
-              Add Guest from Groups
+              Add Participants to the meeting
               <Text color="red.500" display="inline">
                 *
               </Text>{' '}
-              <InfoTooltip text="Add guests from your existing groups" />
+              <InfoTooltip text="Add participants from groups, contacts, or enter manually" />
             </FormLabel>
             <Box w="100%" maxW="100%">
               <ChipInput
-                currentItems={groupParticipants}
-                placeholder="Enter participants"
+                currentItems={allMergedParticipants}
+                placeholder="Add participants"
                 onChange={onParticipantsChange}
                 renderItem={p => {
                   if (p.account_address) {
@@ -301,16 +454,15 @@ const CreatePoll = () => {
                   <Button
                     pos="absolute"
                     insetY={0}
-                    right={2}
+                    right={0}
                     alignItems="center"
-                    onClick={openGroupModal}
+                    onClick={openInviteModal}
                     variant={'link'}
                     _hover={{
                       textDecoration: 'none',
                     }}
                   >
-                    <AddIcon color="white" mr={3} />
-                    <Text fontSize={{ base: 12, md: 16 }}>Add/Edit Groups</Text>
+                    <HiOutlineUserAdd color="white" size={20} />
                   </Button>
                 }
               />
@@ -319,46 +471,11 @@ const CreatePoll = () => {
               {isParticipantsValid ? (
                 <Text>
                   Separate participants by comma. You will be added
-                  automatically, no need to insert yourself
+                  automatically, no need to insert yourself.
                 </Text>
               ) : (
                 <Text color="red.500">Participants are required</Text>
               )}
-            </FormHelperText>
-          </FormControl>
-
-          {/* Add Guest from Contacts */}
-          <FormControl w="100%" maxW="100%">
-            <FormLabel htmlFor="contact-participants">
-              Add Guest from Contacts
-              <InfoTooltip text="Add guests from your existing contacts" />
-            </FormLabel>
-            <Box w="100%" maxW="100%">
-              <ChipInput
-                currentItems={contactParticipants}
-                placeholder="Enter participants"
-                onChange={onContactParticipantsChange}
-                renderItem={p => {
-                  if (p.account_address) {
-                    return p.name || ellipsizeAddress(p.account_address!)
-                  } else if (p.name && p.guest_email) {
-                    return `${p.name} - ${p.guest_email}`
-                  } else if (p.name) {
-                    return `${p.name}`
-                  } else {
-                    return p.guest_email!
-                  }
-                }}
-                inputProps={{
-                  pr: 180,
-                }}
-              />
-            </Box>
-            <FormHelperText minW={{ md: '600px' }}>
-              <Text>
-                Separate participants by comma. You will be added automatically,
-                no need to insert yourself
-              </Text>
             </FormHelperText>
           </FormControl>
 
@@ -467,8 +584,7 @@ const CreatePoll = () => {
             colorScheme="primary"
             onClick={handleSubmit}
             isDisabled={
-              (groupParticipants.length === 0 &&
-                contactParticipants.length === 0) ||
+              allMergedParticipants.length === 0 ||
               !formData.title ||
               !formData.duration
             }
@@ -477,10 +593,10 @@ const CreatePoll = () => {
           </Button>
         </VStack>
 
-        {/* ScheduleGroupModal */}
-        <ScheduleGroupModal
-          onClose={closeGroupModal}
-          isOpen={isGroupModalOpen}
+        {/* Invite Participants Modal */}
+        <InviteParticipants
+          isOpen={isInviteModalOpen}
+          onClose={closeInviteModal}
         />
       </VStack>
     </Box>
