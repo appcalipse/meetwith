@@ -41,10 +41,13 @@ export interface Group {
 export interface GroupMember {
   displayName: string
   address?: string
+  avatar_url?: string
   role: MemberType
   userId?: string
   invitePending: boolean
   domain?: string
+  isContact?: boolean
+  hasContactInvite?: boolean
 }
 
 export interface UpdateGroupPayload {
@@ -138,6 +141,7 @@ export interface GroupInviteFilters {
   discord_id?: string
   limit?: number
   offset?: number
+  search?: string
 }
 
 export interface CreateGroupPayload {

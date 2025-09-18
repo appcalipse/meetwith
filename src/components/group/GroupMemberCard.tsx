@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Flex,
   Heading,
   HStack,
   Icon,
@@ -9,33 +10,44 @@ import {
   MenuItem,
   MenuList,
   Spinner,
+  Tag,
+  TagLabel,
+  TagLeftIcon,
   Text,
+  Th,
+  Tr,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
-import dynamic from 'next/dynamic'
+import { useMutation } from '@tanstack/react-query'
 import React, { useContext } from 'react'
 import { BiExit } from 'react-icons/bi'
 import { FaChevronDown } from 'react-icons/fa'
+import { GoDotFill } from 'react-icons/go'
 import { MdDelete } from 'react-icons/md'
 
 import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
+import {
+  addGroupMemberToContact,
+  sendContactListInvite,
+} from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
+import {
+  AccountNotFoundError,
+  CantInviteYourself,
+  ContactAlreadyExists,
+  MemberDoesNotExist,
+} from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
+import { isValidEmail } from '@/utils/validations'
 
+import { Avatar } from '../profile/components/Avatar'
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
-
-const Avatar = dynamic(
-  async () => (await import('@ukstv/jazzicon-react')).Jazzicon,
-  {
-    ssr: false,
-    loading: () => <Spinner />,
-  }
-)
 
 interface IGroupMemberCard extends GroupMember {
   currentAccount: Account
@@ -59,6 +71,27 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const tagColor = useColorModeValue('neutral.100', 'neutral.400')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
+  const {
+    isLoading: isAddLoading,
+    mutateAsync: addGroupMemberToContactAsync,
+    isSuccess: isAddSuccess,
+  } = useMutation({
+    mutationFn: () =>
+      addGroupMemberToContact({
+        address: props.address!,
+        groupId: props.groupID,
+        state: props.invitePending ? 'pending' : 'accepted',
+      }),
+  })
+  const {
+    isLoading: isInviteLoading,
+    mutateAsync: sendInviteAsync,
+    isSuccess: isInviteSuccess,
+  } = useMutation({
+    mutationFn: () => sendContactListInvite(undefined, props.displayName),
+  })
+  const isSuccess = isAddSuccess || isInviteSuccess
+  const toast = useToast()
   const {
     openLeaveModal,
     setToggleAdminChange,
@@ -104,7 +137,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             props.handleIsAdminChange(newRole === MemberType.ADMIN)
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         handleApiError('Error changing roles', error)
       }
       setLoading(false)
@@ -129,126 +162,264 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     })
     openRemoveModal()
   }
-
+  const handleAddToContacts = async () => {
+    try {
+      let description = ''
+      if (props.address) {
+        await addGroupMemberToContactAsync()
+        description = 'Contact added successfully'
+      } else if (props.invitePending && props.displayName) {
+        if (isValidEmail(props.displayName)) {
+          await sendInviteAsync()
+          description = 'Contact invite sent successfully'
+        } else {
+          handleApiError(
+            'Error adding to contacts',
+            'Unable to send invite to email address'
+          )
+          return
+        }
+      }
+      toast({
+        title: 'Success',
+        description,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
+    } catch (e) {
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof AccountNotFoundError) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof CantInviteYourself) {
+        toast({
+          title: 'Error',
+          description: 'You can&apos;t invite yourself',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      } else if (e instanceof MemberDoesNotExist) {
+        toast({
+          title: 'Error',
+          description: 'Member does not exist',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact invite request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      }
+    }
+  }
+  const isActor = props.currentAccount.address === props.address
   return (
-    <HStack
+    <Tr
       width="100%"
-      justifyContent="space-between"
       borderBottomWidth={1}
       borderBottomColor={borderColor}
       pb={3}
     >
-      <HStack flexBasis="57%" overflow="hidden">
-        <Box width="64px" height="64px" display="block" flexBasis={'64px'}>
-          <Avatar address={props.address || ''} />
-        </Box>
-        <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
-          <Heading size="sm">
-            {props.displayName || ellipsizeAddress(props.address || '')}{' '}
-            {props.currentAccount.address === props.address && '(You)'}
-          </Heading>
-          {!props.invitePending ? (
-            <CopyLinkButton
-              url={`${appUrl}/${props.domain || props.address}`}
-              size="md"
-              label={`${appUrl}/${props.domain || props.address}`}
-              withIcon
-              design_type="link"
-              pl={0}
-              maxW="335px"
-              childStyle={{
-                style: {
-                  width: '150px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                },
-              }}
+      <Th pl={0}>
+        <HStack>
+          <Box
+            width={{ base: '32px', md: '48px', lg: '64px' }}
+            height={{ base: '32px', md: '48px', lg: '64px' }}
+            display="block"
+            flexBasis={{ base: '32px', md: '48px', lg: '64px' }}
+          >
+            <Avatar
+              address={props.address || ''}
+              avatar_url={props.avatar_url}
+              name={props.displayName}
             />
-          ) : (
-            <HStack alignItems="center">
-              <Box
-                h={5}
-                w="fit-content"
-                borderRadius="99px"
-                px={2.5}
-                py="3"
-                display="grid"
-                placeContent="center"
-                bg={tagColor}
-              >
-                <Text size="sm">Pending</Text>
-              </Box>
-            </HStack>
-          )}
-        </VStack>
-      </HStack>
-      <HStack display="flex" flexBasis="30%" justifyContent="space-between">
-        <HStack overflow="hidden" maxW={'150px'}>
-          {loading ? (
-            <Spinner marginInline="auto" />
-          ) : (
-            <Menu>
-              <MenuButton
-                as={Button}
-                rightIcon={
-                  <FaChevronDown
-                    style={{
-                      marginLeft:
-                        currentRole === MemberType.ADMIN ? '0px' : '15px',
-                    }}
-                  />
-                }
-                variant="ghost"
-                gap={12}
-                pr={4}
+          </Box>
+          <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
+            <Heading size={{ base: 'xs', md: 'sm' }}>
+              {props.displayName || ellipsizeAddress(props.address || '')}{' '}
+              {isActor && '(You)'}
+            </Heading>
+            {!props.invitePending ? (
+              <CopyLinkButton
+                url={`${appUrl}/${props.domain || props.address}`}
+                size={{ base: 'sm', md: 'md' }}
+                label={`${appUrl}/${props.domain || props.address}`}
+                withIcon
+                design_type="link"
                 pl={0}
-                textTransform="capitalize"
-                isDisabled={!props.isAdmin}
-              >
-                {currentRole}
-              </MenuButton>
-              <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
-                <MenuItem
-                  width="100px"
-                  textTransform="capitalize"
-                  borderBottom={`2px solid neutral.200`}
-                  backgroundColor={
-                    currentRole === MemberType.ADMIN
-                      ? activeMenuColor
-                      : menuBgColor
-                  }
-                  onClick={handleRoleChange(
-                    MemberType.MEMBER,
-                    MemberType.ADMIN
-                  )}
-                  disabled={currentRole === MemberType.ADMIN}
+                maxW="335px"
+                px={0}
+                childStyle={{
+                  style: {
+                    width: '150px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  },
+                }}
+              />
+            ) : (
+              <HStack alignItems="center">
+                <Box
+                  h={5}
+                  w="fit-content"
+                  borderRadius="99px"
+                  px={2.5}
+                  py="3"
+                  display="grid"
+                  placeContent="center"
+                  bg={tagColor}
                 >
-                  {MemberType.ADMIN}
-                </MenuItem>
-                <MenuItem
-                  width="100px"
-                  textTransform="capitalize"
-                  backgroundColor={
-                    currentRole === MemberType.MEMBER
-                      ? activeMenuColor
-                      : menuBgColor
-                  }
-                  disabled={currentRole === MemberType.MEMBER}
-                  onClick={handleRoleChange(
-                    MemberType.ADMIN,
-                    MemberType.MEMBER,
-                    currentRole === MemberType.ADMIN &&
-                      props.groupRoles.filter(role => role === MemberType.ADMIN)
-                        .length === 1
-                  )}
-                >
-                  {MemberType.MEMBER}
-                </MenuItem>
-              </MenuList>
-            </Menu>
-          )}
+                  <Text size={{ base: 'xs', md: 'sm' }}>Pending</Text>
+                </Box>
+              </HStack>
+            )}
+          </VStack>
         </HStack>
+      </Th>
+      <Th pl={0}>
+        <Flex alignItems="center" gap={0.5} align="flex-start">
+          {props?.isContact || isSuccess || isActor ? (
+            <Tag size={'sm'} variant="subtle">
+              <TagLeftIcon
+                boxSize="12px"
+                w={5}
+                h={5}
+                as={GoDotFill}
+                color="green.500"
+              />
+              <TagLabel px="2px">
+                {isActor ? 'This is me' : 'My contact'}
+              </TagLabel>
+            </Tag>
+          ) : props?.hasContactInvite ? (
+            <Tag size={'sm'} variant="subtle">
+              <TagLeftIcon
+                boxSize="12px"
+                w={5}
+                h={5}
+                as={GoDotFill}
+                color="yellow.500"
+              />
+              <TagLabel px="2px">Pending</TagLabel>
+            </Tag>
+          ) : (
+            <Button
+              colorScheme="primary"
+              onClick={handleAddToContacts}
+              isLoading={isAddLoading || isInviteLoading}
+              isDisabled={isSuccess}
+              _disabled={{
+                bg: isSuccess ? 'neutral.400' : '',
+              }}
+              _hover={{
+                bg: isSuccess ? 'neutral.400' : '',
+              }}
+            >
+              Add to Contacts
+            </Button>
+          )}
+        </Flex>
+      </Th>
+      <Th pl={0}>
+        <HStack display="flex" justifyContent="space-between">
+          <HStack overflow="hidden" maxW={'150px'}>
+            {loading ? (
+              <Spinner marginInline="auto" />
+            ) : (
+              <Menu>
+                <MenuButton
+                  as={Button}
+                  rightIcon={
+                    <FaChevronDown
+                      style={{
+                        marginLeft:
+                          currentRole === MemberType.ADMIN ? '0px' : '15px',
+                      }}
+                    />
+                  }
+                  variant="ghost"
+                  gap={12}
+                  width="100px"
+                  pr={4}
+                  pl={0}
+                  textTransform="capitalize"
+                  isDisabled={!props.isAdmin}
+                >
+                  {currentRole}
+                </MenuButton>
+                <MenuList
+                  width="10px"
+                  minWidth="fit-content"
+                  overflowX="hidden"
+                >
+                  <MenuItem
+                    width="100px"
+                    textTransform="capitalize"
+                    borderBottom={`2px solid neutral.200`}
+                    backgroundColor={
+                      currentRole === MemberType.ADMIN
+                        ? activeMenuColor
+                        : menuBgColor
+                    }
+                    onClick={handleRoleChange(
+                      MemberType.MEMBER,
+                      MemberType.ADMIN
+                    )}
+                    disabled={currentRole === MemberType.ADMIN}
+                  >
+                    {MemberType.ADMIN}
+                  </MenuItem>
+                  <MenuItem
+                    width="100px"
+                    textTransform="capitalize"
+                    backgroundColor={
+                      currentRole === MemberType.MEMBER
+                        ? activeMenuColor
+                        : menuBgColor
+                    }
+                    disabled={currentRole === MemberType.MEMBER}
+                    onClick={handleRoleChange(
+                      MemberType.ADMIN,
+                      MemberType.MEMBER,
+                      currentRole === MemberType.ADMIN &&
+                        props.groupRoles.filter(
+                          role => role === MemberType.ADMIN
+                        ).length === 1
+                    )}
+                  >
+                    {MemberType.MEMBER}
+                  </MenuItem>
+                </MenuList>
+              </Menu>
+            )}
+          </HStack>
+        </HStack>
+      </Th>
+      <Th pr={0}>
         <HStack>
           {
             // no one can leave an empty group
@@ -275,8 +446,8 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               ) : null)
           }
         </HStack>
-      </HStack>
-    </HStack>
+      </Th>
+    </Tr>
   )
 }
 export default GroupMemberCard

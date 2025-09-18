@@ -10,6 +10,7 @@ const config: ThemeConfig = {
 export const colors = {
   primary: {
     50: '#FCDACF',
+    75: '#FDE5DD',
     100: '#FBC7B7',
     200: '#F9B19A',
     300: '#F78C69',
@@ -23,20 +24,24 @@ export const colors = {
   neutral: {
     0: '#FFFFFF',
     50: '#F5F7FA',
+    75: '#EAFBF2',
     100: '#E4E7EB',
     200: '#CBD2D9',
     300: '#9AA5B1',
     400: '#7B8794',
     450: '#2F3847',
+    475: '#2D3748',
     500: '#616E7C',
     600: '#52606D',
     700: '#3E4C59',
     800: '#323F4B',
     825: '#1F2933',
+    845: '#1D2630',
     850: '#181F24',
     900: '#131A20',
   },
   green: {
+    600: '#00B576',
     500: '#34C759',
     400: '#00ce5d',
     300: '#55de93',
@@ -52,18 +57,25 @@ export const colors = {
     300: '#CBD2D9',
   },
   yellow: {
+    100: '#FFF899',
     300: '#FFC700',
+    400: '#FF9500',
+    600: '#F9E800',
   },
   red: {
     500: '#FF0000',
     600: '#EB001B',
+    700: '#E40004',
   },
   orange: {
+    200: '#FCD6CA',
     400: '#FF8A65',
+    700: '#D93F0C',
   },
   dark: {
     900: '#141A1F',
     800: '#191D27',
+    700: '#131418',
   },
 }
 
@@ -105,6 +117,134 @@ const newTheme = {
       baseStyle: (props: ThemeProviderProps) => ({
         color: mode('gray.700', 'white')(props),
       }),
+    },
+  },
+  semanticTokens: {
+    colors: {
+      'bg-canvas': {
+        default: 'gray.50',
+        _dark: 'neutral.850',
+      },
+      'bg-canvas-subtle': {
+        default: 'neutral.100',
+        _dark: 'neutral.475',
+      },
+      'bg-surface': {
+        default: 'white',
+        _dark: 'neutral.900',
+      },
+      'bg-surface-secondary': {
+        default: 'white',
+        _dark: 'neutral.850',
+      },
+      'bg-surface-tertiary': {
+        default: 'gray.50',
+        _dark: 'neutral.825',
+      },
+      'border-wallet-subtle': {
+        default: 'neutral.100',
+        _dark: 'neutral.825',
+      },
+      'bg-surface-tertiary-2': {
+        default: 'neutral.100',
+        _dark: 'neutral.800',
+      },
+      'bg-surface-tertiary-3': {
+        default: 'neutral.100',
+        _dark: 'neutral.825',
+      },
+      'bg-surface-tertiary-4': {
+        default: 'neutral.50',
+        _dark: 'neutral.825',
+      },
+      'input-bg-subtle': {
+        default: 'neutral.100',
+        _dark: 'neutral.450',
+      },
+      'border-default': {
+        default: 'neutral.200',
+        _dark: 'neutral.600',
+      },
+      'border-subtle': {
+        default: 'neutral.100',
+        _dark: 'neutral.700',
+      },
+      'border-inverted-subtle': {
+        default: 'neutral.700',
+        _dark: 'neutral.0',
+      },
+      'border-emphasis': {
+        default: 'neutral.300',
+        _dark: 'neutral.500',
+      },
+      'border-default-primary': {
+        default: 'primary.600',
+        _dark: 'primary.200',
+      },
+      'border-subtle-primary': {
+        default: 'primary.100',
+        _dark: 'primary.700',
+      },
+      'border-emphasis-primary': {
+        default: 'primary.300',
+        _dark: 'primary.500',
+      },
+      'text-primary': {
+        default: 'gray.800',
+        _dark: 'white',
+      },
+      'text-highlight-primary': {
+        default: 'gray.900',
+        _dark: 'neutral.200',
+      },
+      'text-secondary': {
+        default: 'gray.600',
+        _dark: 'gray.300',
+      },
+      'text-tertiary': {
+        default: 'gray.500',
+        _dark: 'gray.400',
+      },
+      'text-muted': {
+        default: 'gray.400',
+        _dark: 'gray.500',
+      },
+      'text-subtle': {
+        default: 'neutral.600',
+        _dark: 'neutral.400',
+      },
+      'icon-default': {
+        default: 'gray.600',
+        _dark: 'gray.300',
+      },
+      'icon-secondary': {
+        default: 'gray.500',
+        _dark: 'gray.400',
+      },
+      'icon-emphasis': {
+        default: 'gray.700',
+        _dark: 'white',
+      },
+      'select-bg': {
+        default: 'white',
+        _dark: 'inherit',
+      },
+      'input-border': {
+        default: 'neutral.200',
+        _dark: 'neutral.400',
+      },
+      'warning-bg': {
+        default: 'orange.200',
+        _dark: 'orange.200',
+      },
+      'warning-text': {
+        default: 'orange.700',
+        _dark: 'orange.700',
+      },
+      'dark-bg': {
+        default: 'neutral.0',
+        _dark: 'dark.700',
+      },
     },
   },
 }

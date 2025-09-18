@@ -1,18 +1,9 @@
 import { Box, HStack } from '@chakra-ui/layout'
-import {
-  Button,
-  Heading,
-  Tag,
-  Text,
-  useColorMode,
-  useColorModeValue,
-  VStack,
-} from '@chakra-ui/react'
+import { Heading, Tag, Text, useColorModeValue, VStack } from '@chakra-ui/react'
 import { Avatar } from '@components/profile/components/Avatar'
 import { PublicScheduleContext } from '@components/public-meeting/index'
-import { MeetingType } from '@meta/Account'
 import { getAccountDisplayName } from '@utils/user_manager'
-import React, { FC, useContext } from 'react'
+import React, { useContext } from 'react'
 
 import { formatCurrency } from '@/utils/generic_utils'
 const SessionTypeCardPaymentInfo = () => {
@@ -34,7 +25,11 @@ const SessionTypeCardPaymentInfo = () => {
       <HStack w={'100%'} justifyContent="space-between" alignItems="center">
         <HStack gap={{ md: 4, base: 2 }} alignItems="center">
           <Box w={10} h={10}>
-            <Avatar account={account} />
+            <Avatar
+              address={account.address}
+              avatar_url={account.preferences?.avatar_url || ''}
+              name={getAccountDisplayName(account)}
+            />
           </Box>
           <Text fontSize={{ md: 'lg', base: 'medium' }} fontWeight="500">
             {getAccountDisplayName(account)}

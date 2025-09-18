@@ -9,7 +9,6 @@ import { AccountContext } from '../providers/AccountProvider'
 
 export default function LogoutPage() {
   const { logout } = useContext(AccountContext)
-  const { query } = useRouter()
   useEffect(() => {
     doLogout()
   }, [])
@@ -19,10 +18,7 @@ export default function LogoutPage() {
   const doLogout = async () => {
     queryClient.clear()
     logout(wallet!)
-    await router.push({
-      pathname: '/',
-      query,
-    })
+    await router.push('/')
   }
 
   return (

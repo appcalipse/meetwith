@@ -15,7 +15,7 @@ export const getMergedParticipants = (
   participants: Array<Participant>,
   groups: Array<GetGroupsFullResponse>,
   groupParticipants: Record<string, Array<string>>,
-  accountAddress: string
+  accountAddress?: string
 ) => {
   const allParticipants: Array<ParticipantInfo> = []
   for (const participant of participants) {
