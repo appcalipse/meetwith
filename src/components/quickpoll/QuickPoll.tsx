@@ -10,12 +10,17 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { FaCalendarAlt, FaClock, FaLink } from 'react-icons/fa'
 import { FaUsers } from 'react-icons/fa6'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
+import CustomLoading from '@/components/CustomLoading'
 import { Account } from '@/types/Account'
+import { getQuickPolls } from '@/utils/api_helper'
+import { QUICKPOLL_MIN_LIMIT } from '@/utils/constants'
+import { handleApiError } from '@/utils/error_helper'
 
 import AllPolls from './AllPolls'
 
@@ -26,10 +31,27 @@ interface QuickPollProps {
 const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
   const { push } = useRouter()
 
-  // For demo purposes, we're showing AllPolls
-  // Later this will be driven by backend data (e.g., checking if user has polls)
-  const hasExistingPolls = true // Change this to false to see the intro page
+  // Check if user has existing polls
+  const { data: pollsData, isLoading } = useQuery({
+    queryKey: ['quickpolls-check'],
+    queryFn: () => getQuickPolls(QUICKPOLL_MIN_LIMIT, 0),
+    onError: (err: unknown) => {
+      handleApiError('Failed to check polls', err)
+    },
+  })
 
+  if (isLoading) {
+    return <CustomLoading text="Loading..." />
+  }
+
+  const hasExistingPolls = (pollsData?.polls?.length || 0) > 0
+
+  // If user has existing polls
+  if (hasExistingPolls) {
+    return <AllPolls />
+  }
+
+  // Otherwise, show the intro page
   const featureCards = [
     {
       icon: FaCalendarAlt,
@@ -53,12 +75,6 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
     },
   ]
 
-  // If user has existing polls, show the AllPolls component
-  if (hasExistingPolls) {
-    return <AllPolls />
-  }
-
-  // Otherwise, show the intro/welcome page
   return (
     <Box
       width="100%"
