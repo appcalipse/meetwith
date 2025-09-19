@@ -13,7 +13,7 @@ import {
   Select as ChakraSelect,
   SlideFade,
   Text,
-  useMediaQuery,
+  useBreakpointValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -50,7 +50,7 @@ import {
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
-import { customSelectComponents } from '@/utils/constants/select'
+import { customSelectComponents, Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
@@ -129,13 +129,15 @@ export function SchedulePickTime({
   const currentAccount = useAccountContext()
   const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
-  const [isMobile, isTablet] = useMediaQuery(
-    ['(max-width: 500px)', '(max-width: 800px)'],
-    {
-      ssr: true,
-      fallback: false, // return false on the server, and re-evaluate on the client side
-    }
-  )
+  const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
+  const SLOT_LENGTH =
+    useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) ?? 3
+
+  useEffect(() => {
+    // Only resolve after client-side rendering
+    const timer = setTimeout(() => setIsBreakpointResolved(true), 100)
+    return () => clearTimeout(timer)
+  }, [])
   const {
     groupAvailability,
     meetingMembers,
@@ -143,13 +145,9 @@ export function SchedulePickTime({
     participants,
     groups,
   } = useParticipants()
-  const {
-    handlePageSwitch,
-    inviteModalOpen,
-    setInviteModalOpen: _setInviteModalOpen,
-  } = useScheduleNavigation()
+  const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [availableSlots, setAvailableSlots] = useState<
     Map<string, Interval<true>[]>
   >(new Map())
@@ -244,6 +242,13 @@ export function SchedulePickTime({
       )
     }
   }
+  const _onChangeDuration = (newValue: unknown) => {
+    if (Array.isArray(newValue)) {
+      return
+    }
+    const duration = newValue as Option<number, string>
+    setDuration(duration?.value ? Number(duration.value) : 30)
+  }
 
   const tzOptions = useMemo(
     () =>
@@ -268,10 +273,6 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
-  const SLOT_LENGTH = useMemo(
-    () => (isMobile ? 3 : isTablet ? 5 : 7),
-    [isTablet, isMobile]
-  )
   const getDates = (scheduleDuration = duration) => {
     const days = Array.from({ length: SLOT_LENGTH }, (v, k) => k)
       .map(k => addDays(currentSelectedDate, k))
@@ -299,6 +300,7 @@ export function SchedulePickTime({
   }
 
   async function handleSlotLoad() {
+    if (!isBreakpointResolved) return
     setIsLoading(true)
     try {
       setAvailableSlots(new Map())
@@ -397,10 +399,14 @@ export function SchedulePickTime({
     currentSelectedDate.getMonth(),
     duration,
     inviteModalOpen,
+    isBreakpointResolved,
   ])
   useEffect(() => {
+    handleSlotLoad()
+  }, [SLOT_LENGTH])
+  useEffect(() => {
     setDates(getDates())
-  }, [currentSelectedDate, timezone])
+  }, [currentSelectedDate, timezone, SLOT_LENGTH])
   const handleScheduledTimeBack = () => {
     const currentDate = DateTime.fromJSDate(currentSelectedDate)
       .setZone(timezone)
@@ -456,6 +462,14 @@ export function SchedulePickTime({
     const currentDate = DateTime.now().setZone(timezone)
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
+  const durationOptions = useMemo(
+    () =>
+      DEFAULT_GROUP_SCHEDULING_DURATION.map(type => ({
+        value: type.duration,
+        label: durationToHumanReadable(type.duration),
+      })),
+    []
+  )
   const handleJumpToBestSlot = () => {
     if (suggestedTimes.length === 0) {
       toast({
@@ -482,6 +496,7 @@ export function SchedulePickTime({
           flexDir={'row'}
           flexWrap="wrap"
           gap={4}
+          zIndex={2}
         >
           {isQuickPoll && onSaveAvailability && (
             <Button
