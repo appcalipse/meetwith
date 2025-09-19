@@ -133,10 +133,10 @@ export const MeetingSchedulePermissions = [
 ]
 
 export const QuickPollPermissionsList = [
-  {
-    value: QuickPollPermissions.SCHEDULE_MEETING,
-    label: 'Guests can schedule',
-  },
+  // {
+  //   value: QuickPollPermissions.SCHEDULE_MEETING,
+  //   label: 'Guests can schedule',
+  // },
   {
     value: QuickPollPermissions.VIEW_GUESTS,
     label: 'Guests can see guest list',
