@@ -56,6 +56,7 @@ import {
   CancelQuickPollResponse,
   CreateQuickPollRequest,
   PollStatus,
+  QuickPollListResponse,
   QuickPollParticipantType,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
@@ -1910,7 +1911,7 @@ export const getQuickPolls = async (
   limit = QUICKPOLL_DEFAULT_LIMIT,
   offset = QUICKPOLL_DEFAULT_OFFSET,
   status?: PollStatus
-) => {
+): Promise<QuickPollListResponse> => {
   const params = new URLSearchParams({
     limit: limit.toString(),
     offset: offset.toString(),

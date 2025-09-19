@@ -46,6 +46,7 @@ import {
 } from '@/utils/constants/schedule'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
+import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -130,6 +131,7 @@ const CreatePoll = () => {
         'Poll Created Successfully!',
         'Your quick poll has been created and is ready to share with participants.'
       )
+      queryClient.invalidateQueries({ queryKey: ['quickpolls'] })
 
       // Reset form state
       setFormData({
@@ -185,9 +187,7 @@ const CreatePoll = () => {
       duration_minutes: formData.duration,
       starts_at: formData.startDate.toISOString(),
       ends_at: formData.endDate.toISOString(),
-      expires_at: new Date(
-        formData.expiryDate.getTime() + formData.expiryTime.getTime()
-      ).toISOString(),
+      expires_at: formData.expiryDate.toISOString(),
       permissions: selectedPermissions as MeetingPermissions[],
       participants: allMergedParticipants.map(p => ({
         account_address: p.account_address,

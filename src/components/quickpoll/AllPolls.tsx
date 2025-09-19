@@ -15,73 +15,81 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
+import { useMemo, useState } from 'react'
 import { FiSearch } from 'react-icons/fi'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
+
+import CustomLoading from '@/components/CustomLoading'
+import EmptyState from '@/components/EmptyState'
+import Pagination from '@/components/profile/Pagination'
+import { PollStatus, QuickPollWithParticipants } from '@/types/QuickPoll'
+import { getQuickPolls } from '@/utils/api_helper'
+import { QUICKPOLL_DEFAULT_LIMIT, QUICKPOLL_MAX_LIMIT } from '@/utils/constants'
+import { handleApiError } from '@/utils/error_helper'
 
 import PollCard from './PollCard'
 
 const AllPolls = () => {
   const { push } = useRouter()
+  const [activeTab, setActiveTab] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
 
-  // Mock data for demo purposes
-  const ongoingPolls = [
-    {
-      id: 1,
-      title: 'DAO Leads WC',
-      status: 'ONGOING',
-      dateRange: '24th April - 24th June, 2025',
-      host: 'Liam Aime',
-      pollLink: 'https://meetwith.xyz/poll/memeti-zyof-uin',
-      closingDate: '25th May, 2025',
-      isHost: true,
+  const { data: pollsData, isLoading } = useQuery({
+    queryKey: ['quickpolls'],
+    queryFn: () => getQuickPolls(QUICKPOLL_MAX_LIMIT, 0),
+    onError: (err: unknown) => {
+      handleApiError('Failed to load polls', err)
     },
-    {
-      id: 2,
-      title: 'DAO Leads WC',
-      status: 'ONGOING',
-      dateRange: '24th April - 24th June, 2025',
-      host: 'Liam Aime',
-      pollLink: 'https://meetwith.xyz/poll/memeti-zyof-uin',
-      closingDate: '25th May, 2025',
-      isHost: true,
-    },
-    {
-      id: 3,
-      title: 'DAO Leads WC',
-      status: 'ONGOING',
-      dateRange: '24th April - 24th June, 2025',
-      host: 'Liam Aime',
-      pollLink: 'https://meetwith.xyz/poll/memeti-zyof-uin',
-      closingDate: '25th May, 2025',
-      isHost: false,
-    },
-  ]
+  })
 
-  const pastPolls = [
-    {
-      id: 4,
-      title: 'DAO Leads WC',
-      status: 'CANCELLED',
-      statusColor: 'orange',
-      dateRange: '24th April - 24th June, 2025',
-      host: 'Liam Aime',
-      pollLink: 'https://meetwith.xyz/poll/memeti-zyof-uin',
-      closingDate: '25th May, 2025',
-      isHost: false,
-    },
-    {
-      id: 4,
-      title: 'DAO Leads WC',
-      status: 'CANCELLED',
-      statusColor: 'orange',
-      dateRange: '24th April - 24th June, 2025',
-      host: 'Liam Aime',
-      pollLink: 'https://meetwith.xyz/poll/memeti-zyof-uin',
-      closingDate: '25th May, 2025',
-      isHost: true,
-    },
-  ]
+  // Process and filter polls
+  const { ongoingPolls, pastPolls } = useMemo(() => {
+    const allPolls = pollsData?.polls || []
+    const now = new Date()
+
+    const ongoing: QuickPollWithParticipants[] = []
+    const past: QuickPollWithParticipants[] = []
+
+    allPolls.forEach((poll: QuickPollWithParticipants) => {
+      const isExpired = new Date(poll.expires_at) < now
+      const isCancelled = poll.status === PollStatus.CANCELLED
+      const isCompleted = poll.status === PollStatus.COMPLETED
+
+      if (isCancelled || isCompleted || isExpired) {
+        past.push(poll)
+      } else if (poll.status === PollStatus.ONGOING && !isExpired) {
+        ongoing.push(poll)
+      }
+    })
+
+    return { ongoingPolls: ongoing, pastPolls: past }
+  }, [pollsData])
+
+  // Get current tab's polls
+  const currentPolls = activeTab === 0 ? ongoingPolls : pastPolls
+
+  // Pagination for current tab
+  const totalCount = currentPolls.length
+  const totalPages = Math.ceil(totalCount / QUICKPOLL_DEFAULT_LIMIT)
+  const startIndex = (currentPage - 1) * QUICKPOLL_DEFAULT_LIMIT
+  const endIndex = startIndex + QUICKPOLL_DEFAULT_LIMIT
+  const displayedPolls = currentPolls.slice(startIndex, endIndex)
+
+  const handleTabChange = (index: number) => {
+    setActiveTab(index)
+    setCurrentPage(1)
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  // Loading state
+  if (isLoading) {
+    return <CustomLoading text="Loading polls..." />
+  }
 
   return (
     <Box width="100%" bg="neutral.850" minHeight="100vh" px={6} py={8}>
@@ -119,7 +127,7 @@ const AllPolls = () => {
         </Flex>
 
         {/* Tabs with Search Section */}
-        <Tabs variant="unstyled" defaultIndex={0}>
+        <Tabs variant="unstyled" index={activeTab} onChange={handleTabChange}>
           <Flex justify="space-between" align="center">
             {/* Tabs */}
             <TabList
@@ -142,7 +150,7 @@ const AllPolls = () => {
                   bg: 'primary.200',
                 }}
               >
-                Ongoing Polls
+                Ongoing Polls ({ongoingPolls.length})
               </Tab>
               <Tab
                 rounded={4}
@@ -156,7 +164,7 @@ const AllPolls = () => {
                   bg: 'primary.200',
                 }}
               >
-                Past Polls
+                Past Polls ({pastPolls.length})
               </Tab>
             </TabList>
 
@@ -189,21 +197,45 @@ const AllPolls = () => {
           {/* Poll Cards */}
           <TabPanels mt={6}>
             <TabPanel p={0}>
-              <VStack spacing={4} align="stretch">
-                {ongoingPolls.map(poll => (
-                  <PollCard key={poll.id} poll={poll} />
-                ))}
-              </VStack>
+              {displayedPolls.length > 0 ? (
+                <VStack spacing={4} align="stretch">
+                  {displayedPolls.map(poll => (
+                    <PollCard key={poll.id} poll={poll} />
+                  ))}
+                </VStack>
+              ) : (
+                <EmptyState
+                  title="No ongoing polls"
+                  description="You don't have any ongoing polls at the moment. Create a new poll to get started."
+                />
+              )}
             </TabPanel>
             <TabPanel p={0}>
-              <VStack spacing={4} align="stretch">
-                {pastPolls.map(poll => (
-                  <PollCard key={poll.id} poll={poll} showActions={false} />
-                ))}
-              </VStack>
+              {displayedPolls.length > 0 ? (
+                <VStack spacing={4} align="stretch">
+                  {displayedPolls.map(poll => (
+                    <PollCard key={poll.id} poll={poll} />
+                  ))}
+                </VStack>
+              ) : (
+                <EmptyState
+                  title="No past polls"
+                  description="You don't have any completed or cancelled polls yet."
+                />
+              )}
             </TabPanel>
           </TabPanels>
         </Tabs>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            isLoading={isLoading}
+          />
+        )}
       </VStack>
     </Box>
   )

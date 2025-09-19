@@ -19,27 +19,55 @@ import { useRouter } from 'next/router'
 import { FaRegCopy } from 'react-icons/fa'
 import { FiEdit3, FiMoreVertical, FiTrash2 } from 'react-icons/fi'
 
+import {
+  PollStatus,
+  QuickPollParticipantType,
+  QuickPollWithParticipants,
+} from '@/types/QuickPoll'
+import { appUrl } from '@/utils/constants'
+import { formatPollDateRange, formatPollSingleDate } from '@/utils/date_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
-interface Poll {
-  id: number
-  title: string
-  status: string
-  dateRange: string
-  host: string
-  pollLink: string
-  closingDate: string
-  isHost: boolean
-}
-
 interface PollCardProps {
-  poll: Poll
+  poll: QuickPollWithParticipants & {
+    host_name?: string
+    host_address?: string
+    user_participant_type?: QuickPollParticipantType
+    user_status?: string
+  }
   showActions?: boolean
 }
 
 const PollCard = ({ poll, showActions = true }: PollCardProps) => {
   const { showSuccessToast } = useToastHelpers()
   const { push } = useRouter()
+
+  // Determine if user is host based on participant type
+  const isHost =
+    poll.user_participant_type === QuickPollParticipantType.SCHEDULER
+
+  // Format dates
+  const dateRange = formatPollDateRange(poll.starts_at, poll.ends_at)
+  const closingDate = formatPollSingleDate(poll.expires_at)
+
+  // Generate poll link
+  const pollLink = `${appUrl}/poll/${poll.slug}`
+
+  // Determine status display
+  const getStatusColor = (status: PollStatus) => {
+    switch (status) {
+      case PollStatus.ONGOING:
+        return { bg: 'green.100', color: 'green.700' }
+      case PollStatus.CANCELLED:
+        return { bg: 'red.100', color: 'red.400' }
+      case PollStatus.COMPLETED:
+        return { bg: 'blue.100', color: 'blue.700' }
+      default:
+        return { bg: 'gray.100', color: 'gray.700' }
+    }
+  }
+
+  const statusColors = getStatusColor(poll.status)
 
   return (
     <Card
@@ -65,8 +93,8 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                 {poll.title}
               </Heading>
               <Badge
-                bg={poll.status === 'ONGOING' ? 'green.100' : 'red.100'}
-                color={poll.status === 'ONGOING' ? 'green.700' : 'red.400'}
+                bg={statusColors.bg}
+                color={statusColors.color}
                 px="10px"
                 py="5px"
                 borderRadius="10px"
@@ -78,8 +106,8 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
               </Badge>
 
               <Badge
-                bg={poll.isHost ? 'orangeButton.300' : 'orange.100'}
-                color={poll.isHost ? 'neutral.0' : 'orange.800'}
+                bg={isHost ? 'orangeButton.300' : 'orange.100'}
+                color={isHost ? 'neutral.0' : 'orange.800'}
                 px="10px"
                 py="5px"
                 borderRadius="10px"
@@ -87,13 +115,13 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                 fontWeight="500"
                 textTransform="uppercase"
               >
-                {poll.isHost ? 'HOST' : 'GUEST'}
+                {isHost ? 'HOST' : 'GUEST'}
               </Badge>
             </HStack>
 
             {/* Action buttons and menu on the right */}
             <HStack spacing={3}>
-              {poll.status === 'ONGOING' && (
+              {poll.status === PollStatus.ONGOING && (
                 <Button
                   bg="primary.200"
                   color="neutral.900"
@@ -172,7 +200,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
               Meeting Date Range:
             </Text>
             <Text fontSize="16px" color="neutral.0" fontWeight="500">
-              {poll.dateRange}
+              {dateRange}
             </Text>
           </HStack>
 
@@ -185,7 +213,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
               Host:
             </Text>
             <Text fontSize="16px" color="neutral.0" fontWeight="500">
-              {poll.host}
+              {poll.host_name || 'Unknown'}
             </Text>
           </HStack>
 
@@ -201,7 +229,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
               cursor="pointer"
               _hover={{ textDecoration: 'underline' }}
             >
-              {poll.pollLink}
+              {pollLink}
             </Text>
             <IconButton
               icon={<FaRegCopy color="white" size={18} />}
@@ -211,7 +239,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
               _hover={{ color: 'neutral.200' }}
               aria-label="Copy link"
               onClick={() => {
-                navigator.clipboard.writeText(poll.pollLink)
+                navigator.clipboard.writeText(pollLink)
                 showSuccessToast(
                   'Link copied!',
                   'Poll link has been copied to clipboard'
@@ -226,7 +254,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
               Poll closing date:
             </Text>
             <Text fontSize="16px" color="neutral.0" fontWeight="500">
-              {poll.closingDate}
+              {closingDate}
             </Text>
           </HStack>
         </VStack>
@@ -236,4 +264,4 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
 }
 
 export default PollCard
-export type { Poll, PollCardProps }
+export type { PollCardProps }
