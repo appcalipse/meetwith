@@ -6252,15 +6252,33 @@ const getQuickPollsForAccount = async (
   status?: PollStatus
 ) => {
   try {
-    // Ensure limit doesn't exceed maximum
     const safeLimit = Math.min(limit, QUICKPOLL_MAX_LIMIT)
 
+    const { data: userParticipations, error: participationError } =
+      await db.supabase
+        .from('quick_poll_participants')
+        .select('poll_id')
+        .eq('account_address', accountAddress)
+
+    if (participationError) throw participationError
+
+    if (!userParticipations || userParticipations.length === 0) {
+      return {
+        polls: [],
+        total_count: 0,
+        has_more: false,
+      }
+    }
+
+    const pollIds = userParticipations.map(p => p.poll_id)
+
+    // Now get all polls with all their participants
     let query = db.supabase
       .from('quick_polls')
       .select(
         `
         *,
-        quick_poll_participants!inner (
+        quick_poll_participants (
           participant_type,
           status,
           account_address,
@@ -6271,7 +6289,7 @@ const getQuickPollsForAccount = async (
         )
       `
       )
-      .eq('quick_poll_participants.account_address', accountAddress)
+      .in('id', pollIds)
       .order('created_at', { ascending: false })
       .range(offset, offset + safeLimit - 1)
 
@@ -6286,7 +6304,7 @@ const getQuickPollsForAccount = async (
     // Process the results
     const processedPolls = polls.map(poll => {
       // Find the requesting user's participation details
-      const userParticipation = poll.quick_poll_participants.find(
+      const userParticipating = poll.quick_poll_participants.find(
         (p: QuickPollParticipant) => p.account_address === accountAddress
       )
 
@@ -6299,12 +6317,12 @@ const getQuickPollsForAccount = async (
       return {
         ...poll,
         host_name:
-          host?.accounts?.account_preferences?.[0]?.name ||
+          host?.accounts?.account_preferences?.name ||
           host?.guest_name ||
-          '',
+          'Unknown',
         host_address: host?.account_address || '',
-        user_participant_type: userParticipation?.participant_type,
-        user_status: userParticipation?.status,
+        user_participant_type: userParticipating?.participant_type,
+        user_status: userParticipating?.status,
       }
     })
 
