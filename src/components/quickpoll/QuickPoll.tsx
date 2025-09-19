@@ -41,7 +41,7 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
   })
 
   if (isLoading) {
-    return <CustomLoading text="Loading..." />
+    return <CustomLoading text="Loading polls..." />
   }
 
   const hasExistingPolls = (pollsData?.polls?.length || 0) > 0
