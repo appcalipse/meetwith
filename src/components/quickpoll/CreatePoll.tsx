@@ -16,6 +16,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import { useMutation } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, { useCallback, useContext, useMemo, useState } from 'react'
@@ -30,15 +31,23 @@ import InviteParticipants from '@/components/schedule/participants/InvitePartici
 import { AccountContext } from '@/providers/AccountProvider'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import {
+  CreateQuickPollRequest,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
+import { createQuickPoll } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import {
   DEFAULT_GROUP_SCHEDULING_DURATION,
+  MeetingPermissions,
   QuickPollPermissionsList,
 } from '@/utils/constants/schedule'
+import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
+import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 const CreatePoll = () => {
@@ -75,7 +84,7 @@ const CreatePoll = () => {
   })
 
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
-    'see_guest_list',
+    MeetingPermissions.SEE_GUEST_LIST,
   ])
 
   // Get all participants
@@ -111,6 +120,39 @@ const CreatePoll = () => {
     return deduplicatedParticipants
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
 
+  const router = useRouter()
+  const { showSuccessToast } = useToastHelpers()
+
+  const createPollMutation = useMutation({
+    mutationFn: (pollData: CreateQuickPollRequest) => createQuickPoll(pollData),
+    onSuccess: () => {
+      showSuccessToast(
+        'Poll Created Successfully!',
+        'Your quick poll has been created and is ready to share with participants.'
+      )
+
+      // Reset form state
+      setFormData({
+        title: '',
+        duration: 30,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        expiryDate: new Date(),
+        expiryTime: new Date(),
+        description: '',
+      })
+      setSelectedPermissions([MeetingPermissions.SEE_GUEST_LIST])
+      setParticipants([])
+      setGroupAvailability({})
+      setGroupParticipants({})
+
+      router.push('/dashboard/quickpoll')
+    },
+    onError: error => {
+      handleApiError('Failed to create poll', error)
+    },
+  })
+
   const handleSubmit = () => {
     // Form validation
     if (!formData.title) {
@@ -136,6 +178,26 @@ const CreatePoll = () => {
     ) {
       return
     }
+
+    const pollData: CreateQuickPollRequest = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      duration_minutes: formData.duration,
+      starts_at: formData.startDate.toISOString(),
+      ends_at: formData.endDate.toISOString(),
+      expires_at: new Date(
+        formData.expiryDate.getTime() + formData.expiryTime.getTime()
+      ).toISOString(),
+      permissions: selectedPermissions as MeetingPermissions[],
+      participants: allMergedParticipants.map(p => ({
+        account_address: p.account_address,
+        name: p.name,
+        guest_email: p.guest_email,
+        participant_type: QuickPollParticipantType.INVITEE,
+      })),
+    }
+
+    createPollMutation.mutate(pollData)
   }
 
   const onParticipantsChange = useCallback(
@@ -144,80 +206,56 @@ const CreatePoll = () => {
       const isRemoval = _participants.length < currentMerged.length
 
       if (isRemoval) {
-        // Find which participant was removed
-        const removedParticipant = currentMerged.find(
-          current =>
-            !_participants.some(
-              newP =>
-                (current.account_address &&
+        // Simply update participants to match the new list from ChipInput
+        React.startTransition(() => {
+          setParticipants(prev => {
+            const groupParticipants = prev.filter(user =>
+              isGroupParticipant(user)
+            )
+            return [...groupParticipants, ..._participants]
+          })
+        })
+
+        // Handle group participant removal
+        const removedAddresses = currentMerged
+          .filter(
+            current =>
+              !_participants.some(
+                newP =>
+                  current.account_address &&
                   newP.account_address &&
                   current.account_address.toLowerCase() ===
-                    newP.account_address.toLowerCase()) ||
-                (current.guest_email &&
-                  newP.guest_email &&
-                  current.guest_email.toLowerCase() ===
-                    newP.guest_email.toLowerCase())
-            )
-        )
+                    newP.account_address.toLowerCase()
+              )
+          )
+          .map(p => p.account_address?.toLowerCase())
+          .filter((a): a is string => !!a)
 
-        if (removedParticipant) {
-          const account_address =
-            removedParticipant.account_address?.toLowerCase()
-          const guest_email = removedParticipant.guest_email?.toLowerCase()
-
-          React.startTransition(() => {
-            setParticipants(prev =>
-              prev.filter(p => {
-                if (isGroupParticipant(p)) return true
-
-                if (
-                  account_address &&
-                  p.account_address?.toLowerCase() === account_address
-                ) {
-                  return false
-                }
-
-                if (
-                  guest_email &&
-                  p.guest_email?.toLowerCase() === guest_email
-                ) {
-                  return false
-                }
-
-                return true
-              })
-            )
-
-            if (
-              account_address &&
-              account_address !== currentAccount?.address
-            ) {
-              const keys = Object.keys(groupAvailability)
-              for (const key of keys) {
-                setGroupParticipants(prev => {
-                  const allGroupParticipants = prev[key] || []
-                  const newParticipants = allGroupParticipants.filter(
-                    val => val !== account_address
-                  )
-                  return {
-                    ...prev,
-                    [key]: newParticipants,
-                  }
-                })
-
-                setGroupAvailability(prev => {
-                  const allGroupAvailability = prev[key] || []
-                  const newAvailability = allGroupAvailability.filter(
-                    val => val !== account_address
-                  )
-                  return {
-                    ...prev,
-                    [key]: newAvailability,
-                  }
-                })
+        if (removedAddresses.length > 0) {
+          const keys = Object.keys(groupAvailability)
+          for (const key of keys) {
+            setGroupParticipants(prev => {
+              const allGroupParticipants = prev[key] || []
+              const newParticipants = allGroupParticipants.filter(
+                val => !removedAddresses.includes(val.toLowerCase())
+              )
+              return {
+                ...prev,
+                [key]: newParticipants,
               }
-            }
-          })
+            })
+
+            setGroupAvailability(prev => {
+              const allGroupAvailability = prev[key] || []
+              const newAvailability = allGroupAvailability.filter(
+                val => !removedAddresses.includes(val.toLowerCase())
+              )
+              return {
+                ...prev,
+                [key]: newAvailability,
+              }
+            })
+          }
         }
       } else {
         const addressesToAdd = _participants
@@ -329,6 +367,7 @@ const CreatePoll = () => {
                 }}
                 errorBorderColor="red.500"
                 isInvalid={!isTitleValid}
+                isDisabled={createPollMutation.isLoading}
               />
               {!isTitleValid && (
                 <FormHelperText color="red.500">
@@ -360,6 +399,7 @@ const CreatePoll = () => {
                 maxW="350px"
                 isInvalid={!isDurationValid}
                 errorBorderColor="red.500"
+                isDisabled={createPollMutation.isLoading}
               >
                 {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
                   <option key={type.id} value={type.duration}>
@@ -398,6 +438,7 @@ const CreatePoll = () => {
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
+                disabled={createPollMutation.isLoading}
               />
               <SingleDatepicker
                 date={formData.endDate}
@@ -416,6 +457,7 @@ const CreatePoll = () => {
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
+                disabled={createPollMutation.isLoading}
               />
             </HStack>
           </FormControl>
@@ -432,7 +474,7 @@ const CreatePoll = () => {
             <Box w="100%" maxW="100%">
               <ChipInput
                 currentItems={allMergedParticipants}
-                placeholder="Add participants"
+                placeholder="Enter email address, wallet address, or ENS"
                 onChange={onParticipantsChange}
                 renderItem={p => {
                   if (p.account_address) {
@@ -449,6 +491,7 @@ const CreatePoll = () => {
                   pr: 180,
                   isInvalid: !isParticipantsValid,
                   errorBorderColor: 'red.500',
+                  isDisabled: createPollMutation.isLoading,
                 }}
                 button={
                   <Button
@@ -461,6 +504,7 @@ const CreatePoll = () => {
                     _hover={{
                       textDecoration: 'none',
                     }}
+                    isDisabled={createPollMutation.isLoading}
                   >
                     <HiOutlineUserAdd color="white" size={20} />
                   </Button>
@@ -494,6 +538,7 @@ const CreatePoll = () => {
               color="neutral.0"
               _placeholder={{ color: 'neutral.400' }}
               rows={4}
+              isDisabled={createPollMutation.isLoading}
             />
           </FormControl>
 
@@ -518,6 +563,7 @@ const CreatePoll = () => {
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
+                disabled={createPollMutation.isLoading}
               />
               <InputTimePicker
                 value={format(formData.expiryTime, 'p')}
@@ -533,6 +579,7 @@ const CreatePoll = () => {
                   _placeholder: {
                     color: 'neutral.400',
                   },
+                  isDisabled: createPollMutation.isLoading,
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
@@ -568,6 +615,7 @@ const CreatePoll = () => {
                       : prev?.filter(p => p !== permission.value) || []
                   )
                 }}
+                isDisabled={createPollMutation.isLoading}
               >
                 <HStack marginInlineStart={-2} gap={0}>
                   <Text>{permission.label}</Text>
@@ -586,10 +634,13 @@ const CreatePoll = () => {
             isDisabled={
               allMergedParticipants.length === 0 ||
               !formData.title ||
-              !formData.duration
+              !formData.duration ||
+              createPollMutation.isLoading
             }
+            isLoading={createPollMutation.isLoading}
+            loadingText="Creating poll..."
           >
-            Create Poll
+            {createPollMutation.isLoading ? 'Creating poll...' : 'Create Poll'}
           </Button>
         </VStack>
 

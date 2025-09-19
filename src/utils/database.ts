@@ -6080,11 +6080,15 @@ const createQuickPoll = async (
     const invitees = await Promise.all(
       pollData.participants.map(async p => {
         let timezone = 'UTC'
+        let email = ''
 
         // For account owners, fetch their timezone from account preferences
         if (p.account_address) {
           try {
             const participantAccount = await getAccountFromDB(p.account_address)
+            email = await getAccountNotificationSubscriptionEmail(
+              p.account_address
+            )
             timezone = participantAccount.preferences?.timezone || 'UTC'
           } catch (error) {
             console.warn(
@@ -6092,13 +6096,16 @@ const createQuickPoll = async (
               error
             )
           }
+        } else if (p.guest_email) {
+          // For guest participants, use the provided email directly
+          email = p.guest_email
         }
 
         return {
           poll_id: poll.id,
           account_address: p.account_address,
           guest_name: p.name || '',
-          guest_email: p.guest_email || '',
+          guest_email: email || '',
           status: QuickPollParticipantStatus.PENDING,
           participant_type: QuickPollParticipantType.INVITEE,
           timezone,
