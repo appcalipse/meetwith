@@ -24,6 +24,7 @@ import {
   QuickPollCancellationError,
   QuickPollDeletionError,
   QuickPollNotFoundError,
+  QuickPollParticipantCreationError,
   QuickPollUnauthorizedError,
   QuickPollUpdateError,
   QuickPollValidationError,
@@ -98,16 +99,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         // Validate participant data
         if (updateData.participants.toAdd) {
           for (const participant of updateData.participants.toAdd) {
-            if (!participant.guest_email || !participant.guest_name) {
+            if (!participant.guest_email && !participant.guest_name) {
               throw new QuickPollValidationError(
-                'Guest email and name are required for new participants'
+                'Guest email or name are required for new participants'
               )
             }
           }
         }
 
         // Validate participant IDs for removal
-        if (updateData.participants.toRemove) {
+        if (
+          updateData.participants.toRemove &&
+          updateData.participants.toRemove.length > 0
+        ) {
           const existingParticipants = await getQuickPollParticipants(pollId)
           const existingParticipantIds = existingParticipants.map(p => p.id)
 
@@ -116,7 +120,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           )
           if (invalidIds.length > 0) {
             throw new QuickPollValidationError(
-              `Invalid participant IDs for removal: ${invalidIds.join(', ')}`
+              `Invalid participant IDs for removal: ${invalidIds.join(
+                ', '
+              )}. Valid IDs: ${existingParticipantIds.join(', ')}`
             )
           }
         }
@@ -169,7 +175,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (
       error instanceof QuickPollUpdateError ||
       error instanceof QuickPollDeletionError ||
-      error instanceof QuickPollCancellationError
+      error instanceof QuickPollCancellationError ||
+      error instanceof QuickPollParticipantCreationError
     ) {
       return res.status(500).json({ error: error.message })
     }

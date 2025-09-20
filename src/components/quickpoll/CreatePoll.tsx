@@ -1,4 +1,3 @@
-import { AddIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
@@ -10,33 +9,60 @@ import {
   HStack,
   Icon,
   Input,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
   Select,
   Text,
   Textarea,
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
-import React, { useCallback, useContext, useMemo, useState } from 'react'
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
 import { HiOutlineUserAdd } from 'react-icons/hi'
 
 import { ChipInput } from '@/components/chip-input'
+import CustomLoading from '@/components/CustomLoading'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import InviteParticipants from '@/components/schedule/participants/InviteParticipants'
 import { AccountContext } from '@/providers/AccountProvider'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
+import {
+  AddParticipantData,
+  CreatePollProps,
   CreateQuickPollRequest,
+  QuickPollBySlugResponse,
   QuickPollParticipantType,
+  QuickPollWithParticipants,
+  UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
-import { createQuickPoll } from '@/utils/api_helper'
+import {
+  cancelQuickPoll,
+  createQuickPoll,
+  getQuickPollBySlug,
+  updateQuickPoll,
+} from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import {
@@ -51,7 +77,7 @@ import { getMergedParticipants } from '@/utils/schedule.helper'
 import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
-const CreatePoll = () => {
+const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const { push } = useRouter()
   const [isTitleValid, setIsTitleValid] = useState(true)
   const [isDurationValid, setIsDurationValid] = useState(true)
@@ -61,6 +87,12 @@ const CreatePoll = () => {
     isOpen: isInviteModalOpen,
     onOpen: openInviteModal,
     onClose: closeInviteModal,
+  } = useDisclosure()
+
+  const {
+    isOpen: isCancelModalOpen,
+    onOpen: openCancelModal,
+    onClose: closeCancelModal,
   } = useDisclosure()
 
   const {
@@ -124,6 +156,104 @@ const CreatePoll = () => {
   const router = useRouter()
   const { showSuccessToast } = useToastHelpers()
 
+  // Fetch poll data when in edit mode
+  const { data: pollData, isLoading: isPollLoading } = useQuery(
+    ['quickpoll', pollSlug],
+    () => getQuickPollBySlug(pollSlug!),
+    {
+      enabled: isEditMode && !!pollSlug,
+      onError: (error: unknown) => {
+        handleApiError('Failed to load poll data', error)
+        router.push('/dashboard/quickpoll')
+      },
+    }
+  )
+
+  const [originalParticipants, setOriginalParticipants] = useState<
+    Array<{ id: string; account_address?: string; guest_email: string }>
+  >([])
+
+  useEffect(() => {
+    if (isEditMode && pollData && !isPollLoading) {
+      const pollResponse = pollData as QuickPollBySlugResponse
+      const poll = pollResponse.poll
+
+      // Set form data
+      setFormData({
+        title: poll.title,
+        duration: poll.duration_minutes,
+        startDate: new Date(poll.starts_at),
+        endDate: new Date(poll.ends_at),
+        expiryDate: new Date(poll.expires_at),
+        expiryTime: new Date(poll.expires_at),
+        description: poll.description || '',
+      })
+
+      // Set permissions
+      setSelectedPermissions(poll.permissions || [])
+
+      const originalParticipantsData =
+        poll.participants
+          ?.filter(
+            p => p.participant_type !== QuickPollParticipantType.SCHEDULER
+          )
+          .map(p => ({
+            id: p.id,
+            account_address: p.account_address,
+            guest_email: p.guest_email,
+          })) || []
+
+      setOriginalParticipants(originalParticipantsData)
+
+      // Convert poll participants to ParticipantInfo format and set them
+      const participantInfos =
+        poll.participants
+          ?.filter(
+            p => p.participant_type !== QuickPollParticipantType.SCHEDULER
+          ) // Exclude the scheduler/host
+          .map(participant => ({
+            account_address: participant.account_address,
+            name: participant.guest_name,
+            guest_email: participant.guest_email,
+            status: ParticipationStatus.Accepted,
+            meeting_id: '',
+            type: ParticipantType.Invitee,
+          })) || []
+
+      setParticipants(participantInfos)
+
+      // Set group availability and participants for non-group participants
+      const addressesToAdd = participantInfos
+        .map(p => p.account_address)
+        .filter((a): a is string => !!a)
+
+      if (addressesToAdd.length > 0) {
+        setGroupAvailability(prev => ({
+          ...prev,
+          [NO_GROUP_KEY]: deduplicateArray([
+            ...(prev[NO_GROUP_KEY] || []),
+            ...addressesToAdd,
+          ]),
+        }))
+
+        setGroupParticipants(prev => ({
+          ...prev,
+          [NO_GROUP_KEY]: deduplicateArray([
+            ...(prev[NO_GROUP_KEY] || []),
+            ...addressesToAdd,
+          ]),
+        }))
+      }
+    }
+  }, [
+    isEditMode,
+    pollData,
+    isPollLoading,
+    setParticipants,
+    setGroupAvailability,
+    setGroupParticipants,
+  ])
+
   const createPollMutation = useMutation({
     mutationFn: (pollData: CreateQuickPollRequest) => createQuickPoll(pollData),
     onSuccess: () => {
@@ -155,6 +285,46 @@ const CreatePoll = () => {
     },
   })
 
+  const updatePollMutation = useMutation({
+    mutationFn: (updates: UpdateQuickPollRequest) => {
+      if (!pollData) throw new Error('Poll data not available')
+      const pollResponse = pollData as QuickPollBySlugResponse
+      return updateQuickPoll(pollResponse.poll.id, updates)
+    },
+    onSuccess: () => {
+      showSuccessToast(
+        'Poll Updated Successfully!',
+        'Your quick poll has been updated with the new details.'
+      )
+      queryClient.invalidateQueries({ queryKey: ['quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['quickpoll', pollSlug] })
+      router.push('/dashboard/quickpoll')
+    },
+    onError: error => {
+      handleApiError('Failed to update poll', error)
+    },
+  })
+
+  const cancelPollMutation = useMutation({
+    mutationFn: () => {
+      if (!pollData) throw new Error('Poll data not available')
+      const pollResponse = pollData as QuickPollBySlugResponse
+      return cancelQuickPoll(pollResponse.poll.id)
+    },
+    onSuccess: () => {
+      showSuccessToast(
+        'Poll Cancelled Successfully',
+        'The poll has been cancelled.'
+      )
+      queryClient.invalidateQueries({ queryKey: ['quickpolls'] })
+      closeCancelModal()
+      router.push('/dashboard/quickpoll')
+    },
+    onError: error => {
+      handleApiError('Failed to cancel poll', error)
+    },
+  })
+
   const handleSubmit = () => {
     // Form validation
     if (!formData.title) {
@@ -181,23 +351,114 @@ const CreatePoll = () => {
       return
     }
 
-    const pollData: CreateQuickPollRequest = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      duration_minutes: formData.duration,
-      starts_at: formData.startDate.toISOString(),
-      ends_at: formData.endDate.toISOString(),
-      expires_at: formData.expiryDate.toISOString(),
-      permissions: selectedPermissions as MeetingPermissions[],
-      participants: allMergedParticipants.map(p => ({
+    if (isEditMode) {
+      const participantChanges = calculateParticipantChanges()
+
+      // // Debug logging for participant changes
+      // console.log('Participant changes:', {
+      //   toAdd: participantChanges.toAdd,
+      //   toRemove: participantChanges.toRemove,
+      //   originalCount: originalParticipants.length,
+      //   currentCount: allMergedParticipants.length,
+      // })
+
+      const updateData: UpdateQuickPollRequest = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        duration_minutes: formData.duration,
+        starts_at: formData.startDate.toISOString(),
+        ends_at: formData.endDate.toISOString(),
+        expires_at: formData.expiryDate.toISOString(),
+        permissions: selectedPermissions as MeetingPermissions[],
+        participants:
+          participantChanges.toAdd.length > 0 ||
+          participantChanges.toRemove.length > 0
+            ? participantChanges
+            : undefined, // Only include participants if there are changes
+      }
+
+      updatePollMutation.mutate(updateData)
+    } else {
+      // Create mode - prepare create request
+      const pollData: CreateQuickPollRequest = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        duration_minutes: formData.duration,
+        starts_at: formData.startDate.toISOString(),
+        ends_at: formData.endDate.toISOString(),
+        expires_at: formData.expiryDate.toISOString(),
+        permissions: selectedPermissions as MeetingPermissions[],
+        participants: allMergedParticipants.map(p => ({
+          account_address: p.account_address,
+          name: p.name,
+          guest_email: p.guest_email,
+          participant_type: QuickPollParticipantType.INVITEE,
+        })),
+      }
+
+      createPollMutation.mutate(pollData)
+    }
+  }
+
+  const handleCancelPoll = () => {
+    cancelPollMutation.mutate()
+  }
+
+  // Function to calculate participant changes for update mode
+  const calculateParticipantChanges = (): {
+    toAdd: AddParticipantData[]
+    toRemove: string[]
+  } => {
+    if (!isEditMode) return { toAdd: [], toRemove: [] }
+
+    // Current participants
+    const currentParticipants = allMergedParticipants
+
+    // new participants not in original list
+    const toAdd = currentParticipants.filter(current => {
+      // Check if this participant was in the original list
+      const existsInOriginal = originalParticipants.some(original => {
+        // Match by account_address if available, otherwise by guest_email
+        if (current.account_address && original.account_address) {
+          return (
+            current.account_address.toLowerCase() ===
+            original.account_address.toLowerCase()
+          )
+        }
+        // For guests without account_address, match by email
+        return current.guest_email === original.guest_email
+      })
+      return !existsInOriginal
+    })
+
+    // original participants not in current list
+    const toRemove = originalParticipants
+      .filter(original => {
+        // Check if this original participant is still in the current list
+        const existsInCurrent = currentParticipants.some(current => {
+          // Match by account_address if available, otherwise by guest_email
+          if (current.account_address && original.account_address) {
+            return (
+              current.account_address.toLowerCase() ===
+              original.account_address.toLowerCase()
+            )
+          }
+          // For guests without account_address, match by email
+          return current.guest_email === original.guest_email
+        })
+        return !existsInCurrent
+      })
+      .map(p => p.id) // Return participant IDs for removal
+
+    return {
+      toAdd: toAdd.map(p => ({
         account_address: p.account_address,
-        name: p.name,
-        guest_email: p.guest_email,
+        guest_name: p.name,
+        guest_email: p.guest_email || '',
         participant_type: QuickPollParticipantType.INVITEE,
       })),
+      toRemove,
     }
-
-    createPollMutation.mutate(pollData)
   }
 
   const onParticipantsChange = useCallback(
@@ -302,6 +563,27 @@ const CreatePoll = () => {
     ]
   )
 
+  // Show loading when fetching poll data in edit mode
+  if (isEditMode && (isPollLoading || !pollData)) {
+    return (
+      <Box
+        width="100%"
+        minHeight="100vh"
+        bg="neutral.850"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <CustomLoading text="Loading poll data..." />
+      </Box>
+    )
+  }
+
+  const isLoading =
+    createPollMutation.isLoading ||
+    updatePollMutation.isLoading ||
+    cancelPollMutation.isLoading
+
   return (
     <Box
       width="100%"
@@ -333,7 +615,7 @@ const CreatePoll = () => {
             textAlign="left"
             width="100%"
           >
-            Create Poll
+            {isEditMode ? 'Edit Poll' : 'Create Poll'}
           </Heading>
         </VStack>
 
@@ -367,7 +649,7 @@ const CreatePoll = () => {
                 }}
                 errorBorderColor="red.500"
                 isInvalid={!isTitleValid}
-                isDisabled={createPollMutation.isLoading}
+                isDisabled={isLoading}
               />
               {!isTitleValid && (
                 <FormHelperText color="red.500">
@@ -399,7 +681,7 @@ const CreatePoll = () => {
                 maxW="350px"
                 isInvalid={!isDurationValid}
                 errorBorderColor="red.500"
-                isDisabled={createPollMutation.isLoading}
+                isDisabled={isLoading}
               >
                 {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
                   <option key={type.id} value={type.duration}>
@@ -438,7 +720,7 @@ const CreatePoll = () => {
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
-                disabled={createPollMutation.isLoading}
+                disabled={isLoading}
               />
               <SingleDatepicker
                 date={formData.endDate}
@@ -457,7 +739,7 @@ const CreatePoll = () => {
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
-                disabled={createPollMutation.isLoading}
+                disabled={isLoading}
               />
             </HStack>
           </FormControl>
@@ -474,7 +756,7 @@ const CreatePoll = () => {
             <Box w="100%" maxW="100%">
               <ChipInput
                 currentItems={allMergedParticipants}
-                placeholder="Enter email address, wallet address, or ENS"
+                placeholder="Add guests by entering their email address"
                 onChange={onParticipantsChange}
                 renderItem={p => {
                   if (p.account_address) {
@@ -491,7 +773,7 @@ const CreatePoll = () => {
                   pr: 180,
                   isInvalid: !isParticipantsValid,
                   errorBorderColor: 'red.500',
-                  isDisabled: createPollMutation.isLoading,
+                  isDisabled: isLoading,
                 }}
                 button={
                   <Button
@@ -504,7 +786,7 @@ const CreatePoll = () => {
                     _hover={{
                       textDecoration: 'none',
                     }}
-                    isDisabled={createPollMutation.isLoading}
+                    isDisabled={isLoading}
                   >
                     <HiOutlineUserAdd color="white" size={20} />
                   </Button>
@@ -538,7 +820,7 @@ const CreatePoll = () => {
               color="neutral.0"
               _placeholder={{ color: 'neutral.400' }}
               rows={4}
-              isDisabled={createPollMutation.isLoading}
+              isDisabled={isLoading}
             />
           </FormControl>
 
@@ -563,7 +845,7 @@ const CreatePoll = () => {
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
-                disabled={createPollMutation.isLoading}
+                disabled={isLoading}
               />
               <InputTimePicker
                 value={format(formData.expiryTime, 'p')}
@@ -579,7 +861,7 @@ const CreatePoll = () => {
                   _placeholder: {
                     color: 'neutral.400',
                   },
-                  isDisabled: createPollMutation.isLoading,
+                  isDisabled: isLoading,
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
@@ -615,7 +897,7 @@ const CreatePoll = () => {
                       : prev?.filter(p => p !== permission.value) || []
                   )
                 }}
-                isDisabled={createPollMutation.isLoading}
+                isDisabled={isLoading}
               >
                 <HStack marginInlineStart={-2} gap={0}>
                   <Text>{permission.label}</Text>
@@ -624,24 +906,62 @@ const CreatePoll = () => {
             ))}
           </VStack>
 
-          {/* Create Poll Button - Full width orange bar */}
-          <Button
-            w="100%"
-            py={3}
-            h={'auto'}
-            colorScheme="primary"
-            onClick={handleSubmit}
-            isDisabled={
-              allMergedParticipants.length === 0 ||
-              !formData.title ||
-              !formData.duration ||
-              createPollMutation.isLoading
-            }
-            isLoading={createPollMutation.isLoading}
-            loadingText="Creating poll..."
-          >
-            {createPollMutation.isLoading ? 'Creating poll...' : 'Create Poll'}
-          </Button>
+          {/* Action Buttons */}
+          {isEditMode ? (
+            <HStack spacing={4} w="100%">
+              <Button
+                flex={1}
+                py={3}
+                h={'auto'}
+                colorScheme="primary"
+                onClick={handleSubmit}
+                isDisabled={
+                  allMergedParticipants.length === 0 ||
+                  !formData.title ||
+                  !formData.duration ||
+                  isLoading
+                }
+                isLoading={updatePollMutation.isLoading}
+                loadingText="Updating poll..."
+              >
+                {updatePollMutation.isLoading
+                  ? 'Updating poll...'
+                  : 'Update Poll'}
+              </Button>
+              <Button
+                flex={1}
+                py={3}
+                h={'auto'}
+                bg="red.600"
+                color="neutral.0"
+                _hover={{ bg: 'red.600' }}
+                onClick={openCancelModal}
+                isDisabled={isLoading}
+              >
+                Cancel Poll
+              </Button>
+            </HStack>
+          ) : (
+            <Button
+              w="100%"
+              py={3}
+              h={'auto'}
+              colorScheme="primary"
+              onClick={handleSubmit}
+              isDisabled={
+                allMergedParticipants.length === 0 ||
+                !formData.title ||
+                !formData.duration ||
+                isLoading
+              }
+              isLoading={createPollMutation.isLoading}
+              loadingText="Creating poll..."
+            >
+              {createPollMutation.isLoading
+                ? 'Creating poll...'
+                : 'Create Poll'}
+            </Button>
+          )}
         </VStack>
 
         {/* Invite Participants Modal */}
@@ -649,6 +969,77 @@ const CreatePoll = () => {
           isOpen={isInviteModalOpen}
           onClose={closeInviteModal}
         />
+
+        {/* Cancel Poll Confirmation Modal */}
+        {isEditMode && (
+          <Modal
+            onClose={closeCancelModal}
+            isOpen={isCancelModalOpen}
+            blockScrollOnMount={false}
+            size="lg"
+            isCentered
+          >
+            <ModalOverlay
+              bg="rgba(19, 26, 32, 0.8)"
+              backdropFilter="blur(10px)"
+            />
+            <ModalContent
+              p="6"
+              bg="bg-surface"
+              border="1px solid"
+              borderColor="neutral.800"
+              borderRadius="12px"
+              shadow="none"
+              boxShadow="none"
+            >
+              <ModalHeader
+                p="0"
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <Heading size="md" color="neutral.0">
+                  Cancel Poll
+                </Heading>
+                <ModalCloseButton color="neutral.0" />
+              </ModalHeader>
+              <ModalBody p="0" mt="6">
+                <VStack gap={6}>
+                  <Text size="base" color="neutral.0">
+                    Are you sure you want to cancel this poll? This action
+                    cannot be undone.
+                  </Text>
+                  <HStack ml="auto" w="fit-content" mt="6" gap="4">
+                    <Button
+                      onClick={closeCancelModal}
+                      colorScheme="neutral"
+                      isDisabled={cancelPollMutation.isLoading}
+                      bg="transparent"
+                      color="primary.200"
+                      _hover={{ bg: 'transparent' }}
+                      border="1px solid"
+                      borderColor="primary.200"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      bg="red.600"
+                      color="neutral.0"
+                      _hover={{ bg: 'red.700' }}
+                      isLoading={cancelPollMutation.isLoading}
+                      loadingText="Cancelling poll..."
+                      onClick={handleCancelPoll}
+                      colorScheme="red"
+                      isDisabled={cancelPollMutation.isLoading}
+                    >
+                      Cancel Poll
+                    </Button>
+                  </HStack>
+                </VStack>
+              </ModalBody>
+            </ModalContent>
+          </Modal>
+        )}
       </VStack>
     </Box>
   )

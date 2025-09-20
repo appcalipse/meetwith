@@ -98,6 +98,7 @@ export interface CreateQuickPollRequest {
 }
 
 export interface UpdateQuickPollRequest {
+  status?: PollStatus
   title?: string
   description?: string
   duration_minutes?: number
@@ -142,4 +143,15 @@ export interface QuickPollResponse {
 export interface CancelQuickPollResponse {
   success: boolean
   poll: QuickPoll
+}
+
+export interface CreatePollProps {
+  isEditMode?: boolean
+  pollSlug?: string
+}
+
+export interface QuickPollBySlugResponse {
+  poll: QuickPollWithParticipants
+  is_participant: boolean
+  can_edit: boolean
 }

@@ -6355,21 +6355,16 @@ const updateQuickPoll = async (
       throw new QuickPollUnauthorizedError('You cannot edit this poll')
     }
 
-    // If title is being updated, generate new slug
-    if (updates.title) {
-      const newSlug = await generateUniquePollSlug(updates.title)
-      updates = { ...updates, slug: newSlug } as any
-    }
-
     // Handle participant updates if provided
     if (updates.participants) {
       await updateQuickPollParticipants(pollId, updates.participants)
     }
 
-    // Update the poll itself
+    const { participants, ...pollUpdates } = updates
+
     const { data: poll, error } = await db.supabase
       .from('quick_polls')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...pollUpdates, updated_at: new Date().toISOString() })
       .eq('id', pollId)
       .select()
       .single()
@@ -6398,7 +6393,11 @@ const updateQuickPollParticipants = async (
     // Add new participants
     if (participantUpdates.toAdd && participantUpdates.toAdd.length > 0) {
       for (const participantData of participantUpdates.toAdd) {
-        await addQuickPollParticipant(pollId, participantData)
+        try {
+          await addQuickPollParticipant(pollId, participantData)
+        } catch (addError) {
+          throw addError
+        }
       }
     }
 
@@ -6409,10 +6408,17 @@ const updateQuickPollParticipants = async (
         .delete()
         .in('id', participantUpdates.toRemove)
         .eq('poll_id', pollId)
+        .select()
 
-      if (removeError) throw removeError
+      if (removeError) {
+        throw removeError
+      }
     }
   } catch (error) {
+    if (error instanceof QuickPollParticipantCreationError) {
+      throw error
+    }
+
     throw new QuickPollUpdateError(
       `Failed to update participants: ${
         error instanceof Error ? error.message : 'Unknown error'
