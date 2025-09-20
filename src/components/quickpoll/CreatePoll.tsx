@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Flex,
   FormControl,
   FormHelperText,
   FormLabel,
@@ -32,9 +33,11 @@ import React, {
   useState,
 } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
+import { FiArrowLeft } from 'react-icons/fi'
 import { HiOutlineUserAdd } from 'react-icons/hi'
 
 import { ChipInput } from '@/components/chip-input'
+import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
@@ -157,17 +160,13 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const { showSuccessToast } = useToastHelpers()
 
   // Fetch poll data when in edit mode
-  const { data: pollData, isLoading: isPollLoading } = useQuery(
-    ['quickpoll', pollSlug],
-    () => getQuickPollBySlug(pollSlug!),
-    {
-      enabled: isEditMode && !!pollSlug,
-      onError: (error: unknown) => {
-        handleApiError('Failed to load poll data', error)
-        router.push('/dashboard/quickpoll')
-      },
-    }
-  )
+  const {
+    data: pollData,
+    isLoading: isPollLoading,
+    error,
+  } = useQuery(['quickpoll', pollSlug], () => getQuickPollBySlug(pollSlug!), {
+    enabled: isEditMode && !!pollSlug,
+  })
 
   const [originalParticipants, setOriginalParticipants] = useState<
     Array<{ id: string; account_address?: string; guest_email: string }>
@@ -575,6 +574,40 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         justifyContent="center"
       >
         <CustomLoading text="Loading poll data..." />
+      </Box>
+    )
+  }
+
+  // Show error state if there's an error fetching poll data in edit mode
+  if (isEditMode && error) {
+    return (
+      <Box width="100%" minHeight="100vh" bg="neutral.850" px={6} py={8}>
+        <Flex justify="center" align="center" minH="100vh">
+          <Box maxW="500px" w="100%">
+            <CustomError
+              title="Failed to load poll"
+              description="We couldn't load this poll. It may have been deleted or you may not have permission to view it."
+              imageAlt="Poll not found"
+            />
+            <Flex justify="center" mt={6}>
+              <Button
+                leftIcon={<FiArrowLeft size={16} />}
+                variant="outline"
+                borderColor="primary.200"
+                color="primary.200"
+                size="md"
+                px={5}
+                py={2.5}
+                fontSize="14px"
+                fontWeight="600"
+                borderRadius="8px"
+                onClick={() => router.push('/dashboard/quickpoll')}
+              >
+                Back to Polls
+              </Button>
+            </Flex>
+          </Box>
+        </Flex>
       </Box>
     )
   }

@@ -21,6 +21,7 @@ import { useMemo, useState } from 'react'
 import { FiSearch } from 'react-icons/fi'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
+import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import EmptyState from '@/components/EmptyState'
 import Pagination from '@/components/profile/Pagination'
@@ -36,7 +37,11 @@ const AllPolls = () => {
   const [activeTab, setActiveTab] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const { data: pollsData, isLoading } = useQuery({
+  const {
+    data: pollsData,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['quickpolls'],
     queryFn: () => getQuickPolls(QUICKPOLL_MAX_LIMIT, 0),
     onError: (err: unknown) => {
@@ -89,6 +94,21 @@ const AllPolls = () => {
   // Loading state
   if (isLoading) {
     return <CustomLoading text="Loading polls..." />
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Box width="100%" bg="neutral.850" minHeight="100vh" px={6} py={8}>
+        <VStack spacing={6} align="stretch" maxW="1200px" mx="auto">
+          <CustomError
+            title="Failed to load polls"
+            description="We couldn't load your polls. Please try again or contact support if the problem persists."
+            imageAlt="Error loading polls"
+          />
+        </VStack>
+      </Box>
+    )
   }
 
   return (
