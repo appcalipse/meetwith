@@ -25,14 +25,15 @@ import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { FaRegCopy } from 'react-icons/fa'
-import { FiEdit3, FiMoreVertical, FiTrash2 } from 'react-icons/fi'
+import { FiEdit3, FiMoreVertical, FiRotateCcw, FiTrash2 } from 'react-icons/fi'
 
 import {
   PollStatus,
   QuickPollParticipantType,
   QuickPollWithParticipants,
+  UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
-import { deleteQuickPoll } from '@/utils/api_helper'
+import { deleteQuickPoll, updateQuickPoll } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { formatPollDateRange, formatPollSingleDate } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
@@ -53,10 +54,17 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
   const { showSuccessToast } = useToastHelpers()
   const { push } = useRouter()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false)
 
   // Determine if user is host based on participant type
   const isHost =
     poll.user_participant_type === QuickPollParticipantType.SCHEDULER
+  const pollIsExpired = new Date(poll.expires_at) < new Date()
+
+  const isPastPoll =
+    poll.status === PollStatus.COMPLETED ||
+    poll.status === PollStatus.CANCELLED ||
+    pollIsExpired
 
   // Format dates
   const dateRange = formatPollDateRange(poll.starts_at, poll.ends_at)
@@ -81,6 +89,36 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
     },
   })
 
+  // Restore poll mutation
+  const restorePollMutation = useMutation({
+    mutationFn: () => {
+      const now = new Date()
+      const fourteenDaysFromNow = new Date(
+        now.getTime() + 14 * 24 * 60 * 60 * 1000
+      )
+
+      const updateData: UpdateQuickPollRequest = {
+        starts_at: now.toISOString(),
+        ends_at: fourteenDaysFromNow.toISOString(),
+        expires_at: fourteenDaysFromNow.toISOString(),
+        status: PollStatus.ONGOING,
+      }
+
+      return updateQuickPoll(poll.id, updateData)
+    },
+    onSuccess: () => {
+      showSuccessToast(
+        'Poll restored successfully',
+        'The poll has been restored and is now active for 14 days'
+      )
+      setIsRestoreModalOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['quickpolls'] })
+    },
+    onError: error => {
+      handleApiError('Failed to restore poll', error)
+    },
+  })
+
   // Determine status display
   const getStatusColor = (status: PollStatus) => {
     switch (status) {
@@ -99,6 +137,10 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
 
   const handleDeletePoll = () => {
     deletePollMutation.mutate()
+  }
+
+  const handleRestorePoll = () => {
+    restorePollMutation.mutate()
   }
 
   return (
@@ -192,7 +234,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                 </Button>
 
                 {/* Action menu */}
-                {showActions && (
+                {showActions && isHost && (
                   <Menu>
                     <MenuButton
                       as={IconButton}
@@ -205,23 +247,53 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                       _active={{ bg: 'neutral.700' }}
                     />
                     <MenuList bg="neutral.800" shadow="none" boxShadow="none">
-                      <MenuItem
-                        icon={<FiEdit3 size={16} />}
-                        bg="neutral.800"
-                        color="neutral.0"
-                        _hover={{ bg: 'neutral.700' }}
-                      >
-                        Edit Poll
-                      </MenuItem>
-                      <MenuItem
-                        icon={<FiTrash2 size={16} />}
-                        bg="neutral.800"
-                        color="red.500"
-                        _hover={{ bg: 'neutral.700' }}
-                        onClick={() => setIsDeleteModalOpen(true)}
-                      >
-                        Delete Poll
-                      </MenuItem>
+                      {isPastPoll ? (
+                        // Past poll menu items
+                        <>
+                          <MenuItem
+                            icon={<FiRotateCcw size={16} />}
+                            bg="neutral.800"
+                            color="green.400"
+                            _hover={{ bg: 'neutral.700' }}
+                            onClick={() => setIsRestoreModalOpen(true)}
+                          >
+                            Restore Poll
+                          </MenuItem>
+                          <MenuItem
+                            icon={<FiTrash2 size={16} />}
+                            bg="neutral.800"
+                            color="red.300"
+                            _hover={{ bg: 'neutral.700' }}
+                            onClick={() => setIsDeleteModalOpen(true)}
+                          >
+                            Delete Poll
+                          </MenuItem>
+                        </>
+                      ) : (
+                        // Ongoing poll menu items
+                        <>
+                          <MenuItem
+                            icon={<FiEdit3 size={16} />}
+                            bg="neutral.800"
+                            color="neutral.0"
+                            _hover={{ bg: 'neutral.700' }}
+                            onClick={() =>
+                              push(`/dashboard/edit-poll/${poll.slug}`)
+                            }
+                          >
+                            Edit Poll
+                          </MenuItem>
+                          <MenuItem
+                            icon={<FiTrash2 size={16} />}
+                            bg="neutral.800"
+                            color="red.300"
+                            _hover={{ bg: 'neutral.700' }}
+                            onClick={() => setIsDeleteModalOpen(true)}
+                          >
+                            Delete Poll
+                          </MenuItem>
+                        </>
+                      )}
                     </MenuList>
                   </Menu>
                 )}
@@ -355,6 +427,73 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                   isDisabled={deletePollMutation.isLoading}
                 >
                   Delete Poll
+                </Button>
+              </HStack>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Restore Poll Confirmation Modal */}
+      <Modal
+        onClose={() => setIsRestoreModalOpen(false)}
+        isOpen={isRestoreModalOpen}
+        blockScrollOnMount={false}
+        size="lg"
+        isCentered
+      >
+        <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
+        <ModalContent
+          p="6"
+          bg="bg-surface"
+          border="1px solid"
+          borderColor="neutral.800"
+          borderRadius="12px"
+          shadow="none"
+          boxShadow="none"
+        >
+          <ModalHeader
+            p="0"
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Heading size="md" color="neutral.0">
+              Restore Poll
+            </Heading>
+            <ModalCloseButton color="neutral.0" />
+          </ModalHeader>
+          <ModalBody p="0" mt="6">
+            <VStack gap={6}>
+              <Text size="base" color="neutral.0">
+                This poll will be restored for poll participation. It will have
+                an expiry of 14 days from now, and participants will be able to
+                respond to the poll again.
+              </Text>
+              <HStack ml="auto" w="fit-content" mt="6" gap="4">
+                <Button
+                  onClick={() => setIsRestoreModalOpen(false)}
+                  colorScheme="neutral"
+                  isDisabled={restorePollMutation.isLoading}
+                  bg="transparent"
+                  color="primary.200"
+                  _hover={{ bg: 'transparent' }}
+                  border="1px solid"
+                  borderColor="primary.200"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  bg="green.600"
+                  _hover={{ bg: 'green.600' }}
+                  color="neutral.0"
+                  isLoading={restorePollMutation.isLoading}
+                  loadingText="Restoring poll..."
+                  onClick={handleRestorePoll}
+                  colorScheme="green"
+                  isDisabled={restorePollMutation.isLoading}
+                >
+                  Restore Poll
                 </Button>
               </HStack>
             </VStack>
