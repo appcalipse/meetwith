@@ -216,22 +216,26 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                     Schedule now
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  borderColor="primary.200"
-                  color="primary.200"
-                  size="md"
-                  px={5}
-                  py={2.5}
-                  fontSize="14px"
-                  fontWeight="600"
-                  borderRadius="8px"
-                  onClick={() =>
-                    push(`/dashboard/schedule?ref=quickpoll&pollId=${poll.id}`)
-                  }
-                >
-                  Edit your availability
-                </Button>
+                {isHost && !isPastPoll && (
+                  <Button
+                    variant="outline"
+                    borderColor="primary.200"
+                    color="primary.200"
+                    size="md"
+                    px={5}
+                    py={2.5}
+                    fontSize="14px"
+                    fontWeight="600"
+                    borderRadius="8px"
+                    onClick={() =>
+                      push(
+                        `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}`
+                      )
+                    }
+                  >
+                    Edit your availability
+                  </Button>
+                )}
 
                 {/* Action menu */}
                 {showActions && isHost && (

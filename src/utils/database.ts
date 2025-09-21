@@ -6249,7 +6249,8 @@ const getQuickPollsForAccount = async (
   accountAddress: string,
   limit = QUICKPOLL_DEFAULT_LIMIT,
   offset = QUICKPOLL_DEFAULT_OFFSET,
-  status?: PollStatus
+  status?: PollStatus,
+  searchQuery?: string
 ) => {
   try {
     const safeLimit = Math.min(limit, QUICKPOLL_MAX_LIMIT)
@@ -6295,6 +6296,10 @@ const getQuickPollsForAccount = async (
 
     if (status) {
       query = query.eq('status', status)
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      query = query.ilike('title', `%${searchQuery.trim()}%`)
     }
 
     const { data: polls, error } = await query
