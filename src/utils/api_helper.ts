@@ -1910,7 +1910,8 @@ export const getUserLocale = async (): Promise<UserLocale> => {
 export const getQuickPolls = async (
   limit = QUICKPOLL_DEFAULT_LIMIT,
   offset = QUICKPOLL_DEFAULT_OFFSET,
-  status?: PollStatus
+  status?: PollStatus,
+  searchQuery?: string
 ): Promise<QuickPollListResponse> => {
   const params = new URLSearchParams({
     limit: limit.toString(),
@@ -1919,6 +1920,10 @@ export const getQuickPolls = async (
 
   if (status) {
     params.append('status', status)
+  }
+
+  if (searchQuery && searchQuery.trim()) {
+    params.append('searchQuery', searchQuery.trim())
   }
 
   return await internalFetch(`/secure/quickpoll?${params}`)

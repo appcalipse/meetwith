@@ -34,13 +34,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         limit = QUICKPOLL_DEFAULT_LIMIT.toString(),
         offset = QUICKPOLL_DEFAULT_OFFSET.toString(),
         status,
+        searchQuery,
       } = req.query
 
       const result = await getQuickPollsForAccount(
         address,
         parseInt(limit as string),
         parseInt(offset as string),
-        status as PollStatus
+        status as PollStatus,
+        searchQuery as string
       )
 
       const response: QuickPollListResponse = {

@@ -7,6 +7,7 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  Spinner,
   Tab,
   TabList,
   TabPanel,
@@ -24,7 +25,9 @@ import { HiMiniPlusCircle } from 'react-icons/hi2'
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import EmptyState from '@/components/EmptyState'
+import Loading from '@/components/Loading'
 import Pagination from '@/components/profile/Pagination'
+import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { PollStatus, QuickPollWithParticipants } from '@/types/QuickPoll'
 import { getQuickPolls } from '@/utils/api_helper'
 import { QUICKPOLL_DEFAULT_LIMIT, QUICKPOLL_MAX_LIMIT } from '@/utils/constants'
@@ -36,6 +39,8 @@ const AllPolls = () => {
   const { push } = useRouter()
   const [activeTab, setActiveTab] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
 
   const {
     data: pollsData,
@@ -43,8 +48,9 @@ const AllPolls = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['quickpolls'],
-    queryFn: () => getQuickPolls(QUICKPOLL_MAX_LIMIT, 0),
+    queryKey: ['quickpolls', debouncedSearchQuery],
+    queryFn: () =>
+      getQuickPolls(QUICKPOLL_MAX_LIMIT, 0, undefined, debouncedSearchQuery),
     onError: (err: unknown) => {
       handleApiError('Failed to load polls', err)
     },
@@ -92,8 +98,7 @@ const AllPolls = () => {
     setCurrentPage(page)
   }
 
-  // Loading state
-  if (isLoading) {
+  if (isLoading && !debouncedSearchQuery) {
     return <CustomLoading text="Loading polls..." />
   }
 
@@ -228,6 +233,8 @@ const AllPolls = () => {
                 height="40px"
                 borderRadius="6px"
                 maxH="48px"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
               />
             </InputGroup>
           </Flex>
@@ -235,12 +242,26 @@ const AllPolls = () => {
           {/* Poll Cards */}
           <TabPanels mt={6}>
             <TabPanel p={0}>
-              {displayedPolls.length > 0 ? (
+              {isLoading && debouncedSearchQuery ? (
+                <Flex justify="center" align="center" py={8}>
+                  <VStack spacing={4}>
+                    <Spinner size="lg" color="primary.400" />
+                    <Text color="neutral.400" fontSize="sm">
+                      Searching polls...
+                    </Text>
+                  </VStack>
+                </Flex>
+              ) : displayedPolls.length > 0 ? (
                 <VStack spacing={4} align="stretch">
                   {displayedPolls.map(poll => (
                     <PollCard key={poll.id} poll={poll} />
                   ))}
                 </VStack>
+              ) : debouncedSearchQuery ? (
+                <EmptyState
+                  title="No polls found"
+                  description={`No polls match "${debouncedSearchQuery}". Try a different search term.`}
+                />
               ) : (
                 <EmptyState
                   title="No ongoing polls"
@@ -249,12 +270,26 @@ const AllPolls = () => {
               )}
             </TabPanel>
             <TabPanel p={0}>
-              {displayedPolls.length > 0 ? (
+              {isLoading && debouncedSearchQuery ? (
+                <Flex justify="center" align="center" py={8}>
+                  <VStack spacing={4}>
+                    <Spinner size="lg" color="primary.400" />
+                    <Text color="neutral.400" fontSize="sm">
+                      Searching polls...
+                    </Text>
+                  </VStack>
+                </Flex>
+              ) : displayedPolls.length > 0 ? (
                 <VStack spacing={4} align="stretch">
                   {displayedPolls.map(poll => (
                     <PollCard key={poll.id} poll={poll} />
                   ))}
                 </VStack>
+              ) : debouncedSearchQuery ? (
+                <EmptyState
+                  title="No polls found"
+                  description={`No polls match "${debouncedSearchQuery}". Try a different search term.`}
+                />
               ) : (
                 <EmptyState
                   title="No past polls"
