@@ -343,3 +343,27 @@ export const formatPollSingleDate = (date: string) => {
   const dayOrdinal = `${day}${getOrdinalSuffix(day)}`
   return `${dayOrdinal} ${dateTime.toFormat('MMMM, yyyy')}`
 }
+
+export const createLocalDateTime = (date: Date, time: Date): string => {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const day = date.getDate()
+  const hours = time.getHours()
+  const minutes = time.getMinutes()
+  const seconds = time.getSeconds()
+
+  const localDateTime = new Date(year, month, day, hours, minutes, seconds)
+
+  return localDateTime.toISOString()
+}
+
+// Helper function to create a date at start of day in local timezone
+export const createLocalDate = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const day = date.getDate()
+
+  const localDate = new Date(year, month, day, 0, 0, 0)
+
+  return localDate.toISOString()
+}

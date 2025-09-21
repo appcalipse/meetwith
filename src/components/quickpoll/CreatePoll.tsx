@@ -73,6 +73,7 @@ import {
   MeetingPermissions,
   QuickPollPermissionsList,
 } from '@/utils/constants/schedule'
+import { createLocalDate, createLocalDateTime } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
@@ -113,7 +114,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     title: '',
     duration: 30,
     startDate: new Date(),
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
     expiryDate: new Date(),
     expiryTime: new Date(),
     description: '',
@@ -166,6 +167,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     error,
   } = useQuery(['quickpoll', pollSlug], () => getQuickPollBySlug(pollSlug!), {
     enabled: isEditMode && !!pollSlug,
+    onError: error => {
+      handleApiError('Failed to fetch poll data', error)
+    },
   })
 
   const [originalParticipants, setOriginalParticipants] = useState<
@@ -353,21 +357,16 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     if (isEditMode) {
       const participantChanges = calculateParticipantChanges()
 
-      // // Debug logging for participant changes
-      // console.log('Participant changes:', {
-      //   toAdd: participantChanges.toAdd,
-      //   toRemove: participantChanges.toRemove,
-      //   originalCount: originalParticipants.length,
-      //   currentCount: allMergedParticipants.length,
-      // })
-
       const updateData: UpdateQuickPollRequest = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         duration_minutes: formData.duration,
-        starts_at: formData.startDate.toISOString(),
-        ends_at: formData.endDate.toISOString(),
-        expires_at: formData.expiryDate.toISOString(),
+        starts_at: createLocalDate(formData.startDate),
+        ends_at: createLocalDate(formData.endDate),
+        expires_at: createLocalDateTime(
+          formData.expiryDate,
+          formData.expiryTime
+        ),
         permissions: selectedPermissions as MeetingPermissions[],
         participants:
           participantChanges.toAdd.length > 0 ||
@@ -383,9 +382,12 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         title: formData.title.trim(),
         description: formData.description.trim(),
         duration_minutes: formData.duration,
-        starts_at: formData.startDate.toISOString(),
-        ends_at: formData.endDate.toISOString(),
-        expires_at: formData.expiryDate.toISOString(),
+        starts_at: createLocalDate(formData.startDate),
+        ends_at: createLocalDate(formData.endDate),
+        expires_at: createLocalDateTime(
+          formData.expiryDate,
+          formData.expiryTime
+        ),
         permissions: selectedPermissions as MeetingPermissions[],
         participants: allMergedParticipants.map(p => ({
           account_address: p.account_address,
@@ -563,7 +565,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   )
 
   // Show loading when fetching poll data in edit mode
-  if (isEditMode && (isPollLoading || !pollData)) {
+  if (isEditMode && isPollLoading) {
     return (
       <Box
         width="100%"
@@ -587,6 +589,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             <CustomError
               title="Failed to load poll"
               description="We couldn't load this poll. It may have been deleted or you may not have permission to view it."
+              imageSrc="/assets/404.svg"
               imageAlt="Poll not found"
             />
             <Flex justify="center" mt={6}>

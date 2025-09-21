@@ -18,7 +18,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useMemo, useState } from 'react'
-import { FiSearch } from 'react-icons/fi'
+import { FiEdit3, FiRefreshCcw, FiSearch } from 'react-icons/fi'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
 import CustomError from '@/components/CustomError'
@@ -41,6 +41,7 @@ const AllPolls = () => {
     data: pollsData,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ['quickpolls'],
     queryFn: () => getQuickPolls(QUICKPOLL_MAX_LIMIT, 0),
@@ -106,6 +107,23 @@ const AllPolls = () => {
             description="We couldn't load your polls. Please try again or contact support if the problem persists."
             imageAlt="Error loading polls"
           />
+          <Flex justify="center">
+            <Button
+              leftIcon={<FiRefreshCcw size={16} />}
+              variant="outline"
+              borderColor="primary.200"
+              color="primary.200"
+              size="md"
+              px={5}
+              py={2.5}
+              fontSize="14px"
+              fontWeight="600"
+              borderRadius="8px"
+              onClick={() => refetch()}
+            >
+              Try Again
+            </Button>
+          </Flex>
         </VStack>
       </Box>
     )
