@@ -173,26 +173,14 @@ export function SchedulePickTime({
     return slots
   }
   const months = useMemo(() => {
-    const year = currentSelectedDate.getFullYear()
     const monthsArray = []
-    const formatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
-    const currentDateInTimezone = DateTime.now().setZone(timezone)
-    for (let month = 0; month < 12; month++) {
-      if (
-        month < currentDateInTimezone.month &&
-        year === currentDateInTimezone.year
-      ) {
-        continue
-      }
-      const monthDateTime = DateTime.fromObject({
-        year,
-        month: month + 1,
-        day: 1,
-      }).setZone(timezone)
+    let currentDateInTimezone = DateTime.now().setZone(timezone)
+    while (monthsArray.length < 12) {
       monthsArray.push({
-        value: String(month),
-        label: `${formatter.format(monthDateTime.toJSDate())} ${year}`,
+        value: String(currentDateInTimezone.month),
+        label: currentDateInTimezone.toFormat('MMMM yyyy'),
       })
+      currentDateInTimezone = currentDateInTimezone.plus({ months: 1 })
     }
     return monthsArray
   }, [currentSelectedDate.getFullYear(), timezone])
@@ -208,10 +196,8 @@ export function SchedulePickTime({
   const [monthValue, setMonthValue] = useState<
     SingleValue<{ label: string; value: string }>
   >({
-    label: `${new Intl.DateTimeFormat('en-US', { month: 'long' }).format(
-      currentSelectedDate
-    )} ${currentSelectedDate.getFullYear()}`,
-    value: String(currentSelectedDate.getMonth()),
+    value: String(DateTime.now().setZone(timezone).month),
+    label: DateTime.now().setZone(timezone).toFormat('MMMM yyyy'),
   })
 
   const _onChangeMonth = (newValue: unknown, newMonth?: Date) => {
@@ -222,9 +208,10 @@ export function SchedulePickTime({
     setMonthValue(month)
     if (!month?.value) return
     if (!newMonth) {
+      const year = month.label.split(' ')[1]
       setCurrentSelectedDate(
         DateTime.now()
-          .set({ month: Number(month.value), day: 1 })
+          .set({ month: Number(month.value), day: 1, year: Number(year) })
           .toJSDate()
       )
     }
@@ -410,7 +397,7 @@ export function SchedulePickTime({
       _onChangeMonth(
         {
           label: `${newDate.toFormat('MMMM yyyy')}`,
-          value: String(newDate.month - 1),
+          value: String(newDate.month),
         },
         newDate.toJSDate()
       )
@@ -427,7 +414,7 @@ export function SchedulePickTime({
       _onChangeMonth(
         {
           label: `${newDate.toFormat('MMMM yyyy')}`,
-          value: String(newDate.month - 1),
+          value: String(newDate.month),
         },
         newDate.toJSDate()
       )
