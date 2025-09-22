@@ -2489,20 +2489,21 @@ const handleWebHook = async (
         }
         return
       }
-    }
-    const result = await integration.setWebhookUrl(WEBHOOK_URL, calId)
-    const { calendarId, channelId, expiration, resourceId } = result
-    const { error: updateError } = await db.supabase
-      .from('calendar_webhooks')
-      .insert({
-        channel_id: channelId,
-        resource_id: resourceId,
-        calendar_id: calendarId,
-        connected_calendar_id: connectedCalendarId,
-        expires_at: new Date(Number(expiration)).toISOString(),
-      })
-    if (updateError) {
-      console.error(updateError)
+    } else {
+      const result = await integration.setWebhookUrl(WEBHOOK_URL, calId)
+      const { calendarId, channelId, expiration, resourceId } = result
+      const { error: updateError } = await db.supabase
+        .from('calendar_webhooks')
+        .insert({
+          channel_id: channelId,
+          resource_id: resourceId,
+          calendar_id: calendarId,
+          connected_calendar_id: connectedCalendarId,
+          expires_at: new Date(Number(expiration)).toISOString(),
+        })
+      if (updateError) {
+        console.error(updateError)
+      }
     }
   } catch (e) {
     console.error('Error refreshing webhook:', e)
