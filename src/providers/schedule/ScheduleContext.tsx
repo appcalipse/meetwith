@@ -104,7 +104,7 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   })
   const [selectedPermissions, setSelectedPermissions] = useState<
     Array<MeetingPermissions> | undefined
-  >([MeetingPermissions.SEE_GUEST_LIST])
+  >([MeetingPermissions.SEE_GUEST_LIST, MeetingPermissions.EDIT_MEETING])
   const [isScheduling, setIsScheduling] = useState(false)
 
   const value: IScheduleStateContext = {

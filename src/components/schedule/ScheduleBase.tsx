@@ -135,8 +135,7 @@ const ScheduleBase = () => {
     const mergedParticipants = getMergedParticipants(
       participants,
       groups,
-      groupParticipants,
-      currentAccount?.address || ''
+      groupParticipants
     )
     if (mergedParticipants.length > 0) {
       const filteredMeetingOwners = meetingOwners.filter(owner =>
@@ -151,23 +150,9 @@ const ScheduleBase = () => {
   }, [participants])
   const meetingParticipants = useMemo(
     () =>
-      getMergedParticipants(
-        participants,
-        groups,
-        groupParticipants,
-        currentAccount?.address
-      )
-        .concat([
-          {
-            account_address: currentAccount?.address,
-            name: currentAccount?.preferences?.name,
-            type: ParticipantType.Scheduler,
-            status: ParticipationStatus.Accepted,
-            slot_id: '',
-            meeting_id: '',
-          },
-        ])
-        .filter(val => !val.isHidden),
+      getMergedParticipants(participants, groups, groupParticipants).filter(
+        val => !val.isHidden
+      ),
     [participants, groups, groupParticipants]
   )
   return (
