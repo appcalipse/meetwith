@@ -50,7 +50,9 @@ export const getMergedParticipants = (
       allParticipants.push(participant)
     }
   }
-  return allParticipants.filter(val => val.account_address !== accountAddress)
+  return accountAddress
+    ? allParticipants.filter(val => val.account_address !== accountAddress)
+    : allParticipants
 }
 
 export const parseAccounts = async (
