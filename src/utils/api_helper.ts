@@ -53,10 +53,12 @@ import {
 import {
   AddParticipantData,
   AddParticipantRequest,
+  AvailabilitySlot,
   CancelQuickPollResponse,
   CreateQuickPollRequest,
   PollStatus,
   QuickPollListResponse,
+  QuickPollParticipant,
   QuickPollParticipantType,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
@@ -1969,4 +1971,76 @@ export const cancelQuickPoll = async (
   pollId: string
 ): Promise<CancelQuickPollResponse> => {
   return await internalFetch(`/secure/quickpoll/${pollId}`, 'PATCH')
+}
+
+export const updatePollParticipantAvailability = async (
+  participantId: string,
+  availableSlots: AvailabilitySlot[],
+  timezone?: string
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/availability`,
+    'PATCH',
+    {
+      available_slots: availableSlots,
+      timezone,
+    }
+  )
+}
+
+export const updateGuestParticipantDetails = async (
+  participantId: string,
+  guestName: string,
+  guestEmail: string
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/details`,
+    'PATCH',
+    {
+      guest_name: guestName,
+      guest_email: guestEmail,
+    }
+  )
+}
+
+export const savePollParticipantCalendar = async (
+  participantId: string,
+  email: string,
+  provider: string,
+  payload?: Record<string, unknown>
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/calendar`,
+    'POST',
+    {
+      email,
+      provider,
+      payload,
+    }
+  )
+}
+
+export const getPollParticipantByIdentifier = async (
+  slug: string,
+  identifier: string
+): Promise<QuickPollParticipant> => {
+  return await internalFetch(
+    `/quickpoll/${slug}/participant/${encodeURIComponent(identifier)}`
+  )
+}
+
+export const getQuickPollGoogleAuthConnectUrl = async (
+  state?: string | null
+) => {
+  return await internalFetch<ConnectResponse>(
+    `/quickpoll/calendar/google/connect${state ? `?state=${state}` : ''}`
+  )
+}
+
+export const getQuickPollOffice365ConnectUrl = async (
+  state?: string | null
+) => {
+  return await internalFetch<ConnectResponse>(
+    `/quickpoll/calendar/office365/connect${state ? `?state=${state}` : ''}`
+  )
 }

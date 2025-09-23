@@ -34,6 +34,11 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
+import {
+  QuickPollBySlugResponse,
+  QuickPollParticipantStatus,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
@@ -41,6 +46,7 @@ import {
   getGroup,
   getGroupsMembers,
   getMeeting,
+  getQuickPollById,
 } from '@/utils/api_helper'
 import {
   decodeMeeting,
@@ -143,9 +149,10 @@ const ScheduleMain: FC<IInitialProps> = ({
     setCanEditMeetingDetails,
   } = useParticipantPermissions()
   const [isPrefetching, setIsPrefetching] = useState(true)
+  const [pollData, setPollData] = useState<QuickPollBySlugResponse | null>(null)
   const toast = useToast()
   const router = useRouter()
-  const { push } = router
+  const { push, query } = router
 
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -204,6 +211,39 @@ const ScheduleMain: FC<IInitialProps> = ({
       handleApiError('Error prefetching contact.', error)
     }
   }
+
+  const handlePollPrefetch = async () => {
+    if (!pollId) return
+    try {
+      const poll = (await getQuickPollById(pollId)) as QuickPollBySlugResponse
+      setPollData(poll)
+      setTitle(poll.poll.title)
+      setContent(poll.poll.description)
+      setDuration(poll.poll.duration_minutes)
+
+      const pollParticipants: ParticipantInfo[] = poll.poll.participants.map(
+        participant => ({
+          account_address: participant.account_address || '',
+          name: participant.guest_name || participant.guest_email || 'Unknown',
+          status:
+            participant.status === QuickPollParticipantStatus.ACCEPTED
+              ? ParticipationStatus.Accepted
+              : ParticipationStatus.Pending,
+          type:
+            participant.participant_type === QuickPollParticipantType.SCHEDULER
+              ? ParticipantType.Scheduler
+              : ParticipantType.Invitee,
+          slot_id: '',
+          meeting_id: '',
+        })
+      )
+
+      setParticipants(pollParticipants)
+    } catch (error: unknown) {
+      handleApiError('Error prefetching poll.', error)
+    }
+  }
+
   const handleFetchMeetingInformation = async () => {
     if (!meetingId) return
     try {
@@ -335,6 +375,9 @@ const ScheduleMain: FC<IInitialProps> = ({
     if (groupId) {
       promises.push(handleGroupPrefetch())
     }
+    if (pollId) {
+      promises.push(handlePollPrefetch())
+    }
     if (intent === Intents.UPDATE_MEETING && meetingId) {
       promises.push(handleFetchMeetingInformation())
     }
@@ -354,6 +397,21 @@ const ScheduleMain: FC<IInitialProps> = ({
   useEffect(() => {
     void handlePrefetch()
   }, [groupId, contactId, intent, meetingId, currentAccount?.address])
+
+  useEffect(() => {
+    const selectedTimeParam = query.selectedTime as string
+    if (selectedTimeParam && router.isReady) {
+      try {
+        const selectedTime = new Date(decodeURIComponent(selectedTimeParam))
+        if (!isNaN(selectedTime.getTime())) {
+          setPickedTime(selectedTime)
+        }
+      } catch (error) {
+        console.warn('Failed to parse selectedTime from URL:', error)
+      }
+    }
+  }, [query.selectedTime, router.isReady, setPickedTime])
+
   const handleDelete = async (actor?: ParticipantInfo) => {
     if (!decryptedMeeting) return
     setIsDeleting(true)
@@ -502,6 +560,67 @@ const ScheduleMain: FC<IInitialProps> = ({
   const handleSchedule = async () => {
     try {
       setIsScheduling(true)
+
+      // Handle quickpoll scheduling
+      if (pollId && pollData) {
+        if (!pickedTime) {
+          toast({
+            title: 'No time selected',
+            description:
+              'Please select a time slot before scheduling the meeting.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+          setIsScheduling(false)
+          return
+        }
+
+        const start = new Date(pickedTime)
+        const end = addMinutes(new Date(start), duration)
+
+        // Get quickpoll participants
+        const quickpollParticipants = pollData.poll.participants.map(
+          participant => ({
+            account_address: participant.account_address || undefined,
+            guest_email: participant.guest_email || undefined,
+            name:
+              participant.guest_name || participant.guest_email || 'Unknown',
+            status: ParticipationStatus.Pending,
+            type:
+              participant.participant_type ===
+              QuickPollParticipantType.SCHEDULER
+                ? ParticipantType.Scheduler
+                : ParticipantType.Invitee,
+            slot_id: '',
+            meeting_id: '',
+          })
+        )
+
+        await scheduleMeeting(
+          true,
+          SchedulingType.REGULAR,
+          NO_MEETING_TYPE,
+          start,
+          end,
+          quickpollParticipants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          undefined,
+          title,
+          meetingNotification.map(n => n.value),
+          meetingRepeat.value,
+          selectedPermissions
+        )
+
+        handlePageSwitch(Page.COMPLETED)
+        return
+      }
+
+      // Regular meeting scheduling flow
       const isSchedulerOrOwner = [
         ParticipantType.Scheduler,
         ParticipantType.Owner,
@@ -799,7 +918,11 @@ const ScheduleMain: FC<IInitialProps> = ({
           <Tabs index={currentPage} isLazy>
             <TabPanels>
               <TabPanel p={0}>
-                <ScheduleTimeDiscover pollId={pollId} />
+                <ScheduleTimeDiscover
+                  pollId={pollId}
+                  isQuickPoll={!!pollId}
+                  pollData={pollData || undefined}
+                />
               </TabPanel>
               <TabPanel p={0}>
                 <ScheduleBase />

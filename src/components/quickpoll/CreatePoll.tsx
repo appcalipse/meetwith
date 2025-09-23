@@ -792,7 +792,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             <Box w="100%" maxW="100%">
               <ChipInput
                 currentItems={allMergedParticipants}
-                placeholder="Add guests by entering their email address"
+                placeholder="Add participants"
                 onChange={onParticipantsChange}
                 renderItem={p => {
                   if (p.account_address) {

@@ -212,11 +212,16 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                     _active={{
                       bg: 'primary.400',
                     }}
+                    onClick={() =>
+                      push(
+                        `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}`
+                      )
+                    }
                   >
                     Schedule now
                   </Button>
                 )}
-                {isHost && !isPastPoll && (
+                {!isHost && !isPastPoll && (
                   <Button
                     variant="outline"
                     borderColor="primary.200"

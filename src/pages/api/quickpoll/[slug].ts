@@ -27,7 +27,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Check if poll is expired
     const now = new Date()
     const expiresAt = new Date(result.poll.expires_at)
-    if (now > expiresAt && result.poll.status !== PollStatus.COMPLETED) {
+    if (
+      now > expiresAt ||
+      result.poll.status === PollStatus.COMPLETED ||
+      result.poll.status === PollStatus.CANCELLED
+    ) {
       throw new QuickPollExpiredError()
     }
 
