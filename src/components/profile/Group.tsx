@@ -10,7 +10,6 @@ import {
   TabPanels,
   Tabs,
   Text,
-  useColorModeValue,
   useDisclosure,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
@@ -24,42 +23,12 @@ import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
 import { Intents, InviteType } from '@/types/Dashboard'
-import { Group as GroupResponse, GroupMember } from '@/types/Group'
+import { Group as GroupResponse } from '@/types/Group'
 import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
 import Groups, { GroupRef } from '../group/Groups'
 import SearchInput from '../ui/SearchInput'
-interface IGroupModal {
-  openLeaveModal: () => void
-  pickGroupId: (groupId: string) => void
-  pickGroupSlug: (groupSlug: string) => void
-  setToggleAdminLeave: (value: boolean) => void
-  setToggleAdminChange: (value: boolean) => void
-  openDeleteModal: () => void
-  setGroupName: (groupName: string) => void
-  openNameEditModal: () => void
-  openSlugEditModal: () => void
-  selectedGroupMember: GroupMember
-  setSelectedGroupMember: React.Dispatch<React.SetStateAction<GroupMember>>
-  openRemoveModal: () => void
-}
-
-const DEFAULT_STATE: IGroupModal = {
-  openLeaveModal: () => {},
-  pickGroupId: () => {},
-  pickGroupSlug: () => {},
-  setToggleAdminLeave: () => {},
-  setToggleAdminChange: () => {},
-  openDeleteModal: () => {},
-  setGroupName: () => {},
-  openNameEditModal: () => {},
-  openSlugEditModal: () => {},
-  selectedGroupMember: {} as GroupMember,
-  setSelectedGroupMember: () => {},
-  openRemoveModal: () => {},
-}
-export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [inviteGroupData, setInviteGroupData] = useState<
