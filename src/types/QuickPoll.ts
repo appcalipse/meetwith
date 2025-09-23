@@ -51,7 +51,10 @@ export interface QuickPollParticipant {
   guest_name?: string
   guest_email: string
   status: QuickPollParticipantStatus
-  available_slots: Record<string, any>[]
+  available_slots: Array<{
+    weekday: number
+    ranges: Array<{ start: string; end: string }>
+  }>
   timezone?: string
   participant_type: QuickPollParticipantType
 }
@@ -63,7 +66,7 @@ export interface QuickPollCalendar {
   participant_id: string
   email: string
   provider: string
-  payload?: Record<string, any>
+  payload?: Record<string, unknown>
 }
 
 // Extended interfaces for API responses
@@ -154,4 +157,9 @@ export interface QuickPollBySlugResponse {
   poll: QuickPollWithParticipants
   is_participant: boolean
   can_edit: boolean
+}
+
+export interface AvailabilitySlot {
+  weekday: number
+  ranges: Array<{ start: string; end: string }>
 }

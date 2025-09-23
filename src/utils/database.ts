@@ -95,6 +95,7 @@ import {
 import {
   AddParticipantData,
   AddParticipantRequest,
+  AvailabilitySlot,
   CreateQuickPollRequest,
   PollStatus,
   PollVisibility,
@@ -6067,6 +6068,31 @@ const createQuickPoll = async (
     const ownerEmail = await getAccountNotificationSubscriptionEmail(
       owner_address
     )
+
+    // Get owner's availability
+    let ownerAvailableSlots: AvailabilitySlot[] = []
+    try {
+      const availabilityId = await getDefaultAvailabilityBlockId(owner_address)
+      if (availabilityId) {
+        const { data: availability } = await db.supabase
+          .from('availabilities')
+          .select('weekly_availability')
+          .eq('id', availabilityId)
+          .single()
+
+        if (availability?.weekly_availability) {
+          ownerAvailableSlots = availability.weekly_availability.map(
+            (day: AvailabilitySlot) => ({
+              weekday: day.weekday,
+              ranges: day.ranges || [],
+            })
+          )
+        }
+      }
+    } catch (error) {
+      console.warn(`Could not fetch owner availability:`, error)
+    }
+
     const ownerParticipant = {
       poll_id: poll.id,
       account_address: owner_address,
@@ -6075,14 +6101,16 @@ const createQuickPoll = async (
       status: QuickPollParticipantStatus.ACCEPTED,
       participant_type: QuickPollParticipantType.SCHEDULER,
       timezone: ownerAccount.preferences?.timezone || 'UTC',
+      available_slots: ownerAvailableSlots,
     }
 
     const invitees = await Promise.all(
       pollData.participants.map(async p => {
         let timezone = 'UTC'
         let email = ''
+        let availableSlots: AvailabilitySlot[] = []
 
-        // For account owners, fetch their timezone from account preferences
+        // For account owners, fetch their timezone and availability from account preferences
         if (p.account_address) {
           try {
             const participantAccount = await getAccountFromDB(p.account_address)
@@ -6090,9 +6118,31 @@ const createQuickPoll = async (
               p.account_address
             )
             timezone = participantAccount.preferences?.timezone || 'UTC'
+
+            // Get the user's default availability block
+            const availabilityId = await getDefaultAvailabilityBlockId(
+              p.account_address
+            )
+            if (availabilityId) {
+              const { data: availability } = await db.supabase
+                .from('availabilities')
+                .select('weekly_availability')
+                .eq('id', availabilityId)
+                .single()
+
+              if (availability?.weekly_availability) {
+                // Convert weekly availability to poll format
+                availableSlots = availability.weekly_availability.map(
+                  (day: AvailabilitySlot) => ({
+                    weekday: day.weekday,
+                    ranges: day.ranges || [],
+                  })
+                )
+              }
+            }
           } catch (error) {
             console.warn(
-              `Could not fetch timezone for ${p.account_address}:`,
+              `Could not fetch timezone/availability for ${p.account_address}:`,
               error
             )
           }
@@ -6109,6 +6159,7 @@ const createQuickPoll = async (
           status: QuickPollParticipantStatus.PENDING,
           participant_type: QuickPollParticipantType.INVITEE,
           timezone,
+          available_slots: availableSlots,
         }
       })
     )
@@ -6637,6 +6688,161 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
   }
 }
 
+const updateQuickPollParticipantAvailability = async (
+  participantId: string,
+  availableSlots: AvailabilitySlot[],
+  timezone?: string
+) => {
+  try {
+    const updates: any = {
+      available_slots: availableSlots,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (timezone) {
+      updates.timezone = timezone
+    }
+
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update(updates)
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new QuickPollParticipantUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const updateQuickPollGuestDetails = async (
+  participantId: string,
+  guestName: string,
+  guestEmail: string
+) => {
+  try {
+    const updates = {
+      guest_name: guestName,
+      guest_email: guestEmail,
+      status: QuickPollParticipantStatus.ACCEPTED,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update(updates)
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new QuickPollParticipantUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const saveQuickPollCalendar = async (
+  participantId: string,
+  email: string,
+  provider: string,
+  payload?: Record<string, unknown>
+) => {
+  try {
+    const { data: calendar, error } = await db.supabase
+      .from('quick_poll_calendars')
+      .insert([
+        {
+          participant_id: participantId,
+          email,
+          provider,
+          payload,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+    return calendar
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to save calendar'
+    )
+  }
+}
+
+const getQuickPollParticipantById = async (participantId: string) => {
+  try {
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .select('*')
+      .eq('id', participantId)
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to get participant'
+    )
+  }
+}
+
+const getQuickPollParticipantByIdentifier = async (
+  pollId: string,
+  identifier: string // either account_address or guest_email
+) => {
+  try {
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .select('*')
+      .eq('poll_id', pollId)
+      .or(`account_address.eq.${identifier},guest_email.eq.${identifier}`)
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(identifier)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to get participant'
+    )
+  }
+}
+
 export {
   acceptContactInvite,
   addContactInvite,
@@ -6711,6 +6917,8 @@ export {
   getPaymentPreferences,
   getQuickPollById,
   getQuickPollBySlug,
+  getQuickPollParticipantById,
+  getQuickPollParticipantByIdentifier,
   getQuickPollParticipants,
   getQuickPollsForAccount,
   getSlotsByIds,
@@ -6742,6 +6950,7 @@ export {
   saveConferenceMeetingToDB,
   saveEmailToDB,
   saveMeeting,
+  saveQuickPollCalendar,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   subscribeWithCoupon,
@@ -6757,6 +6966,8 @@ export {
   updatePaymentPreferences,
   updatePreferenceAvatar,
   updateQuickPoll,
+  updateQuickPollGuestDetails,
+  updateQuickPollParticipantAvailability,
   updateQuickPollParticipantStatus,
   updateRecurringSlots,
   upsertGateCondition,

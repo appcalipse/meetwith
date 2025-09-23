@@ -1,0 +1,157 @@
+import {
+  Button,
+  FormControl,
+  FormLabel,
+  Heading,
+  Input,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
+  Text,
+  VStack,
+} from '@chakra-ui/react'
+import React, { useState } from 'react'
+
+interface GuestIdentificationModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onSubmit: (email: string) => void
+  pollTitle?: string
+}
+
+const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  pollTitle,
+}) => {
+  const [email, setEmail] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!email.trim()) return
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) return
+
+    setIsLoading(true)
+
+    try {
+      await onSubmit(email.trim())
+      setEmail('')
+      setIsLoading(false)
+      onClose()
+    } catch (error) {
+      setIsLoading(false)
+    }
+  }
+
+  const handleClose = () => {
+    setEmail('')
+    setIsLoading(false)
+    onClose()
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={handleClose} isCentered size="md">
+      <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
+      <ModalContent
+        bg="bg-surface"
+        border="1px solid"
+        borderColor="neutral.800"
+        borderRadius="12px"
+        mx={4}
+      >
+        <ModalHeader pb={2}>
+          <Heading fontSize="20px" fontWeight="600" color="neutral.0">
+            Enter your email
+          </Heading>
+        </ModalHeader>
+        <ModalCloseButton color="neutral.0" />
+
+        <ModalBody px={6} pb={6}>
+          <VStack spacing={4} align="stretch">
+            <Text fontSize="14px" color="neutral.400" lineHeight="1.5">
+              Please enter the email address you were invited with to save your
+              availability for{' '}
+              <Text as="span" color="neutral.200" fontWeight="500">
+                {pollTitle || 'this poll'}
+              </Text>
+              .
+            </Text>
+
+            <FormControl isRequired>
+              <FormLabel
+                fontSize="14px"
+                fontWeight="500"
+                color="neutral.200"
+                mb={2}
+              >
+                Email address
+              </FormLabel>
+              <Input
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                bg="neutral.800"
+                borderColor="neutral.600"
+                color="neutral.200"
+                fontSize="14px"
+                height="40px"
+                _placeholder={{
+                  color: 'neutral.500',
+                  fontSize: '14px',
+                }}
+                _focus={{
+                  borderColor: 'primary.400',
+                  boxShadow: 'none',
+                }}
+                _hover={{
+                  borderColor: 'neutral.500',
+                }}
+                onKeyPress={e => {
+                  if (e.key === 'Enter') {
+                    handleSubmit()
+                  }
+                }}
+                isDisabled={isLoading}
+              />
+            </FormControl>
+
+            <Button
+              onClick={handleSubmit}
+              isLoading={isLoading}
+              loadingText="Checking participant..."
+              bg="primary.200"
+              color="neutral.900"
+              fontSize="14px"
+              fontWeight="600"
+              height="40px"
+              borderRadius="6px"
+              _hover={{ bg: 'primary.300' }}
+              _active={{ bg: 'primary.400' }}
+              _disabled={{
+                bg: 'neutral.600',
+                color: 'neutral.400',
+              }}
+              isDisabled={
+                !email.trim() ||
+                !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+                isLoading
+              }
+            >
+              Continue
+            </Button>
+          </VStack>
+        </ModalBody>
+      </ModalContent>
+    </Modal>
+  )
+}
+
+export default GuestIdentificationModal

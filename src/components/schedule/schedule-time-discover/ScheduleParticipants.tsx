@@ -8,19 +8,27 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { useContext, useMemo } from 'react'
+import React, { useContext, useEffect, useMemo } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { AccountContext } from '@/providers/AccountProvider'
 import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import { useScheduleTimeDiscover } from '@/providers/schedule/ScheduleTimeDiscoverContext'
 import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
+import {
+  QuickPollBySlugResponse,
+  QuickPollParticipantStatus,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -28,55 +36,39 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 interface ScheduleParticipantsProps {
   isMobile?: boolean
   isQuickPoll?: boolean
+  pollData?: QuickPollBySlugResponse
+  onAddParticipants?: () => void
+  onAvailabilityToggle?: () => void
 }
 
-// Fake participants for quickpoll demo
-const FAKE_QUICKPOLL_PARTICIPANTS: ParticipantInfo[] = [
-  {
-    account_address: '0x1234567890123456789012345678901234567890',
-    name: 'Daniel Jackalop',
-    type: ParticipantType.Scheduler,
-    status: ParticipationStatus.Accepted,
+import { QuickPollParticipantWithAccount } from '@/types/QuickPoll'
+
+const convertQuickPollParticipant = (
+  participant: QuickPollParticipantWithAccount
+): ParticipantInfo => {
+  return {
+    account_address: participant.account_address,
+    name: participant.account_name || participant.guest_name || '',
+    guest_email: participant.guest_email,
+    type:
+      participant.participant_type === QuickPollParticipantType.SCHEDULER
+        ? ParticipantType.Scheduler
+        : ParticipantType.Invitee,
+    status:
+      participant.status === QuickPollParticipantStatus.ACCEPTED
+        ? ParticipationStatus.Accepted
+        : ParticipationStatus.Pending,
     slot_id: '',
     meeting_id: '',
-  },
-  {
-    account_address: '0x2345678901234567890123456789012345678901',
-    name: 'Parsa Bolour',
-    type: ParticipantType.Invitee,
-    status: ParticipationStatus.Accepted,
-    slot_id: '',
-    meeting_id: '',
-  },
-  {
-    account_address: '0x3456789012345678901234567890123456789012',
-    name: 'Ramon Canales',
-    type: ParticipantType.Invitee,
-    status: ParticipationStatus.Accepted,
-    slot_id: '',
-    meeting_id: '',
-  },
-  {
-    account_address: '0x4567890123456789012345678901234567890123',
-    name: 'Marco Quintella',
-    type: ParticipantType.Invitee,
-    status: ParticipationStatus.Accepted,
-    slot_id: '',
-    meeting_id: '',
-  },
-  {
-    account_address: '0x5678901234567890123456789012345678901234',
-    name: 'Amanda C',
-    type: ParticipantType.Invitee,
-    status: ParticipationStatus.Accepted,
-    slot_id: '',
-    meeting_id: '',
-  },
-]
+  }
+}
 
 export function ScheduleParticipants({
   isMobile,
   isQuickPoll,
+  pollData,
+  onAddParticipants,
+  onAvailabilityToggle,
 }: ScheduleParticipantsProps) {
   const {
     groupAvailability,
@@ -89,6 +81,35 @@ export function ScheduleParticipants({
   } = useParticipants()
   const { currentAccount } = useContext(AccountContext)
   const { setInviteModalOpen } = useScheduleNavigation()
+  const { currentGuestEmail } = useScheduleTimeDiscover()
+
+  const host = pollData?.poll.participants.find(
+    p => p.participant_type === QuickPollParticipantType.SCHEDULER
+  )
+  const isHost =
+    host?.account_address?.toLowerCase() ===
+    currentAccount?.address?.toLowerCase()
+
+  useEffect(() => {
+    if (isQuickPoll && pollData) {
+      const quickpollAvailability: Record<string, string[]> = {}
+      const quickpollParticipants: Record<string, string[]> = {}
+
+      const participantIdentifiers = pollData.poll.participants
+        .map(
+          p => p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+        )
+        .filter(Boolean) as string[]
+
+      const groupKey = `quickpoll-${pollData.poll.id}`
+
+      quickpollAvailability[groupKey] = participantIdentifiers
+      quickpollParticipants[groupKey] = participantIdentifiers
+
+      setGroupAvailability(quickpollAvailability)
+      setGroupParticipants(quickpollParticipants)
+    }
+  }, [isQuickPoll, pollData, setGroupAvailability, setGroupParticipants])
 
   const groups = useMemo(
     () =>
@@ -98,12 +119,43 @@ export function ScheduleParticipants({
     [participants]
   )
 
-  // Use fake participants for quickpoll, real participants for group scheduling
+  // Use poll participants for quickpoll, real participants for group scheduling
   const meetingMembers = useMemo(() => {
-    if (isQuickPoll) {
-      return FAKE_QUICKPOLL_PARTICIPANTS
+    if (isQuickPoll && pollData) {
+      const allParticipants = pollData.poll.participants.map(
+        convertQuickPollParticipant
+      )
+
+      if (isHost) {
+        return allParticipants
+      }
+
+      const hasSeeGuestListPermission = pollData.poll.permissions?.includes(
+        MeetingPermissions.SEE_GUEST_LIST
+      )
+
+      if (!hasSeeGuestListPermission) {
+        const scheduler = allParticipants.find(
+          p => p.type === ParticipantType.Scheduler
+        )
+
+        const currentParticipant = allParticipants.find(
+          p =>
+            p.account_address?.toLowerCase() ===
+              currentAccount?.address?.toLowerCase() ||
+            (currentGuestEmail &&
+              p.guest_email?.toLowerCase() === currentGuestEmail.toLowerCase())
+        )
+
+        return [scheduler, currentParticipant].filter(
+          Boolean
+        ) as ParticipantInfo[]
+      }
+
+      return allParticipants
     }
 
+    // For group scheduling, use existing logic
     return getMergedParticipants(
       participants,
       allGroups,
@@ -123,10 +175,13 @@ export function ScheduleParticipants({
       .filter(val => !val.isHidden)
   }, [
     isQuickPoll,
+    pollData,
     participants,
     allGroups,
     groupParticipants,
     currentAccount?.address,
+    isHost,
+    currentGuestEmail, // Get from context
   ])
 
   const allAvailabilities = useMemo(
@@ -137,26 +192,30 @@ export function ScheduleParticipants({
     [groupAvailability]
   )
 
-  const handleAvailabilityChange = (account_address?: string) => {
-    if (!account_address) return
+  const handleAvailabilityChange = (identifier?: string) => {
+    if (!identifier) return
     const keys = Object.keys(groupAvailability)
     for (const key of keys) {
       setGroupAvailability(prev => {
         const allGroupParticipants = prev[key] || []
-        const newParticipants = allAvailabilities.includes(account_address)
-          ? allGroupParticipants.filter(val => val !== account_address)
-          : [...allGroupParticipants, account_address]
+        const newParticipants = allAvailabilities.includes(identifier)
+          ? allGroupParticipants.filter(val => val !== identifier)
+          : [...allGroupParticipants, identifier]
         return {
           ...prev,
           [key]: newParticipants,
         }
       })
     }
+
+    if (isQuickPoll && onAvailabilityToggle) {
+      onAvailabilityToggle()
+    }
   }
 
   const totalParticipantsCount = useMemo(() => {
-    if (isQuickPoll) {
-      return FAKE_QUICKPOLL_PARTICIPANTS.length
+    if (isQuickPoll && pollData) {
+      return pollData.poll.participants.length
     }
 
     const participantsMerged = getMergedParticipants(
@@ -168,6 +227,7 @@ export function ScheduleParticipants({
     return participantsMerged.length + 1
   }, [
     isQuickPoll,
+    pollData,
     participants,
     allGroups,
     groupParticipants,
@@ -176,7 +236,6 @@ export function ScheduleParticipants({
 
   const handleParticipantRemove = (participant: ParticipantInfo) => {
     if (isQuickPoll) {
-      // For quickpoll, we might handle this differently or disable it
       return
     }
 
@@ -264,7 +323,7 @@ export function ScheduleParticipants({
         </VStack>
       )}
       <VStack gap={4} w="100%">
-        {meetingMembers?.map((participant, index) => {
+        {meetingMembers?.map((participant: ParticipantInfo, index: number) => {
           return (
             <HStack
               key={index}
@@ -277,14 +336,17 @@ export function ScheduleParticipants({
                 <Box
                   onClick={() =>
                     handleAvailabilityChange(
-                      participant.account_address?.toLowerCase()
+                      participant.account_address?.toLowerCase() ||
+                        participant.guest_email?.toLowerCase()
                     )
                   }
                 >
                   <Icon
                     as={
                       allAvailabilities.includes(
-                        participant.account_address?.toLowerCase() || ''
+                        participant.account_address?.toLowerCase() ||
+                          participant.guest_email?.toLowerCase() ||
+                          ''
                       )
                         ? AiOutlineEye
                         : AiOutlineEyeInvisible
@@ -349,6 +411,18 @@ export function ScheduleParticipants({
           onClick={() => setInviteModalOpen(true)}
         >
           Add more participants
+        </Button>
+      )}
+
+      {isQuickPoll && onAddParticipants && isHost && (
+        <Button
+          colorScheme="primary"
+          w="100%"
+          px={4}
+          py={3}
+          onClick={onAddParticipants}
+        >
+          Add participants
         </Button>
       )}
     </VStack>
