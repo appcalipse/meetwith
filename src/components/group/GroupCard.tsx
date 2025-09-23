@@ -23,23 +23,20 @@ import {
   Thead,
   Tr,
   useColorModeValue,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
-import { InviteType } from '@meta/Dashboard'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useRouter } from 'next/router'
 import React, { Fragment, useContext, useId, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
-import { IoShareSocialOutline } from 'react-icons/io5'
 
 import { GroupContext } from '@/components/group/Groups'
 import { Account } from '@/types/Account'
 import { GetGroupsFullResponse, MemberType, MenuOptions } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { updateGroupRole } from '@/utils/api_helper'
-import { appUrl, isProduction } from '@/utils/constants'
+import { isProduction } from '@/utils/constants'
 
 import GroupMemberCard from './GroupMemberCard'
 
@@ -51,12 +48,9 @@ export interface IGroupCard extends GetGroupsFullResponse {
 }
 
 const GroupCard: React.FC<IGroupCard> = props => {
-  const bgColor = useColorModeValue('white', 'neutral.900')
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
-  const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
-  const toast = useToast()
 
   const id = useId()
   const { push } = useRouter()
