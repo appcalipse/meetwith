@@ -27,7 +27,6 @@ import { FaChevronDown } from 'react-icons/fa'
 import { GoDotFill } from 'react-icons/go'
 import { MdDelete } from 'react-icons/md'
 
-import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
@@ -48,6 +47,7 @@ import { isValidEmail } from '@/utils/validations'
 
 import { Avatar } from '../profile/components/Avatar'
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
+import { GroupContext } from './Groups'
 
 interface IGroupMemberCard extends GroupMember {
   currentAccount: Account
