@@ -27,6 +27,7 @@ export interface QuickPollTimeSlotProps {
   duration: number
   isQuickPoll?: boolean
   isEditingAvailability?: boolean
+  isSchedulingIntent?: boolean
 }
 
 const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
@@ -37,6 +38,7 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
   duration,
   isQuickPoll = false,
   isEditingAvailability = false,
+  isSchedulingIntent = false,
 }) => {
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const { slot, state, userStates } = slotData
@@ -55,17 +57,22 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
 
   const handleSlotClick = () => {
     if (isQuickPoll) {
-      // Only allow interaction when in editing mode
-      if (!isEditingAvailability) return
-
-      // For quickpoll, toggle availability selection
-      if (isSelected) {
-        removeSlot(selectedTimeSlot)
+      if (isSchedulingIntent) {
+        if (pickTime) {
+          if (slot.start < DateTime.now().setZone(timezone)) {
+            return
+          }
+          pickTime(slot.start.toJSDate())
+        }
+      } else if (isEditingAvailability) {
+        if (isSelected) {
+          removeSlot(selectedTimeSlot)
+        } else {
+          addSlot(selectedTimeSlot)
+        }
       } else {
-        addSlot(selectedTimeSlot)
       }
     } else {
-      // For regular scheduling, use the original pick time logic
       if (pickTime) {
         if (slot.start < DateTime.now().setZone(timezone)) {
           return

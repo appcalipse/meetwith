@@ -1,5 +1,6 @@
 import { Box } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
+import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 
@@ -7,15 +8,20 @@ import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import GuestDetailsForm from '@/components/quickpoll/GuestDetailsForm'
 import PollSuccessScreen from '@/components/quickpoll/PollSuccessScreen'
+import {
+  AvailabilityTrackerProvider,
+  SelectedTimeSlot,
+} from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import { getQuickPollBySlug } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
 const GuestDetailsPage = () => {
   const router = useRouter()
-  const { slug, participantId } = router.query
+  const { slug, participantId, slots } = router.query
   const [isReady, setIsReady] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [initialSlots, setInitialSlots] = useState<SelectedTimeSlot[]>([])
 
   const {
     data: pollData,
@@ -41,6 +47,25 @@ const GuestDetailsPage = () => {
       router.push(`/poll/${slug}`)
     }
   }, [isReady, participantId, router, slug])
+
+  useEffect(() => {
+    if (isReady && slots) {
+      try {
+        const parsedSlots = JSON.parse(decodeURIComponent(slots as string))
+        const convertedSlots: SelectedTimeSlot[] = parsedSlots.map(
+          (slot: any) => ({
+            slotKey: slot.slotKey,
+            start: DateTime.fromISO(slot.start),
+            end: DateTime.fromISO(slot.end),
+            date: DateTime.fromISO(slot.date),
+          })
+        )
+        setInitialSlots(convertedSlots)
+      } catch (error) {
+        console.error('Error parsing slots from URL:', error)
+      }
+    }
+  }, [isReady, slots])
 
   if (!isReady || isLoading) {
     return <CustomLoading text="Loading..." />
@@ -102,11 +127,13 @@ const GuestDetailsPage = () => {
           pollTitle={(pollData as QuickPollBySlugResponse).poll.title}
         />
       ) : (
-        <GuestDetailsForm
-          participantId={participantId as string}
-          onSuccess={handleSuccess}
-          pollTitle={(pollData as QuickPollBySlugResponse).poll.title}
-        />
+        <AvailabilityTrackerProvider initialSlots={initialSlots}>
+          <GuestDetailsForm
+            participantId={participantId as string}
+            onSuccess={handleSuccess}
+            pollTitle={(pollData as QuickPollBySlugResponse).poll.title}
+          />
+        </AvailabilityTrackerProvider>
       )}
     </Box>
   )
