@@ -51,6 +51,18 @@ import {
   TimeSlotSource,
 } from '@/types/Meeting'
 import {
+  AddParticipantData,
+  AddParticipantRequest,
+  AvailabilitySlot,
+  CancelQuickPollResponse,
+  CreateQuickPollRequest,
+  PollStatus,
+  QuickPollListResponse,
+  QuickPollParticipant,
+  QuickPollParticipantType,
+  UpdateQuickPollRequest,
+} from '@/types/QuickPoll'
+import {
   ChangeGroupAdminRequest,
   ConfirmCryptoTransactionRequest,
   CreateAvailabilityBlockRequest,
@@ -69,7 +81,11 @@ import { Coupon, Subscription } from '@/types/Subscription'
 import { TelegramConnection } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
-import { apiUrl } from './constants'
+import {
+  apiUrl,
+  QUICKPOLL_DEFAULT_LIMIT,
+  QUICKPOLL_DEFAULT_OFFSET,
+} from './constants'
 import {
   AccountNotFoundError,
   AllMeetingSlotsUsedError,
@@ -1891,4 +1907,140 @@ export const getUserLocale = async (): Promise<UserLocale> => {
   return (await fetch('https://ipapi.co/json/').then(res =>
     res.json()
   )) as UserLocale
+}
+
+export const getQuickPolls = async (
+  limit = QUICKPOLL_DEFAULT_LIMIT,
+  offset = QUICKPOLL_DEFAULT_OFFSET,
+  status?: PollStatus,
+  searchQuery?: string
+): Promise<QuickPollListResponse> => {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+  })
+
+  if (status) {
+    params.append('status', status)
+  }
+
+  if (searchQuery && searchQuery.trim()) {
+    params.append('searchQuery', searchQuery.trim())
+  }
+
+  return await internalFetch(`/secure/quickpoll?${params}`)
+}
+
+export const createQuickPoll = async (pollData: CreateQuickPollRequest) => {
+  return await internalFetch('/secure/quickpoll', 'POST', pollData)
+}
+
+export const getQuickPollById = async (pollId: string) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`)
+}
+export const updateQuickPoll = async (
+  pollId: string,
+  updates: UpdateQuickPollRequest
+) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`, 'PUT', updates)
+}
+
+export const deleteQuickPoll = async (pollId: string) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`, 'DELETE')
+}
+
+export const getQuickPollParticipants = async (pollId: string) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}/participants`)
+}
+
+export const addQuickPollParticipant = async (
+  participantData: AddParticipantRequest
+) => {
+  return await internalFetch(
+    `/secure/quickpoll/${participantData.poll_id}/participants`,
+    'POST',
+    participantData
+  )
+}
+
+export const getQuickPollBySlug = async (slug: string) => {
+  return await internalFetch(`/quickpoll/${slug}`)
+}
+
+export const cancelQuickPoll = async (
+  pollId: string
+): Promise<CancelQuickPollResponse> => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`, 'PATCH')
+}
+
+export const updatePollParticipantAvailability = async (
+  participantId: string,
+  availableSlots: AvailabilitySlot[],
+  timezone?: string
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/availability`,
+    'PATCH',
+    {
+      available_slots: availableSlots,
+      timezone,
+    }
+  )
+}
+
+export const updateGuestParticipantDetails = async (
+  participantId: string,
+  guestName: string,
+  guestEmail: string
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/details`,
+    'PATCH',
+    {
+      guest_name: guestName,
+      guest_email: guestEmail,
+    }
+  )
+}
+
+export const savePollParticipantCalendar = async (
+  participantId: string,
+  email: string,
+  provider: string,
+  payload?: Record<string, unknown>
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/calendar`,
+    'POST',
+    {
+      email,
+      provider,
+      payload,
+    }
+  )
+}
+
+export const getPollParticipantByIdentifier = async (
+  slug: string,
+  identifier: string
+): Promise<QuickPollParticipant> => {
+  return await internalFetch(
+    `/quickpoll/${slug}/participant/${encodeURIComponent(identifier)}`
+  )
+}
+
+export const getQuickPollGoogleAuthConnectUrl = async (
+  state?: string | null
+) => {
+  return await internalFetch<ConnectResponse>(
+    `/quickpoll/calendar/google/connect${state ? `?state=${state}` : ''}`
+  )
+}
+
+export const getQuickPollOffice365ConnectUrl = async (
+  state?: string | null
+) => {
+  return await internalFetch<ConnectResponse>(
+    `/quickpoll/calendar/office365/connect${state ? `?state=${state}` : ''}`
+  )
 }

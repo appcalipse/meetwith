@@ -1,6 +1,7 @@
 import { NextPage } from 'next'
 import React from 'react'
 
+import { AvailabilityTrackerProvider } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import ScheduleMain from '@/components/schedule/ScheduleMain'
 import { NavigationProvider } from '@/providers/schedule/NavigationContext'
 import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
@@ -15,6 +16,7 @@ interface IInitialProps {
   intent: Intents
   meetingId: string
   contactId: string
+  pollId: string
 }
 
 const Schedule: NextPage<IInitialProps> = ({
@@ -22,20 +24,24 @@ const Schedule: NextPage<IInitialProps> = ({
   intent,
   meetingId,
   contactId,
+  pollId,
 }) => {
   return (
     <ScheduleStateProvider>
       <ParticipantsProvider>
-        <NavigationProvider>
-          <PermissionsProvider>
-            <ScheduleMain
-              groupId={groupId}
-              intent={intent}
-              meetingId={meetingId}
-              contactId={contactId}
-            />
-          </PermissionsProvider>
-        </NavigationProvider>
+        <AvailabilityTrackerProvider>
+          <NavigationProvider>
+            <PermissionsProvider>
+              <ScheduleMain
+                groupId={groupId}
+                intent={intent}
+                meetingId={meetingId}
+                contactId={contactId}
+                pollId={pollId}
+              />
+            </PermissionsProvider>
+          </NavigationProvider>
+        </AvailabilityTrackerProvider>
       </ParticipantsProvider>
     </ScheduleStateProvider>
   )
@@ -46,8 +52,8 @@ const EnhancedSchedule: NextPage = withLoginRedirect(
 )
 
 EnhancedSchedule.getInitialProps = async ctx => {
-  const { groupId, intent, meetingId, contactId } = ctx.query
-  return { groupId, intent, meetingId, contactId }
+  const { groupId, intent, meetingId, contactId, pollId } = ctx.query
+  return { groupId, intent, meetingId, contactId, pollId }
 }
 
 export default withLoginRedirect(EnhancedSchedule)

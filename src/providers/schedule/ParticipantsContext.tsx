@@ -55,10 +55,12 @@ export const useParticipants = () => {
 
 interface ParticipantsProviderProps {
   children: ReactNode
+  skipFetching?: boolean
 }
 
 export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   children,
+  skipFetching = false,
 }) => {
   const [participants, setParticipants] = useState<
     Array<ParticipantInfo | IGroupParticipant>
@@ -143,8 +145,10 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     await Promise.all([fetchContacts(), fetchGroups()])
   }
   useEffect(() => {
-    void handlePrefetchContacts()
-  }, [])
+    if (!skipFetching) {
+      void handlePrefetchContacts()
+    }
+  }, [skipFetching])
   const value = {
     participants,
     groupParticipants,
