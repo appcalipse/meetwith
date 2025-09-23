@@ -214,14 +214,14 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                     }}
                     onClick={() =>
                       push(
-                        `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}`
+                        `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
                       )
                     }
                   >
                     Schedule now
                   </Button>
                 )}
-                {!isHost && !isPastPoll && (
+                {!isPastPoll && (
                   <Button
                     variant="outline"
                     borderColor="primary.200"
@@ -234,7 +234,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                     borderRadius="8px"
                     onClick={() =>
                       push(
-                        `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}`
+                        `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=edit_availability`
                       )
                     }
                   >

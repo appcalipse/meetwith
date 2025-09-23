@@ -31,10 +31,12 @@ interface AvailabilityTrackerProviderProps {
   children: ReactNode
 }
 
-export const AvailabilityTrackerProvider: React.FC<
-  AvailabilityTrackerProviderProps
-> = ({ children }) => {
-  const [selectedSlots, setSelectedSlots] = useState<SelectedTimeSlot[]>([])
+export const AvailabilityTrackerProvider: React.FC<{
+  children: React.ReactNode
+  initialSlots?: SelectedTimeSlot[]
+}> = ({ children, initialSlots = [] }) => {
+  const [selectedSlots, setSelectedSlots] =
+    useState<SelectedTimeSlot[]>(initialSlots)
 
   const addSlot = (slot: SelectedTimeSlot) => {
     setSelectedSlots(prev => {

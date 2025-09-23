@@ -153,7 +153,6 @@ export function SchedulePickTime({
   const currentAccount = useAccountContext()
   const { currentGuestEmail } = useScheduleTimeDiscover()
 
-  // Check if current user is the host/scheduler
   const isHost = useMemo(() => {
     if (!isQuickPoll || !pollData || !currentAccount) return false
 
@@ -163,6 +162,14 @@ export function SchedulePickTime({
         p.participant_type === QuickPollParticipantType.SCHEDULER
     )
   }, [isQuickPoll, pollData, currentAccount])
+
+  const isSchedulingIntent =
+    router.query.intent === 'schedule' ||
+    (isQuickPoll && isHost && !router.query.intent)
+  const isEditAvailabilityIntent =
+    router.query.intent === 'edit_availability' ||
+    (isQuickPoll && !isHost && !router.query.intent)
+
   const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
   const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
@@ -583,6 +590,27 @@ export function SchedulePickTime({
       handlePageSwitch(Page.SCHEDULE_DETAILS)
     }
   }
+
+  const handleTimeSelection = (time: Date) => {
+    React.startTransition(() => {
+      setPickedTime(time)
+    })
+
+    if (isQuickPoll && isHost && isSchedulingIntent) {
+      const selectedTimeISO = DateTime.fromJSDate(time).toISO()
+      if (selectedTimeISO && pollData) {
+        const url = `/dashboard/schedule?pollId=${
+          pollData.poll.id
+        }&intent=schedule_from_poll&selectedTime=${encodeURIComponent(
+          selectedTimeISO
+        )}`
+        router.push(url)
+      }
+    } else if (!isQuickPoll) {
+      handlePageSwitch(Page.SCHEDULE_DETAILS)
+    }
+  }
+
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
@@ -594,7 +622,7 @@ export function SchedulePickTime({
           gap={4}
           zIndex={2}
         >
-          {isQuickPoll && onSaveAvailability && (
+          {isQuickPoll && onSaveAvailability && isEditAvailabilityIntent && (
             <Button
               variant="outline"
               colorScheme="primary"
@@ -813,7 +841,7 @@ export function SchedulePickTime({
                 Import from calendar
               </Button>
             )}
-            {isQuickPoll && isHost && (
+            {isQuickPoll && isHost && isSchedulingIntent && (
               <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
                 Jump to Best Slot
               </Button>
@@ -870,7 +898,7 @@ export function SchedulePickTime({
                     Import from calendar
                   </Button>
                 )}
-                {isQuickPoll && isHost && (
+                {isQuickPoll && isHost && isSchedulingIntent && (
                   <Button
                     colorScheme="primary"
                     onClick={handleJumpToBestSlot}
@@ -1115,29 +1143,11 @@ export function SchedulePickTime({
                               slotData={slotData}
                               pickedTime={pickedTime}
                               duration={duration}
-                              handleTimePick={time => {
-                                React.startTransition(() => {
-                                  setPickedTime(time)
-                                })
-                                if (isQuickPoll && isHost) {
-                                  const selectedTimeISO =
-                                    DateTime.fromJSDate(time).toISO()
-                                  if (selectedTimeISO && pollData) {
-                                    router.push(
-                                      `/dashboard/schedule?pollId=${
-                                        pollData.poll.id
-                                      }&intent=schedule_from_poll&selectedTime=${encodeURIComponent(
-                                        selectedTimeISO
-                                      )}`
-                                    )
-                                  }
-                                } else if (!isQuickPoll) {
-                                  handlePageSwitch(Page.SCHEDULE_DETAILS)
-                                }
-                              }}
+                              handleTimePick={handleTimeSelection}
                               timezone={timezone}
                               isQuickPoll={isQuickPoll}
                               isEditingAvailability={isEditingAvailability}
+                              isSchedulingIntent={isSchedulingIntent}
                             />
                           )
                         })}

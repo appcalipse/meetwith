@@ -65,6 +65,8 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
         borderColor="neutral.800"
         borderRadius="12px"
         mx={4}
+        shadow="none"
+        boxShadow="none"
       >
         <ModalHeader pb={2}>
           <Heading fontSize="20px" fontWeight="600" color="neutral.0">
@@ -98,7 +100,7 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
                 placeholder="Enter your email address"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                bg="neutral.800"
+                bg="bg-surface"
                 borderColor="neutral.600"
                 color="neutral.200"
                 fontSize="14px"
@@ -108,11 +110,11 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
                   fontSize: '14px',
                 }}
                 _focus={{
-                  borderColor: 'primary.400',
+                  borderColor: 'neutral.600',
                   boxShadow: 'none',
                 }}
                 _hover={{
-                  borderColor: 'neutral.500',
+                  borderColor: 'neutral.600',
                 }}
                 onKeyPress={e => {
                   if (e.key === 'Enter') {
@@ -136,8 +138,10 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
               _hover={{ bg: 'primary.300' }}
               _active={{ bg: 'primary.400' }}
               _disabled={{
-                bg: 'neutral.600',
-                color: 'neutral.400',
+                bg: 'primary.200',
+                opacity: 0.5,
+                color: 'neutral.900',
+                cursor: 'not-allowed',
               }}
               isDisabled={
                 !email.trim() ||

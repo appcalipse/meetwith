@@ -10,12 +10,16 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { useContext, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
 
+import { useAvailabilityTracker } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { AvailabilitySlot } from '@/types/QuickPoll'
 import { updateGuestParticipantDetails } from '@/utils/api_helper'
+import { updatePollParticipantAvailability } from '@/utils/api_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 interface GuestDetailsFormProps {
@@ -31,10 +35,12 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
 }) => {
   const router = useRouter()
   const { openConnection } = useContext(OnboardingModalContext)
+  const { timezone } = router.query
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { showErrorToast } = useToastHelpers()
+  const { getAvailabilitySlots } = useAvailabilityTracker()
 
   const handleSubmit = async () => {
     if (!fullName.trim() || !email.trim()) {
@@ -55,11 +61,62 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     setIsLoading(true)
 
     try {
+      // Save guest details
       await updateGuestParticipantDetails(
         participantId,
         fullName.trim(),
         email.trim()
       )
+
+      const { slots } = router.query
+      const availabilitySlots: AvailabilitySlot[] = []
+
+      if (slots) {
+        try {
+          const parsedSlots = JSON.parse(decodeURIComponent(slots as string))
+
+          const slotsByWeekday = new Map<
+            number,
+            { start: string; end: string }[]
+          >()
+
+          for (const slot of parsedSlots) {
+            const start = DateTime.fromISO(slot.start)
+            const end = DateTime.fromISO(slot.end)
+            const weekday = start.weekday === 7 ? 0 : start.weekday
+            const startTime = start.toFormat('HH:mm')
+            const endTime = end.toFormat('HH:mm')
+
+            if (!slotsByWeekday.has(weekday)) {
+              slotsByWeekday.set(weekday, [])
+            }
+
+            slotsByWeekday.get(weekday)!.push({
+              start: startTime,
+              end: endTime,
+            })
+          }
+
+          for (let weekday = 0; weekday < 7; weekday++) {
+            const ranges = slotsByWeekday.get(weekday) || []
+            availabilitySlots.push({
+              weekday,
+              ranges,
+            })
+          }
+        } catch (error) {
+          console.error('Error parsing slots from URL:', error)
+        }
+      }
+
+      if (availabilitySlots.length > 0) {
+        await updatePollParticipantAvailability(
+          participantId,
+          availabilitySlots,
+          (timezone as string) || 'UTC'
+        )
+      }
+
       onSuccess()
     } catch (error) {
       showErrorToast(

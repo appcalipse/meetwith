@@ -1,10 +1,11 @@
 import { Heading, HStack, Icon, useToast, VStack } from '@chakra-ui/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useMemo, useState } from 'react'
+import { useContext, useMemo, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
+import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import {
   ScheduleTimeDiscoverProvider,
   useScheduleTimeDiscover,
@@ -49,6 +50,7 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
     showCalendarModal,
     showGuestIdModal,
     currentParticipantId,
+    currentGuestEmail,
     isEditingAvailability,
     isSavingAvailability,
     isRefreshingAvailabilities,
@@ -68,7 +70,9 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
   const toast = useToast()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const currentAccount = useAccountContext()
-  const { getAvailabilitySlots, clearSlots } = useAvailabilityTracker()
+  const { timezone } = useScheduleState()
+  const { getAvailabilitySlots, clearSlots, selectedSlots } =
+    useAvailabilityTracker()
   const queryClient = useQueryClient()
 
   const refreshAvailabilities = () => {
@@ -111,66 +115,90 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
     }
   }
 
-  const handleSaveAvailability = async () => {
-    if (!pollData) return
-
-    if (!isEditingAvailability) {
-      setIsEditingAvailability(true)
-      return
-    }
-
-    setIsSavingAvailability(true)
-
-    try {
-      let participant: QuickPollParticipant
-
-      if (currentAccount) {
-        try {
-          participant = (await getPollParticipantByIdentifier(
-            pollData.poll.slug,
-            currentAccount.address
-          )) as QuickPollParticipant
-        } catch (error) {
-          showErrorToast(
-            'Participant not found',
-            'You are not invited to this poll.'
-          )
-          return
-        }
-      } else {
+  const handleEditAvailability = () => {
+    if (!currentAccount) {
+      if (!currentParticipantId || !currentGuestEmail) {
         setShowGuestIdModal(true)
+      } else {
+        setIsEditingAvailability(true)
+      }
+    } else {
+      setIsEditingAvailability(true)
+    }
+  }
+
+  const handleSaveAvailability = async () => {
+    if (!currentAccount) {
+      if (!currentParticipantId || !currentGuestEmail) {
+        showErrorToast(
+          'Missing information',
+          'Please identify yourself first before saving availability.'
+        )
         return
       }
 
-      setCurrentParticipantId(participant.id)
+      const serializedSlots = selectedSlots.map(slot => ({
+        slotKey: `${slot.start.toISO()}-${slot.end.toISO()}`,
+        start: slot.start,
+        end: slot.end,
+        date: slot.date,
+      }))
 
-      const availabilitySlots = getAvailabilitySlots()
+      const slotsParam = encodeURIComponent(JSON.stringify(serializedSlots))
 
-      await updatePollParticipantAvailability(
-        participant.id,
-        availabilitySlots,
-        currentAccount?.preferences?.timezone || 'UTC'
+      router.push(
+        `/poll/${
+          pollData?.poll.slug
+        }/guest-details?participantId=${currentParticipantId}&email=${encodeURIComponent(
+          currentGuestEmail
+        )}&timezone=${encodeURIComponent(timezone)}&slots=${slotsParam}`
       )
+    } else {
+      if (!pollData) return
 
-      setIsEditingAvailability(false)
+      setIsSavingAvailability(true)
 
-      refreshAvailabilities()
+      try {
+        let participant: QuickPollParticipant
 
-      if (!currentAccount) {
-        setShowGuestForm(true)
-      } else {
-        showSuccessToast(
-          'Availability saved',
-          'Your availability has been saved successfully.'
+        if (currentAccount) {
+          try {
+            participant = (await getPollParticipantByIdentifier(
+              pollData.poll.slug,
+              currentAccount.address
+            )) as QuickPollParticipant
+          } catch (error) {
+            showErrorToast(
+              'Participant not found',
+              'You are not a participant in this poll.'
+            )
+            return
+          }
+
+          const availabilitySlots = getAvailabilitySlots()
+
+          await updatePollParticipantAvailability(
+            participant.id,
+            availabilitySlots,
+            currentAccount.preferences?.timezone || 'UTC'
+          )
+
+          setIsEditingAvailability(false)
+          refreshAvailabilities()
+
+          showSuccessToast(
+            'Availability saved',
+            'Your availability has been saved successfully.'
+          )
+        }
+      } catch (error) {
+        showErrorToast(
+          'Failed to save availability',
+          'There was an error saving your availability. Please try again.'
         )
+      } finally {
+        setIsSavingAvailability(false)
       }
-    } catch (error) {
-      showErrorToast(
-        'Failed to save availability',
-        'There was an error saving your availability. Please try again.'
-      )
-    } finally {
-      setIsSavingAvailability(false)
     }
   }
 
@@ -185,12 +213,7 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
         setCurrentParticipantId(participant.id)
         setCurrentGuestEmail(email) // Store guest email in context
         setShowGuestIdModal(false)
-
-        router.push(
-          `/poll/${pollData!.poll.slug}/guest-details?participantId=${
-            participant.id
-          }`
-        )
+        setIsEditingAvailability(true)
       } else {
         showErrorToast(
           'Participant not found',
@@ -199,8 +222,8 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
       }
     } catch (error) {
       showErrorToast(
-        'Error checking participant',
-        'There was an error verifying your email. Please try again.'
+        'Identification failed',
+        'There was an error identifying you. Please try again.'
       )
     }
   }
@@ -250,6 +273,14 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
       'Calendar connected',
       'Your calendar has been connected successfully!'
     )
+  }
+
+  const handleAvailabilityAction = () => {
+    if (isEditingAvailability) {
+      handleSaveAvailability()
+    } else {
+      handleEditAvailability()
+    }
   }
 
   return (
@@ -325,7 +356,7 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
           isQuickPoll={isQuickPoll}
           pollData={pollData}
           onSaveAvailability={
-            isQuickPoll ? handleGuestSaveAvailability : undefined
+            isQuickPoll ? handleAvailabilityAction : undefined
           }
           onSharePoll={isQuickPoll ? handleSharePoll : undefined}
           onImportCalendar={isQuickPoll ? handleCalendarImport : undefined}
