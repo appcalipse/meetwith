@@ -345,6 +345,16 @@ const ScheduleMain: FC<IInitialProps> = ({
         ...prev,
         [NO_GROUP_KEY]: [currentAccount?.address || ''],
       }))
+      setParticipants([
+        {
+          account_address: currentAccount?.address,
+          name: currentAccount?.preferences?.name,
+          type: ParticipantType.Scheduler,
+          status: ParticipationStatus.Accepted,
+          slot_id: '',
+          meeting_id: '',
+        },
+      ])
     }
     await Promise.all(promises)
     setIsPrefetching(false)
@@ -525,8 +535,7 @@ const ScheduleMain: FC<IInitialProps> = ({
       const allParticipants = getMergedParticipants(
         actualParticipants,
         groups,
-        groupParticipants,
-        currentAccount?.address || ''
+        groupParticipants
       ).map(val => ({
         ...val,
         type: meetingOwners.some(
@@ -536,24 +545,7 @@ const ScheduleMain: FC<IInitialProps> = ({
           : val.type,
       }))
       const _participants = await parseAccounts(allParticipants)
-      const individualParticipants = actualParticipants.filter(
-        (val): val is ParticipantInfo => !isGroupParticipant(val)
-      )
-      const userData = individualParticipants.find(
-        val => val.account_address === currentAccount?.address
-      )
-      if (userData) {
-        _participants.valid.push(userData)
-      } else {
-        _participants.valid.push({
-          account_address: currentAccount?.address,
-          name: currentAccount?.preferences?.name || '',
-          type: ParticipantType.Scheduler,
-          status: ParticipationStatus.Accepted,
-          slot_id: '',
-          meeting_id: '',
-        })
-      }
+
       if (_participants.invalid.length > 0) {
         toast({
           title: 'Invalid invitees',
