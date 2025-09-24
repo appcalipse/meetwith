@@ -6,10 +6,15 @@ import React, {
   useState,
 } from 'react'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { Account } from '@/types/Account'
 import { LeanContact } from '@/types/Contacts'
 import { GetGroupsFullResponse } from '@/types/Group'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
 import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
 import { getContactsLean, getGroupsFull } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
@@ -60,9 +65,20 @@ interface ParticipantsProviderProps {
 export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   children,
 }) => {
+  const currentAccount = useAccountContext()
   const [participants, setParticipants] = useState<
     Array<ParticipantInfo | IGroupParticipant>
-  >([])
+  >([
+    {
+      account_address: currentAccount?.address,
+      name: currentAccount?.preferences?.name,
+      type: ParticipantType.Scheduler,
+      status: ParticipationStatus.Accepted,
+      slot_id: '',
+      meeting_id: '',
+      isHidden: true,
+    },
+  ])
   const [groupParticipants, setGroupParticipants] = useState<
     Record<string, Array<string>>
   >({})
