@@ -46,8 +46,8 @@ export default class QueryKeys {
   ) {
     return ['chainLinkAggregator', feedAddress, chainId, method]
   }
-  static groups(accountAddress?: string) {
-    return ['groups', accountAddress]
+  static groups(accountAddress?: string, search?: string) {
+    return ['groups', accountAddress, search]
   }
   static exchangeRate(currency: string) {
     return ['exchangeRate', currency]
