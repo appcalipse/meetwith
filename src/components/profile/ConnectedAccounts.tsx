@@ -11,17 +11,24 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useMemo, useState } from 'react'
-import { FaDiscord } from 'react-icons/fa'
+import React, { useContext, useEffect, useState } from 'react'
+import { FaDiscord, FaTelegram } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { NotificationChannel } from '@/types/AccountNotifications'
+import { logEvent } from '@/utils/analytics'
 import {
+  createTelegramHash,
   deleteDiscordIntegration,
   generateDiscordAccount,
+  getNotificationSubscriptions,
+  getPendingTgConnection,
+  setNotificationSubscriptions,
 } from '@/utils/api_helper'
 import { discordRedirectUrl, OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import { useToastHelpers } from '@/utils/toasts'
 
 const DiscordConnection: React.FC = () => {
   const { updateUser, currentAccount } = useContext(AccountContext)
@@ -162,13 +169,169 @@ const DiscordConnection: React.FC = () => {
   )
 }
 
+const TelegramConnection: React.FC = () => {
+  const { currentAccount } = useContext(AccountContext)
+  const [isTelegramConnected, setIsTelegramConnected] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
+
+  useEffect(() => {
+    const checkTelegramConnection = async () => {
+      if (!currentAccount?.address) return
+
+      try {
+        const subs = await getNotificationSubscriptions()
+        const hasTelegramNotification = subs.notification_types.some(
+          sub => sub.channel === NotificationChannel.TELEGRAM
+        )
+        setIsTelegramConnected(hasTelegramNotification)
+      } catch (error) {
+        console.error('Error checking Telegram connection:', error)
+      }
+    }
+
+    checkTelegramConnection()
+  }, [currentAccount])
+
+  const handleTgConnect = async () => {
+    setConnecting(true)
+    logEvent('Connect Telegram')
+
+    try {
+      const hash = await createTelegramHash()
+      const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
+      window.open(url, '_blank')
+
+      const intervalId = setInterval(async () => {
+        const pendingConnection = await getPendingTgConnection()
+        if (!pendingConnection) {
+          setIsTelegramConnected(true)
+          clearInterval(intervalId)
+          setConnecting(false)
+          showSuccessToast(
+            'Telegram Connected',
+            'Your Telegram account has been connected'
+          )
+        }
+      }, 5000)
+
+      // If the connection is not established after 5 minutes, show an error toast
+      setTimeout(() => {
+        clearInterval(intervalId)
+        setConnecting(false)
+      }, 300000)
+    } catch (error) {
+      setConnecting(false)
+      showErrorToast(
+        'Connection Failed',
+        'Failed to initiate Telegram connection'
+      )
+    }
+  }
+
+  const handleTgDisconnect = async () => {
+    setConnecting(true)
+    logEvent('Disconnect Telegram')
+
+    try {
+      const sub = await getNotificationSubscriptions()
+      const newSubs = sub.notification_types.filter(
+        sub => sub.channel !== NotificationChannel.TELEGRAM
+      )
+      await setNotificationSubscriptions({
+        account_address: currentAccount!.address,
+        notification_types: newSubs,
+      })
+      setIsTelegramConnected(false)
+      setConnecting(false)
+      showSuccessToast(
+        'Telegram Disconnected',
+        'Your Telegram account has been disconnected'
+      )
+    } catch (error) {
+      setConnecting(false)
+      showErrorToast(
+        'Disconnection Failed',
+        'Failed to disconnect Telegram account'
+      )
+    }
+  }
+
+  const bgColor = useColorModeValue('gray.800', 'white')
+  const badgeColor = useColorModeValue('gray.600', 'gray.500')
+  const color = useColorModeValue('white', 'gray.800')
+
+  return (
+    <HStack>
+      <VStack flex={1} alignItems="flex-start">
+        <HStack>
+          <Flex
+            width="22px"
+            height="22px"
+            bgColor={bgColor}
+            borderRadius="50%"
+            justifyContent="center"
+            alignItems="center"
+          >
+            <Icon as={FaTelegram} color={color} />
+          </Flex>
+          <Text fontSize="lg" fontWeight="bold">
+            Telegram
+          </Text>
+          {isTelegramConnected && (
+            <HStack borderRadius="6px" px={2} bgColor={badgeColor}>
+              <Box
+                borderRadius="50%"
+                w="8px"
+                h="8px"
+                bgColor="rgba(52, 199, 89, 1)"
+              />
+              <Text fontSize="xs" color="white">
+                Connected
+              </Text>
+            </HStack>
+          )}
+        </HStack>
+        <Text opacity="0.5">
+          Connect to receive notifications for your meetings.
+        </Text>
+      </VStack>
+
+      {isTelegramConnected ? (
+        <Button
+          variant="ghost"
+          colorScheme="primary"
+          isLoading={connecting}
+          onClick={handleTgDisconnect}
+        >
+          Disconnect
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          colorScheme="primary"
+          isLoading={connecting}
+          loadingText="Connecting"
+          onClick={handleTgConnect}
+        >
+          Connect
+        </Button>
+      )}
+    </HStack>
+  )
+}
+
 const ConnectedAccounts: React.FC = () => {
   return (
     <>
       <Heading id="connected" fontSize="2xl" mb={8}>
         Connected Accounts
       </Heading>
-      <DiscordConnection />
+      <VStack spacing={6} align="stretch">
+        <DiscordConnection />
+        <TelegramConnection />
+      </VStack>
     </>
   )
 }
