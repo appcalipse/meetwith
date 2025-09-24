@@ -173,12 +173,17 @@ const TelegramConnection: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
   const [isTelegramConnected, setIsTelegramConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
+  const [checkingConnection, setCheckingConnection] = useState(true)
 
   const { showSuccessToast, showErrorToast } = useToastHelpers()
 
   useEffect(() => {
     const checkTelegramConnection = async () => {
-      if (!currentAccount?.address) return
+      setCheckingConnection(true)
+      if (!currentAccount?.address) {
+        setCheckingConnection(false)
+        return
+      }
 
       try {
         const subs = await getNotificationSubscriptions()
@@ -188,6 +193,8 @@ const TelegramConnection: React.FC = () => {
         setIsTelegramConnected(hasTelegramNotification)
       } catch (error) {
         console.error('Error checking Telegram connection:', error)
+      } finally {
+        setCheckingConnection(false)
       }
     }
 
@@ -298,7 +305,16 @@ const TelegramConnection: React.FC = () => {
         </Text>
       </VStack>
 
-      {isTelegramConnected ? (
+      {checkingConnection ? (
+        <Button
+          variant="outline"
+          colorScheme="primary"
+          isLoading={true}
+          loadingText="Checking..."
+        >
+          Connect
+        </Button>
+      ) : isTelegramConnected ? (
         <Button
           variant="ghost"
           colorScheme="primary"
