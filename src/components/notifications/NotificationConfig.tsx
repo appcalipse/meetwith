@@ -119,26 +119,12 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     try {
       const subs = await getNotificationSubscriptions()
 
-      // Remove existing Telegram notification
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.TELEGRAM
-      )
-
-      // Add Telegram notification if enabled
-      if (enabled) {
-        subs.notification_types.push({
-          channel: NotificationChannel.TELEGRAM,
-          destination: '', // Telegram destination is handled by the connection
-          disabled: false,
-        })
-      } else {
-        subs.notification_types.push({
-          channel: NotificationChannel.TELEGRAM,
-          destination: '',
-          disabled: true,
-        })
-      }
-
+      subs.notification_types = subs.notification_types.map(sub => {
+        if (sub.channel === NotificationChannel.TELEGRAM) {
+          return { ...sub, disabled: !enabled }
+        }
+        return sub
+      })
       await setNotificationSubscriptions(subs)
 
       logEvent('Set Telegram notifications', { enabled })
@@ -198,26 +184,12 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     }
 
     // Handle Telegram notifications
-    if (telegramNotificationConfigured) {
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.TELEGRAM
-      )
-      subs.notification_types.push({
-        channel: NotificationChannel.TELEGRAM,
-        destination: '', // Telegram destination is handled by the connection
-        disabled: false,
-      })
-    } else {
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.TELEGRAM
-      )
-      subs.notification_types.push({
-        channel: NotificationChannel.TELEGRAM,
-        destination: '',
-        disabled: true,
-      })
-    }
-
+    subs.notification_types = subs.notification_types.map(sub => {
+      if (sub.channel === NotificationChannel.TELEGRAM) {
+        return { ...sub, disabled: !telegramNotificationConfigured }
+      }
+      return sub
+    })
     await setNotificationSubscriptions(subs)
 
     logEvent('Set notifications', {

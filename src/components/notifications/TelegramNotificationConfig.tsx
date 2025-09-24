@@ -28,10 +28,10 @@ const TelegramNotificationConfig: React.FC<Props> = ({
 
     try {
       const subs = await getNotificationSubscriptions()
-      const hasTelegramNotification = subs.notification_types.some(
-        sub => sub.channel === NotificationChannel.TELEGRAM && !sub.disabled
+      const hasTelegramConnection = subs.notification_types.some(
+        sub => sub.channel === NotificationChannel.TELEGRAM
       )
-      setTelegramConnected(hasTelegramNotification)
+      setTelegramConnected(hasTelegramConnection)
     } catch (error) {
       console.error('Error checking Telegram connection:', error)
     } finally {
