@@ -131,6 +131,12 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
           destination: '', // Telegram destination is handled by the connection
           disabled: false,
         })
+      } else {
+        subs.notification_types.push({
+          channel: NotificationChannel.TELEGRAM,
+          destination: '',
+          disabled: true,
+        })
       }
 
       await setNotificationSubscriptions(subs)
@@ -205,6 +211,11 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
       subs.notification_types = subs.notification_types.filter(
         sub => sub.channel !== NotificationChannel.TELEGRAM
       )
+      subs.notification_types.push({
+        channel: NotificationChannel.TELEGRAM,
+        destination: '',
+        disabled: true,
+      })
     }
 
     await setNotificationSubscriptions(subs)
