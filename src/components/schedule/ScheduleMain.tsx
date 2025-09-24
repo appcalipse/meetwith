@@ -165,6 +165,17 @@ const ScheduleMain: FC<IInitialProps> = ({
           ...prev,
           [groupId]: allAddresses,
         }))
+        setParticipants(prev => [
+          ...prev,
+          {
+            account_address: currentAccount?.address,
+            name: currentAccount?.preferences?.name,
+            type: ParticipantType.Scheduler,
+            status: ParticipationStatus.Accepted,
+            slot_id: '',
+            meeting_id: '',
+          },
+        ])
         addGroup({
           isGroup: true,
           name: group.name,
@@ -189,12 +200,25 @@ const ScheduleMain: FC<IInitialProps> = ({
           slot_id: '',
           meeting_id: '',
         }
-        setParticipants([participant])
+        setParticipants([
+          participant,
+          {
+            account_address: currentAccount?.address,
+            name: currentAccount?.preferences?.name,
+            type: ParticipantType.Scheduler,
+            status: ParticipationStatus.Accepted,
+            slot_id: '',
+            meeting_id: '',
+          },
+        ])
         const allAddresses = [contact.address]
         if (currentAccount?.address) {
           allAddresses.push(currentAccount?.address)
         }
         setGroupAvailability({
+          [key]: allAddresses,
+        })
+        setGroupParticipants({
           [key]: allAddresses,
         })
       }
