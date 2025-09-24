@@ -115,11 +115,47 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
   const onTelegramNotificationChange = async (enabled: boolean) => {
     setTelegramNotificationConfigured(enabled)
+
+    try {
+      const subs = await getNotificationSubscriptions()
+
+      // Remove existing Telegram notification
+      subs.notification_types = subs.notification_types.filter(
+        sub => sub.channel !== NotificationChannel.TELEGRAM
+      )
+
+      // Add Telegram notification if enabled
+      if (enabled) {
+        subs.notification_types.push({
+          channel: NotificationChannel.TELEGRAM,
+          destination: '', // Telegram destination is handled by the connection
+          disabled: false,
+        })
+      }
+
+      await setNotificationSubscriptions(subs)
+
+      logEvent('Set Telegram notifications', { enabled })
+
+      showSuccessToast(
+        'Telegram Notifications Updated',
+        `Telegram notifications have been ${enabled ? 'enabled' : 'disabled'}`
+      )
+    } catch (error) {
+      // Revert the state on error
+      setTelegramNotificationConfigured(!enabled)
+      showErrorToast(
+        'Update Failed',
+        'Failed to update Telegram notification preferences'
+      )
+    }
   }
 
   const updateNotifications = async () => {
     setLoading(true)
     const subs = await getNotificationSubscriptions()
+
+    // Handle Email notifications
     if (emailNotifications) {
       if (!isValidEmail(email)) {
         showErrorToast(
@@ -143,6 +179,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
       )
     }
 
+    // Handle Discord notifications
     if (discordNotificationConfig) {
       subs.notification_types = subs.notification_types.filter(
         sub => sub.channel !== NotificationChannel.DISCORD
@@ -151,6 +188,22 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     } else {
       subs.notification_types = subs.notification_types.filter(
         sub => sub.channel !== NotificationChannel.DISCORD
+      )
+    }
+
+    // Handle Telegram notifications
+    if (telegramNotificationConfigured) {
+      subs.notification_types = subs.notification_types.filter(
+        sub => sub.channel !== NotificationChannel.TELEGRAM
+      )
+      subs.notification_types.push({
+        channel: NotificationChannel.TELEGRAM,
+        destination: '', // Telegram destination is handled by the connection
+        disabled: false,
+      })
+    } else {
+      subs.notification_types = subs.notification_types.filter(
+        sub => sub.channel !== NotificationChannel.TELEGRAM
       )
     }
 
