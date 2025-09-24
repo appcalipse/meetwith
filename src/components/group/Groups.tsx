@@ -89,7 +89,7 @@ const Groups = forwardRef<GroupRef, Props>(
       refetch,
       error,
     } = useInfiniteQuery({
-      queryKey: QueryKeys.groups(currentAccount?.address),
+      queryKey: QueryKeys.groups(currentAccount?.address, search),
       queryFn: ({ pageParam = 0 }) => {
         return getGroupsFull(GROUP_PAGE_SIZE, pageParam, search)
       },

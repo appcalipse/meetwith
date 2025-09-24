@@ -1,5 +1,4 @@
 import { HStack, Image, Spinner, Text, VStack } from '@chakra-ui/react'
-import { GroupRef } from '@components/group/Groups'
 import { useQuery } from '@tanstack/react-query'
 import React, { forwardRef, useContext, useImperativeHandle } from 'react'
 
