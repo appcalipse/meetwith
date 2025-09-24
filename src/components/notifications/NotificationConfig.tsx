@@ -37,6 +37,7 @@ import {
 } from '../../utils/api_helper'
 import { isValidEmail } from '../../utils/validations'
 import DiscordNotificationConfig from './DiscordNotificationConfig'
+import TelegramNotificationConfig from './TelegramNotificationConfig'
 
 const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
@@ -112,6 +113,10 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setDiscordNotificationConfig(discordNotification)
   }
 
+  const onTelegramNotificationChange = async (enabled: boolean) => {
+    setTelegramNotificationConfigured(enabled)
+  }
+
   const updateNotifications = async () => {
     setLoading(true)
     const subs = await getNotificationSubscriptions()
@@ -161,38 +166,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
       'Notification Preferences Updated',
       'Your notification preferences have been saved successfully'
     )
-  }
-
-  const handleTgConnect = async () => {
-    setConnecting(true)
-    logEvent('Connect Telegram')
-    const hash = await createTelegramHash()
-    const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
-    window.open(url, '_blank')
-
-    const intervalId = setInterval(async () => {
-      const pendingConnection = await getPendingTgConnection()
-      if (!pendingConnection) {
-        setTelegramNotificationConfigured(true)
-        clearInterval(intervalId)
-        setConnecting(false)
-      }
-    }, 5000)
-  }
-
-  const handleTgDisconnect = async () => {
-    setConnecting(true)
-    logEvent('Disconnect Telegram')
-    const sub = await getNotificationSubscriptions()
-    const newSubs = sub.notification_types.filter(
-      sub => sub.channel !== NotificationChannel.TELEGRAM
-    )
-    await setNotificationSubscriptions({
-      account_address: currentAccount!.address,
-      notification_types: newSubs,
-    })
-    setTelegramNotificationConfigured(false)
-    setConnecting(false)
   }
 
   const handleChangeEmail = () => {
@@ -318,40 +291,11 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
           {/* Telegram Notifications */}
           <Box>
-            <HStack justify="space-between">
-              <HStack spacing={3}>
-                <Switch
-                  colorScheme="primary"
-                  size="lg"
-                  isChecked={telegramNotificationConfigured}
-                  onChange={e => {
-                    if (e.target.checked) {
-                      handleTgConnect()
-                    } else {
-                      handleTgDisconnect()
-                    }
-                  }}
-                  isDisabled={connecting}
-                />
-                <Text fontSize="md">Telegram notifications</Text>
-                <Box
-                  as="span"
-                  px={3}
-                  py={1.5}
-                  borderRadius="full"
-                  bg={
-                    telegramNotificationConfigured ? 'green.200' : 'primary.75'
-                  }
-                  color={
-                    telegramNotificationConfigured ? 'green.600' : 'primary.500'
-                  }
-                  fontSize="xs"
-                >
-                  {telegramNotificationConfigured ? 'Active' : 'Inactive'}
-                </Box>
-                {connecting && <Spinner size="sm" ml={2} />}
-              </HStack>
-            </HStack>
+            <TelegramNotificationConfig
+              account={currentAccount!}
+              telegramNotification={telegramNotificationConfigured}
+              onTelegramNotificationChange={onTelegramNotificationChange}
+            />
           </Box>
 
           <Button
