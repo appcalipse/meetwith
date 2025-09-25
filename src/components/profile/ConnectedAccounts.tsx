@@ -10,6 +10,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import { FaDiscord, FaTelegram } from 'react-icons/fa'
@@ -21,11 +22,14 @@ import {
   createTelegramHash,
   deleteDiscordIntegration,
   generateDiscordAccount,
+  getDiscordInfo,
   getNotificationSubscriptions,
   getPendingTgConnection,
+  getTelegramUserInfo,
   setNotificationSubscriptions,
 } from '@/utils/api_helper'
 import { discordRedirectUrl, OnboardingSubject } from '@/utils/constants'
+import { handleApiError } from '@/utils/error_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { useToastHelpers } from '@/utils/toasts'
@@ -36,6 +40,18 @@ const DiscordConnection: React.FC = () => {
     !!currentAccount?.discord_account
   )
   const [connecting, setConnecting] = useState(false)
+
+  const { data: discordInfo, isLoading: loadingDiscordUsername } = useQuery({
+    queryKey: ['discordUserInfo', currentAccount?.address],
+    queryFn: getDiscordInfo,
+    enabled: isDiscordConnected,
+    onError: error => {
+      handleApiError('Error Fetching Discord Username', error)
+    },
+  })
+
+  const discordUsername =
+    discordInfo?.username || discordInfo?.global_name || 'Unknown'
 
   const toast = useToast()
 
@@ -114,21 +130,34 @@ const DiscordConnection: React.FC = () => {
           >
             <Icon as={FaDiscord} color={color} />
           </Flex>
-          <Text fontSize="lg" fontWeight="bold">
+          <Text fontSize="lg" fontWeight="bold" mr={1}>
             Discord
           </Text>
           {isDiscordConnected && (
-            <HStack borderRadius="6px" px={2} bgColor={badgeColor}>
-              <Box
-                borderRadius="50%"
-                w="8px"
-                h="8px"
-                bgColor="rgba(52, 199, 89, 1)"
-              />
-              <Text fontSize="xs" color="white">
-                Connected
-              </Text>
-            </HStack>
+            <Flex gap={2}>
+              <HStack borderRadius="6px" px={2} bgColor={badgeColor}>
+                <Box
+                  borderRadius="50%"
+                  w="8px"
+                  h="8px"
+                  bgColor="rgba(52, 199, 89, 1)"
+                />
+                <Text fontSize="xs" color="white">
+                  Connected
+                </Text>
+              </HStack>
+              <HStack borderRadius="6px" px={2} bgColor="#CBD2D9">
+                <Box
+                  borderRadius="50%"
+                  w="8px"
+                  h="8px"
+                  bgColor="rgba(52, 199, 89, 1)"
+                />
+                <Text fontSize="xs" color="#131A20">
+                  {loadingDiscordUsername ? 'Loading...' : discordUsername}
+                </Text>
+              </HStack>
+            </Flex>
           )}
         </HStack>
         <Text opacity="0.5">
@@ -174,6 +203,18 @@ const TelegramConnection: React.FC = () => {
   const [isTelegramConnected, setIsTelegramConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [checkingConnection, setCheckingConnection] = useState(true)
+
+  const { data: telegramInfo, isLoading: loadingTelegramUsername } = useQuery({
+    queryKey: ['telegramUserInfo', currentAccount?.address],
+    queryFn: getTelegramUserInfo,
+    enabled: isTelegramConnected,
+    onError: error => {
+      handleApiError('Error Fetching Telegram Username', error)
+    },
+  })
+
+  const telegramUsername =
+    telegramInfo?.username || telegramInfo?.first_name || 'Unknown'
 
   const { showSuccessToast, showErrorToast } = useToastHelpers()
 
@@ -283,21 +324,34 @@ const TelegramConnection: React.FC = () => {
           >
             <Icon as={FaTelegram} color={color} />
           </Flex>
-          <Text fontSize="lg" fontWeight="bold">
+          <Text fontSize="lg" fontWeight="bold" mr={1}>
             Telegram
           </Text>
           {isTelegramConnected && (
-            <HStack borderRadius="6px" px={2} bgColor={badgeColor}>
-              <Box
-                borderRadius="50%"
-                w="8px"
-                h="8px"
-                bgColor="rgba(52, 199, 89, 1)"
-              />
-              <Text fontSize="xs" color="white">
-                Connected
-              </Text>
-            </HStack>
+            <Flex gap={2}>
+              <HStack borderRadius="6px" px={2} bgColor={badgeColor}>
+                <Box
+                  borderRadius="50%"
+                  w="8px"
+                  h="8px"
+                  bgColor="rgba(52, 199, 89, 1)"
+                />
+                <Text fontSize="xs" color="white">
+                  Connected
+                </Text>
+              </HStack>
+              <HStack borderRadius="6px" px={2} bgColor="#CBD2D9">
+                <Box
+                  borderRadius="50%"
+                  w="8px"
+                  h="8px"
+                  bgColor="rgba(52, 199, 89, 1)"
+                />
+                <Text fontSize="xs" color="#131A20">
+                  {loadingTelegramUsername ? 'Loading...' : telegramUsername}
+                </Text>
+              </HStack>
+            </Flex>
           )}
         </HStack>
         <Text opacity="0.5">
