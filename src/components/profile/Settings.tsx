@@ -118,8 +118,25 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
   }
 
   const handleMobileMenuItemClick = (section: SettingsSection) => {
-    setActiveSection(section)
+    handleSectionNavigation(section)
     setIsMobileMenuOpen(false)
+  }
+
+  const handleSectionNavigation = (section: SettingsSection) => {
+    setActiveSection(section)
+
+    const sectionHash = {
+      [SettingsSection.ACCOUNT_DETAILS]: '',
+      [SettingsSection.CONNECTED_CALENDARS]: 'connected-calendars',
+      [SettingsSection.CONNECTED_ACCOUNTS]: 'connected-accounts',
+      [SettingsSection.NOTIFICATIONS]: 'notifications',
+      [SettingsSection.ACCOUNT_PLANS_BILLING]: 'subscriptions',
+      [SettingsSection.WALLET_PAYMENT]: 'wallet-payment',
+    }
+
+    const hash = sectionHash[section]
+    const newUrl = hash ? `/dashboard/details#${hash}` : '/dashboard/details'
+    router.replace(newUrl, undefined, { shallow: true })
   }
 
   useEffect(() => {
@@ -292,7 +309,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
                   variant="ghost"
                   justifyContent="flex-start"
                   alignItems="center"
-                  onClick={() => setActiveSection(item.section)}
+                  onClick={() => handleSectionNavigation(item.section)}
                   color={isActive ? 'primary.200' : 'text-primary'}
                   fontWeight={isActive ? 'semibold' : 'normal'}
                   px={3}
