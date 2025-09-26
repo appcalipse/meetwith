@@ -67,6 +67,7 @@ import {
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
 import { TelegramConnection } from '@/types/Telegram'
+import { TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { apiUrl } from './constants'
@@ -1356,6 +1357,11 @@ export const getPendingTgConnection = async () => {
     )
   ).data
 }
+
+export const getTelegramUserInfo =
+  async (): Promise<TelegramUserInfo | null> => {
+    return await internalFetch(`/secure/telegram/user-info`)
+  }
 
 export const subscribeWithCoupon = async (
   coupon: string,
