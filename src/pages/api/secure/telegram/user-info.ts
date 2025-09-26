@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
@@ -32,7 +33,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       return res.status(200).json(userInfo)
     } catch (error) {
-      console.error('Error fetching Telegram user info:', error)
+      Sentry.captureException(error)
       return res.status(500).json({ error: 'Failed to fetch user info' })
     }
   }
