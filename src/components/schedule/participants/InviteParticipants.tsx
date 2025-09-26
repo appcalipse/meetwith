@@ -64,8 +64,8 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
 
       React.startTransition(() => {
         setParticipants(prevUsers => {
-          const groupParticipants = prevUsers.filter(user =>
-            isGroupParticipant(user)
+          const groupParticipants = prevUsers.filter(
+            user => isGroupParticipant(user) || user.isHidden
           )
           return [...groupParticipants, ..._participants]
         })
@@ -103,7 +103,10 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
     }
   }, [])
   const nonGroupParticipants = useMemo(
-    () => participants.filter(participant => !isGroupParticipant(participant)),
+    () =>
+      participants.filter(
+        participant => !isGroupParticipant(participant) && !participant.isHidden
+      ),
     [participants]
   )
 
