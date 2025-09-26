@@ -49,10 +49,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
     [participants]
   )
   const meetingMembers = useMemo(
-    () =>
-      getMergedParticipants(participants, allGroups, groupParticipants).filter(
-        val => !val.isHidden
-      ),
+    () => getMergedParticipants(participants, allGroups, groupParticipants),
     [participants, allGroups, groupParticipants]
   )
   const allAvailabilities = useMemo(

@@ -149,10 +149,7 @@ const ScheduleBase = () => {
     }
   }, [participants])
   const meetingParticipants = useMemo(
-    () =>
-      getMergedParticipants(participants, groups, groupParticipants).filter(
-        val => !val.isHidden
-      ),
+    () => getMergedParticipants(participants, groups, groupParticipants),
     [participants, groups, groupParticipants]
   )
   return (
