@@ -85,18 +85,16 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
     return participantsMerged.length + 1
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
   const handleParticipantRemove = (participant: ParticipantInfo) => {
+    const account_address = participant.account_address?.toLowerCase()
+    if (account_address === currentAccount?.address || !account_address) return
     React.startTransition(() => {
       setParticipants(prev =>
         prev.filter(p =>
           isGroupParticipant(p)
             ? true
-            : p.account_address?.toLowerCase() !==
-              participant.account_address?.toLowerCase()
+            : p.account_address?.toLowerCase() !== account_address
         )
       )
-      const account_address = participant.account_address?.toLowerCase()
-      if (account_address === currentAccount?.address || !account_address)
-        return
       const keys = Object.keys(groupAvailability)
       for (const key of keys) {
         setGroupParticipants(prev => {
