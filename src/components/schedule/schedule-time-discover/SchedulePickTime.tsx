@@ -292,7 +292,8 @@ export function SchedulePickTime({
       const allParticipants = getMergedParticipants(
         participants,
         groups,
-        groupAvailability
+        groupAvailability,
+        currentAccount?.address
       )
         .map(val => val.account_address)
         .concat([currentAccount?.address]) as string[]
