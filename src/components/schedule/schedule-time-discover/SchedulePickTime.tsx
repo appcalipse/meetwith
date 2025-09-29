@@ -18,8 +18,6 @@ import {
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Select, SingleValue } from 'chakra-react-select'
-import { addDays, isSameMonth } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
 import React, { useEffect, useMemo, useState } from 'react'
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
@@ -254,26 +252,17 @@ export function SchedulePickTime({
           .setZone(timezone)
           .startOf('day')
           .plus({ days: k })
-          .toJSDate()
       )
       .filter(val =>
         DateTime.fromJSDate(currentSelectedDate)
           .setZone(timezone)
           .startOf('month')
-          .hasSame(
-            DateTime.fromJSDate(val).setZone(timezone).startOf('day'),
-            'month'
-          )
+          .hasSame(val, 'month')
       )
     return days.map(date => {
-      const slots = getEmptySlots(date, scheduleDuration)
-      date = DateTime.fromJSDate(date)
-        .setZone(timezone)
-        .startOf('day')
-        .toJSDate()
-
+      const slots = getEmptySlots(date.toJSDate(), scheduleDuration)
       return {
-        date,
+        date: date.toJSDate(),
         slots,
       }
     })
@@ -764,7 +753,9 @@ export function SchedulePickTime({
                             md: 'medium',
                           }}
                         >
-                          {formatInTimeZone(date.date, timezone, 'dd')}
+                          {DateTime.fromJSDate(date.date)
+                            .setZone(timezone)
+                            .toFormat('dd')}
                         </Text>
                         <Text
                           fontWeight={'500'}
@@ -773,7 +764,9 @@ export function SchedulePickTime({
                             md: 'medium',
                           }}
                         >
-                          {formatInTimeZone(date.date, timezone, 'EE')}
+                          {DateTime.fromJSDate(date.date)
+                            .setZone(timezone)
+                            .toFormat('EEE')}
                         </Text>
                       </VStack>
                     </VStack>
