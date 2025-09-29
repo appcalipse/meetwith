@@ -248,16 +248,22 @@ export function SchedulePickTime({
     )
   }
   const getDates = (scheduleDuration = duration) => {
-    const days = Array.from({ length: SLOT_LENGTH }, (v, k) => k)
-      .map(k => addDays(currentSelectedDate, k))
+    const days = Array.from({ length: SLOT_LENGTH || 3 }, (v, k) => k)
+      .map(k =>
+        DateTime.fromJSDate(currentSelectedDate)
+          .setZone(timezone)
+          .startOf('day')
+          .plus({ days: k })
+          .toJSDate()
+      )
       .filter(val =>
-        isSameMonth(
-          val,
-          DateTime.fromJSDate(currentSelectedDate)
-            .setZone(timezone)
-            .startOf('month')
-            .toJSDate()
-        )
+        DateTime.fromJSDate(currentSelectedDate)
+          .setZone(timezone)
+          .startOf('month')
+          .hasSame(
+            DateTime.fromJSDate(val).setZone(timezone).startOf('day'),
+            'month'
+          )
       )
     return days.map(date => {
       const slots = getEmptySlots(date, scheduleDuration)
@@ -343,6 +349,10 @@ export function SchedulePickTime({
           busySlots
         )
       }
+      setBusySlots(busySlotsMap)
+      setMeetingMembers(meetingMembers)
+      setAvailableSlots(availableSlotsMap)
+      setDates(getDates(duration))
       const suggestedSlots = suggestBestSlots(
         monthStart,
         duration,
@@ -352,10 +362,6 @@ export function SchedulePickTime({
         meetingMembers
       )
 
-      setBusySlots(busySlotsMap)
-      setMeetingMembers(meetingMembers)
-      setAvailableSlots(availableSlotsMap)
-      setDates(getDates(duration))
       setSuggestedTimes(suggestedSlots)
     } catch (error: unknown) {
       handleApiError('Error merging availabilities', error)
