@@ -4452,6 +4452,7 @@ const createMeetingType = async (
           payment_channel: meetingType?.plan.payment_channel,
           payment_address: meetingType?.plan.payment_address,
           default_chain_id: meetingType?.plan.crypto_network,
+          default_token: meetingType?.plan.default_token,
         },
       ])
     if (planError) {
@@ -4603,6 +4604,7 @@ const updateMeetingType = async (
         payment_channel: meetingType?.plan.payment_channel,
         payment_address: meetingType?.plan.payment_address,
         default_chain_id: meetingType?.plan.crypto_network,
+        default_token: meetingType?.plan.default_token,
         updated_at: new Date().toISOString(),
       })
       .eq('meeting_type_id', meeting_type_id)
