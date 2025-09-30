@@ -208,6 +208,15 @@ const ScheduleMain: FC<IInitialProps> = ({
       const meeting = await getMeeting(meetingId)
       const decryptedMeeting = await decodeMeeting(meeting, currentAccount!)
       if (!decryptedMeeting) {
+        toast({
+          title: 'Meeting Access Denied',
+          description: `You don't have permission to view this meeting. Please log in with account ${meeting?.account_address} or ask the meeting organizer to grant you access.`,
+          status: 'error',
+          duration: 15000,
+          position: 'top',
+          isClosable: true,
+          onCloseComplete: () => push(`/dashboard/${EditMode.MEETINGS}`),
+        })
         return
       }
       setDecryptedMeeting(decryptedMeeting)
