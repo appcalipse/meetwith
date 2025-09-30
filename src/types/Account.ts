@@ -5,6 +5,7 @@ import {
 } from '@utils/constants/meeting-types'
 
 import { ConnectedCalendarCore } from './CalendarConnections'
+import { AcceptedToken } from './chains'
 import { DiscordAccount } from './Discord'
 import { MeetingProvider } from './Meeting'
 import { Subscription } from './Subscription'
@@ -87,6 +88,7 @@ export interface MeetingTypePlan {
   price_per_slot: number
   no_of_slot: number
   default_chain_id: number
+  default_token: AcceptedToken
   payment_channel: PaymentChannel
   payment_address: string
   created_at: Date
