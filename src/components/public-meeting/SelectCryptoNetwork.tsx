@@ -13,12 +13,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import {
-  AcceptedToken,
-  getSupportedChain,
-  getTokenIcon,
-  supportedChains,
-} from '@meta/chains'
+import { AcceptedToken, getSupportedChain, getTokenIcon } from '@meta/chains'
 import {
   networkOptions,
   PaymentStep,
