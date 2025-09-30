@@ -75,6 +75,11 @@ import { z } from 'zod'
 import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
+import {
+  AcceptedToken,
+  getSupportedChain,
+  getSupportedChainFromId,
+} from '@/types/chains'
 import { EditMode } from '@/types/Dashboard'
 import { MeetingProvider } from '@/types/Meeting'
 
@@ -129,6 +134,26 @@ const MeetingTypeModal: FC<IProps> = props => {
       option => option.value === props.initialValues?.plan?.default_chain_id
     ) || CryptoNetworkForCardSettlementOptions[0]
   )
+  const [defaultToken, setDefaultToken] = useState<Option<AcceptedToken>>(
+    props?.initialValues?.plan?.default_token
+      ? {
+          value: props.initialValues.plan.default_token,
+          label: props.initialValues.plan.default_token,
+        }
+      : {
+          value: AcceptedToken.USDC,
+          label: AcceptedToken.USDC,
+        }
+  )
+  const TokenOptions = useMemo(() => {
+    const selectedNetworkInfo = getSupportedChainFromId(cryptoNetwork?.value)
+    return (
+      selectedNetworkInfo?.acceptableTokens?.map(token => ({
+        value: token.token,
+        label: token.token,
+      })) || []
+    )
+  }, [cryptoNetwork])
   const [title, setTitle] = React.useState(props.initialValues?.title || '')
   const [description, setDescription] = React.useState(
     props.initialValues?.description || ''
@@ -223,6 +248,11 @@ const MeetingTypeModal: FC<IProps> = props => {
     const cryptoNetwork = value as Option<number>
     setCryptoNetwork(cryptoNetwork)
   }
+  const handleDefaultTokenChange = (value: unknown) => {
+    const token = value as Option<AcceptedToken>
+    setDefaultToken(token)
+  }
+
   const handlePaymentChannelChange = (value: unknown) => {
     const paymentChannel = value as Option<PaymentChannel>
     if (isPaymentChannel(paymentChannel.value)) {
@@ -323,6 +353,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                   ? customAddress
                   : currentAccount?.address || '',
               crypto_network: cryptoNetwork.value,
+              default_token: defaultToken.value,
             },
     }
     try {
@@ -432,6 +463,9 @@ const MeetingTypeModal: FC<IProps> = props => {
         break
       case 'plan.crypto_network':
         value = cryptoNetwork.value
+        break
+      case 'plan.default_token':
+        value = defaultToken.value
         break
       default:
         value = undefined
@@ -1213,6 +1247,39 @@ const MeetingTypeModal: FC<IProps> = props => {
                   {!!errors.plan?.crypto_network && (
                     <FormErrorMessage>
                       {errors.plan?.crypto_network}
+                    </FormErrorMessage>
+                  )}
+                </FormControl>
+                <FormControl
+                  width={'100%'}
+                  justifyContent={'space-between'}
+                  alignItems="flex-start"
+                  isInvalid={!!errors.plan?.crypto_network}
+                >
+                  <FormLabel fontSize={'16px'}>
+                    Asset to Receive Payment in (Stablecoins)
+                  </FormLabel>
+                  <ChakraSelect
+                    value={defaultToken}
+                    colorScheme="primary"
+                    onChange={handleDefaultTokenChange}
+                    // eslint-disable-next-line tailwindcss/no-custom-classname
+                    className="noLeftBorder timezone-select"
+                    options={TokenOptions}
+                    components={noClearCustomSelectComponent}
+                    chakraStyles={{
+                      ...fullWidthStyle,
+                      menu: provided => ({
+                        ...provided,
+                        zIndex: 9999, // Ensure dropdown renders on top
+                      }),
+                    }}
+                    menuPlacement="auto"
+                    onBlur={() => handleBlur('plan.default_token')}
+                  />
+                  {!!errors.plan?.default_token && (
+                    <FormErrorMessage>
+                      {errors.plan?.default_token}
                     </FormErrorMessage>
                   )}
                 </FormControl>

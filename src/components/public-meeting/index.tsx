@@ -466,11 +466,17 @@ const PublicPage: FC<IProps> = props => {
       query: queryExists ? query : undefined,
     })
     if (type?.plan) {
-      const selectedChain =
-        supportedChains.find(
-          network => network.id === type?.plan?.default_chain_id
-        )?.chain || undefined
-      handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
+      const baseDetails = supportedChains.find(
+        network => network.id === type?.plan?.default_chain_id
+      )
+      const selectedChain = baseDetails?.chain || undefined
+      const acceptedTokens = baseDetails?.acceptableTokens.find(
+        token => token.token === type?.plan?.default_token
+      )
+      handleSetTokenAndChain(
+        acceptedTokens?.token || AcceptedToken.USDC,
+        selectedChain
+      )
       const localStorageTransaction = localStorage.getItem(
         `${type.id}:transaction`
       )
@@ -567,11 +573,17 @@ const PublicPage: FC<IProps> = props => {
             setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
         }
         if (type?.plan) {
-          const selectedChain =
-            supportedChains.find(
-              network => network.id === type?.plan?.default_chain_id
-            )?.chain || undefined
-          handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
+          const baseDetails = supportedChains.find(
+            network => network.id === type?.plan?.default_chain_id
+          )
+          const selectedChain = baseDetails?.chain || undefined
+          const acceptedTokens = baseDetails?.acceptableTokens.find(
+            token => token.token === type?.plan?.default_token
+          )
+          handleSetTokenAndChain(
+            acceptedTokens?.token || AcceptedToken.USDC,
+            selectedChain
+          )
         }
       }
     }

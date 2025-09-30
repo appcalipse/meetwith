@@ -53,8 +53,10 @@ const WithdrawFundsModal = (props: Props) => {
   const { showErrorToast } = useToastHelpers()
   const [processLoading, setProcessLoading] = useState(false)
   const activeChainId =
-    NETWORKS.find(network => network.name === props.selectedNetwork)?.chainId ||
-    0
+    NETWORKS.find(
+      network =>
+        network.name.toLowerCase() === props.selectedNetwork.toLowerCase()
+    )?.chainId || 0
   const selectedNetworkInfo = getSupportedChainFromId(activeChainId)
   const [token, setToken] = React.useState<AcceptedToken>(AcceptedToken.USDC)
   const [amount, setAmount] = React.useState<string>('')
@@ -62,9 +64,12 @@ const WithdrawFundsModal = (props: Props) => {
     position: 'top',
   })
   const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(token =>
-    [AcceptedToken.USDC, AcceptedToken.CEUR, AcceptedToken.CUSD].includes(
-      token.token
-    )
+    [
+      AcceptedToken.USDC,
+      AcceptedToken.CEUR,
+      AcceptedToken.CUSD,
+      AcceptedToken.USDT,
+    ].includes(token.token)
   )
   const selectedAssetInfo = acceptedTokens?.find(
     acceptedToken => acceptedToken.token === token
