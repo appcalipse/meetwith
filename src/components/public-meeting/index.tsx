@@ -1322,14 +1322,15 @@ const PublicPage: FC<IProps> = props => {
             )}
 
             {/* Powered by Meetwith branding */}
-            <Link href="/" _hover={{ textDecoration: 'none' }}>
-              <HStack
-                spacing={2}
-                justify="center"
-                mt={24}
-                mb={0}
+            <HStack spacing={2} justify="center" mt={24} mb={0}>
+              <Link
+                href="/"
+                _hover={{ textDecoration: 'none', opacity: 0.8 }}
                 cursor="pointer"
-                _hover={{ opacity: 0.8 }}
+                display="flex"
+                alignItems="center"
+                gap={2}
+                w="fit-content"
               >
                 <Image
                   src="/assets/logo.svg"
@@ -1340,8 +1341,8 @@ const PublicPage: FC<IProps> = props => {
                 <Text fontSize="12.8px" color="neutral.300" fontWeight={500}>
                   Powered by Meetwith
                 </Text>
-              </HStack>
-            </Link>
+              </Link>
+            </HStack>
           </Container>
         </VStack>
       </ScheduleStateContext.Provider>
