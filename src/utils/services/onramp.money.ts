@@ -1,9 +1,4 @@
-import {
-  AcceptedToken,
-  getSupportedChainFromId,
-  getTokenFromName,
-  getTokenName,
-} from '@meta/chains'
+import { AcceptedToken, getSupportedChainFromId } from '@meta/chains'
 
 import { getCoinConfig } from '../api_helper'
 export const getOnRampMoneyNetworkAndCoinCode = async (
@@ -11,42 +6,41 @@ export const getOnRampMoneyNetworkAndCoinCode = async (
   token: AcceptedToken
 ) => {
   const coinConfig = await getCoinConfig()
-  const tokenName = getTokenName(token)
-  const [coinId] =
-    Object.entries(coinConfig.allCoinConfig).find(
-      ([, c]) => c.coinName.toLowerCase() === tokenName.toLowerCase()
-    ) || []
-
-  const network = Object.values(coinConfig.networkConfig).find(
+  const tokenCode = token.toLowerCase()
+  const coin = coinConfig.allCoinConfig[tokenCode]
+  const networkSymbol = Object.values(coinConfig.networkConfig).find(
     n => n.networkId === chainId
   )?.chainSymbol
-  return { coinId, network: network || null }
+  return {
+    coinId: coin ? tokenCode : null,
+    network: networkSymbol || null,
+  }
+}
+export const getChainIdFromOnrampMoneyNetwork = async (
+  onrampMoneyChainId: number
+): Promise<number | null> => {
+  const coinConfig = await getCoinConfig()
+  const chainId = coinConfig.networkConfig[onrampMoneyChainId]?.networkId
+  if (!chainId) {
+    return null
+  }
+  return chainId
 }
 export const getOnrampMoneyTokenAddress = async (
-  coinId: number,
+  coinCode: string,
   chainId: number
 ): Promise<string | null> => {
-  const coinConfig = await getCoinConfig()
+  const tokenEnum = coinCode.toUpperCase() as AcceptedToken
 
-  const coin = Object.values(coinConfig.allCoinConfig).find(
-    c => c.coinId === coinId
-  )
-  if (!coin) {
-    return null
-  }
-  const tokenEnum = getTokenFromName(coin.coinName)
-  if (!tokenEnum) {
-    return null
-  }
   const chain = getSupportedChainFromId(chainId)
   if (!chain) {
     return null
   }
   const token = chain.acceptableTokens.find(token => token.token === tokenEnum)
+
   if (!token) {
     return null
   }
-
   return token.contractAddress
 }
 export enum Currency {
