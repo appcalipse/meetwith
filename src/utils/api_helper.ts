@@ -6,7 +6,6 @@ import {
   Account,
   MeetingType,
   PaidMeetingTypes,
-  PartialPaymentPreferences,
   PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,
@@ -1887,10 +1886,8 @@ export const verifyVerificationCode = async (
 }
 
 export const getCoinConfig = async (): Promise<ICoinConfig> => {
-  // bypass cors
-  return internalFetch<ICoinConfig>(
-    '/integrations/onramp-money/all-config',
-    'GET'
+  return await queryClient.fetchQuery(QueryKeys.coinConfig(), () =>
+    internalFetch<ICoinConfig>('/integrations/onramp-money/all-config', 'GET')
   )
 }
 export const getUserLocale = async (): Promise<UserLocale> => {
