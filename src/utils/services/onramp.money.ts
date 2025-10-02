@@ -43,6 +43,7 @@ export const getOnrampMoneyTokenAddress = async (
   }
   return token.contractAddress
 }
+
 export enum Currency {
   INR = 'INR',
   TRY = 'TRY',
