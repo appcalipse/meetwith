@@ -25,10 +25,11 @@ import {
 } from '@chakra-ui/react'
 import { OnrampWebSDK } from '@onramp.money/onramp-web-sdk'
 import { useQuery } from '@tanstack/react-query'
-import React, { useMemo, useState } from 'react'
+import React, { useContext, useMemo, useState } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import {
   AcceptedToken,
   getSupportedChainFromId,
@@ -38,7 +39,6 @@ import { Address } from '@/types/Transactions'
 import { getCoinConfig } from '@/utils/api_helper'
 import { formatUnits } from '@/utils/generic_utils'
 import { getOnRampMoneyNetworkAndCoinCode } from '@/utils/services/onramp.money'
-import { useToastHelpers } from '@/utils/toasts'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 import { NETWORKS } from '@/utils/walletConfig'
 
@@ -51,7 +51,8 @@ type Props = {
 const WithdrawFundsModal = (props: Props) => {
   const currentAccount = useAccountContext()
   const { needsReconnection, attemptReconnection } = useSmartReconnect()
-  const { showErrorToast } = useToastHelpers()
+  const { openConnection } = useContext(OnboardingModalContext)
+
   const [processLoading, setProcessLoading] = useState(false)
   const { activeChainId, selectedNetworkInfo, acceptedTokens } = useMemo(() => {
     const activeChainId =
@@ -133,10 +134,14 @@ const WithdrawFundsModal = (props: Props) => {
     if (needsReconnection) {
       const reconnectedWallet = await attemptReconnection()
       if (!reconnectedWallet) {
-        showErrorToast(
-          'Wallet Reconnection Failed',
-          'Please reconnect your wallet and try again'
-        )
+        openConnection(undefined, false)
+        toast({
+          title: 'Wallet Not Connected',
+          description: 'Please connect your wallet to proceed.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
         return
       }
     }
