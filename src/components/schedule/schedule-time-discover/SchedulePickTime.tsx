@@ -836,7 +836,7 @@ export function SchedulePickTime({
             justifyContent="center"
             spacing={4}
           >
-            {isQuickPoll && !currentAccount && onImportCalendar && (
+            {isQuickPoll && onImportCalendar && (
               <Button colorScheme="primary" onClick={onImportCalendar}>
                 Import from calendar
               </Button>
@@ -889,7 +889,7 @@ export function SchedulePickTime({
                   isDisabled={isBackDisabled}
                   gap={0}
                 />
-                {isQuickPoll && !currentAccount && onImportCalendar && (
+                {isQuickPoll && onImportCalendar && (
                   <Button
                     colorScheme="primary"
                     onClick={onImportCalendar}

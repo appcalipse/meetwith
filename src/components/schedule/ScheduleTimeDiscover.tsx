@@ -22,8 +22,8 @@ import {
 } from '@/utils/api_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
+import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import { Grid4 } from '../icons/Grid4'
-import ConnectCalendarForPoll from '../quickpoll/ConnectCalendarForPoll'
 import GuestIdentificationModal from '../quickpoll/GuestIdentificationModal'
 import PollSuccessScreen from '../quickpoll/PollSuccessScreen'
 import InviteParticipants from './participants/InviteParticipants'
@@ -49,6 +49,7 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
     isInviteParticipantsOpen,
     showCalendarModal,
     showGuestIdModal,
+    showCalendarImportFlow,
     currentParticipantId,
     currentGuestEmail,
     isEditingAvailability,
@@ -75,11 +76,11 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
     useAvailabilityTracker()
   const queryClient = useQueryClient()
 
-  const refreshAvailabilities = () => {
+  const refreshAvailabilities = async () => {
     try {
       setIsRefreshingAvailabilities(true)
       if (pollData?.poll?.slug) {
-        queryClient.invalidateQueries({
+        await queryClient.invalidateQueries({
           queryKey: ['quickpoll-public', pollData.poll.slug],
         })
       }
@@ -213,7 +214,13 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
         setCurrentParticipantId(participant.id)
         setCurrentGuestEmail(email) // Store guest email in context
         setShowGuestIdModal(false)
-        setIsEditingAvailability(true)
+
+        if (showCalendarImportFlow) {
+          setShowCalendarImportFlow(false)
+          setShowCalendarModal(true)
+        } else {
+          setIsEditingAvailability(true)
+        }
       } else {
         showErrorToast(
           'Participant not found',
@@ -366,14 +373,15 @@ const ScheduleTimeDiscoverInner: React.FC<ScheduleTimeDiscoverProps> = ({
         />
       </HStack>
 
-      {/* Calendar Import Modal for Guests */}
-      {isQuickPoll && currentParticipantId && (
-        <ConnectCalendarForPoll
+      {/* Calendar Import Modal */}
+      {isQuickPoll && (
+        <ConnectCalendarModal
           isOpen={showCalendarModal}
           onClose={() => setShowCalendarModal(false)}
+          isQuickPoll={true}
           participantId={currentParticipantId}
           pollData={pollData}
-          onSuccess={handleCalendarConnectSuccess}
+          refetch={refreshAvailabilities}
         />
       )}
 
