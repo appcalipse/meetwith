@@ -166,15 +166,16 @@ const Home: NextPage = () => {
         })
       } else if (method === 'eth_sendTransaction') {
         const { chainId } = params
-        const { data, to } = requestParams
-        const sepolia = defineChain(parseInt(chainId.replace('eip155:', '')))
+        const { data, to, value } = requestParams
+        const chain = defineChain(parseInt(chainId.replace('eip155:', '')))
         const tx = await sendTransaction({
           account,
           transaction: {
             data,
             to,
             client: thirdWebClient,
-            chain: sepolia,
+            chain: chain,
+            value: value || '0',
           },
         })
         const response = { id, result: tx.transactionHash, jsonrpc: '2.0' }
