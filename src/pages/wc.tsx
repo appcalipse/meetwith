@@ -10,6 +10,7 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { Result } from '@ethersproject/abi'
@@ -48,6 +49,7 @@ const Home: NextPage = () => {
   const [event, setEvent] = useState<WalletKitTypes.SessionRequest | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
+  const toast = useToast()
   const { query } = useRouter()
   useEffect(() => {
     if (!currentAccount || !wallet) {
@@ -131,6 +133,17 @@ const Home: NextPage = () => {
     const { method } = request
     if (needsReconnection) {
       wallet = await attemptReconnection()
+      if (!wallet) {
+        openConnection(undefined, false)
+        toast({
+          title: 'Wallet Not Connected',
+          description: 'Please connect your wallet to proceed.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+        return
+      }
     }
     const account = wallet?.getAccount()
     if (wallet && chain) {
