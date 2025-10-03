@@ -43,20 +43,27 @@ export const BaseLayout: React.FC<{
   const isPollGuestDetailsPage =
     router.pathname === PUBLIC_POLL_GUEST_DETAILS_ROUTE
 
+  const pagesWithoutNav = [
+    isDashboardPage,
+    isPublicPage,
+    isSchedulePage,
+    isSettingsPage,
+    isPollPage,
+    isPollGuestDetailsPage,
+  ]
+  const pagesWithoutFooter = [
+    isDashboardPage,
+    isPublicPage,
+    isPollPage,
+    isPollGuestDetailsPage,
+    isSchedulePage,
+  ]
+
   const navVisible =
-    !(logged && isDashboardPage && !isMobile) &&
-    !isPublicPage &&
-    !isSchedulePage &&
-    !isSettingsPage &&
-    !isPollPage &&
-    !isPollGuestDetailsPage
+    !(logged && isDashboardPage && !isMobile) && !pagesWithoutNav.includes(true)
 
   const footerVisible =
-    !(logged && isDashboardPage) &&
-    !isPublicPage &&
-    !isPollPage &&
-    !isPollGuestDetailsPage &&
-    !isSchedulePage
+    !(logged && isDashboardPage) && !pagesWithoutFooter.includes(true)
 
   return (
     <ChakraProvider theme={customTheme}>

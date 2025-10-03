@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
+import { OAuthCallbackQuery } from '@/types/QuickPoll'
 import { apiUrl } from '@/utils/constants'
 import { saveQuickPollCalendar } from '@/utils/database'
 
@@ -12,7 +13,7 @@ const credentials = {
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { code, error, state } = req.query
+  const { code, error, state }: OAuthCallbackQuery = req.query
 
   const stateObject =
     typeof state === 'string'

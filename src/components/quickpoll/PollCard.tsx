@@ -82,7 +82,8 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
         'The poll has been permanently deleted'
       )
       setIsDeleteModalOpen(false)
-      queryClient.invalidateQueries({ queryKey: ['quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
     },
     onError: error => {
       handleApiError('Failed to delete poll', error)
@@ -112,7 +113,8 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
         'The poll has been restored and is now active for 14 days'
       )
       setIsRestoreModalOpen(false)
-      queryClient.invalidateQueries({ queryKey: ['quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
     },
     onError: error => {
       handleApiError('Failed to restore poll', error)

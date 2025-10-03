@@ -6300,7 +6300,7 @@ const getQuickPollsForAccount = async (
   accountAddress: string,
   limit = QUICKPOLL_DEFAULT_LIMIT,
   offset = QUICKPOLL_DEFAULT_OFFSET,
-  status?: PollStatus,
+  status?: PollStatus | PollStatus[],
   searchQuery?: string
 ) => {
   try {
@@ -6346,7 +6346,11 @@ const getQuickPollsForAccount = async (
       .range(offset, offset + safeLimit - 1)
 
     if (status) {
-      query = query.eq('status', status)
+      if (Array.isArray(status)) {
+        query = query.in('status', status)
+      } else {
+        query = query.eq('status', status)
+      }
     }
 
     if (searchQuery && searchQuery.trim()) {

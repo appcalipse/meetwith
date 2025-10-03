@@ -130,6 +130,32 @@ export interface AddParticipantData {
   participant_type: QuickPollParticipantType
 }
 
+export interface UpdateParticipantAvailabilityRequest {
+  available_slots: AvailabilitySlot[]
+  timezone?: string
+}
+
+export interface SaveParticipantCalendarRequest {
+  email: string
+  provider: string
+  payload: Record<string, unknown>
+}
+
+export interface UpdateGuestDetailsRequest {
+  guest_name: string
+  guest_email: string
+}
+
+export interface OAuthCallbackQuery {
+  code?: string | string[]
+  error?: string | string[]
+  state?: string | string[]
+}
+
+export interface OAuthConnectQuery {
+  state?: string | string[]
+}
+
 // Response interfaces
 export interface QuickPollListResponse {
   polls: QuickPollWithParticipants[]

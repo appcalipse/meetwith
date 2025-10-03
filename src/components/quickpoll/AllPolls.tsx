@@ -18,19 +18,17 @@ import {
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useMemo, useState } from 'react'
-import { FiEdit3, FiRefreshCcw, FiSearch } from 'react-icons/fi'
+import { useState } from 'react'
+import { FiRefreshCcw, FiSearch } from 'react-icons/fi'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import EmptyState from '@/components/EmptyState'
-import Loading from '@/components/Loading'
 import Pagination from '@/components/profile/Pagination'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
-import { PollStatus, QuickPollWithParticipants } from '@/types/QuickPoll'
-import { getQuickPolls } from '@/utils/api_helper'
-import { QUICKPOLL_DEFAULT_LIMIT, QUICKPOLL_MAX_LIMIT } from '@/utils/constants'
+import { getOngoingQuickPolls, getPastQuickPolls } from '@/utils/api_helper'
+import { QUICKPOLL_DEFAULT_LIMIT } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
 
 import PollCard from './PollCard'
@@ -43,51 +41,50 @@ const AllPolls = () => {
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
 
   const {
-    data: pollsData,
-    isLoading,
-    error,
-    refetch,
+    data: ongoingPollsData,
+    isLoading: isLoadingOngoing,
+    error: ongoingError,
+    refetch: refetchOngoing,
   } = useQuery({
-    queryKey: ['quickpolls', debouncedSearchQuery],
+    queryKey: ['ongoing-quickpolls', debouncedSearchQuery, currentPage],
     queryFn: () =>
-      getQuickPolls(QUICKPOLL_MAX_LIMIT, 0, undefined, debouncedSearchQuery),
+      getOngoingQuickPolls(
+        QUICKPOLL_DEFAULT_LIMIT,
+        (currentPage - 1) * QUICKPOLL_DEFAULT_LIMIT,
+        debouncedSearchQuery
+      ),
     onError: (err: unknown) => {
-      handleApiError('Failed to load polls', err)
+      handleApiError('Failed to load ongoing polls', err)
     },
   })
 
-  // Process and filter polls
-  const { ongoingPolls, pastPolls } = useMemo(() => {
-    const allPolls = pollsData?.polls || []
-    const now = new Date()
+  const {
+    data: pastPollsData,
+    isLoading: isLoadingPast,
+    error: pastError,
+    refetch: refetchPast,
+  } = useQuery({
+    queryKey: ['past-quickpolls', debouncedSearchQuery, currentPage],
+    queryFn: () =>
+      getPastQuickPolls(
+        QUICKPOLL_DEFAULT_LIMIT,
+        (currentPage - 1) * QUICKPOLL_DEFAULT_LIMIT,
+        debouncedSearchQuery
+      ),
+    onError: (err: unknown) => {
+      handleApiError('Failed to load past polls', err)
+    },
+  })
 
-    const ongoing: QuickPollWithParticipants[] = []
-    const past: QuickPollWithParticipants[] = []
+  // Get current tab's data
+  const currentPollsData = activeTab === 0 ? ongoingPollsData : pastPollsData
+  const currentIsLoading = activeTab === 0 ? isLoadingOngoing : isLoadingPast
+  const currentError = activeTab === 0 ? ongoingError : pastError
+  const currentRefetch = activeTab === 0 ? refetchOngoing : refetchPast
 
-    allPolls.forEach((poll: QuickPollWithParticipants) => {
-      const isExpired = new Date(poll.expires_at) < now
-      const isCancelled = poll.status === PollStatus.CANCELLED
-      const isCompleted = poll.status === PollStatus.COMPLETED
-
-      if (isCancelled || isCompleted || isExpired) {
-        past.push(poll)
-      } else if (poll.status === PollStatus.ONGOING && !isExpired) {
-        ongoing.push(poll)
-      }
-    })
-
-    return { ongoingPolls: ongoing, pastPolls: past }
-  }, [pollsData])
-
-  // Get current tab's polls
-  const currentPolls = activeTab === 0 ? ongoingPolls : pastPolls
-
-  // Pagination for current tab
-  const totalCount = currentPolls.length
+  const currentPolls = currentPollsData?.polls || []
+  const totalCount = currentPollsData?.total_count || 0
   const totalPages = Math.ceil(totalCount / QUICKPOLL_DEFAULT_LIMIT)
-  const startIndex = (currentPage - 1) * QUICKPOLL_DEFAULT_LIMIT
-  const endIndex = startIndex + QUICKPOLL_DEFAULT_LIMIT
-  const displayedPolls = currentPolls.slice(startIndex, endIndex)
 
   const handleTabChange = (index: number) => {
     setActiveTab(index)
@@ -98,12 +95,12 @@ const AllPolls = () => {
     setCurrentPage(page)
   }
 
-  if (isLoading && !debouncedSearchQuery) {
+  if (currentIsLoading && !debouncedSearchQuery) {
     return <CustomLoading text="Loading polls..." />
   }
 
   // Error state
-  if (error) {
+  if (currentError) {
     return (
       <Box width="100%" bg="neutral.850" minHeight="100vh" px={6} py={8}>
         <VStack spacing={6} align="stretch" maxW="1200px" mx="auto">
@@ -124,7 +121,7 @@ const AllPolls = () => {
               fontSize="14px"
               fontWeight="600"
               borderRadius="8px"
-              onClick={() => refetch()}
+              onClick={() => currentRefetch()}
             >
               Try Again
             </Button>
@@ -193,7 +190,7 @@ const AllPolls = () => {
                   bg: 'primary.200',
                 }}
               >
-                Ongoing Polls ({ongoingPolls.length})
+                Ongoing Polls ({ongoingPollsData?.total_count || 0})
               </Tab>
               <Tab
                 rounded={4}
@@ -207,7 +204,7 @@ const AllPolls = () => {
                   bg: 'primary.200',
                 }}
               >
-                Past Polls ({pastPolls.length})
+                Past Polls ({pastPollsData?.total_count || 0})
               </Tab>
             </TabList>
 
@@ -242,7 +239,7 @@ const AllPolls = () => {
           {/* Poll Cards */}
           <TabPanels mt={6}>
             <TabPanel p={0}>
-              {isLoading && debouncedSearchQuery ? (
+              {currentIsLoading && debouncedSearchQuery ? (
                 <Flex justify="center" align="center" py={8}>
                   <VStack spacing={4}>
                     <Spinner size="lg" color="primary.400" />
@@ -251,9 +248,9 @@ const AllPolls = () => {
                     </Text>
                   </VStack>
                 </Flex>
-              ) : displayedPolls.length > 0 ? (
+              ) : currentPolls.length > 0 ? (
                 <VStack spacing={4} align="stretch">
-                  {displayedPolls.map(poll => (
+                  {currentPolls.map(poll => (
                     <PollCard key={poll.id} poll={poll} />
                   ))}
                 </VStack>
@@ -270,7 +267,7 @@ const AllPolls = () => {
               )}
             </TabPanel>
             <TabPanel p={0}>
-              {isLoading && debouncedSearchQuery ? (
+              {currentIsLoading && debouncedSearchQuery ? (
                 <Flex justify="center" align="center" py={8}>
                   <VStack spacing={4}>
                     <Spinner size="lg" color="primary.400" />
@@ -279,9 +276,9 @@ const AllPolls = () => {
                     </Text>
                   </VStack>
                 </Flex>
-              ) : displayedPolls.length > 0 ? (
+              ) : currentPolls.length > 0 ? (
                 <VStack spacing={4} align="stretch">
-                  {displayedPolls.map(poll => (
+                  {currentPolls.map(poll => (
                     <PollCard key={poll.id} poll={poll} />
                   ))}
                 </VStack>
@@ -306,7 +303,7 @@ const AllPolls = () => {
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={handlePageChange}
-            isLoading={isLoading}
+            isLoading={currentIsLoading}
           />
         )}
       </VStack>

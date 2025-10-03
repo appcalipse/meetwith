@@ -11,11 +11,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const slug = query.slug as string
   const identifier = decodeURIComponent(query.identifier as string)
 
-  if (method !== 'GET') {
-    res.setHeader('Allow', ['GET'])
-    return res.status(405).json({ error: `Method ${method} not allowed` })
-  }
-
   if (!slug || !identifier) {
     return res
       .status(400)
@@ -33,7 +28,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     return res.status(200).json(participant)
   } catch (error) {
-    console.error('Get participant by identifier error:', error)
     Sentry.captureException(error)
 
     if (error instanceof Error && error.message.includes('not found')) {
@@ -41,7 +35,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Internal server error',
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
     })
   }
 }
