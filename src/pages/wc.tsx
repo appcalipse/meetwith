@@ -173,12 +173,38 @@ const Home: NextPage = () => {
           transaction: {
             data,
             to,
+            gas: requestParams.gas,
+            gasPrice: requestParams.gasPrice,
+            maxFeePerGas: requestParams.maxFeePerGas,
+            maxPriorityFeePerGas: requestParams.maxPriorityFeePerGas,
             client: thirdWebClient,
             chain: chain,
             value: value || '0',
+            nonce: requestParams.nonce,
           },
         })
         const response = { id, result: tx.transactionHash, jsonrpc: '2.0' }
+        await walletKit.respondSessionRequest({
+          topic,
+          response,
+        })
+      } else if (
+        method === 'eth_signTypedData' ||
+        method === 'eth_signTypedData_v4'
+      ) {
+        const [signerAddress, typedData] = request.params
+        const typedSignature = await account?.signTypedData(
+          JSON.parse(typedData)
+        )
+        const response = { id, result: typedSignature, jsonrpc: '2.0' }
+        await walletKit.respondSessionRequest({
+          topic,
+          response,
+        })
+      } else if (method === 'wallet_switchEthereumChain') {
+        const chainId = parseInt(request.params[0].chainId, 16)
+        await wallet?.switchChain(defineChain(chainId))
+        const response = { id, result: null, jsonrpc: '2.0' }
         await walletKit.respondSessionRequest({
           topic,
           response,
@@ -187,12 +213,19 @@ const Home: NextPage = () => {
     } catch (e) {
       console.error('Error handling session request:', e)
       try {
-        await walletKit.rejectSession({
-          id,
-          reason: getSdkError('USER_REJECTED'),
+        await walletKit.respondSessionRequest({
+          topic,
+          response: {
+            id,
+            error: {
+              code: -32000,
+              message: e instanceof Error ? e.message : 'Transaction failed',
+            },
+            jsonrpc: '2.0',
+          },
         })
-      } catch (e) {
-        console.error('Error rejecting session request:', e)
+      } catch (rejectError) {
+        console.error('Error responding to session request:', rejectError)
       }
     }
 
@@ -239,9 +272,9 @@ const Home: NextPage = () => {
         const { data, to, value } = txData
         if (!data || data === '0x') {
           setTransactionType('eth_transfer')
-          const cleanValue = value.toString().startsWith('0x')
+          const cleanValue = value?.toString().startsWith('0x')
             ? value.toString()
-            : `0x${value.toString()}`
+            : `0x${BigInt(value || '0').toString(16)}`
           setTransferDetails({
             to,
             value: value ? formatEther(BigInt(cleanValue), 'wei') : '0',
