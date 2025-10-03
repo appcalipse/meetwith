@@ -192,7 +192,7 @@ const Home: NextPage = () => {
         method === 'eth_signTypedData' ||
         method === 'eth_signTypedData_v4'
       ) {
-        const [signerAddress, typedData] = request.params
+        const [_, typedData] = request.params
         const typedSignature = await account?.signTypedData(
           JSON.parse(typedData)
         )
