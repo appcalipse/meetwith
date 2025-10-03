@@ -20,6 +20,7 @@ import { EditMode } from '@/types/Dashboard'
 import {
   addOrUpdateICloud,
   addOrUpdateWebdav,
+  savePollParticipantCalendar,
   validateWebdav,
 } from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
@@ -33,6 +34,9 @@ interface WebDavDetailsPanelProps {
     password: string
   }
   onSuccess: () => Promise<void>
+  isQuickPoll?: boolean
+  participantId?: string
+  pollData?: any
 }
 
 const APPLE_DISCLAIMER = (
@@ -57,6 +61,9 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
   payload,
   isApple,
   onSuccess,
+  isQuickPoll = false,
+  participantId,
+  pollData,
 }) => {
   const [loading, setLoading] = useState<boolean>(false)
   const [showPassword, setShowPassword] = useState<boolean>(false)
@@ -113,73 +120,90 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
         return
       }
 
-      if (isApple) {
-        if (!username || !password) {
-          toast({
-            title: 'Username and Password are required.',
-            description:
-              'Please enter your Apple ID email and app specific password.',
-            status: 'error',
-            duration: 5000,
-            position: 'top',
-            isClosable: true,
-          })
-          setLoading(false)
-          return
-        }
-
-        await addOrUpdateICloud({
-          url: APPLE_WEBDAV_URL,
+      if (isQuickPoll && participantId) {
+        const credentials = {
+          url: isApple ? APPLE_WEBDAV_URL : url,
           username,
           password,
-          calendars: calendars.map((calendar, index: number) => {
-            return {
-              calendarId: calendar.url,
-              sync: true,
-              enabled: index === 0,
-              name:
-                typeof calendar.displayName === 'string'
-                  ? calendar.displayName
-                  : calendar.ctag ?? v4(),
-              color: calendar.calendarColor && calendar.calendarColor._cdata,
-            }
-          }),
-        })
+        }
+
+        await savePollParticipantCalendar(
+          participantId!,
+          username!,
+          isApple ? 'icloud' : 'webdav',
+          credentials as unknown as Record<string, unknown>
+        )
       } else {
-        if (!username || !password || !url) {
-          toast({
-            title: 'URL, Username and Password are required.',
-            description: 'Please enter your WebDAV URL, username and password.',
-            status: 'error',
-            duration: 5000,
-            position: 'top',
-            isClosable: true,
-          })
-          setLoading(false)
-          return
-        }
+        if (isApple) {
+          if (!username || !password) {
+            toast({
+              title: 'Username and Password are required.',
+              description:
+                'Please enter your Apple ID email and app specific password.',
+              status: 'error',
+              duration: 5000,
+              position: 'top',
+              isClosable: true,
+            })
+            setLoading(false)
+            return
+          }
 
-        await addOrUpdateWebdav({
-          url,
-          username,
-          password,
-          calendars: calendars.map((calendar, index: number) => {
-            return {
-              calendarId: calendar.url,
-              sync: true,
-              enabled: index === 0,
-              name:
-                typeof calendar.displayName === 'string'
-                  ? calendar.displayName
-                  : calendar.ctag ?? v4(),
-              color: calendar.calendarColor && calendar.calendarColor._cdata,
-            }
-          }),
-        })
+          await addOrUpdateICloud({
+            url: APPLE_WEBDAV_URL,
+            username,
+            password,
+            calendars: calendars.map((calendar, index: number) => {
+              return {
+                calendarId: calendar.url,
+                sync: true,
+                enabled: index === 0,
+                name:
+                  typeof calendar.displayName === 'string'
+                    ? calendar.displayName
+                    : calendar.ctag ?? v4(),
+                color: calendar.calendarColor && calendar.calendarColor._cdata,
+              }
+            }),
+          })
+        } else {
+          if (!username || !password || !url) {
+            toast({
+              title: 'URL, Username and Password are required.',
+              description:
+                'Please enter your WebDAV URL, username and password.',
+              status: 'error',
+              duration: 5000,
+              position: 'top',
+              isClosable: true,
+            })
+            setLoading(false)
+            return
+          }
+
+          await addOrUpdateWebdav({
+            url,
+            username,
+            password,
+            calendars: calendars.map((calendar, index: number) => {
+              return {
+                calendarId: calendar.url,
+                sync: true,
+                enabled: index === 0,
+                name:
+                  typeof calendar.displayName === 'string'
+                    ? calendar.displayName
+                    : calendar.ctag ?? v4(),
+                color: calendar.calendarColor && calendar.calendarColor._cdata,
+              }
+            }),
+          })
+        }
+        await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
+        onboardingContext.reload()
       }
-      await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
+
       !!onSuccess && (await onSuccess())
-      onboardingContext.reload()
       toast({
         title: 'Calendar connected',
         description: "You've just connected a new calendar provider.",
