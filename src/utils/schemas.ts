@@ -218,3 +218,27 @@ export const errorReducerSingle = (
       return state
   }
 }
+
+export const quickPollSchema = z
+  .object({
+    title: z.string().min(1, 'Title is required'),
+    description: z.string().optional(),
+    duration: z.number().min(1, 'Duration must be at least 1 minute'),
+    startDate: z.date(),
+    endDate: z.date(),
+    expiryDate: z.date(),
+    expiryTime: z.date(),
+    participants: z
+      .array(z.any())
+      .min(1, 'At least one participant is required'),
+  })
+  .refine(data => data.startDate < data.endDate, {
+    message: 'Start date must be before end date',
+    path: ['endDate'],
+  })
+  .refine(data => data.expiryDate >= new Date(), {
+    message: 'Expiry date must be in the future',
+    path: ['expiryDate'],
+  })
+
+export type QuickPollFormData = z.infer<typeof quickPollSchema>

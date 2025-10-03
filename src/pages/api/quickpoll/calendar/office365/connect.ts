@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { stringify } from 'querystring'
 
+import { OAuthConnectQuery } from '@/types/QuickPoll'
 import { apiUrl } from '@/utils/constants'
 
 const credentials = {
@@ -24,7 +25,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (req.method === 'GET') {
-    const { state } = req.query
+    const { state }: OAuthConnectQuery = req.query
 
     const params = {
       response_type: 'code',
@@ -37,6 +38,4 @@ export default async function handler(
     const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${query}`
     return res.status(200).json({ url })
   }
-
-  return res.status(405).json({ error: 'Method not allowed' })
 }

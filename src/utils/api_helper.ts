@@ -2044,3 +2044,37 @@ export const getQuickPollOffice365ConnectUrl = async (
     `/quickpoll/calendar/office365/connect${state ? `?state=${state}` : ''}`
   )
 }
+
+export const getOngoingQuickPolls = async (
+  limit = QUICKPOLL_DEFAULT_LIMIT,
+  offset = QUICKPOLL_DEFAULT_OFFSET,
+  searchQuery?: string
+): Promise<QuickPollListResponse> => {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+  })
+
+  if (searchQuery && searchQuery.trim()) {
+    params.append('searchQuery', searchQuery.trim())
+  }
+
+  return await internalFetch(`/secure/quickpoll/ongoing-polls?${params}`)
+}
+
+export const getPastQuickPolls = async (
+  limit = QUICKPOLL_DEFAULT_LIMIT,
+  offset = QUICKPOLL_DEFAULT_OFFSET,
+  searchQuery?: string
+): Promise<QuickPollListResponse> => {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+  })
+
+  if (searchQuery && searchQuery.trim()) {
+    params.append('searchQuery', searchQuery.trim())
+  }
+
+  return await internalFetch(`/secure/quickpoll/past-polls?${params}`)
+}

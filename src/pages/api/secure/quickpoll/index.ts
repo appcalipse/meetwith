@@ -110,11 +110,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       return res.status(201).json({ poll })
     }
-
-    res.setHeader('Allow', ['GET', 'POST'])
-    return res.status(405).json({ error: `Method ${method} not allowed` })
   } catch (error) {
-    console.error('QuickPoll API error:', error)
     Sentry.captureException(error)
 
     if (error instanceof QuickPollValidationError) {
@@ -130,7 +126,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Internal server error',
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
     })
   }
 }

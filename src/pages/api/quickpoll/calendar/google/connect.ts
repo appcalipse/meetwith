@@ -1,6 +1,7 @@
 import { google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { OAuthConnectQuery } from '@/types/QuickPoll'
 import { apiUrl } from '@/utils/constants'
 
 const credentials = {
@@ -18,7 +19,7 @@ export const googleScopes = [
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
-    const { state } = req.query
+    const { state }: OAuthConnectQuery = req.query
     // Get token from Google Calendar API
     const { client_secret, client_id } = credentials
     const redirect_uri = `${apiUrl}/quickpoll/calendar/google/callback`
@@ -37,8 +38,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     return res.status(200).json({ url: authUrl })
   }
-
-  return res.status(405).json({ error: 'Method not allowed' })
 }
 
 export default handler

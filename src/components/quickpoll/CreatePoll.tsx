@@ -55,6 +55,7 @@ import {
   CreatePollProps,
   CreateQuickPollRequest,
   QuickPollBySlugResponse,
+  QuickPollParticipantStatus,
   QuickPollParticipantType,
   QuickPollWithParticipants,
   UpdateQuickPollRequest,
@@ -78,14 +79,43 @@ import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants } from '@/utils/schedule.helper'
+import { quickPollSchema } from '@/utils/schemas'
 import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
+const mapQuickPollStatus = (
+  status: QuickPollParticipantStatus
+): ParticipationStatus => {
+  switch (status) {
+    case QuickPollParticipantStatus.PENDING:
+      return ParticipationStatus.Pending
+    case QuickPollParticipantStatus.ACCEPTED:
+      return ParticipationStatus.Accepted
+    case QuickPollParticipantStatus.DECLINED:
+      return ParticipationStatus.Rejected
+    default:
+      return ParticipationStatus.Pending
+  }
+}
+
+const mapQuickPollType = (type: QuickPollParticipantType): ParticipantType => {
+  switch (type) {
+    case QuickPollParticipantType.SCHEDULER:
+      return ParticipantType.Scheduler
+    case QuickPollParticipantType.INVITEE:
+      return ParticipantType.Invitee
+    case QuickPollParticipantType.OWNER:
+      return ParticipantType.Owner
+    default:
+      return ParticipantType.Invitee
+  }
+}
+
 const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const { push } = useRouter()
-  const [isTitleValid, setIsTitleValid] = useState(true)
-  const [isDurationValid, setIsDurationValid] = useState(true)
-  const [isParticipantsValid, setIsParticipantsValid] = useState(true)
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({})
 
   const {
     isOpen: isInviteModalOpen,
@@ -133,32 +163,30 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       currentAccount?.address
     )
 
-    // Deduplicate by account_address and guest_email
-    const deduplicatedParticipants = merged.reduce(
-      (acc: ParticipantInfo[], current) => {
-        const existing = acc.find(
-          p =>
-            (p.account_address &&
-              current.account_address &&
-              p.account_address.toLowerCase() ===
-                current.account_address.toLowerCase()) ||
-            (p.guest_email &&
-              current.guest_email &&
-              p.guest_email.toLowerCase() === current.guest_email.toLowerCase())
-        )
-        if (!existing) {
-          acc.push(current)
-        }
-        return acc
-      },
-      []
-    )
+    const processedKeys = new Set<string>()
+    const deduplicatedParticipants = merged.filter(participant => {
+      const key =
+        participant.account_address?.toLowerCase() ||
+        participant.guest_email?.toLowerCase()
+      if (!key || processedKeys.has(key)) return false
+      processedKeys.add(key)
+      return true
+    })
 
     return deduplicatedParticipants
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
 
+  useEffect(() => {
+    if (allMergedParticipants.length > 0 && validationErrors.participants) {
+      setValidationErrors(prev => {
+        const { participants, ...rest } = prev
+        return rest
+      })
+    }
+  }, [allMergedParticipants.length, validationErrors.participants])
+
   const router = useRouter()
-  const { showSuccessToast } = useToastHelpers()
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
 
   // Fetch poll data when in edit mode
   const {
@@ -218,9 +246,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             account_address: participant.account_address,
             name: participant.guest_name,
             guest_email: participant.guest_email,
-            status: ParticipationStatus.Accepted,
+            status: mapQuickPollStatus(participant.status),
             meeting_id: '',
-            type: ParticipantType.Invitee,
+            type: mapQuickPollType(participant.participant_type),
           })) || []
 
       setParticipants(participantInfos)
@@ -264,7 +292,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         'Poll Created Successfully!',
         'Your quick poll has been created and is ready to share with participants.'
       )
-      queryClient.invalidateQueries({ queryKey: ['quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
 
       // Reset form state
       setFormData({
@@ -299,7 +328,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         'Poll Updated Successfully!',
         'Your quick poll has been updated with the new details.'
       )
-      queryClient.invalidateQueries({ queryKey: ['quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['quickpoll', pollSlug] })
       router.push('/dashboard/quickpoll')
     },
@@ -319,7 +349,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         'Poll Cancelled Successfully',
         'The poll has been cancelled.'
       )
-      queryClient.invalidateQueries({ queryKey: ['quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
       closeCancelModal()
       router.push('/dashboard/quickpoll')
     },
@@ -329,28 +360,40 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   })
 
   const handleSubmit = () => {
-    // Form validation
-    if (!formData.title) {
-      setIsTitleValid(false)
-    } else {
-      setIsTitleValid(true)
-    }
-    if (!formData.duration) {
-      setIsDurationValid(false)
-    } else {
-      setIsDurationValid(true)
-    }
-    if (allMergedParticipants.length === 0) {
-      setIsParticipantsValid(false)
-    } else {
-      setIsParticipantsValid(true)
+    setValidationErrors({})
+
+    const validationData = {
+      ...formData,
+      participants: allMergedParticipants,
     }
 
-    if (
-      !formData.title ||
-      !formData.duration ||
-      allMergedParticipants.length === 0
-    ) {
+    const validationResult = quickPollSchema.safeParse(validationData)
+
+    if (!validationResult.success) {
+      const errors: Record<string, string> = {}
+      let hasExpiryError = false
+
+      validationResult.error.errors.forEach(error => {
+        const field = error.path.join('.')
+        errors[field] = error.message
+
+        if (field === 'expiryDate' && error.message.includes('future')) {
+          hasExpiryError = true
+        }
+      })
+      setValidationErrors(errors)
+
+      if (hasExpiryError) {
+        showErrorToast(
+          'Invalid Expiry Time',
+          'The poll expiry time must be in the future. Please select a later date and time.'
+        )
+      } else {
+        showErrorToast(
+          'Validation Error',
+          'Please check the form and fix any errors before submitting.'
+        )
+      }
       return
     }
 
@@ -552,8 +595,12 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         })
       }
 
-      if (_participants.length > 0) {
-        setIsParticipantsValid(true)
+      // Clear participants validation error when participants are added
+      if (_participants.length > 0 && validationErrors.participants) {
+        setValidationErrors(prev => {
+          const { participants, ...rest } = prev
+          return rest
+        })
       }
     },
     [
@@ -561,6 +608,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       setGroupAvailability,
       setGroupParticipants,
       allMergedParticipants,
+      validationErrors,
     ]
   )
 
@@ -658,8 +706,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         {/* Form */}
         <VStack spacing={6} align="stretch">
           {/* Title and Duration - Same Line */}
-          <HStack spacing={4} align="end">
-            <FormControl isInvalid={!isTitleValid} flex={3}>
+          <HStack spacing={4} align="start">
+            <FormControl isInvalid={!!validationErrors.title} flex={3}>
               <FormLabel
                 _invalid={{
                   color: 'red.500',
@@ -678,25 +726,32 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 borderColor="neutral.400"
                 value={formData.title}
                 onChange={e => {
-                  if (!isTitleValid && e.target.value) {
-                    setIsTitleValid(true)
-                  }
                   setFormData({ ...formData, title: e.target.value })
                 }}
+                onBlur={() => {
+                  if (validationErrors.title) {
+                    setValidationErrors(prev => {
+                      const { title, ...rest } = prev
+                      return rest
+                    })
+                  }
+                }}
                 errorBorderColor="red.500"
-                isInvalid={!isTitleValid}
+                isInvalid={!!validationErrors.title}
                 isDisabled={isLoading}
               />
-              {!isTitleValid && (
-                <FormHelperText color="red.500">
-                  Title is required
-                </FormHelperText>
-              )}
+              <Box minH="20px">
+                {validationErrors.title && (
+                  <FormHelperText color="red.500" mt={1}>
+                    {validationErrors.title}
+                  </FormHelperText>
+                )}
+              </Box>
             </FormControl>
 
             <FormControl
               w={'max-content'}
-              isInvalid={!isDurationValid}
+              isInvalid={!!validationErrors.duration}
               flex={1}
             >
               <FormLabel htmlFor="duration">
@@ -708,14 +763,22 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               <Select
                 id="duration"
                 placeholder="Duration"
-                onChange={e =>
+                onChange={e => {
                   setFormData({ ...formData, duration: Number(e.target.value) })
-                }
+                }}
+                onBlur={() => {
+                  if (validationErrors.duration) {
+                    setValidationErrors(prev => {
+                      const { duration, ...rest } = prev
+                      return rest
+                    })
+                  }
+                }}
                 value={formData.duration}
                 borderColor="neutral.400"
                 width={'max-content'}
                 maxW="350px"
-                isInvalid={!isDurationValid}
+                isInvalid={!!validationErrors.duration}
                 errorBorderColor="red.500"
                 isDisabled={isLoading}
               >
@@ -725,11 +788,13 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   </option>
                 ))}
               </Select>
-              {!isDurationValid && (
-                <FormHelperText color="red.500">
-                  Duration is required
-                </FormHelperText>
-              )}
+              <Box minH="20px">
+                {validationErrors.duration && (
+                  <FormHelperText color="red.500" mt={1}>
+                    {validationErrors.duration}
+                  </FormHelperText>
+                )}
+              </Box>
             </FormControl>
           </HStack>
 
@@ -807,7 +872,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 }}
                 inputProps={{
                   pr: 180,
-                  isInvalid: !isParticipantsValid,
+                  isInvalid: !!validationErrors.participants,
                   errorBorderColor: 'red.500',
                   isDisabled: isLoading,
                 }}
@@ -830,13 +895,13 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               />
             </Box>
             <FormHelperText minW={{ md: '600px' }}>
-              {isParticipantsValid ? (
+              {validationErrors.participants ? (
+                <Text color="red.500">{validationErrors.participants}</Text>
+              ) : (
                 <Text>
                   Separate participants by comma. You will be added
                   automatically, no need to insert yourself.
                 </Text>
-              ) : (
-                <Text color="red.500">Participants are required</Text>
               )}
             </FormHelperText>
           </FormControl>
@@ -951,12 +1016,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 h={'auto'}
                 colorScheme="primary"
                 onClick={handleSubmit}
-                isDisabled={
-                  allMergedParticipants.length === 0 ||
-                  !formData.title ||
-                  !formData.duration ||
-                  isLoading
-                }
+                isDisabled={isLoading}
                 isLoading={updatePollMutation.isLoading}
                 loadingText="Updating poll..."
               >
@@ -984,12 +1044,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               h={'auto'}
               colorScheme="primary"
               onClick={handleSubmit}
-              isDisabled={
-                allMergedParticipants.length === 0 ||
-                !formData.title ||
-                !formData.duration ||
-                isLoading
-              }
+              isDisabled={isLoading}
               isLoading={createPollMutation.isLoading}
               loadingText="Creating poll..."
             >

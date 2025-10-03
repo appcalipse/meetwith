@@ -1,15 +1,4 @@
-import {
-  Box,
-  Button,
-  Card,
-  CardBody,
-  Flex,
-  Grid,
-  Heading,
-  Icon,
-  Text,
-  VStack,
-} from '@chakra-ui/react'
+import { Box, Button, Flex, Heading, Text, VStack } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { FaCalendarAlt, FaClock, FaLink } from 'react-icons/fa'
@@ -23,6 +12,7 @@ import { QUICKPOLL_MIN_LIMIT } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
 
 import AllPolls from './AllPolls'
+import FeatureCards from './FeatureCards'
 
 interface QuickPollProps {
   currentAccount: Account
@@ -108,54 +98,7 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
         </VStack>
 
         {/* Feature Cards Grid */}
-        <Grid templateColumns="repeat(2, 300px)" gap="12px" maxW="612px">
-          {featureCards.map((card, index) => (
-            <Card
-              key={index}
-              bg="neutral.900"
-              border="1px solid"
-              borderColor="neutral.800"
-              borderRadius="10px"
-              height="240px"
-              p={6}
-            >
-              <CardBody p={0}>
-                <VStack spacing={4} align="start">
-                  {/* Icon */}
-                  <Box
-                    width="48px"
-                    height="48px"
-                    borderRadius="8px"
-                    bg="neutral.900"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    border="2px dashed"
-                    borderColor="neutral.500"
-                  >
-                    <Icon as={card.icon} boxSize={6} color="neutral.400" />
-                  </Box>
-
-                  {/* Content */}
-                  <VStack spacing={2} align="start">
-                    <Heading
-                      as="h3"
-                      fontSize="lg"
-                      fontWeight="semibold"
-                      color="white"
-                      lineHeight="1.3"
-                    >
-                      {card.title}
-                    </Heading>
-                    <Text fontSize="sm" color="neutral.300" lineHeight="1.4">
-                      {card.description}
-                    </Text>
-                  </VStack>
-                </VStack>
-              </CardBody>
-            </Card>
-          ))}
-        </Grid>
+        <FeatureCards cards={featureCards} />
 
         {/* Call to Action Button */}
         <Flex justify="center" pt={1}>
