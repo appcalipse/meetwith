@@ -75,10 +75,8 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   const [duration, setDuration] = useState(30)
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [currentSelectedDate, setCurrentSelectedDate] = useState(new Date())
-  const currentAccount = useAccountContext()
   const [timezone, setTimezone] = useState<string>(
-    currentAccount?.preferences?.timezone ??
-      Intl.DateTimeFormat().resolvedOptions().timeZone
+    Intl.DateTimeFormat().resolvedOptions().timeZone
   )
   const [decryptedMeeting, setDecryptedMeeting] = useState<
     MeetingDecrypted | undefined
