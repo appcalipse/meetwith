@@ -64,8 +64,6 @@ interface Label {
   text: string
 }
 
-const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-10-21')
-
 const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const defineLabel = (start: Date, end: Date): Label | null => {
     const now = utcToZonedTime(new Date(), timezone)
@@ -209,9 +207,6 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       setCopyFeedbackOpen(false)
     }, 2000)
   }
-  const showEdit =
-    isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
-    isAfter(meeting.start, new Date())
 
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
@@ -338,47 +333,42 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                     <Button colorScheme="primary">Join meeting</Button>
                   </Link>
                   <>
-                    {showEdit && (
-                      <>
-                        <IconButton
-                          color={iconColor}
-                          aria-label="edit"
-                          icon={<FaEdit size={16} />}
-                          onClick={async () => {
-                            if (decryptedMeeting) {
-                              try {
-                                await push(
-                                  `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
-                                )
-                              } catch (error) {
-                                toast({
-                                  title: 'Navigation Error',
-                                  description:
-                                    'Failed to navigate to edit page.',
-                                  status: 'error',
-                                  duration: 5000,
-                                  isClosable: true,
-                                })
-                              }
-                            } else {
-                              toast({
-                                title: 'Meeting Data Unavailable',
-                                description: 'Unable to edit this meeting.',
-                                status: 'warning',
-                                duration: 5000,
-                                isClosable: true,
-                              })
-                            }
-                          }}
-                        />
-                        <IconButton
-                          color={iconColor}
-                          aria-label="remove"
-                          icon={<FaTrash size={16} />}
-                          onClick={onOpen}
-                        />
-                      </>
-                    )}
+                    <IconButton
+                      color={iconColor}
+                      aria-label="edit"
+                      icon={<FaEdit size={16} />}
+                      onClick={async () => {
+                        if (decryptedMeeting) {
+                          try {
+                            await push(
+                              `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
+                            )
+                          } catch (error) {
+                            toast({
+                              title: 'Navigation Error',
+                              description: 'Failed to navigate to edit page.',
+                              status: 'error',
+                              duration: 5000,
+                              isClosable: true,
+                            })
+                          }
+                        } else {
+                          toast({
+                            title: 'Meeting Data Unavailable',
+                            description: 'Unable to edit this meeting.',
+                            status: 'warning',
+                            duration: 5000,
+                            isClosable: true,
+                          })
+                        }
+                      }}
+                    />
+                    <IconButton
+                      color={iconColor}
+                      aria-label="remove"
+                      icon={<FaTrash size={16} />}
+                      onClick={onOpen}
+                    />
                     <Menu>
                       <MenuButton
                         as={IconButton}
