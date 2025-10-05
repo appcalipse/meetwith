@@ -13,6 +13,7 @@ import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -60,6 +61,12 @@ export function QuickPollParticipants({
   currentGuestEmail,
 }: QuickPollParticipantsProps) {
   const { currentAccount } = useContext(AccountContext)
+  const {
+    groupAvailability,
+    setGroupAvailability,
+    setGroupParticipants,
+    groupParticipants,
+  } = useParticipants()
 
   const host = pollData?.poll.participants.find(
     p => p.participant_type === QuickPollParticipantType.SCHEDULER
@@ -68,7 +75,10 @@ export function QuickPollParticipants({
     host?.account_address?.toLowerCase() ===
     currentAccount?.address?.toLowerCase()
 
-  // Use poll participants for quickpoll
+  const groupKey = useMemo(() => {
+    return pollData ? `quickpoll-${pollData.poll.id}` : ''
+  }, [pollData])
+
   const meetingMembers = useMemo(() => {
     if (!pollData) return []
 
@@ -76,8 +86,20 @@ export function QuickPollParticipants({
       convertQuickPollParticipant
     )
 
+    const currentGroupParticipants = groupParticipants[groupKey] || []
+    const currentGroupParticipantsSet = new Set(
+      currentGroupParticipants.map(p => p.toLowerCase())
+    )
+
+    const filteredParticipants = allParticipants.filter(participant => {
+      const identifier = (
+        participant.account_address || participant.guest_email
+      )?.toLowerCase()
+      return identifier && currentGroupParticipantsSet.has(identifier)
+    })
+
     if (isHost) {
-      return allParticipants
+      return filteredParticipants
     }
 
     const hasSeeGuestListPermission = pollData.poll.permissions?.includes(
@@ -85,11 +107,11 @@ export function QuickPollParticipants({
     )
 
     if (!hasSeeGuestListPermission) {
-      const scheduler = allParticipants.find(
+      const scheduler = filteredParticipants.find(
         p => p.type === ParticipantType.Scheduler
       )
 
-      const currentParticipant = allParticipants.find(
+      const currentParticipant = filteredParticipants.find(
         p =>
           p.account_address?.toLowerCase() ===
             currentAccount?.address?.toLowerCase() ||
@@ -102,13 +124,78 @@ export function QuickPollParticipants({
       ) as ParticipantInfo[]
     }
 
-    return allParticipants
-  }, [pollData, isHost, currentAccount, currentGuestEmail])
+    return filteredParticipants
+  }, [
+    pollData,
+    isHost,
+    currentAccount,
+    currentGuestEmail,
+    groupParticipants,
+    groupKey,
+  ])
 
   const totalParticipantsCount = useMemo(() => {
     if (!pollData) return 0
     return pollData.poll.participants.length
   }, [pollData])
+
+  const allAvailabilities = useMemo(() => {
+    if (!groupKey) return []
+    return (groupAvailability[groupKey] || []).map(val => val.toLowerCase())
+  }, [groupAvailability, groupKey])
+
+  const handleAvailabilityChange = (
+    account_address?: string,
+    guest_email?: string
+  ) => {
+    if (!account_address && !guest_email) return
+
+    const identifier = (account_address || guest_email)?.toLowerCase()
+    if (!identifier) return
+
+    setGroupAvailability(prev => {
+      const currentParticipants = prev[groupKey] || []
+      const newParticipants = allAvailabilities.includes(identifier)
+        ? currentParticipants.filter(val => val.toLowerCase() !== identifier)
+        : [...currentParticipants, identifier]
+
+      return {
+        ...prev,
+        [groupKey]: newParticipants,
+      }
+    })
+  }
+
+  const handleParticipantRemove = (participant: ParticipantInfo) => {
+    const identifier = (
+      participant.account_address || participant.guest_email
+    )?.toLowerCase()
+    if (!identifier) return
+
+    setGroupAvailability(prev => {
+      const currentParticipants = prev[groupKey] || []
+      const newParticipants = currentParticipants.filter(
+        val => val.toLowerCase() !== identifier
+      )
+
+      return {
+        ...prev,
+        [groupKey]: newParticipants,
+      }
+    })
+
+    setGroupParticipants(prev => {
+      const currentParticipants = prev[groupKey] || []
+      const newParticipants = currentParticipants.filter(
+        val => val.toLowerCase() !== identifier
+      )
+
+      return {
+        ...prev,
+        [groupKey]: newParticipants,
+      }
+    })
+  }
 
   return (
     <VStack
@@ -156,6 +243,31 @@ export function QuickPollParticipants({
               h={'72px'}
             >
               <HStack>
+                <Box
+                  onClick={() =>
+                    handleAvailabilityChange(
+                      participant.account_address?.toLowerCase(),
+                      participant.guest_email?.toLowerCase()
+                    )
+                  }
+                >
+                  <Icon
+                    as={
+                      allAvailabilities.includes(
+                        (
+                          participant.account_address || participant.guest_email
+                        )?.toLowerCase() || ''
+                      )
+                        ? AiOutlineEye
+                        : AiOutlineEyeInvisible
+                    }
+                    cursor="pointer"
+                    boxSize={6}
+                    color="border-default-primary"
+                    w={6}
+                    h={6}
+                  />
+                </Box>
                 <VStack
                   alignItems="flex-start"
                   ml={4}
@@ -192,9 +304,7 @@ export function QuickPollParticipants({
                   display="block"
                   cursor="pointer"
                   color="text-highlight-primary"
-                  onClick={() => {
-                    // TODO: Implement participant removal for hosts
-                  }}
+                  onClick={() => handleParticipantRemove(participant)}
                 />
               )}
             </HStack>
@@ -204,6 +314,7 @@ export function QuickPollParticipants({
 
       {onAddParticipants && isHost && (
         <Button
+          variant="outline"
           colorScheme="primary"
           w="100%"
           px={4}

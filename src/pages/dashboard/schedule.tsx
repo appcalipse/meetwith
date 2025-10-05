@@ -1,6 +1,9 @@
+import { Box } from '@chakra-ui/layout'
 import { NextPage } from 'next'
+import { useRouter } from 'next/router'
 import React from 'react'
 
+import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
 import { AvailabilityTrackerProvider } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import ScheduleMain from '@/components/schedule/ScheduleMain'
 import { NavigationProvider } from '@/providers/schedule/NavigationContext'

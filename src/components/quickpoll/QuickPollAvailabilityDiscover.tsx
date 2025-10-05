@@ -1,5 +1,5 @@
 import { Heading, HStack, Icon, useToast, VStack } from '@chakra-ui/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useMemo } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
@@ -18,11 +18,14 @@ import {
 } from '@/types/QuickPoll'
 import {
   getPollParticipantByIdentifier,
+  getQuickPollById,
   updatePollParticipantAvailability,
 } from '@/utils/api_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
+import CustomError from '../CustomError'
+import CustomLoading from '../CustomLoading'
 import { Grid4 } from '../icons/Grid4'
 import InviteParticipants from '../schedule/participants/InviteParticipants'
 import { useAvailabilityTracker } from '../schedule/schedule-time-discover/AvailabilityTracker'
@@ -72,12 +75,31 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     useAvailabilityTracker()
   const queryClient = useQueryClient()
 
+  const {
+    data: fetchedPollData,
+    isLoading: isPollLoading,
+    error: pollError,
+  } = useQuery({
+    queryKey: ['quickpoll-schedule', pollId],
+    queryFn: () => getQuickPollById(pollId!),
+    enabled: !!pollId && !pollData,
+    onError: (err: unknown) => {
+      showErrorToast(
+        'Failed to load poll',
+        'There was an error loading the poll data.'
+      )
+    },
+  })
+
+  const currentPollData =
+    pollData || (fetchedPollData as QuickPollBySlugResponse)
+
   const refreshAvailabilities = async () => {
     try {
       setIsRefreshingAvailabilities(true)
-      if (pollData?.poll?.slug) {
+      if (currentPollData?.poll?.slug) {
         await queryClient.invalidateQueries({
-          queryKey: ['quickpoll-public', pollData.poll.slug],
+          queryKey: ['quickpoll-public', currentPollData.poll.slug],
         })
       }
     } finally {
@@ -87,8 +109,10 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   // Get poll info from props or router query
   const currentPollId =
-    pollId || (router.query.pollId as string) || pollData?.poll.id
-  const currentPollTitle = pollData?.poll.title || 'Poll'
+    pollId || (router.query.pollId as string) || currentPollData?.poll.id
+  const currentPollTitle = currentPollData?.poll.title || 'Poll'
+
+  const isSchedulingIntent = router.query.intent === 'schedule'
 
   const handleClose = () => {
     router.push(`/dashboard/${EditMode.QUICKPOLL}`)
@@ -127,13 +151,13 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
       router.push(
         `/poll/${
-          pollData?.poll.slug
+          currentPollData?.poll.slug
         }/guest-details?participantId=${currentParticipantId}&email=${encodeURIComponent(
           currentGuestEmail
         )}&timezone=${encodeURIComponent(timezone)}&slots=${slotsParam}`
       )
     } else {
-      if (!pollData) return
+      if (!currentPollData) return
 
       setIsSavingAvailability(true)
 
@@ -143,7 +167,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         if (currentAccount) {
           try {
             participant = (await getPollParticipantByIdentifier(
-              pollData.poll.slug,
+              currentPollData.poll.slug,
               currentAccount.address
             )) as QuickPollParticipant
           } catch (error) {
@@ -184,7 +208,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   const handleGuestIdentification = async (email: string) => {
     try {
       const participant = await getPollParticipantByIdentifier(
-        pollData!.poll.slug,
+        currentPollData!.poll.slug,
         email
       )
 
@@ -214,7 +238,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   }
 
   const handleSharePoll = () => {
-    const pollSlug = pollData?.poll.slug || currentPollId
+    const pollSlug = currentPollData?.poll.slug || currentPollId
     const pollUrl = `${window.location.origin}/poll/${pollSlug}`
     navigator.clipboard.writeText(pollUrl)
     toast({
@@ -232,7 +256,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
       if (currentParticipantId) {
         router.push(
           `/poll/${
-            pollData!.poll.slug
+            currentPollData!.poll.slug
           }/guest-details?participantId=${currentParticipantId}`
         )
       } else {
@@ -268,6 +292,21 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     }
   }
 
+  // Only show loading when we don't have pollData and we're fetching
+  if (!pollData && isPollLoading) {
+    return <CustomLoading text="Loading poll..." />
+  }
+
+  if (pollError && !currentPollData) {
+    return (
+      <CustomError
+        title="Error loading poll"
+        description="There was an error loading the poll data."
+        imageAlt="Error loading poll"
+      />
+    )
+  }
+
   return (
     <VStack
       width="100%"
@@ -290,7 +329,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           </Heading>
 
           <Heading fontSize="24px" fontWeight="700" color="neutral.0">
-            Add/Edit Availability
+            {isSchedulingIntent ? 'Schedule Meeting' : 'Add/Edit Availability'}
           </Heading>
         </HStack>
 
@@ -325,14 +364,14 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           isOpen={isInviteParticipantsOpen}
         />
         <QuickPollParticipants
-          pollData={pollData}
+          pollData={currentPollData}
           onAddParticipants={() => setIsInviteParticipantsOpen(true)}
           onAvailabilityToggle={refreshAvailabilities}
           currentGuestEmail={currentGuestEmail}
         />
         <QuickPollPickAvailability
           openParticipantModal={() => setIsInviteParticipantsOpen(true)}
-          pollData={pollData}
+          pollData={currentPollData}
           onSaveAvailability={handleAvailabilityAction}
           onSharePoll={handleSharePoll}
           onImportCalendar={handleCalendarImport}
@@ -348,7 +387,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         onClose={() => setShowCalendarModal(false)}
         isQuickPoll={true}
         participantId={currentParticipantId}
-        pollData={pollData}
+        pollData={currentPollData}
         refetch={refreshAvailabilities}
       />
 
@@ -357,7 +396,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         isOpen={showGuestIdModal}
         onClose={() => setShowGuestIdModal(false)}
         onSubmit={handleGuestIdentification}
-        pollTitle={pollData?.poll.title}
+        pollTitle={currentPollData?.poll.title}
       />
     </VStack>
   )

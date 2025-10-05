@@ -162,11 +162,10 @@ export function QuickPollPickAvailability({
     )
   }, [pollData, currentAccount])
 
-  const isSchedulingIntent =
-    router.query.intent === 'schedule' || (isHost && !router.query.intent)
+  const isSchedulingIntent = router.query.intent === 'schedule'
   const isEditAvailabilityIntent =
     router.query.intent === 'edit_availability' ||
-    (!isHost && !router.query.intent)
+    (!router.query.intent && !isSchedulingIntent)
 
   const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
@@ -608,15 +607,9 @@ export function QuickPollPickAvailability({
     setPickedTime(bestSlot.start.toJSDate())
 
     if (pollData) {
-      // For quickpolls, navigate to the scheduling screen with poll details and selected time
-      const selectedTimeISO = bestSlot.start.toISO()
-      router.push(
-        `/dashboard/schedule?pollId=${
-          pollData.poll.id
-        }&intent=schedule_from_poll&selectedTime=${encodeURIComponent(
-          selectedTimeISO
-        )}`
-      )
+      // For quickpolls, set the picked time and navigate to the next tab (ScheduleBase)
+      setPickedTime(bestSlot.start.toJSDate())
+      handlePageSwitch(Page.SCHEDULE_DETAILS)
     } else {
       handlePageSwitch(Page.SCHEDULE_DETAILS)
     }
@@ -628,14 +621,9 @@ export function QuickPollPickAvailability({
     })
 
     if (isHost && isSchedulingIntent) {
-      const selectedTimeISO = DateTime.fromJSDate(time).toISO()
-      if (selectedTimeISO && pollData) {
-        const url = `/dashboard/schedule?pollId=${
-          pollData.poll.id
-        }&intent=schedule_from_poll&selectedTime=${encodeURIComponent(
-          selectedTimeISO
-        )}`
-        router.push(url)
+      // For quickpolls, navigate to the next tab (ScheduleBase) instead of a new URL
+      if (pollData) {
+        handlePageSwitch(Page.SCHEDULE_DETAILS)
       }
     }
   }
@@ -829,7 +817,7 @@ export function QuickPollPickAvailability({
             justifyContent="center"
             spacing={4}
           >
-            {onImportCalendar && (
+            {onImportCalendar && !isSchedulingIntent && (
               <Button colorScheme="primary" onClick={onImportCalendar}>
                 Import from calendar
               </Button>
@@ -877,7 +865,7 @@ export function QuickPollPickAvailability({
                   isDisabled={isBackDisabled}
                   gap={0}
                 />
-                {onImportCalendar && (
+                {onImportCalendar && !isSchedulingIntent && (
                   <Button
                     colorScheme="primary"
                     onClick={onImportCalendar}
