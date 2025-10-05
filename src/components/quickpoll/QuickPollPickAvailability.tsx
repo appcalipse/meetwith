@@ -22,15 +22,23 @@ import { Select, SingleValue } from 'chakra-react-select'
 import { addDays, isSameMonth } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
+import { useRouter } from 'next/router'
 import React, { useEffect, useMemo, useState } from 'react'
-import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import {
+  FaArrowRight,
+  FaChevronLeft,
+  FaChevronRight,
+  FaShare,
+} from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
+import { MdShare } from 'react-icons/md'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useDebounceCallback } from '@/hooks/useDebounceCallback'
 import useSlotsWithAvailability from '@/hooks/useSlotsWithAvailability'
+import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import {
   Page,
   useScheduleNavigation,
@@ -38,6 +46,10 @@ import {
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
+import {
+  QuickPollBySlugResponse,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
 import {
   fetchBusySlotsRawForMultipleAccounts,
   getExistingAccounts,
@@ -48,10 +60,15 @@ import { customSelectComponents, Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
+import {
+  createMockMeetingMembers,
+  generateQuickPollBestSlots,
+  processPollParticipantAvailabilities,
+} from '@/utils/quickpoll_helper'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { suggestBestSlots } from '@/utils/slots.helper'
 
-import ScheduleTimeSlot from './ScheduleTimeSlot'
+import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
 
 export enum State {
   ALL_AVAILABLE,
@@ -72,6 +89,7 @@ export const getBgColor = (state: State) => {
       return 'neutral.0'
   }
 }
+
 const GUIDES = [
   {
     color: getBgColor(State.ALL_AVAILABLE),
@@ -96,12 +114,28 @@ export type Dates = {
   slots: Array<Interval<true>>
 }
 
-interface ISchedulePickTimeProps {
+interface QuickPollPickAvailabilityProps {
   openParticipantModal: () => void
+  pollData?: QuickPollBySlugResponse
+  onSaveAvailability?: () => void
+  onSharePoll?: () => void
+  onImportCalendar?: () => void
+  isEditingAvailability?: boolean
+  isSavingAvailability?: boolean
+  isRefreshingAvailabilities?: boolean
 }
-export function SchedulePickTime({
+
+export function QuickPollPickAvailability({
   openParticipantModal,
-}: ISchedulePickTimeProps) {
+  pollData,
+  onSaveAvailability,
+  onSharePoll,
+  onImportCalendar,
+  isEditingAvailability,
+  isSavingAvailability,
+  isRefreshingAvailabilities,
+}: QuickPollPickAvailabilityProps) {
+  const router = useRouter()
   const {
     timezone,
     setTimezone,
@@ -116,6 +150,24 @@ export function SchedulePickTime({
   const { canEditMeetingDetails, isUpdatingMeeting } =
     useParticipantPermissions()
   const currentAccount = useAccountContext()
+  const { currentGuestEmail } = useQuickPollAvailability()
+
+  const isHost = useMemo(() => {
+    if (!pollData || !currentAccount) return false
+
+    return pollData.poll.participants.some(
+      p =>
+        p.account_address === currentAccount.address &&
+        p.participant_type === QuickPollParticipantType.SCHEDULER
+    )
+  }, [pollData, currentAccount])
+
+  const isSchedulingIntent =
+    router.query.intent === 'schedule' || (isHost && !router.query.intent)
+  const isEditAvailabilityIntent =
+    router.query.intent === 'edit_availability' ||
+    (!isHost && !router.query.intent)
+
   const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
   const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
@@ -127,8 +179,12 @@ export function SchedulePickTime({
     const timer = setTimeout(() => setIsBreakpointResolved(true), 100)
     return () => clearTimeout(timer)
   }, [])
+
   const {
     groupAvailability,
+    setGroupAvailability,
+    groupParticipants,
+    setGroupParticipants,
     meetingMembers,
     setMeetingMembers,
     participants,
@@ -136,9 +192,30 @@ export function SchedulePickTime({
   } = useParticipants()
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
+  useEffect(() => {
+    if (pollData) {
+      const quickpollAvailability: Record<string, string[]> = {}
+      const quickpollParticipants: Record<string, string[]> = {}
+
+      const participantIdentifiers = pollData.poll.participants
+        .map(
+          p => p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+        )
+        .filter(Boolean) as string[]
+
+      const groupKey = `quickpoll-${pollData.poll.id}`
+
+      quickpollAvailability[groupKey] = participantIdentifiers
+      quickpollParticipants[groupKey] = participantIdentifiers
+
+      setGroupAvailability(quickpollAvailability)
+      setGroupParticipants(quickpollParticipants)
+    }
+  }, [pollData, setGroupAvailability, setGroupParticipants])
+
   const [isLoading, setIsLoading] = useState(true)
 
-  const isDisplayLoading = isLoading
+  const isDisplayLoading = isLoading || isRefreshingAvailabilities
   const [availableSlots, setAvailableSlots] = useState<
     Map<string, Interval<true>[]>
   >(new Map())
@@ -146,6 +223,21 @@ export function SchedulePickTime({
     new Map()
   )
   const availabilityAddresses = useMemo(() => {
+    if (pollData) {
+      const groupKey = `quickpoll-${pollData.poll.id}`
+      const visibleParticipants = groupAvailability[groupKey] || []
+
+      return pollData.poll.participants
+        .filter(
+          p => (p.account_address || p.guest_email) && p.available_slots?.length
+        )
+        .map(
+          p =>
+            (p.account_address?.toLowerCase() || p.guest_email?.toLowerCase())!
+        )
+        .filter(addr => visibleParticipants.includes(addr))
+    }
+
     const keys = Object.keys(groupAvailability)
     const participantsSet = new Set<string>()
     for (const key of keys) {
@@ -155,7 +247,7 @@ export function SchedulePickTime({
       }
     }
     return Array.from(participantsSet)
-  }, [groupAvailability])
+  }, [pollData, groupAvailability])
 
   const getEmptySlots = (
     time: Date,
@@ -176,6 +268,7 @@ export function SchedulePickTime({
     }
     return slots
   }
+
   const months = useMemo(() => {
     const monthsArray = []
     let currentDateInTimezone = DateTime.now().setZone(timezone)
@@ -188,6 +281,7 @@ export function SchedulePickTime({
     }
     return monthsArray
   }, [currentSelectedDate.getFullYear(), timezone])
+
   const [dates, setDates] = useState<Array<Dates>>([])
   const datesSlotsWithAvailability = useSlotsWithAvailability(
     dates,
@@ -197,6 +291,7 @@ export function SchedulePickTime({
     availabilityAddresses,
     timezone
   )
+
   const [monthValue, setMonthValue] = useState<
     SingleValue<{ label: string; value: string }>
   >({
@@ -220,6 +315,7 @@ export function SchedulePickTime({
       )
     }
   }
+
   const _onChangeDuration = (newValue: unknown) => {
     if (Array.isArray(newValue)) {
       return
@@ -251,6 +347,7 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
+
   const getDates = (scheduleDuration = duration) => {
     const days = Array.from({ length: SLOT_LENGTH }, (v, k) => k)
       .map(k => addDays(currentSelectedDate, k))
@@ -291,6 +388,42 @@ export function SchedulePickTime({
         .setZone(timezone)
         .endOf('month')
         .toJSDate()
+
+      if (pollData) {
+        const availableSlotsMap = processPollParticipantAvailabilities(
+          pollData,
+          groupAvailability,
+          monthStart,
+          monthEnd,
+          timezone,
+          currentAccount,
+          isHost,
+          currentGuestEmail
+        )
+
+        const mockMeetingMembers = createMockMeetingMembers(
+          pollData,
+          currentAccount,
+          isHost,
+          currentGuestEmail
+        )
+
+        const suggestedSlots = generateQuickPollBestSlots(
+          monthStart,
+          monthEnd,
+          duration,
+          timezone,
+          availableSlotsMap
+        )
+
+        setAvailableSlots(availableSlotsMap)
+        setBusySlots(new Map())
+        setDates(getDates(duration))
+        setSuggestedTimes(suggestedSlots)
+        setMeetingMembers(mockMeetingMembers)
+        setIsLoading(false)
+        return
+      }
 
       const accounts = deduplicateArray(Object.values(groupAvailability).flat())
       const allParticipants = getMergedParticipants(
@@ -367,6 +500,7 @@ export function SchedulePickTime({
       setIsLoading(false)
     }
   }
+
   const debouncedHandleSlotLoad = useDebounceCallback(handleSlotLoad, 300)
 
   useEffect(() => {
@@ -378,13 +512,18 @@ export function SchedulePickTime({
     duration,
     inviteModalOpen,
     isBreakpointResolved,
+    pollData,
+    isRefreshingAvailabilities,
   ])
+
   useEffect(() => {
     handleSlotLoad()
   }, [SLOT_LENGTH])
+
   useEffect(() => {
     setDates(getDates())
   }, [currentSelectedDate, timezone, SLOT_LENGTH])
+
   const handleScheduledTimeBack = () => {
     const currentDate = DateTime.fromJSDate(currentSelectedDate)
       .setZone(timezone)
@@ -408,6 +547,7 @@ export function SchedulePickTime({
     }
     setCurrentSelectedDate(newDate.toJSDate())
   }
+
   const handleScheduledTimeNext = () => {
     const currentDate = DateTime.fromJSDate(currentSelectedDate)
       .setZone(timezone)
@@ -426,6 +566,7 @@ export function SchedulePickTime({
 
     setCurrentSelectedDate(newDate.toJSDate())
   }
+
   const HOURS_SLOTS = useMemo(() => {
     const slots = getEmptySlots(new Date(), duration >= 45 ? duration : 60)
     return slots.map(val => {
@@ -440,6 +581,7 @@ export function SchedulePickTime({
     const currentDate = DateTime.now().setZone(timezone)
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
+
   const durationOptions = useMemo(
     () =>
       DEFAULT_GROUP_SCHEDULING_DURATION.map(type => ({
@@ -448,6 +590,7 @@ export function SchedulePickTime({
       })),
     []
   )
+
   const handleJumpToBestSlot = () => {
     if (suggestedTimes.length === 0) {
       toast({
@@ -463,14 +606,38 @@ export function SchedulePickTime({
     }
     const bestSlot = suggestedTimes[0]
     setPickedTime(bestSlot.start.toJSDate())
-    handlePageSwitch(Page.SCHEDULE_DETAILS)
+
+    if (pollData) {
+      // For quickpolls, navigate to the scheduling screen with poll details and selected time
+      const selectedTimeISO = bestSlot.start.toISO()
+      router.push(
+        `/dashboard/schedule?pollId=${
+          pollData.poll.id
+        }&intent=schedule_from_poll&selectedTime=${encodeURIComponent(
+          selectedTimeISO
+        )}`
+      )
+    } else {
+      handlePageSwitch(Page.SCHEDULE_DETAILS)
+    }
   }
 
   const handleTimeSelection = (time: Date) => {
     React.startTransition(() => {
       setPickedTime(time)
     })
-    handlePageSwitch(Page.SCHEDULE_DETAILS)
+
+    if (isHost && isSchedulingIntent) {
+      const selectedTimeISO = DateTime.fromJSDate(time).toISO()
+      if (selectedTimeISO && pollData) {
+        const url = `/dashboard/schedule?pollId=${
+          pollData.poll.id
+        }&intent=schedule_from_poll&selectedTime=${encodeURIComponent(
+          selectedTimeISO
+        )}`
+        router.push(url)
+      }
+    }
   }
 
   return (
@@ -484,6 +651,26 @@ export function SchedulePickTime({
           gap={4}
           zIndex={2}
         >
+          {onSaveAvailability && isEditAvailabilityIntent && (
+            <Button
+              variant="outline"
+              colorScheme="primary"
+              onClick={onSaveAvailability}
+              px="16px"
+              py="8px"
+              fontSize="16px"
+              fontWeight="700"
+              borderRadius="8px"
+              width="230px"
+              isLoading={isSavingAvailability}
+              loadingText="Saving..."
+              isDisabled={isSavingAvailability}
+            >
+              {isEditingAvailability
+                ? 'Save availability'
+                : 'Edit availability'}
+            </Button>
+          )}
           <VStack
             gap={2}
             alignItems={'flex-start'}
@@ -534,36 +721,22 @@ export function SchedulePickTime({
               }}
             />
           </VStack>
-          <FormControl
-            w={'fit-content'}
-            isDisabled={!canEditMeetingDetails || isScheduling}
-          >
-            <FormLabel htmlFor="date">
-              Duration
-              <Text color="red.500" display="inline">
-                *
-              </Text>
-            </FormLabel>
-            <ChakraSelect
-              id="duration"
-              placeholder="Duration"
-              onChange={e =>
-                Number(e.target.value) && setDuration(Number(e.target.value))
-              }
-              value={duration}
-              borderColor="input-border"
-              width={'max-content'}
-              maxW="350px"
-              errorBorderColor="red.500"
-              bg="select-bg"
+
+          <HStack spacing={3} display={{ base: 'none', lg: 'flex' }}>
+            <Button
+              variant="outline"
+              colorScheme="primary"
+              leftIcon={<MdShare color="#F9B19A" size={20} />}
+              onClick={onSharePoll}
+              px="16px"
+              py="8px"
+              fontSize="16px"
+              fontWeight="700"
+              borderRadius="8px"
             >
-              {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                <option key={type.id} value={type.duration}>
-                  {durationToHumanReadable(type.duration)}
-                </option>
-              ))}
-            </ChakraSelect>
-          </FormControl>
+              Share Poll
+            </Button>
+          </HStack>
           {isUpdatingMeeting && (
             <Button
               rightIcon={<FaArrowRight />}
@@ -599,15 +772,83 @@ export function SchedulePickTime({
           </HStack>
         </HStack>
 
+        {/* Mobile quickpoll buttons */}
+        <HStack
+          spacing={3}
+          alignSelf="flex-start"
+          display={{
+            lg: 'none',
+            base: 'flex',
+          }}
+        >
+          {onSaveAvailability && (
+            <Button
+              colorScheme="primary"
+              size="sm"
+              px={4}
+              py={2}
+              fontSize="14px"
+              fontWeight="600"
+              borderRadius="8px"
+              onClick={onSaveAvailability}
+              isLoading={isSavingAvailability}
+              loadingText="Saving..."
+              isDisabled={isSavingAvailability}
+            >
+              {isEditingAvailability
+                ? 'Save availability'
+                : 'Edit availability'}
+            </Button>
+          )}
+          {onSharePoll && (
+            <Button
+              variant="outline"
+              colorScheme="primary"
+              leftIcon={<MdShare color="#F9B19A" size={20} />}
+              onClick={onSharePoll}
+              px="16px"
+              py="8px"
+              fontSize="16px"
+              fontWeight="700"
+              borderRadius="8px"
+            >
+              Share Poll
+            </Button>
+          )}
+        </HStack>
+
         <VStack
           gap={4}
           w="100%"
           alignItems={{ base: 'flex-start', md: 'center' }}
           display={{ base: 'flex', lg: 'none' }}
         >
-          <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-            Jump to Best Slot
-          </Button>
+          <HStack
+            w="100%"
+            alignItems="center"
+            justifyContent="center"
+            spacing={4}
+          >
+            {onImportCalendar && (
+              <Button colorScheme="primary" onClick={onImportCalendar}>
+                Import from calendar
+              </Button>
+            )}
+            {isHost && isSchedulingIntent && (
+              <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
+                Jump to Best Slot
+              </Button>
+            )}
+            <Box maxW="350px" textAlign="center">
+              <Heading fontSize="20px" fontWeight={700}>
+                Select time from available slots
+              </Heading>
+              <Text fontSize="12px">
+                All time slots shown below are the available times between you
+                and the required participants.
+              </Text>
+            </Box>
+          </HStack>
         </VStack>
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
@@ -636,15 +877,25 @@ export function SchedulePickTime({
                   isDisabled={isBackDisabled}
                   gap={0}
                 />
+                {onImportCalendar && (
+                  <Button
+                    colorScheme="primary"
+                    onClick={onImportCalendar}
+                    display={{ lg: 'block', base: 'none' }}
+                  >
+                    Import from calendar
+                  </Button>
+                )}
+                {isHost && isSchedulingIntent && (
+                  <Button
+                    colorScheme="primary"
+                    onClick={handleJumpToBestSlot}
+                    display={{ lg: 'block', base: 'none' }}
+                  >
+                    Jump to Best Slot
+                  </Button>
+                )}
               </HStack>
-
-              <Button
-                colorScheme="primary"
-                onClick={handleJumpToBestSlot}
-                display={{ lg: 'block', base: 'none' }}
-              >
-                Jump to Best Slot
-              </Button>
 
               <Box
                 maxW="350px"
@@ -862,13 +1113,16 @@ export function SchedulePickTime({
                       >
                         {date.slots.map(slotData => {
                           return (
-                            <ScheduleTimeSlot
+                            <QuickPollTimeSlot
                               key={slotData.slotKey}
                               slotData={slotData}
                               pickedTime={pickedTime}
                               duration={duration}
                               handleTimePick={handleTimeSelection}
                               timezone={timezone}
+                              isQuickPoll={true}
+                              isEditingAvailability={isEditingAvailability}
+                              isSchedulingIntent={isSchedulingIntent}
                             />
                           )
                         })}

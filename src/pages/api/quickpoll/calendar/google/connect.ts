@@ -1,6 +1,7 @@
 import { google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { googleScopes } from '@/pages/api/secure/calendar_integrations/google/connect'
 import { OAuthConnectQuery } from '@/types/QuickPoll'
 import { apiUrl } from '@/utils/constants'
 
@@ -8,14 +9,6 @@ const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
   client_secret: process.env.GOOGLE_CLIENT_SECRET,
 }
-
-export const googleScopes = [
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/calendar.events.freebusy',
-  'https://www.googleapis.com/auth/calendar.freebusy',
-  'https://www.googleapis.com/auth/calendar.events.owned',
-  'https://www.googleapis.com/auth/calendar.readonly',
-]
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
