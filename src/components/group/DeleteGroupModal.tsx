@@ -22,7 +22,7 @@ import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCardModal {
   groupID: string | null
-  resetState: () => void
+  resetState: () => Promise<void>
   onClose: () => void
   isOpen: boolean
   groupName: string | null
@@ -40,9 +40,9 @@ const DeleteGroupModal: React.FC<IGroupInviteCardModal> = props => {
       const isSuccessful = await deleteGroup(props.groupID)
       setIsDeleting(false)
       if (!isSuccessful) return
-      props.resetState()
+      await props.resetState()
       props.onClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error deleting group', error)
     }
     setIsDeleting(false)

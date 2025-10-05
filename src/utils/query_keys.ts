@@ -49,6 +49,9 @@ export default class QueryKeys {
   static groups(accountAddress?: string, search?: string) {
     return ['groups', accountAddress, search]
   }
+  static groupInvites(accountAddress?: string, search?: string) {
+    return ['groupInvites', accountAddress, search]
+  }
   static exchangeRate(currency: string) {
     return ['exchangeRate', currency]
   }
