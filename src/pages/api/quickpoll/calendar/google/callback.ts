@@ -97,9 +97,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     ]
   }
 
+  if (!stateObject?.participantId) {
+    return res.redirect(
+      `/poll/${
+        stateObject?.pollSlug || 'undefined'
+      }?calendarResult=error&error=missing_participant`
+    )
+  }
+
   // Save calendar for quickpoll participant
   await saveQuickPollCalendar(
-    stateObject?.participantId,
+    stateObject.participantId,
     userInfoRes.data.email!,
     TimeSlotSource.GOOGLE,
     key as Record<string, unknown>

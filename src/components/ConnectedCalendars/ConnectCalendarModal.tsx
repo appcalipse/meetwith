@@ -54,20 +54,32 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
     setLoading(provider)
     await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
 
-    const getGoogleUrl = isQuickPoll
+    const isGuestFlow = isQuickPoll && participantId
+
+    const getGoogleUrl = isGuestFlow
       ? getQuickPollGoogleAuthConnectUrl
       : getGoogleAuthConnectUrl
-    const getOfficeUrl = isQuickPoll
+    const getOfficeUrl = isGuestFlow
       ? getQuickPollOffice365ConnectUrl
       : getOffice365ConnectUrl
 
+    let oauthState = state
+    if (isGuestFlow && pollData) {
+      const stateObject = {
+        participantId,
+        pollSlug: pollData.poll.slug,
+        redirectTo: `/poll/${pollData.poll.slug}`,
+      }
+      oauthState = Buffer.from(JSON.stringify(stateObject)).toString('base64')
+    }
+
     switch (provider) {
       case TimeSlotSource.GOOGLE:
-        const googleResponse = await getGoogleUrl(state)
+        const googleResponse = await getGoogleUrl(oauthState)
         !!googleResponse && window.location.assign(googleResponse.url)
         return
       case TimeSlotSource.OFFICE:
-        const officeResponse = await getOfficeUrl(state)
+        const officeResponse = await getOfficeUrl(oauthState)
         !!officeResponse && window.location.assign(officeResponse.url)
         return
       case TimeSlotSource.ICLOUD:

@@ -13,6 +13,7 @@ import { useRouter } from 'next/router'
 import React, { FC, useContext, useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
+import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import InviteParticipants from '@/components/schedule/participants/InviteParticipants'
 import ScheduleBase from '@/components/schedule/ScheduleBase'
@@ -153,6 +154,7 @@ const ScheduleMain: FC<IInitialProps> = ({
   const toast = useToast()
   const router = useRouter()
   const { push, query } = router
+  const isQuickPollFlow = query.ref === 'quickpoll'
 
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -918,11 +920,11 @@ const ScheduleMain: FC<IInitialProps> = ({
           <Tabs index={currentPage} isLazy>
             <TabPanels>
               <TabPanel p={0}>
-                <ScheduleTimeDiscover
-                  pollId={pollId}
-                  isQuickPoll={!!pollId}
-                  pollData={pollData || undefined}
-                />
+                {isQuickPollFlow && pollId ? (
+                  <QuickPollAvailabilityDiscover pollId={pollId} />
+                ) : (
+                  <ScheduleTimeDiscover />
+                )}
               </TabPanel>
               <TabPanel p={0}>
                 <ScheduleBase />
