@@ -34,16 +34,15 @@ const RemoveGroupMemberModal: React.FC<IRemoveGroupMemberModal> = props => {
     if (!props.groupID) return
     setIsRemoving(true)
     try {
-      const isSuccessful = await removeGroupMember(
+      await removeGroupMember(
         props.groupID,
         (props.selectedGroupMember.invitePending
           ? props.selectedGroupMember.userId
           : props.selectedGroupMember.address) as string,
         props.selectedGroupMember.invitePending
       )
-      setIsRemoving(false)
-      if (!isSuccessful) return
       await props.resetState()
+      setIsRemoving(false)
       props.onClose()
     } catch (error: unknown) {
       handleApiError('Error removing member', error)
