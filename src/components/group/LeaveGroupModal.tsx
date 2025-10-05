@@ -30,10 +30,9 @@ const LeaveGroupModal: React.FC<IGroupInviteCardModal> = props => {
     if (!props.groupID) return
     setIsLeaving(true)
     try {
-      const isSuccessful = await leaveGroup(props.groupID)
-      if (!isSuccessful) return
-      setIsLeaving(false)
+      await leaveGroup(props.groupID)
       await props.resetState()
+      setIsLeaving(false)
       props.onClose()
     } catch (error: unknown) {
       if (error instanceof IsGroupAdminError) {
