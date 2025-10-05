@@ -41,10 +41,9 @@ const EditGroupSlugModal: React.FC<IEditGroupNameModal> = props => {
     if (!props.groupID) return
     setIsUpdating(true)
     try {
-      const isSuccessful = await editGroup(props.groupID, undefined, input)
-      setIsUpdating(false)
-      if (!isSuccessful) return
+      await editGroup(props.groupID, undefined, input)
       await props.resetState()
+      setIsUpdating(false)
       props.onClose()
     } catch (error: unknown) {
       handleApiError('Error changing slug', error)
