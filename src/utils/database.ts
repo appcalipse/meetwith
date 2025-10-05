@@ -2319,6 +2319,53 @@ const getConnectedCalendars = async (
   return connectedCalendars
 }
 
+const getQuickPollCalendars = async (
+  participantId: string,
+  {
+    syncOnly,
+    activeOnly: _activeOnly,
+  }: {
+    syncOnly?: boolean
+    activeOnly?: boolean
+  }
+): Promise<ConnectedCalendar[]> => {
+  const { data, error } = await db.supabase
+    .from('quick_poll_calendars')
+    .select('*')
+    .eq('participant_id', participantId)
+    .eq('active', true)
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data) return []
+
+  const connectedCalendars: ConnectedCalendar[] = data.map((calendar: any) => ({
+    id: calendar.id,
+    account_address: '',
+    email: calendar.email,
+    provider: calendar.provider,
+    payload: calendar.payload,
+    calendars: [],
+    enabled: true,
+    created: calendar.created_at || new Date().toISOString(),
+  }))
+
+  if (syncOnly) {
+    const calendars: ConnectedCalendar[] = JSON.parse(
+      JSON.stringify(connectedCalendars)
+    )
+    for (const cal of calendars) {
+      cal.calendars = cal.calendars.filter(c => c.sync)
+    }
+    return calendars
+  }
+
+  return connectedCalendars
+}
+
 const connectedCalendarExists = async (
   address: string,
   email: string,
@@ -6921,6 +6968,7 @@ export {
   getPaymentPreferences,
   getQuickPollById,
   getQuickPollBySlug,
+  getQuickPollCalendars,
   getQuickPollParticipantById,
   getQuickPollParticipantByIdentifier,
   getQuickPollParticipants,

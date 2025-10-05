@@ -51,7 +51,7 @@ import {
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
 import {
-  fetchBusySlotsRawForMultipleAccounts,
+  fetchBusySlotsRawForQuickPollParticipants,
   getExistingAccounts,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
@@ -431,11 +431,34 @@ export function QuickPollPickAvailability({
         groupAvailability,
         undefined
       )
-        .map(val => val.account_address)
-        .concat([currentAccount?.address]) as string[]
+
+      const quickPollParticipants = allParticipants
+        .map(val => {
+          if (pollData && val.guest_email) {
+            const pollParticipant = (pollData as any).poll.participants.find(
+              (p: any) =>
+                p.guest_email?.toLowerCase() === val.guest_email?.toLowerCase()
+            )
+            return {
+              participant_id: pollParticipant?.id,
+              account_address: undefined,
+            }
+          }
+          return {
+            account_address: val.account_address,
+            participant_id: undefined,
+          }
+        })
+        .concat([
+          {
+            account_address: currentAccount?.address,
+            participant_id: undefined,
+          },
+        ])
+
       const [busySlots, meetingMembers] = await Promise.all([
-        fetchBusySlotsRawForMultipleAccounts(
-          accounts,
+        fetchBusySlotsRawForQuickPollParticipants(
+          quickPollParticipants,
           monthStart,
           monthEnd
         ).then(busySlots =>
@@ -447,7 +470,13 @@ export function QuickPollPickAvailability({
             ),
           }))
         ),
-        getExistingAccounts(deduplicateArray(allParticipants)),
+        getExistingAccounts(
+          deduplicateArray(
+            allParticipants
+              .map(p => p.account_address)
+              .filter(Boolean) as string[]
+          )
+        ),
       ])
       const accountBusySlots = accounts.map(account => {
         return busySlots.filter(slot => slot.account_address === account)

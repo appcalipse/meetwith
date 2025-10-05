@@ -57,6 +57,7 @@ import {
   CancelQuickPollResponse,
   CreateQuickPollRequest,
   PollStatus,
+  QuickPollBusyParticipant,
   QuickPollListResponse,
   QuickPollParticipant,
   QuickPollParticipantType,
@@ -621,6 +622,33 @@ export const fetchBusySlotsRawForMultipleAccounts = async (
     offset,
     isRaw: true,
   })) as TimeSlot[]
+
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
+
+export const fetchBusySlotsRawForQuickPollParticipants = async (
+  participants: QuickPollBusyParticipant[],
+  start: Date,
+  end: Date,
+  limit?: number,
+  offset?: number
+): Promise<TimeSlot[]> => {
+  const response = (await internalFetch(
+    `/quickpoll/busy/participants`,
+    'POST',
+    {
+      participants,
+      start,
+      end,
+      limit,
+      offset,
+      isRaw: true,
+    }
+  )) as TimeSlot[]
 
   return response.map(slot => ({
     ...slot,
