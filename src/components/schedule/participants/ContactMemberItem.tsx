@@ -20,6 +20,7 @@ import {
 } from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 interface IContactMemberItem extends LeanContact {
@@ -34,15 +35,16 @@ const ContactMemberItem: FC<IContactMemberItem> = props => {
     setGroupParticipants,
     participants,
     setParticipants,
+    groups,
+    groupParticipants,
   } = useParticipants()
   const participantAddressesSet = useMemo(() => {
     return new Set(
-      participants
-        .filter((user): user is ParticipantInfo => !isGroupParticipant(user))
+      getMergedParticipants(participants, groups, groupParticipants)
         .map(user => user.account_address)
         .filter(Boolean)
     )
-  }, [participants])
+  }, [participants, groups, groupParticipants])
 
   const isContactAlreadyAdded = useCallback(() => {
     return participantAddressesSet.has(props.address)
