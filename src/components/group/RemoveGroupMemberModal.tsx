@@ -9,10 +9,8 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useRouter } from 'next/router'
 import React from 'react'
 
 import { GroupMember } from '@/types/Group'
@@ -22,7 +20,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 
 export interface IRemoveGroupMemberModal {
   groupID: string | null
-  resetState: () => void
+  resetState: () => Promise<void>
   onClose: () => void
   isOpen: boolean
   selectedGroupMember: GroupMember
@@ -45,9 +43,9 @@ const RemoveGroupMemberModal: React.FC<IRemoveGroupMemberModal> = props => {
       )
       setIsRemoving(false)
       if (!isSuccessful) return
+      await props.resetState()
       props.onClose()
-      props.resetState()
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error removing member', error)
     }
     setIsRemoving(false)
