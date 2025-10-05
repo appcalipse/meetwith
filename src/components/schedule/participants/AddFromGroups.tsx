@@ -6,6 +6,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { group } from 'console'
 import { useRouter } from 'next/router'
 import React, { useMemo, useState } from 'react'
 
@@ -25,16 +26,34 @@ const AddFromGroups = () => {
   const { previewGroups, restGroups } = useMemo(() => {
     const previewGroups: GetGroupsFullResponse[] = []
     const restGroups: GetGroupsFullResponse[] = []
+    const processedGroups = groups
+      .map(g => ({
+        ...g,
+        members: g.members.filter(
+          m =>
+            m.address?.toLowerCase() !== currentAccount?.address.toLowerCase()
+        ),
+      }))
+      .filter(g => g.members.length > 0)
     if (search) {
-      const allGroups = groups.filter(group => group.name.includes(search))
+      const allGroups = processedGroups.filter(group =>
+        group.members.some(
+          member =>
+            member.displayName?.toLowerCase().includes(search.toLowerCase()) ||
+            member.address?.toLowerCase().includes(search.toLowerCase()) ||
+            member.domain?.toLowerCase().includes(search.toLowerCase())
+        )
+      )
       previewGroups.push(...allGroups)
       restGroups.splice(0, restGroups.length)
     } else if (groupId) {
-      previewGroups.push(...groups.filter(group => group.id === groupId))
-      restGroups.push(...groups.filter(group => group.id !== groupId))
+      previewGroups.push(
+        ...processedGroups.filter(group => group.id === groupId)
+      )
+      restGroups.push(...processedGroups.filter(group => group.id !== groupId))
     } else {
-      previewGroups.push(...groups.slice(0, 3))
-      restGroups.push(...groups.slice(3))
+      previewGroups.push(...processedGroups.slice(0, 3))
+      restGroups.push(...processedGroups.slice(3))
     }
 
     return {
@@ -54,7 +73,7 @@ const AddFromGroups = () => {
         <SearchInput
           setValue={setSearch}
           value={search}
-          placeholder="Search for group"
+          placeholder="Search for person in groups"
         />
         <Accordion gap={0} w="100%" allowToggle>
           <AccordionItem border={0} w="100%">
@@ -87,6 +106,7 @@ const AddFromGroups = () => {
                       <GroupCard
                         currentAccount={currentAccount}
                         key={group.id}
+                        currentGroupId={groupId}
                         {...group}
                       />
                     ))}
