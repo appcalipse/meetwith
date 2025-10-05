@@ -39,9 +39,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
     intent: Intents
   }
 
-  const timezone =
-    currentAccount?.preferences?.timezone ||
-    Intl.DateTimeFormat().resolvedOptions().timeZone
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const endToFetch = addHours(utcToZonedTime(new Date(), timezone), -1)
 
   const fetchMeetings = async (reset?: boolean) => {

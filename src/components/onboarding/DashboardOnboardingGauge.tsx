@@ -25,7 +25,7 @@ const DashboardOnboardingGauge: FC = () => {
   const [accountDetailsComplete, setAccountDetailsComplete] = useState(false)
   const [calendarsConnected, setCalendarsConnected] = useState(false)
   const [availabilitiesSet, setAvailabilitiesSet] = useState(false)
-  const [onboardComplete, setOnboardComplete] = useState(false)
+  const [onboardComplete, setOnboardComplete] = useState(true)
 
   async function defineProgress() {
     const completeSteps = (await onboardingContext.completeSteps()) ?? 0
@@ -48,13 +48,17 @@ const DashboardOnboardingGauge: FC = () => {
   async function defineOnboardComplete() {
     setOnboardComplete(await onboardingContext.onboardingComplete())
   }
-
+  const handleOnboardLoad = async () => {
+    await Promise.all([
+      defineAccountDetailsComplete(),
+      defineCalendarsConnected(),
+      defineAvailabilitiesSet(),
+      defineProgress(),
+      defineOnboardComplete(),
+    ])
+  }
   useEffect(() => {
-    defineAccountDetailsComplete()
-    defineCalendarsConnected()
-    defineAvailabilitiesSet()
-    defineProgress()
-    defineOnboardComplete()
+    void handleOnboardLoad()
   }, [currentAccount, onboardingContext])
 
   const links = [
