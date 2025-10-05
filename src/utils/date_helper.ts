@@ -28,6 +28,7 @@ import { CustomTimeRange } from '@/types/common'
 import { MeetingRepeat } from '@/types/Meeting'
 
 const timezonesObj = ct.getAllTimezones()
+
 const timezonesKeys = Object.keys(timezonesObj) as Array<
   keyof typeof timezonesObj
 >
@@ -37,16 +38,26 @@ export const timezones = timezonesKeys
     const display = soft(key)[0]
     let show = timeInfo.utcOffsetStr
     let offset = timeInfo.utcOffset
-    // are we in standard time, or daylight time?
+    const countries = ct.getCountriesForTimezone(key)
+    // check if we in standard time, or daylight time?
     const s = spacetime.now(display?.iana)
     if (s.isDST()) {
       show = timeInfo.dstOffsetStr
       offset = timeInfo.dstOffset
     }
     return {
-      name: `${key} (UTC${show})`,
+      name: `${key.replace(/^Etc\/GMT([+-]\d+)?$/, (match, gmtOffset) => {
+        if (!gmtOffset) return 'GMT'
+        const sign = gmtOffset[0] === '+' ? '-' : '+'
+        const number = gmtOffset.slice(1)
+        return `GMT${sign}${number}`
+      })} (UTC${show})`,
       tzCode: key,
       offset,
+      countries: countries.map(c => ({
+        id: c.id,
+        name: c.name,
+      })),
     }
   })
   .sort((a, b) => a.offset - b.offset)
