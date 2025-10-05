@@ -189,3 +189,8 @@ export interface AvailabilitySlot {
   weekday: number
   ranges: Array<{ start: string; end: string }>
 }
+
+export interface QuickPollBusyParticipant {
+  account_address?: string
+  participant_id?: string
+}
