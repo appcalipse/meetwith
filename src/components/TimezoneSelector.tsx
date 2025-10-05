@@ -1,7 +1,8 @@
-import { Select, SingleValue } from 'chakra-react-select'
-import { useEffect, useState } from 'react'
+import { Select } from 'chakra-react-select'
+import { useEffect, useMemo, useState } from 'react'
 
 import { getBrowserTimezone } from '@/utils/availability.helper'
+import { timeZoneFilter, TimeZoneOption } from '@/utils/constants/select'
 import { timezones } from '@/utils/date_helper'
 
 interface TimezoneProps {
@@ -10,12 +11,17 @@ interface TimezoneProps {
 }
 
 const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
-  const tzs = timezones.map(tz => {
-    return {
-      value: tz.tzCode,
-      label: tz.name,
-    }
-  })
+  const tzs = useMemo(
+    () =>
+      timezones.map(tz => {
+        return {
+          value: tz.tzCode,
+          label: tz.name,
+          searchKeys: tz.countries,
+        }
+      }),
+    []
+  )
 
   const getBestTimezoneValue = (): string => {
     if (value) {
@@ -24,7 +30,7 @@ const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
     return getBrowserTimezone()
   }
 
-  const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
+  const [tz, setTz] = useState<TimeZoneOption>(
     tzs.find(tz => tz.value === getBestTimezoneValue()) || tzs[0]
   )
 
@@ -36,11 +42,9 @@ const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
     }
   }, [value])
 
-  const _onChange = (
-    timezone: SingleValue<{ label: string; value: string }>
-  ) => {
-    setTz(timezone)
-    onChange(timezone?.value)
+  const _onChange = (timezone: unknown) => {
+    setTz(timezone as TimeZoneOption)
+    onChange((timezone as TimeZoneOption)?.value)
   }
 
   return (
@@ -49,6 +53,7 @@ const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
       colorScheme="primary"
       onChange={_onChange}
       options={tzs}
+      filterOption={timeZoneFilter}
     />
   )
 }

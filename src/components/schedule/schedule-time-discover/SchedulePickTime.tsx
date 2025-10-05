@@ -41,7 +41,13 @@ import {
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
-import { customSelectComponents, Option } from '@/utils/constants/select'
+import {
+  customSelectComponents,
+  getCustomSelectComponents,
+  Option,
+  timeZoneFilter,
+  TimeZoneOption,
+} from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
@@ -95,6 +101,7 @@ export type Dates = {
 interface ISchedulePickTimeProps {
   openParticipantModal: () => void
 }
+
 export function SchedulePickTime({
   openParticipantModal,
 }: ISchedulePickTimeProps) {
@@ -227,11 +234,12 @@ export function SchedulePickTime({
       timezones.map(tz => ({
         value: tz.tzCode,
         label: tz.name,
+        searchKeys: tz.countries,
       })),
     []
   )
 
-  const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
+  const [tz, setTz] = useState<TimeZoneOption>(
     tzOptions.filter(val => val.value === timezone)[0] || tzOptions[0]
   )
 
@@ -239,7 +247,7 @@ export function SchedulePickTime({
     if (Array.isArray(newValue)) {
       return
     }
-    const timezone = newValue as SingleValue<{ label: string; value: string }>
+    const timezone = newValue as TimeZoneOption
     setTz(timezone)
     setTimezone(
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -483,7 +491,8 @@ export function SchedulePickTime({
               onChange={_onChange}
               className="noLeftBorder timezone-select"
               options={tzOptions}
-              components={customSelectComponents}
+              components={getCustomSelectComponents<TimeZoneOption, boolean>()}
+              filterOption={timeZoneFilter}
               chakraStyles={{
                 container: provided => ({
                   ...provided,

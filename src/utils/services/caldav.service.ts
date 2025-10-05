@@ -168,6 +168,7 @@ export default class CaldavCalendarService
             meeting_info_encrypted: mockEncrypted,
             reminders: meetingDetails.meetingReminders,
             recurrence: meetingDetails.meetingRepeat,
+            title: meetingDetails.title,
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
