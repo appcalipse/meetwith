@@ -15,8 +15,8 @@ import { useRouter } from 'next/router'
 import React, { useContext, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
 
-import { useAvailabilityTracker } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { AvailabilitySlot } from '@/types/QuickPoll'
 import { updateGuestParticipantDetails } from '@/utils/api_helper'
 import { updatePollParticipantAvailability } from '@/utils/api_helper'
@@ -26,21 +26,25 @@ interface GuestDetailsFormProps {
   participantId: string
   onSuccess: () => void
   pollTitle?: string
+  onNavigateBack?: () => void
 }
 
 const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
   participantId,
   onSuccess,
-  pollTitle,
+  onNavigateBack,
 }) => {
   const router = useRouter()
   const { openConnection } = useContext(OnboardingModalContext)
-  const { timezone } = router.query
+  const {
+    guestAvailabilitySlots,
+    currentTimezone,
+    clearGuestAvailabilitySlots,
+  } = useQuickPollAvailability()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { showErrorToast } = useToastHelpers()
-  const { getAvailabilitySlots } = useAvailabilityTracker()
 
   const handleSubmit = async () => {
     if (!fullName.trim() || !email.trim()) {
@@ -68,55 +72,15 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
         email.trim()
       )
 
-      const { slots } = router.query
-      const availabilitySlots: AvailabilitySlot[] = []
-
-      if (slots) {
-        try {
-          const parsedSlots = JSON.parse(decodeURIComponent(slots as string))
-
-          const slotsByWeekday = new Map<
-            number,
-            { start: string; end: string }[]
-          >()
-
-          for (const slot of parsedSlots) {
-            const start = DateTime.fromISO(slot.start)
-            const end = DateTime.fromISO(slot.end)
-            const weekday = start.weekday === 7 ? 0 : start.weekday
-            const startTime = start.toFormat('HH:mm')
-            const endTime = end.toFormat('HH:mm')
-
-            if (!slotsByWeekday.has(weekday)) {
-              slotsByWeekday.set(weekday, [])
-            }
-
-            slotsByWeekday.get(weekday)!.push({
-              start: startTime,
-              end: endTime,
-            })
-          }
-
-          for (let weekday = 0; weekday < 7; weekday++) {
-            const ranges = slotsByWeekday.get(weekday) || []
-            availabilitySlots.push({
-              weekday,
-              ranges,
-            })
-          }
-        } catch (error) {
-          console.error('Error parsing slots from URL:', error)
-        }
-      }
-
-      if (availabilitySlots.length > 0) {
+      if (guestAvailabilitySlots.length > 0) {
         await updatePollParticipantAvailability(
           participantId,
-          availabilitySlots,
-          (timezone as string) || 'UTC'
+          guestAvailabilitySlots,
+          currentTimezone
         )
       }
 
+      clearGuestAvailabilitySlots()
       onSuccess()
     } catch (error) {
       showErrorToast(
@@ -137,7 +101,11 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
   }
 
   const handleBack = () => {
-    router.back()
+    if (onNavigateBack) {
+      onNavigateBack()
+    } else {
+      router.back()
+    }
   }
 
   return (

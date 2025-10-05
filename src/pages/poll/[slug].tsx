@@ -4,8 +4,11 @@ import { useRouter } from 'next/router'
 
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
-import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
+import QuickPollMain, {
+  QuickPollPage,
+} from '@/components/quickpoll/QuickPollMain'
 import { AvailabilityTrackerProvider } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
+import { QuickPollAvailabilityProvider } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { NavigationProvider } from '@/providers/schedule/NavigationContext'
 import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
 import { PermissionsProvider } from '@/providers/schedule/PermissionsContext'
@@ -17,6 +20,7 @@ import { handleApiError } from '@/utils/error_helper'
 const PollPage = () => {
   const router = useRouter()
   const { slug } = router.query
+  const initialPage = QuickPollPage.AVAILABILITY
 
   // Fetch poll data using React Query
   const {
@@ -77,21 +81,22 @@ const PollPage = () => {
 
   return (
     <Box width="100%" minHeight="100vh" bg="neutral.850">
-      <ScheduleStateProvider>
-        <NavigationProvider>
-          <ParticipantsProvider skipFetching={true}>
-            <PermissionsProvider>
-              <AvailabilityTrackerProvider>
-                <Box px={8} py={20}>
-                  <QuickPollAvailabilityDiscover
+      <QuickPollAvailabilityProvider>
+        <ScheduleStateProvider>
+          <NavigationProvider>
+            <ParticipantsProvider skipFetching={true}>
+              <PermissionsProvider>
+                <AvailabilityTrackerProvider>
+                  <QuickPollMain
                     pollData={pollData as QuickPollBySlugResponse}
+                    initialPage={initialPage}
                   />
-                </Box>
-              </AvailabilityTrackerProvider>
-            </PermissionsProvider>
-          </ParticipantsProvider>
-        </NavigationProvider>
-      </ScheduleStateProvider>
+                </AvailabilityTrackerProvider>
+              </PermissionsProvider>
+            </ParticipantsProvider>
+          </NavigationProvider>
+        </ScheduleStateProvider>
+      </QuickPollAvailabilityProvider>
     </Box>
   )
 }

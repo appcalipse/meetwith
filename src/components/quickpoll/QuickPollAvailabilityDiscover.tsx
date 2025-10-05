@@ -1,19 +1,18 @@
 import { Heading, HStack, Icon, useToast, VStack } from '@chakra-ui/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import {
-  QuickPollAvailabilityProvider,
-  useQuickPollAvailability,
-} from '@/providers/quickpoll/QuickPollAvailabilityContext'
+import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
+  AvailabilitySlot,
   QuickPollBySlugResponse,
+  QuickPollIntent,
   QuickPollParticipant,
 } from '@/types/QuickPoll'
 import {
@@ -28,7 +27,10 @@ import CustomError from '../CustomError'
 import CustomLoading from '../CustomLoading'
 import { Grid4 } from '../icons/Grid4'
 import InviteParticipants from '../schedule/participants/InviteParticipants'
-import { useAvailabilityTracker } from '../schedule/schedule-time-discover/AvailabilityTracker'
+import {
+  AvailabilityTrackerProvider,
+  useAvailabilityTracker,
+} from '../schedule/schedule-time-discover/AvailabilityTracker'
 import GuestIdentificationModal from './GuestIdentificationModal'
 import PollSuccessScreen from './PollSuccessScreen'
 import { QuickPollParticipants } from './QuickPollParticipants'
@@ -39,11 +41,12 @@ export type MeetingMembers = ParticipantInfo & { isCalendarConnected?: boolean }
 interface QuickPollAvailabilityDiscoverProps {
   pollId?: string
   pollData?: QuickPollBySlugResponse
+  onNavigateToGuestDetails?: () => void
 }
 
 const QuickPollAvailabilityDiscoverInner: React.FC<
   QuickPollAvailabilityDiscoverProps
-> = ({ pollId, pollData }) => {
+> = ({ pollId, pollData, onNavigateToGuestDetails }) => {
   const {
     isInviteParticipantsOpen,
     showCalendarModal,
@@ -56,7 +59,6 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     isRefreshingAvailabilities,
     setIsInviteParticipantsOpen,
     setShowCalendarModal,
-    setShowGuestForm,
     setShowGuestIdModal,
     setShowCalendarImportFlow,
     setCurrentParticipantId,
@@ -102,6 +104,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           queryKey: ['quickpoll-public', currentPollData.poll.slug],
         })
       }
+      clearSlots()
     } finally {
       setIsRefreshingAvailabilities(false)
     }
@@ -112,7 +115,22 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     pollId || (router.query.pollId as string) || currentPollData?.poll.id
   const currentPollTitle = currentPollData?.poll.title || 'Poll'
 
-  const isSchedulingIntent = router.query.intent === 'schedule'
+  const {
+    currentIntent,
+    setCurrentIntent,
+    setGuestAvailabilitySlots,
+    setCurrentTimezone,
+  } = useQuickPollAvailability()
+
+  useEffect(() => {
+    if (router.query.intent) {
+      setCurrentIntent(router.query.intent as QuickPollIntent)
+    } else {
+      setCurrentIntent(QuickPollIntent.EDIT_AVAILABILITY)
+    }
+  }, [router.query.intent, setCurrentIntent])
+
+  const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
 
   const handleClose = () => {
     router.push(`/dashboard/${EditMode.QUICKPOLL}`)
@@ -140,22 +158,43 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         return
       }
 
-      const serializedSlots = selectedSlots.map(slot => ({
-        slotKey: `${slot.start.toISO()}-${slot.end.toISO()}`,
-        start: slot.start,
-        end: slot.end,
-        date: slot.date,
-      }))
+      const slotsByWeekday = new Map<number, { start: string; end: string }[]>()
 
-      const slotsParam = encodeURIComponent(JSON.stringify(serializedSlots))
+      for (const slot of selectedSlots) {
+        const weekday = slot.start.weekday === 7 ? 0 : slot.start.weekday
+        const startTime = slot.start.toFormat('HH:mm')
+        const endTime = slot.end.toFormat('HH:mm')
 
-      router.push(
-        `/poll/${
-          currentPollData?.poll.slug
-        }/guest-details?participantId=${currentParticipantId}&email=${encodeURIComponent(
-          currentGuestEmail
-        )}&timezone=${encodeURIComponent(timezone)}&slots=${slotsParam}`
-      )
+        if (!slotsByWeekday.has(weekday)) {
+          slotsByWeekday.set(weekday, [])
+        }
+
+        slotsByWeekday.get(weekday)!.push({
+          start: startTime,
+          end: endTime,
+        })
+      }
+
+      const availabilitySlots: AvailabilitySlot[] = []
+      for (let weekday = 0; weekday < 7; weekday++) {
+        const ranges = slotsByWeekday.get(weekday) || []
+        availabilitySlots.push({
+          weekday,
+          ranges,
+        })
+      }
+
+      // Store slots and timezone in context
+      setGuestAvailabilitySlots(availabilitySlots)
+      setCurrentTimezone(timezone)
+
+      if (onNavigateToGuestDetails) {
+        onNavigateToGuestDetails()
+      } else {
+        router.push(
+          `/dashboard/schedule?ref=quickpoll&pollId=${currentPollData?.poll.id}&intent=edit_availability&tab=guest-details&participantId=${currentParticipantId}`
+        )
+      }
     } else {
       if (!currentPollData) return
 
@@ -188,6 +227,10 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
           setIsEditingAvailability(false)
           refreshAvailabilities()
+          clearSlots() // Clear selected slots after saving
+
+          queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+          queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
 
           showSuccessToast(
             'Availability saved',
@@ -406,9 +449,9 @@ const QuickPollAvailabilityDiscover: React.FC<
   QuickPollAvailabilityDiscoverProps
 > = props => {
   return (
-    <QuickPollAvailabilityProvider>
+    <AvailabilityTrackerProvider>
       <QuickPollAvailabilityDiscoverInner {...props} />
-    </QuickPollAvailabilityProvider>
+    </AvailabilityTrackerProvider>
   )
 }
 

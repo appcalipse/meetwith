@@ -48,6 +48,7 @@ import { useParticipantPermissions } from '@/providers/schedule/PermissionsConte
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import {
   QuickPollBySlugResponse,
+  QuickPollIntent,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
 import {
@@ -162,10 +163,11 @@ export function QuickPollPickAvailability({
     )
   }, [pollData, currentAccount])
 
-  const isSchedulingIntent = router.query.intent === 'schedule'
+  const { currentIntent } = useQuickPollAvailability()
+  const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
   const isEditAvailabilityIntent =
-    router.query.intent === 'edit_availability' ||
-    (!router.query.intent && !isSchedulingIntent)
+    currentIntent === QuickPollIntent.EDIT_AVAILABILITY ||
+    (!currentIntent && !isSchedulingIntent)
 
   const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
@@ -636,7 +638,6 @@ export function QuickPollPickAvailability({
     setPickedTime(bestSlot.start.toJSDate())
 
     if (pollData) {
-      // For quickpolls, set the picked time and navigate to the next tab (ScheduleBase)
       setPickedTime(bestSlot.start.toJSDate())
       handlePageSwitch(Page.SCHEDULE_DETAILS)
     } else {
@@ -650,7 +651,6 @@ export function QuickPollPickAvailability({
     })
 
     if (isHost && isSchedulingIntent) {
-      // For quickpolls, navigate to the next tab (ScheduleBase) instead of a new URL
       if (pollData) {
         handlePageSwitch(Page.SCHEDULE_DETAILS)
       }

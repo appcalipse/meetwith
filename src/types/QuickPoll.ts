@@ -24,6 +24,11 @@ export enum QuickPollParticipantType {
   OWNER = 'owner',
 }
 
+export enum QuickPollIntent {
+  SCHEDULE = 'schedule',
+  EDIT_AVAILABILITY = 'edit_availability',
+}
+
 // Base interfaces
 export interface QuickPoll {
   id: string
