@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { stringify } from 'querystring'
 
+import { officeScopes } from '@/pages/api/secure/calendar_integrations/office365/connect'
 import { OAuthConnectQuery } from '@/types/QuickPoll'
 import { apiUrl } from '@/utils/constants'
 
@@ -8,13 +9,6 @@ const credentials = {
   client_id: process.env.MS_GRAPH_CLIENT_ID,
   client_secret: process.env.MS_GRAPH_CLIENT_SECRET,
 }
-
-export const officeScopes = [
-  'User.Read',
-  'Calendars.Read',
-  'Calendars.ReadWrite',
-  'offline_access',
-]
 
 export type IntegrationOAuthCallbackState = {
   returnTo: string

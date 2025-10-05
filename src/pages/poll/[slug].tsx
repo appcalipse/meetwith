@@ -4,13 +4,12 @@ import { useRouter } from 'next/router'
 
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
+import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
 import { AvailabilityTrackerProvider } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
-import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
 import { NavigationProvider } from '@/providers/schedule/NavigationContext'
 import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
 import { PermissionsProvider } from '@/providers/schedule/PermissionsContext'
 import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
-import { ScheduleTimeDiscoverProvider } from '@/providers/schedule/ScheduleTimeDiscoverContext'
 import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import { getQuickPollBySlug } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
@@ -83,14 +82,11 @@ const PollPage = () => {
           <ParticipantsProvider skipFetching={true}>
             <PermissionsProvider>
               <AvailabilityTrackerProvider>
-                <ScheduleTimeDiscoverProvider>
-                  <Box px={8} py={20}>
-                    <ScheduleTimeDiscover
-                      isQuickPoll={true}
-                      pollData={pollData as QuickPollBySlugResponse}
-                    />
-                  </Box>
-                </ScheduleTimeDiscoverProvider>
+                <Box px={8} py={20}>
+                  <QuickPollAvailabilityDiscover
+                    pollData={pollData as QuickPollBySlugResponse}
+                  />
+                </Box>
               </AvailabilityTrackerProvider>
             </PermissionsProvider>
           </ParticipantsProvider>

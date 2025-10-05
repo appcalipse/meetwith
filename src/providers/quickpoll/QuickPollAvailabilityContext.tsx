@@ -1,6 +1,6 @@
 import React, { createContext, ReactNode, useContext, useState } from 'react'
 
-interface ScheduleTimeDiscoverState {
+interface QuickPollAvailabilityState {
   // Modal states
   isInviteParticipantsOpen: boolean
   showCalendarModal: boolean
@@ -30,26 +30,26 @@ interface ScheduleTimeDiscoverState {
   setIsRefreshingAvailabilities: (value: boolean) => void
 }
 
-const ScheduleTimeDiscoverContext = createContext<
-  ScheduleTimeDiscoverState | undefined
+const QuickPollAvailabilityContext = createContext<
+  QuickPollAvailabilityState | undefined
 >(undefined)
 
-export const useScheduleTimeDiscover = () => {
-  const context = useContext(ScheduleTimeDiscoverContext)
+export const useQuickPollAvailability = () => {
+  const context = useContext(QuickPollAvailabilityContext)
   if (!context) {
     throw new Error(
-      'useScheduleTimeDiscover must be used within ScheduleTimeDiscoverProvider'
+      'useQuickPollAvailability must be used within QuickPollAvailabilityProvider'
     )
   }
   return context
 }
 
-interface ScheduleTimeDiscoverProviderProps {
+interface QuickPollAvailabilityProviderProps {
   children: ReactNode
 }
 
-export const ScheduleTimeDiscoverProvider: React.FC<
-  ScheduleTimeDiscoverProviderProps
+export const QuickPollAvailabilityProvider: React.FC<
+  QuickPollAvailabilityProviderProps
 > = ({ children }) => {
   const [isInviteParticipantsOpen, setIsInviteParticipantsOpen] =
     useState(false)
@@ -64,7 +64,7 @@ export const ScheduleTimeDiscoverProvider: React.FC<
     useState(false)
   const [showCalendarImportFlow, setShowCalendarImportFlow] = useState(false)
 
-  const value: ScheduleTimeDiscoverState = {
+  const value: QuickPollAvailabilityState = {
     // Modal states
     isInviteParticipantsOpen,
     showCalendarModal,
@@ -95,8 +95,8 @@ export const ScheduleTimeDiscoverProvider: React.FC<
   }
 
   return (
-    <ScheduleTimeDiscoverContext.Provider value={value}>
+    <QuickPollAvailabilityContext.Provider value={value}>
       {children}
-    </ScheduleTimeDiscoverContext.Provider>
+    </QuickPollAvailabilityContext.Provider>
   )
 }
