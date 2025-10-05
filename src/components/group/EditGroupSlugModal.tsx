@@ -21,7 +21,7 @@ import { handleApiError } from '@/utils/error_helper'
 
 export interface IEditGroupNameModal {
   groupID: string | null
-  resetState: () => void
+  resetState: () => Promise<void>
   onClose: () => void
   isOpen: boolean
   groupSlug: string | null
@@ -44,9 +44,9 @@ const EditGroupSlugModal: React.FC<IEditGroupNameModal> = props => {
       const isSuccessful = await editGroup(props.groupID, undefined, input)
       setIsUpdating(false)
       if (!isSuccessful) return
-      props.resetState()
+      await props.resetState()
       props.onClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error changing slug', error)
     }
     setIsUpdating(false)
