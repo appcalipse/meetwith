@@ -6,13 +6,14 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useMemo } from 'react'
+import React, { FC, useCallback, useMemo } from 'react'
 
 import { Avatar } from '@/components/profile/components/Avatar'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { Account } from '@/types/Account'
 import { GroupMember } from '@/types/Group'
 import { isGroupParticipant } from '@/types/schedule'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 interface IGroupParticipantsItem extends GroupMember {
@@ -26,15 +27,25 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const {
     groupParticipants,
-    groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
     addGroup,
     removeGroup,
     participants,
+    groups: allGroups,
   } = useParticipants()
   const allGroupParticipants = groupParticipants[props.groupId] || []
-  const allGroupAvailability = groupAvailability[props.groupId] || []
+  const participantAddressesSet = useMemo(() => {
+    return new Set(
+      getMergedParticipants(participants, allGroups, groupParticipants)
+        .map(user => user.account_address)
+        .filter(Boolean)
+    )
+  }, [participants, allGroups, groupParticipants])
+
+  const isMemberAlreadyAdded = useCallback(() => {
+    return participantAddressesSet.has(props.address)
+  }, [participantAddressesSet])
   const groups = useMemo(
     () =>
       participants.filter(val => {
@@ -67,14 +78,15 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
         }
       }
     })
-    const filteredAvailability = allGroupAvailability.filter(
-      val => val !== props.address
-    )
+
     setGroupAvailability(prev => ({
       ...prev,
-      [props.groupId]: allGroupParticipants.includes(props.address)
-        ? filteredAvailability
-        : [...filteredAvailability, props.address],
+      [props.groupId]: prev[props.groupId]?.includes(props.address)
+        ? prev[props.groupId].filter(val => val !== props.address)
+        : [
+            ...prev[props.groupId].filter(val => val !== props.address),
+            props.address,
+          ],
     }))
   }
   return (
@@ -110,13 +122,9 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
         <Button
           colorScheme="primary"
           onClick={handleParticipantsChange}
-          variant={
-            allGroupParticipants.includes(props.address) ? 'outline' : 'solid'
-          }
+          variant={isMemberAlreadyAdded() ? 'outline' : 'solid'}
         >
-          {allGroupParticipants.includes(props.address)
-            ? 'Remove'
-            : 'Add to Meeting'}
+          {isMemberAlreadyAdded() ? 'Remove' : 'Add to Meeting'}
         </Button>
       </Box>
     </HStack>
