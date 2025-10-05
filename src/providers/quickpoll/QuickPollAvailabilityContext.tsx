@@ -1,5 +1,7 @@
 import React, { createContext, ReactNode, useContext, useState } from 'react'
 
+import { AvailabilitySlot, QuickPollIntent } from '@/types/QuickPoll'
+
 interface QuickPollAvailabilityState {
   // Modal states
   isInviteParticipantsOpen: boolean
@@ -11,6 +13,9 @@ interface QuickPollAvailabilityState {
   // Data states
   currentParticipantId: string
   currentGuestEmail: string
+  guestAvailabilitySlots: AvailabilitySlot[]
+  currentTimezone: string
+  currentIntent: QuickPollIntent | null
 
   // Loading states
   isEditingAvailability: boolean
@@ -25,9 +30,13 @@ interface QuickPollAvailabilityState {
   setShowCalendarImportFlow: (value: boolean) => void
   setCurrentParticipantId: (value: string) => void
   setCurrentGuestEmail: (value: string) => void
+  setGuestAvailabilitySlots: (slots: AvailabilitySlot[]) => void
+  setCurrentTimezone: (timezone: string) => void
+  setCurrentIntent: (intent: QuickPollIntent | null) => void
   setIsEditingAvailability: (value: boolean) => void
   setIsSavingAvailability: (value: boolean) => void
   setIsRefreshingAvailabilities: (value: boolean) => void
+  clearGuestAvailabilitySlots: () => void
 }
 
 const QuickPollAvailabilityContext = createContext<
@@ -58,11 +67,22 @@ export const QuickPollAvailabilityProvider: React.FC<
   const [showGuestIdModal, setShowGuestIdModal] = useState(false)
   const [currentParticipantId, setCurrentParticipantId] = useState<string>('')
   const [currentGuestEmail, setCurrentGuestEmail] = useState<string>('')
+  const [guestAvailabilitySlots, setGuestAvailabilitySlots] = useState<
+    AvailabilitySlot[]
+  >([])
+  const [currentTimezone, setCurrentTimezone] = useState<string>('UTC')
+  const [currentIntent, setCurrentIntent] = useState<QuickPollIntent | null>(
+    null
+  )
   const [isEditingAvailability, setIsEditingAvailability] = useState(false)
   const [isSavingAvailability, setIsSavingAvailability] = useState(false)
   const [isRefreshingAvailabilities, setIsRefreshingAvailabilities] =
     useState(false)
   const [showCalendarImportFlow, setShowCalendarImportFlow] = useState(false)
+
+  const clearGuestAvailabilitySlots = () => {
+    setGuestAvailabilitySlots([])
+  }
 
   const value: QuickPollAvailabilityState = {
     // Modal states
@@ -75,6 +95,9 @@ export const QuickPollAvailabilityProvider: React.FC<
     // Data states
     currentParticipantId,
     currentGuestEmail,
+    guestAvailabilitySlots,
+    currentTimezone,
+    currentIntent,
 
     // Loading states
     isEditingAvailability,
@@ -89,9 +112,13 @@ export const QuickPollAvailabilityProvider: React.FC<
     setShowCalendarImportFlow,
     setCurrentParticipantId,
     setCurrentGuestEmail,
+    setGuestAvailabilitySlots,
+    setCurrentTimezone,
+    setCurrentIntent,
     setIsEditingAvailability,
     setIsSavingAvailability,
     setIsRefreshingAvailabilities,
+    clearGuestAvailabilitySlots,
   }
 
   return (

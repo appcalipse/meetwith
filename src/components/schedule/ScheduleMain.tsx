@@ -20,6 +20,7 @@ import ScheduleBase from '@/components/schedule/ScheduleBase'
 import ScheduleCompleted from '@/components/schedule/ScheduleCompleted'
 import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
 import { AccountContext } from '@/providers/AccountProvider'
+import { QuickPollAvailabilityProvider } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import {
   ActionsContext,
   IActionsContext,
@@ -921,7 +922,9 @@ const ScheduleMain: FC<IInitialProps> = ({
             <TabPanels>
               <TabPanel p={0}>
                 {isQuickPollFlow && pollId ? (
-                  <QuickPollAvailabilityDiscover pollId={pollId} />
+                  <QuickPollAvailabilityProvider>
+                    <QuickPollAvailabilityDiscover pollId={pollId} />
+                  </QuickPollAvailabilityProvider>
                 ) : (
                   <ScheduleTimeDiscover />
                 )}

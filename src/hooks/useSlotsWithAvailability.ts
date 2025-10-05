@@ -24,17 +24,13 @@ const useSlotsWithAvailability = (
       accountDisplayNames.set(member.address, getAccountDisplayName(member))
     })
 
-    const visibleParticipantAddresses = meetingMembers.map(
-      member => member.address
-    )
-
     return dates.map(dateData => ({
       ...dateData,
       slots: dateData.slots.map(slot => {
         const userStates: Array<{ state: boolean; displayName: string }> = []
         const isSlotAvailable: boolean[] = []
 
-        for (const account of visibleParticipantAddresses) {
+        for (const account of participantAvailabilities) {
           const accountSlots = availableSlots.get(account) || []
           const accountBusySlots = busySlots.get(account) || []
 
