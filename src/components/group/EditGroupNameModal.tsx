@@ -10,10 +10,8 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 
 import { editGroup } from '@/utils/api_helper'
@@ -21,7 +19,7 @@ import { handleApiError } from '@/utils/error_helper'
 
 export interface IEditGroupNameModal {
   groupID: string | null
-  resetState: () => void
+  resetState: () => Promise<void>
   onClose: () => void
   isOpen: boolean
   groupName: string | null
@@ -44,9 +42,9 @@ const EditGroupNameModal: React.FC<IEditGroupNameModal> = props => {
       const isSuccessful = await editGroup(props.groupID, input)
       setIsUpdating(false)
       if (!isSuccessful) return
-      props.resetState()
+      await props.resetState()
       props.onClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error changing name', error)
     }
     setIsUpdating(false)

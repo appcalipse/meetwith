@@ -50,7 +50,7 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
     try {
       await rejectGroup(props.group.id, props.inviteEmail)
       await props.resetState()
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error rejecting invite', error)
     }
     props.onClose()
@@ -66,12 +66,12 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
         group: props.group,
         email: props.inviteEmail,
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error accepting invite', error)
     }
     push('/dashboard/groups')
+    await props.resetState()
     props.onClose()
-    props.resetState()
     setAccepting(false)
   }
   return (
