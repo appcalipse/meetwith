@@ -40,9 +40,9 @@ const EditGroupNameModal: React.FC<IEditGroupNameModal> = props => {
     setIsUpdating(true)
     try {
       const isSuccessful = await editGroup(props.groupID, input)
+      await props.resetState()
       setIsUpdating(false)
       if (!isSuccessful) return
-      await props.resetState()
       props.onClose()
     } catch (error: unknown) {
       handleApiError('Error changing name', error)
