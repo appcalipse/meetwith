@@ -30,8 +30,8 @@ const ScheduleParticipantsSchedulerModal: FC<IProps> = props => {
   const [scheduler, setScheduler] = useState<ParticipantInfo | undefined>(
     undefined
   )
-  const handleSave = () => {
-    handleDelete(scheduler, props.decryptedMeeting)
+  const handleSave = async () => {
+    await handleDelete(scheduler, props.decryptedMeeting)
     props.onClose()
   }
   const handleSchedulerChange = (identifier: string) => {
