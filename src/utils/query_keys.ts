@@ -55,4 +55,7 @@ export default class QueryKeys {
   static exchangeRate(currency: string) {
     return ['exchangeRate', currency]
   }
+  static coinConfig() {
+    return ['coinConfig']
+  }
 }
