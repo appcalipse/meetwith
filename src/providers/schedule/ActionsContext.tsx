@@ -1,11 +1,17 @@
 import { createContext, useContext } from 'react'
 
+import { MeetingDecrypted } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
 export interface IActionsContext {
   handleSchedule: () => Promise<void>
   handleCancel: () => void
-  handleDelete: (actor?: ParticipantInfo) => Promise<void>
+  handleDelete:
+    | ((actor?: ParticipantInfo) => Promise<void>)
+    | ((
+        actor?: ParticipantInfo,
+        decryptedMeeting?: MeetingDecrypted
+      ) => Promise<MeetingDecrypted | undefined>)
 }
 
 export const ActionsContext = createContext<IActionsContext | undefined>(
