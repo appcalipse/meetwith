@@ -43,14 +43,6 @@ export const BaseLayout: React.FC<{
   const isPollGuestDetailsPage =
     router.pathname === PUBLIC_POLL_GUEST_DETAILS_ROUTE
 
-  const pagesWithoutNav = [
-    isDashboardPage,
-    isPublicPage,
-    isSchedulePage,
-    isSettingsPage,
-    isPollPage,
-    isPollGuestDetailsPage,
-  ]
   const pagesWithoutFooter = [
     isDashboardPage,
     isPublicPage,
@@ -59,8 +51,25 @@ export const BaseLayout: React.FC<{
     isSchedulePage,
   ]
 
-  const navVisible =
-    !(logged && isDashboardPage && !isMobile) && !pagesWithoutNav.includes(true)
+  const pagesWithoutNav = [
+    isPublicPage,
+    isSchedulePage,
+    isSettingsPage,
+    isPollPage,
+    isPollGuestDetailsPage,
+  ]
+
+  const navVisible = (() => {
+    if (pagesWithoutNav.includes(true)) {
+      return false
+    }
+
+    if (isDashboardPage) {
+      return isMobile || !logged
+    }
+
+    return true
+  })()
 
   const footerVisible =
     !(logged && isDashboardPage) && !pagesWithoutFooter.includes(true)

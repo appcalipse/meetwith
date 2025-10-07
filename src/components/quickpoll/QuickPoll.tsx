@@ -72,23 +72,29 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
       display="flex"
       alignItems="center"
       justifyContent="center"
-      px={4}
-      py={8}
+      px={{ base: 2, md: 4 }}
+      py={{ base: 6, md: 8 }}
     >
-      <VStack spacing={8} align="center" maxW="800px">
+      <VStack
+        spacing={{ base: 6, md: 8 }}
+        align="center"
+        maxW="800px"
+        w={{ base: '100%', md: 'auto' }}
+      >
         {/* Header Section */}
-        <VStack spacing={2} align="center">
+        <VStack spacing={{ base: 3, md: 2 }} align="center">
           <Heading
             as="h1"
-            fontSize="31.25px"
+            fontSize={{ base: '24px', md: '31.25px' }}
             fontWeight="700"
             color="text-primary"
             textAlign="center"
+            lineHeight="1.2"
           >
             Welcome to QuickPoll
           </Heading>
           <Text
-            fontSize="16px"
+            fontSize={{ base: '14px', md: '16px' }}
             color="text-secondary"
             fontWeight="500"
             textAlign="center"
@@ -98,20 +104,24 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
         </VStack>
 
         {/* Feature Cards Grid */}
-        <FeatureCards cards={featureCards} />
+        <Box w="100%">
+          <FeatureCards cards={featureCards} />
+        </Box>
 
         {/* Call to Action Button */}
-        <Flex justify="center" pt={1}>
+        <Flex justify="center" pt={{ base: 2, md: 1 }} w="100%">
           <Button
             leftIcon={<HiMiniPlusCircle color="text-primary" size={16} />}
             bg="primary.200"
             color="neutral.900"
-            size="lg"
-            px={4}
-            py={4}
-            fontSize="md"
+            size={{ base: 'md', md: 'lg' }}
+            px={{ base: 6, md: 4 }}
+            py={{ base: 3, md: 4 }}
+            fontSize={{ base: 'sm', md: 'md' }}
             fontWeight="semibold"
             borderRadius="8px"
+            w={{ base: '100%', sm: 'auto' }}
+            maxW={{ base: '280px', sm: 'none' }}
             _hover={{
               bg: 'primary.300',
             }}
