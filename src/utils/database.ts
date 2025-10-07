@@ -4,6 +4,7 @@ import {
   currenciesMap,
   Currency,
   extractOnRampStatus,
+  getChainIdFromOnrampMoneyNetwork,
   getOnrampMoneyTokenAddress,
 } from '@utils/services/onramp.money'
 import * as argon2 from 'argon2'
@@ -4453,6 +4454,7 @@ const createMeetingType = async (
           payment_channel: meetingType?.plan.payment_channel,
           payment_address: meetingType?.plan.payment_address,
           default_chain_id: meetingType?.plan.crypto_network,
+          default_token: meetingType?.plan.default_token,
         },
       ])
     if (planError) {
@@ -4604,6 +4606,7 @@ const updateMeetingType = async (
         payment_channel: meetingType?.plan.payment_channel,
         payment_address: meetingType?.plan.payment_address,
         default_chain_id: meetingType?.plan.crypto_network,
+        default_token: meetingType?.plan.default_token,
         updated_at: new Date().toISOString(),
       })
       .eq('meeting_type_id', meeting_type_id)
@@ -5582,6 +5585,8 @@ const recordOffRampTransaction = async (event: OnrampMoneyWebhook) => {
     .eq('transaction_hash', event.transactionHash.toLowerCase())
   const status = extractOnRampStatus(event.status)
   const exists = transactionExists?.[0]
+  const chainId =
+    (await getChainIdFromOnrampMoneyNetwork(event.chainId)) || event.chainId
   const payload: BaseTransaction = {
     method: PaymentType.CRYPTO,
     transaction_hash: event.transactionHash.toLowerCase() as Address,
@@ -5590,11 +5595,8 @@ const recordOffRampTransaction = async (event: OnrampMoneyWebhook) => {
       event.eventType.toLowerCase() === 'offramp'
         ? PaymentDirection.DEBIT
         : PaymentDirection.CREDIT,
-    chain_id: event.chainId,
-    token_address: await getOnrampMoneyTokenAddress(
-      event.coinId,
-      event.chainId
-    ),
+    chain_id: chainId,
+    token_address: await getOnrampMoneyTokenAddress(event.coinCode, chainId),
     fiat_equivalent: event.actualFiatAmount,
     initiator_address: event.merchantRecognitionId.toLowerCase() as Address,
     status,
