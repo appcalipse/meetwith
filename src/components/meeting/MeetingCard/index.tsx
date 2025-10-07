@@ -31,6 +31,8 @@ import { FaEdit, FaEllipsisV, FaRegCopy, FaTrash } from 'react-icons/fa'
 import sanitizeHtml from 'sanitize-html'
 
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
+import { DeleteMeetingDialog } from '@/components/schedule/delete-dialog'
+import ScheduleParticipantsSchedulerModal from '@/components/schedule/ScheduleParticipantsSchedulerModal'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Intents } from '@/types/Dashboard'
 import {
@@ -50,9 +52,12 @@ import {
 } from '@/utils/calendar_manager'
 import { appUrl, isProduction } from '@/utils/constants'
 import { MeetingPermissions } from '@/utils/constants/schedule'
+import {
+  canAccountAccessPermission,
+  isAccountSchedulerOrOwner,
+} from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
-
 interface MeetingCardProps {
   meeting: ExtendedDBSlot
   timezone: string
@@ -87,7 +92,21 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const label = defineLabel(meeting.start as Date, meeting.end as Date)
   const toast = useToast()
 
-  const { isOpen, onOpen, onClose } = useDisclosure()
+  const {
+    isOpen: isCancelOpen,
+    onOpen: onCancelOpen,
+    onClose: onCancelClose,
+  } = useDisclosure()
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure()
+  const {
+    isOpen: isEditSchedulerOpen,
+    onOpen: onEditSchedulerOpen,
+    onClose: onEditSchedulerClose,
+  } = useDisclosure()
 
   const [decryptedMeeting, setDecryptedMeeting] = useState(
     undefined as MeetingDecrypted | undefined
@@ -153,6 +172,10 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       canSeeGuestList
     )
   }
+  const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+    decryptedMeeting?.participants,
+    currentAccount?.address
+  )
 
   const menuItems = useMemo(
     () => [
@@ -188,9 +211,36 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
           downloadIcs(decryptedMeeting!, currentAccount!.address)
         },
       },
+      {
+        label: 'Delete meeting',
+        status: 'danger',
+        onClick: () => {
+          if (
+            isAccountSchedulerOrOwner(
+              decryptedMeeting?.participants,
+              currentAccount?.address,
+              [ParticipantType.Scheduler]
+            )
+          ) {
+            onEditSchedulerOpen()
+          } else {
+            onDeleteOpen()
+          }
+        },
+      },
+      ...(isSchedulerOrOwner
+        ? [
+            {
+              label: 'Cancel meeting',
+              status: 'danger',
+              onClick: () => onCancelOpen(),
+            },
+          ]
+        : []),
     ],
     [decryptedMeeting, currentAccount, timezone]
   )
+
   const handleCopy = async () => {
     try {
       if ('clipboard' in navigator) {
@@ -211,20 +261,12 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
     meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
-  const isSchedulerOrOwner = [
-    ParticipantType.Scheduler,
-    ParticipantType.Owner,
-  ].includes(
-    decryptedMeeting?.participants?.find(
-      p => p.account_address === currentAccount?.address
-    )?.type || ParticipantType?.Invitee
+  const canSeeGuestList = canAccountAccessPermission(
+    decryptedMeeting?.permissions,
+    decryptedMeeting?.participants || [],
+    currentAccount?.address,
+    MeetingPermissions.SEE_GUEST_LIST
   )
-  const canSeeGuestList =
-    decryptedMeeting?.permissions === undefined ||
-    !!decryptedMeeting?.permissions?.includes(
-      MeetingPermissions.SEE_GUEST_LIST
-    ) ||
-    isSchedulerOrOwner
 
   return (
     <>
@@ -363,12 +405,14 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                         }
                       }}
                     />
-                    <IconButton
-                      color={iconColor}
-                      aria-label="remove"
-                      icon={<FaTrash size={16} />}
-                      onClick={onOpen}
-                    />
+                    {isSchedulerOrOwner && (
+                      <IconButton
+                        color={iconColor}
+                        aria-label="remove"
+                        icon={<FaTrash size={16} />}
+                        onClick={onCancelOpen}
+                      />
+                    )}
                     <Menu>
                       <MenuButton
                         as={IconButton}
@@ -396,6 +440,11 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                                 onClick={val.onClick}
                                 backgroundColor={menuBgColor}
                                 key={`${val.label}-${meeting?.id}`}
+                                color={
+                                  val.status === 'danger'
+                                    ? 'primary.200'
+                                    : 'inherit'
+                                }
                               >
                                 {val.label}
                               </MenuItem>
@@ -503,9 +552,23 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
           <Text>Failed to decode information</Text>
         </HStack>
       )}
+
+      <ScheduleParticipantsSchedulerModal
+        isOpen={isEditSchedulerOpen}
+        onClose={onEditSchedulerClose}
+        participants={decryptedMeeting?.participants || []}
+        decryptedMeeting={decryptedMeeting}
+      />
       <CancelMeetingDialog
-        isOpen={isOpen}
-        onClose={onClose}
+        isOpen={isCancelOpen}
+        onClose={onCancelClose}
+        decryptedMeeting={decryptedMeeting}
+        currentAccount={currentAccount}
+        afterCancel={onCancel}
+      />
+      <DeleteMeetingDialog
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
         decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}
