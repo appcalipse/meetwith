@@ -19,6 +19,7 @@ import {
   Select,
   Text,
   Textarea,
+  useColorModeValue,
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
@@ -187,6 +188,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const router = useRouter()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
+  const iconColor = useColorModeValue('#181F24', 'white')
 
   // Fetch poll data when in edit mode
   const {
@@ -618,7 +620,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       <Box
         width="100%"
         minHeight="100vh"
-        bg="neutral.850"
+        bg="bg-canvas"
         display="flex"
         alignItems="center"
         justifyContent="center"
@@ -631,7 +633,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   // Show error state if there's an error fetching poll data in edit mode
   if (isEditMode && error) {
     return (
-      <Box width="100%" minHeight="100vh" bg="neutral.850" px={6} py={8}>
+      <Box width="100%" minHeight="100vh" bg="bg-canvas" px={6} py={8}>
         <Flex justify="center" align="center" minH="100vh">
           <Box maxW="500px" w="100%">
             <CustomError
@@ -672,7 +674,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     <Box
       width="100%"
       minHeight="100vh"
-      bg="neutral.850"
+      bg="bg-canvas"
       px={{ base: 4, md: 8 }}
       py={8}
       display="flex"
@@ -695,7 +697,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             as="h1"
             fontSize="x-large"
             fontWeight="bold"
-            color="white"
+            color="text-primary"
             textAlign="left"
             width="100%"
           >
@@ -889,7 +891,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                     }}
                     isDisabled={isLoading}
                   >
-                    <HiOutlineUserAdd color="white" size={20} />
+                    <HiOutlineUserAdd color={iconColor} size={20} />
                   </Button>
                 }
               />
@@ -915,10 +917,10 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               onChange={e =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              bg="neutral.850"
+              bg="bg-canvas"
               border="1px solid"
               borderColor="neutral.400"
-              color="neutral.0"
+              color="text-primary"
               _placeholder={{ color: 'neutral.400' }}
               rows={4}
               isDisabled={isLoading}
@@ -1078,7 +1080,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               p="6"
               bg="bg-surface"
               border="1px solid"
-              borderColor="neutral.800"
+              borderColor="card-border"
               borderRadius="12px"
               shadow="none"
               boxShadow="none"
@@ -1089,14 +1091,14 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 justifyContent="space-between"
                 alignItems="center"
               >
-                <Heading size="md" color="neutral.0">
+                <Heading size="md" color="text-primary">
                   Cancel Poll
                 </Heading>
-                <ModalCloseButton color="neutral.0" />
+                <ModalCloseButton color="text-primary" />
               </ModalHeader>
               <ModalBody p="0" mt="6">
                 <VStack gap={6}>
-                  <Text size="base" color="neutral.0">
+                  <Text size="base" color="text-primary">
                     Are you sure you want to cancel this poll? This action
                     cannot be undone.
                   </Text>

@@ -224,7 +224,7 @@ export function QuickPollParticipants({
         <Heading size={'sm'}>Participants</Heading>
         {isHost && <Heading size={'sm'}>Delete</Heading>}
       </HStack>
-      <Divider bg={'neutral.400'} />
+      <Divider bg={'border-default'} />
 
       <VStack gap={2} alignItems="flex-start">
         <Text>

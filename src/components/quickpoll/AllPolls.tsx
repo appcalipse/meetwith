@@ -102,7 +102,7 @@ const AllPolls = () => {
   // Error state
   if (currentError) {
     return (
-      <Box width="100%" bg="neutral.850" minHeight="100vh" px={6} py={8}>
+      <Box width="100%" bg="bg-canvas" minHeight="100vh" px={6} py={8}>
         <VStack spacing={6} align="stretch" maxW="1200px" mx="auto">
           <CustomError
             title="Failed to load polls"
@@ -132,15 +132,20 @@ const AllPolls = () => {
   }
 
   return (
-    <Box width="100%" bg="neutral.850" minHeight="100vh" px={6} py={8}>
+    <Box width="100%" bg="bg-canvas" minHeight="100vh" px={6} py={8}>
       <VStack spacing={6} align="stretch" maxW="1200px" mx="auto">
         {/* Header Section */}
         <Flex justify="space-between" align="center">
           <VStack align="start" spacing={1}>
-            <Heading as="h1" fontSize="24px" fontWeight="700" color="neutral.0">
+            <Heading
+              as="h1"
+              fontSize="24px"
+              fontWeight="700"
+              color="text-primary"
+            >
               Quick Poll for Groups
             </Heading>
-            <Text fontSize="16px" color="neutral.400" fontWeight="500">
+            <Text fontSize="16px" color="text-tertiary" fontWeight="500">
               Coordinate availability across teams without the email chains
             </Text>
           </VStack>
@@ -174,7 +179,7 @@ const AllPolls = () => {
               bg="bg-surface-secondary"
               p={1}
               borderWidth={1}
-              borderColor="neutral.400"
+              borderColor="border-default"
               rounded={6}
               width="fit-content"
             >
@@ -184,7 +189,7 @@ const AllPolls = () => {
                 py={2}
                 fontWeight={600}
                 fontSize="14px"
-                color="neutral.0"
+                color="text-primary"
                 _selected={{
                   color: 'neutral.900',
                   bg: 'primary.200',
@@ -198,7 +203,7 @@ const AllPolls = () => {
                 py={2}
                 fontWeight={600}
                 fontSize="14px"
-                color="neutral.0"
+                color="text-primary"
                 _selected={{
                   color: 'neutral.900',
                   bg: 'primary.200',
@@ -217,11 +222,11 @@ const AllPolls = () => {
                 placeholder="Search for Poll"
                 bg="bg-surface-secondary"
                 border="1px solid"
-                borderColor="neutral.400"
-                color="neutral.200"
-                _placeholder={{ color: 'neutral.400', fontSize: '15px' }}
+                borderColor="border-default"
+                color="text-primary"
+                _placeholder={{ color: 'text-muted', fontSize: '15px' }}
                 _hover={{
-                  borderColor: 'neutral.600',
+                  borderColor: 'border-emphasis',
                 }}
                 _focus={{
                   borderColor: 'primary.400',
@@ -243,7 +248,7 @@ const AllPolls = () => {
                 <Flex justify="center" align="center" py={8}>
                   <VStack spacing={4}>
                     <Spinner size="lg" color="primary.400" />
-                    <Text color="neutral.400" fontSize="sm">
+                    <Text color="text-tertiary" fontSize="sm">
                       Searching polls...
                     </Text>
                   </VStack>
@@ -271,7 +276,7 @@ const AllPolls = () => {
                 <Flex justify="center" align="center" py={8}>
                   <VStack spacing={4}>
                     <Spinner size="lg" color="primary.400" />
-                    <Text color="neutral.400" fontSize="sm">
+                    <Text color="text-tertiary" fontSize="sm">
                       Searching polls...
                     </Text>
                   </VStack>

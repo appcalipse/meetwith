@@ -36,7 +36,7 @@ const PollSuccessScreen: React.FC<PollSuccessScreenProps> = ({
       <ModalContent
         bg="bg-surface"
         border="1px solid"
-        borderColor="neutral.800"
+        borderColor="card-border"
         borderRadius="12px"
         mx={4}
         shadow="none"
@@ -55,7 +55,7 @@ const PollSuccessScreen: React.FC<PollSuccessScreenProps> = ({
               <Heading
                 fontSize="24px"
                 fontWeight="700"
-                color="neutral.0"
+                color="text-primary"
                 textAlign="center"
               >
                 Availability Saved!
@@ -63,12 +63,12 @@ const PollSuccessScreen: React.FC<PollSuccessScreenProps> = ({
 
               <Text
                 fontSize="16px"
-                color="neutral.400"
+                color="text-secondary"
                 textAlign="left"
                 lineHeight="1.5"
               >
                 Your availability for{' '}
-                <Text as="span" color="neutral.200" fontWeight="600">
+                <Text as="span" color="text-primary" fontWeight="600">
                   {pollTitle || 'this poll'}
                 </Text>{' '}
                 has been saved successfully.
@@ -78,7 +78,7 @@ const PollSuccessScreen: React.FC<PollSuccessScreenProps> = ({
             <Box bg="bg-surface" borderRadius="8px" w="full">
               <Text
                 fontSize="16px"
-                color="neutral.400"
+                color="text-secondary"
                 textAlign="left"
                 lineHeight="1.5"
               >
@@ -91,7 +91,7 @@ const PollSuccessScreen: React.FC<PollSuccessScreenProps> = ({
             <Button
               onClick={onClose}
               bg="primary.200"
-              color="neutral.900"
+              color="button-text-dark"
               fontSize="16px"
               fontWeight="600"
               height="48px"

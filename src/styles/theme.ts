@@ -252,6 +252,30 @@ const newTheme = {
         default: 'neutral.0',
         _dark: 'dark.700',
       },
+      'button-text-dark': {
+        default: 'gray.800',
+        _dark: 'gray.800',
+      },
+      'menu-bg': {
+        default: 'white',
+        _dark: 'neutral.800',
+      },
+      'card-border': {
+        default: 'neutral.200',
+        _dark: 'neutral.800',
+      },
+      'menu-button-bg': {
+        default: 'neutral.100',
+        _dark: 'neutral.800',
+      },
+      'menu-button-hover': {
+        default: 'neutral.200',
+        _dark: 'neutral.700',
+      },
+      'menu-item-hover': {
+        default: 'neutral.100',
+        _dark: 'neutral.700',
+      },
     },
   },
 }

@@ -136,7 +136,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
         <Heading
           fontSize="24px"
           fontWeight="700"
-          color="neutral.0"
+          color="text-primary"
           textAlign="left"
           mb={5}
         >
@@ -160,7 +160,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
             <FormLabel
               fontSize="16px"
               fontWeight="500"
-              color="neutral.0"
+              color="text-primary"
               mb={2}
             >
               Full name
@@ -170,8 +170,8 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               bg="bg-surface"
-              borderColor="neutral.600"
-              color="neutral.200"
+              borderColor="border-default"
+              color="text-primary"
               fontSize="16px"
               height="48px"
               _placeholder={{
@@ -193,7 +193,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
             <FormLabel
               fontSize="16px"
               fontWeight="500"
-              color="neutral.0"
+              color="text-primary"
               mb={2}
             >
               Email address
@@ -204,8 +204,8 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
               value={email}
               onChange={e => setEmail(e.target.value)}
               bg="bg-surface"
-              borderColor="neutral.600"
-              color="neutral.200"
+              borderColor="border-default"
+              color="text-primary"
               fontSize="16px"
               height="48px"
               _placeholder={{
@@ -236,8 +236,9 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
             _hover={{ bg: 'primary.300' }}
             _active={{ bg: 'primary.400' }}
             _disabled={{
-              bg: 'neutral.600',
-              color: 'neutral.400',
+              bg: 'primary.200',
+              color: 'text-primary',
+              opacity: 0.3,
             }}
             isDisabled={!fullName.trim() || !email.trim() || isLoading}
           >

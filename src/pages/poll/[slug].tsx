@@ -56,7 +56,7 @@ const PollPage = () => {
     }
 
     return (
-      <Box width="100%" minHeight="100vh" bg="neutral.850" p={6}>
+      <Box width="100%" minHeight="100vh" bg="bg-canvas" p={6}>
         <CustomError
           title={title}
           description={description}
@@ -69,7 +69,7 @@ const PollPage = () => {
   // Handle missing data
   if (!pollData) {
     return (
-      <Box width="100%" minHeight="100vh" bg="neutral.850" p={6}>
+      <Box width="100%" minHeight="100vh" bg="bg-canvas" p={6}>
         <CustomError
           title="Poll not found"
           description="This poll doesn't exist or may have been deleted."
@@ -80,7 +80,7 @@ const PollPage = () => {
   }
 
   return (
-    <Box width="100%" minHeight="100vh" bg="neutral.850">
+    <Box width="100%" minHeight="100vh" bg="bg-canvas">
       <QuickPollAvailabilityProvider>
         <ScheduleStateProvider>
           <NavigationProvider>

@@ -87,7 +87,7 @@ export const getBgColor = (state: State) => {
     case State.SOME_AVAILABLE:
       return 'yellow.100'
     case State.NONE_AVAILABLE:
-      return 'neutral.0'
+      return 'text-primary'
   }
 }
 
@@ -759,7 +759,7 @@ export function QuickPollPickAvailability({
               rightIcon={<FaArrowRight />}
               colorScheme="primary"
               _disabled={{
-                bg: 'neutral.400',
+                bg: 'text-muted',
               }}
               isDisabled={!pickedTime}
               onClick={() => handlePageSwitch(Page.SCHEDULE_DETAILS)}
