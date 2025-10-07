@@ -102,7 +102,7 @@ const AllPolls = () => {
   // Error state
   if (currentError) {
     return (
-      <Box width="100%" bg="bg-canvas" minHeight="100vh" px={6} py={8}>
+      <Box width="100%" bg="neutral.850" minHeight="100vh" px={6} py={8}>
         <VStack spacing={6} align="stretch" maxW="1200px" mx="auto">
           <CustomError
             title="Failed to load polls"
@@ -132,20 +132,42 @@ const AllPolls = () => {
   }
 
   return (
-    <Box width="100%" bg="bg-canvas" minHeight="100vh" px={6} py={8}>
-      <VStack spacing={6} align="stretch" maxW="1200px" mx="auto">
+    <Box
+      width="100%"
+      bg="neutral.850"
+      minHeight="100vh"
+      px={{ base: 2, md: 6 }}
+      py={{ base: 6, md: 8 }}
+    >
+      <VStack
+        spacing={{ base: 4, md: 6 }}
+        align="stretch"
+        maxW="1200px"
+        mx="auto"
+      >
         {/* Header Section */}
-        <Flex justify="space-between" align="center">
+        <Flex
+          justify="space-between"
+          align={{ base: 'stretch', md: 'center' }}
+          direction={{ base: 'column', md: 'row' }}
+          gap={{ base: 4, md: 0 }}
+        >
           <VStack align="start" spacing={1}>
             <Heading
               as="h1"
-              fontSize="24px"
+              fontSize={{ base: '20px', md: '24px' }}
               fontWeight="700"
-              color="text-primary"
+              color="neutral.0"
+              textAlign="left"
             >
               Quick Poll for Groups
             </Heading>
-            <Text fontSize="16px" color="text-tertiary" fontWeight="500">
+            <Text
+              fontSize={{ base: '14px', md: '16px' }}
+              color="neutral.400"
+              fontWeight="500"
+              textAlign="left"
+            >
               Coordinate availability across teams without the email chains
             </Text>
           </VStack>
@@ -159,6 +181,7 @@ const AllPolls = () => {
             fontSize="15px"
             fontWeight="600"
             borderRadius="8px"
+            w={{ base: '100%', md: 'auto' }}
             _hover={{
               bg: 'primary.300',
             }}
@@ -173,23 +196,29 @@ const AllPolls = () => {
 
         {/* Tabs with Search Section */}
         <Tabs variant="unstyled" index={activeTab} onChange={handleTabChange}>
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align="center"
+            direction={{ base: 'column', md: 'row' }}
+            gap={{ base: 4, md: 0 }}
+          >
             {/* Tabs */}
             <TabList
               bg="bg-surface-secondary"
               p={1}
               borderWidth={1}
-              borderColor="border-default"
+              borderColor="neutral.400"
               rounded={6}
-              width="fit-content"
+              width={{ base: '100%', md: 'fit-content' }}
             >
               <Tab
                 rounded={4}
-                px={4}
+                px={{ base: 3, md: 4 }}
                 py={2}
                 fontWeight={600}
-                fontSize="14px"
-                color="text-primary"
+                fontSize={{ base: '13px', md: '14px' }}
+                color="neutral.0"
+                flex={{ base: 1, md: 'none' }}
                 _selected={{
                   color: 'neutral.900',
                   bg: 'primary.200',
@@ -199,11 +228,12 @@ const AllPolls = () => {
               </Tab>
               <Tab
                 rounded={4}
-                px={4}
+                px={{ base: 3, md: 4 }}
                 py={2}
                 fontWeight={600}
-                fontSize="14px"
-                color="text-primary"
+                fontSize={{ base: '13px', md: '14px' }}
+                color="neutral.0"
+                flex={{ base: 1, md: 'none' }}
                 _selected={{
                   color: 'neutral.900',
                   bg: 'primary.200',
@@ -214,7 +244,7 @@ const AllPolls = () => {
             </TabList>
 
             {/* Search Input */}
-            <InputGroup maxW="275px" maxH="48px">
+            <InputGroup maxW={{ base: '100%', md: '275px' }} maxH="48px">
               <InputLeftElement pointerEvents="none">
                 <Icon as={FiSearch} color="neutral.500" />
               </InputLeftElement>
@@ -222,11 +252,11 @@ const AllPolls = () => {
                 placeholder="Search for Poll"
                 bg="bg-surface-secondary"
                 border="1px solid"
-                borderColor="border-default"
-                color="text-primary"
-                _placeholder={{ color: 'text-muted', fontSize: '15px' }}
+                borderColor="neutral.400"
+                color="neutral.0"
+                _placeholder={{ color: 'neutral.400', fontSize: '15px' }}
                 _hover={{
-                  borderColor: 'border-emphasis',
+                  borderColor: 'neutral.600',
                 }}
                 _focus={{
                   borderColor: 'primary.400',
@@ -248,7 +278,7 @@ const AllPolls = () => {
                 <Flex justify="center" align="center" py={8}>
                   <VStack spacing={4}>
                     <Spinner size="lg" color="primary.400" />
-                    <Text color="text-tertiary" fontSize="sm">
+                    <Text color="neutral.400" fontSize="sm">
                       Searching polls...
                     </Text>
                   </VStack>
@@ -276,7 +306,7 @@ const AllPolls = () => {
                 <Flex justify="center" align="center" py={8}>
                   <VStack spacing={4}>
                     <Spinner size="lg" color="primary.400" />
-                    <Text color="text-tertiary" fontSize="sm">
+                    <Text color="neutral.400" fontSize="sm">
                       Searching polls...
                     </Text>
                   </VStack>

@@ -676,7 +676,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       minHeight="100vh"
       bg="bg-canvas"
       px={{ base: 4, md: 8 }}
-      py={8}
+      py={{ base: 32, md: 8 }}
       display="flex"
       justifyContent="center"
     >

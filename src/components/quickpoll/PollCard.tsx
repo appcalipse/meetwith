@@ -1,5 +1,6 @@
 import {
   Badge,
+  Box,
   Button,
   Card,
   CardBody,
@@ -155,54 +156,257 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
         border="1px solid"
         borderColor="card-border"
         borderRadius="12px"
-        p={6}
-        px="32px"
+        p={{ base: 4, md: 6 }}
+        px={{ base: 4, md: '32px' }}
         position="relative"
         boxShadow="none"
         shadow="none"
       >
         <CardBody p={0}>
-          <VStack align="stretch" spacing={4}>
+          <VStack align="stretch" spacing={{ base: 3, md: 4 }}>
             {/* Header with title, badges, and actions */}
-            <Flex justify="space-between" align="center">
-              <HStack spacing={3} align="center">
-                <Heading
-                  as="h3"
-                  fontSize="24px"
-                  fontWeight="500"
-                  color="text-primary"
-                >
-                  {poll.title}
-                </Heading>
-                <Badge
-                  bg={statusColors.bg}
-                  color={statusColors.color}
-                  px="10px"
-                  py="5px"
-                  borderRadius="10px"
-                  fontSize="12.8px"
-                  fontWeight="500"
-                  textTransform="uppercase"
-                >
-                  {poll.status}
-                </Badge>
+            <Flex
+              justify="space-between"
+              align={{ base: 'flex-start', md: 'center' }}
+              direction={{ base: 'column', md: 'row' }}
+              gap={{ base: 3, md: 0 }}
+            >
+              <VStack
+                align={{ base: 'stretch', md: 'flex-start' }}
+                spacing={3}
+                flex={1}
+                w={{ base: '100%', sm: '100%', md: 'auto' }}
+              >
+                <Flex justify="space-between" align="center" w="100%">
+                  <HStack
+                    spacing={3}
+                    align="center"
+                    flexWrap="wrap"
+                    flex={{ base: 1, sm: 1, md: 1 }}
+                  >
+                    <Heading
+                      as="h3"
+                      fontSize={{ base: '18px', md: '24px' }}
+                      fontWeight="500"
+                      color="text-primary"
+                      lineHeight="1.2"
+                    >
+                      {poll.title}
+                    </Heading>
+                    <HStack spacing={2} flexWrap="wrap">
+                      <Badge
+                        bg={statusColors.bg}
+                        color={statusColors.color}
+                        px="10px"
+                        py="5px"
+                        borderRadius="10px"
+                        fontSize={{ base: '11px', md: '12.8px' }}
+                        fontWeight="500"
+                        textTransform="uppercase"
+                      >
+                        {poll.status}
+                      </Badge>
 
-                <Badge
-                  bg={isHost ? 'orangeButton.300' : 'orange.100'}
-                  color={isHost ? 'neutral.0' : 'orange.800'}
-                  px="10px"
-                  py="5px"
-                  borderRadius="10px"
-                  fontSize="12.8px"
-                  fontWeight="500"
-                  textTransform="uppercase"
-                >
-                  {isHost ? 'HOST' : 'GUEST'}
-                </Badge>
-              </HStack>
+                      <Badge
+                        bg={isHost ? 'orangeButton.300' : 'orange.100'}
+                        color={isHost ? 'neutral.0' : 'orange.800'}
+                        px="10px"
+                        py="5px"
+                        borderRadius="10px"
+                        fontSize={{ base: '11px', md: '12.8px' }}
+                        fontWeight="500"
+                        textTransform="uppercase"
+                      >
+                        {isHost ? 'HOST' : 'GUEST'}
+                      </Badge>
+                    </HStack>
+                  </HStack>
 
-              {/* Action buttons and menu on the right */}
-              <HStack spacing={3}>
+                  {/* Mobile menu button - positioned at the right end of the badges line */}
+                  {showActions && isHost && (
+                    <Box
+                      display={{ base: 'block', md: 'none' }}
+                      ml={2}
+                      alignSelf="flex-start"
+                    >
+                      <Menu>
+                        <MenuButton
+                          as={IconButton}
+                          icon={<FiMoreVertical color="white" />}
+                          variant="ghost"
+                          color="text-tertiary"
+                          size="sm"
+                          bg="menu-button-hover"
+                          _hover={{ bg: 'menu-button-hover' }}
+                          _active={{ bg: 'menu-button-hover' }}
+                        />
+                        <MenuList bg="menu-bg" shadow="none" boxShadow="none">
+                          {isPastPoll ? (
+                            // Past poll menu items
+                            <>
+                              <MenuItem
+                                icon={<FiRotateCcw size={16} />}
+                                bg="menu-bg"
+                                color="green.400"
+                                _hover={{ bg: 'menu-item-hover' }}
+                                onClick={() => setIsRestoreModalOpen(true)}
+                              >
+                                Restore Poll
+                              </MenuItem>
+                              <MenuItem
+                                icon={<FiTrash2 size={16} />}
+                                bg="menu-bg"
+                                color="red.300"
+                                _hover={{ bg: 'menu-item-hover' }}
+                                onClick={() => setIsDeleteModalOpen(true)}
+                              >
+                                Delete Poll
+                              </MenuItem>
+                            </>
+                          ) : (
+                            // Ongoing poll menu items
+                            <>
+                              <MenuItem
+                                icon={<FiEdit3 size={16} />}
+                                bg="menu-bg"
+                                color="text-primary"
+                                _hover={{ bg: 'menu-item-hover' }}
+                                onClick={() =>
+                                  push(`/dashboard/edit-poll/${poll.slug}`)
+                                }
+                              >
+                                Edit Poll
+                              </MenuItem>
+                              <MenuItem
+                                icon={<FiTrash2 size={16} />}
+                                bg="menu-bg"
+                                color="red.300"
+                                _hover={{ bg: 'menu-item-hover' }}
+                                onClick={() => setIsDeleteModalOpen(true)}
+                              >
+                                Delete Poll
+                              </MenuItem>
+                            </>
+                          )}
+                        </MenuList>
+                      </Menu>
+                    </Box>
+                  )}
+                </Flex>
+
+                {/* Action buttons - Mobile/Tablet layout */}
+                <VStack
+                  spacing={2}
+                  w="100%"
+                  display={{ base: 'flex', md: 'none' }}
+                >
+                  {/* Mobile: Stacked vertically, Tablet: Side by side */}
+                  <Box display={{ base: 'block', sm: 'none' }} w="100%">
+                    {poll.status === PollStatus.ONGOING && isHost && (
+                      <Button
+                        bg="primary.200"
+                        color="button-text-dark"
+                        size="md"
+                        w="100%"
+                        py={2.5}
+                        fontSize="14px"
+                        fontWeight="600"
+                        borderRadius="8px"
+                        mb={2}
+                        _hover={{
+                          bg: 'primary.300',
+                        }}
+                        _active={{
+                          bg: 'primary.400',
+                        }}
+                        onClick={() =>
+                          push(
+                            `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
+                          )
+                        }
+                      >
+                        Schedule now
+                      </Button>
+                    )}
+                    {!isPastPoll && (
+                      <Button
+                        variant="outline"
+                        borderColor="primary.200"
+                        color="primary.200"
+                        size="md"
+                        w="100%"
+                        py={2.5}
+                        fontSize="14px"
+                        fontWeight="600"
+                        borderRadius="8px"
+                        onClick={() =>
+                          push(
+                            `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=edit_availability`
+                          )
+                        }
+                      >
+                        Edit your availability
+                      </Button>
+                    )}
+                  </Box>
+
+                  {/* Tablet: Side by side */}
+                  <HStack
+                    spacing={2}
+                    w="100%"
+                    display={{ base: 'none', sm: 'flex', md: 'none' }}
+                  >
+                    {poll.status === PollStatus.ONGOING && isHost && (
+                      <Button
+                        bg="primary.200"
+                        color="button-text-dark"
+                        size="md"
+                        w="50%"
+                        py={2.5}
+                        fontSize="14px"
+                        fontWeight="600"
+                        borderRadius="8px"
+                        _hover={{
+                          bg: 'primary.300',
+                        }}
+                        _active={{
+                          bg: 'primary.400',
+                        }}
+                        onClick={() =>
+                          push(
+                            `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
+                          )
+                        }
+                      >
+                        Schedule now
+                      </Button>
+                    )}
+                    {!isPastPoll && (
+                      <Button
+                        variant="outline"
+                        borderColor="primary.200"
+                        color="primary.200"
+                        size="md"
+                        w="50%"
+                        py={2.5}
+                        fontSize="14px"
+                        fontWeight="600"
+                        borderRadius="8px"
+                        onClick={() =>
+                          push(
+                            `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=edit_availability`
+                          )
+                        }
+                      >
+                        Edit your availability
+                      </Button>
+                    )}
+                  </HStack>
+                </VStack>
+              </VStack>
+
+              {/* Action buttons and menu on the right - Desktop layout */}
+              <HStack spacing={3} display={{ base: 'none', md: 'flex' }}>
                 {poll.status === PollStatus.ONGOING && isHost && (
                   <Button
                     bg="primary.200"
@@ -317,11 +521,19 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
             </Flex>
 
             {/* Meeting date range */}
-            <HStack spacing={2}>
-              <Text fontSize="16px" color="text-primary" fontWeight="700">
+            <HStack spacing={2} flexWrap="wrap">
+              <Text
+                fontSize={{ base: '14px', md: '16px' }}
+                color="text-primary"
+                fontWeight="700"
+              >
                 Meeting Date Range:
               </Text>
-              <Text fontSize="16px" color="text-primary" fontWeight="500">
+              <Text
+                fontSize={{ base: '14px', md: '16px' }}
+                color="text-primary"
+                fontWeight="500"
+              >
                 {dateRange}
               </Text>
             </HStack>
@@ -330,52 +542,75 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
             <Divider borderColor="neutral.600" />
 
             {/* Host */}
-            <HStack spacing={2}>
-              <Text fontSize="16px" color="text-primary" fontWeight="700">
+            <HStack spacing={2} flexWrap="wrap">
+              <Text
+                fontSize={{ base: '14px', md: '16px' }}
+                color="text-primary"
+                fontWeight="700"
+              >
                 Host:
               </Text>
-              <Text fontSize="16px" color="text-primary" fontWeight="500">
+              <Text
+                fontSize={{ base: '14px', md: '16px' }}
+                color="text-primary"
+                fontWeight="500"
+              >
                 {poll.host_name || 'Unknown'}
               </Text>
             </HStack>
 
             {/* Poll link */}
-            <HStack spacing={2} align="center">
-              <Text fontSize="16px" color="text-primary" fontWeight="700">
+            <HStack spacing={2} align="center" flexWrap="wrap">
+              <Text
+                fontSize={{ base: '14px', md: '16px' }}
+                color="text-primary"
+                fontWeight="700"
+              >
                 Poll link:
               </Text>
-              <Text
-                color="orangeButton.300"
-                fontSize="16px"
-                fontWeight="500"
-                cursor="pointer"
-                _hover={{ textDecoration: 'underline' }}
-              >
-                {pollLink}
-              </Text>
-              <IconButton
-                icon={<FaRegCopy color={iconColor} size={18} />}
-                size="xs"
-                variant="ghost"
-                color="text-primary"
-                _hover={{ color: 'text-secondary' }}
-                aria-label="Copy link"
-                onClick={() => {
-                  navigator.clipboard.writeText(pollLink)
-                  showSuccessToast(
-                    'Link copied!',
-                    'Poll link has been copied to clipboard'
-                  )
-                }}
-              />
+              <HStack spacing={1} align="center" flexWrap="wrap">
+                <Text
+                  color="orangeButton.300"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="500"
+                  cursor="pointer"
+                  _hover={{ textDecoration: 'underline' }}
+                  wordBreak="break-all"
+                >
+                  {pollLink}
+                </Text>
+                <IconButton
+                  icon={<FaRegCopy color={iconColor} size={18} />}
+                  size="xs"
+                  variant="ghost"
+                  color="text-primary"
+                  _hover={{ color: 'text-secondary' }}
+                  aria-label="Copy link"
+                  onClick={() => {
+                    navigator.clipboard.writeText(pollLink)
+                    showSuccessToast(
+                      'Link copied!',
+                      'Poll link has been copied to clipboard'
+                    )
+                  }}
+                />
+              </HStack>
             </HStack>
 
             {/* Poll closing date */}
-            <HStack spacing={2}>
-              <Text fontSize="16px" color="text-primary" fontWeight="700">
+            <HStack spacing={2} flexWrap="wrap">
+              <Text
+                fontSize={{ base: '14px', md: '16px' }}
+                color="text-primary"
+                fontWeight="700"
+              >
                 Poll closing date:
               </Text>
-              <Text fontSize="16px" color="text-primary" fontWeight="500">
+              <Text
+                fontSize={{ base: '14px', md: '16px' }}
+                color="text-primary"
+                fontWeight="500"
+              >
                 {closingDate}
               </Text>
             </HStack>
@@ -397,7 +632,8 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
           bg="bg-surface"
           border="1px solid"
           borderColor="card-border"
-          borderRadius="12px"
+          borderRadius={{ base: '0', md: '12px' }}
+          height={{ base: '100%', md: 'auto' }}
           shadow="none"
           boxShadow="none"
         >
@@ -464,7 +700,8 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
           bg="bg-surface"
           border="1px solid"
           borderColor="card-border"
-          borderRadius="12px"
+          borderRadius={{ base: '0', md: '12px' }}
+          height={{ base: '100%', md: 'auto' }}
           shadow="none"
           boxShadow="none"
         >
