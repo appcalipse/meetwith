@@ -61,7 +61,7 @@ import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 interface MeetingCardProps {
   meeting: ExtendedDBSlot
   timezone: string
-  onCancel: (removed: string[]) => void
+  onCancel: (removed: string[], skipToast?: boolean) => void
 }
 
 interface Label {
