@@ -85,7 +85,7 @@ import {
   MultipleSchedulersError,
   TimeNotAvailableError,
 } from './errors'
-import { getSlugFromText } from './generic_utils'
+import { canAccountAccessPermission, getSlugFromText } from './generic_utils'
 import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
 import { CalendarServiceHelper } from './services/calendar.helper'
@@ -604,20 +604,12 @@ const updateMeeting = async (
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
   }
-  const isSchedulerOrOwner = [
-    ParticipantType.Scheduler,
-    ParticipantType.Owner,
-  ].includes(
-    decryptedMeeting?.participants?.find(
-      p => p.account_address === currentAccountAddress
-    )?.type || ParticipantType?.Invitee
+  const canUpdateOtherGuests = canAccountAccessPermission(
+    decryptedMeeting?.permissions,
+    decryptedMeeting?.participants,
+    currentAccountAddress,
+    MeetingPermissions.INVITE_GUESTS
   )
-  const canUpdateOtherGuests =
-    decryptedMeeting?.permissions === undefined ||
-    !!decryptedMeeting?.permissions?.includes(
-      MeetingPermissions.INVITE_GUESTS
-    ) ||
-    isSchedulerOrOwner
   if (
     !canUpdateOtherGuests &&
     decryptedMeeting?.participants?.length !== participants.length
@@ -625,12 +617,12 @@ const updateMeeting = async (
     throw new GuestListModificationDenied()
   }
 
-  const canEditMeetingDetails =
-    decryptedMeeting?.permissions === undefined ||
-    !!decryptedMeeting?.permissions?.includes(
-      MeetingPermissions.EDIT_MEETING
-    ) ||
-    isSchedulerOrOwner
+  const canEditMeetingDetails = canAccountAccessPermission(
+    decryptedMeeting?.permissions,
+    decryptedMeeting?.participants,
+    currentAccountAddress,
+    MeetingPermissions.EDIT_MEETING
+  )
 
   if (
     !canEditMeetingDetails &&
@@ -655,7 +647,6 @@ const updateMeeting = async (
     currentAccount,
     signature
   )
-  const meetingPermissions = existingMeeting?.permissions
 
   //TODO: anyone can update a meeting, but we might need to change the participants statuses
 
@@ -690,10 +681,8 @@ const updateMeeting = async (
   // If the acting user is NOT the scheduler and the number of participants has changed,
   // throw an error to block unauthorized modifications to the meeting's participant list.
   if (
-    meetingPermissions &&
-    !meetingPermissions?.includes(MeetingPermissions.INVITE_GUESTS) &&
-    participants.length !== decryptedMeeting.participants.length &&
-    !isSchedulerOrOwner
+    !canUpdateOtherGuests &&
+    participants.length !== decryptedMeeting.participants.length
   ) {
     throw new MeetingChangeConflictError()
   }
