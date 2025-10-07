@@ -358,7 +358,40 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
       gap={3}
       p={{ base: 4, md: 0 }}
     >
-      <HStack justifyContent={'flex-start'} alignItems={'flex-start'}>
+      {/* Mobile Header */}
+      <VStack
+        display={{ base: 'flex', md: 'none' }}
+        align="stretch"
+        gap={4}
+        w="100%"
+      >
+        <HStack
+          cursor="pointer"
+          onClick={handleClose}
+          gap={2}
+          alignItems={'center'}
+        >
+          <Icon as={FaArrowLeft} size="1.2em" color={'primary.500'} />
+          <Heading fontSize={14} color="primary.500">
+            Back
+          </Heading>
+        </HStack>
+
+        <Heading fontSize="20px" fontWeight="700" color="text-primary">
+          {isSchedulingIntent ? 'Schedule Meeting' : 'Add/Edit Availability'}
+        </Heading>
+
+        <Heading fontSize="16px" fontWeight="500" color="text-primary">
+          Poll Title: {currentPollTitle}
+        </Heading>
+      </VStack>
+
+      {/* Desktop Header */}
+      <HStack
+        justifyContent={'flex-start'}
+        alignItems={'flex-start'}
+        display={{ base: 'none', md: 'flex' }}
+      >
         <HStack
           mb={6}
           cursor="pointer"
@@ -395,12 +428,33 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         />
       </HStack>
 
+      {/* Mobile Layout */}
+      <VStack
+        width="100%"
+        align="stretch"
+        gap={4}
+        display={{ base: 'flex', md: 'none' }}
+      >
+        <QuickPollPickAvailability
+          openParticipantModal={() => setIsInviteParticipantsOpen(true)}
+          pollData={currentPollData}
+          onSaveAvailability={handleAvailabilityAction}
+          onSharePoll={handleSharePoll}
+          onImportCalendar={handleCalendarImport}
+          isEditingAvailability={isEditingAvailability}
+          isSavingAvailability={isSavingAvailability}
+          isRefreshingAvailabilities={isRefreshingAvailabilities}
+        />
+      </VStack>
+
+      {/* Desktop Layout */}
       <HStack
         width="100%"
         justifyContent={'flex-start'}
         align={'flex-start'}
         height={'fit-content'}
         gap={'14px'}
+        display={{ base: 'none', md: 'flex' }}
       >
         <InviteParticipants
           onClose={() => setIsInviteParticipantsOpen(false)}

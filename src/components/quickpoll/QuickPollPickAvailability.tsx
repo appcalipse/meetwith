@@ -660,6 +660,51 @@ export function QuickPollPickAvailability({
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
+        {/* Mobile Controls */}
+        <VStack gap={4} w="100%" display={{ base: 'flex', md: 'none' }}>
+          <VStack gap={2} alignItems={'flex-start'} width="100%">
+            <HStack width="fit-content" gap={0}>
+              <Heading fontSize="14px">Show times in</Heading>
+              <InfoTooltip text="the default timezone is based on your availability settings" />
+            </HStack>
+            <Select
+              value={tz}
+              colorScheme="primary"
+              onChange={_onChange}
+              className="noLeftBorder timezone-select"
+              options={tzOptions}
+              components={customSelectComponents}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  borderColor: 'input-border',
+                  bg: 'select-bg',
+                }),
+              }}
+            />
+          </VStack>
+
+          <VStack gap={2} alignItems={'flex-start'} width="100%">
+            <Heading fontSize="14px">Month</Heading>
+            <Select
+              value={monthValue}
+              colorScheme="primary"
+              onChange={newValue => _onChangeMonth(newValue)}
+              className="noLeftBorder timezone-select"
+              options={months}
+              components={customSelectComponents}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  borderColor: 'input-border',
+                  bg: 'select-bg',
+                }),
+              }}
+            />
+          </VStack>
+        </VStack>
+
+        {/* Desktop Controls */}
         <Flex
           w="100%"
           alignItems={{ lg: 'flex-end' }}
@@ -667,6 +712,7 @@ export function QuickPollPickAvailability({
           flexWrap="wrap"
           gap={4}
           zIndex={2}
+          display={{ base: 'none', md: 'flex' }}
         >
           {onSaveAvailability && isEditAvailabilityIntent && (
             <Button
@@ -789,22 +835,15 @@ export function QuickPollPickAvailability({
           </HStack>
         </HStack>
 
-        {/* Mobile quickpoll buttons */}
-        <HStack
-          spacing={3}
-          alignSelf="flex-start"
-          display={{
-            lg: 'none',
-            base: 'flex',
-          }}
-        >
+        {/* Mobile Action Buttons */}
+        <VStack gap={3} w="100%" display={{ base: 'flex', md: 'none' }}>
           {onSaveAvailability && (
             <Button
               colorScheme="primary"
-              size="sm"
-              px={4}
-              py={2}
-              fontSize="14px"
+              size="md"
+              w="100%"
+              py={3}
+              fontSize="16px"
               fontWeight="600"
               borderRadius="8px"
               onClick={onSaveAvailability}
@@ -814,7 +853,7 @@ export function QuickPollPickAvailability({
             >
               {isEditingAvailability
                 ? 'Save availability'
-                : 'Edit availability'}
+                : 'Edit/Add your availability'}
             </Button>
           )}
           {onSharePoll && (
@@ -823,57 +862,55 @@ export function QuickPollPickAvailability({
               colorScheme="primary"
               leftIcon={<MdShare color="#F9B19A" size={20} />}
               onClick={onSharePoll}
-              px="16px"
-              py="8px"
+              w="100%"
+              py={3}
               fontSize="16px"
-              fontWeight="700"
+              fontWeight="600"
               borderRadius="8px"
             >
               Share Poll
             </Button>
           )}
-        </HStack>
+        </VStack>
 
+        {/* Mobile Availability Info Section */}
         <VStack
           gap={4}
           w="100%"
-          alignItems={{ base: 'flex-start', md: 'center' }}
-          display={{ base: 'flex', lg: 'none' }}
+          alignItems="flex-start"
+          display={{ base: 'flex', md: 'none' }}
         >
-          <HStack
-            w="100%"
-            alignItems="center"
-            justifyContent="center"
-            spacing={4}
-          >
-            {onImportCalendar && !isSchedulingIntent && (
-              <Button colorScheme="primary" onClick={onImportCalendar}>
-                Import from calendar
-              </Button>
-            )}
-            {isHost && isSchedulingIntent && (
-              <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-                Jump to Best Slot
-              </Button>
-            )}
-            <Box maxW="350px" textAlign="center">
-              <Heading fontSize="20px" fontWeight={700}>
-                Select time from available slots
-              </Heading>
-              <Text fontSize="12px">
-                All time slots shown below are the available times between you
-                and the required participants.
-              </Text>
-            </Box>
-          </HStack>
+          <VStack align="flex-start" gap={2} w="100%">
+            <Heading fontSize="16px" fontWeight={700} color="text-primary">
+              Availabilities Provided by Participants
+            </Heading>
+            <Text fontSize="14px" color="text-primary">
+              All time slots shown below are the available times between you and
+              those who are interested in the event.
+            </Text>
+          </VStack>
+
+          {isHost && isSchedulingIntent && (
+            <Button
+              colorScheme="primary"
+              onClick={handleJumpToBestSlot}
+              w="100%"
+              py={3}
+              fontSize="16px"
+              fontWeight="600"
+              borderRadius="8px"
+            >
+              Jump to Best Slot
+            </Button>
+          )}
         </VStack>
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
           <VStack
-            pt={4}
-            gap={6}
+            pt={{ base: 3, md: 4 }}
+            gap={{ base: 4, md: 6 }}
             w="100%"
-            py={4}
+            py={{ base: 3, md: 4 }}
             rounded={12}
             roundedBottom={0}
             position="sticky"
@@ -883,9 +920,97 @@ export function QuickPollPickAvailability({
             borderWidth={1}
             borderColor={'input-border'}
             borderBottomWidth={0}
-            px={{ md: 6, base: 2 }}
+            px={{ base: 3, md: 6 }}
           >
-            <HStack w="100%" justify={'space-between'} position="relative">
+            {/* Mobile Date Navigation */}
+            <HStack
+              w="100%"
+              justify={'space-between'}
+              position="relative"
+              display={{ base: 'flex', md: 'none' }}
+            >
+              <IconButton
+                aria-label={'left-icon'}
+                icon={<FaChevronLeft />}
+                onClick={handleScheduledTimeBack}
+                isDisabled={isBackDisabled}
+                size="sm"
+                bg="bg-surface-tertiary"
+                _hover={{ bg: 'bg-surface-tertiary' }}
+              />
+
+              <HStack gap={0}>
+                <Grid
+                  gridTemplateColumns={'1fr 1fr'}
+                  justifyContent={'space-between'}
+                  w="fit-content"
+                  gap={1}
+                >
+                  {GUIDES.map((guide, index) => {
+                    return (
+                      <HStack key={index} gap={1}>
+                        <Box w={4} h={4} bg={guide.color} borderRadius={3} />
+                        <Text fontSize="12px" color="text-primary">
+                          {guide.description.split(' ')[0]}
+                        </Text>
+                      </HStack>
+                    )
+                  })}
+                </Grid>
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <InfoIcon cursor="pointer" />
+                  </Tooltip.Trigger>
+                  <Tooltip.Content style={{ zIndex: 10 }}>
+                    <Box
+                      p={2}
+                      borderRadius={4}
+                      boxShadow="md"
+                      py={3}
+                      px={4}
+                      bg="bg-surface-tertiary-2"
+                      rounded={'10px'}
+                    >
+                      <VStack w="fit-content" gap={1} align={'flex-start'}>
+                        {GUIDES.map((guide, index) => {
+                          return (
+                            <HStack key={index} gap={2}>
+                              <Box
+                                w={5}
+                                h={5}
+                                bg={guide.color}
+                                borderRadius={4}
+                              />
+                              <Text fontSize="12px" color="text-primary">
+                                {guide.description}
+                              </Text>
+                            </HStack>
+                          )
+                        })}
+                      </VStack>
+                    </Box>
+                    <Tooltip.Arrow color="#323F4B" />
+                  </Tooltip.Content>
+                </Tooltip.Root>
+              </HStack>
+
+              <IconButton
+                aria-label={'right-icon'}
+                icon={<FaChevronRight />}
+                onClick={handleScheduledTimeNext}
+                size="sm"
+                bg="bg-surface-tertiary"
+                _hover={{ bg: 'bg-surface-tertiary' }}
+              />
+            </HStack>
+
+            {/* Desktop Date Navigation */}
+            <HStack
+              w="100%"
+              justify={'space-between'}
+              position="relative"
+              display={{ base: 'none', md: 'flex' }}
+            >
               <HStack spacing={4}>
                 <IconButton
                   aria-label={'left-icon'}
@@ -1009,7 +1134,7 @@ export function QuickPollPickAvailability({
             <HStack
               w="100%"
               justify={{ md: 'space-between' }}
-              gap={{ base: 1, md: 6 }}
+              gap={{ base: 2, md: 6 }}
             >
               <VStack
                 align={'flex-start'}
@@ -1017,7 +1142,7 @@ export function QuickPollPickAvailability({
                 justify={'flex-start'}
                 gap={2}
               >
-                <Box h={'48px'} width={'100%'} />
+                <Box h={{ base: '40px', md: '48px' }} width={'100%'} />
               </VStack>
               {datesSlotsWithAvailability.map((date, index) => {
                 return (
@@ -1028,12 +1153,17 @@ export function QuickPollPickAvailability({
                     style={{ flex: 1 }}
                   >
                     <VStack flex={1} w="100%" align={'center'} gap={2}>
-                      <VStack align={'center'} w="100%" h={12} gap={0}>
+                      <VStack
+                        align={'center'}
+                        w="100%"
+                        h={{ base: 10, md: 12 }}
+                        gap={0}
+                      >
                         <Text
                           fontWeight={'700'}
                           fontSize={{
-                            base: 'small',
-                            md: 'medium',
+                            base: '14px',
+                            md: '16px',
                           }}
                         >
                           {formatInTimeZone(date.date, timezone, 'dd')}
@@ -1041,8 +1171,8 @@ export function QuickPollPickAvailability({
                         <Text
                           fontWeight={'500'}
                           fontSize={{
-                            base: 'small',
-                            md: 'medium',
+                            base: '12px',
+                            md: '14px',
                           }}
                         >
                           {formatInTimeZone(date.date, timezone, 'EE')}
@@ -1070,8 +1200,8 @@ export function QuickPollPickAvailability({
             <HStack
               w="100%"
               justify={{ md: 'space-between' }}
-              gap={{ base: 1, md: 6 }}
-              px={{ md: 6, base: 2 }}
+              gap={{ base: 2, md: 6 }}
+              px={{ base: 3, md: 6 }}
               borderWidth={1}
               borderColor={'input-border'}
               borderTop={0}
@@ -1093,14 +1223,14 @@ export function QuickPollPickAvailability({
                         w="100%"
                         justify={'center'}
                         align={'center'}
-                        h={12}
+                        h={{ base: 10, md: 12 }}
                         my={'1px'}
                       >
                         <Text
                           fontWeight={'500'}
                           fontSize={{
-                            base: 'small',
-                            md: 'medium',
+                            base: '12px',
+                            md: '14px',
                           }}
                         >
                           {slot}

@@ -116,49 +116,53 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
       flexDirection="column"
       alignItems="center"
       justifyContent="center"
-      px={4}
+      px={{ base: 4, md: 4 }}
     >
-      <Box maxW="550px" w="100%" bg="bg-surface" p={8}>
+      <Box maxW="550px" w="100%" bg="bg-surface" p={{ base: 6, md: 8 }}>
         {/* Back Button */}
         <HStack
-          mb={6}
+          mb={{ base: 4, md: 6 }}
           cursor="pointer"
           onClick={handleBack}
           _hover={{ opacity: 0.8 }}
           w="fit-content"
         >
           <Icon as={FaArrowLeft} color="#F35826" />
-          <Text color="orangeButton.300" fontSize="16px" fontWeight="500">
+          <Text
+            color="orangeButton.300"
+            fontSize={{ base: '14px', md: '16px' }}
+            fontWeight="500"
+          >
             Back
           </Text>
         </HStack>
 
         <Heading
-          fontSize="24px"
+          fontSize={{ base: '20px', md: '24px' }}
           fontWeight="700"
           color="text-primary"
           textAlign="left"
-          mb={5}
+          mb={{ base: 4, md: 5 }}
         >
           Provide your details
         </Heading>
 
         <Text
-          fontSize="16px"
+          fontSize={{ base: '14px', md: '16px' }}
           color="text.primary"
           textAlign="left"
           lineHeight="1.5"
-          mb={8}
+          mb={{ base: 6, md: 8 }}
         >
           You are saving your availability for this poll as a guest. This means
           you won&apos;t be able to edit it later.
         </Text>
 
         {/* Form */}
-        <VStack spacing={6} align="stretch">
+        <VStack spacing={{ base: 5, md: 6 }} align="stretch">
           <FormControl isRequired>
             <FormLabel
-              fontSize="16px"
+              fontSize={{ base: '14px', md: '16px' }}
               fontWeight="500"
               color="text-primary"
               mb={2}
@@ -172,11 +176,11 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
               bg="bg-surface"
               borderColor="border-default"
               color="text-primary"
-              fontSize="16px"
-              height="48px"
+              fontSize={{ base: '14px', md: '16px' }}
+              height={{ base: '44px', md: '48px' }}
               _placeholder={{
                 color: 'neutral.500',
-                fontSize: '16px',
+                fontSize: { base: '14px', md: '16px' },
               }}
               _focus={{
                 borderColor: 'neutral.600',
@@ -191,7 +195,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
 
           <FormControl isRequired>
             <FormLabel
-              fontSize="16px"
+              fontSize={{ base: '14px', md: '16px' }}
               fontWeight="500"
               color="text-primary"
               mb={2}
@@ -206,11 +210,11 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
               bg="bg-surface"
               borderColor="border-default"
               color="text-primary"
-              fontSize="16px"
-              height="48px"
+              fontSize={{ base: '14px', md: '16px' }}
+              height={{ base: '44px', md: '48px' }}
               _placeholder={{
                 color: 'neutral.500',
-                fontSize: '16px',
+                fontSize: { base: '14px', md: '16px' },
               }}
               _focus={{
                 borderColor: 'neutral.600',
@@ -229,9 +233,9 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
             loadingText="Saving..."
             bg="primary.200"
             color="neutral.900"
-            fontSize="16px"
+            fontSize={{ base: '14px', md: '16px' }}
             fontWeight="600"
-            height="48px"
+            height={{ base: '44px', md: '48px' }}
             borderRadius="8px"
             _hover={{ bg: 'primary.300' }}
             _active={{ bg: 'primary.400' }}
