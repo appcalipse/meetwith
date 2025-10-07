@@ -260,8 +260,13 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
             key={meeting.id}
             meeting={meeting}
             timezone={timezone}
-            onCancel={removed =>
-              afterClose(MeetingChangeType.DELETE, undefined, removed)
+            onCancel={(removed: string[], skipToast?: boolean) =>
+              afterClose(
+                MeetingChangeType.DELETE,
+                undefined,
+                removed,
+                skipToast
+              )
             }
           />
         ))}
@@ -285,7 +290,8 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const afterClose = (
     changeType: MeetingChangeType,
     meeting?: ExtendedDBSlot,
-    removedSlots?: string[]
+    removedSlots?: string[],
+    skipToast?: boolean
   ) => {
     // not using router API to avoid re-rendering component
     history.pushState(null, '', window.location.pathname)
@@ -306,6 +312,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
             (m1.start as Date).getTime() - (m2.start as Date).getTime()
         )
       )
+      if (skipToast) return
 
       let title, description
       switch (changeType) {
