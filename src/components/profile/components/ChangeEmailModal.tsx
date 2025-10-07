@@ -69,8 +69,10 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
     <Modal isOpen={isOpen} onClose={handleCancel} size="md" isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
       <ModalContent
-        bg="dark-bg"
-        borderRadius="12px"
+        bg="bg-surface"
+        borderRadius={{ base: '0', md: '12px' }}
+        border="1px solid"
+        borderColor="border-wallet-subtle"
         p={8}
         maxW="592px"
         width={{ base: '100%', md: '592px' }}
