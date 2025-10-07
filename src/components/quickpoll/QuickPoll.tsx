@@ -68,7 +68,7 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
   return (
     <Box
       width="100%"
-      bg="neutral.850"
+      bg="bg-canvas"
       display="flex"
       alignItems="center"
       justifyContent="center"
@@ -82,14 +82,14 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
             as="h1"
             fontSize="31.25px"
             fontWeight="700"
-            color="neutral.0"
+            color="text-primary"
             textAlign="center"
           >
             Welcome to QuickPoll
           </Heading>
           <Text
             fontSize="16px"
-            color="neutral.200"
+            color="text-secondary"
             fontWeight="500"
             textAlign="center"
           >
@@ -103,7 +103,7 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
         {/* Call to Action Button */}
         <Flex justify="center" pt={1}>
           <Button
-            leftIcon={<HiMiniPlusCircle color="neutral.800" size={16} />}
+            leftIcon={<HiMiniPlusCircle color="text-primary" size={16} />}
             bg="primary.200"
             color="neutral.900"
             size="lg"

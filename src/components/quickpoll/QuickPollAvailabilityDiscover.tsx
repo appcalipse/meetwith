@@ -371,7 +371,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             Back
           </Heading>
 
-          <Heading fontSize="24px" fontWeight="700" color="neutral.0">
+          <Heading fontSize="24px" fontWeight="700" color="text-primary">
             {isSchedulingIntent ? 'Schedule Meeting' : 'Add/Edit Availability'}
           </Heading>
         </HStack>
@@ -379,7 +379,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         <Heading
           fontSize="24px"
           fontWeight="700"
-          color="neutral.0"
+          color="text-primary"
           justifySelf={'center'}
           ml="81px"
         >

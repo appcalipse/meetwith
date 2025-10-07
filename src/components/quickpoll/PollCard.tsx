@@ -19,6 +19,7 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
+  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
@@ -135,6 +136,8 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
     }
   }
 
+  const iconColor = useColorModeValue('#181F24', 'white')
+
   const statusColors = getStatusColor(poll.status)
 
   const handleDeletePoll = () => {
@@ -150,11 +153,13 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
       <Card
         bg="bg-surface"
         border="1px solid"
-        borderColor="neutral.800"
+        borderColor="card-border"
         borderRadius="12px"
         p={6}
         px="32px"
         position="relative"
+        boxShadow="none"
+        shadow="none"
       >
         <CardBody p={0}>
           <VStack align="stretch" spacing={4}>
@@ -165,7 +170,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                   as="h3"
                   fontSize="24px"
                   fontWeight="500"
-                  color="neutral.0"
+                  color="text-primary"
                 >
                   {poll.title}
                 </Heading>
@@ -201,7 +206,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                 {poll.status === PollStatus.ONGOING && isHost && (
                   <Button
                     bg="primary.200"
-                    color="neutral.900"
+                    color="button-text-dark"
                     size="md"
                     px={5}
                     py={2.5}
@@ -251,30 +256,30 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                       as={IconButton}
                       icon={<FiMoreVertical color="white" />}
                       variant="ghost"
-                      color="neutral.400"
+                      color="text-tertiary"
                       size="sm"
-                      bg="neutral.800"
-                      _hover={{ bg: 'neutral.800' }}
-                      _active={{ bg: 'neutral.700' }}
+                      bg="menu-button-hover"
+                      _hover={{ bg: 'menu-button-hover' }}
+                      _active={{ bg: 'menu-button-hover' }}
                     />
-                    <MenuList bg="neutral.800" shadow="none" boxShadow="none">
+                    <MenuList bg="menu-bg" shadow="none" boxShadow="none">
                       {isPastPoll ? (
                         // Past poll menu items
                         <>
                           <MenuItem
                             icon={<FiRotateCcw size={16} />}
-                            bg="neutral.800"
+                            bg="menu-bg"
                             color="green.400"
-                            _hover={{ bg: 'neutral.700' }}
+                            _hover={{ bg: 'menu-item-hover' }}
                             onClick={() => setIsRestoreModalOpen(true)}
                           >
                             Restore Poll
                           </MenuItem>
                           <MenuItem
                             icon={<FiTrash2 size={16} />}
-                            bg="neutral.800"
+                            bg="menu-bg"
                             color="red.300"
-                            _hover={{ bg: 'neutral.700' }}
+                            _hover={{ bg: 'menu-item-hover' }}
                             onClick={() => setIsDeleteModalOpen(true)}
                           >
                             Delete Poll
@@ -285,9 +290,9 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                         <>
                           <MenuItem
                             icon={<FiEdit3 size={16} />}
-                            bg="neutral.800"
-                            color="neutral.0"
-                            _hover={{ bg: 'neutral.700' }}
+                            bg="menu-bg"
+                            color="text-primary"
+                            _hover={{ bg: 'menu-item-hover' }}
                             onClick={() =>
                               push(`/dashboard/edit-poll/${poll.slug}`)
                             }
@@ -296,9 +301,9 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                           </MenuItem>
                           <MenuItem
                             icon={<FiTrash2 size={16} />}
-                            bg="neutral.800"
+                            bg="menu-bg"
                             color="red.300"
-                            _hover={{ bg: 'neutral.700' }}
+                            _hover={{ bg: 'menu-item-hover' }}
                             onClick={() => setIsDeleteModalOpen(true)}
                           >
                             Delete Poll
@@ -313,10 +318,10 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
 
             {/* Meeting date range */}
             <HStack spacing={2}>
-              <Text fontSize="16px" color="neutral.0" fontWeight="700">
+              <Text fontSize="16px" color="text-primary" fontWeight="700">
                 Meeting Date Range:
               </Text>
-              <Text fontSize="16px" color="neutral.0" fontWeight="500">
+              <Text fontSize="16px" color="text-primary" fontWeight="500">
                 {dateRange}
               </Text>
             </HStack>
@@ -326,17 +331,17 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
 
             {/* Host */}
             <HStack spacing={2}>
-              <Text fontSize="16px" color="neutral.0" fontWeight="700">
+              <Text fontSize="16px" color="text-primary" fontWeight="700">
                 Host:
               </Text>
-              <Text fontSize="16px" color="neutral.0" fontWeight="500">
+              <Text fontSize="16px" color="text-primary" fontWeight="500">
                 {poll.host_name || 'Unknown'}
               </Text>
             </HStack>
 
             {/* Poll link */}
             <HStack spacing={2} align="center">
-              <Text fontSize="16px" color="neutral.0" fontWeight="700">
+              <Text fontSize="16px" color="text-primary" fontWeight="700">
                 Poll link:
               </Text>
               <Text
@@ -349,11 +354,11 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                 {pollLink}
               </Text>
               <IconButton
-                icon={<FaRegCopy color="white" size={18} />}
+                icon={<FaRegCopy color={iconColor} size={18} />}
                 size="xs"
                 variant="ghost"
-                color="neutral.0"
-                _hover={{ color: 'neutral.200' }}
+                color="text-primary"
+                _hover={{ color: 'text-secondary' }}
                 aria-label="Copy link"
                 onClick={() => {
                   navigator.clipboard.writeText(pollLink)
@@ -367,10 +372,10 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
 
             {/* Poll closing date */}
             <HStack spacing={2}>
-              <Text fontSize="16px" color="neutral.0" fontWeight="700">
+              <Text fontSize="16px" color="text-primary" fontWeight="700">
                 Poll closing date:
               </Text>
-              <Text fontSize="16px" color="neutral.0" fontWeight="500">
+              <Text fontSize="16px" color="text-primary" fontWeight="500">
                 {closingDate}
               </Text>
             </HStack>
@@ -391,7 +396,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
           p="6"
           bg="bg-surface"
           border="1px solid"
-          borderColor="neutral.800"
+          borderColor="card-border"
           borderRadius="12px"
           shadow="none"
           boxShadow="none"
@@ -402,14 +407,14 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
             justifyContent="space-between"
             alignItems="center"
           >
-            <Heading size="md" color="neutral.0">
+            <Heading size="md" color="text-primary">
               Delete Poll
             </Heading>
-            <ModalCloseButton color="neutral.0" />
+            <ModalCloseButton color="text-primary" />
           </ModalHeader>
           <ModalBody p="0" mt="6">
             <VStack gap={6}>
-              <Text size="base" color="neutral.0">
+              <Text size="base" color="text-primary">
                 Are you sure you want to delete this poll? This action cannot be
                 undone. All participants will lose access to this poll and any
                 associated data will be permanently removed.
@@ -429,7 +434,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                 </Button>
                 <Button
                   bg="red.600"
-                  color="neutral.0"
+                  color="white"
                   _hover={{ bg: 'red.600' }}
                   isLoading={deletePollMutation.isLoading}
                   loadingText="Deleting poll..."
@@ -458,7 +463,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
           p="6"
           bg="bg-surface"
           border="1px solid"
-          borderColor="neutral.800"
+          borderColor="card-border"
           borderRadius="12px"
           shadow="none"
           boxShadow="none"
@@ -469,14 +474,14 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
             justifyContent="space-between"
             alignItems="center"
           >
-            <Heading size="md" color="neutral.0">
+            <Heading size="md" color="text-primary">
               Restore Poll
             </Heading>
-            <ModalCloseButton color="neutral.0" />
+            <ModalCloseButton color="text-primary" />
           </ModalHeader>
           <ModalBody p="0" mt="6">
             <VStack gap={6}>
-              <Text size="base" color="neutral.0">
+              <Text size="base" color="text-primary">
                 This poll will be restored for poll participation. It will have
                 an expiry of 14 days from now, and participants will be able to
                 respond to the poll again.
@@ -497,7 +502,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                 <Button
                   bg="green.600"
                   _hover={{ bg: 'green.600' }}
-                  color="neutral.0"
+                  color="white"
                   isLoading={restorePollMutation.isLoading}
                   loadingText="Restoring poll..."
                   onClick={handleRestorePoll}

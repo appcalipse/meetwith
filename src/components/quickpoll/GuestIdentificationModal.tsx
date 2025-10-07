@@ -62,14 +62,14 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
       <ModalContent
         bg="bg-surface"
         border="1px solid"
-        borderColor="neutral.800"
+        borderColor="card-border"
         borderRadius="12px"
         mx={4}
         shadow="none"
         boxShadow="none"
       >
         <ModalHeader pb={2}>
-          <Heading fontSize="20px" fontWeight="600" color="neutral.0">
+          <Heading fontSize="20px" fontWeight="600" color="text-primary">
             Enter your email
           </Heading>
         </ModalHeader>
@@ -80,7 +80,7 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
             <Text fontSize="14px" color="neutral.400" lineHeight="1.5">
               Please enter the email address you were invited with to save your
               availability for{' '}
-              <Text as="span" color="neutral.200" fontWeight="500">
+              <Text as="span" color="text-primary" fontWeight="500">
                 {pollTitle || 'this poll'}
               </Text>
               .
@@ -90,7 +90,7 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
               <FormLabel
                 fontSize="14px"
                 fontWeight="500"
-                color="neutral.200"
+                color="text-primary"
                 mb={2}
               >
                 Email address
@@ -101,8 +101,8 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 bg="bg-surface"
-                borderColor="neutral.600"
-                color="neutral.200"
+                borderColor="border-default"
+                color="text-primary"
                 fontSize="14px"
                 height="40px"
                 _placeholder={{

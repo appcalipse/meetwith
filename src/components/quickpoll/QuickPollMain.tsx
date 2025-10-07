@@ -93,7 +93,7 @@ const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
   }
 
   return (
-    <Box width="100%" minHeight="100vh" bg="neutral.850">
+    <Box width="100%" minHeight="100vh" bg="bg-canvas">
       <GuestDetailsForm
         participantId={currentParticipantId}
         onSuccess={handleSuccess}
@@ -125,7 +125,7 @@ const QuickPollSuccessTab: React.FC<QuickPollSuccessTabProps> = ({
     <Box
       width="100%"
       minHeight="100vh"
-      bg="neutral.850"
+      bg="bg-canvas"
       display="flex"
       alignItems="center"
       justifyContent="center"

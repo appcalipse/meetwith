@@ -236,9 +236,22 @@ export const quickPollSchema = z
     message: 'Start date must be before end date',
     path: ['endDate'],
   })
-  .refine(data => data.expiryDate >= new Date(), {
-    message: 'Expiry date must be in the future',
-    path: ['expiryDate'],
-  })
+  .refine(
+    data => {
+      const year = data.expiryDate.getFullYear()
+      const month = data.expiryDate.getMonth()
+      const day = data.expiryDate.getDate()
+      const hours = data.expiryTime.getHours()
+      const minutes = data.expiryTime.getMinutes()
+      const seconds = data.expiryTime.getSeconds()
+
+      const expiryDateTime = new Date(year, month, day, hours, minutes, seconds)
+      return expiryDateTime > new Date()
+    },
+    {
+      message: 'Expiry date must be in the future',
+      path: ['expiryDate'],
+    }
+  )
 
 export type QuickPollFormData = z.infer<typeof quickPollSchema>
