@@ -199,40 +199,40 @@ export function QuickPollParticipants({
 
   return (
     <VStack
-      py={isMobile ? 10 : 7}
-      px={5}
+      py={{ base: 6, md: 7 }}
+      px={{ base: 4, md: 5 }}
       borderWidth={1}
       borderColor={'input-border'}
       rounded={12}
-      gap={5}
-      minH="80vh"
-      maxH={'90vh'}
-      overflowY={'auto'}
-      w={isMobile ? '100%' : 'fit-content'}
-      mx={isMobile ? 'auto' : 0}
+      gap={{ base: 4, md: 5 }}
+      minH={{ base: 'auto', md: '80vh' }}
+      maxH={{ base: 'auto', md: '90vh' }}
+      overflowY={{ base: 'visible', md: 'auto' }}
+      w={{ base: '100%', md: 'fit-content' }}
+      mx={{ base: 'auto', md: 0 }}
       bg="bg-surface-secondary"
-      minW={isMobile ? 'none' : '315px'}
+      minW={{ base: 'none', md: '315px' }}
       display={{
         base: isMobile ? 'flex' : 'none',
         lg: 'flex',
       }}
-      position="sticky"
+      position={{ base: 'static', md: 'sticky' }}
       top={0}
       zIndex={1}
     >
-      <HStack gap={9} w="100%" justify={'space-between'}>
-        <Heading size={'sm'}>Participants</Heading>
-        {isHost && <Heading size={'sm'}>Delete</Heading>}
+      <HStack gap={{ base: 6, md: 9 }} w="100%" justify={'space-between'}>
+        <Heading size={{ base: 'xs', md: 'sm' }}>Participants</Heading>
+        {isHost && <Heading size={{ base: 'xs', md: 'sm' }}>Delete</Heading>}
       </HStack>
-      <Divider bg={'border-default'} />
+      <Divider bg={'divider-dark'} />
 
       <VStack gap={2} alignItems="flex-start">
-        <Text>
+        <Text fontSize={{ base: 'sm', md: 'md' }}>
           <b>Number of Participants:</b> {totalParticipantsCount}
         </Text>
       </VStack>
 
-      <VStack gap={4} w="100%">
+      <VStack gap={{ base: 3, md: 4 }} w="100%">
         {meetingMembers?.map((participant: ParticipantInfo, index: number) => {
           return (
             <HStack
@@ -240,7 +240,7 @@ export function QuickPollParticipants({
               width={'100%'}
               justifyContent={'space-between'}
               alignItems={'center'}
-              h={'72px'}
+              h={{ base: '60px', md: '72px' }}
             >
               <HStack>
                 <Box
@@ -262,24 +262,24 @@ export function QuickPollParticipants({
                         : AiOutlineEyeInvisible
                     }
                     cursor="pointer"
-                    boxSize={6}
+                    boxSize={{ base: 5, md: 6 }}
                     color="border-default-primary"
-                    w={6}
-                    h={6}
+                    w={{ base: 5, md: 6 }}
+                    h={{ base: 5, md: 6 }}
                   />
                 </Box>
                 <VStack
                   alignItems="flex-start"
-                  ml={4}
-                  gap={2}
-                  py={8}
+                  ml={{ base: 3, md: 4 }}
+                  gap={{ base: 1, md: 2 }}
+                  py={{ base: 6, md: 8 }}
                   my="auto"
                   justifyContent={'center'}
                 >
                   <Heading
-                    size="sm"
+                    size={{ base: 'xs', md: 'sm' }}
                     lineHeight={'normal'}
-                    maxW="300px"
+                    maxW={{ base: '200px', md: '300px' }}
                     whiteSpace="nowrap"
                     overflow="hidden"
                     textOverflow="ellipsis"
@@ -290,7 +290,10 @@ export function QuickPollParticipants({
                       ellipsizeAddress(participant.account_address || '')}
                   </Heading>
                   {participant.type === ParticipantType.Scheduler && (
-                    <Text fontSize={'sm'} color={'text-highlight-primary'}>
+                    <Text
+                      fontSize={{ base: 'xs', md: 'sm' }}
+                      color={'text-highlight-primary'}
+                    >
                       Organizer
                     </Text>
                   )}
@@ -299,8 +302,8 @@ export function QuickPollParticipants({
               {isHost && (
                 <Icon
                   as={IoMdClose}
-                  w={5}
-                  h={5}
+                  w={{ base: 4, md: 5 }}
+                  h={{ base: 4, md: 5 }}
                   display="block"
                   cursor="pointer"
                   color="text-highlight-primary"
@@ -317,8 +320,9 @@ export function QuickPollParticipants({
           variant="outline"
           colorScheme="primary"
           w="100%"
-          px={4}
-          py={3}
+          px={{ base: 3, md: 4 }}
+          py={{ base: 2.5, md: 3 }}
+          fontSize={{ base: 'sm', md: 'md' }}
           onClick={onAddParticipants}
         >
           Add participants
