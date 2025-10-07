@@ -82,7 +82,11 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
         w={{ base: '100%', md: 'auto' }}
       >
         {/* Header Section */}
-        <VStack spacing={{ base: 3, md: 2 }} align="center">
+        <VStack
+          spacing={{ base: 3, md: 2 }}
+          align="center"
+          order={{ base: 1, md: 1 }}
+        >
           <Heading
             as="h1"
             fontSize={{ base: '24px', md: '31.25px' }}
@@ -103,13 +107,7 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
           </Text>
         </VStack>
 
-        {/* Feature Cards Grid */}
-        <Box w="100%">
-          <FeatureCards cards={featureCards} />
-        </Box>
-
-        {/* Call to Action Button */}
-        <Flex justify="center" pt={{ base: 2, md: 1 }} w="100%">
+        <Flex justify="center" w="100%" order={{ base: 2, md: 3 }}>
           <Button
             leftIcon={<HiMiniPlusCircle color="text-primary" size={16} />}
             bg="primary.200"
@@ -134,6 +132,11 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
             Run new poll
           </Button>
         </Flex>
+
+        {/* Feature Cards Grid */}
+        <Box w="100%" order={{ base: 3, md: 2 }}>
+          <FeatureCards cards={featureCards} />
+        </Box>
       </VStack>
     </Box>
   )
