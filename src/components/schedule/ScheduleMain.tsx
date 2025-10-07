@@ -37,6 +37,7 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import {
+  PollStatus,
   QuickPollBySlugResponse,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
@@ -49,6 +50,7 @@ import {
   getGroupsMembers,
   getMeeting,
   getQuickPollById,
+  updateQuickPoll,
 } from '@/utils/api_helper'
 import {
   decodeMeeting,
@@ -79,6 +81,7 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
+import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -618,6 +621,19 @@ const ScheduleMain: FC<IInitialProps> = ({
           meetingRepeat.value,
           selectedPermissions
         )
+
+        try {
+          await updateQuickPoll(pollId, { status: PollStatus.COMPLETED })
+
+          queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
+          queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
+          queryClient.invalidateQueries({
+            queryKey: ['quickpoll-schedule', pollId],
+          })
+          queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+        } catch (error) {
+          handleApiError('Failed to update poll status:', error)
+        }
 
         handlePageSwitch(Page.COMPLETED)
         return
