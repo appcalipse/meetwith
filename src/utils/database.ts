@@ -6408,6 +6408,27 @@ const getQuickPollsForAccount = async (
 
     if (error) throw error
 
+    let countQuery = db.supabase
+      .from('quick_polls')
+      .select('*', { count: 'exact', head: true })
+      .in('id', pollIds)
+
+    if (status) {
+      if (Array.isArray(status)) {
+        countQuery = countQuery.in('status', status)
+      } else {
+        countQuery = countQuery.eq('status', status)
+      }
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      countQuery = countQuery.ilike('title', `%${searchQuery.trim()}%`)
+    }
+
+    const { count: totalCount, error: countError } = await countQuery
+
+    if (countError) throw countError
+
     // Process the results
     const processedPolls = polls.map(poll => {
       // Find the requesting user's participation details
@@ -6435,8 +6456,8 @@ const getQuickPollsForAccount = async (
 
     return {
       polls: processedPolls,
-      total_count: processedPolls.length,
-      has_more: processedPolls.length === limit,
+      total_count: totalCount || 0,
+      has_more: offset + processedPolls.length < (totalCount || 0),
     }
   } catch (error) {
     throw new Error(error instanceof Error ? error.message : 'Unknown error')

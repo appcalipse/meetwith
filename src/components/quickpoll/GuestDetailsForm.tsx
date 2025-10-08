@@ -17,10 +17,10 @@ import { FaArrowLeft } from 'react-icons/fa'
 
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
-import { AvailabilitySlot } from '@/types/QuickPoll'
 import { updateGuestParticipantDetails } from '@/utils/api_helper'
 import { updatePollParticipantAvailability } from '@/utils/api_helper'
 import { useToastHelpers } from '@/utils/toasts'
+import { isValidEmail } from '@/utils/validations'
 
 interface GuestDetailsFormProps {
   participantId: string
@@ -55,9 +55,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
       return
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    if (!isValidEmail(email)) {
       showErrorToast('Invalid email', 'Please enter a valid email address.')
       return
     }

@@ -15,6 +15,9 @@ import {
 } from '@chakra-ui/react'
 import React, { useState } from 'react'
 
+import { useToastHelpers } from '@/utils/toasts'
+import { isValidEmail } from '@/utils/validations'
+
 interface GuestIdentificationModalProps {
   isOpen: boolean
   onClose: () => void
@@ -30,13 +33,20 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
 }) => {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const { showErrorToast } = useToastHelpers()
+
+  const isEmailValid = isValidEmail(email)
 
   const handleSubmit = async () => {
-    if (!email.trim()) return
+    if (!email.trim()) {
+      showErrorToast('Email required', 'Please enter your email address.')
+      return
+    }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) return
+    if (!isEmailValid) {
+      showErrorToast('Invalid email', 'Please enter a valid email address.')
+      return
+    }
 
     setIsLoading(true)
 
@@ -143,11 +153,7 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
                 color: 'neutral.900',
                 cursor: 'not-allowed',
               }}
-              isDisabled={
-                !email.trim() ||
-                !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-                isLoading
-              }
+              isDisabled={!email.trim() || !isEmailValid || isLoading}
             >
               Continue
             </Button>

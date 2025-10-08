@@ -32,7 +32,7 @@ export const generatePollSlug = (title: string): string => {
     trim: true,
   }).substring(0, QUICKPOLL_SLUG_MAX_LENGTH)
 
-  const randomSuffix = Math.random().toString(36).substring(2, 8)
+  const randomSuffix = Math.random().toString(36).substring(2, 6)
   return `${baseSlug}-${randomSuffix}`
 }
 

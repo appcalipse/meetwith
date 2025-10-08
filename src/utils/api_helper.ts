@@ -1937,28 +1937,6 @@ export const getUserLocale = async (): Promise<UserLocale> => {
   )) as UserLocale
 }
 
-export const getQuickPolls = async (
-  limit = QUICKPOLL_DEFAULT_LIMIT,
-  offset = QUICKPOLL_DEFAULT_OFFSET,
-  status?: PollStatus,
-  searchQuery?: string
-): Promise<QuickPollListResponse> => {
-  const params = new URLSearchParams({
-    limit: limit.toString(),
-    offset: offset.toString(),
-  })
-
-  if (status) {
-    params.append('status', status)
-  }
-
-  if (searchQuery && searchQuery.trim()) {
-    params.append('searchQuery', searchQuery.trim())
-  }
-
-  return await internalFetch(`/secure/quickpoll?${params}`)
-}
-
 export const createQuickPoll = async (pollData: CreateQuickPollRequest) => {
   return await internalFetch('/secure/quickpoll', 'POST', pollData)
 }
@@ -2073,9 +2051,10 @@ export const getQuickPollOffice365ConnectUrl = async (
   )
 }
 
-export const getOngoingQuickPolls = async (
+export const getQuickPolls = async (
   limit = QUICKPOLL_DEFAULT_LIMIT,
   offset = QUICKPOLL_DEFAULT_OFFSET,
+  status?: PollStatus | PollStatus[],
   searchQuery?: string
 ): Promise<QuickPollListResponse> => {
   const params = new URLSearchParams({
@@ -2083,26 +2062,17 @@ export const getOngoingQuickPolls = async (
     offset: offset.toString(),
   })
 
-  if (searchQuery && searchQuery.trim()) {
-    params.append('searchQuery', searchQuery.trim())
+  if (status) {
+    if (Array.isArray(status)) {
+      status.forEach(s => params.append('status', s))
+    } else {
+      params.append('status', status)
+    }
   }
-
-  return await internalFetch(`/secure/quickpoll/ongoing-polls?${params}`)
-}
-
-export const getPastQuickPolls = async (
-  limit = QUICKPOLL_DEFAULT_LIMIT,
-  offset = QUICKPOLL_DEFAULT_OFFSET,
-  searchQuery?: string
-): Promise<QuickPollListResponse> => {
-  const params = new URLSearchParams({
-    limit: limit.toString(),
-    offset: offset.toString(),
-  })
 
   if (searchQuery && searchQuery.trim()) {
     params.append('searchQuery', searchQuery.trim())
   }
 
-  return await internalFetch(`/secure/quickpoll/past-polls?${params}`)
+  return await internalFetch(`/secure/quickpoll?${params}`)
 }

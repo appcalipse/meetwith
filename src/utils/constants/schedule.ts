@@ -141,6 +141,11 @@ export const QuickPollPermissionsList = [
     value: MeetingPermissions.INVITE_GUESTS,
     label: 'Guests can add participants',
   },
+  {
+    value: MeetingPermissions.EDIT_MEETING,
+    label: 'Guests can edit the meeting',
+    info: 'Guests will be able to modify the meeting title, description, location, and other details, but not the invitees.',
+  },
 ]
 
 export enum CalendarType {
