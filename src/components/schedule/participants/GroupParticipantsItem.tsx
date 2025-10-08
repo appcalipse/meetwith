@@ -27,6 +27,7 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const {
     groupParticipants,
+    groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
     addGroup,
@@ -35,6 +36,8 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
     groups: allGroups,
   } = useParticipants()
   const allGroupParticipants = groupParticipants[props.groupId] || []
+  const allGroupAvailability = groupAvailability[props.groupId] || []
+
   const participantAddressesSet = useMemo(() => {
     return new Set(
       getMergedParticipants(participants, allGroups, groupParticipants)
@@ -78,15 +81,15 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
         }
       }
     })
+    const filteredAvailability = allGroupAvailability.filter(
+      val => val !== props.address
+    )
 
     setGroupAvailability(prev => ({
       ...prev,
-      [props.groupId]: prev[props.groupId]?.includes(props.address)
-        ? prev[props.groupId].filter(val => val !== props.address)
-        : [
-            ...prev[props.groupId].filter(val => val !== props.address),
-            props.address,
-          ],
+      [props.groupId]: allGroupParticipants.includes(props.address)
+        ? filteredAvailability
+        : [...filteredAvailability, props.address],
     }))
   }
   return (
