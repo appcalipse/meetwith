@@ -5,7 +5,7 @@ import {
 } from '@utils/constants/meeting-types'
 import { z } from 'zod'
 
-import { MeetingProvider } from '@/types/Meeting'
+import { AcceptedToken } from '@/types/chains'
 
 // Meeting Types
 
@@ -67,6 +67,9 @@ export const baseMeetingSchema = z.object({
           'Invalid payment address (must be a valid address)'
         ),
       crypto_network: z.number().int().positive('Crypto network must be valid'), // Positive integer
+      default_token: z.nativeEnum(AcceptedToken, {
+        errorMap: () => ({ message: 'Invalid default token' }),
+      }),
     })
     .optional(), // Plan object is optional
 })
