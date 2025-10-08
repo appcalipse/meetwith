@@ -135,8 +135,7 @@ const ScheduleBase = () => {
     const mergedParticipants = getMergedParticipants(
       participants,
       groups,
-      groupParticipants,
-      currentAccount?.address || ''
+      groupParticipants
     )
     if (mergedParticipants.length > 0) {
       const filteredMeetingOwners = meetingOwners.filter(owner =>
@@ -150,24 +149,7 @@ const ScheduleBase = () => {
     }
   }, [participants])
   const meetingParticipants = useMemo(
-    () =>
-      getMergedParticipants(
-        participants,
-        groups,
-        groupParticipants,
-        currentAccount?.address
-      )
-        .concat([
-          {
-            account_address: currentAccount?.address,
-            name: currentAccount?.preferences?.name,
-            type: ParticipantType.Scheduler,
-            status: ParticipationStatus.Accepted,
-            slot_id: '',
-            meeting_id: '',
-          },
-        ])
-        .filter(val => !val.isHidden),
+    () => getMergedParticipants(participants, groups, groupParticipants),
     [participants, groups, groupParticipants]
   )
   return (
@@ -207,12 +189,7 @@ const ScheduleBase = () => {
         <VStack gap={4} width="100%" alignItems="flex-start">
           {isUpdatingMeeting && !hasPickedNewTime ? (
             <Link href={`/dashboard/${EditMode.GROUPS}`}>
-              <HStack
-                alignItems="flex-start"
-                mb={0}
-                cursor="pointer"
-                onClick={handleClose}
-              >
+              <HStack alignItems="flex-start" mb={0} cursor="pointer">
                 <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
                 <Heading fontSize={16} color="primary.500">
                   Back

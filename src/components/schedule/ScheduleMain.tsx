@@ -81,6 +81,7 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
+import { isAccountSchedulerOrOwner } from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
@@ -204,7 +205,7 @@ const ScheduleMain: FC<IInitialProps> = ({
           slot_id: '',
           meeting_id: '',
         }
-        setParticipants([participant])
+        setParticipants(prev => [...prev, participant])
         const allAddresses = [contact.address]
         if (currentAccount?.address) {
           allAddresses.push(currentAccount?.address)
@@ -260,6 +261,15 @@ const ScheduleMain: FC<IInitialProps> = ({
       const meeting = await getMeeting(meetingId)
       const decryptedMeeting = await decodeMeeting(meeting, currentAccount!)
       if (!decryptedMeeting) {
+        toast({
+          title: 'Meeting Access Denied',
+          description: `You don't have permission to view this meeting. Please log in with account ${meeting?.account_address} or ask the meeting organizer to grant you access.`,
+          status: 'error',
+          duration: 15000,
+          position: 'top',
+          isClosable: true,
+          onCloseComplete: () => push(`/dashboard/${EditMode.MEETINGS}`),
+        })
         return
       }
       setDecryptedMeeting(decryptedMeeting)
@@ -280,7 +290,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         .map(val => val.account_address)
         .filter(value => Boolean(value)) as string[]
       setGroupAvailability({
-        no_group: allAddresses,
+        [NO_GROUP_KEY]: allAddresses,
       })
       const start = utcToZonedTime(meeting.start, timezone)
       const end = utcToZonedTime(meeting.end, timezone)
@@ -298,13 +308,9 @@ const ScheduleMain: FC<IInitialProps> = ({
 
       setSelectedPermissions(decryptedMeeting.permissions || undefined)
 
-      const isSchedulerOrOwner = [
-        ParticipantType.Scheduler,
-        ParticipantType.Owner,
-      ].includes(
-        decryptedMeeting?.participants?.find(
-          p => p.account_address === currentAccount?.address
-        )?.type || ParticipantType?.Invitee
+      const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+        decryptedMeeting?.participants,
+        currentAccount?.address
       )
       if (isSchedulerOrOwner && participants.length === 2) {
         setCanCancel(true)
@@ -669,8 +675,7 @@ const ScheduleMain: FC<IInitialProps> = ({
       const allParticipants = getMergedParticipants(
         actualParticipants,
         groups,
-        groupParticipants,
-        currentAccount?.address || ''
+        groupParticipants
       ).map(val => ({
         ...val,
         type: meetingOwners.some(
@@ -680,24 +685,7 @@ const ScheduleMain: FC<IInitialProps> = ({
           : val.type,
       }))
       const _participants = await parseAccounts(allParticipants)
-      const individualParticipants = actualParticipants.filter(
-        (val): val is ParticipantInfo => !isGroupParticipant(val)
-      )
-      const userData = individualParticipants.find(
-        val => val.account_address === currentAccount?.address
-      )
-      if (userData) {
-        _participants.valid.push(userData)
-      } else {
-        _participants.valid.push({
-          account_address: currentAccount?.address,
-          name: currentAccount?.preferences?.name || '',
-          type: ParticipantType.Scheduler,
-          status: ParticipationStatus.Accepted,
-          slot_id: '',
-          meeting_id: '',
-        })
-      }
+
       if (_participants.invalid.length > 0) {
         toast({
           title: 'Invalid invitees',

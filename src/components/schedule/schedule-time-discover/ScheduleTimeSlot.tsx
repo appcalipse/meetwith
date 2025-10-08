@@ -87,7 +87,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
           }}
         />
       </Tooltip.Trigger>
-      <Tooltip.Content style={{ zIndex: 10 }}>
+      <Tooltip.Content style={{ zIndex: 10 }} side="right">
         <Box
           p={2}
           bg={itemsBgColor}

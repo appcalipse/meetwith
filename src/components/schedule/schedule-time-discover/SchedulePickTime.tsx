@@ -19,8 +19,6 @@ import {
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Select, SingleValue } from 'chakra-react-select'
-import { addDays, isSameMonth } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
 import React, { useEffect, useMemo, useState } from 'react'
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
@@ -44,7 +42,13 @@ import {
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
-import { customSelectComponents, Option } from '@/utils/constants/select'
+import {
+  customSelectComponents,
+  getCustomSelectComponents,
+  Option,
+  timeZoneFilter,
+  TimeZoneOption,
+} from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
@@ -99,6 +103,7 @@ export type Dates = {
 interface ISchedulePickTimeProps {
   openParticipantModal: () => void
 }
+
 export function SchedulePickTime({
   openParticipantModal,
 }: ISchedulePickTimeProps) {
@@ -233,11 +238,12 @@ export function SchedulePickTime({
       timezones.map(tz => ({
         value: tz.tzCode,
         label: tz.name,
+        searchKeys: tz.countries,
       })),
     []
   )
 
-  const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
+  const [tz, setTz] = useState<TimeZoneOption>(
     tzOptions.filter(val => val.value === timezone)[0] || tzOptions[0]
   )
 
@@ -245,33 +251,30 @@ export function SchedulePickTime({
     if (Array.isArray(newValue)) {
       return
     }
-    const timezone = newValue as SingleValue<{ label: string; value: string }>
+    const timezone = newValue as TimeZoneOption
     setTz(timezone)
     setTimezone(
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
   const getDates = (scheduleDuration = duration) => {
-    const days = Array.from({ length: SLOT_LENGTH }, (v, k) => k)
-      .map(k => addDays(currentSelectedDate, k))
+    const days = Array.from({ length: SLOT_LENGTH || 3 }, (v, k) => k)
+      .map(k =>
+        DateTime.fromJSDate(currentSelectedDate)
+          .setZone(timezone)
+          .startOf('day')
+          .plus({ days: k })
+      )
       .filter(val =>
-        isSameMonth(
-          val,
-          DateTime.fromJSDate(currentSelectedDate)
-            .setZone(timezone)
-            .startOf('month')
-            .toJSDate()
-        )
+        DateTime.fromJSDate(currentSelectedDate)
+          .setZone(timezone)
+          .startOf('month')
+          .hasSame(val, 'month')
       )
     return days.map(date => {
-      const slots = getEmptySlots(date, scheduleDuration)
-      date = DateTime.fromJSDate(date)
-        .setZone(timezone)
-        .startOf('day')
-        .toJSDate()
-
+      const slots = getEmptySlots(date.toJSDate(), scheduleDuration)
       return {
-        date,
+        date: date.toJSDate(),
         slots,
       }
     })
@@ -292,12 +295,14 @@ export function SchedulePickTime({
         .endOf('month')
         .toJSDate()
 
-      const accounts = deduplicateArray(Object.values(groupAvailability).flat())
+      const accounts = deduplicateArray(
+        Object.values(groupAvailability).flat()
+      ).filter((val): val is string => Boolean(val))
       const allParticipants = getMergedParticipants(
         participants,
         groups,
         groupAvailability,
-        undefined
+        currentAccount?.address
       )
         .map(val => val.account_address)
         .concat([currentAccount?.address]) as string[]
@@ -347,6 +352,10 @@ export function SchedulePickTime({
           busySlots
         )
       }
+      setBusySlots(busySlotsMap)
+      setMeetingMembers(meetingMembers)
+      setAvailableSlots(availableSlotsMap)
+      setDates(getDates(duration))
       const suggestedSlots = suggestBestSlots(
         monthStart,
         duration,
@@ -356,10 +365,6 @@ export function SchedulePickTime({
         meetingMembers
       )
 
-      setBusySlots(busySlotsMap)
-      setMeetingMembers(meetingMembers)
-      setAvailableSlots(availableSlotsMap)
-      setDates(getDates(duration))
       setSuggestedTimes(suggestedSlots)
     } catch (error: unknown) {
       handleApiError('Error merging availabilities', error)
@@ -500,7 +505,8 @@ export function SchedulePickTime({
               onChange={_onChange}
               className="noLeftBorder timezone-select"
               options={tzOptions}
-              components={customSelectComponents}
+              components={getCustomSelectComponents<TimeZoneOption, boolean>()}
+              filterOption={timeZoneFilter}
               chakraStyles={{
                 container: provided => ({
                   ...provided,
@@ -768,7 +774,9 @@ export function SchedulePickTime({
                             md: 'medium',
                           }}
                         >
-                          {formatInTimeZone(date.date, timezone, 'dd')}
+                          {DateTime.fromJSDate(date.date)
+                            .setZone(timezone)
+                            .toFormat('dd')}
                         </Text>
                         <Text
                           fontWeight={'500'}
@@ -777,7 +785,9 @@ export function SchedulePickTime({
                             md: 'medium',
                           }}
                         >
-                          {formatInTimeZone(date.date, timezone, 'EE')}
+                          {DateTime.fromJSDate(date.date)
+                            .setZone(timezone)
+                            .toFormat('EEE')}
                         </Text>
                       </VStack>
                     </VStack>

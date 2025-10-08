@@ -1,11 +1,12 @@
 import { HStack, Image, Spinner, Text, VStack } from '@chakra-ui/react'
-import { GroupRef } from '@components/group/Groups'
 import { useQuery } from '@tanstack/react-query'
 import React, { forwardRef, useContext, useImperativeHandle } from 'react'
 
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
 import { getGroupsInvites } from '@/utils/api_helper'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 
 import GroupInviteCard from './GroupInviteCard'
 
@@ -20,8 +21,8 @@ export interface GroupInvitesRef {
 const GroupInvites = forwardRef<GroupInvitesRef, Props>(
   ({ currentAccount, search, reloadGroups }: Props, ref) => {
     const { fetchGroupInvitesCount } = useContext(MetricStateContext)
-    const { data, isLoading, refetch } = useQuery({
-      queryKey: ['groupInvites', currentAccount?.address, search],
+    const { data, isLoading } = useQuery({
+      queryKey: QueryKeys.groupInvites(currentAccount?.address, search),
       queryFn: () => {
         return getGroupsInvites(search)
       },
@@ -30,9 +31,14 @@ const GroupInvites = forwardRef<GroupInvitesRef, Props>(
       refetchOnMount: true,
     })
     const groups = data ?? []
+    const resetState = async () => {
+      await queryClient.invalidateQueries({
+        queryKey: QueryKeys.groupInvites(currentAccount?.address, search),
+      })
+    }
     useImperativeHandle(ref, () => ({
       resetState: async () => {
-        await refetch()
+        await resetState()
       },
     }))
     if (isLoading) {
@@ -64,7 +70,7 @@ const GroupInvites = forwardRef<GroupInvitesRef, Props>(
               {...group}
               resetState={() =>
                 Promise.all([
-                  refetch(),
+                  resetState(),
                   reloadGroups(),
                   fetchGroupInvitesCount(),
                 ])

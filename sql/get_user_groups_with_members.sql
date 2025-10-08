@@ -1,3 +1,4 @@
+DROP FUNCTION get_user_groups_with_members(text,text,integer,integer);
 CREATE OR REPLACE FUNCTION get_user_groups_with_members(
     user_address TEXT,
     search_term TEXT DEFAULT NULL,
@@ -6,7 +7,7 @@ CREATE OR REPLACE FUNCTION get_user_groups_with_members(
 )
 RETURNS TABLE(
     role TEXT,
-    id INTEGER,
+    id UUID,
     name TEXT,
     slug TEXT,
     members JSONB
@@ -45,18 +46,16 @@ BEGIN
               AND s.expiry_time > NOW() 
             LIMIT 1
           ),
-          'isContact', CASE 
-              WHEN ci.destination IS NOT NULL OR c.contact_address IS NOT NULL THEN true 
-              ELSE false 
-          END
+          'isContact', c.contact_address IS NOT NULL,
+          'hasContactInvite', ci.destination IS NOT NULL 
         )
       ) as members
     FROM user_groups ug
     JOIN group_members gm ON gm.group_id = ug.id
     JOIN accounts a ON a.address = gm.member_id
     LEFT JOIN account_preferences ap ON ap.owner_account_address = a.address
-    LEFT JOIN contact c ON c.contact_address = a.address AND c.account_owner_address = user_address
-    LEFT JOIN contact_invite ci ON ci.destination = a.address AND ci.account_owner_address = user_address
+    LEFT JOIN contact c ON c.contact_address = a.address AND c.account_owner_address = LOWER(user_address)
+    LEFT JOIN contact_invite ci ON ci.destination = a.address AND ci.account_owner_address = LOWER(user_address)
     GROUP BY ug.id
   ),
   group_invites_data AS (
@@ -67,23 +66,22 @@ BEGIN
           'displayName', COALESCE(ap.name, gi.email, 'Pending User'),
           'avatar_url', ap.avatar_url,
           'address', gi.user_id,
+          'userId', gi.id,
           'role', gi.role,
           'invitePending', true,
           'email', gi.email,
           'discordId', gi.discord_id,
           'domain', NULL,
-          'isContact', CASE 
-              WHEN ci.destination IS NOT NULL OR c.contact_address IS NOT NULL THEN true 
-              ELSE false 
-          END
+          'isContact', c.contact_address IS NOT NULL,
+          'hasContactInvite', ci.destination IS NOT NULL 
         )
       ) as invites
     FROM user_groups ug
     JOIN group_invites gi ON gi.group_id = ug.id
     LEFT JOIN accounts a ON a.address = gi.user_id
     LEFT JOIN account_preferences ap ON ap.owner_account_address = a.address
-    LEFT JOIN contact c ON c.contact_address = a.address AND c.account_owner_address = user_address
-    LEFT JOIN contact_invite ci ON ci.destination = a.address AND ci.account_owner_address = user_address
+    LEFT JOIN contact c ON c.contact_address = a.address AND c.account_owner_address = LOWER(user_address)
+    LEFT JOIN contact_invite ci ON ci.account_owner_address = LOWER(user_address) AND ci.destination = COALESCE(NULLIF(gi.email, ''), a.address)
     GROUP BY ug.id
   ),
   combined_data AS (

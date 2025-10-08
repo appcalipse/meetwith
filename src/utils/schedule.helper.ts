@@ -14,7 +14,7 @@ import { isGroupParticipant, Participant } from '@/types/schedule'
 export const getMergedParticipants = (
   participants: Array<Participant>,
   groups: Array<GetGroupsFullResponse>,
-  groupParticipants: Record<string, Array<string>>,
+  groupParticipants: Record<string, Array<string> | undefined>,
   accountAddress?: string
 ) => {
   const allParticipants: Array<ParticipantInfo> = []
@@ -50,7 +50,9 @@ export const getMergedParticipants = (
       allParticipants.push(participant)
     }
   }
-  return allParticipants.filter(val => val.account_address !== accountAddress)
+  return accountAddress
+    ? allParticipants.filter(val => val.account_address !== accountAddress)
+    : allParticipants
 }
 
 export const parseAccounts = async (

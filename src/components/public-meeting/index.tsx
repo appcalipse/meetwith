@@ -10,7 +10,6 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import LogoModalLoading from '@components/Loading/LogoModalLoading'
-import ModalLoading from '@components/Loading/ModalLoading'
 import MeetingScheduledDialog from '@components/meeting/MeetingScheduledDialog'
 import BasePage from '@components/public-meeting/BasePage'
 import BookingComponent from '@components/public-meeting/BookingComponent'
@@ -47,7 +46,7 @@ import {
   PublicSchedulingSteps,
   SessionType,
 } from '@utils/constants/meeting-types'
-import { Option } from '@utils/constants/select'
+import { Option, TimeZoneOption } from '@utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@utils/date_helper'
 import {
   AllMeetingSlotsUsedError,
@@ -86,7 +85,6 @@ import {
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
 import { decryptContent } from '@/utils/cryptography'
-import { handleApiError } from '@/utils/error_helper'
 import { isJson } from '@/utils/generic_utils'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
@@ -95,6 +93,7 @@ const tzs = timezones.map(tz => {
   return {
     value: String(tz.tzCode),
     label: tz.name,
+    searchKeys: tz.countries,
   }
 })
 interface IProps {
@@ -161,8 +160,8 @@ interface IScheduleContext {
   setSelectedMonth: React.Dispatch<React.SetStateAction<Date>>
   busySlots: Interval[]
   selfBusySlots: Interval[]
-  timezone: Option<string>
-  setTimezone: React.Dispatch<React.SetStateAction<Option<string>>>
+  timezone: TimeZoneOption
+  setTimezone: React.Dispatch<React.SetStateAction<TimeZoneOption>>
   getAvailableSlots: (skipCache?: boolean) => Promise<void>
   confirmSchedule: (
     scheduleType: SchedulingType,
@@ -275,7 +274,7 @@ const scheduleBaseState: IScheduleContext = {
   setSelectedMonth: () => {},
   busySlots: [],
   selfBusySlots: [],
-  timezone: { label: '', value: '' },
+  timezone: { label: '', value: '', searchKeys: [] },
   setTimezone: () => {},
   getAvailableSlots: async () => {},
   confirmSchedule: async () => {
@@ -362,7 +361,7 @@ const PublicPage: FC<IProps> = props => {
   )
   const currentAccount = useAccountContext()
 
-  const [timezone, setTimezone] = useState<Option<string>>(
+  const [timezone, setTimezone] = useState<TimeZoneOption>(
     tzs.find(
       val =>
         val.value ===
@@ -466,11 +465,17 @@ const PublicPage: FC<IProps> = props => {
       query: queryExists ? query : undefined,
     })
     if (type?.plan) {
-      const selectedChain =
-        supportedChains.find(
-          network => network.id === type?.plan?.default_chain_id
-        )?.chain || undefined
-      handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
+      const baseDetails = supportedChains.find(
+        network => network.id === type?.plan?.default_chain_id
+      )
+      const selectedChain = baseDetails?.chain || undefined
+      const acceptedTokens = baseDetails?.acceptableTokens.find(
+        token => token.token === type?.plan?.default_token
+      )
+      handleSetTokenAndChain(
+        acceptedTokens?.token || AcceptedToken.USDC,
+        selectedChain
+      )
       const localStorageTransaction = localStorage.getItem(
         `${type.id}:transaction`
       )
@@ -567,11 +572,17 @@ const PublicPage: FC<IProps> = props => {
             setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
         }
         if (type?.plan) {
-          const selectedChain =
-            supportedChains.find(
-              network => network.id === type?.plan?.default_chain_id
-            )?.chain || undefined
-          handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
+          const baseDetails = supportedChains.find(
+            network => network.id === type?.plan?.default_chain_id
+          )
+          const selectedChain = baseDetails?.chain || undefined
+          const acceptedTokens = baseDetails?.acceptableTokens.find(
+            token => token.token === type?.plan?.default_token
+          )
+          handleSetTokenAndChain(
+            acceptedTokens?.token || AcceptedToken.USDC,
+            selectedChain
+          )
         }
       }
     }
@@ -1322,14 +1333,15 @@ const PublicPage: FC<IProps> = props => {
             )}
 
             {/* Powered by Meetwith branding */}
-            <Link href="/" _hover={{ textDecoration: 'none' }}>
-              <HStack
-                spacing={2}
-                justify="center"
-                mt={24}
-                mb={0}
+            <HStack spacing={2} justify="center" mt={24} mb={0}>
+              <Link
+                href="/"
+                _hover={{ textDecoration: 'none', opacity: 0.8 }}
                 cursor="pointer"
-                _hover={{ opacity: 0.8 }}
+                display="flex"
+                alignItems="center"
+                gap={2}
+                w="fit-content"
               >
                 <Image
                   src="/assets/logo.svg"
@@ -1340,8 +1352,8 @@ const PublicPage: FC<IProps> = props => {
                 <Text fontSize="12.8px" color="neutral.300" fontWeight={500}>
                   Powered by Meetwith
                 </Text>
-              </HStack>
-            </Link>
+              </Link>
+            </HStack>
           </Container>
         </VStack>
       </ScheduleStateContext.Provider>

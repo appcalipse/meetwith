@@ -4,8 +4,7 @@ import {
   FormControl,
   FormHelperText,
   FormLabel,
-  HStack,
-  Icon,
+  Heading,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -13,26 +12,17 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
-  useDisclosure,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { FC, useCallback, useMemo, useState } from 'react'
-import { FaChevronDown } from 'react-icons/fa'
+import React, { FC, useCallback, useMemo } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
-import GroupContactModal from '@/components/contact/GroupContactModal'
 import PublicGroupLink from '@/components/group/PublicGroupLink'
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
-import { LeanContact } from '@/types/Contacts'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { deduplicateArray } from '@/utils/generic_utils'
@@ -40,6 +30,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 
 import AddFromContact from './AddFromContact'
 import AddFromGroups from './AddFromGroups'
+import AllMeetingParticipants from './AllMeetingParticipants'
 interface IProps {
   isOpen: boolean
   onClose: () => void
@@ -64,8 +55,8 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
 
       React.startTransition(() => {
         setParticipants(prevUsers => {
-          const groupParticipants = prevUsers.filter(user =>
-            isGroupParticipant(user)
+          const groupParticipants = prevUsers?.filter(
+            user => isGroupParticipant(user) || user.isHidden
           )
           return [...groupParticipants, ..._participants]
         })
@@ -103,7 +94,10 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
     }
   }, [])
   const nonGroupParticipants = useMemo(
-    () => participants.filter(participant => !isGroupParticipant(participant)),
+    () =>
+      participants.filter(
+        participant => !isGroupParticipant(participant) && !participant.isHidden
+      ),
     [participants]
   )
 
@@ -119,11 +113,13 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
         py={6}
         shadow="none"
       >
-        <ModalHeader fontSize="24px" py={0}>
-          Invite Participants
-        </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
+          <AllMeetingParticipants />
+          <Divider my={6} borderColor="neutral.400" />
+          <Heading fontSize="24px" pb={2} mb={4}>
+            Invite more participants
+          </Heading>
           {isGroupPrefetching ? (
             <VStack mb={6} w="100%" justifyContent="center">
               <Loading />
@@ -138,10 +134,7 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
           <Divider my={6} borderColor="neutral.400" />
           <FormControl w="100%" maxW="100%">
             <FormLabel htmlFor="participants">
-              Participants
-              <Text color="red.500" display="inline">
-                *
-              </Text>{' '}
+              Invite participants by their ID (Cc)
               <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
             </FormLabel>
             <Box w="100%" maxW="100%">
@@ -150,10 +143,6 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
                 placeholder="Enter email, wallet address or ENS of user"
                 onChange={onParticipantsChange}
                 renderItem={renderParticipantItem}
-                inputProps={{
-                  pr: 180,
-                  errorBorderColor: 'red.500',
-                }}
               />
             </Box>
             <FormHelperText mt={1}>
