@@ -49,30 +49,13 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
     [participants]
   )
   const meetingMembers = useMemo(
-    () =>
-      getMergedParticipants(
-        participants,
-        allGroups,
-        groupParticipants,
-        currentAccount?.address
-      )
-        .concat([
-          {
-            account_address: currentAccount?.address,
-            name: currentAccount?.preferences?.name,
-            type: ParticipantType.Scheduler,
-            status: ParticipationStatus.Accepted,
-            slot_id: '',
-            meeting_id: '',
-          },
-        ])
-        .filter(val => !val.isHidden),
+    () => getMergedParticipants(participants, allGroups, groupParticipants),
     [participants, allGroups, groupParticipants]
   )
   const allAvailabilities = useMemo(
     () =>
       deduplicateArray(Object.values(groupAvailability).flat()).map(val =>
-        val.toLowerCase()
+        val?.toLowerCase()
       ),
     [groupAvailability]
   )
@@ -102,18 +85,16 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
     return participantsMerged.length + 1
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
   const handleParticipantRemove = (participant: ParticipantInfo) => {
+    const account_address = participant.account_address?.toLowerCase()
+    if (account_address === currentAccount?.address || !account_address) return
     React.startTransition(() => {
       setParticipants(prev =>
         prev.filter(p =>
           isGroupParticipant(p)
             ? true
-            : p.account_address?.toLowerCase() !==
-              participant.account_address?.toLowerCase()
+            : p.account_address?.toLowerCase() !== account_address
         )
       )
-      const account_address = participant.account_address?.toLowerCase()
-      if (account_address === currentAccount?.address || !account_address)
-        return
       const keys = Object.keys(groupAvailability)
       for (const key of keys) {
         setGroupParticipants(prev => {
@@ -226,7 +207,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                   <Heading
                     size="sm"
                     lineHeight={'normal'}
-                    maxW="300px"
+                    maxW="180px"
                     whiteSpace="nowrap"
                     overflow="hidden"
                     textOverflow="ellipsis"

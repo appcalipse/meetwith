@@ -20,10 +20,7 @@ import InfoTooltip from '@/components/profile/components/Tooltip'
 import customTheme from '@/styles/theme'
 import { MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
-import {
-  getAccountDisplayName,
-  getInvitedUserDisplayName,
-} from '@/utils/user_manager'
+import { getInvitedUserDisplayName } from '@/utils/user_manager'
 
 interface InvitedUsersList {
   users: InvitedUser[]

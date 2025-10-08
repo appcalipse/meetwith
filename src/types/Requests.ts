@@ -7,7 +7,7 @@ import {
 } from '@utils/constants/meeting-types'
 import { Encrypted } from 'eth-crypto'
 
-import { SupportedChain } from '@/types/chains'
+import { AcceptedToken, SupportedChain } from '@/types/chains'
 import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
@@ -218,6 +218,7 @@ export interface CreateMeetingTypeRequest {
     payment_channel?: PaymentChannel
     payment_address?: string
     crypto_network?: number
+    default_token?: AcceptedToken
   }
 }
 

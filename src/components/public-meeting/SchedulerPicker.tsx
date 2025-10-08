@@ -12,13 +12,7 @@ import * as Sentry from '@sentry/nextjs'
 import { chakraComponents, Props, Select } from 'chakra-react-select' // TODO: Move all date logic to luxon
 import { DateTime, Interval } from 'luxon'
 import React, { useCallback, useContext, useEffect } from 'react'
-import {
-  FaArrowLeft,
-  FaCalendar,
-  FaChevronDown,
-  FaClock,
-  FaGlobe,
-} from 'react-icons/fa'
+import { FaArrowLeft, FaCalendar, FaClock, FaGlobe } from 'react-icons/fa'
 
 import Loading from '@/components/Loading' // TODO: create helper function to merge availabilities from availability block
 import Calendar from '@/components/MeetSlotPicker/calendar/index'
@@ -31,14 +25,19 @@ import { ScheduleForm } from '@/components/schedule/schedule-form'
 import useAccountContext from '@/hooks/useAccountContext'
 import { logEvent } from '@/utils/analytics'
 import { doesContactExist } from '@/utils/api_helper'
-import { Option } from '@/utils/constants/select'
+import {
+  getCustomSelectComponents,
+  timeZoneFilter,
+  TimeZoneOption,
+} from '@/utils/constants/select'
 import { getFormattedDateAndDuration, timezones } from '@/utils/date_helper'
 import { generateTimeSlots } from '@/utils/slots.helper'
 
-const tzs = timezones.map(tz => {
+const tzs: TimeZoneOption[] = timezones.map(tz => {
   return {
     value: String(tz.tzCode),
     label: tz.name,
+    searchKeys: tz.countries || [],
   }
 })
 const SchedulerPicker = () => {
@@ -168,25 +167,9 @@ const SchedulerPicker = () => {
     ]
   )
   const _onChange = (newValue: unknown) => {
-    const timezone = newValue as Option<string>
+    if (Array.isArray(newValue)) return
+    const timezone = newValue as TimeZoneOption | null
     if (timezone) setTimezone(timezone)
-  }
-  const customComponents: Props['components'] = {
-    Control: props => (
-      <chakraComponents.Control {...props}>
-        <FaGlobe size={24} /> {props.children}
-      </chakraComponents.Control>
-    ),
-    ClearIndicator: props => (
-      <chakraComponents.ClearIndicator className="noBg" {...props}>
-        <Icon as={FaChevronDown} w={4} h={4} />
-      </chakraComponents.ClearIndicator>
-    ),
-    DropdownIndicator: props => (
-      <chakraComponents.DropdownIndicator className="noBg" {...props}>
-        <Icon as={FaChevronDown} />
-      </chakraComponents.DropdownIndicator>
-    ),
   }
 
   const handlePickTime = (time: Date) => {
@@ -202,6 +185,14 @@ const SchedulerPicker = () => {
     startTime,
     selectedType?.duration_minutes || 0
   )
+  const customComponents: Props<TimeZoneOption, boolean>['components'] = {
+    ...getCustomSelectComponents<TimeZoneOption, boolean>(),
+    Control: props => (
+      <chakraComponents.Control {...props}>
+        <FaGlobe size={24} /> {props.children}
+      </chakraComponents.Control>
+    ),
+  }
 
   return (
     <Box
@@ -265,6 +256,7 @@ const SchedulerPicker = () => {
               className="hideBorder"
               options={tzs}
               components={customComponents}
+              filterOption={timeZoneFilter}
             />
           </VStack>
           {checkingSlots ? (

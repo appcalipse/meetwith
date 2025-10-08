@@ -9,9 +9,7 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
-  useToast,
 } from '@chakra-ui/react'
-import { useRouter } from 'next/router'
 import React from 'react'
 
 import { leaveGroup } from '@/utils/api_helper'
@@ -20,7 +18,7 @@ import { IsGroupAdminError } from '@/utils/errors'
 
 export interface IGroupInviteCardModal {
   groupID: string | null
-  resetState: () => void
+  resetState: () => Promise<void>
   onClose: () => void
   isOpen: boolean
   setToggleAdminLeaveModal: (value: boolean) => void
@@ -32,12 +30,11 @@ const LeaveGroupModal: React.FC<IGroupInviteCardModal> = props => {
     if (!props.groupID) return
     setIsLeaving(true)
     try {
-      const isSuccessful = await leaveGroup(props.groupID)
-      if (!isSuccessful) return
+      await leaveGroup(props.groupID)
+      await props.resetState()
       setIsLeaving(false)
-      props.resetState()
       props.onClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof IsGroupAdminError) {
         props.onClose()
         props.setToggleAdminLeaveModal(true)

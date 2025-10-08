@@ -15,10 +15,11 @@ import React from 'react'
 
 import { logEvent } from '@/utils/analytics'
 import { rejectGroup } from '@/utils/api_helper'
+import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCardModal {
   group_id: string
-  resetState: () => void
+  resetState: () => Promise<unknown>
   onClose: () => void
   isOpen: boolean
 }
@@ -41,7 +42,9 @@ const GroupInviteCardModal: React.FC<IGroupInviteCardModal> = props => {
       logEvent('Rejected invite', {
         group_id: props.group_id,
       })
-    } catch (error: any) {}
+    } catch (error: unknown) {
+      handleApiError('Error declining invite', error)
+    }
     setDeclining(false)
     props.onClose()
   }

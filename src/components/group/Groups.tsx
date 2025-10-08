@@ -33,6 +33,7 @@ import { getGroupsFull } from '@/utils/api_helper'
 import { GROUP_PAGE_SIZE } from '@/utils/constants/group'
 import { ApiFetchError } from '@/utils/errors'
 import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 
 import GroupCard from '../group/GroupCard'
 import InviteModal from '../group/InviteModal'
@@ -80,36 +81,34 @@ const Groups = forwardRef<GroupRef, Props>(
   ({ currentAccount, search }: Props, ref) => {
     const toast = useToast()
 
-    const {
-      data,
-      isLoading,
-      isFetching,
-      hasNextPage,
-      fetchNextPage,
-      refetch,
-      error,
-    } = useInfiniteQuery({
-      queryKey: QueryKeys.groups(currentAccount?.address),
-      queryFn: ({ pageParam = 0 }) => {
-        return getGroupsFull(GROUP_PAGE_SIZE, pageParam, search)
-      },
-      getNextPageParam: (lastPage, allPages) => {
-        if (!lastPage || lastPage.length < GROUP_PAGE_SIZE) {
-          return undefined
-        }
-        return allPages.flat().length
-      },
-      enabled: !!currentAccount?.address,
-      staleTime: 0,
-      refetchOnMount: true,
-    })
+    const { data, isLoading, isFetching, hasNextPage, fetchNextPage, error } =
+      useInfiniteQuery({
+        queryKey: QueryKeys.groups(currentAccount?.address, search),
+        queryFn: ({ pageParam = 0 }) => {
+          return getGroupsFull(GROUP_PAGE_SIZE, pageParam, search)
+        },
+        getNextPageParam: (lastPage, allPages) => {
+          if (!lastPage || lastPage.length < GROUP_PAGE_SIZE) {
+            return undefined
+          }
+          return allPages.flat().length
+        },
+        enabled: !!currentAccount?.address,
+        staleTime: 0,
+        refetchOnMount: true,
+      })
     const groups = data?.pages.flat() ?? []
     const firstFetch = isLoading
     const loading = isFetching
     const noMoreFetch = !hasNextPage
+    const resetState = async () => {
+      await queryClient.invalidateQueries({
+        queryKey: QueryKeys.groups(currentAccount?.address, search),
+      })
+    }
     useImperativeHandle(ref, () => ({
       resetState: async () => {
-        await refetch()
+        await resetState()
       },
     }))
     useEffect(() => {
@@ -176,10 +175,6 @@ const Groups = forwardRef<GroupRef, Props>(
       if (hasNextPage && !isFetching) {
         fetchNextPage()
       }
-    }
-
-    const resetState = async () => {
-      await refetch()
     }
 
     const handleAddNewMember = (groupId: string, groupName: string) => {

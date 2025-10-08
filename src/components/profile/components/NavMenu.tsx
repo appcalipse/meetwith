@@ -163,7 +163,6 @@ export const NavMenu: React.FC<{
   const handleGroupInvites = async () => {
     if (!currentAccount?.address) return
     const invitedGroups = await getGroupsInvites()
-    setNoOfInvitedGroups(invitedGroups?.length || 0)
     invitedGroups?.forEach((data, index) => {
       if (!toast.isActive(data.id)) {
         toast({
