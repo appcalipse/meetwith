@@ -8,7 +8,6 @@ import {
   InputRightElement,
   Link,
   Text,
-  useToast,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import { useContext, useState } from 'react'
@@ -25,6 +24,7 @@ import {
 } from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import { useToastHelpers } from '@/utils/toasts'
 
 interface WebDavDetailsPanelProps {
   isApple: boolean
@@ -71,44 +71,29 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
   const [url, setUrl] = useState(isApple ? APPLE_WEBDAV_URL : payload?.url)
   const [username, setUsername] = useState(payload?.username)
   const [password, setPassword] = useState(payload?.password)
-  const toast = useToast()
+  const { showErrorToast, showSuccessToast } = useToastHelpers()
   const onboardingContext = useContext(OnboardingContext)
 
   const checkWebDav = async () => {
     if (!url || !username || !password) {
-      toast({
-        title: 'URL, Username and Password are required.',
-        description: 'Please enter your WebDAV URL, username and password.',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      showErrorToast(
+        'URL, Username and Password are required.',
+        'Please enter your WebDAV URL, username and password.'
+      )
       setLoading(false)
     }
     try {
       const calendars = await validateWebdav(url!, username!, password!)
       if (!calendars) {
-        toast({
-          title: 'Something went wrong',
-          description: 'Invalid credentials provided.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
+        showErrorToast('Something went wrong', 'Invalid credentials provided.')
       }
       return calendars
     } catch (e: unknown) {
       const error = e as Error
-      toast({
-        title: 'Something went wrong',
-        description: error.message || 'Invalid credentials provided.',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      showErrorToast(
+        'Something went wrong',
+        error.message || 'Invalid credentials provided.'
+      )
     }
   }
 
@@ -121,6 +106,26 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
       }
 
       if (isQuickPoll && participantId) {
+        if (isApple) {
+          if (!username || !password) {
+            showErrorToast(
+              'Username and Password are required.',
+              'Please enter your Apple ID email and app specific password.'
+            )
+            setLoading(false)
+            return
+          }
+        } else {
+          if (!username || !password || !url) {
+            showErrorToast(
+              'URL, Username and Password are required.',
+              'Please enter your WebDAV URL, username and password.'
+            )
+            setLoading(false)
+            return
+          }
+        }
+
         const credentials = {
           url: isApple ? APPLE_WEBDAV_URL : url,
           username,
@@ -136,15 +141,10 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
       } else {
         if (isApple) {
           if (!username || !password) {
-            toast({
-              title: 'Username and Password are required.',
-              description:
-                'Please enter your Apple ID email and app specific password.',
-              status: 'error',
-              duration: 5000,
-              position: 'top',
-              isClosable: true,
-            })
+            showErrorToast(
+              'Username and Password are required.',
+              'Please enter your Apple ID email and app specific password.'
+            )
             setLoading(false)
             return
           }
@@ -168,15 +168,10 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           })
         } else {
           if (!username || !password || !url) {
-            toast({
-              title: 'URL, Username and Password are required.',
-              description:
-                'Please enter your WebDAV URL, username and password.',
-              status: 'error',
-              duration: 5000,
-              position: 'top',
-              isClosable: true,
-            })
+            showErrorToast(
+              'URL, Username and Password are required.',
+              'Please enter your WebDAV URL, username and password.'
+            )
             setLoading(false)
             return
           }
@@ -204,14 +199,10 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
       }
 
       !!onSuccess && (await onSuccess())
-      toast({
-        title: 'Calendar connected',
-        description: "You've just connected a new calendar provider.",
-        status: 'success',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      showSuccessToast(
+        'Calendar connected',
+        "You've just connected a new calendar provider."
+      )
     } finally {
       setLoading(false)
     }

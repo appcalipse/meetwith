@@ -227,6 +227,10 @@ const ScheduleMain: FC<IInitialProps> = ({
       setContent(poll.poll.description)
       setDuration(poll.poll.duration_minutes)
 
+      if (poll.poll.permissions && poll.poll.permissions.length > 0) {
+        setSelectedPermissions(poll.poll.permissions as MeetingPermissions[])
+      }
+
       const pollParticipants: ParticipantInfo[] = poll.poll.participants.map(
         participant => ({
           account_address: participant.account_address || '',

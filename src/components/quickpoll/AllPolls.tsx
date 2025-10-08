@@ -7,7 +7,6 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  Spinner,
   Tab,
   TabList,
   TabPanel,
@@ -19,116 +18,48 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
-import { FiRefreshCcw, FiSearch } from 'react-icons/fi'
+import { FiSearch } from 'react-icons/fi'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
-import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
-import EmptyState from '@/components/EmptyState'
-import Pagination from '@/components/profile/Pagination'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
-import { getOngoingQuickPolls, getPastQuickPolls } from '@/utils/api_helper'
-import { QUICKPOLL_DEFAULT_LIMIT } from '@/utils/constants'
-import { handleApiError } from '@/utils/error_helper'
+import { PollStatus } from '@/types/QuickPoll'
+import { getQuickPolls } from '@/utils/api_helper'
 
-import PollCard from './PollCard'
+import OngoingPolls from './OngoingPolls'
+import PastPolls from './PastPolls'
 
 const AllPolls = () => {
   const { push } = useRouter()
   const [activeTab, setActiveTab] = useState(0)
-  const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
 
-  const {
-    data: ongoingPollsData,
-    isLoading: isLoadingOngoing,
-    error: ongoingError,
-    refetch: refetchOngoing,
-  } = useQuery({
-    queryKey: ['ongoing-quickpolls', debouncedSearchQuery, currentPage],
+  const { data: ongoingCountData, isLoading: isLoadingOngoingCount } = useQuery(
+    {
+      queryKey: ['ongoing-quickpolls-count', debouncedSearchQuery],
+      queryFn: () =>
+        getQuickPolls(1, 0, PollStatus.ONGOING, debouncedSearchQuery),
+    }
+  )
+
+  const { data: pastCountData, isLoading: isLoadingPastCount } = useQuery({
+    queryKey: ['past-quickpolls-count', debouncedSearchQuery],
     queryFn: () =>
-      getOngoingQuickPolls(
-        QUICKPOLL_DEFAULT_LIMIT,
-        (currentPage - 1) * QUICKPOLL_DEFAULT_LIMIT,
+      getQuickPolls(
+        1,
+        0,
+        [PollStatus.COMPLETED, PollStatus.CANCELLED],
         debouncedSearchQuery
       ),
-    onError: (err: unknown) => {
-      handleApiError('Failed to load ongoing polls', err)
-    },
   })
-
-  const {
-    data: pastPollsData,
-    isLoading: isLoadingPast,
-    error: pastError,
-    refetch: refetchPast,
-  } = useQuery({
-    queryKey: ['past-quickpolls', debouncedSearchQuery, currentPage],
-    queryFn: () =>
-      getPastQuickPolls(
-        QUICKPOLL_DEFAULT_LIMIT,
-        (currentPage - 1) * QUICKPOLL_DEFAULT_LIMIT,
-        debouncedSearchQuery
-      ),
-    onError: (err: unknown) => {
-      handleApiError('Failed to load past polls', err)
-    },
-  })
-
-  // Get current tab's data
-  const currentPollsData = activeTab === 0 ? ongoingPollsData : pastPollsData
-  const currentIsLoading = activeTab === 0 ? isLoadingOngoing : isLoadingPast
-  const currentError = activeTab === 0 ? ongoingError : pastError
-  const currentRefetch = activeTab === 0 ? refetchOngoing : refetchPast
-
-  const currentPolls = currentPollsData?.polls || []
-  const totalCount = currentPollsData?.total_count || 0
-  const totalPages = Math.ceil(totalCount / QUICKPOLL_DEFAULT_LIMIT)
 
   const handleTabChange = (index: number) => {
     setActiveTab(index)
-    setCurrentPage(1)
   }
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
-
-  if (currentIsLoading && !debouncedSearchQuery) {
+  if ((isLoadingOngoingCount || isLoadingPastCount) && !debouncedSearchQuery) {
     return <CustomLoading text="Loading polls..." />
-  }
-
-  // Error state
-  if (currentError) {
-    return (
-      <Box width="100%" bg="neutral.850" minHeight="100vh" px={6} py={8}>
-        <VStack spacing={6} align="stretch" maxW="1200px" mx="auto">
-          <CustomError
-            title="Failed to load polls"
-            description="We couldn't load your polls. Please try again or contact support if the problem persists."
-            imageAlt="Error loading polls"
-          />
-          <Flex justify="center">
-            <Button
-              leftIcon={<FiRefreshCcw size={16} />}
-              variant="outline"
-              borderColor="primary.200"
-              color="primary.200"
-              size="md"
-              px={5}
-              py={2.5}
-              fontSize="14px"
-              fontWeight="600"
-              borderRadius="8px"
-              onClick={() => currentRefetch()}
-            >
-              Try Again
-            </Button>
-          </Flex>
-        </VStack>
-      </Box>
-    )
   }
 
   return (
@@ -224,7 +155,7 @@ const AllPolls = () => {
                   bg: 'primary.200',
                 }}
               >
-                Ongoing Polls ({ongoingPollsData?.total_count || 0})
+                Ongoing Polls ({ongoingCountData?.total_count || 0})
               </Tab>
               <Tab
                 rounded={4}
@@ -239,7 +170,7 @@ const AllPolls = () => {
                   bg: 'primary.200',
                 }}
               >
-                Past Polls ({pastPollsData?.total_count || 0})
+                Past Polls ({pastCountData?.total_count || 0})
               </Tab>
             </TabList>
 
@@ -274,73 +205,13 @@ const AllPolls = () => {
           {/* Poll Cards */}
           <TabPanels mt={6}>
             <TabPanel p={0}>
-              {currentIsLoading && debouncedSearchQuery ? (
-                <Flex justify="center" align="center" py={8}>
-                  <VStack spacing={4}>
-                    <Spinner size="lg" color="primary.400" />
-                    <Text color="neutral.400" fontSize="sm">
-                      Searching polls...
-                    </Text>
-                  </VStack>
-                </Flex>
-              ) : currentPolls.length > 0 ? (
-                <VStack spacing={4} align="stretch">
-                  {currentPolls.map(poll => (
-                    <PollCard key={poll.id} poll={poll} />
-                  ))}
-                </VStack>
-              ) : debouncedSearchQuery ? (
-                <EmptyState
-                  title="No polls found"
-                  description={`No polls match "${debouncedSearchQuery}". Try a different search term.`}
-                />
-              ) : (
-                <EmptyState
-                  title="No ongoing polls"
-                  description="You don't have any ongoing polls at the moment. Create a new poll to get started."
-                />
-              )}
+              <OngoingPolls searchQuery={debouncedSearchQuery} />
             </TabPanel>
             <TabPanel p={0}>
-              {currentIsLoading && debouncedSearchQuery ? (
-                <Flex justify="center" align="center" py={8}>
-                  <VStack spacing={4}>
-                    <Spinner size="lg" color="primary.400" />
-                    <Text color="neutral.400" fontSize="sm">
-                      Searching polls...
-                    </Text>
-                  </VStack>
-                </Flex>
-              ) : currentPolls.length > 0 ? (
-                <VStack spacing={4} align="stretch">
-                  {currentPolls.map(poll => (
-                    <PollCard key={poll.id} poll={poll} />
-                  ))}
-                </VStack>
-              ) : debouncedSearchQuery ? (
-                <EmptyState
-                  title="No polls found"
-                  description={`No polls match "${debouncedSearchQuery}". Try a different search term.`}
-                />
-              ) : (
-                <EmptyState
-                  title="No past polls"
-                  description="You don't have any completed or cancelled polls yet."
-                />
-              )}
+              <PastPolls searchQuery={debouncedSearchQuery} />
             </TabPanel>
           </TabPanels>
         </Tabs>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-            isLoading={currentIsLoading}
-          />
-        )}
       </VStack>
     </Box>
   )

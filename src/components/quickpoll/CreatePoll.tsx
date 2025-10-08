@@ -77,7 +77,7 @@ import {
 } from '@/utils/constants/schedule'
 import { createLocalDate, createLocalDateTime } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
-import { deduplicateArray } from '@/utils/generic_utils'
+import { clearValidationError, deduplicateArray } from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { quickPollSchema } from '@/utils/schemas'
@@ -153,6 +153,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
     MeetingPermissions.SEE_GUEST_LIST,
+    MeetingPermissions.EDIT_MEETING,
   ])
 
   // Get all participants
@@ -296,6 +297,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       )
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls-count'] })
+      queryClient.invalidateQueries({ queryKey: ['past-quickpolls-count'] })
 
       // Reset form state
       setFormData({
@@ -333,6 +336,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['quickpoll', pollSlug] })
+      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls-count'] })
+      queryClient.invalidateQueries({ queryKey: ['past-quickpolls-count'] })
       router.push('/dashboard/quickpoll')
     },
     onError: error => {
@@ -353,6 +358,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       )
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls-count'] })
+      queryClient.invalidateQueries({ queryKey: ['past-quickpolls-count'] })
       closeCancelModal()
       router.push('/dashboard/quickpoll')
     },
@@ -728,16 +735,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 borderColor="neutral.400"
                 value={formData.title}
                 onChange={e => {
-                  setFormData({ ...formData, title: e.target.value })
+                  setFormData(prev => ({ ...prev, title: e.target.value }))
                 }}
-                onBlur={() => {
-                  if (validationErrors.title) {
-                    setValidationErrors(prev => {
-                      const { title, ...rest } = prev
-                      return rest
-                    })
-                  }
-                }}
+                onBlur={clearValidationError(setValidationErrors, 'title')}
                 errorBorderColor="red.500"
                 isInvalid={!!validationErrors.title}
                 isDisabled={isLoading}
@@ -766,16 +766,12 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 id="duration"
                 placeholder="Duration"
                 onChange={e => {
-                  setFormData({ ...formData, duration: Number(e.target.value) })
+                  setFormData(prev => ({
+                    ...prev,
+                    duration: Number(e.target.value),
+                  }))
                 }}
-                onBlur={() => {
-                  if (validationErrors.duration) {
-                    setValidationErrors(prev => {
-                      const { duration, ...rest } = prev
-                      return rest
-                    })
-                  }
-                }}
+                onBlur={clearValidationError(setValidationErrors, 'duration')}
                 value={formData.duration}
                 borderColor="neutral.400"
                 width={'max-content'}
@@ -809,7 +805,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               <SingleDatepicker
                 date={formData.startDate}
                 onDateChange={date =>
-                  setFormData({ ...formData, startDate: date })
+                  setFormData(prev => ({ ...prev, startDate: date }))
                 }
                 blockPast={true}
                 inputProps={{
@@ -828,7 +824,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               <SingleDatepicker
                 date={formData.endDate}
                 onDateChange={date =>
-                  setFormData({ ...formData, endDate: date })
+                  setFormData(prev => ({ ...prev, endDate: date }))
                 }
                 blockPast={true}
                 inputProps={{
@@ -915,7 +911,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               placeholder="Any information you want to share prior to the meeting?"
               value={formData.description}
               onChange={e =>
-                setFormData({ ...formData, description: e.target.value })
+                setFormData(prev => ({ ...prev, description: e.target.value }))
               }
               bg="bg-canvas"
               border="1px solid"
@@ -934,7 +930,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               <SingleDatepicker
                 date={formData.expiryDate}
                 onDateChange={date =>
-                  setFormData({ ...formData, expiryDate: date })
+                  setFormData(prev => ({ ...prev, expiryDate: date }))
                 }
                 blockPast={true}
                 inputProps={{
@@ -953,7 +949,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               <InputTimePicker
                 value={format(formData.expiryTime, 'p')}
                 onChange={time =>
-                  setFormData({ ...formData, expiryTime: new Date(time) })
+                  setFormData(prev => ({ ...prev, expiryTime: new Date(time) }))
                 }
                 currentDate={formData.expiryDate}
                 inputProps={{
@@ -1004,6 +1000,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               >
                 <HStack marginInlineStart={-2} gap={0}>
                   <Text>{permission.label}</Text>
+                  {permission.info && <InfoTooltip text={permission.info} />}
                 </HStack>
               </Checkbox>
             ))}
