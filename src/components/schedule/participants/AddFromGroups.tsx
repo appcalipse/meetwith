@@ -123,6 +123,7 @@ const AddFromGroups = () => {
                         currentAccount={currentAccount}
                         key={group.id}
                         currentGroupId={groupId}
+                        globalSearch={search}
                         {...group}
                       />
                     ))}
@@ -154,6 +155,7 @@ const AddFromGroups = () => {
                           currentAccount={currentAccount}
                           key={group.id}
                           currentGroupId={groupId}
+                          globalSearch={search}
                           {...group}
                         />
                       ))}
