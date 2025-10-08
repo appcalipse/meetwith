@@ -64,7 +64,7 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
 
       React.startTransition(() => {
         setParticipants(prevUsers => {
-          const groupParticipants = prevUsers.filter(
+          const groupParticipants = prevUsers?.filter(
             user => isGroupParticipant(user) || user.isHidden
           )
           return [...groupParticipants, ..._participants]
