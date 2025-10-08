@@ -238,7 +238,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         .map(val => val.account_address)
         .filter(value => Boolean(value)) as string[]
       setGroupAvailability({
-        no_group: allAddresses,
+        [NO_GROUP_KEY]: allAddresses,
       })
       const start = utcToZonedTime(meeting.start, timezone)
       const end = utcToZonedTime(meeting.end, timezone)
