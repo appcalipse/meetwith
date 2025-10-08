@@ -23,12 +23,13 @@ import GroupParticipantsItem from './GroupParticipantsItem'
 export interface IGroupCard extends GetGroupsFullResponse {
   currentAccount?: Account | null
   currentGroupId?: string
+  globalSearch?: string
 }
 
 const GroupCard: FC<IGroupCard> = props => {
   const id = useId()
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(props.globalSearch || '')
   const members = props.members.filter(
     member =>
       member.displayName?.toLowerCase().includes(search.toLowerCase()) ||
