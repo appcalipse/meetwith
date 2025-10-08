@@ -10,11 +10,7 @@ import {
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
@@ -654,10 +650,6 @@ export default class GoogleCalendarService
       }
     } catch (error) {
       console.error('Failed to register Google Calendar webhook:', error)
-      Sentry.captureException(error, {
-        tags: { service: 'google_calendar', action: 'webhook_setup' },
-        extra: { webhookUrl, calendarId, email: this.email },
-      })
       throw error
     }
   }
@@ -675,10 +667,6 @@ export default class GoogleCalendarService
       })
     } catch (error) {
       console.error('Failed to stop Google Calendar webhook:', error)
-      Sentry.captureException(error, {
-        tags: { service: 'google_calendar', action: 'webhook_stop' },
-        extra: { channelId, resourceId, email: this.email },
-      })
       throw error
     }
   }
@@ -696,10 +684,6 @@ export default class GoogleCalendarService
       return await this.setWebhookUrl(webhookUrl, calendarId)
     } catch (error) {
       console.error('Failed to refresh Google Calendar webhook:', error)
-      Sentry.captureException(error, {
-        tags: { service: 'google_calendar', action: 'webhook_refresh' },
-        extra: { oldChannelId, webhookUrl, calendarId, email: this.email },
-      })
       throw error
     }
   }
