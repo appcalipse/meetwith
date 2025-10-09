@@ -28,6 +28,7 @@ import { useRouter } from 'next/router'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import React from 'react'
 import { FaEdit, FaEllipsisV, FaRegCopy, FaTrash } from 'react-icons/fa'
+import { MdCancel } from 'react-icons/md'
 import sanitizeHtml from 'sanitize-html'
 
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
@@ -212,7 +213,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
         },
       },
       {
-        label: 'Delete meeting',
+        label: 'Delete meeting (For Me)',
         status: 'danger',
         onClick: () => {
           if (
@@ -231,7 +232,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       ...(isSchedulerOrOwner
         ? [
             {
-              label: 'Cancel meeting',
+              label: 'Cancel meeting (For All)',
               status: 'danger',
               onClick: () => onCancelOpen(),
             },
@@ -409,7 +410,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                       <IconButton
                         color={iconColor}
                         aria-label="remove"
-                        icon={<FaTrash size={16} />}
+                        icon={<MdCancel size={16} />}
                         onClick={onCancelOpen}
                       />
                     )}
