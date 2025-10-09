@@ -2,6 +2,7 @@ import { Box, TabPanel, TabPanels, Tabs, VStack } from '@chakra-ui/react'
 import React, { useState } from 'react'
 
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
+import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import { queryClient } from '@/utils/react_query'
 import { useToastHelpers } from '@/utils/toasts'
 
@@ -17,7 +18,7 @@ export enum QuickPollPage {
 
 interface QuickPollMainProps {
   pollId?: string
-  pollData?: any
+  pollData?: QuickPollBySlugResponse
   initialPage?: QuickPollPage
 }
 
@@ -93,7 +94,7 @@ const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
   }
 
   return (
-    <Box width="100%" minHeight="100vh" bg="bg-canvas">
+    <Box width="100%" minHeight="100vh" bg="bg-canvas-dark">
       <GuestDetailsForm
         participantId={currentParticipantId}
         onSuccess={handleSuccess}
@@ -125,7 +126,7 @@ const QuickPollSuccessTab: React.FC<QuickPollSuccessTabProps> = ({
     <Box
       width="100%"
       minHeight="100vh"
-      bg="bg-canvas"
+      bg="bg-canvas-dark"
       display="flex"
       alignItems="center"
       justifyContent="center"
