@@ -65,7 +65,7 @@ const AllPolls = () => {
   return (
     <Box
       width="100%"
-      bg="neutral.850"
+      bg="bg-canvas"
       minHeight="100vh"
       px={{ base: 2, md: 6 }}
       py={{ base: 6, md: 8 }}
@@ -88,7 +88,7 @@ const AllPolls = () => {
               as="h1"
               fontSize={{ base: '20px', md: '24px' }}
               fontWeight="700"
-              color="neutral.0"
+              color="text-primary"
               textAlign="left"
             >
               Quick Poll for Groups
@@ -148,7 +148,7 @@ const AllPolls = () => {
                 py={2}
                 fontWeight={600}
                 fontSize={{ base: '13px', md: '14px' }}
-                color="neutral.0"
+                color="text-primary"
                 flex={{ base: 1, md: 'none' }}
                 _selected={{
                   color: 'neutral.900',
@@ -163,7 +163,7 @@ const AllPolls = () => {
                 py={2}
                 fontWeight={600}
                 fontSize={{ base: '13px', md: '14px' }}
-                color="neutral.0"
+                color="text-primary"
                 flex={{ base: 1, md: 'none' }}
                 _selected={{
                   color: 'neutral.900',
@@ -184,7 +184,7 @@ const AllPolls = () => {
                 bg="bg-surface-secondary"
                 border="1px solid"
                 borderColor="neutral.400"
-                color="neutral.0"
+                color="text-primary"
                 _placeholder={{ color: 'neutral.400', fontSize: '15px' }}
                 _hover={{
                   borderColor: 'neutral.600',
