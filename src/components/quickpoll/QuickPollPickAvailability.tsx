@@ -391,9 +391,13 @@ export function QuickPollPickAvailability({
         .toJSDate()
 
       if (pollData) {
+        const filteredGroupAvailability = Object.fromEntries(
+          Object.entries(groupAvailability).filter(([_, v]) => v !== undefined)
+        ) as Record<string, string[]>
+
         const availableSlotsMap = processPollParticipantAvailabilities(
           pollData,
-          groupAvailability,
+          filteredGroupAvailability,
           monthStart,
           monthEnd,
           timezone,
