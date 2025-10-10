@@ -12,7 +12,7 @@ import { ConfirmCryptoTransactionRequest } from '@/types/Requests'
 import { Address, IPurchaseData } from '@/types/Transactions'
 import { PaymentType, TokenType } from '@/utils/constants/meeting-types'
 import { ChainNotFound } from '@/utils/errors'
-import { DEFAULT_MESSAGE_NAME, publishMessage } from '@/utils/pub-sub.helper'
+import { DEFAULT_MESSAGE_NAME, PubSubManager } from '@/utils/pub-sub.helper'
 
 export default async function handler(
   req: NextApiRequest,
@@ -20,6 +20,7 @@ export default async function handler(
 ) {
   if (req.method === 'POST') {
     try {
+      const pubSubManager = new PubSubManager()
       // Convert headers to Record<string, string> format
       const headerRecord: Record<string, string> = {}
       for (const [key, value] of Object.entries(req.headers)) {
@@ -158,7 +159,7 @@ export default async function handler(
           )
           console.log(transaction)
 
-          await publishMessage(
+          await pubSubManager.publishMessage(
             message_channel,
             DEFAULT_MESSAGE_NAME,
             JSON.stringify(transaction)
