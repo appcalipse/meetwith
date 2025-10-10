@@ -212,32 +212,6 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
           downloadIcs(decryptedMeeting!, currentAccount!.address)
         },
       },
-      {
-        label: 'Delete meeting (For Me)',
-        status: 'danger',
-        onClick: () => {
-          if (
-            isAccountSchedulerOrOwner(
-              decryptedMeeting?.participants,
-              currentAccount?.address,
-              [ParticipantType.Scheduler]
-            )
-          ) {
-            onEditSchedulerOpen()
-          } else {
-            onDeleteOpen()
-          }
-        },
-      },
-      ...(isSchedulerOrOwner
-        ? [
-            {
-              label: 'Cancel meeting (For All)',
-              status: 'danger',
-              onClick: () => onCancelOpen(),
-            },
-          ]
-        : []),
     ],
     [decryptedMeeting, currentAccount, timezone]
   )
@@ -258,7 +232,19 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       setCopyFeedbackOpen(false)
     }, 2000)
   }
-
+  const handleDelete = () => {
+    if (
+      isAccountSchedulerOrOwner(
+        decryptedMeeting?.participants,
+        currentAccount?.address,
+        [ParticipantType.Scheduler]
+      )
+    ) {
+      onEditSchedulerOpen()
+    } else {
+      onDeleteOpen()
+    }
+  }
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
     meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
@@ -414,6 +400,12 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                         onClick={onCancelOpen}
                       />
                     )}
+                    <IconButton
+                      color={iconColor}
+                      aria-label="remove"
+                      icon={<FaTrash size={16} />}
+                      onClick={handleDelete}
+                    />
                     <Menu>
                       <MenuButton
                         as={IconButton}
@@ -441,11 +433,6 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                                 onClick={val.onClick}
                                 backgroundColor={menuBgColor}
                                 key={`${val.label}-${meeting?.id}`}
-                                color={
-                                  val.status === 'danger'
-                                    ? 'primary.200'
-                                    : 'inherit'
-                                }
                               >
                                 {val.label}
                               </MenuItem>
