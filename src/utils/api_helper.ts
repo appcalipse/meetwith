@@ -2057,20 +2057,16 @@ export const getQuickPollOffice365ConnectUrl = async (
 export const getQuickPolls = async (
   limit = QUICKPOLL_DEFAULT_LIMIT,
   offset = QUICKPOLL_DEFAULT_OFFSET,
-  status?: PollStatus | PollStatus[],
-  searchQuery?: string
+  searchQuery?: string,
+  ...status: PollStatus[]
 ): Promise<QuickPollListResponse> => {
   const params = new URLSearchParams({
     limit: limit.toString(),
     offset: offset.toString(),
   })
 
-  if (status) {
-    if (Array.isArray(status)) {
-      status.forEach(s => params.append('status', s))
-    } else {
-      params.append('status', status)
-    }
+  if (status.length > 0) {
+    status.forEach(s => params.append('status', s))
   }
 
   if (searchQuery && searchQuery.trim()) {

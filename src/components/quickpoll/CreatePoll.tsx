@@ -45,6 +45,7 @@ import { InputTimePicker } from '@/components/input-time-picker'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import InviteParticipants from '@/components/schedule/participants/InviteParticipants'
 import { AccountContext } from '@/providers/AccountProvider'
+import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import {
   ParticipantInfo,
@@ -140,6 +141,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     groups: allGroups,
   } = useParticipants()
   const { currentAccount } = useContext(AccountContext)
+  const { fetchPollCounts } = useContext(MetricStateContext)
 
   const [formData, setFormData] = useState({
     title: '',
@@ -297,8 +299,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       )
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
-      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls-count'] })
-      queryClient.invalidateQueries({ queryKey: ['past-quickpolls-count'] })
+      void fetchPollCounts()
 
       // Reset form state
       setFormData({
@@ -336,8 +337,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['quickpoll', pollSlug] })
-      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls-count'] })
-      queryClient.invalidateQueries({ queryKey: ['past-quickpolls-count'] })
+      void fetchPollCounts()
       router.push('/dashboard/quickpoll')
     },
     onError: error => {
@@ -358,8 +358,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       )
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
-      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls-count'] })
-      queryClient.invalidateQueries({ queryKey: ['past-quickpolls-count'] })
+      void fetchPollCounts()
       closeCancelModal()
       router.push('/dashboard/quickpoll')
     },

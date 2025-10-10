@@ -34,8 +34,8 @@ const OngoingPolls = ({ searchQuery = '' }: OngoingPollsProps) => {
       getQuickPolls(
         QUICKPOLL_DEFAULT_LIMIT,
         (currentPage - 1) * QUICKPOLL_DEFAULT_LIMIT,
-        PollStatus.ONGOING,
-        debouncedSearchQuery
+        debouncedSearchQuery,
+        PollStatus.ONGOING
       ),
     onError: (err: unknown) => {
       handleApiError('Failed to load ongoing polls', err)

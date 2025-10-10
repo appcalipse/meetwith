@@ -25,10 +25,11 @@ import {
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { FaRegCopy } from 'react-icons/fa'
 import { FiEdit3, FiMoreVertical, FiRotateCcw, FiTrash2 } from 'react-icons/fi'
 
+import { MetricStateContext } from '@/providers/MetricStateProvider'
 import {
   PollStatus,
   QuickPollParticipantType,
@@ -55,6 +56,7 @@ interface PollCardProps {
 const PollCard = ({ poll, showActions = true }: PollCardProps) => {
   const { showSuccessToast } = useToastHelpers()
   const { push } = useRouter()
+  const { fetchPollCounts } = useContext(MetricStateContext)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false)
 
@@ -86,8 +88,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
       setIsDeleteModalOpen(false)
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
-      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls-count'] })
-      queryClient.invalidateQueries({ queryKey: ['past-quickpolls-count'] })
+      void fetchPollCounts()
     },
     onError: error => {
       handleApiError('Failed to delete poll', error)
@@ -119,8 +120,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
       setIsRestoreModalOpen(false)
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
-      queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls-count'] })
-      queryClient.invalidateQueries({ queryKey: ['past-quickpolls-count'] })
+      void fetchPollCounts()
     },
     onError: error => {
       handleApiError('Failed to restore poll', error)

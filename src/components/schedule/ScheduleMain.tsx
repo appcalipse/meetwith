@@ -20,6 +20,7 @@ import ScheduleBase from '@/components/schedule/ScheduleBase'
 import ScheduleCompleted from '@/components/schedule/ScheduleCompleted'
 import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
 import { AccountContext } from '@/providers/AccountProvider'
+import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { QuickPollAvailabilityProvider } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import {
   ActionsContext,
@@ -108,6 +109,7 @@ const ScheduleMain: FC<IInitialProps> = ({
   pollId,
 }) => {
   const { currentAccount } = useContext(AccountContext)
+  const { fetchPollCounts } = useContext(MetricStateContext)
   const {
     title,
     content,
@@ -641,6 +643,7 @@ const ScheduleMain: FC<IInitialProps> = ({
             queryKey: ['quickpoll-schedule', pollId],
           })
           queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+          void fetchPollCounts()
         } catch (error) {
           handleApiError('Failed to update poll status:', error)
         }
