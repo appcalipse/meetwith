@@ -31,7 +31,7 @@ import {
   TransactionCouldBeNotFoundError,
 } from '@utils/errors'
 import { useRouter } from 'next/router'
-import React, { Reducer, useContext, useMemo } from 'react'
+import React, { Reducer, useContext } from 'react'
 import {
   Bridge,
   prepareContractCall,
@@ -107,14 +107,13 @@ const ConfirmPaymentInfo = () => {
   const [email, setEmail] = React.useState(guestEmail || userEmail)
   const { openConnection } = useContext(OnboardingModalContext)
   const [isInvoiceLoading, setIsInvoiceLoading] = React.useState(false)
-  const messageChannel = `onramp:${v4()}`
 
   const [progress, setProgress] = React.useState(0)
 
   const chain = supportedChains.find(
     val => val.chain === selectedChain
   ) as ChainInfo
-  const { query, push } = useRouter()
+  const { query } = useRouter()
   const NATIVE_TOKEN_ADDRESS = chain?.acceptableTokens?.find(
     acceptedToken => acceptedToken.token === token
   )?.contractAddress as Address
