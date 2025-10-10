@@ -31,7 +31,7 @@ import {
   TransactionCouldBeNotFoundError,
 } from '@utils/errors'
 import { useRouter } from 'next/router'
-import React, { Reducer, useContext, useMemo } from 'react'
+import React, { Reducer, useContext } from 'react'
 import {
   Bridge,
   prepareContractCall,
@@ -39,7 +39,7 @@ import {
   toUnits,
   waitForReceipt,
 } from 'thirdweb'
-import { BuyWidget, CheckoutWidget, useActiveWallet } from 'thirdweb/react'
+import { useActiveWallet } from 'thirdweb/react'
 import { Wallet } from 'thirdweb/wallets'
 import { v4 } from 'uuid'
 import { Address, formatUnits } from 'viem'
@@ -52,11 +52,8 @@ import { AcceptedToken, ChainInfo, supportedChains } from '@/types/chains'
 import { Transaction } from '@/types/Transactions'
 import { getAccountDomainUrl } from '@/utils/calendar_manager'
 import { appUrl } from '@/utils/constants'
-import { formatCurrency, parseUnits } from '@/utils/generic_utils'
-import {
-  DEFAULT_MESSAGE_NAME,
-  subscribeToMessages,
-} from '@/utils/pub-sub.helper'
+import { parseUnits } from '@/utils/generic_utils'
+import { DEFAULT_MESSAGE_NAME, PubSubManager } from '@/utils/pub-sub.helper'
 import {
   ErrorAction,
   errorReducerSingle,
@@ -68,8 +65,6 @@ import {
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
-
-import CheckoutWidgetModal from './CheckoutWidgetModal'
 
 const ConfirmPaymentInfo = () => {
   const {
@@ -331,7 +326,8 @@ const ConfirmPaymentInfo = () => {
         const transaction = await new Promise<Transaction>(
           async (resolve, reject) => {
             const messageChannel = `onramp:${v4()}:${selectedType?.id || ''}`
-            await subscribeToMessages(
+            const pubSubManager = new PubSubManager()
+            await pubSubManager.subscribeToMessages(
               messageChannel,
               DEFAULT_MESSAGE_NAME,
               message => {
