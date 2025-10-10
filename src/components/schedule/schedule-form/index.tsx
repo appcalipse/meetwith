@@ -24,7 +24,6 @@ import {
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import { Select } from 'chakra-react-select'
-import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
@@ -151,18 +150,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     const hostName =
       account.preferences?.name || ellipsizeAddress(account.address)
 
-    const startDateTime = DateTime.fromJSDate(pickedTime).setZone(
-      timezone.value || 'UTC'
-    )
-    const startDate = startDateTime.toFormat('EEEE, MMMM d, yyyy, h:mm a')
-
-    const endDateTime = startDateTime.plus({
-      minutes: selectedType.duration_minutes || 30,
-    })
-
-    const endTimeFormatted = endDateTime.toFormat('h:mm a')
-
-    return `${meetingTypeName} between ${guestName} and ${hostName} by ${startDate} - ${endTimeFormatted}`
+    return `${meetingTypeName} between ${guestName} and ${hostName}`
   }
 
   useEffect(() => {
