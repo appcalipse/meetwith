@@ -6,11 +6,7 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { MeetingReminders } from '@meta/common'
-import {
-  DEFAULT_MESSAGE_NAME,
-  subscribeToMessages,
-  unSubscribeToMessages,
-} from '@utils/pub-sub.helper'
+import { DEFAULT_MESSAGE_NAME, PubSubManager } from '@utils/pub-sub.helper'
 import React, { useContext, useEffect, useRef } from 'react'
 import { CheckoutWidget, useActiveWallet } from 'thirdweb/react'
 
@@ -79,8 +75,9 @@ const CheckoutWidgetModal = ({
       }
       subscriptionRef.current = true
 
+      const pubSubManager = new PubSubManager()
       const transaction = await new Promise<Transaction>(async resolve => {
-        await subscribeToMessages(
+        await pubSubManager.subscribeToMessages(
           messageChannel,
           DEFAULT_MESSAGE_NAME,
           message => {
@@ -91,7 +88,10 @@ const CheckoutWidgetModal = ({
       })
       setIsAwaitingScheduling(true)
 
-      await unSubscribeToMessages(messageChannel, DEFAULT_MESSAGE_NAME)
+      await pubSubManager.unsubscribeFromMessages(
+        messageChannel,
+        DEFAULT_MESSAGE_NAME
+      )
       if (transaction.transaction_hash) {
         handleNavigateToBook(transaction.transaction_hash)
         // persist the transaction in localStorage in-case the schedule fails
