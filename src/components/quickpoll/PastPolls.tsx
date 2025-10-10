@@ -34,8 +34,9 @@ const PastPolls = ({ searchQuery = '' }: PastPollsProps) => {
       getQuickPolls(
         QUICKPOLL_DEFAULT_LIMIT,
         (currentPage - 1) * QUICKPOLL_DEFAULT_LIMIT,
-        [PollStatus.COMPLETED, PollStatus.CANCELLED],
-        debouncedSearchQuery
+        debouncedSearchQuery,
+        PollStatus.COMPLETED,
+        PollStatus.CANCELLED
       ),
     onError: (err: unknown) => {
       handleApiError('Failed to load past polls', err)

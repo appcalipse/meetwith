@@ -15,17 +15,15 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { FiSearch } from 'react-icons/fi'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
-import CustomLoading from '@/components/CustomLoading'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
-import { PollStatus } from '@/types/QuickPoll'
-import { getQuickPolls } from '@/utils/api_helper'
+import { MetricStateContext } from '@/providers/MetricStateProvider'
 
+import CountSkeleton from './CountSkeleton'
 import OngoingPolls from './OngoingPolls'
 import PastPolls from './PastPolls'
 
@@ -35,31 +33,19 @@ const AllPolls = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
 
-  const { data: ongoingCountData, isLoading: isLoadingOngoingCount } = useQuery(
-    {
-      queryKey: ['ongoing-quickpolls-count', debouncedSearchQuery],
-      queryFn: () =>
-        getQuickPolls(1, 0, PollStatus.ONGOING, debouncedSearchQuery),
-    }
-  )
+  const {
+    ongoingPollsCount,
+    pastPollsCount,
+    fetchPollCounts,
+    isLoadingPollCounts,
+  } = useContext(MetricStateContext)
 
-  const { data: pastCountData, isLoading: isLoadingPastCount } = useQuery({
-    queryKey: ['past-quickpolls-count', debouncedSearchQuery],
-    queryFn: () =>
-      getQuickPolls(
-        1,
-        0,
-        [PollStatus.COMPLETED, PollStatus.CANCELLED],
-        debouncedSearchQuery
-      ),
-  })
+  useEffect(() => {
+    void fetchPollCounts(debouncedSearchQuery)
+  }, [debouncedSearchQuery])
 
   const handleTabChange = (index: number) => {
     setActiveTab(index)
-  }
-
-  if ((isLoadingOngoingCount || isLoadingPastCount) && !debouncedSearchQuery) {
-    return <CustomLoading text="Loading polls..." />
   }
 
   return (
@@ -155,7 +141,8 @@ const AllPolls = () => {
                   bg: 'primary.200',
                 }}
               >
-                Ongoing Polls ({ongoingCountData?.total_count || 0})
+                Ongoing Polls (
+                {isLoadingPollCounts ? <CountSkeleton /> : ongoingPollsCount})
               </Tab>
               <Tab
                 rounded={4}
@@ -170,7 +157,8 @@ const AllPolls = () => {
                   bg: 'primary.200',
                 }}
               >
-                Past Polls ({pastCountData?.total_count || 0})
+                Past Polls (
+                {isLoadingPollCounts ? <CountSkeleton /> : pastPollsCount})
               </Tab>
             </TabList>
 
