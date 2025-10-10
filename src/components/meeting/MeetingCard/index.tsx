@@ -393,19 +393,26 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                       }}
                     />
                     {isSchedulerOrOwner && (
+                      <Tooltip
+                        label="Cancel meeting for everyone"
+                        placement="top"
+                      >
+                        <IconButton
+                          color={iconColor}
+                          aria-label="remove"
+                          icon={<MdCancel size={16} />}
+                          onClick={onCancelOpen}
+                        />
+                      </Tooltip>
+                    )}
+                    <Tooltip label="Delete meeting" placement="top">
                       <IconButton
                         color={iconColor}
-                        aria-label="remove"
-                        icon={<MdCancel size={16} />}
-                        onClick={onCancelOpen}
+                        aria-label="delete"
+                        icon={<FaTrash size={16} />}
+                        onClick={handleDelete}
                       />
-                    )}
-                    <IconButton
-                      color={iconColor}
-                      aria-label="remove"
-                      icon={<FaTrash size={16} />}
-                      onClick={handleDelete}
-                    />
+                    </Tooltip>
                     <Menu>
                       <MenuButton
                         as={IconButton}
