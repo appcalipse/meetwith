@@ -10,10 +10,12 @@ import {
 
 import { ConditionRelation } from '@/types/common'
 import { TimeSlot, TimeSlotSource } from '@/types/Meeting'
+import { QuickPollBusyParticipant } from '@/types/QuickPoll'
 
 import {
   getConnectedCalendars,
   getMeetingTypeFromDB,
+  getQuickPollCalendars,
   getSlotsForAccount,
 } from '../database'
 import { getConnectedCalendarIntegration } from './connected_calendars.factory'
@@ -85,6 +87,85 @@ export const CalendarBackendHelper = {
     return busySlots
   },
 
+  getBusySlotsForQuickPollParticipants: async (
+    participants: QuickPollBusyParticipant[],
+    startDate: Date,
+    endDate: Date,
+    limit?: number,
+    offset?: number
+  ): Promise<TimeSlot[]> => {
+    const busySlots: TimeSlot[] = []
+
+    const addSlotsForParticipant = async (
+      participant: QuickPollBusyParticipant
+    ) => {
+      if (participant.account_address) {
+        busySlots.push(
+          ...(await CalendarBackendHelper.getBusySlotsForAccount(
+            participant.account_address,
+            startDate,
+            endDate,
+            limit,
+            offset
+          ))
+        )
+      } else if (participant.participant_id) {
+        const guestBusySlots: TimeSlot[] = []
+
+        const getQuickPollCalendarEvents = async () => {
+          const calendars = await getQuickPollCalendars(
+            participant.participant_id!,
+            {
+              activeOnly: true,
+            }
+          )
+
+          await Promise.all(
+            calendars.map(async calendar => {
+              const integration = getConnectedCalendarIntegration(
+                '',
+                calendar.email,
+                calendar.provider,
+                calendar.payload
+              )
+
+              try {
+                const externalSlots = await integration.getAvailability(
+                  calendar.calendars
+                    ?.filter((c: any) => c.enabled)
+                    .map((c: any) => c.calendarId) || [],
+                  startDate.toISOString(),
+                  endDate.toISOString()
+                )
+                guestBusySlots.push(
+                  ...externalSlots.map(it => ({
+                    start: new Date(it.start),
+                    end: new Date(it.end),
+                    source: calendar.provider,
+                    account_address: `quickpoll_${participant.participant_id}`,
+                  }))
+                )
+              } catch (e: any) {
+                Sentry.captureException(e)
+              }
+            })
+          )
+        }
+
+        await getQuickPollCalendarEvents()
+        busySlots.push(...guestBusySlots)
+      }
+    }
+
+    const promises: Promise<void>[] = []
+    for (const participant of participants) {
+      promises.push(addSlotsForParticipant(participant))
+    }
+    await Promise.all(promises)
+
+    return busySlots
+  },
+
   getBusySlotsForMultipleAccounts: async (
     account_addresses: string[],
     startDate: Date,
@@ -127,6 +208,31 @@ export const CalendarBackendHelper = {
     const busySlots =
       await CalendarBackendHelper.getBusySlotsForMultipleAccounts(
         account_addresses,
+        startDate,
+        endDate
+      )
+
+    if (isRaw) {
+      busySlots.sort((a, b) => compareAsc(a.start, b.start))
+      return busySlots
+    }
+    if (relation === ConditionRelation.AND) {
+      return CalendarBackendHelper.mergeSlotsUnion(busySlots)
+    } else {
+      return CalendarBackendHelper.mergeSlotsIntersection(busySlots)
+    }
+  },
+
+  getMergedBusySlotsForQuickPollParticipants: async (
+    participants: QuickPollBusyParticipant[],
+    relation: ConditionRelation,
+    startDate: Date,
+    endDate: Date,
+    isRaw = false
+  ): Promise<Interval[]> => {
+    const busySlots =
+      await CalendarBackendHelper.getBusySlotsForQuickPollParticipants(
+        participants,
         startDate,
         endDate
       )

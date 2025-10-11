@@ -94,6 +94,20 @@ import {
   ParticipantType,
 } from '@/types/ParticipantInfo'
 import {
+  AddParticipantData,
+  AddParticipantRequest,
+  AvailabilitySlot,
+  CreateQuickPollRequest,
+  PollStatus,
+  PollVisibility,
+  QuickPoll,
+  QuickPollParticipant,
+  QuickPollParticipantStatus,
+  QuickPollParticipantType,
+  QuickPollWithParticipants,
+  UpdateQuickPollRequest,
+} from '@/types/QuickPoll'
+import {
   ConfirmCryptoTransactionRequest,
   CreateMeetingTypeRequest,
   GroupInviteNotifyRequest,
@@ -118,7 +132,14 @@ import {
   OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
-import { PaymentNotificationType } from '@/utils/constants'
+import {
+  PaymentNotificationType,
+  QUICKPOLL_DEFAULT_LIMIT,
+  QUICKPOLL_DEFAULT_OFFSET,
+  QUICKPOLL_MAX_LIMIT,
+  QUICKPOLL_SLUG_FALLBACK_LENGTH,
+  QUICKPOLL_SLUG_MAX_ATTEMPTS,
+} from '@/utils/constants'
 import {
   NO_MEETING_TYPE,
   PaymentDirection,
@@ -159,6 +180,22 @@ import {
   NotGroupAdminError,
   NotGroupMemberError,
   OwnInviteError,
+  QuickPollAlreadyCancelledError,
+  QuickPollAlreadyCompletedError,
+  QuickPollCancellationError,
+  QuickPollCreationError,
+  QuickPollDeletionError,
+  QuickPollExpiredError,
+  QuickPollNotFoundError,
+  QuickPollParticipantCreationError,
+  QuickPollParticipantNotFoundError,
+  QuickPollParticipantUpdateError,
+  QuickPollPermissionDeniedError,
+  QuickPollSlugGenerationError,
+  QuickPollSlugNotFoundError,
+  QuickPollUnauthorizedError,
+  QuickPollUpdateError,
+  QuickPollValidationError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   TransactionIsRequired,
@@ -167,6 +204,7 @@ import {
   UploadError,
 } from '@/utils/errors'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
+import { generatePollSlug } from '@/utils/quickpoll_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 import { thirdWebClient } from '@/utils/user_manager'
 
@@ -2269,6 +2307,53 @@ const getConnectedCalendars = async (
   //   !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
   // ignore pro for now
   const connectedCalendars: ConnectedCalendar[] = data
+  if (syncOnly) {
+    const calendars: ConnectedCalendar[] = JSON.parse(
+      JSON.stringify(connectedCalendars)
+    )
+    for (const cal of calendars) {
+      cal.calendars = cal.calendars.filter(c => c.sync)
+    }
+    return calendars
+  }
+
+  return connectedCalendars
+}
+
+const getQuickPollCalendars = async (
+  participantId: string,
+  {
+    syncOnly,
+    activeOnly: _activeOnly,
+  }: {
+    syncOnly?: boolean
+    activeOnly?: boolean
+  }
+): Promise<ConnectedCalendar[]> => {
+  const { data, error } = await db.supabase
+    .from('quick_poll_calendars')
+    .select('*')
+    .eq('participant_id', participantId)
+    .eq('active', true)
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data) return []
+
+  const connectedCalendars: ConnectedCalendar[] = data.map((calendar: any) => ({
+    id: calendar.id,
+    account_address: '',
+    email: calendar.email,
+    provider: calendar.provider,
+    payload: calendar.payload,
+    calendars: [],
+    enabled: true,
+    created: calendar.created_at || new Date().toISOString(),
+  }))
+
   if (syncOnly) {
     const calendars: ConnectedCalendar[] = JSON.parse(
       JSON.stringify(connectedCalendars)
@@ -5948,11 +6033,926 @@ const deleteVerifications = async (verificationId: string): Promise<void> => {
   }
 }
 
+const generateUniquePollSlug = async (title: string): Promise<string> => {
+  try {
+    let slug = generatePollSlug(title)
+    let attempts = 0
+
+    while (
+      (await checkPollSlugExists(slug)) &&
+      attempts < QUICKPOLL_SLUG_MAX_ATTEMPTS
+    ) {
+      slug = generatePollSlug(title)
+      attempts++
+    }
+
+    if (attempts >= QUICKPOLL_SLUG_MAX_ATTEMPTS) {
+      // Fallback with timestamp
+      const timestamp = Date.now().toString(36)
+      slug = `${generatePollSlug(title).substring(
+        0,
+        QUICKPOLL_SLUG_FALLBACK_LENGTH
+      )}-${timestamp}`
+    }
+
+    return slug
+  } catch (error) {
+    throw new QuickPollSlugGenerationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const checkPollSlugExists = async (slug: string): Promise<boolean> => {
+  try {
+    const { data, error } = await db.supabase
+      .from('quick_polls')
+      .select('id')
+      .eq('slug', slug)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      throw error
+    }
+
+    return !!data
+  } catch (error) {
+    throw new QuickPollSlugGenerationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const createQuickPoll = async (
+  owner_address: string,
+  pollData: CreateQuickPollRequest
+) => {
+  try {
+    const slug = await generateUniquePollSlug(pollData.title)
+
+    // Create the poll
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .insert([
+        {
+          title: pollData.title,
+          description: pollData.description,
+          duration_minutes: pollData.duration_minutes,
+          starts_at: pollData.starts_at,
+          ends_at: pollData.ends_at,
+          expires_at: pollData.expires_at,
+          status: PollStatus.ONGOING,
+          visibility: PollVisibility.PUBLIC,
+          permissions: pollData.permissions,
+          slug,
+        },
+      ])
+      .select()
+      .single()
+
+    if (pollError) throw pollError
+
+    // Add the owner as a participant
+    const ownerAccount = await getAccountFromDB(owner_address)
+    const ownerEmail = await getAccountNotificationSubscriptionEmail(
+      owner_address
+    )
+
+    // Get owner's availability
+    let ownerAvailableSlots: AvailabilitySlot[] = []
+    try {
+      const availabilityId = await getDefaultAvailabilityBlockId(owner_address)
+      if (availabilityId) {
+        const { data: availability } = await db.supabase
+          .from('availabilities')
+          .select('weekly_availability')
+          .eq('id', availabilityId)
+          .single()
+
+        if (availability?.weekly_availability) {
+          ownerAvailableSlots = availability.weekly_availability.map(
+            (day: AvailabilitySlot) => ({
+              weekday: day.weekday,
+              ranges: day.ranges || [],
+            })
+          )
+        }
+      }
+    } catch (error) {
+      console.warn(`Could not fetch owner availability:`, error)
+    }
+
+    const ownerParticipant = {
+      poll_id: poll.id,
+      account_address: owner_address,
+      guest_name: ownerAccount.preferences?.name || '',
+      guest_email: ownerEmail || '',
+      status: QuickPollParticipantStatus.ACCEPTED,
+      participant_type: QuickPollParticipantType.SCHEDULER,
+      timezone: ownerAccount.preferences?.timezone || 'UTC',
+      available_slots: ownerAvailableSlots,
+    }
+
+    const invitees = await Promise.all(
+      pollData.participants.map(async p => {
+        let timezone = 'UTC'
+        let email = ''
+        let availableSlots: AvailabilitySlot[] = []
+
+        // For account owners, fetch their timezone and availability from account preferences
+        if (p.account_address) {
+          try {
+            const participantAccount = await getAccountFromDB(p.account_address)
+            email = await getAccountNotificationSubscriptionEmail(
+              p.account_address
+            )
+            timezone = participantAccount.preferences?.timezone || 'UTC'
+
+            // Get the user's default availability block
+            const availabilityId = await getDefaultAvailabilityBlockId(
+              p.account_address
+            )
+            if (availabilityId) {
+              const { data: availability } = await db.supabase
+                .from('availabilities')
+                .select('weekly_availability')
+                .eq('id', availabilityId)
+                .single()
+
+              if (availability?.weekly_availability) {
+                // Convert weekly availability to poll format
+                availableSlots = availability.weekly_availability.map(
+                  (day: AvailabilitySlot) => ({
+                    weekday: day.weekday,
+                    ranges: day.ranges || [],
+                  })
+                )
+              }
+            }
+          } catch (error) {
+            console.warn(
+              `Could not fetch timezone/availability for ${p.account_address}:`,
+              error
+            )
+          }
+        } else if (p.guest_email) {
+          // For guest participants, use the provided email directly
+          email = p.guest_email
+        }
+
+        return {
+          poll_id: poll.id,
+          account_address: p.account_address,
+          guest_name: p.name || '',
+          guest_email: email || '',
+          status: QuickPollParticipantStatus.PENDING,
+          participant_type: QuickPollParticipantType.INVITEE,
+          timezone,
+          available_slots: availableSlots,
+        }
+      })
+    )
+
+    const participantsToAdd = [ownerParticipant, ...invitees]
+
+    const { error: participantsError } = await db.supabase
+      .from('quick_poll_participants')
+      .insert(participantsToAdd)
+
+    if (participantsError) throw participantsError
+
+    return poll
+  } catch (error) {
+    if (error instanceof QuickPollSlugGenerationError) {
+      throw error
+    }
+    throw new QuickPollCreationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
+  try {
+    // Get the poll
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('*')
+      .eq('id', pollId)
+      .single()
+
+    if (pollError) throw pollError
+    if (!poll) {
+      throw new QuickPollNotFoundError(pollId)
+    }
+
+    // Get participants with account information
+    const { data: participants, error: participantsError } = await db.supabase
+      .from('quick_poll_participants')
+      .select(
+        `
+        *,
+        accounts:account_address (
+          address,
+          account_preferences (
+            name,
+            description
+          )
+        )
+      `
+      )
+      .eq('poll_id', pollId)
+
+    if (participantsError) throw participantsError
+
+    // Get host information
+    const hostParticipant = participants.find(
+      p => p.participant_type === QuickPollParticipantType.SCHEDULER
+    )
+    let hostName = ''
+    let hostAddress = ''
+
+    if (hostParticipant) {
+      hostAddress = hostParticipant.account_address || ''
+      if (hostParticipant.accounts?.account_preferences?.[0]?.name) {
+        hostName = hostParticipant.accounts.account_preferences[0].name
+      } else if (hostParticipant.guest_name) {
+        hostName = hostParticipant.guest_name
+      }
+    }
+
+    // Check if requesting user is a participant
+    const isParticipant = requestingAddress
+      ? participants.some(p => p.account_address === requestingAddress)
+      : false
+
+    // Check if requesting user can edit (is scheduler/owner)
+    const canEdit = requestingAddress
+      ? participants.some(
+          p =>
+            p.account_address === requestingAddress &&
+            (p.participant_type === QuickPollParticipantType.SCHEDULER ||
+              p.participant_type === QuickPollParticipantType.OWNER)
+        )
+      : false
+
+    return {
+      poll: {
+        ...poll,
+        participants: participants.map(p => ({
+          ...p,
+          account_name:
+            p.accounts?.account_preferences?.[0]?.name || p.guest_name,
+        })),
+        participant_count: participants.length,
+        host_name: hostName,
+        host_address: hostAddress,
+      },
+      is_participant: isParticipant,
+      can_edit: canEdit,
+    }
+  } catch (error) {
+    if (error instanceof QuickPollNotFoundError) {
+      throw error
+    }
+    throw new Error(error instanceof Error ? error.message : 'Unknown error')
+  }
+}
+
+const getQuickPollBySlug = async (slug: string, requestingAddress?: string) => {
+  try {
+    // Get the poll
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('*')
+      .eq('slug', slug)
+      .single()
+
+    if (pollError) throw pollError
+    if (!poll) {
+      throw new QuickPollSlugNotFoundError(slug)
+    }
+
+    return getQuickPollById(poll.id, requestingAddress)
+  } catch (error) {
+    if (
+      error instanceof QuickPollSlugNotFoundError ||
+      error instanceof QuickPollNotFoundError
+    ) {
+      throw error
+    }
+    throw new Error(error instanceof Error ? error.message : 'Unknown error')
+  }
+}
+
+const getQuickPollsForAccount = async (
+  accountAddress: string,
+  limit = QUICKPOLL_DEFAULT_LIMIT,
+  offset = QUICKPOLL_DEFAULT_OFFSET,
+  status?: PollStatus | PollStatus[],
+  searchQuery?: string
+) => {
+  try {
+    const safeLimit = Math.min(limit, QUICKPOLL_MAX_LIMIT)
+
+    const { data: userParticipations, error: participationError } =
+      await db.supabase
+        .from('quick_poll_participants')
+        .select('poll_id')
+        .eq('account_address', accountAddress)
+
+    if (participationError) throw participationError
+
+    if (!userParticipations || userParticipations.length === 0) {
+      return {
+        polls: [],
+        total_count: 0,
+        has_more: false,
+      }
+    }
+
+    const pollIds = userParticipations.map(p => p.poll_id)
+
+    // Now get all polls with all their participants
+    let query = db.supabase
+      .from('quick_polls')
+      .select(
+        `
+        *,
+        quick_poll_participants (
+          participant_type,
+          status,
+          account_address,
+          guest_name,
+          accounts:account_address (
+            account_preferences (name)
+          )
+        )
+      `
+      )
+      .in('id', pollIds)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + safeLimit - 1)
+
+    if (status) {
+      if (Array.isArray(status)) {
+        query = query.in('status', status)
+      } else {
+        query = query.eq('status', status)
+      }
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      query = query.ilike('title', `%${searchQuery.trim()}%`)
+    }
+
+    const { data: polls, error } = await query
+
+    if (error) throw error
+
+    let countQuery = db.supabase
+      .from('quick_polls')
+      .select('*', { count: 'exact', head: true })
+      .in('id', pollIds)
+
+    if (status) {
+      if (Array.isArray(status)) {
+        countQuery = countQuery.in('status', status)
+      } else {
+        countQuery = countQuery.eq('status', status)
+      }
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      countQuery = countQuery.ilike('title', `%${searchQuery.trim()}%`)
+    }
+
+    const { count: totalCount, error: countError } = await countQuery
+
+    if (countError) throw countError
+
+    // Process the results
+    const processedPolls = polls.map(poll => {
+      // Find the requesting user's participation details
+      const userParticipating = poll.quick_poll_participants.find(
+        (p: QuickPollParticipant) => p.account_address === accountAddress
+      )
+
+      // Find the host (scheduler)
+      const host = poll.quick_poll_participants.find(
+        (p: QuickPollParticipant) =>
+          p.participant_type === QuickPollParticipantType.SCHEDULER
+      )
+
+      return {
+        ...poll,
+        host_name:
+          host?.accounts?.account_preferences?.name ||
+          host?.guest_name ||
+          'Unknown',
+        host_address: host?.account_address || '',
+        user_participant_type: userParticipating?.participant_type,
+        user_status: userParticipating?.status,
+      }
+    })
+
+    return {
+      polls: processedPolls,
+      total_count: totalCount || 0,
+      has_more: offset + processedPolls.length < (totalCount || 0),
+    }
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Unknown error')
+  }
+}
+
+const updateQuickPoll = async (
+  pollId: string,
+  ownerAddress: string,
+  updates: UpdateQuickPollRequest
+) => {
+  try {
+    // Verify the user can edit this poll
+    const { data: participant, error: participantError } = await db.supabase
+      .from('quick_poll_participants')
+      .select('participant_type')
+      .eq('poll_id', pollId)
+      .eq('account_address', ownerAddress)
+      .in('participant_type', ['scheduler', 'owner'])
+      .single()
+
+    if (participantError || !participant) {
+      throw new QuickPollUnauthorizedError('You cannot edit this poll')
+    }
+
+    // Handle participant updates if provided
+    if (updates.participants) {
+      await updateQuickPollParticipants(pollId, updates.participants)
+    }
+
+    const { participants, ...pollUpdates } = updates
+
+    const { data: poll, error } = await db.supabase
+      .from('quick_polls')
+      .update({ ...pollUpdates, updated_at: new Date().toISOString() })
+      .eq('id', pollId)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return poll
+  } catch (error) {
+    if (error instanceof QuickPollUnauthorizedError) {
+      throw error
+    }
+    throw new QuickPollUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const updateQuickPollParticipants = async (
+  pollId: string,
+  participantUpdates: {
+    toAdd?: AddParticipantData[]
+    toRemove?: string[]
+  }
+) => {
+  try {
+    // Add new participants
+    if (participantUpdates.toAdd && participantUpdates.toAdd.length > 0) {
+      for (const participantData of participantUpdates.toAdd) {
+        try {
+          await addQuickPollParticipant(pollId, participantData)
+        } catch (addError) {
+          throw addError
+        }
+      }
+    }
+
+    // Remove participants
+    if (participantUpdates.toRemove && participantUpdates.toRemove.length > 0) {
+      const { error: removeError } = await db.supabase
+        .from('quick_poll_participants')
+        .delete()
+        .in('id', participantUpdates.toRemove)
+        .eq('poll_id', pollId)
+        .select()
+
+      if (removeError) {
+        throw removeError
+      }
+    }
+  } catch (error) {
+    if (error instanceof QuickPollParticipantCreationError) {
+      throw error
+    }
+
+    throw new QuickPollUpdateError(
+      `Failed to update participants: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    )
+  }
+}
+
+const deleteQuickPoll = async (pollId: string, ownerAddress: string) => {
+  try {
+    // Verify the user can delete this poll
+    const { data: participant, error: participantError } = await db.supabase
+      .from('quick_poll_participants')
+      .select('participant_type')
+      .eq('poll_id', pollId)
+      .eq('account_address', ownerAddress)
+      .in('participant_type', ['scheduler', 'owner'])
+      .single()
+
+    if (participantError || !participant) {
+      throw new QuickPollUnauthorizedError('You cannot delete this poll')
+    }
+
+    // Delete participants first
+    const { error: participantsError } = await db.supabase
+      .from('quick_poll_participants')
+      .delete()
+      .eq('poll_id', pollId)
+
+    if (participantsError) throw participantsError
+
+    // Delete the poll
+    const { error: pollError } = await db.supabase
+      .from('quick_polls')
+      .delete()
+      .eq('id', pollId)
+
+    if (pollError) throw pollError
+
+    return { success: true }
+  } catch (error) {
+    if (error instanceof QuickPollUnauthorizedError) {
+      throw error
+    }
+    throw new QuickPollDeletionError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const expireStalePolls = async () => {
+  try {
+    const now = new Date().toISOString()
+
+    const { data, error } = await db.supabase
+      .from('quick_polls')
+      .update({ status: PollStatus.EXPIRED, updated_at: now })
+      .eq('status', PollStatus.ONGOING)
+      .lt('expires_at', now)
+      .select('id')
+
+    if (error) throw error
+
+    const expiredCount = data?.length || 0
+
+    return {
+      success: true,
+      expiredCount,
+      timestamp: now,
+    }
+  } catch (error) {
+    throw new Error(
+      `Failed to expire polls: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    )
+  }
+}
+
+const updateQuickPollParticipantStatus = async (
+  participantId: string,
+  status: QuickPollParticipantStatus,
+  availableSlots?: Record<string, any>[]
+) => {
+  try {
+    const updates: any = {
+      status,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (availableSlots) {
+      updates.available_slots = availableSlots
+    }
+
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update(updates)
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new QuickPollParticipantUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const getQuickPollParticipants = async (pollId: string) => {
+  try {
+    const { data: participants, error } = await db.supabase
+      .from('quick_poll_participants')
+      .select(
+        `
+        *,
+        accounts:account_address (
+          account_preferences (
+            name,
+            description
+          )
+        )
+      `
+      )
+      .eq('poll_id', pollId)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+
+    return participants.map(p => ({
+      ...p,
+      account_name: p.accounts?.account_preferences?.[0]?.name || p.guest_name,
+    }))
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Unknown error')
+  }
+}
+
+const addQuickPollParticipant = async (
+  pollId: string,
+  participantData: AddParticipantData
+) => {
+  try {
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .insert([
+        {
+          poll_id: pollId,
+          account_address: participantData.account_address,
+          guest_name: participantData.guest_name,
+          guest_email: participantData.guest_email,
+          status: QuickPollParticipantStatus.PENDING,
+          participant_type: participantData.participant_type,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return participant
+  } catch (error) {
+    throw new QuickPollParticipantCreationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
+  try {
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('id, status')
+      .eq('id', pollId)
+      .single()
+
+    if (pollError) throw pollError
+    if (!poll) {
+      throw new QuickPollNotFoundError(pollId)
+    }
+
+    if (poll.status === PollStatus.CANCELLED) {
+      throw new QuickPollAlreadyCancelledError()
+    }
+
+    if (poll.status === PollStatus.COMPLETED) {
+      throw new QuickPollAlreadyCompletedError()
+    }
+
+    // Check if user is the owner (has SCHEDULER role)
+    const { data: participant, error: participantError } = await db.supabase
+      .from('quick_poll_participants')
+      .select('participant_type')
+      .eq('poll_id', pollId)
+      .eq('account_address', ownerAddress)
+      .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+      .single()
+
+    if (participantError || !participant) {
+      throw new QuickPollUnauthorizedError(
+        'Only the poll creator can cancel this poll'
+      )
+    }
+
+    // Update poll status to cancelled and set expires_at to current time
+    const { data: updatedPoll, error: updateError } = await db.supabase
+      .from('quick_polls')
+      .update({
+        status: PollStatus.CANCELLED,
+        expires_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pollId)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
+
+    return updatedPoll
+  } catch (error) {
+    if (
+      error instanceof QuickPollNotFoundError ||
+      error instanceof QuickPollUnauthorizedError ||
+      error instanceof QuickPollAlreadyCancelledError ||
+      error instanceof QuickPollAlreadyCompletedError
+    ) {
+      throw error
+    }
+    throw new QuickPollCancellationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const updateQuickPollParticipantAvailability = async (
+  participantId: string,
+  availableSlots: AvailabilitySlot[],
+  timezone?: string
+) => {
+  try {
+    const updates: any = {
+      available_slots: availableSlots,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (timezone) {
+      updates.timezone = timezone
+    }
+
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update(updates)
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new QuickPollParticipantUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const updateQuickPollGuestDetails = async (
+  participantId: string,
+  guestName: string,
+  guestEmail: string
+) => {
+  try {
+    const updates = {
+      guest_name: guestName,
+      guest_email: guestEmail,
+      status: QuickPollParticipantStatus.ACCEPTED,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update(updates)
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new QuickPollParticipantUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const saveQuickPollCalendar = async (
+  participantId: string,
+  email: string,
+  provider: string,
+  payload?: Record<string, unknown>
+) => {
+  try {
+    const { data: calendar, error } = await db.supabase
+      .from('quick_poll_calendars')
+      .insert([
+        {
+          participant_id: participantId,
+          email,
+          provider,
+          payload,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+    return calendar
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to save calendar'
+    )
+  }
+}
+
+const getQuickPollParticipantById = async (participantId: string) => {
+  try {
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .select('*')
+      .eq('id', participantId)
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to get participant'
+    )
+  }
+}
+
+const getQuickPollParticipantByIdentifier = async (
+  pollId: string,
+  identifier: string // either account_address or guest_email
+) => {
+  try {
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .select('*')
+      .eq('poll_id', pollId)
+      .or(`account_address.eq.${identifier},guest_email.eq.${identifier}`)
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(identifier)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to get participant'
+    )
+  }
+}
+
 export {
   acceptContactInvite,
   addContactInvite,
   addOrUpdateConnectedCalendar,
+  addQuickPollParticipant,
   addUserToGroup,
+  cancelQuickPoll,
   changeGroupRole,
   checkContactExists,
   cleanupExpiredVerifications,
@@ -5962,6 +6962,7 @@ export {
   createMeetingType,
   createPaymentPreferences,
   createPinHash,
+  createQuickPoll,
   createTgConnection,
   createVerification,
   deleteAllTgConnections,
@@ -5969,9 +6970,11 @@ export {
   deleteGroup,
   deleteMeetingFromDB,
   deleteMeetingType,
+  deleteQuickPoll,
   deleteTgConnection,
   deleteVerifications,
   editGroup,
+  expireStalePolls,
   findAccountByIdentifier,
   findAccountsByText,
   getAccountFromDB,
@@ -6016,6 +7019,13 @@ export {
   getOwnerPublicUrlServer,
   getPaidSessionsByMeetingType,
   getPaymentPreferences,
+  getQuickPollById,
+  getQuickPollBySlug,
+  getQuickPollCalendars,
+  getQuickPollParticipantById,
+  getQuickPollParticipantByIdentifier,
+  getQuickPollParticipants,
+  getQuickPollsForAccount,
   getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
@@ -6045,6 +7055,7 @@ export {
   saveConferenceMeetingToDB,
   saveEmailToDB,
   saveMeeting,
+  saveQuickPollCalendar,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   subscribeWithCoupon,
@@ -6059,6 +7070,10 @@ export {
   updateMeetingType,
   updatePaymentPreferences,
   updatePreferenceAvatar,
+  updateQuickPoll,
+  updateQuickPollGuestDetails,
+  updateQuickPollParticipantAvailability,
+  updateQuickPollParticipantStatus,
   updateRecurringSlots,
   upsertGateCondition,
   verifyUserPin,

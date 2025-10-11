@@ -41,11 +41,13 @@ export const colors = {
     900: '#131A20',
   },
   green: {
+    700: '#00411D',
     600: '#00B576',
     500: '#34C759',
     400: '#00ce5d',
     300: '#55de93',
     200: '#ccf5df',
+    100: '#D1F0D8',
   },
   orangeButton: {
     200: '#F46739',
@@ -63,14 +65,19 @@ export const colors = {
     600: '#F9E800',
   },
   red: {
+    100: '#FFD5D6',
+    300: '#FF2023',
+    400: '#FF1115',
     500: '#FF0000',
     600: '#EB001B',
     700: '#E40004',
   },
   orange: {
+    100: '#FCDACF',
     200: '#FCD6CA',
     400: '#FF8A65',
     700: '#D93F0C',
+    800: '#C1380B',
   },
   dark: {
     900: '#141A1F',
@@ -244,6 +251,30 @@ const newTheme = {
       'dark-bg': {
         default: 'neutral.0',
         _dark: 'dark.700',
+      },
+      'button-text-dark': {
+        default: 'gray.800',
+        _dark: 'gray.800',
+      },
+      'menu-bg': {
+        default: 'white',
+        _dark: 'neutral.800',
+      },
+      'card-border': {
+        default: 'neutral.200',
+        _dark: 'neutral.800',
+      },
+      'menu-button-bg': {
+        default: 'neutral.100',
+        _dark: 'neutral.800',
+      },
+      'menu-button-hover': {
+        default: 'neutral.200',
+        _dark: 'neutral.700',
+      },
+      'menu-item-hover': {
+        default: 'neutral.100',
+        _dark: 'neutral.700',
       },
     },
   },
