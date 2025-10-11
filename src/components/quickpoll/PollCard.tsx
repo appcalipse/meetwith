@@ -68,6 +68,7 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
   const isPastPoll =
     poll.status === PollStatus.COMPLETED ||
     poll.status === PollStatus.CANCELLED ||
+    poll.status === PollStatus.EXPIRED ||
     pollIsExpired
 
   // Format dates
@@ -136,6 +137,8 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
         return { bg: 'red.100', color: 'red.400' }
       case PollStatus.COMPLETED:
         return { bg: 'blue.100', color: 'blue.700' }
+      case PollStatus.EXPIRED:
+        return { bg: 'orange.100', color: 'orange.700' }
       default:
         return { bg: 'gray.100', color: 'gray.700' }
     }
