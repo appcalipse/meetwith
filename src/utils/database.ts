@@ -6599,6 +6599,35 @@ const deleteQuickPoll = async (pollId: string, ownerAddress: string) => {
   }
 }
 
+const expireStalePolls = async () => {
+  try {
+    const now = new Date().toISOString()
+
+    const { data, error } = await db.supabase
+      .from('quick_polls')
+      .update({ status: PollStatus.EXPIRED, updated_at: now })
+      .eq('status', PollStatus.ONGOING)
+      .lt('expires_at', now)
+      .select('id')
+
+    if (error) throw error
+
+    const expiredCount = data?.length || 0
+
+    return {
+      success: true,
+      expiredCount,
+      timestamp: now,
+    }
+  } catch (error) {
+    throw new Error(
+      `Failed to expire polls: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    )
+  }
+}
+
 const updateQuickPollParticipantStatus = async (
   participantId: string,
   status: QuickPollParticipantStatus,
@@ -6945,6 +6974,7 @@ export {
   deleteTgConnection,
   deleteVerifications,
   editGroup,
+  expireStalePolls,
   findAccountByIdentifier,
   findAccountsByText,
   getAccountFromDB,

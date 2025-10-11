@@ -5,6 +5,7 @@ export enum PollStatus {
   ONGOING = 'ongoing',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
 }
 
 export enum PollVisibility {

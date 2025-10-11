@@ -71,7 +71,8 @@ const MetricStateProvider: React.FC<{
           QUICKPOLL_DEFAULT_OFFSET,
           searchQuery || '',
           PollStatus.COMPLETED,
-          PollStatus.CANCELLED
+          PollStatus.CANCELLED,
+          PollStatus.EXPIRED
         ),
       ])
       setOngoingPollsCount(ongoingData?.total_count || 0)
