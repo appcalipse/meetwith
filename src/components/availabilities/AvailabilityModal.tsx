@@ -798,7 +798,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                   >
                     <Button
                       bg="primary.200"
-                      color="text-primary"
+                      color="neutral.800"
                       _hover={{ bg: 'primary.200' }}
                       onClick={onCancelDelete}
                       width={{ base: '100%', sm: '157px' }}
