@@ -673,17 +673,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 justifyContent="flex-end"
                 width={{ base: '20px', md: '70px' }}
               >
-                <Tooltip
-                  label="Go to wallet settings"
-                  placement="top"
-                  hasArrow
-                  bg="bg-surface-tertiary"
-                  color="text-primary"
-                  borderRadius="8px"
-                  px={3}
-                  py={2}
-                  fontSize="sm"
-                >
+                <Tooltip label="Go to wallet settings" placement="top">
                   <Box display="inline-flex">
                     <Icon
                       as={TbSettings2}
@@ -1135,13 +1125,6 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           <Tooltip
                             label="Switch between blockchain networks. Each network operates independently with its own tokens, fees, and supported features. Make sure you're on the correct network for your transaction."
                             placement="top"
-                            hasArrow
-                            bg="bg-surface-tertiary"
-                            color="text-primary"
-                            borderRadius="8px"
-                            px={3}
-                            py={2}
-                            fontSize="sm"
                           >
                             <Box
                               display="flex"
@@ -1187,17 +1170,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                         </Box>
                       )}
 
-                      <Tooltip
-                        label="Show all transactions"
-                        placement="top"
-                        hasArrow
-                        bg="bg-surface-tertiary"
-                        color="text-primary"
-                        borderRadius="8px"
-                        px={3}
-                        py={2}
-                        fontSize="sm"
-                      >
+                      <Tooltip label="Show all transactions" placement="top">
                         <Box
                           w={{ base: '32px', md: '40px' }}
                           h={{ base: '32px', md: '40px' }}
