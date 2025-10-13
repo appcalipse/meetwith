@@ -254,7 +254,31 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
     currentAccount?.address,
     MeetingPermissions.SEE_GUEST_LIST
   )
-
+  const handleEditMeeting = async () => {
+    if (decryptedMeeting) {
+      try {
+        await push(
+          `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
+        )
+      } catch (error) {
+        toast({
+          title: 'Navigation Error',
+          description: 'Failed to navigate to edit page.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
+    } else {
+      toast({
+        title: 'Meeting Data Unavailable',
+        description: 'Unable to edit this meeting.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      })
+    }
+  }
   return (
     <>
       {loading ? (
@@ -361,115 +385,91 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                   >
                     <Button colorScheme="primary">Join meeting</Button>
                   </Link>
-                  <>
+                  <Tooltip label="Edit meeting" placement="top">
                     <IconButton
                       color={iconColor}
                       aria-label="edit"
                       icon={<FaEdit size={16} />}
-                      onClick={async () => {
-                        if (decryptedMeeting) {
-                          try {
-                            await push(
-                              `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
-                            )
-                          } catch (error) {
-                            toast({
-                              title: 'Navigation Error',
-                              description: 'Failed to navigate to edit page.',
-                              status: 'error',
-                              duration: 5000,
-                              isClosable: true,
-                            })
-                          }
-                        } else {
-                          toast({
-                            title: 'Meeting Data Unavailable',
-                            description: 'Unable to edit this meeting.',
-                            status: 'warning',
-                            duration: 5000,
-                            isClosable: true,
-                          })
-                        }
-                      }}
+                      onClick={handleEditMeeting}
                     />
-                    {isSchedulerOrOwner && (
-                      <Tooltip
-                        label="Cancel meeting for everyone"
-                        placement="top"
-                      >
-                        <IconButton
-                          color={iconColor}
-                          aria-label="remove"
-                          icon={<MdCancel size={16} />}
-                          onClick={onCancelOpen}
-                        />
-                      </Tooltip>
-                    )}
-                    <Tooltip label="Delete meeting" placement="top">
+                  </Tooltip>
+                  {isSchedulerOrOwner && (
+                    <Tooltip
+                      label="Cancel meeting for everyone"
+                      placement="top"
+                    >
                       <IconButton
                         color={iconColor}
-                        aria-label="delete"
-                        icon={<FaTrash size={16} />}
-                        onClick={handleDelete}
+                        aria-label="remove"
+                        icon={<MdCancel size={16} />}
+                        onClick={onCancelOpen}
                       />
                     </Tooltip>
-                    <Menu>
-                      <MenuButton
-                        as={IconButton}
-                        color={iconColor}
-                        aria-label="option"
-                        icon={<FaEllipsisV size={16} />}
-                        key={`${meeting?.id}-option`}
-                      />
-                      <Portal>
-                        <MenuList backgroundColor={menuBgColor}>
-                          {menuItems.map((val, index, arr) => [
-                            val.link ? (
-                              <MenuItem
-                                as="a"
-                                href={val.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                key={`${val.label}-${meeting?.id}`}
-                                backgroundColor={menuBgColor}
-                              >
-                                {val.label}
-                              </MenuItem>
-                            ) : (
-                              <MenuItem
-                                onClick={val.onClick}
-                                backgroundColor={menuBgColor}
-                                key={`${val.label}-${meeting?.id}`}
-                              >
-                                {val.label}
-                              </MenuItem>
-                            ),
-                            index !== arr.length - 1 && (
-                              <MenuDivider
-                                key="divider"
-                                borderColor="neutral.600"
-                              />
-                            ),
-                          ])}
-                          {!isProduction && (
-                            <>
-                              <MenuDivider
-                                key="divider2"
-                                borderColor="neutral.600"
-                              />
-                              <MenuItem
-                                key="log-info"
-                                backgroundColor={menuBgColor}
-                                onClick={() => console.debug(decryptedMeeting)}
-                              >
-                                Log info (for debugging)
-                              </MenuItem>
-                            </>
-                          )}
-                        </MenuList>
-                      </Portal>
-                    </Menu>
-                  </>
+                  )}
+                  <Tooltip label="Delete meeting" placement="top">
+                    <IconButton
+                      color={iconColor}
+                      aria-label="delete"
+                      icon={<FaTrash size={16} />}
+                      onClick={handleDelete}
+                    />
+                  </Tooltip>
+                  <Menu>
+                    <MenuButton
+                      as={IconButton}
+                      color={iconColor}
+                      aria-label="option"
+                      icon={<FaEllipsisV size={16} />}
+                      key={`${meeting?.id}-option`}
+                    />
+                    <Portal>
+                      <MenuList backgroundColor={menuBgColor}>
+                        {menuItems.map((val, index, arr) => [
+                          val.link ? (
+                            <MenuItem
+                              as="a"
+                              href={val.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              key={`${val.label}-${meeting?.id}`}
+                              backgroundColor={menuBgColor}
+                            >
+                              {val.label}
+                            </MenuItem>
+                          ) : (
+                            <MenuItem
+                              onClick={val.onClick}
+                              backgroundColor={menuBgColor}
+                              key={`${val.label}-${meeting?.id}`}
+                            >
+                              {val.label}
+                            </MenuItem>
+                          ),
+                          index !== arr.length - 1 && (
+                            <MenuDivider
+                              key="divider"
+                              borderColor="neutral.600"
+                            />
+                          ),
+                        ])}
+                        {!isProduction && (
+                          <>
+                            <MenuDivider
+                              key="divider2"
+                              borderColor="neutral.600"
+                            />
+                            <MenuItem
+                              key="log-info"
+                              backgroundColor={menuBgColor}
+                              onClick={() => console.debug(decryptedMeeting)}
+                            >
+                              Log info (for debugging)
+                            </MenuItem>
+                          </>
+                        )}
+                      </MenuList>
+                    </Portal>
+                  </Menu>
                 </HStack>
               </Flex>
 
