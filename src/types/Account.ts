@@ -18,6 +18,11 @@ export interface AuthToken {
   token_type: string
   refresh_token: string
 }
+export interface LeanAccountInfo {
+  name?: string
+  address: string
+  avatar_url?: string
+}
 
 export interface Account {
   id: string
