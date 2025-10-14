@@ -1,7 +1,8 @@
+import { DateTime } from 'luxon'
 import { useEffect, useState } from 'react'
 import slugify from 'slugify'
 
-import { MeetingProvider } from '@/types/Meeting'
+import { DBSlot, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 
 import { MeetingPermissions } from './constants/schedule'
@@ -46,18 +47,20 @@ export function parseUnits(value: `${number}`, decimals: number) {
   return BigInt(`${negative ? '-' : ''}${integer}${fraction}`)
 }
 export const isAccountSchedulerOrOwner = (
-  participants?: ParticipantInfo[],
+  participants?: ParticipantInfo[] | DBSlot[],
   address?: string,
   participantsType = [ParticipantType.Scheduler, ParticipantType.Owner]
-) =>
-  participantsType.includes(
-    participants?.find(p => p.account_address === address)?.type ||
-      ParticipantType?.Invitee
+) => {
+  const actor = participants?.find(p => p.account_address === address)
+  if (!actor) return false
+  return participantsType.includes(
+    ('type' in actor ? actor.type : actor.role) || ParticipantType.Invitee
   )
+}
 
 export const canAccountAccessPermission = (
   permissions?: MeetingPermissions[],
-  participants?: ParticipantInfo[],
+  participants?: ParticipantInfo[] | DBSlot[],
   address?: string,
   permission = MeetingPermissions.SEE_GUEST_LIST
 ) =>
@@ -221,4 +224,35 @@ export const formatCountdown = (seconds: number): string => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
   }
   return `${seconds}s`
+}
+
+export const groupByFields = <T>(
+  items: T[],
+  fieldsToCompare: (keyof T | 'end.dateTime' | 'start.dateTime')[]
+): T[][] => {
+  const groupMap = new Map<string, T[]>()
+  for (const item of items) {
+    // Create a unique key from the specified fields
+    const key = fieldsToCompare
+      .map(field => {
+        const value =
+          typeof field === 'string' &&
+          field.includes('.') &&
+          ['start.dateTime', 'end.dateTime'].includes(field)
+            ? DateTime.fromISO(
+                field.split('.').reduce((acc: any, curr) => acc?.[curr], item)
+              ).toFormat('HH:mm')
+            : item[field as keyof T]
+        return value !== undefined ? JSON.stringify(value) : 'undefined'
+      })
+      .join('|')
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, [])
+    }
+
+    groupMap.get(key)!.push(item)
+  }
+
+  return Array.from(groupMap.values()).sort((a, b) => a.length - b.length)
 }
