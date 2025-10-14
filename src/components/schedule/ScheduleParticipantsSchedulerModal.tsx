@@ -10,28 +10,28 @@ import {
   ModalOverlay,
   Radio,
   RadioGroup,
-  Switch,
   Text,
   VStack,
 } from '@chakra-ui/react'
-import { MeetingProvider } from '@meta/Meeting'
-import React, { FC, useContext, useEffect, useState } from 'react'
+import React, { FC, useState } from 'react'
 
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
+import { MeetingDecrypted } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { ellipsizeAddress } from '@/utils/user_manager'
 interface IProps {
   onClose: () => void
   isOpen: boolean
   participants: Array<ParticipantInfo>
+  decryptedMeeting?: MeetingDecrypted
 }
 const ScheduleParticipantsSchedulerModal: FC<IProps> = props => {
   const { handleDelete } = useScheduleActions()
   const [scheduler, setScheduler] = useState<ParticipantInfo | undefined>(
     undefined
   )
-  const handleSave = () => {
-    handleDelete(scheduler)
+  const handleSave = async () => {
+    await handleDelete(scheduler, props.decryptedMeeting)
     props.onClose()
   }
   const handleSchedulerChange = (identifier: string) => {
@@ -148,6 +148,7 @@ const ScheduleParticipantsSchedulerModal: FC<IProps> = props => {
                 _hover={{
                   opacity: 0.75,
                 }}
+                disabled={!scheduler}
               >
                 Delete Meeting
               </Button>
