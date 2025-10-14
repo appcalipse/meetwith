@@ -10,11 +10,7 @@ import {
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
@@ -396,7 +392,7 @@ export default class GoogleCalendarService
       const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
 
       const payload: calendar_v3.Schema$Event = {
-        id: meeting_id.replaceAll('-', ''), // required to edit events later
+        id: meetingDetails.eventId || meeting_id.replaceAll('-', ''), // required to edit events later
         summary: CalendarServiceHelper.getMeetingTitle(
           calendarOwnerAccountAddress,
           participantsInfo,
@@ -471,7 +467,7 @@ export default class GoogleCalendarService
         {
           auth: myGoogleAuth,
           calendarId,
-          eventId: meeting_id.replaceAll('-', ''),
+          eventId: meetingDetails.eventId || meeting_id.replaceAll('-', ''),
           sendNotifications: true,
           sendUpdates: 'all',
           requestBody: payload,
