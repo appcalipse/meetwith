@@ -96,11 +96,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       timezone,
       reason,
       title,
+      eventId,
     } = req.body as MeetingCancelSyncRequest
 
     for (const address of addressesToRemove) {
       try {
-        await ExternalCalendarSync.delete(address, [meeting_id])
+        await ExternalCalendarSync.delete(address, [eventId || meeting_id])
       } catch (error) {
         Sentry.captureException(error)
       }
