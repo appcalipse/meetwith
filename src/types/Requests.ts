@@ -36,6 +36,8 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   slotsToRemove: string[]
   guestsToRemove: ParticipantInfo[]
   version: number
+  isRecurring?: boolean
+  eventId?: string
 }
 
 export interface MeetingCreationRequest {
@@ -115,6 +117,7 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meetingReminders?: Array<MeetingReminders>
   meetingRepeat?: MeetingRepeat
   meetingPermissions?: Array<MeetingPermissions>
+  eventId?: string
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
@@ -126,6 +129,7 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   guestsToRemove: ParticipantInfo[]
   reason?: string
   title?: string
+  eventId?: string
 }
 
 export interface DiscordAccountInfoRequest {
