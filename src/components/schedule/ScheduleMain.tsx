@@ -71,6 +71,7 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
+import { isAccountSchedulerOrOwner } from '@/utils/generic_utils'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -237,7 +238,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         .map(val => val.account_address)
         .filter(value => Boolean(value)) as string[]
       setGroupAvailability({
-        no_group: allAddresses,
+        [NO_GROUP_KEY]: allAddresses,
       })
       const start = utcToZonedTime(meeting.start, timezone)
       const end = utcToZonedTime(meeting.end, timezone)
@@ -255,13 +256,9 @@ const ScheduleMain: FC<IInitialProps> = ({
 
       setSelectedPermissions(decryptedMeeting.permissions || undefined)
 
-      const isSchedulerOrOwner = [
-        ParticipantType.Scheduler,
-        ParticipantType.Owner,
-      ].includes(
-        decryptedMeeting?.participants?.find(
-          p => p.account_address === currentAccount?.address
-        )?.type || ParticipantType?.Invitee
+      const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+        decryptedMeeting?.participants,
+        currentAccount?.address
       )
       if (isSchedulerOrOwner && participants.length === 2) {
         setCanCancel(true)

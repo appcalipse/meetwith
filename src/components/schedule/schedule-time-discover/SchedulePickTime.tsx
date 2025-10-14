@@ -291,7 +291,9 @@ export function SchedulePickTime({
         .endOf('month')
         .toJSDate()
 
-      const accounts = deduplicateArray(Object.values(groupAvailability).flat())
+      const accounts = deduplicateArray(
+        Object.values(groupAvailability).flat()
+      ).filter((val): val is string => Boolean(val))
       const allParticipants = getMergedParticipants(
         participants,
         groups,

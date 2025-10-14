@@ -21,8 +21,8 @@ import { handleApiError } from '@/utils/error_helper'
 
 interface IParticipantsContext {
   participants: Array<ParticipantInfo | IGroupParticipant>
-  groupParticipants: Record<string, Array<string>>
-  groupAvailability: Record<string, Array<string>>
+  groupParticipants: Record<string, Array<string> | undefined>
+  groupAvailability: Record<string, Array<string> | undefined>
   meetingMembers: Array<Account>
   meetingOwners: Array<ParticipantInfo>
   groups: Array<GetGroupsFullResponse>
@@ -34,10 +34,10 @@ interface IParticipantsContext {
     React.SetStateAction<Array<ParticipantInfo | IGroupParticipant>>
   >
   setGroupParticipants: React.Dispatch<
-    React.SetStateAction<Record<string, Array<string>>>
+    React.SetStateAction<Record<string, Array<string> | undefined>>
   >
   setGroupAvailability: React.Dispatch<
-    React.SetStateAction<Record<string, Array<string>>>
+    React.SetStateAction<Record<string, Array<string> | undefined>>
   >
   setMeetingMembers: React.Dispatch<React.SetStateAction<Array<Account>>>
   setMeetingOwners: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
@@ -80,10 +80,10 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     },
   ])
   const [groupParticipants, setGroupParticipants] = useState<
-    Record<string, Array<string>>
+    Record<string, Array<string> | undefined>
   >({})
   const [groupAvailability, setGroupAvailability] = useState<
-    Record<string, Array<string>>
+    Record<string, Array<string> | undefined>
   >({})
   const [meetingMembers, setMeetingMembers] = useState<Array<Account>>([])
   const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
