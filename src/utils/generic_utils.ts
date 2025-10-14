@@ -1,7 +1,8 @@
+import { DateTime } from 'luxon'
 import { useEffect, useState } from 'react'
 import slugify from 'slugify'
 
-import { MeetingProvider } from '@/types/Meeting'
+import { DBSlot, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 
 import { MeetingPermissions } from './constants/schedule'
@@ -46,19 +47,20 @@ export function parseUnits(value: `${number}`, decimals: number) {
   return BigInt(`${negative ? '-' : ''}${integer}${fraction}`)
 }
 export const isAccountSchedulerOrOwner = (
-  participants?: ParticipantInfo[],
+  participants?: ParticipantInfo[] | DBSlot[],
   identifier?: string,
   participantsType = [ParticipantType.Scheduler, ParticipantType.Owner]
-) =>
-  participantsType.includes(
-    participants?.find(
-      p => p.account_address === identifier || p.account_address === identifier
-    )?.type || ParticipantType?.Invitee
+) => {
+  const actor = participants?.find(p => p.account_address === identifier)
+  if (!actor) return false
+  return participantsType.includes(
+    ('type' in actor ? actor.type : actor.role) || ParticipantType.Invitee
   )
+}
 
 export const canAccountAccessPermission = (
   permissions?: MeetingPermissions[],
-  participants?: ParticipantInfo[],
+  participants?: ParticipantInfo[] | DBSlot[],
   identifier?: string,
   permission = MeetingPermissions.SEE_GUEST_LIST
 ) =>
@@ -226,30 +228,33 @@ export const formatCountdown = (seconds: number): string => {
   return `${seconds}s`
 }
 
-/**
- * Creates a handler function to clear a specific validation error on blur
- * @param setErrors - The setState function for validation errors
- * @param fieldName - The name of the field to clear the error for
- * @returns A function to be used as an onBlur handler
- *
- * @example
- * ```tsx
- * <Input
- *   onBlur={clearValidationError(setValidationErrors, 'title')}
- * />
- * ```
- */
-export const clearValidationError = <T extends Record<string, any>>(
-  setErrors: React.Dispatch<React.SetStateAction<T>>,
-  fieldName: keyof T
-) => {
-  return () => {
-    setErrors(prev => {
-      if (prev[fieldName]) {
-        const { [fieldName]: _, ...rest } = prev
-        return rest as T
-      }
-      return prev
-    })
+export const groupByFields = <T>(
+  items: T[],
+  fieldsToCompare: (keyof T | 'end.dateTime' | 'start.dateTime')[]
+): T[][] => {
+  const groupMap = new Map<string, T[]>()
+  for (const item of items) {
+    // Create a unique key from the specified fields
+    const key = fieldsToCompare
+      .map(field => {
+        const value =
+          typeof field === 'string' &&
+          field.includes('.') &&
+          ['start.dateTime', 'end.dateTime'].includes(field)
+            ? DateTime.fromISO(
+                field.split('.').reduce((acc: any, curr) => acc?.[curr], item)
+              ).toFormat('HH:mm')
+            : item[field as keyof T]
+        return value !== undefined ? JSON.stringify(value) : 'undefined'
+      })
+      .join('|')
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, [])
+    }
+
+    groupMap.get(key)!.push(item)
   }
+
+  return Array.from(groupMap.values()).sort((a, b) => a.length - b.length)
 }
