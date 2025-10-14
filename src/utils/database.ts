@@ -1,3 +1,4 @@
+import { RecurringStatus } from '@meta/common'
 import {
   ActivePaymentAccount,
   PaymentAccountStatus,
@@ -26,13 +27,14 @@ import EthCrypto, {
 import { GaxiosError } from 'gaxios'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
-import { validate } from 'uuid'
+import { v4, validate } from 'uuid'
 
 import {
   Account,
   AccountPreferences,
   BaseMeetingType,
   DiscordConnectedAccounts,
+  LeanAccountInfo,
   MeetingType,
   PaidMeetingTypes,
   PaymentPreferences,
@@ -220,6 +222,7 @@ import {
 import {
   extractMeetingDescription,
   getBaseEventId,
+  handleCancelOrDelete,
   updateMeetingServer,
 } from './calendar_sync_helpers'
 import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
@@ -232,7 +235,7 @@ import {
   sendReceiptEmail,
   sendSessionBookingIncomeEmail,
 } from './email_helper'
-import { deduplicateArray } from './generic_utils'
+import { deduplicateArray, groupByFields } from './generic_utils'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { IGoogleCalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
@@ -496,7 +499,25 @@ const findAccountByIdentifier = async (
       )
     : []
 }
-
+const findAccountByNotificationEmail = async (
+  actor_address: string,
+  email: string
+): Promise<Array<LeanAccountInfo> | null> => {
+  const { data, error } = await db.supabase.rpc<LeanAccountInfo>(
+    'get_accounts_by_calendar_email',
+    {
+      p_address: actor_address,
+      p_email: email.trim(),
+      p_limit: 10,
+      p_offset: 0,
+    }
+  )
+  if (error) {
+    Sentry.captureException(error)
+    return null
+  }
+  return data
+}
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
   const preferences = { ...account.preferences! }
   preferences.name = preferences.name?.trim()
@@ -980,8 +1001,7 @@ const isSlotAvailable = async (
       DateTime.fromJSDate(new Date(slot.end))
     )
   )
-  const isAvailable = busySlots.every(slot => !slot.overlaps(interval))
-  return isAvailable
+  return busySlots.every(slot => !slot.overlaps(interval))
 }
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
@@ -1264,7 +1284,9 @@ const deleteMeetingFromDB = async (
   meeting_id: string,
   timezone: string,
   reason?: string,
-  title?: string
+  title?: string,
+  isRecurring?: boolean,
+  eventId?: string
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
@@ -1272,7 +1294,6 @@ const deleteMeetingFromDB = async (
     (await db.supabase.from<DBSlot>('slots').select().in('id', slotIds)).data ||
     []
 
-  const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
   const { error: guestSlotsError } = await db.supabase
     .from('guest_slots')
     .delete()
@@ -1280,6 +1301,17 @@ const deleteMeetingFromDB = async (
   if (guestSlotsError) {
     throw new Error(guestSlotsError.message)
   }
+  const { error } = isRecurring
+    ? await db.supabase.from('temp_slots').insert(
+        oldSlots.map(slot => ({
+          ...slot,
+          id: v4(),
+          slot_id: slot.id,
+          status: RecurringStatus.CANCELLED,
+        }))
+      )
+    : await db.supabase.from('slots').delete().in('id', slotIds)
+
   if (error) {
     throw new Error(error.message)
   }
@@ -1295,6 +1327,7 @@ const deleteMeetingFromDB = async (
     title,
     timezone,
     reason,
+    eventId,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -3208,11 +3241,21 @@ const updateMeeting = async (
   // there is no support from suppabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts
-
-  const { data, error } = await db.supabase
-    .from('slots')
-    .upsert(slots, { onConflict: 'id' })
+  let query
+  if (meetingUpdateRequest.isRecurring) {
+    query = await db.supabase.from('temp_slots').insert(
+      slots.map(val => ({
+        ...val,
+        id: v4(),
+        slot_id: val.id,
+        status: RecurringStatus.CONFIRMED,
+      }))
+    )
+  } else {
+    query = await db.supabase.from('slots').upsert(slots, { onConflict: 'id' })
+  }
   //TODO: handle error
+  const { data, error } = query
   if (error) {
     throw new Error(error.message)
   }
@@ -3225,8 +3268,8 @@ const updateMeeting = async (
     }
   }
 
-  meetingResponse.id = data[index]?.id
-  meetingResponse.created_at = data[index]?.created_at
+  meetingResponse.id = data?.[index]?.id
+  meetingResponse.created_at = data?.[index]?.created_at
 
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
@@ -3246,25 +3289,26 @@ const updateMeeting = async (
   const updatedSlots = [...existingSlots, ...uniqueNewSlots]
 
   // now that everything happened without error, it is safe to update the root meeting data
-  const createdRootMeeting = await saveConferenceMeetingToDB({
-    id: meetingUpdateRequest.meeting_id,
-    start: meetingUpdateRequest.start,
-    end: meetingUpdateRequest.end,
-    meeting_url: meetingUpdateRequest.meeting_url,
-    access_type: MeetingAccessType.OPEN_MEETING,
-    provider: meetingUpdateRequest.meetingProvider,
-    recurrence: meetingUpdateRequest.meetingRepeat,
-    reminders: meetingUpdateRequest.meetingReminders,
-    version: MeetingVersion.V2,
-    title: meetingUpdateRequest.title,
-    slots: updatedSlots,
-    permissions: meetingUpdateRequest.meetingPermissions,
-  })
-
-  if (!createdRootMeeting)
-    throw new Error(
-      'Could not update your meeting right now, get in touch with us if the problem persists'
-    )
+  if (!meetingUpdateRequest.isRecurring) {
+    const createdRootMeeting = await saveConferenceMeetingToDB({
+      id: meetingUpdateRequest.meeting_id,
+      start: meetingUpdateRequest.start,
+      end: meetingUpdateRequest.end,
+      meeting_url: meetingUpdateRequest.meeting_url,
+      access_type: MeetingAccessType.OPEN_MEETING,
+      provider: meetingUpdateRequest.meetingProvider,
+      recurrence: meetingUpdateRequest.meetingRepeat,
+      reminders: meetingUpdateRequest.meetingReminders,
+      version: MeetingVersion.V2,
+      title: meetingUpdateRequest.title,
+      slots: updatedSlots,
+      permissions: meetingUpdateRequest.meetingPermissions,
+    })
+    if (!createdRootMeeting)
+      throw new Error(
+        'Could not update your meeting right now, get in touch with us if the problem persists'
+      )
+  }
 
   const body: MeetingCreationSyncRequest = {
     participantActing,
@@ -3286,6 +3330,7 @@ const updateMeeting = async (
       meetingUpdateRequest.meetingTypeId === NO_MEETING_TYPE
         ? undefined
         : meetingUpdateRequest.meetingTypeId,
+    eventId: meetingUpdateRequest.eventId,
   }
 
   // Doing notifications and syncs asynchronously
@@ -3309,7 +3354,9 @@ const updateMeeting = async (
       meetingUpdateRequest.meeting_id,
       timezone,
       undefined,
-      meetingUpdateRequest.title
+      meetingUpdateRequest.title,
+      meetingUpdateRequest.isRecurring,
+      meetingUpdateRequest.eventId
     )
 
   return meetingResponse
@@ -5805,14 +5852,10 @@ const handleWebhookEvent = async (
   }
   const calendar: ConnectedCalendar = data?.connected_calendar
   if (!calendar) return false
-  let lower_limit = new Date(calendar?.updated || calendar?.created)
+  const lower_limit = new Date()
   const upper_limit = add(new Date(), {
-    years: 1,
+    months: 6,
   })
-
-  if (lower_limit < add(upper_limit, { years: -1.5 })) {
-    lower_limit = add(upper_limit, { years: -1 })
-  }
 
   const integration = getConnectedCalendarIntegration(
     calendar.account_address,
@@ -5827,20 +5870,16 @@ const handleWebhookEvent = async (
       lower_limit,
       upper_limit
     )) || []
-  calendar_availabilities = calendar_availabilities
-    .sort((a, b) => {
-      // Group by recurringEventId first
-      const aKey = a.id || ''
-      const bKey = b.id || ''
+  calendar_availabilities = calendar_availabilities.sort((a, b) => {
+    // Group by recurringEventId first
+    const aKey = a.id || ''
+    const bKey = b.id || ''
 
-      if (aKey !== bKey) return aKey.localeCompare(bKey)
+    if (aKey !== bKey) return aKey.localeCompare(bKey)
 
-      // Within same group, sort by sequence (highest first)
-      return (b.sequence || 0) - (a.sequence || 0)
-    })
-    .filter(event => {
-      if (!event.recurringEventId) return true
-    })
+    // Within same group, sort by sequence (highest first)
+    return (b.sequence || 0) - (a.sequence || 0)
+  })
   const recentlyUpdated = calendar_availabilities.filter(event => {
     const now = new Date()
     // We can't update recently updated meeting to prevent infinite syncing when we update or create meetings
@@ -5851,7 +5890,7 @@ const handleWebhookEvent = async (
       if (
         eventLastUpdatedAt >
         sub(now, {
-          seconds: 30,
+          seconds: 15,
         })
       ) {
         return false
@@ -5863,25 +5902,79 @@ const handleWebhookEvent = async (
 
     return eventDate > add(now, { minutes: -2 })
   })
+  const recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
+    meeting => meeting.recurringEventId
+  )
+  const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
+    meeting => !meeting.recurringEventId
+  )
   if (recentlyUpdated.length === 0) {
-    console.error('No recently updated events found')
+    // eslint-disable-next-line no-restricted-syntax
+    console.info('No recently updated events found')
     return false
   }
   const actions = await Promise.all(
-    recentlyUpdated.map(event =>
-      handleSyncEvent(event, calendar, data.calendar_id)
-    )
+    recentlyUpdatedNonRecurringMeetings
+      .map(event => handleSyncEvent(event, calendar, data.calendar_id))
+      .concat(
+        handleSyncRecurringEvents(
+          recentlyUpdatedRecurringMeetings,
+          calendar,
+          data.calendar_id,
+          upper_limit
+        )
+      )
   )
   return actions.length > 0
+}
+const handleSyncRecurringEvents = async (
+  events: calendar_v3.Schema$Event[],
+  calendar: ConnectedCalendar,
+  calendarId: string,
+  upper_limit: Date
+) => {
+  const groupedRecurringEvents = groupByFields<calendar_v3.Schema$Event>(
+    events,
+    ['recurringEventId']
+  ).map(event =>
+    groupByFields<calendar_v3.Schema$Event>(event, [
+      'start.dateTime',
+      'end.dateTime',
+      'attendees',
+      'description',
+      'summary',
+      'reminders',
+      'location',
+    ])
+  )
+
+  for (const group of groupedRecurringEvents) {
+    for (const item of group) {
+      if (item.length < 10) {
+        // handle each event individually if less than 10 events in the group
+        for (const event of item) {
+          await handleSyncEvent(event, calendar, calendarId, true)
+        }
+      } else {
+        // for large groups, only handle the latest event to avoid rate limits
+        const latestEvent = item.reduce((prev, current) => {
+          const prevDate = new Date(prev.start?.dateTime || 0)
+          const currentDate = new Date(current.start?.dateTime || 0)
+          return currentDate > prevDate ? current : prev
+        })
+        await handleSyncEvent(latestEvent, calendar, calendarId)
+      }
+    }
+  }
 }
 const handleSyncEvent = async (
   event: calendar_v3.Schema$Event,
   calendar: ConnectedCalendar,
-  calendarId: string
+  calendarId: string,
+  isRecurring?: boolean
 ) => {
   try {
     // eslint-disable-next-line no-restricted-syntax
-    console.log(event)
     if (!event.id) return
     const meetingId = getBaseEventId(event.id)
     if (!meetingId) {
@@ -5889,18 +5982,32 @@ const handleSyncEvent = async (
       return
     }
     if (!event.start?.dateTime || !event.end?.dateTime) return
-    const meeting = await updateMeetingServer(
-      meetingId,
-      calendar.account_address,
-      calendar.email,
-      new Date(event.start?.dateTime),
-      new Date(event.end?.dateTime),
-      event.attendees || [],
-      extractMeetingDescription(event.description || '') || '',
-      event.location || '',
-      event.summary || ''
-    )
-
+    let meeting
+    if (event.status === 'cancelled') {
+      meeting = await handleCancelOrDelete(
+        meetingId,
+        calendar.account_address,
+        new Date(event.start?.dateTime),
+        new Date(event.end?.dateTime),
+        event.attendees || [],
+        extractMeetingDescription(event.description || '') || '',
+        isRecurring,
+        isRecurring ? event.id : undefined
+      )
+    } else {
+      meeting = await updateMeetingServer(
+        meetingId,
+        calendar.account_address,
+        new Date(event.start?.dateTime),
+        new Date(event.end?.dateTime),
+        event.attendees || [],
+        extractMeetingDescription(event.description || '') || '',
+        event.location || '',
+        event.summary || '',
+        isRecurring,
+        isRecurring ? event.id : undefined
+      )
+    }
     return meeting
   } catch (e) {
     console.error(e)
@@ -5912,6 +6019,7 @@ const handleSyncEvent = async (
     }
   }
 }
+
 const handleCalendarRsvps = async (
   event: calendar_v3.Schema$Event,
   calendar: ConnectedCalendar,
@@ -5957,7 +6065,7 @@ const handleCalendarRsvps = async (
           for (const cal of calendar.calendars) {
             try {
               await integration.updateEventRSVP(
-                meetingId,
+                event.id,
                 actorEmail,
                 actor.responseStatus,
                 cal.calendarId
@@ -7669,6 +7777,7 @@ export {
   editGroup,
   expireStalePolls,
   findAccountByIdentifier,
+  findAccountByNotificationEmail,
   findAccountsByText,
   getAccountAvatarUrl,
   getAccountFromDB,
