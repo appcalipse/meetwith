@@ -4,7 +4,11 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
-import { OAuthCallbackQuery, QuickPollParticipantType } from '@/types/QuickPoll'
+import {
+  OAuthCallbackQuery,
+  PollVisibility,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
 import { apiUrl } from '@/utils/constants'
 import {
   addQuickPollParticipant,
@@ -126,6 +130,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       participantExists = true
     } catch (error) {
       participantExists = false
+    }
+
+    if (
+      pollData.poll.visibility === PollVisibility.PRIVATE &&
+      !participantExists
+    ) {
+      return res.redirect(
+        `/poll/${stateObject?.pollSlug}?calendarResult=error&error=not_invited`
+      )
     }
 
     try {

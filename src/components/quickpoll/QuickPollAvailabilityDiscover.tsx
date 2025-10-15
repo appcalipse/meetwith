@@ -11,6 +11,7 @@ import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
   AvailabilitySlot,
+  PollVisibility,
   QuickPollBySlugResponse,
   QuickPollIntent,
   QuickPollParticipant,
@@ -31,6 +32,7 @@ import {
   AvailabilityTrackerProvider,
   useAvailabilityTracker,
 } from '../schedule/schedule-time-discover/AvailabilityTracker'
+import GuestIdentificationModal from './GuestIdentificationModal'
 import { QuickPollParticipants } from './QuickPollParticipants'
 import { QuickPollPickAvailability } from './QuickPollPickAvailability'
 
@@ -48,6 +50,8 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   const {
     isInviteParticipantsOpen,
     showCalendarModal,
+    showGuestIdModal,
+    showCalendarImportFlow,
     currentParticipantId,
     currentGuestEmail,
     isEditingAvailability,
@@ -55,6 +59,8 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     isRefreshingAvailabilities,
     setIsInviteParticipantsOpen,
     setShowCalendarModal,
+    setShowGuestIdModal,
+    setShowCalendarImportFlow,
     setCurrentParticipantId,
     setCurrentGuestEmail,
     setIsEditingAvailability,
@@ -131,7 +137,18 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   }
 
   const handleEditAvailability = () => {
-    setIsEditingAvailability(true)
+    if (
+      !currentAccount &&
+      currentPollData?.poll.visibility === PollVisibility.PRIVATE
+    ) {
+      if (!currentParticipantId || !currentGuestEmail) {
+        setShowGuestIdModal(true)
+      } else {
+        setIsEditingAvailability(true)
+      }
+    } else {
+      setIsEditingAvailability(true)
+    }
   }
 
   const handleSaveAvailability = async () => {
@@ -222,6 +239,38 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     }
   }
 
+  const handleGuestIdentification = async (email: string) => {
+    try {
+      const participant = await getPollParticipantByIdentifier(
+        currentPollData!.poll.slug,
+        email
+      )
+
+      if (participant) {
+        setCurrentParticipantId(participant.id)
+        setCurrentGuestEmail(email)
+        setShowGuestIdModal(false)
+
+        if (showCalendarImportFlow) {
+          setShowCalendarImportFlow(false)
+          setShowCalendarModal(true)
+        } else {
+          setIsEditingAvailability(true)
+        }
+      } else {
+        showErrorToast(
+          'Participant not found',
+          'No participant found with this email address.'
+        )
+      }
+    } catch (error) {
+      showErrorToast(
+        'Identification failed',
+        'There was an error identifying you. Please try again.'
+      )
+    }
+  }
+
   const handleSharePoll = () => {
     const pollSlug = currentPollData?.poll.slug || currentPollId
     const pollUrl = `${window.location.origin}/poll/${pollSlug}`
@@ -237,15 +286,24 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   }
 
   const handleCalendarImport = () => {
-    setShowCalendarModal(true)
+    if (
+      !currentAccount &&
+      currentPollData?.poll.visibility === PollVisibility.PRIVATE
+    ) {
+      if (!currentParticipantId || !currentGuestEmail) {
+        setShowCalendarImportFlow(true)
+        setShowGuestIdModal(true)
+      } else {
+        setShowCalendarModal(true)
+      }
+    } else {
+      setShowCalendarModal(true)
+    }
   }
 
-  const handleCalendarConnectSuccess = () => {
-    setShowCalendarModal(false)
-    showSuccessToast(
-      'Calendar connected',
-      'Your calendar has been connected successfully!'
-    )
+  const handleCloseGuestIdModal = () => {
+    setShowGuestIdModal(false)
+    setShowCalendarImportFlow(false)
   }
 
   const handleAvailabilityAction = () => {
@@ -409,6 +467,15 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         refetch={refreshAvailabilities}
         pollSlug={currentPollData?.poll.slug}
       />
+
+      {currentPollData?.poll.visibility === PollVisibility.PRIVATE && (
+        <GuestIdentificationModal
+          isOpen={showGuestIdModal}
+          onClose={handleCloseGuestIdModal}
+          onSubmit={handleGuestIdentification}
+          pollTitle={currentPollData?.poll.title}
+        />
+      )}
     </VStack>
   )
 }

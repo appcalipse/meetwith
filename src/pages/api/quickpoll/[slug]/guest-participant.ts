@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import {
   AddOrUpdateGuestParticipantRequest,
+  PollVisibility,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
 import {
@@ -52,6 +53,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       participantExists = true
     } catch (error) {
       participantExists = false
+    }
+
+    if (
+      pollData.poll.visibility === PollVisibility.PRIVATE &&
+      !participantExists
+    ) {
+      return res.status(403).json({
+        error:
+          'This is a private poll. Only invited participants can add availability.',
+      })
     }
 
     if (participantExists && participant) {
