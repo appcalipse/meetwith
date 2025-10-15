@@ -22,7 +22,7 @@ import { FaArrowRight } from 'react-icons/fa'
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
 import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
-import { useAvailabilityBlocks } from '@/hooks/availability/useAvailabilityBlocks'
+import { useAvailabilityBlock } from '@/hooks/availability'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
@@ -44,12 +44,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const groupRef = useRef<GroupRef>(null)
   const groupInviteRef = useRef<GroupInvitesRef>(null)
 
-  const { blocks: availabilityBlocks, isLoading: isLoadingAvailabilityBlocks } =
-    useAvailabilityBlocks(currentAccount?.address)
-
-  const defaultAvailabilityBlock = availabilityBlocks?.find(
-    block => block.id === currentAccount?.preferences?.availaibility_id
-  )
+  const {
+    block: defaultAvailabilityBlock,
+    isLoading: isLoadingAvailabilityBlocks,
+  } = useAvailabilityBlock(currentAccount?.preferences?.availaibility_id)
 
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
