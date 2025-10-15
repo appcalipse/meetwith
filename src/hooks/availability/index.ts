@@ -1,4 +1,5 @@
 // Export all availability-related hooks
+export { useAvailabilityBlock } from './useAvailabilityBlock'
 export { useAvailabilityBlockHandlers } from './useAvailabilityBlockHandlers'
 export {
   useAvailabilityBlockMeetingTypes,
