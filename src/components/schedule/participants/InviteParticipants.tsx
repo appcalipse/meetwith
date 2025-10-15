@@ -9,13 +9,12 @@ import {
   ModalBody,
   ModalCloseButton,
   ModalContent,
-  ModalHeader,
   ModalOverlay,
   Text,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { FC, useCallback, useMemo } from 'react'
+import React, { FC, useCallback } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import PublicGroupLink from '@/components/group/PublicGroupLink'
@@ -40,10 +39,11 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
   const {
     groups,
     isGroupPrefetching,
-    participants,
     setParticipants,
     setGroupAvailability,
     setGroupParticipants,
+    setStandAloneParticipants,
+    standAloneParticipants,
   } = useParticipants()
   const groupId = useRouter().query.groupId as string | undefined
 
@@ -53,14 +53,19 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
         .map(p => p.account_address)
         .filter((a): a is string => !!a)
 
+      setParticipants(prevUsers => {
+        const groupParticipants = prevUsers?.filter(
+          user => isGroupParticipant(user) || user.isHidden
+        )
+        return [...groupParticipants, ..._participants]
+      })
+      setStandAloneParticipants(prevUsers => {
+        const groupParticipants = prevUsers?.filter(
+          user => isGroupParticipant(user) || user.isHidden
+        )
+        return [...groupParticipants, ..._participants]
+      })
       React.startTransition(() => {
-        setParticipants(prevUsers => {
-          const groupParticipants = prevUsers?.filter(
-            user => isGroupParticipant(user) || user.isHidden
-          )
-          return [...groupParticipants, ..._participants]
-        })
-
         if (addressesToAdd.length > 0) {
           setGroupAvailability(prev => ({
             ...prev,
@@ -93,14 +98,6 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
       return p.guest_email!
     }
   }, [])
-  const nonGroupParticipants = useMemo(
-    () =>
-      participants.filter(
-        participant => !isGroupParticipant(participant) && !participant.isHidden
-      ),
-    [participants]
-  )
-
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
@@ -139,7 +136,7 @@ const InviteParticipants: FC<IProps> = ({ isOpen, onClose }) => {
             </FormLabel>
             <Box w="100%" maxW="100%">
               <ChipInput
-                currentItems={nonGroupParticipants}
+                currentItems={standAloneParticipants}
                 placeholder="Enter email, wallet address or ENS of user"
                 onChange={onParticipantsChange}
                 renderItem={renderParticipantItem}
