@@ -19,8 +19,12 @@ import { handleApiError } from '@/utils/error_helper'
 
 const PollPage = () => {
   const router = useRouter()
-  const { slug } = router.query
-  const initialPage = QuickPollPage.AVAILABILITY
+  const { slug, tab, participantId } = router.query
+
+  let initialPage = QuickPollPage.AVAILABILITY
+  if (tab === 'guest-details') {
+    initialPage = QuickPollPage.GUEST_DETAILS
+  }
 
   // Fetch poll data using React Query
   const {
@@ -81,7 +85,9 @@ const PollPage = () => {
 
   return (
     <Box width="100%" minHeight="100vh" bg="bg-canvas">
-      <QuickPollAvailabilityProvider>
+      <QuickPollAvailabilityProvider
+        initialParticipantId={participantId as string}
+      >
         <ScheduleStateProvider>
           <NavigationProvider>
             <ParticipantsProvider skipFetching={true}>

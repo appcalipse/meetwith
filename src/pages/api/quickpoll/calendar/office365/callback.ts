@@ -3,9 +3,14 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
-import { OAuthCallbackQuery } from '@/types/QuickPoll'
+import { OAuthCallbackQuery, QuickPollParticipantType } from '@/types/QuickPoll'
 import { apiUrl } from '@/utils/constants'
-import { saveQuickPollCalendar } from '@/utils/database'
+import {
+  addQuickPollParticipant,
+  getQuickPollBySlug,
+  getQuickPollParticipantByIdentifier,
+  saveQuickPollCalendar,
+} from '@/utils/database'
 
 const credentials = {
   client_id: process.env.MS_GRAPH_CLIENT_ID,
@@ -108,21 +113,65 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       enabled: true,
     })) || []
 
-  if (!stateObject?.participantId) {
-    return res.redirect(
-      `/poll/${
-        stateObject?.pollSlug || 'undefined'
-      }?calendarResult=error&error=missing_participant`
-    )
+  let participantId = stateObject?.participantId
+
+  if (!participantId) {
+    const guestEmail =
+      stateObject?.guestEmail || userData.mail || userData.userPrincipalName
+
+    if (!stateObject?.pollSlug) {
+      return res.redirect(
+        `/poll/undefined?calendarResult=error&error=missing_poll_slug`
+      )
+    }
+
+    const pollData = await getQuickPollBySlug(stateObject.pollSlug)
+
+    let participantExists = false
+    let existingParticipant
+
+    try {
+      existingParticipant = await getQuickPollParticipantByIdentifier(
+        pollData.poll.id,
+        guestEmail.toLowerCase()
+      )
+      participantExists = true
+    } catch (error) {
+      participantExists = false
+    }
+
+    try {
+      if (participantExists && existingParticipant) {
+        participantId = existingParticipant.id
+      } else {
+        const newParticipant = await addQuickPollParticipant(pollData.poll.id, {
+          guest_email: guestEmail.toLowerCase(),
+          guest_name: 'Guest',
+          participant_type: QuickPollParticipantType.INVITEE,
+        })
+        participantId = newParticipant.id
+      }
+    } catch (error) {
+      Sentry.captureException(error)
+      return res.redirect(
+        `/poll/${stateObject?.pollSlug}?calendarResult=error&error=participant_creation_failed`
+      )
+    }
   }
 
   // Save calendar for quickpoll participant
   await saveQuickPollCalendar(
-    stateObject.participantId,
+    participantId,
     userData.mail || userData.userPrincipalName,
     TimeSlotSource.OFFICE,
     tokenData
   )
+
+  if (!stateObject?.participantId) {
+    return res.redirect(
+      `/poll/${stateObject?.pollSlug}?tab=guest-details&participantId=${participantId}&calendarConnected=true`
+    )
+  }
 
   return res.redirect(
     `/poll/${stateObject?.pollSlug}?calendarResult=success&provider=office365`

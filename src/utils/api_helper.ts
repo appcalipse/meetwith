@@ -2012,6 +2012,31 @@ export const updateGuestParticipantDetails = async (
   )
 }
 
+export const addOrUpdateGuestParticipantWithAvailability = async (
+  pollSlug: string,
+  guestEmail: string,
+  availableSlots: AvailabilitySlot[],
+  timezone: string,
+  guestName?: string
+) => {
+  return await internalFetch(
+    `/quickpoll/${pollSlug}/guest-participant`,
+    'POST',
+    {
+      guest_email: guestEmail,
+      guest_name: guestName,
+      available_slots: availableSlots,
+      timezone,
+    }
+  )
+}
+
+export const getPollParticipantById = async (
+  participantId: string
+): Promise<QuickPollParticipant> => {
+  return await internalFetch(`/quickpoll/participants/${participantId}`)
+}
+
 export const savePollParticipantCalendar = async (
   participantId: string,
   email: string,

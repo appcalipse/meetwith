@@ -34,6 +34,7 @@ interface ConnectCalendarProps {
   isQuickPoll?: boolean
   participantId?: string
   pollData?: any
+  pollSlug?: string
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
@@ -44,17 +45,19 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   isQuickPoll = false,
   participantId,
   pollData,
+  pollSlug,
 }) => {
   const [loading, setLoading] = useState<TimeSlotSource | undefined>()
   const toast = useToast()
   const [selectedProvider, setSelectedProvider] = useState<
     TimeSlotSource | undefined
   >()
+
   const selectOption = (provider: TimeSlotSource) => async () => {
     setLoading(provider)
     await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
 
-    const isGuestFlow = isQuickPoll && participantId
+    const isGuestFlow = isQuickPoll && (participantId || pollSlug)
 
     const getGoogleUrl = isGuestFlow
       ? getQuickPollGoogleAuthConnectUrl
@@ -64,11 +67,12 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
       : getOffice365ConnectUrl
 
     let oauthState = state
-    if (isGuestFlow && pollData) {
+    if (isGuestFlow) {
+      const slug = pollSlug || pollData?.poll?.slug
       const stateObject = {
         participantId,
-        pollSlug: pollData.poll.slug,
-        redirectTo: `/poll/${pollData.poll.slug}`,
+        pollSlug: slug,
+        redirectTo: `/poll/${slug}`,
       }
       oauthState = Buffer.from(JSON.stringify(stateObject)).toString('base64')
     }
