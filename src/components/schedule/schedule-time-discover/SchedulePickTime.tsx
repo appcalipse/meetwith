@@ -10,7 +10,6 @@ import {
   Heading,
   HStack,
   IconButton,
-  Select as ChakraSelect,
   SlideFade,
   Text,
   useBreakpointValue,
@@ -99,7 +98,6 @@ export type Dates = {
   date: Date
   slots: Array<Interval<true>>
 }
-
 interface ISchedulePickTimeProps {
   openParticipantModal: () => void
 }
@@ -142,8 +140,6 @@ export function SchedulePickTime({
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
   const [isLoading, setIsLoading] = useState(true)
-
-  const isDisplayLoading = isLoading
   const [availableSlots, setAvailableSlots] = useState<
     Map<string, Interval<true>[]>
   >(new Map())
@@ -470,14 +466,6 @@ export function SchedulePickTime({
     setPickedTime(bestSlot.start.toJSDate())
     handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
-
-  const handleTimeSelection = (time: Date) => {
-    React.startTransition(() => {
-      setPickedTime(time)
-    })
-    handlePageSwitch(Page.SCHEDULE_DETAILS)
-  }
-
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
@@ -550,25 +538,24 @@ export function SchedulePickTime({
                 *
               </Text>
             </FormLabel>
-            <ChakraSelect
-              id="duration"
-              placeholder="Duration"
-              onChange={e =>
-                Number(e.target.value) && setDuration(Number(e.target.value))
-              }
-              value={duration}
-              borderColor="input-border"
-              width={'max-content'}
-              maxW="350px"
-              errorBorderColor="red.500"
-              bg="select-bg"
-            >
-              {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                <option key={type.id} value={type.duration}>
-                  {durationToHumanReadable(type.duration)}
-                </option>
-              ))}
-            </ChakraSelect>
+            <Select
+              value={{
+                value: duration,
+                label: durationToHumanReadable(duration),
+              }}
+              colorScheme="primary"
+              onChange={newValue => _onChangeDuration(newValue)}
+              className="noLeftBorder timezone-select"
+              options={durationOptions}
+              components={customSelectComponents}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  borderColor: 'input-border',
+                  bg: 'select-bg',
+                }),
+              }}
+            />
           </FormControl>
           {isUpdatingMeeting && (
             <Button
@@ -611,6 +598,15 @@ export function SchedulePickTime({
           alignItems={{ base: 'flex-start', md: 'center' }}
           display={{ base: 'flex', lg: 'none' }}
         >
+          <Box maxW="350px" textAlign="center" mx="auto">
+            <Heading fontSize="20px" fontWeight={700}>
+              Select time from available slots
+            </Heading>
+            <Text fontSize="12px">
+              All time slots shown below are the available times between you and
+              the required participants.
+            </Text>
+          </Box>
           <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
             Jump to Best Slot
           </Button>
@@ -634,16 +630,13 @@ export function SchedulePickTime({
             px={{ md: 6, base: 2 }}
           >
             <HStack w="100%" justify={'space-between'} position="relative">
-              <HStack spacing={4}>
-                <IconButton
-                  aria-label={'left-icon'}
-                  icon={<FaChevronLeft />}
-                  onClick={handleScheduledTimeBack}
-                  isDisabled={isBackDisabled}
-                  gap={0}
-                />
-              </HStack>
-
+              <IconButton
+                aria-label={'left-icon'}
+                icon={<FaChevronLeft />}
+                onClick={handleScheduledTimeBack}
+                isDisabled={isBackDisabled}
+                gap={0}
+              />
               <Button
                 colorScheme="primary"
                 onClick={handleJumpToBestSlot}
@@ -651,7 +644,6 @@ export function SchedulePickTime({
               >
                 Jump to Best Slot
               </Button>
-
               <Box
                 maxW="350px"
                 textAlign="center"
@@ -665,8 +657,6 @@ export function SchedulePickTime({
                   and the required participants.
                 </Text>
               </Box>
-
-              <HStack spacing={4}>{/* Placeholder for alignment */}</HStack>
 
               <HStack gap={0}>
                 <Grid
@@ -796,7 +786,7 @@ export function SchedulePickTime({
               })}
             </HStack>
           </VStack>
-          {isDisplayLoading ? (
+          {isLoading ? (
             <VStack
               w="100%"
               borderWidth={1}
@@ -877,7 +867,12 @@ export function SchedulePickTime({
                               slotData={slotData}
                               pickedTime={pickedTime}
                               duration={duration}
-                              handleTimePick={handleTimeSelection}
+                              handleTimePick={time => {
+                                React.startTransition(() => {
+                                  setPickedTime(time)
+                                })
+                                handlePageSwitch(Page.SCHEDULE_DETAILS)
+                              }}
                               timezone={timezone}
                             />
                           )
