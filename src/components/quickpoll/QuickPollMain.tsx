@@ -49,6 +49,7 @@ const QuickPollMain: React.FC<QuickPollMainProps> = ({
         </TabPanel>
         <TabPanel p={0}>
           <QuickPollGuestDetailsTab
+            pollData={pollData}
             onNavigateBack={() => handlePageSwitch(QuickPollPage.AVAILABILITY)}
             onSuccess={() => handlePageSwitch(QuickPollPage.SUCCESS)}
           />
@@ -65,16 +66,17 @@ const QuickPollMain: React.FC<QuickPollMainProps> = ({
 }
 
 interface QuickPollGuestDetailsTabProps {
+  pollData?: QuickPollBySlugResponse
   onNavigateBack?: () => void
   onSuccess?: () => void
 }
 
 const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
+  pollData,
   onNavigateBack,
   onSuccess,
 }) => {
   const { showSuccessToast } = useToastHelpers()
-  const { currentParticipantId } = useQuickPollAvailability()
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
@@ -89,14 +91,14 @@ const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
     }
   }
 
-  if (!currentParticipantId) {
+  if (!pollData?.poll?.slug) {
     return <Box>Loading...</Box>
   }
 
   return (
     <Box width="100%" minHeight="100vh" bg="bg-canvas-dark">
       <GuestDetailsForm
-        participantId={currentParticipantId}
+        pollSlug={pollData.poll.slug}
         onSuccess={handleSuccess}
         pollTitle="Poll Details"
         onNavigateBack={onNavigateBack}

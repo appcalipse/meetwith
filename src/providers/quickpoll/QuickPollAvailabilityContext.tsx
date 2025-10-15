@@ -55,17 +55,20 @@ export const useQuickPollAvailability = () => {
 
 interface QuickPollAvailabilityProviderProps {
   children: ReactNode
+  initialParticipantId?: string
 }
 
 export const QuickPollAvailabilityProvider: React.FC<
   QuickPollAvailabilityProviderProps
-> = ({ children }) => {
+> = ({ children, initialParticipantId }) => {
   const [isInviteParticipantsOpen, setIsInviteParticipantsOpen] =
     useState(false)
   const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [showGuestForm, setShowGuestForm] = useState(false)
   const [showGuestIdModal, setShowGuestIdModal] = useState(false)
-  const [currentParticipantId, setCurrentParticipantId] = useState<string>('')
+  const [currentParticipantId, setCurrentParticipantId] = useState<string>(
+    initialParticipantId || ''
+  )
   const [currentGuestEmail, setCurrentGuestEmail] = useState<string>('')
   const [guestAvailabilitySlots, setGuestAvailabilitySlots] = useState<
     AvailabilitySlot[]
