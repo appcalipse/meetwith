@@ -10,7 +10,6 @@ import { WalletProvider } from '@/providers/WalletProvider'
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
-import QuickPoll from '../quickpoll/QuickPoll'
 import RedirectHandler from '../redirect'
 import Clientboard from './Clientboard'
 import { NavMenu } from './components/NavMenu'
@@ -54,8 +53,6 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         )
       case EditMode.CLIENTBOARD:
         return <Clientboard currentAccount={currentAccount!} />
-      case EditMode.QUICKPOLL:
-        return <QuickPoll currentAccount={currentAccount!} />
       default:
         return <NotFound />
     }

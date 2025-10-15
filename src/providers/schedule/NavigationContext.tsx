@@ -1,4 +1,3 @@
-import { useRouter } from 'next/router'
 import React, { createContext, ReactNode, useContext, useState } from 'react'
 
 export enum Page {
@@ -38,13 +37,7 @@ interface NavigationProviderProps {
 export const NavigationProvider: React.FC<NavigationProviderProps> = ({
   children,
 }) => {
-  const router = useRouter()
-  const { intent } = router.query
-
-  const initialPage =
-    intent === 'schedule_from_poll' ? Page.SCHEDULE_DETAILS : Page.SCHEDULE_TIME
-
-  const [currentPage, setCurrentPage] = useState<Page>(initialPage)
+  const [currentPage, setCurrentPage] = useState<Page>(Page.SCHEDULE_TIME)
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
   const value = {

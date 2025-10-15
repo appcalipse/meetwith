@@ -18,8 +18,6 @@ import { TimeSlotSource } from '@/types/Meeting'
 import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
-  getQuickPollGoogleAuthConnectUrl,
-  getQuickPollOffice365ConnectUrl,
 } from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
@@ -31,9 +29,6 @@ interface ConnectCalendarProps {
   onClose: () => void
   state?: string | null
   refetch?: () => Promise<void>
-  isQuickPoll?: boolean
-  participantId?: string
-  pollData?: any
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
@@ -41,9 +36,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   onClose,
   state,
   refetch,
-  isQuickPoll = false,
-  participantId,
-  pollData,
 }) => {
   const [loading, setLoading] = useState<TimeSlotSource | undefined>()
   const toast = useToast()
@@ -53,33 +45,13 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   const selectOption = (provider: TimeSlotSource) => async () => {
     setLoading(provider)
     await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
-
-    const isGuestFlow = isQuickPoll && participantId
-
-    const getGoogleUrl = isGuestFlow
-      ? getQuickPollGoogleAuthConnectUrl
-      : getGoogleAuthConnectUrl
-    const getOfficeUrl = isGuestFlow
-      ? getQuickPollOffice365ConnectUrl
-      : getOffice365ConnectUrl
-
-    let oauthState = state
-    if (isGuestFlow && pollData) {
-      const stateObject = {
-        participantId,
-        pollSlug: pollData.poll.slug,
-        redirectTo: `/poll/${pollData.poll.slug}`,
-      }
-      oauthState = Buffer.from(JSON.stringify(stateObject)).toString('base64')
-    }
-
     switch (provider) {
       case TimeSlotSource.GOOGLE:
-        const googleResponse = await getGoogleUrl(oauthState)
+        const googleResponse = await getGoogleAuthConnectUrl(state)
         !!googleResponse && window.location.assign(googleResponse.url)
         return
       case TimeSlotSource.OFFICE:
-        const officeResponse = await getOfficeUrl(oauthState)
+        const officeResponse = await getOffice365ConnectUrl(state)
         !!officeResponse && window.location.assign(officeResponse.url)
         return
       case TimeSlotSource.ICLOUD:
@@ -171,9 +143,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 <WebDavDetailsPanel
                   isApple={true}
                   onSuccess={handleWebDavSuccess}
-                  isQuickPoll={isQuickPoll}
-                  participantId={participantId}
-                  pollData={pollData}
                 />
               </VStack>
               <VStack
@@ -184,9 +153,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 <WebDavDetailsPanel
                   isApple={false}
                   onSuccess={handleWebDavSuccess}
-                  isQuickPoll={isQuickPoll}
-                  participantId={participantId}
-                  pollData={pollData}
                 />
               </VStack>
             </VStack>
