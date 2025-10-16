@@ -498,6 +498,94 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           )}
         </FormControl>
       )}
+
+      {!addGuest ? (
+        <Button
+          bg="transparent"
+          color="primary.200"
+          _hover={{ bg: 'transparent' }}
+          border="1px solid"
+          borderColor="primary.200"
+          borderRadius={8}
+          onClick={() => setAddGuest(true)}
+          py={2}
+        >
+          Add other participants
+        </Button>
+      ) : (
+        <ChipInput
+          currentItems={participants}
+          placeholder="Enter participants"
+          onChange={setParticipants}
+          renderItem={p => {
+            if (p.account_address) {
+              return p.name || ellipsizeAddress(p.account_address!)
+            } else if (p.name && p.guest_email) {
+              return `${p.name} - ${p.guest_email}`
+            } else if (p.name) {
+              return `${p.name}`
+            } else {
+              return p.guest_email!
+            }
+          }}
+        />
+      )}
+
+      <FormControl>
+        <Flex
+          alignItems="center"
+          marginBottom="8px"
+          marginRight="12px"
+          gap="6px"
+        >
+          <FormLabel
+            htmlFor="title"
+            alignItems="center"
+            height="fit-content"
+            margin={0}
+          >
+            Meeting title
+          </FormLabel>
+          <Tooltip.Provider delayDuration={400}>
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                <Flex
+                  w="16px"
+                  h="16px"
+                  borderRadius="50%"
+                  bgColor={iconColor}
+                  justifyContent="center"
+                  alignItems="center"
+                  ml={1}
+                >
+                  <Icon w={1} color={bgColor} as={FaInfo} />
+                </Flex>
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                <Text
+                  fontSize="sm"
+                  p={2}
+                  maxW="150px"
+                  bgColor={bgColor}
+                  shadow="lg"
+                >
+                  Give a title for your meeting
+                </Text>
+                <Tooltip.Arrow />
+              </Tooltip.Content>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+        </Flex>
+        <Input
+          id="title"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          isDisabled={isSchedulingExternal}
+          type="text"
+          placeholder="Give a title for your meeting"
+        />
+      </FormControl>
+
       <FormControl w="100%" maxW="100%">
         <FormLabel>Meeting reminders (optional)</FormLabel>
         <Select
@@ -572,60 +660,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               textAlign: 'left',
             }),
           }}
-        />
-      </FormControl>
-      <FormControl>
-        <Flex
-          alignItems="center"
-          marginBottom="8px"
-          marginRight="12px"
-          gap="6px"
-        >
-          <FormLabel
-            htmlFor="title"
-            alignItems="center"
-            height="fit-content"
-            margin={0}
-          >
-            Meeting title
-          </FormLabel>
-          <Tooltip.Provider delayDuration={400}>
-            <Tooltip.Root>
-              <Tooltip.Trigger>
-                <Flex
-                  w="16px"
-                  h="16px"
-                  borderRadius="50%"
-                  bgColor={iconColor}
-                  justifyContent="center"
-                  alignItems="center"
-                  ml={1}
-                >
-                  <Icon w={1} color={bgColor} as={FaInfo} />
-                </Flex>
-              </Tooltip.Trigger>
-              <Tooltip.Content>
-                <Text
-                  fontSize="sm"
-                  p={2}
-                  maxW="150px"
-                  bgColor={bgColor}
-                  shadow="lg"
-                >
-                  Give a title for your meeting
-                </Text>
-                <Tooltip.Arrow />
-              </Tooltip.Content>
-            </Tooltip.Root>
-          </Tooltip.Provider>
-        </Flex>
-        <Input
-          id="title"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          isDisabled={isSchedulingExternal}
-          type="text"
-          placeholder="Give a title for your meeting"
         />
       </FormControl>
       <FormControl
@@ -731,32 +765,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               )}
           </VStack>
         )}
-      {!addGuest ? (
-        <Button
-          colorScheme="orangeButton"
-          variant="outline"
-          onClick={() => setAddGuest(true)}
-        >
-          Add other participants
-        </Button>
-      ) : (
-        <ChipInput
-          currentItems={participants}
-          placeholder="Enter participants"
-          onChange={setParticipants}
-          renderItem={p => {
-            if (p.account_address) {
-              return p.name || ellipsizeAddress(p.account_address!)
-            } else if (p.name && p.guest_email) {
-              return `${p.name} - ${p.guest_email}`
-            } else if (p.name) {
-              return `${p.name}`
-            } else {
-              return p.guest_email!
-            }
-          }}
-        />
-      )}
       <HStack>
         <Button
           width="full"
