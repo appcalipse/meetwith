@@ -670,10 +670,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           md: '550px',
         }}
       >
-        <FormLabel>What is this meeting about? </FormLabel>
+        <FormLabel>Meeting description </FormLabel>
         <RichTextEditor
           isDisabled={isSchedulingExternal}
-          placeholder="Any information you want to share prior to the meeting?"
+          placeholder="Add meeting details here"
           value={content}
           onValueChange={setContent}
         />
