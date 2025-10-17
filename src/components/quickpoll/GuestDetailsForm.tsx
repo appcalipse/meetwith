@@ -12,25 +12,28 @@ import {
 } from '@chakra-ui/react'
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
-import React, { useContext, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
 
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
-import { updateGuestParticipantDetails } from '@/utils/api_helper'
-import { updatePollParticipantAvailability } from '@/utils/api_helper'
+import {
+  addOrUpdateGuestParticipantWithAvailability,
+  getPollParticipantById,
+  updateGuestParticipantDetails,
+} from '@/utils/api_helper'
 import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
 
 interface GuestDetailsFormProps {
-  participantId: string
+  pollSlug: string
   onSuccess: () => void
   pollTitle?: string
   onNavigateBack?: () => void
 }
 
 const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
-  participantId,
+  pollSlug,
   onSuccess,
   onNavigateBack,
 }) => {
@@ -40,11 +43,32 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     guestAvailabilitySlots,
     currentTimezone,
     clearGuestAvailabilitySlots,
+    currentParticipantId,
+    setIsEditingAvailability,
   } = useQuickPollAvailability()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { showErrorToast } = useToastHelpers()
+  const [isLoadingParticipant, setIsLoadingParticipant] = useState(false)
+  const { showErrorToast, showSuccessToast } = useToastHelpers()
+  const { calendarConnected } = router.query
+
+  useEffect(() => {
+    const fetchParticipantDetails = async () => {
+      if (currentParticipantId) {
+        setIsLoadingParticipant(true)
+        const participant = await getPollParticipantById(currentParticipantId)
+        if (participant?.guest_email) {
+          setEmail(participant.guest_email)
+        }
+        if (participant?.guest_name && participant.guest_name !== 'Guest') {
+          setFullName(participant.guest_name)
+        }
+        setIsLoadingParticipant(false)
+      }
+    }
+    fetchParticipantDetails()
+  }, [currentParticipantId])
 
   const handleSubmit = async () => {
     if (!fullName.trim() || !email.trim()) {
@@ -60,25 +84,43 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
       return
     }
 
+    if (!currentParticipantId && guestAvailabilitySlots.length === 0) {
+      showErrorToast(
+        'No availability selected',
+        'Please add your availability before submitting.'
+      )
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      // Save guest details
-      await updateGuestParticipantDetails(
-        participantId,
-        fullName.trim(),
-        email.trim()
-      )
-
-      if (guestAvailabilitySlots.length > 0) {
-        await updatePollParticipantAvailability(
-          participantId,
+      if (currentParticipantId && calendarConnected) {
+        await updateGuestParticipantDetails(
+          currentParticipantId,
+          fullName.trim(),
+          email.trim().toLowerCase()
+        )
+        showSuccessToast(
+          'Details saved!',
+          'Your calendar is connected and your details have been saved.'
+        )
+      } else {
+        await addOrUpdateGuestParticipantWithAvailability(
+          pollSlug,
+          email.trim().toLowerCase(),
           guestAvailabilitySlots,
-          currentTimezone
+          currentTimezone || 'UTC',
+          fullName.trim()
+        )
+        clearGuestAvailabilitySlots()
+        showSuccessToast(
+          'Availability saved!',
+          'Your availability has been added to the poll.'
         )
       }
+      setIsEditingAvailability(false)
 
-      clearGuestAvailabilitySlots()
       onSuccess()
     } catch (error) {
       showErrorToast(
@@ -187,7 +229,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
               _hover={{
                 borderColor: 'neutral.600',
               }}
-              isDisabled={isLoading}
+              isDisabled={isLoading || isLoadingParticipant}
             />
           </FormControl>
 
@@ -221,7 +263,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
               _hover={{
                 borderColor: 'neutral.600',
               }}
-              isDisabled={isLoading}
+              isDisabled={isLoading || isLoadingParticipant}
             />
           </FormControl>
 
@@ -230,7 +272,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
             isLoading={isLoading}
             loadingText="Saving..."
             bg="primary.200"
-            color="neutral.900"
+            color="button-text-dark"
             fontSize={{ base: '14px', md: '16px' }}
             fontWeight="600"
             height={{ base: '44px', md: '48px' }}
@@ -239,7 +281,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
             _active={{ bg: 'primary.400' }}
             _disabled={{
               bg: 'primary.200',
-              color: 'text-primary',
+              color: 'button-text-dark',
               opacity: 0.3,
             }}
             isDisabled={!fullName.trim() || !email.trim() || isLoading}
