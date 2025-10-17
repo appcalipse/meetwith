@@ -49,13 +49,7 @@ const AllPolls = () => {
   }
 
   return (
-    <Box
-      width="100%"
-      bg="bg-canvas"
-      minHeight="100vh"
-      px={{ base: 2, md: 6 }}
-      py={{ base: 6, md: 8 }}
-    >
+    <Box width="100%" bg="bg-canvas" minHeight="100vh">
       <VStack
         spacing={{ base: 4, md: 6 }}
         align="stretch"

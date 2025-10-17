@@ -68,7 +68,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         width="100%"
         maxWidth="100%"
         justifyContent="space-between"
-        pl={{ base: 0, lg: !isSettings ? '296px' : 0 }}
+        pl={{ base: 0, lg: !isSettings ? '302px' : 0 }}
       >
         <RedirectHandler />
         {!isSettings && (
