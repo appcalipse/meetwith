@@ -46,7 +46,7 @@ export interface DBSlot extends TimeSlot {
   meeting_info_encrypted: Encrypted
   recurrence: MeetingRepeat
   public_decrypted_data?: MeetingDecrypted
-  role: ParticipantType
+  role?: ParticipantType
 }
 export interface ExtendedDBSlot extends DBSlot {
   conferenceData?: ConferenceMeeting
