@@ -1287,7 +1287,7 @@ export type Database = {
           id: string
           meeting_info_encrypted: Json
           recurrence?: Database['public']['Enums']['MeetingRepeat']
-          role: Database['public']['Enums']['ParticipantType']
+          role?: Database['public']['Enums']['ParticipantType']
           slot_id?: string
           start: string
           status: Database['public']['Enums']['RecurringStatus']
