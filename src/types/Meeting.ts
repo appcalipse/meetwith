@@ -49,7 +49,7 @@ export interface BaseSlot extends Interval {
   meeting_info_encrypted: Encrypted
   recurrence: MeetingRepeat
   public_decrypted_data?: MeetingDecrypted
-  role?: ParticipantType
+  role: ParticipantType
 }
 
 export type DBSlot = TimeSlot & BaseSlot
