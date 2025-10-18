@@ -127,7 +127,7 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
+import { Database, Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
 import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
@@ -882,13 +882,99 @@ const updateAllRecurringSlots = async () => {
     const toUpdate = []
     for (const data of allSlots) {
       const slot = data as DBSlot
+      if (!slot.id) continue
+      const { data: tempSlots } = await db.supabase
+        .from<Database['public']['Tables']['temp_slots']['Row']>('temp_slots')
+        .select()
+        .eq('slot_id', slot.id)
       const interval = addRecurrence(
         new Date(slot.start),
         new Date(slot.end),
         slot.recurrence
       )
-      const newSlot = { ...slot, start: interval.start, end: interval.end }
-      toUpdate.push(newSlot)
+      const activeTempSlot = (tempSlots || []).find(
+        ts =>
+          DateTime.fromJSDate(interval.start).hasSame(
+            DateTime.fromISO(ts.start),
+            'hour'
+          ) &&
+          DateTime.fromJSDate(interval.end).hasSame(
+            DateTime.fromISO(ts.end),
+            'hour'
+          )
+      )
+      if (activeTempSlot) {
+        const currentSlotWasUnconfirmedTempSlot = (tempSlots || []).find(
+          ts =>
+            DateTime.fromJSDate(new Date(slot.start)).hasSame(
+              DateTime.fromISO(ts.start),
+              'hour'
+            ) &&
+            DateTime.fromJSDate(new Date(slot.end)).hasSame(
+              DateTime.fromISO(ts.end),
+              'hour'
+            ) &&
+            ts.status !== RecurringStatus.CONFIRMED
+        )
+        if (!currentSlotWasUnconfirmedTempSlot) {
+          let currentInterval = addRecurrence(
+            new Date(activeTempSlot.start),
+            new Date(activeTempSlot.end),
+            slot.recurrence
+          )
+          while (tempSlots && tempSlots.length > 0) {
+            const existingTempSlot = tempSlots.find(
+              ts =>
+                DateTime.fromJSDate(currentInterval.start).hasSame(
+                  DateTime.fromISO(ts.start),
+                  'hour'
+                ) &&
+                DateTime.fromJSDate(currentInterval.end).hasSame(
+                  DateTime.fromISO(ts.end),
+                  'hour'
+                )
+            )
+
+            if (!existingTempSlot) {
+              // Found an interval without a temp slot, we can use this one
+              break
+            }
+
+            // This interval has a temp slot, move to the next one
+            currentInterval = addRecurrence(
+              currentInterval.start,
+              currentInterval.end,
+              slot.recurrence
+            )
+          }
+          const newTempSlot: Database['public']['Tables']['temp_slots']['Insert'] =
+            {
+              ...slot,
+              id: v4(),
+              slot_id: slot.id!,
+              start: currentInterval.start.toISOString(),
+              end: currentInterval.end.toISOString(),
+              status: RecurringStatus.CONFIRMED,
+              created_at: new Date().toISOString(),
+            }
+          await db.supabase.from('temp_slots').insert(newTempSlot)
+        }
+        const newSlot: Database['public']['Tables']['slots']['Insert'] = {
+          id: slot.id!,
+          account_address: slot.account_address,
+          meeting_info_encrypted: activeTempSlot,
+          start: activeTempSlot.start,
+          end: activeTempSlot.end,
+          recurrence: slot.recurrence,
+          created_at: new Date(slot.created_at || new Date()).toISOString(),
+          role: slot.role,
+          version: activeTempSlot.version,
+        }
+        toUpdate.push(newSlot)
+      } else {
+        const newSlot = { ...slot, start: interval.start, end: interval.end }
+        toUpdate.push(newSlot)
+      }
     }
     if (toUpdate.length > 0) {
       await db.supabase.from('slots').upsert(toUpdate)
@@ -3248,7 +3334,7 @@ const updateMeeting = async (
         ...val,
         id: v4(),
         slot_id: val.id,
-        status: RecurringStatus.CONFIRMED,
+        status: RecurringStatus.UPDATED,
       }))
     )
   } else {
