@@ -226,8 +226,8 @@ export function QuickPollParticipants({
       </HStack>
       <Divider bg={'divider-dark'} />
 
-      <VStack gap={2} alignItems="flex-start">
-        <Text fontSize={{ base: 'sm', md: 'md' }}>
+      <VStack gap={2} alignItems="flex-start" w="100%">
+        <Text fontSize={{ base: 'sm', md: 'md' }} textAlign="left">
           <b>Number of Participants:</b> {totalParticipantsCount}
         </Text>
       </VStack>
