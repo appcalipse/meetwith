@@ -264,7 +264,7 @@ export const NavMenu: React.FC<{
           display={{ base: 'none', lg: 'flex' }}
           backgroundColor={'transparent'}
         >
-          <VStack width="100%" gap={6} px={5} py={12} flexShrink={0}>
+          <VStack width="100%" gap={6} px={5} py={8} flexShrink={0}>
             <HStack width="100%" textAlign="center">
               <Box width="64px" height="64px">
                 <Avatar
