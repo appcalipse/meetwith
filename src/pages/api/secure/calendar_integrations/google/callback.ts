@@ -154,7 +154,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.redirect(redirect_url)
   }
   return res.redirect(
-    `/dashboard/details?calendarResult=success${!!state ? `&state=${newState64}` : ''
+    `/dashboard/details?calendarResult=success${
+      !!state ? `&state=${newState64}` : ''
     }#connected-calendars`
   )
 }
