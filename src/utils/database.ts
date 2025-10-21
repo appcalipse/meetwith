@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import { getDiscordInfoForAddress } from '@utils/services/discord.helper'
 import {
   currenciesMap,
   Currency,
@@ -7,6 +8,7 @@ import {
   getChainIdFromOnrampMoneyNetwork,
   getOnrampMoneyTokenAddress,
 } from '@utils/services/onramp.money'
+import { getTelegramUserInfo } from '@utils/services/telegram.helper'
 import * as argon2 from 'argon2'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
@@ -59,7 +61,11 @@ import {
   SingleDBContact,
   SingleDBContactInvite,
 } from '@/types/Contacts'
-import { DiscordAccount } from '@/types/Discord'
+import {
+  DiscordAccount,
+  DiscordAccountInfo,
+  DiscordUserInfo,
+} from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
@@ -118,7 +124,7 @@ import {
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
 import { GroupMembersRow, Row, TablesInsert } from '@/types/supabase'
-import { TelegramConnection } from '@/types/Telegram'
+import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
   GateUsage,
@@ -581,11 +587,12 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 export const getAccountPreferences = async (
   owner_account_address: string
 ): Promise<AccountPreferences> => {
-  const { data: account_preferences, error: account_preferences_error } =
-    await db.supabase
-      .from('account_preferences')
-      .select(
-        `
+  try {
+    const { data: account_preferences, error: account_preferences_error } =
+      await db.supabase
+        .from('account_preferences')
+        .select(
+          `
         *,
         default_availability:availabilities!account_preferences_availaibility_id_fkey(
           id,
@@ -596,25 +603,29 @@ export const getAccountPreferences = async (
           updated_at
         )
       `
-      )
-      .eq('owner_account_address', owner_account_address.toLowerCase())
-      .single()
-  if (account_preferences_error || !account_preferences) {
-    console.error(account_preferences_error)
+        )
+        .eq('owner_account_address', owner_account_address.toLowerCase())
+        .single()
+    if (account_preferences_error || !account_preferences) {
+      console.error(account_preferences_error)
+      throw new Error("Couldn't get account's preferences")
+    }
+
+    // Transform the joined data to match the expected format
+    const { default_availability, ...preferences } = account_preferences
+
+    if (default_availability) {
+      preferences.availabilities = default_availability.weekly_availability
+      preferences.timezone = default_availability.timezone
+    } else {
+      preferences.availabilities = generateEmptyAvailabilities()
+    }
+
+    return preferences as AccountPreferences
+  } catch (e) {
+    Sentry.captureException(e)
     throw new Error("Couldn't get account's preferences")
   }
-
-  // Transform the joined data to match the expected format
-  const { default_availability, ...preferences } = account_preferences
-
-  if (default_availability) {
-    preferences.availabilities = default_availability.weekly_availability
-    preferences.timezone = default_availability.timezone
-  } else {
-    preferences.availabilities = generateEmptyAvailabilities()
-  }
-
-  return preferences as AccountPreferences
 }
 
 async function getExistingAccountsFromDB(
@@ -686,20 +697,26 @@ const getAccountFromDB = async (
   })
   if (data) {
     const account = Array.isArray(data) ? data[0] : data
-    try {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
-      )
-    } catch (e) {
-      Sentry.captureException(e)
-      throw new Error("Couldn't get account's preferences")
-    }
-    account.subscriptions = await getSubscriptionFromDBForAccount(
-      account.address
-    )
-    if (includePrivateInformation) {
-      account.discord_account = await getDiscordAccount(account.address)
-    }
+
+    const [subscriptions, preferences, discord_account, payment_preferences] =
+      await Promise.all([
+        getSubscriptionFromDBForAccount(account.address),
+        getAccountPreferences(account.address.toLowerCase()),
+        ...(includePrivateInformation
+          ? ([
+              getDiscordAccount(account.address),
+              getPaymentPreferences(account.address),
+            ] as [
+              Promise<DiscordAccount | null>,
+              Promise<PaymentPreferences | null>
+            ])
+          : []),
+      ])
+    account.preferences = preferences
+    account.subscriptions = subscriptions
+    if (discord_account) account.discord_account = discord_account
+    if (payment_preferences) account.payment_preferences = payment_preferences
+
     return account
   } else if (error) {
     throw new Error(error.message)
@@ -3256,7 +3273,33 @@ export const getDiscordAccount = async (
 
   return data[0] as DiscordAccount
 }
-
+export const getDiscordAccountAndInfo = async (
+  account_address: string
+): Promise<DiscordAccountInfo | undefined> => {
+  const [discord, info] = await Promise.all([
+    getDiscordAccount(account_address),
+    getDiscordInfoForAddress(account_address),
+  ])
+  if (!discord) return undefined
+  return {
+    ...discord,
+    ...info,
+  }
+}
+export const getTelegramAccountAndInfo = async (
+  account_address: string
+): Promise<TelegramAccountInfo | null> => {
+  const subs = await getAccountNotificationSubscriptions(account_address)
+  const telegramNotification = subs.notification_types.find(
+    n => n.channel === NotificationChannel.TELEGRAM
+  )
+  if (!telegramNotification) return null
+  const userInfo = await getTelegramUserInfo(telegramNotification.destination)
+  return {
+    ...telegramNotification,
+    ...userInfo,
+  }
+}
 export const getAccountFromDiscordId = async (
   discord_id: string
 ): Promise<Account | null> => {
@@ -5785,10 +5828,13 @@ const createPaymentPreferences = async (
 
     const { data: result, error } = await db.supabase
       .from('payment_preferences')
-      .insert({
-        owner_account_address: owner_account_address.toLowerCase(),
-        ...insertData,
-      })
+      .upsert(
+        {
+          owner_account_address: owner_account_address.toLowerCase(),
+          ...insertData,
+        },
+        { onConflict: 'owner_account_address' }
+      )
       .select(
         'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
       )
