@@ -1,3 +1,4 @@
+import { PaymentAccountStatus, PaymentProvider } from '@meta/PaymentAccount'
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import { getDiscordInfoForAddress } from '@utils/services/discord.helper'
@@ -123,7 +124,7 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { GroupMembersRow, Row, TablesInsert } from '@/types/supabase'
+import { Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
 import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
@@ -310,6 +311,7 @@ const initAccountDBForWallet = async (
   const user_account: Account = createdUserAccount.data[0]
   const defaultMeetingType = generateDefaultMeetingType(user_account.address)
   const defaultAvailabilities = generateEmptyAvailabilities()
+
   const defaultBlock = await createAvailabilityBlock(
     user_account.address,
     'Default',
@@ -337,8 +339,6 @@ const initAccountDBForWallet = async (
       ...preferences,
       owner_account_address: user_account.address,
     })
-    await createMeetingType(user_account.address, meetingType)
-
     if (responsePrefs.error) {
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
@@ -698,24 +698,16 @@ const getAccountFromDB = async (
   if (data) {
     const account = Array.isArray(data) ? data[0] : data
 
-    const [subscriptions, preferences, discord_account, payment_preferences] =
-      await Promise.all([
-        getSubscriptionFromDBForAccount(account.address),
-        getAccountPreferences(account.address.toLowerCase()),
-        ...(includePrivateInformation
-          ? ([
-              getDiscordAccount(account.address),
-              getPaymentPreferences(account.address),
-            ] as [
-              Promise<DiscordAccount | null>,
-              Promise<PaymentPreferences | null>
-            ])
-          : []),
-      ])
+    const [subscriptions, preferences, discord_account] = await Promise.all([
+      getSubscriptionFromDBForAccount(account.address),
+      getAccountPreferences(account.address.toLowerCase()),
+      includePrivateInformation
+        ? getDiscordAccount(account.address)
+        : undefined,
+    ])
     account.preferences = preferences
     account.subscriptions = subscriptions
     if (discord_account) account.discord_account = discord_account
-    if (payment_preferences) account.payment_preferences = payment_preferences
 
     return account
   } else if (error) {
@@ -1807,7 +1799,7 @@ const addUserToGroup = async (
 
 const getGroupAdminsFromDb = async (
   group_id: string
-): Promise<Array<GroupMembersRow>> => {
+): Promise<Array<Tables<'group_members'>>> => {
   const { data, error } = await db.supabase
     .from('group_members')
     .select('member_id')
@@ -1831,7 +1823,7 @@ const rejectGroupInvite = async (
     accountsToNotify: admins.map(val => val.member_id),
     notifyType: GroupNotificationType.REJECT,
   }
-  fetch(`${apiUrl}/server/groups/syncAndNotify`, {
+  void fetch(`${apiUrl}/server/groups/syncAndNotify`, {
     method: 'POST',
     body: JSON.stringify(body),
     headers: {
@@ -3324,7 +3316,7 @@ export async function isUserAdminOfGroup(
   userAddress: string
 ): Promise<boolean> {
   const { data, error } = await db.supabase
-    .from<GroupMembersRow>('group_members')
+    .from<Tables<'group_members'>>('group_members')
     .select('role')
     .eq('group_id', groupId)
     .eq('member_id', userAddress)
@@ -3453,7 +3445,7 @@ const getTgConnection = async (
 }
 const getNumberOfCouponClaimed = async (plan_id: string) => {
   const couponUsageData = await db.supabase
-    .from<Row<'subscriptions'>>('subscriptions')
+    .from<Tables<'subscriptions'>>('subscriptions')
     .select('id', { count: 'exact' })
     .eq('plan_id', plan_id)
   return couponUsageData.count ?? 0
@@ -3480,7 +3472,7 @@ const subscribeWithCoupon = async (
   }
 
   const { data: subscriptionData, error: subscriptionError } = await db.supabase
-    .from<Row<'subscriptions'>>('subscriptions')
+    .from<Tables<'subscriptions'>>('subscriptions')
     .select()
     .eq('owner_account', account_address)
     .eq('plan_id', coupon.plan_id)
@@ -3491,7 +3483,7 @@ const subscribeWithCoupon = async (
     throw new CouponAlreadyUsed()
   }
   const { data: planData, error: planError } = await db.supabase
-    .from<Row<'subscriptions'>>('subscriptions')
+    .from<Tables<'subscriptions'>>('subscriptions')
     .insert([
       {
         plan_id: coupon.plan_id,
@@ -3512,7 +3504,7 @@ const updateCustomSubscriptionDomain = async (
   domain: string
 ) => {
   const { data: subscriptionData, error: subscriptionError } = await db.supabase
-    .from<Row<'subscriptions'>>('subscriptions')
+    .from<Tables<'subscriptions'>>('subscriptions')
     .select()
     .eq('owner_account', account_address)
     .gte('expiry_time', new Date().toISOString())
@@ -5776,9 +5768,7 @@ const getPaymentPreferences = async (
 ): Promise<PaymentPreferences | null> => {
   const { data, error } = await db.supabase
     .from('payment_preferences')
-    .select(
-      'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
-    )
+    .select()
     .eq('owner_account_address', owner_account_address.toLowerCase())
     .single()
 
@@ -5830,14 +5820,12 @@ const createPaymentPreferences = async (
       .from('payment_preferences')
       .upsert(
         {
-          owner_account_address: owner_account_address.toLowerCase(),
           ...insertData,
+          owner_account_address: owner_account_address.toLowerCase(),
         },
         { onConflict: 'owner_account_address' }
       )
-      .select(
-        'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
-      )
+      .select()
       .single()
 
     if (error) {
@@ -5887,9 +5875,7 @@ const updatePaymentPreferences = async (
       .from('payment_preferences')
       .update(updateData)
       .eq('owner_account_address', owner_account_address.toLowerCase())
-      .select(
-        'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
-      )
+      .select()
       .single()
 
     if (error) {
@@ -6991,7 +6977,77 @@ const getQuickPollParticipantByIdentifier = async (
     )
   }
 }
+const getActivePaymentAccount = async (
+  account_address: string,
+  provider = PaymentProvider.STRIPE
+) => {
+  const { data: payment_account, error } = await db.supabase
+    .from<Tables<'payment_accounts'>>('payment_accounts')
+    .select()
+    .eq('owner_account_address', account_address)
+    .eq('provider', provider)
+    .neq('status', PaymentAccountStatus.DISCONNECTED)
 
+  if (error) {
+    throw new Error('Could not fetch payment account')
+  }
+
+  return Array.isArray(payment_account) ? payment_account[0] : payment_account
+}
+const getOrCreatePaymentAccount = async (
+  account_address: string,
+  provider = PaymentProvider.STRIPE
+): Promise<Tables<'payment_accounts'>> => {
+  const { data: payment_account, error } = await db.supabase
+    .from<Tables<'payment_accounts'>>('payment_accounts')
+    .select()
+    .eq('owner_account_address', account_address)
+    .eq('provider', provider)
+  if (error) {
+    throw new Error('Could not fetch payment account')
+  }
+  if (!payment_account || payment_account.length === 0) {
+    const { data, error: insertError } = await db.supabase
+      .from<Tables<'payment_accounts'>>('payment_accounts')
+      .insert([
+        {
+          owner_account_address: account_address,
+          provider,
+          status: PaymentAccountStatus.PENDING,
+        },
+      ])
+      .select()
+      .single()
+    if (insertError) {
+      throw new Error('Could not create payment account')
+    }
+    return data
+  } else {
+    return payment_account[0]
+  }
+}
+
+const updatePaymentAccount = async (
+  id: number,
+  owner_account_address: string,
+  data: TablesUpdate<'payment_accounts'>
+) => {
+  const { data: updatedPaymentAccount, error } = await db.supabase
+    .from<Tables<'payment_accounts'>>('payment_accounts')
+    .update({
+      ...data,
+      owner_account_address,
+      id,
+    })
+    .eq('id', id)
+    .eq('owner_account_address', owner_account_address)
+  if (error) {
+    throw new Error('Could not update payment account')
+  }
+  return Array.isArray(updatedPaymentAccount)
+    ? updatedPaymentAccount[0]
+    : updatedPaymentAccount
+}
 export {
   acceptContactInvite,
   addContactInvite,
@@ -7030,6 +7086,7 @@ export {
   getAccountNotificationSubscriptions,
   getAccountsNotificationSubscriptionEmails,
   getAccountsWithTgConnected,
+  getActivePaymentAccount,
   getAppToken,
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
@@ -7062,6 +7119,7 @@ export {
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
+  getOrCreatePaymentAccount,
   getOwnerPublicUrlServer,
   getPaidSessionsByMeetingType,
   getPaymentPreferences,
@@ -7114,6 +7172,7 @@ export {
   updateCustomSubscriptionDomain,
   updateMeeting,
   updateMeetingType,
+  updatePaymentAccount,
   updatePaymentPreferences,
   updatePreferenceAvatar,
   updateQuickPoll,
