@@ -148,7 +148,8 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/details?calendarResult=success${newState64 ? `&state=${newState64}` : ''
+      `/dashboard/details?calendarResult=success${
+        newState64 ? `&state=${newState64}` : ''
       }#connected-calendars`
     )
   } catch (e) {
@@ -174,7 +175,8 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/details?calendarResult=success${newState64 ? `&state=${newState64}` : ''
+      `/dashboard/details?calendarResult=success${
+        newState64 ? `&state=${newState64}` : ''
       }#connected-calendars`
     )
   }
