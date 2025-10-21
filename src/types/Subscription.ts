@@ -1,7 +1,7 @@
 import { isProduction } from '@/utils/constants'
 
 import { SupportedChain } from './chains'
-import { Row } from './supabase'
+import { Row } from './Supabase'
 export interface PlanInfo {
   plan: Plan
   usdPrice: number
