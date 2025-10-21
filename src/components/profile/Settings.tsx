@@ -13,14 +13,16 @@ import {
   useMediaQuery,
   VStack,
 } from '@chakra-ui/react'
+import { useToastHelpers } from '@utils/toasts'
 import { useRouter } from 'next/router'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
 import { HiOutlineMenuAlt2 } from 'react-icons/hi'
 import { IoCloseOutline } from 'react-icons/io5'
 
 import AccountPlansAndBilling from '@/components/profile/AccountPlansAndBilling'
 import WalletAndPayment from '@/components/profile/WalletAndPayment'
+import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
 import { EditMode } from '@/types/Dashboard'
 import { isProduction } from '@/utils/constants'
@@ -48,6 +50,7 @@ interface SettingsNavItem {
 const Settings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
   const settingsNavItems: SettingsNavItem[] = useMemo(() => {
     const tabs = [
       { name: 'Account details', section: SettingsSection.ACCOUNT_DETAILS },
@@ -76,8 +79,10 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
   const [activeSection, setActiveSection] = useState<
     SettingsSection | undefined
   >(undefined)
+  const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
+  const { calendarResult } = router.query
   const [isMobile] = useMediaQuery('(max-width: 1024px)')
 
   const renderContent = () => {
@@ -153,7 +158,45 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
       { shallow: true }
     )
   }
+  useEffect(() => {
+    if (calendarResult) {
+      if (calendarResult === 'error') {
+        showErrorToast(
+          'Error connecting calendar',
+          'Please make sure to give access to Meetwith within your calendar provider page.',
+          15000
+        )
+      } else if (calendarResult === 'success') {
+        reloadOnboardingInfo()
+        showSuccessToast(
+          'Calendar connected',
+          "You've just connected a new calendar.",
+          15000
+        )
+      }
+      const {
+        section: _omit,
+        calendarResult: _omit2,
+        ...restQuery
+      } = router.query ?? {}
 
+      const query: Record<string, string> = {}
+      Object.entries(restQuery).forEach(([k, v]) => {
+        if (typeof v === 'string') query[k] = v
+        else if (Array.isArray(v) && v.length) query[k] = v.join(',')
+      })
+
+      void router.replace(
+        {
+          pathname: '/dashboard/details',
+          hash: 'connected-calendars',
+          query,
+        },
+        undefined,
+        { shallow: true }
+      )
+    }
+  }, [calendarResult])
   useEffect(() => {
     if (!router.isReady) return
     const hash = router.asPath.split('#')[1] || ''
