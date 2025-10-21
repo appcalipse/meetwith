@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Flex,
+  Grid,
   Heading,
   HStack,
   Icon,
@@ -10,11 +11,14 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import AccountCard from '@components/connected-account/AccountCard'
+import Loading from '@components/Loading'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import { FaDiscord, FaTelegram } from 'react-icons/fa'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { AccountContext } from '@/providers/AccountProvider'
 import { NotificationChannel } from '@/types/AccountNotifications'
 import { logEvent } from '@/utils/analytics'
@@ -22,6 +26,7 @@ import {
   createTelegramHash,
   deleteDiscordIntegration,
   generateDiscordAccount,
+  getConnectedAccounts,
   getDiscordInfo,
   getNotificationSubscriptions,
   getPendingTgConnection,
@@ -243,39 +248,46 @@ const TelegramConnection: React.FC = () => {
   }, [currentAccount])
 
   const handleTgConnect = async () => {
-    setConnecting(true)
-    logEvent('Connect Telegram')
+    new Promise(async resolve => {
+      setConnecting(true)
+      logEvent('Connect Telegram')
 
-    try {
-      const hash = await createTelegramHash()
-      const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
-      window.open(url, '_blank')
+      try {
+        const hash = await createTelegramHash()
+        const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
+        window.open(url, '_blank')
 
-      const intervalId = setInterval(async () => {
-        const pendingConnection = await getPendingTgConnection()
-        if (!pendingConnection) {
-          setIsTelegramConnected(true)
+        const intervalId = setInterval(async () => {
+          const pendingConnection = await getPendingTgConnection()
+          if (!pendingConnection) {
+            setIsTelegramConnected(true)
+            clearInterval(intervalId)
+            resolve(true)
+            showSuccessToast(
+              'Telegram Connected',
+              'Your Telegram account has been connected'
+            )
+          }
+        }, 5000)
+
+        // If the connection is not established after 5 minutes, show an error toast
+        setTimeout(() => {
           clearInterval(intervalId)
           setConnecting(false)
-          showSuccessToast(
-            'Telegram Connected',
-            'Your Telegram account has been connected'
+          showErrorToast(
+            'Connection Failed',
+            'Failed to initiate Telegram connection'
           )
-        }
-      }, 5000)
-
-      // If the connection is not established after 5 minutes, show an error toast
-      setTimeout(() => {
-        clearInterval(intervalId)
+          resolve(false)
+        }, 300000)
+      } catch (error) {
         setConnecting(false)
-      }, 300000)
-    } catch (error) {
-      setConnecting(false)
-      showErrorToast(
-        'Connection Failed',
-        'Failed to initiate Telegram connection'
-      )
-    }
+        showErrorToast(
+          'Connection Failed',
+          'Failed to initiate Telegram connection'
+        )
+      }
+    })
   }
 
   const handleTgDisconnect = async () => {
@@ -393,16 +405,84 @@ const TelegramConnection: React.FC = () => {
 }
 
 const ConnectedAccounts: React.FC = () => {
+  const { updateUser, currentAccount } = useContext(AccountContext)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const router = useRouter()
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
+
+  const { data: connectedAccounts, isLoading: isConnectedAccountsLoading } =
+    useQuery(
+      QueryKeys.connectedAccounts(currentAccount?.address),
+      getConnectedAccounts,
+      {
+        enabled: !!currentAccount,
+        onError: (error: unknown) => {
+          handleApiError('Error Fetching Telegram Username', error)
+        },
+      }
+    )
+  const generateDiscord = async () => {
+    const { code, state } = router.query
+
+    const origin = state
+      ? (JSON.parse(Buffer.from(state as string, 'base64').toString())
+          ?.origin as OnboardingSubject | undefined)
+      : undefined
+    if (isConnecting) return
+    if (origin && code) {
+      setIsConnecting(true)
+      const uri = window.location.href.toString()
+      if (uri.indexOf('?') > 0) {
+        const clean_uri = uri.substring(0, uri.indexOf('?'))
+        window.history.replaceState({}, document.title, clean_uri)
+      }
+      try {
+        await generateDiscordAccount(code as string).then(console.log)
+        await queryClient.invalidateQueries(
+          QueryKeys.account(currentAccount?.address?.toLowerCase())
+        )
+        await updateUser()
+        await queryClient.invalidateQueries(
+          QueryKeys.connectedAccounts(currentAccount?.address)
+        )
+        showSuccessToast(
+          'Discord Connected',
+          'Your Discord account has been connected'
+        )
+      } catch (error) {}
+      setIsConnecting(false)
+    }
+  }
+
+  useEffect(() => {
+    void generateDiscord()
+  }, [router.query])
   return (
-    <>
+    <VStack w={'100%'} alignItems="flex-start">
       <Heading id="connected" fontSize="2xl" mb={8}>
         Connected Accounts
       </Heading>
-      <VStack spacing={6} align="stretch">
-        <DiscordConnection />
-        <TelegramConnection />
-      </VStack>
-    </>
+      {isConnectedAccountsLoading || isConnecting ? (
+        <Box mx="auto">
+          <Loading />
+        </Box>
+      ) : (
+        <Grid
+          templateColumns={'repeat(auto-fit, minmax(300px, 1fr))'}
+          gap={6}
+          mb={12}
+          w={'100%'}
+        >
+          {connectedAccounts?.map(account => (
+            <AccountCard
+              account={account.account}
+              info={account.info}
+              key={`connected-account-${account.account}`}
+            />
+          ))}
+        </Grid>
+      )}
+    </VStack>
   )
 }
 
