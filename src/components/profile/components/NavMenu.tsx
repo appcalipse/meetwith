@@ -66,15 +66,12 @@ export const NavMenu: React.FC<{
   closeMenu?: () => void
 }> = ({ currentSection, isMenuOpen, closeMenu }) => {
   const { currentAccount } = useContext(AccountContext)
-  const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
   const { toggleColorMode } = useColorMode()
   const router = useRouter()
   const toast = useToast()
-  const [noOfInvitedGroups, setNoOfInvitedGroups] = React.useState<number>(0)
   const { contactsRequestCount, groupInvitesCount } =
     useContext(MetricStateContext)
 
-  const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'neutral.900')
   const dividerColor = useColorModeValue('neutral.200', 'neutral.700')
   const scrollbarThumbColor = useColorModeValue('gray.300', 'gray.600')
@@ -194,29 +191,7 @@ export const NavMenu: React.FC<{
       }
     })
   }
-  useEffect(() => {
-    if (calendarResult === 'error') {
-      toast({
-        title: 'Error connecting calendar',
-        description:
-          'Please make sure to give access to Meetwith within your calendar provider page.',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-    } else if (calendarResult === 'success') {
-      reloadOnboardingInfo()
-      toast({
-        title: 'Calendar connected',
-        description: "You've just connected a new calendar provider.",
-        status: 'success',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-    }
-  }, [])
+
   useEffect(() => {
     if (!currentAccount) return
     void handleGroupInvites()
