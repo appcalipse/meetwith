@@ -4,6 +4,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
+  getActivePaymentAccount,
   getDiscordAccountAndInfo,
   getTelegramAccountAndInfo,
 } from '@/utils/database'
@@ -11,10 +12,15 @@ import {
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     try {
-      const account_id = req.session.account!.address
-      const [discord, telegram] = await Promise.all([
-        getDiscordAccountAndInfo(account_id),
-        getTelegramAccountAndInfo(account_id),
+      const account_address = req.session.account!.address
+      const [discord, telegram, payment_account] = await Promise.all([
+        getDiscordAccountAndInfo(account_address),
+        getTelegramAccountAndInfo(account_address).catch(error => {
+          console.error('Error fetching Telegram account info:', error)
+          Sentry.captureException(error)
+          return null
+        }),
+        getActivePaymentAccount(account_address),
       ])
       const connectedAccounts = [
         {
@@ -27,7 +33,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         },
         {
           account: ConnectedAccount.STRIPE,
-          info: null,
+          info: payment_account,
         },
       ]
       return res.status(200).json(connectedAccounts)
