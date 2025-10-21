@@ -411,16 +411,17 @@ const ConnectedAccounts: React.FC = () => {
   const { showSuccessToast, showErrorToast } = useToastHelpers()
 
   const { data: connectedAccounts, isLoading: isConnectedAccountsLoading } =
-    useQuery(
-      QueryKeys.connectedAccounts(currentAccount?.address),
-      getConnectedAccounts,
-      {
-        enabled: !!currentAccount,
-        onError: (error: unknown) => {
-          handleApiError('Error Fetching Telegram Username', error)
-        },
-      }
-    )
+    useQuery({
+      queryKey: QueryKeys.connectedAccounts(currentAccount?.address),
+      queryFn: getConnectedAccounts,
+      enabled: !!currentAccount,
+      staleTime: 0,
+      refetchOnMount: true,
+      onError: (error: unknown) => {
+        handleApiError('Error Fetching Telegram Username', error)
+      },
+    })
+
   const generateDiscord = async () => {
     const { code, state } = router.query
 
