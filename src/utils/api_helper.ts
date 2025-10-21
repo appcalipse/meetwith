@@ -1,3 +1,4 @@
+import { ConnectedAccountInfo } from '@meta/ConnectedAccounts'
 import { Address, ICoinConfig, MeetingSession } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
@@ -28,7 +29,7 @@ import {
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/DiscordUserInfo'
+import { DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
@@ -2099,4 +2100,12 @@ export const getQuickPolls = async (
   }
 
   return await internalFetch(`/secure/quickpoll?${params}`)
+}
+
+export const getConnectedAccounts = async (): Promise<
+  ConnectedAccountInfo[]
+> => {
+  return await internalFetch<ConnectedAccountInfo[]>(
+    `/secure/accounts/connected`
+  )
 }
