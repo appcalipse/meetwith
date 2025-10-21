@@ -14,8 +14,10 @@ import { logEvent } from '@utils/analytics'
 import {
   createTelegramHash,
   deleteDiscordIntegration,
+  disconnectStripeAccount,
   getNotificationSubscriptions,
   getPendingTgConnection,
+  getStripeOnboardingLink,
   setNotificationSubscriptions,
 } from '@utils/api_helper'
 import { discordRedirectUrl, OnboardingSubject } from '@utils/constants'
@@ -82,7 +84,21 @@ const AccountCard: FC<IProps> = props => {
       'Your Discord account has been disconnected'
     )
   }
-
+  const handleStripeDisconnect = async () => {
+    logEvent('Disconnect Stripe')
+    try {
+      await disconnectStripeAccount()
+      showSuccessToast(
+        'Stripe Disconnected',
+        'Your Stripe account has been disconnected'
+      )
+    } catch (e) {
+      showErrorToast(
+        'Disconnection Failed',
+        'Failed to disconnect Stripe account'
+      )
+    }
+  }
   const handleDisconnect = async () => {
     setDisconnecting(true)
     switch (props.account) {
@@ -92,6 +108,8 @@ const AccountCard: FC<IProps> = props => {
       case ConnectedAccount.DISCORD:
         await handleDiscordDisconnect()
         break
+      case ConnectedAccount.STRIPE:
+        await handleStripeDisconnect()
     }
     await queryClient.invalidateQueries(
       QueryKeys.connectedAccounts(currentAccount?.address)
@@ -149,6 +167,10 @@ const AccountCard: FC<IProps> = props => {
     ).toString('base64')}`
     window.open(url, '_self', 'noopener noreferrer')
   }
+  const handleStripeConnect = async () => {
+    const url = await getStripeOnboardingLink()
+    window.open(url, '_self', 'noopener noreferrer')
+  }
   const handleConnect = async () => {
     setIsConnecting(true)
     let isSuccessful = true
@@ -158,6 +180,10 @@ const AccountCard: FC<IProps> = props => {
         break
       case ConnectedAccount.DISCORD:
         await handleDiscordConnect()
+        break
+      case ConnectedAccount.STRIPE:
+        await handleStripeConnect()
+        break
     }
     if (isSuccessful) {
       await queryClient.invalidateQueries(
