@@ -73,9 +73,9 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
     }
     return tabs
   }, [])
-  const [activeSection, setActiveSection] = useState<SettingsSection>(
-    SettingsSection.ACCOUNT_DETAILS
-  )
+  const [activeSection, setActiveSection] = useState<
+    SettingsSection | undefined
+  >(undefined)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
   const [isMobile] = useMediaQuery('(max-width: 1024px)')
@@ -101,7 +101,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
       case SettingsSection.WALLET_PAYMENT:
         return <WalletAndPayment currentAccount={currentAccount} />
       default:
-        return null
+        return <AccountDetails currentAccount={currentAccount} />
     }
   }
 
@@ -135,11 +135,27 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
     }
 
     const hash = sectionHash[section]
-    const newUrl = hash ? `/dashboard/details#${hash}` : '/dashboard/details'
-    router.replace(newUrl, undefined, { shallow: true })
+    const { section: _omit, ...restQuery } = router.query ?? {}
+
+    const query: Record<string, string> = {}
+    Object.entries(restQuery).forEach(([k, v]) => {
+      if (typeof v === 'string') query[k] = v
+      else if (Array.isArray(v) && v.length) query[k] = v.join(',')
+    })
+
+    router.replace(
+      {
+        pathname: '/dashboard/details',
+        hash,
+        query,
+      },
+      undefined,
+      { shallow: true }
+    )
   }
 
   useEffect(() => {
+    if (!router.isReady) return
     const hash = router.asPath.split('#')[1] || ''
 
     if (hash === 'subscriptions') {
@@ -152,8 +168,15 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
       setActiveSection(SettingsSection.NOTIFICATIONS)
     } else if (hash === 'wallet-payment') {
       setActiveSection(SettingsSection.WALLET_PAYMENT)
+    } else {
+      setActiveSection(SettingsSection.ACCOUNT_DETAILS)
     }
   }, [router.asPath])
+  useEffect(() => {
+    if (router.query.code) {
+      handleSectionNavigation(SettingsSection.CONNECTED_ACCOUNTS)
+    }
+  }, [router.query.code])
 
   return (
     <>
