@@ -69,8 +69,9 @@ async function handler(
 
     if (!response.ok) {
       res.redirect(
-        '/dashboard/calendars?calendarResult=error&error=' +
-          JSON.stringify(responseBody)
+        `/dashboard/details?calendarResult=error&error=
+          ${JSON.stringify(responseBody)}
+      #connected-calendars`
       )
       return
     }
@@ -147,9 +148,8 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/calendars?calendarResult=success${
-        newState64 ? `&state=${newState64}` : ''
-      }`
+      `/dashboard/details?calendarResult=success${newState64 ? `&state=${newState64}` : ''
+      }#connected-calendars`
     )
   } catch (e) {
     console.error(e)
@@ -174,9 +174,8 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/calendars?calendarResult=success${
-        newState64 ? `&state=${newState64}` : ''
-      }`
+      `/dashboard/details?calendarResult=success${newState64 ? `&state=${newState64}` : ''
+      }#connected-calendars`
     )
   }
 }
