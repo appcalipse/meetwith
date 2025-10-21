@@ -16,7 +16,7 @@ const YEAR_DURATION_IN_SECONDS = 31536000
 
 const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 
-const discordRedirectUrl = `${baseURL}/dashboard/details#connected-accounts`;
+const discordRedirectUrl = `${baseURL}/dashboard/details#connected-accounts`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwith.xyz'
 
