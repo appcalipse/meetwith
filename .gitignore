@@ -11,7 +11,7 @@
 # next.js
 /.next/
 /out/
-
+/sql/
 # production
 /build
 # sitemaps and robots - auto generated
