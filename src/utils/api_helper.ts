@@ -2109,3 +2109,13 @@ export const getConnectedAccounts = async (): Promise<
     `/secure/accounts/connected`
   )
 }
+
+export const getStripeOnboardingLink = async () => {
+  return await internalFetch<{ url: string }>(`/secure/stripe/connect`).then(
+    res => res.url
+  )
+}
+
+export const disconnectStripeAccount = async () => {
+  return await internalFetch(`/secure/stripe/disconnect`, 'PATCH')
+}
