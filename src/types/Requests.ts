@@ -259,6 +259,6 @@ export interface RequestInvoiceRequest {
   url: string
 }
 
-export interface ConnectStripeAccountRequest {
-  business_type
-}
+// export interface ConnectStripeAccountRequest {
+//   business_type
+// }
