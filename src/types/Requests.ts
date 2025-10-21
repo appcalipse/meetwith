@@ -258,3 +258,7 @@ export interface RequestInvoiceRequest {
   payment_method: PaymentType
   url: string
 }
+
+export interface ConnectStripeAccountRequest {
+  business_type
+}

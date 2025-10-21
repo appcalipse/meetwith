@@ -26,7 +26,7 @@ export interface Account {
   internal_pub_key: string
   encoded_signature: string
   preferences: AccountPreferences
-  paymentPreferences?: PaymentPreferences
+  payment_preferences?: PaymentPreferences
   nonce: number
   is_invited: boolean
   subscriptions: Subscription[]
@@ -125,6 +125,7 @@ export interface PaymentPreferences {
   hasPin?: boolean
   default_chain_id?: number
   notification?: Array<'send-tokens' | 'receive-tokens'>
+  stripe_account_id?: string
 }
 
 // For partial updates (e.g., just PIN operations)
