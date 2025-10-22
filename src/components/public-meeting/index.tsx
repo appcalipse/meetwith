@@ -41,6 +41,7 @@ import {
   listConnectedCalendars,
 } from '@utils/api_helper'
 import {
+  PaymentRedirectType,
   PaymentStep,
   PaymentType,
   PublicSchedulingSteps,
@@ -89,6 +90,7 @@ import { isJson } from '@/utils/generic_utils'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
 import Loading from '../Loading'
+
 const tzs = timezones.map(tz => {
   return {
     value: String(tz.tzCode),
@@ -590,8 +592,10 @@ const PublicPage: FC<IProps> = props => {
       const paymentType = query.payment_type as PaymentType
       setPaymentType(paymentType)
       setPaymentStep(
-        query.type === 'direct-invoice'
+        query.type === PaymentRedirectType.INVOICE
           ? PaymentStep.SELECT_PAYMENT_METHOD
+          : query.type === PaymentRedirectType.CHECKOUT
+          ? PaymentStep.FIAT_PAYMENT_VERIFYING
           : PaymentStep.CONFIRM_PAYMENT
       )
       setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
