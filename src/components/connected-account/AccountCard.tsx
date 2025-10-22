@@ -15,6 +15,7 @@ import {
   createTelegramHash,
   deleteDiscordIntegration,
   disconnectStripeAccount,
+  generateDashboardLink,
   getNotificationSubscriptions,
   getPendingTgConnection,
   getStripeOnboardingLink,
@@ -27,9 +28,19 @@ import { useToastHelpers } from '@utils/toasts'
 import Image from 'next/image'
 import React, { FC, useContext } from 'react'
 import { GoDotFill } from 'react-icons/go'
+type DisconnectHandler = () => Promise<unknown>
 
-import useAccountContext from '@/hooks/useAccountContext'
+interface DisconnectConfig {
+  handler: DisconnectHandler
+  errorMessage: string
+  logEvent?: boolean
+}
 import { AccountContext } from '@/providers/AccountProvider'
+import {
+  ActivePaymentAccount,
+  PaymentAccountStatus,
+} from '@/types/PaymentAccount'
+import { Enums } from '@/types/Supabase'
 
 type IProps = ConnectedAccountInfo
 const getContent = (connect_account: ConnectedAccount) => {
@@ -49,148 +60,207 @@ const AccountCard: FC<IProps> = props => {
   const { updateUser, currentAccount } = useContext(AccountContext)
 
   const [isConnecting, setIsConnecting] = React.useState(false)
+  const [isGeneratingLink, setIsGeneratingLink] = React.useState(false)
   const { showSuccessToast, showErrorToast } = useToastHelpers()
+  const disconnectConfigs: Record<ConnectedAccount, DisconnectConfig> = {
+    [ConnectedAccount.TELEGRAM]: {
+      handler: async () => {
+        const sub = await getNotificationSubscriptions()
+        const newSubs = sub.notification_types.filter(
+          sub => sub.channel !== NotificationChannel.TELEGRAM
+        )
+        await setNotificationSubscriptions({
+          account_address: currentAccount!.address,
+          notification_types: newSubs,
+        })
+      },
+      errorMessage: 'Failed to disconnect Telegram account',
+      logEvent: true,
+    },
+    [ConnectedAccount.DISCORD]: {
+      handler: async () => {
+        await deleteDiscordIntegration()
+        await updateUser()
+      },
+      errorMessage: 'Failed to disconnect Discord account',
+      logEvent: true,
+    },
+    [ConnectedAccount.STRIPE]: {
+      handler: async () => {
+        await disconnectStripeAccount()
+      },
+      errorMessage: 'Failed to disconnect Stripe account',
+      logEvent: true,
+    },
+  }
+  const executeDisconnect = async (
+    accountType: ConnectedAccount,
+    onError: (msg: string) => void
+  ): Promise<boolean> => {
+    const config = disconnectConfigs[accountType]
+    if (!config) {
+      throw new Error(`Unknown account type: ${accountType}`)
+    }
 
-  const handleTgDisconnect = async () => {
-    logEvent('Disconnect Telegram')
     try {
-      const sub = await getNotificationSubscriptions()
-      const newSubs = sub.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.TELEGRAM
-      )
-      await setNotificationSubscriptions({
-        account_address: currentAccount!.address,
-        notification_types: newSubs,
-      })
-      showSuccessToast(
-        'Telegram Disconnected',
-        'Your Telegram account has been disconnected'
-      )
+      if (config.logEvent) {
+        logEvent(`Disconnect ${accountType}`)
+      }
+      await config.handler()
+      return true
     } catch (error) {
-      showErrorToast(
-        'Disconnection Failed',
-        'Failed to disconnect Telegram account'
-      )
+      console.error(config.errorMessage, error)
+      onError(config.errorMessage)
+      return false
     }
   }
-  const handleDiscordDisconnect = async () => {
-    await deleteDiscordIntegration()
-    await queryClient.invalidateQueries(
-      QueryKeys.account(currentAccount?.address?.toLowerCase())
-    )
-    await updateUser()
-    showSuccessToast(
-      'Discord Disconnected',
-      'Your Discord account has been disconnected'
-    )
+  const connectConfigs: Record<ConnectedAccount, DisconnectConfig> = {
+    [ConnectedAccount.TELEGRAM]: {
+      handler: () =>
+        new Promise<boolean>(async (resolve, reject) => {
+          // TODO: Check if account has been already successfully connected
+          const hash = await createTelegramHash()
+          const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
+          window.open(url, '_blank', 'noopener noreferrer')
+
+          const intervalId = setInterval(async () => {
+            const pendingConnection = await getPendingTgConnection()
+            if (!pendingConnection) {
+              clearInterval(intervalId)
+              resolve(true)
+            }
+          }, 5000)
+
+          // If the connection is not established after 5 minutes, show an error toast
+          setTimeout(() => {
+            clearInterval(intervalId)
+            reject(new Error('Telegram connection timeout'))
+            resolve(false)
+          }, 5 * 60 * 1000)
+        }),
+      errorMessage:
+        'Could not verify Telegram connection in time. Please try again.',
+      logEvent: true,
+    },
+    [ConnectedAccount.DISCORD]: {
+      handler: async () => {
+        const url = `https://discord.com/api/oauth2/authorize?client_id=${
+          process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
+        }&redirect_uri=${encodeURIComponent(
+          discordRedirectUrl
+        )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
+          JSON.stringify({ origin: OnboardingSubject.DiscordConnectedInPage })
+        ).toString('base64')}`
+        window.open(url, '_self', 'noopener noreferrer')
+      },
+      errorMessage: 'Discord Connection error, Please retry',
+      logEvent: true,
+    },
+    [ConnectedAccount.STRIPE]: {
+      handler: async () => {
+        const url = await getStripeOnboardingLink()
+        window.open(url, '_self', 'noopener noreferrer')
+      },
+      errorMessage: 'Stripe Connection error, Please retry',
+      logEvent: true,
+    },
   }
-  const handleStripeDisconnect = async () => {
-    logEvent('Disconnect Stripe')
+  const executeConnect = async (
+    accountType: ConnectedAccount,
+    onError: (msg: string) => void
+  ): Promise<boolean> => {
+    const config = connectConfigs[accountType]
+    if (!config) {
+      throw new Error(`Unknown account type: ${accountType}`)
+    }
     try {
-      await disconnectStripeAccount()
-      showSuccessToast(
-        'Stripe Disconnected',
-        'Your Stripe account has been disconnected'
-      )
-    } catch (e) {
-      showErrorToast(
-        'Disconnection Failed',
-        'Failed to disconnect Stripe account'
-      )
+      if (config.logEvent) {
+        logEvent(`Connect ${accountType}`)
+      }
+      await config.handler()
+      return true
+    } catch (error) {
+      console.error(config.errorMessage, error)
+      onError(config.errorMessage)
+      return false
     }
   }
   const handleDisconnect = async () => {
-    setDisconnecting(true)
-    switch (props.account) {
-      case ConnectedAccount.TELEGRAM:
-        await handleTgDisconnect()
-        break
-      case ConnectedAccount.DISCORD:
-        await handleDiscordDisconnect()
-        break
-      case ConnectedAccount.STRIPE:
-        await handleStripeDisconnect()
-    }
-    await queryClient.invalidateQueries(
-      QueryKeys.connectedAccounts(currentAccount?.address)
-    )
-    setDisconnecting(false)
-  }
-  const handleTgConnect = async () => {
-    return new Promise<boolean>(async resolve => {
-      setIsConnecting(true)
-      logEvent('Connect Telegram')
+    try {
+      setDisconnecting(true)
 
-      try {
-        const hash = await createTelegramHash()
-        const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
-        window.open(url, '_blank', 'noopener noreferrer')
+      const isSuccessful = await executeDisconnect(props.account, msg =>
+        showErrorToast('Disconnection Failed', msg)
+      )
 
-        const intervalId = setInterval(async () => {
-          const pendingConnection = await getPendingTgConnection()
-          if (!pendingConnection) {
-            clearInterval(intervalId)
-            resolve(true)
-            showSuccessToast(
-              'Telegram Connected',
-              'Your Telegram account has been connected'
-            )
-          }
-        }, 5000)
-
-        // If the connection is not established after 5 minutes, show an error toast
-        setTimeout(() => {
-          clearInterval(intervalId)
-          setIsConnecting(false)
-          showErrorToast(
-            'Connection Failed',
-            'Could not verify Telegram connection in time. Please try again.'
-          )
-          resolve(false)
-        }, 300000)
-      } catch (error) {
-        setIsConnecting(false)
-        showErrorToast(
-          'Connection Failed',
-          'Failed to initiate Telegram connection'
+      if (isSuccessful) {
+        await queryClient.invalidateQueries(
+          QueryKeys.connectedAccounts(currentAccount?.address)
         )
       }
-    })
-  }
-  const handleDiscordConnect = async () => {
-    const url = `https://discord.com/api/oauth2/authorize?client_id=${
-      process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
-    }&redirect_uri=${encodeURIComponent(
-      discordRedirectUrl
-    )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
-      JSON.stringify({ origin: OnboardingSubject.DiscordConnectedInPage })
-    ).toString('base64')}`
-    window.open(url, '_self', 'noopener noreferrer')
-  }
-  const handleStripeConnect = async () => {
-    const url = await getStripeOnboardingLink()
-    window.open(url, '_self', 'noopener noreferrer')
+      showSuccessToast(
+        '${props.account} Disconnected',
+        `Your ${props.account} account has been disconnected`
+      )
+    } finally {
+      setDisconnecting(false)
+    }
   }
   const handleConnect = async () => {
-    setIsConnecting(true)
-    let isSuccessful = true
-    switch (props.account) {
-      case ConnectedAccount.TELEGRAM:
-        isSuccessful = await handleTgConnect()
-        break
-      case ConnectedAccount.DISCORD:
-        await handleDiscordConnect()
-        break
-      case ConnectedAccount.STRIPE:
-        await handleStripeConnect()
-        break
-    }
-    if (isSuccessful) {
-      await queryClient.invalidateQueries(
-        QueryKeys.connectedAccounts(currentAccount?.address)
+    try {
+      setIsConnecting(true)
+
+      const isSuccessful = await executeConnect(props.account, msg =>
+        showErrorToast('Connection Failed', msg)
       )
+
+      if (isSuccessful) {
+        await queryClient.invalidateQueries(
+          QueryKeys.connectedAccounts(currentAccount?.address)
+        )
+      }
+      showSuccessToast(
+        '${props.account} Connected',
+        `Your ${props.account} account has been connected`
+      )
+    } finally {
+      setIsConnecting(false)
     }
-    setIsConnecting(false)
+  }
+
+  const getIconColor = (status: Enums<'PaymentAccountStatus'>) => {
+    switch (status) {
+      case PaymentAccountStatus.CONNECTED:
+        return 'green.500'
+      case PaymentAccountStatus.PENDING:
+        return 'yellow.500'
+      case PaymentAccountStatus.FAILED:
+        return 'red.500'
+      default:
+        return 'green.500'
+    }
+  }
+  const isPaymentAccount = (
+    account: ConnectedAccountInfo
+  ): account is {
+    account: ConnectedAccount.STRIPE
+    info: ActivePaymentAccount
+  } => {
+    if (account.info && 'provider' in account.info) {
+      return true
+    }
+    return false
+  }
+  const handleOpenDashboardLink = async () => {
+    try {
+      setIsGeneratingLink(true)
+      const url = await generateDashboardLink()
+      window.open(url, '_blank', 'noopener noreferrer')
+    } catch (e) {
+      showErrorToast('Failed to open dashboard', 'Please try again later.')
+    } finally {
+      setIsGeneratingLink(false)
+    }
   }
   return (
     <VStack
@@ -199,9 +269,10 @@ const AccountCard: FC<IProps> = props => {
       mb={4}
       borderRadius={10}
       border={'1px'}
-      borderColor="neutral.800"
+      borderColor="card-border"
       borderStyle="solid"
       p={7}
+      justifyContent="space-between"
     >
       <HStack w={'100%'} justifyContent={'space-between'}>
         <Image
@@ -212,18 +283,40 @@ const AccountCard: FC<IProps> = props => {
         />
         {props.info && (
           <HStack>
-            <Tag variant="subtle" bg="neutral.400">
+            <Tag
+              variant="subtle"
+              bg="input-border"
+              fontSize={{
+                lg: '16px',
+                md: '14px',
+                base: '12px',
+              }}
+            >
               <TagLeftIcon
                 boxSize="12px"
                 w={5}
                 h={5}
                 as={GoDotFill}
                 m={0}
-                color="green.500"
+                color={
+                  isPaymentAccount(props)
+                    ? getIconColor(props.info.status)
+                    : 'green.500'
+                }
               />
-              <TagLabel px="2px">Connected</TagLabel>
+              <TagLabel px="2px" textTransform="capitalize">
+                {isPaymentAccount(props) ? props.info.status : 'Connected'}
+              </TagLabel>
             </Tag>
-            <Tag variant="subtle" bg="neutral.200">
+            <Tag
+              variant="subtle"
+              bg="text-highlight-primary"
+              fontSize={{
+                lg: '16px',
+                md: '14px',
+                base: '12px',
+              }}
+            >
               <TagLeftIcon
                 boxSize="12px"
                 w={5}
@@ -232,7 +325,7 @@ const AccountCard: FC<IProps> = props => {
                 m={0}
                 color="green.500"
               />
-              <TagLabel px="2px" color={'neutral.900'}>
+              <TagLabel px="2px" color={'bg-surface'}>
                 {props.info?.username}
               </TagLabel>
             </Tag>
@@ -242,32 +335,63 @@ const AccountCard: FC<IProps> = props => {
       <Text color={'neutral.300'} fontWeight={500}>
         {getContent(props.account)}
       </Text>
-      {props.info ? (
-        <Button
-          colorScheme="primary"
-          isLoading={isDisconnecting}
-          loadingText="Disconnecting..."
-          onClick={handleDisconnect}
-          variant="outline"
-          px={6}
-          fontWeight={700}
-          textTransform="capitalize"
-        >
-          {`Disconnect ${props.account}`}
-        </Button>
-      ) : (
-        <Button
-          colorScheme="primary"
-          isLoading={isConnecting}
-          loadingText="Connecting..."
-          onClick={handleConnect}
-          px={6}
-          fontWeight={700}
-          textTransform="capitalize"
-        >
-          {`Connect ${props.account}`}
-        </Button>
-      )}
+      <HStack>
+        {props.info ? (
+          <Button
+            colorScheme="primary"
+            isLoading={isDisconnecting}
+            loadingText="Disconnecting..."
+            onClick={handleDisconnect}
+            variant="outline"
+            px={6}
+            fontWeight={700}
+            textTransform="capitalize"
+          >
+            {`Disconnect ${props.account}`}
+          </Button>
+        ) : (
+          <Button
+            colorScheme="primary"
+            isLoading={isConnecting}
+            loadingText="Connecting..."
+            onClick={handleConnect}
+            px={6}
+            fontWeight={700}
+            textTransform="capitalize"
+          >
+            {`Connect ${props.account}`}
+          </Button>
+        )}
+        {isPaymentAccount(props) &&
+          ([PaymentAccountStatus.FAILED, PaymentAccountStatus.PENDING].includes(
+            props.info.status as PaymentAccountStatus
+          ) ? (
+            <Button
+              colorScheme="primary"
+              isLoading={isConnecting}
+              onClick={handleConnect}
+              px={6}
+              fontWeight={700}
+              textTransform="capitalize"
+              variant="link"
+            >
+              Update Details
+            </Button>
+          ) : (
+            <Button
+              colorScheme="primary"
+              isLoading={isGeneratingLink}
+              loadingText="Opening..."
+              onClick={handleOpenDashboardLink}
+              px={6}
+              fontWeight={700}
+              textTransform="capitalize"
+              variant="link"
+            >
+              View My Dashboard
+            </Button>
+          ))}
+      </HStack>
     </VStack>
   )
 }
