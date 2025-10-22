@@ -217,7 +217,7 @@ export type Database = {
           email: string
           id: number
           payload: string
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           sync: boolean
           updated: string | null
         }
@@ -228,7 +228,7 @@ export type Database = {
           email: string
           id?: number
           payload: string
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           sync?: boolean
           updated?: string | null
         }
@@ -239,7 +239,7 @@ export type Database = {
           email?: string
           id?: number
           payload?: string
-          provider?: string
+          provider?: Database['public']['Enums']['TimeSlotSource']
           sync?: boolean
           updated?: string | null
         }
@@ -957,30 +957,27 @@ export type Database = {
         Row: {
           created_at: string | null
           id: number
-          onboarded: boolean | null
           owner_account_address: string
           provider: Database['public']['Enums']['PaymentProvider']
-          provider_account_id: string
+          provider_account_id: string | null
           status: Database['public']['Enums']['PaymentAccountStatus']
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
-          id: number
-          onboarded?: boolean | null
+          id?: number
           owner_account_address: string
           provider: Database['public']['Enums']['PaymentProvider']
-          provider_account_id: string
+          provider_account_id?: string | null
           status: Database['public']['Enums']['PaymentAccountStatus']
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           id?: number
-          onboarded?: boolean | null
           owner_account_address?: string
           provider?: Database['public']['Enums']['PaymentProvider']
-          provider_account_id?: string
+          provider_account_id?: string | null
           status?: Database['public']['Enums']['PaymentAccountStatus']
           updated_at?: string | null
         }
@@ -1028,7 +1025,7 @@ export type Database = {
           id: number
           participant_id: string | null
           payload: Json | null
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           updated_at: string | null
         }
         Insert: {
@@ -1037,7 +1034,7 @@ export type Database = {
           id?: number
           participant_id?: string | null
           payload?: Json | null
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           updated_at?: string | null
         }
         Update: {
@@ -1046,7 +1043,7 @@ export type Database = {
           id?: number
           participant_id?: string | null
           payload?: Json | null
-          provider?: string
+          provider?: Database['public']['Enums']['TimeSlotSource']
           updated_at?: string | null
         }
         Relationships: [
@@ -1491,14 +1488,8 @@ export type Database = {
         Args: { current_account: string; user_address: string }
         Returns: boolean
       }
-      fetch_account: {
-        Args: { identifier: string }
-        Returns: Json
-      }
-      find_account: {
-        Args: { identifier: string }
-        Returns: Json
-      }
+      fetch_account: { Args: { identifier: string }; Returns: Json }
+      find_account: { Args: { identifier: string }; Returns: Json }
       get_accounts: {
         Args: { address: string; max: number; search: string; skip: number }
         Returns: Record<string, unknown>
@@ -1523,7 +1514,7 @@ export type Database = {
         }[]
       }
       get_discord_notifications: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           account_address: string
           discord_id: string
@@ -1550,14 +1541,14 @@ export type Database = {
           role: string
         }[]
       }
-      get_paid_sessions: {
-        Args:
-          | { account_address: string; current_account: string }
-          | { current_account: string }
-        Returns: Json
-      }
+      get_paid_sessions:
+        | {
+            Args: { account_address: string; current_account: string }
+            Returns: Json
+          }
+        | { Args: { current_account: string }; Returns: Json }
       get_telegram_notifications: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           account_address: string
           telegram_id: string
@@ -1659,6 +1650,7 @@ export type Database = {
       QuickPollParticipantType: 'scheduler' | 'invitee' | 'owner'
       RecurringStatus: 'confirmed' | 'cancelled'
       SessionType: 'paid' | 'free'
+      TimeSlotSource: 'mww' | 'Google' | 'iCloud' | 'Office 365' | 'Webdav'
       TokenType: 'erc20' | 'erc721' | 'stablecoin' | 'nft' | 'native'
       VerificationChannel: 'transaction-pin' | 'reset-email'
       VideoMeeting: 'None' | 'GoogleMeet'
@@ -1829,6 +1821,7 @@ export const Constants = {
       QuickPollParticipantType: ['scheduler', 'invitee', 'owner'],
       RecurringStatus: ['confirmed', 'cancelled'],
       SessionType: ['paid', 'free'],
+      TimeSlotSource: ['mww', 'Google', 'iCloud', 'Office 365', 'Webdav'],
       TokenType: ['erc20', 'erc721', 'stablecoin', 'nft', 'native'],
       VerificationChannel: ['transaction-pin', 'reset-email'],
       VideoMeeting: ['None', 'GoogleMeet'],
