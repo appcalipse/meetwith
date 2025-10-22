@@ -1,5 +1,10 @@
 import { ConnectedAccountInfo } from '@meta/ConnectedAccounts'
-import { Address, ICoinConfig, MeetingSession } from '@meta/Transactions'
+import {
+  Address,
+  ICoinConfig,
+  MeetingSession,
+  Transaction,
+} from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -70,6 +75,7 @@ import {
   CreateMeetingTypeRequest,
   DuplicateAvailabilityBlockRequest,
   MeetingCancelRequest,
+  MeetingCheckoutRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
   RequestInvoiceRequest,
@@ -150,7 +156,6 @@ export const internalFetch = async <T>(
         ? undefined
         : {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
             ...headers,
           },
       ...options,
@@ -2118,4 +2123,24 @@ export const getStripeOnboardingLink = async () => {
 
 export const disconnectStripeAccount = async () => {
   return await internalFetch(`/secure/stripe/disconnect`, 'PATCH')
+}
+
+export const generateDashboardLink = async () => {
+  return await internalFetch<{ url: string }>(`/secure/stripe/login`).then(
+    res => res.url
+  )
+}
+
+export const generateCheckoutLink = async (payload: MeetingCheckoutRequest) => {
+  return await internalFetch<{ url: string }>(
+    `/transactions/checkout`,
+    'POST',
+    payload
+  ).then(res => res.url)
+}
+
+export const getTransactionById = async (
+  transactionId: string
+): Promise<Transaction> => {
+  return await internalFetch<Transaction>(`/transactions/${transactionId}`)
 }
