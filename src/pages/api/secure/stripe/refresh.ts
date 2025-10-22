@@ -22,7 +22,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       let accountId = provider.provider_account_id
       if (!accountId) {
         const account = await stripe.accounts.create({
-          type: 'standard',
+          type: 'express',
         })
         accountId = account.id
         await updatePaymentAccount(provider.id, account_address, {
@@ -32,8 +32,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       const accountLink = await stripe.accountLinks.create({
         account: accountId,
-        refresh_url: `${apiUrl}/secure/checkout/refresh`,
-        return_url: `${apiUrl}/secure/checkout/callback`,
+        refresh_url: `${apiUrl}/secure/stripe/refresh`,
+        return_url: `${apiUrl}/secure/stripe/callback`,
         type: 'account_onboarding',
       })
       return res.redirect(accountLink.url)
