@@ -155,7 +155,10 @@ export enum PaymentStep {
   SELECT_CRYPTO_NETWORK = 'select-crypto-network',
   HANDLE_SEND_INVOICE = 'handle-send-invoice',
 }
-
+export enum PaymentRedirectType {
+  INVOICE = 'direct-invoice',
+  CHECKOUT = 'checkout',
+}
 export const getDefaultValues = (): Partial<MeetingType> => ({
   type: SessionType.FREE,
   slug: '',
