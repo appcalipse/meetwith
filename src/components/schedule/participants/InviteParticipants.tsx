@@ -70,37 +70,17 @@ const InviteParticipants: FC<IProps> = ({
         .filter((a): a is string => !!a)
 
       setParticipants(prevUsers => {
-        const existingAddresses = new Set(
-          (
-            (prevUsers?.filter(
-              p => !isGroupParticipant(p)
-            ) as ParticipantInfo[]) || []
-          )
-            .map(p => p.account_address)
-            .filter(Boolean)
+        const groupParticipants = prevUsers?.filter(
+          user => isGroupParticipant(user) || user.isHidden
         )
-        const newParticipants = _participants.filter(
-          p => !existingAddresses.has(p.account_address)
-        )
-        return [...(prevUsers || []), ...newParticipants]
+        return [...groupParticipants, ..._participants]
       })
-
       setStandAloneParticipants(prevUsers => {
-        const existingAddresses = new Set(
-          (
-            (prevUsers?.filter(
-              p => !isGroupParticipant(p)
-            ) as ParticipantInfo[]) || []
-          )
-            .map(p => p.account_address)
-            .filter(Boolean)
+        const groupParticipants = prevUsers?.filter(
+          user => isGroupParticipant(user) || user.isHidden
         )
-        const newParticipants = _participants.filter(
-          p => !existingAddresses.has(p.account_address)
-        )
-        return [...(prevUsers || []), ...newParticipants]
+        return [...groupParticipants, ..._participants]
       })
-
       React.startTransition(() => {
         if (addressesToAdd.length > 0) {
           setGroupAvailability(prev => ({
