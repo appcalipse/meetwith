@@ -19,7 +19,11 @@ import PaymentDetails from '@components/public-meeting/PaymentDetails'
 import { requestInvoice } from '@utils/api_helper'
 import { getAccountDomainUrl } from '@utils/calendar_manager'
 import { appUrl } from '@utils/constants'
-import { PaymentStep, PaymentType } from '@utils/constants/meeting-types'
+import {
+  PaymentRedirectType,
+  PaymentStep,
+  PaymentType,
+} from '@utils/constants/meeting-types'
 import {
   ErrorAction,
   errorReducerSingle,
@@ -104,7 +108,7 @@ const PayViaInvoice = () => {
         guest_email: email,
         meeting_url: meetingUrl,
         user_email: userEmail,
-        type: 'direct-invoice',
+        type: PaymentRedirectType.INVOICE,
       })
 
       if (paymentType === PaymentType.CRYPTO && token && selectedChain) {
