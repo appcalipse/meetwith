@@ -8,7 +8,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { useContext, useMemo } from 'react'
+import React, { useCallback, useContext, useMemo, useState } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
@@ -25,7 +25,10 @@ import {
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
 import { MeetingPermissions } from '@/utils/constants/schedule'
+import { queryClient } from '@/utils/react_query'
 import { ellipsizeAddress } from '@/utils/user_manager'
+
+import InviteParticipants from '../schedule/participants/InviteParticipants'
 
 interface QuickPollParticipantsProps {
   isMobile?: boolean
@@ -33,6 +36,7 @@ interface QuickPollParticipantsProps {
   onAddParticipants?: () => void
   onAvailabilityToggle?: () => void
   currentGuestEmail?: string
+  onParticipantAdded?: () => void
 }
 
 const convertQuickPollParticipant = (participant: any): ParticipantInfo => {
@@ -59,6 +63,7 @@ export function QuickPollParticipants({
   onAddParticipants,
   onAvailabilityToggle,
   currentGuestEmail,
+  onParticipantAdded,
 }: QuickPollParticipantsProps) {
   const { currentAccount } = useContext(AccountContext)
   const {
@@ -67,6 +72,25 @@ export function QuickPollParticipants({
     setGroupParticipants,
     groupParticipants,
   } = useParticipants()
+
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const { setParticipants } = useParticipants()
+
+  const handleParticipantAdded = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+    queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
+    onParticipantAdded?.()
+  }, [onParticipantAdded])
+
+  const handleOpenInviteModal = useCallback(() => {
+    if (pollData?.poll?.participants) {
+      const convertedParticipants = pollData.poll.participants.map(
+        convertQuickPollParticipant
+      )
+      setParticipants(convertedParticipants)
+    }
+    setIsInviteModalOpen(true)
+  }, [pollData, setParticipants])
 
   const host = pollData?.poll.participants.find(
     p => p.participant_type === QuickPollParticipantType.SCHEDULER
@@ -315,7 +339,7 @@ export function QuickPollParticipants({
         })}
       </VStack>
 
-      {onAddParticipants && isHost && (
+      {isHost && (
         <Button
           variant="outline"
           colorScheme="primary"
@@ -323,11 +347,22 @@ export function QuickPollParticipants({
           px={{ base: 3, md: 4 }}
           py={{ base: 2.5, md: 3 }}
           fontSize={{ base: 'sm', md: 'md' }}
-          onClick={onAddParticipants}
+          onClick={handleOpenInviteModal}
         >
           Add participants
         </Button>
       )}
+
+      <InviteParticipants
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        isQuickPoll={true}
+        pollData={pollData}
+        onInviteSuccess={() => {
+          handleParticipantAdded()
+          setIsInviteModalOpen(false)
+        }}
+      />
     </VStack>
   )
 }
