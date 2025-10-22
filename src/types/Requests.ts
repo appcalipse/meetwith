@@ -259,6 +259,12 @@ export interface RequestInvoiceRequest {
   url: string
 }
 
-// export interface ConnectStripeAccountRequest {
-//   business_type
-// }
+export interface MeetingCheckoutRequest {
+  meeting_type_id: string
+  // message_channel: string
+  guest_email?: string
+  guest_name: string
+  guest_address?: string
+  amount: number
+  redirectUrl: string
+}
