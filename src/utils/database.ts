@@ -1,4 +1,8 @@
-import { PaymentAccountStatus, PaymentProvider } from '@meta/PaymentAccount'
+import {
+  ActivePaymentAccount,
+  PaymentAccountStatus,
+  PaymentProvider,
+} from '@meta/PaymentAccount'
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import { getDiscordInfoForAddress } from '@utils/services/discord.helper'
@@ -11,6 +15,7 @@ import {
 } from '@utils/services/onramp.money'
 import { getTelegramUserInfo } from '@utils/services/telegram.helper'
 import * as argon2 from 'argon2'
+import { createHash } from 'crypto'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
 import EthCrypto, {
@@ -48,9 +53,7 @@ import {
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
 import {
-  getChainDisplayName,
   getChainInfo,
-  getTokenAddress,
   resolveTokenSymbolFromAddress,
   SupportedChain,
 } from '@/types/chains'
@@ -62,11 +65,7 @@ import {
   SingleDBContact,
   SingleDBContactInvite,
 } from '@/types/Contacts'
-import {
-  DiscordAccount,
-  DiscordAccountInfo,
-  DiscordUserInfo,
-} from '@/types/Discord'
+import { DiscordAccount, DiscordAccountInfo } from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
@@ -102,16 +101,13 @@ import {
 } from '@/types/ParticipantInfo'
 import {
   AddParticipantData,
-  AddParticipantRequest,
   AvailabilitySlot,
   CreateQuickPollRequest,
   PollStatus,
   PollVisibility,
-  QuickPoll,
   QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
-  QuickPollWithParticipants,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
@@ -119,6 +115,7 @@ import {
   CreateMeetingTypeRequest,
   GroupInviteNotifyRequest,
   MeetingCancelSyncRequest,
+  MeetingCheckoutRequest,
   MeetingCreationRequest,
   MeetingCreationSyncRequest,
   MeetingUpdateRequest,
@@ -192,17 +189,14 @@ import {
   QuickPollCancellationError,
   QuickPollCreationError,
   QuickPollDeletionError,
-  QuickPollExpiredError,
   QuickPollNotFoundError,
   QuickPollParticipantCreationError,
   QuickPollParticipantNotFoundError,
   QuickPollParticipantUpdateError,
-  QuickPollPermissionDeniedError,
   QuickPollSlugGenerationError,
   QuickPollSlugNotFoundError,
   QuickPollUnauthorizedError,
   QuickPollUpdateError,
-  QuickPollValidationError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   TransactionIsRequired,
@@ -213,7 +207,6 @@ import {
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { generatePollSlug } from '@/utils/quickpoll_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
-import { thirdWebClient } from '@/utils/user_manager'
 
 import {
   generateDefaultMeetingType,
@@ -238,6 +231,7 @@ import { deduplicateArray } from './generic_utils'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { CalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
+import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
@@ -566,6 +560,18 @@ const updatePreferenceAvatar = async (
   }
 
   return publicUrl
+}
+const getAccountAvatarUrl = async (address: string): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('account_preferences')
+    .select('avatar_url')
+    .eq('owner_account_address', address.toLowerCase())
+    .single()
+  if (error) {
+    Sentry.captureException(error)
+    return null
+  }
+  return data.avatar_url || null
 }
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
@@ -2340,10 +2346,9 @@ const getQuickPollCalendars = async (
   }
 ): Promise<ConnectedCalendar[]> => {
   const { data, error } = await db.supabase
-    .from('quick_poll_calendars')
+    .from<Tables<'quick_poll_calendars'>>('quick_poll_calendars')
     .select('*')
     .eq('participant_id', participantId)
-    .eq('active', true)
     .order('id', { ascending: true })
 
   if (error) {
@@ -2352,15 +2357,15 @@ const getQuickPollCalendars = async (
 
   if (!data) return []
 
-  const connectedCalendars: ConnectedCalendar[] = data.map((calendar: any) => ({
+  const connectedCalendars: ConnectedCalendar[] = data.map(calendar => ({
     id: calendar.id,
     account_address: '',
     email: calendar.email,
-    provider: calendar.provider,
+    provider: calendar.provider as TimeSlotSource,
     payload: calendar.payload,
     calendars: [],
     enabled: true,
-    created: calendar.created_at || new Date().toISOString(),
+    created: new Date(calendar.created_at) || new Date(),
   }))
 
   if (syncOnly) {
@@ -2399,7 +2404,7 @@ export const updateCalendarPayload = async (
   address: string,
   email: string,
   provider: TimeSlotSource,
-  payload: any
+  payload: unknown
 ): Promise<void> => {
   const { error } = await db.supabase
     .from('connected_calendars')
@@ -3281,16 +3286,21 @@ export const getDiscordAccountAndInfo = async (
 export const getTelegramAccountAndInfo = async (
   account_address: string
 ): Promise<TelegramAccountInfo | null> => {
-  const subs = await getAccountNotificationSubscriptions(account_address)
-  const telegramNotification = subs.notification_types.find(
-    n => n.channel === NotificationChannel.TELEGRAM
-  )
-  if (!telegramNotification) return null
-  const userInfo = await getTelegramUserInfo(telegramNotification.destination)
-  return {
-    ...telegramNotification,
-    ...userInfo,
+  try {
+    const subs = await getAccountNotificationSubscriptions(account_address)
+    const telegramNotification = subs.notification_types.find(
+      n => n.channel === NotificationChannel.TELEGRAM
+    )
+    if (!telegramNotification) return null
+    const userInfo = await getTelegramUserInfo(telegramNotification.destination)
+    return {
+      ...telegramNotification,
+      ...(userInfo || {}),
+    }
+  } catch (e) {
+    Sentry.captureException(e)
   }
+  return null
 }
 export const getAccountFromDiscordId = async (
   discord_id: string
@@ -4819,6 +4829,31 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
   )
   return data
 }
+const getMeetingTypeFromDBLean = async (id: string) => {
+  const { data, error } = await db.supabase
+    .from<
+      Tables<'meeting_type'> & {
+        plan: Tables<'meeting_type_plan'>
+      }
+    >('meeting_type')
+    .select(
+      `
+    *,
+    plan: meeting_type_plan(*)
+    `
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new MeetingTypeNotFound()
+  }
+  data.plan = Array.isArray(data.plan) ? data.plan[0] : data.plan
+  return data
+}
 // Function to get transactions for a wallet (both sent and received) with optional token filtering
 export const getWalletTransactions = async (
   walletAddress: string,
@@ -5089,7 +5124,48 @@ const sendSessionIncomeEmail = async (
     console.warn('Failed to send session booking income email:', e)
   }
 }
+const createCheckOutTransaction = async (
+  transactionRequest: MeetingCheckoutRequest
+) => {
+  const transaction_hash = createHash('sha256')
+    .update(Date.now().toString())
+    .digest('hex')
+    .slice(0, 16)
+  const payload: TablesInsert<'transactions'> = {
+    method: PaymentType.FIAT,
+    status: PaymentStatus.PENDING,
+    meeting_type_id: transactionRequest.meeting_type_id,
+    amount: transactionRequest.amount,
+    direction: PaymentDirection.CREDIT,
+    initiator_address: transactionRequest.guest_address,
+    fiat_equivalent: transactionRequest.amount,
+    currency: Currency.USD,
+    transaction_hash,
+    metadata: {},
+  }
+  const { data, error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .insert(payload)
+    .select()
+    .single()
 
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const getTransactionsById = async (id: string) => {
+  const { data, error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .select()
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
 const createCryptoTransaction = async (
   transactionRequest: ConfirmCryptoTransactionRequest,
   account_address?: string
@@ -6980,8 +7056,8 @@ const getQuickPollParticipantByIdentifier = async (
 const getActivePaymentAccount = async (
   account_address: string,
   provider = PaymentProvider.STRIPE
-) => {
-  const { data: payment_account, error } = await db.supabase
+): Promise<ActivePaymentAccount> => {
+  const { data, error } = await db.supabase
     .from<Tables<'payment_accounts'>>('payment_accounts')
     .select()
     .eq('owner_account_address', account_address)
@@ -6992,7 +7068,26 @@ const getActivePaymentAccount = async (
     throw new Error('Could not fetch payment account')
   }
 
-  return Array.isArray(payment_account) ? payment_account[0] : payment_account
+  const payment_account = Array.isArray(data) ? data[0] : data
+  if (
+    payment_account?.provider_account_id &&
+    payment_account.provider === PaymentProvider.STRIPE
+  ) {
+    const stripe = new StripeService()
+    const account = await stripe.accounts.retrieve(
+      payment_account?.provider_account_id
+    )
+
+    return {
+      ...payment_account,
+      username:
+        account?.business_profile?.name ||
+        (account?.individual?.first_name
+          ? `${account.individual.first_name} ${account.individual.last_name}`
+          : 'Unnamed'),
+    }
+  }
+  return payment_account
 }
 const getOrCreatePaymentAccount = async (
   account_address: string,
@@ -7060,6 +7155,7 @@ export {
   cleanupExpiredVerifications,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  createCheckOutTransaction,
   createCryptoTransaction,
   createMeetingType,
   createPaymentPreferences,
@@ -7079,6 +7175,7 @@ export {
   expireStalePolls,
   findAccountByIdentifier,
   findAccountsByText,
+  getAccountAvatarUrl,
   getAccountFromDB,
   getAccountFromDBPublic,
   getAccountNonce,
@@ -7114,6 +7211,7 @@ export {
   getMeetingFromDB,
   getMeetingSessionsByTxHash,
   getMeetingTypeFromDB,
+  getMeetingTypeFromDBLean,
   getMeetingTypes,
   getMeetingTypesForAvailabilityBlock,
   getNewestCoupon,
@@ -7136,6 +7234,7 @@ export {
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
+  getTransactionsById,
   handleGuestCancel,
   handleMeetingCancelSync,
   handleWebhookEvent,
