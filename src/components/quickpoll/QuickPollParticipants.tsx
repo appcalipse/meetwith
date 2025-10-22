@@ -303,7 +303,7 @@ export function QuickPollParticipants({
                   <Heading
                     size={{ base: 'xs', md: 'sm' }}
                     lineHeight={'normal'}
-                    maxW={{ base: '200px', md: '300px' }}
+                    maxW={{ base: '200px', md: '180px' }}
                     whiteSpace="nowrap"
                     overflow="hidden"
                     textOverflow="ellipsis"
