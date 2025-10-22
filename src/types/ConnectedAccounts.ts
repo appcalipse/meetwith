@@ -1,6 +1,8 @@
 import { DiscordAccountInfo } from '@meta/Discord'
 import { TelegramAccountInfo } from '@meta/Telegram'
 
+import { ActivePaymentAccount } from './PaymentAccount'
+
 export enum ConnectedAccount {
   DISCORD = 'discord',
   TELEGRAM = 'telegram',
@@ -9,5 +11,5 @@ export enum ConnectedAccount {
 
 export interface ConnectedAccountInfo {
   account: ConnectedAccount
-  info: DiscordAccountInfo | TelegramAccountInfo | null
+  info: DiscordAccountInfo | TelegramAccountInfo | ActivePaymentAccount | null
 }
