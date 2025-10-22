@@ -90,7 +90,7 @@ const PollPage = () => {
       >
         <ScheduleStateProvider>
           <NavigationProvider>
-            <ParticipantsProvider skipFetching={true}>
+            <ParticipantsProvider>
               <PermissionsProvider>
                 <AvailabilityTrackerProvider>
                   <QuickPollMain

@@ -858,6 +858,20 @@ export function QuickPollPickAvailability({
                 : 'Edit/Add your availability'}
             </Button>
           )}
+          {onImportCalendar && !isSchedulingIntent && (
+            <Button
+              variant="outline"
+              colorScheme="primary"
+              onClick={onImportCalendar}
+              w="100%"
+              py={3}
+              fontSize="16px"
+              fontWeight="600"
+              borderRadius="8px"
+            >
+              Import from calendar
+            </Button>
+          )}
           {onSharePoll && (
             <Button
               variant="outline"
