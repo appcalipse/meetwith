@@ -229,9 +229,7 @@ export function QuickPollPickAvailability({
       const visibleParticipants = groupAvailability[groupKey] || []
 
       return pollData.poll.participants
-        .filter(
-          p => (p.account_address || p.guest_email) && p.available_slots?.length
-        )
+        .filter(p => p.account_address || p.guest_email)
         .map(
           p =>
             (p.account_address?.toLowerCase() || p.guest_email?.toLowerCase())!
