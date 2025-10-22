@@ -15,11 +15,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const account_address = req.session.account!.address
       const [discord, telegram, payment_account] = await Promise.all([
         getDiscordAccountAndInfo(account_address),
-        getTelegramAccountAndInfo(account_address).catch(error => {
-          console.error('Error fetching Telegram account info:', error)
-          Sentry.captureException(error)
-          return null
-        }),
+        getTelegramAccountAndInfo(account_address),
         getActivePaymentAccount(account_address),
       ])
       const connectedAccounts = [
