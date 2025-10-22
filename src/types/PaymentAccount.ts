@@ -1,3 +1,5 @@
+import { Tables } from './Supabase'
+
 export enum PaymentProvider {
   STRIPE = 'stripe',
 }
@@ -7,4 +9,8 @@ export enum PaymentAccountStatus {
   CONNECTED = 'connected',
   DISCONNECTED = 'disconnected',
   FAILED = 'failed',
+}
+
+export interface ActivePaymentAccount extends Tables<'payment_accounts'> {
+  username?: string
 }
