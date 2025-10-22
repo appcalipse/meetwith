@@ -7,11 +7,14 @@ import ProgressHeader from '@components/public-meeting/ProgressHeader'
 import SelectCryptoNetwork from '@components/public-meeting/SelectCryptoNetwork'
 import SessionTypeCardPaymentInfo from '@components/public-meeting/SessionTypeCardPaymentInfo'
 import { PaymentStep } from '@utils/constants/meeting-types'
+import { useRouter } from 'next/router'
 import React, { useContext } from 'react'
+
+import FiatPaymentVerifying from './FiatPaymentVerifying'
 
 const PaymentComponent = () => {
   const { paymentStep } = useContext(PublicScheduleContext)
-
+  const { query } = useRouter()
   const renderPage = () => {
     switch (paymentStep) {
       case PaymentStep.CONFIRM_PAYMENT:
@@ -19,7 +22,7 @@ const PaymentComponent = () => {
       case PaymentStep.SELECT_CRYPTO_NETWORK:
         return <SelectCryptoNetwork />
       case PaymentStep.FIAT_PAYMENT_VERIFYING:
-        return null
+        return query.transaction_id ? <FiatPaymentVerifying /> : null
       case PaymentStep.HANDLE_SEND_INVOICE:
         return <PayViaInvoice />
 
