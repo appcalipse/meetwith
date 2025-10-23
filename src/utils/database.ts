@@ -237,6 +237,7 @@ import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
+import { EmailQueue } from './workers/email.queue'
 
 const PIN_SALT = process.env.PIN_SALT
 
@@ -259,6 +260,8 @@ const initDB = () => {
 }
 
 initDB()
+
+const emailQueue = new EmailQueue()
 
 const initAccountDBForWallet = async (
   address: string,
@@ -6228,19 +6231,23 @@ const createQuickPoll = async (
 
     for (const participant of invitees) {
       if (participant.guest_email) {
-        try {
-          await sendPollInviteEmail(
-            participant.guest_email,
-            inviterName,
-            pollData.title,
-            slug
-          )
-        } catch (error) {
-          console.error(
-            `Failed to send invitation email to ${participant.guest_email}:`,
-            error
-          )
-        }
+        emailQueue.add(async () => {
+          try {
+            await sendPollInviteEmail(
+              participant.guest_email,
+              inviterName,
+              pollData.title,
+              slug
+            )
+            return true
+          } catch (error) {
+            console.error(
+              `Failed to send invitation email to ${participant.guest_email}:`,
+              error
+            )
+            return false
+          }
+        })
       }
     }
 
@@ -6575,19 +6582,23 @@ const updateQuickPollParticipants = async (
           // Send invitation email to the new participant
           const participantEmail = participantData.guest_email
           if (participantEmail) {
-            try {
-              await sendPollInviteEmail(
-                participantEmail,
-                inviterName,
-                poll.title,
-                poll.slug
-              )
-            } catch (emailError) {
-              console.error(
-                `Failed to send invitation email to ${participantEmail}:`,
-                emailError
-              )
-            }
+            emailQueue.add(async () => {
+              try {
+                await sendPollInviteEmail(
+                  participantEmail,
+                  inviterName,
+                  poll.title,
+                  poll.slug
+                )
+                return true
+              } catch (emailError) {
+                console.error(
+                  `Failed to send invitation email to ${participantEmail}:`,
+                  emailError
+                )
+                return false
+              }
+            })
           }
         } catch (addError) {
           throw addError
