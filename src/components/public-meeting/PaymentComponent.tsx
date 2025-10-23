@@ -22,7 +22,7 @@ const PaymentComponent = () => {
       case PaymentStep.SELECT_CRYPTO_NETWORK:
         return <SelectCryptoNetwork />
       case PaymentStep.FIAT_PAYMENT_VERIFYING:
-        return query.transaction_id ? <FiatPaymentVerifying /> : null
+        return <FiatPaymentVerifying />
       case PaymentStep.HANDLE_SEND_INVOICE:
         return <PayViaInvoice />
 
