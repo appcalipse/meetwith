@@ -132,6 +132,7 @@ import {
   Address,
   BaseMeetingSession,
   BaseTransaction,
+  ICheckoutMetadata,
   MeetingSession,
   OnrampMoneyWebhook,
   Transaction,
@@ -726,11 +727,21 @@ const getAccountFromDBPublic = async (
   identifier: string
 ): Promise<PublicAccount> => {
   const account: PublicAccount = await getAccountFromDB(identifier)
+  const payment_methods = [PaymentType.CRYPTO]
+  const paymentAccount = await getActivePaymentAccountDB(account.address)
+  if (
+    paymentAccount?.provider_account_id &&
+    paymentAccount.status === PaymentAccountStatus.CONNECTED
+  ) {
+    payment_methods.push(PaymentType.FIAT)
+  }
   const meetingTypes = await getMeetingTypes(account.address, 100, 0)
   account.meetingTypes = meetingTypes.map(val => ({
     ...val,
     calendars: undefined,
   }))
+  account.payment_methods = payment_methods
+
   return account
 }
 
@@ -5159,12 +5170,106 @@ const getTransactionsById = async (id: string) => {
     .from<Tables<'transactions'>>('transactions')
     .select()
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
   if (error) {
     throw new Error(error.message)
   }
   return data
+}
+const getTransactionsStatusById = async (id: string) => {
+  const { data, error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .select('status')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data?.status
+}
+const confirmFiatTransaction = async (
+  reference_id: string,
+  payload: ICheckoutMetadata,
+  total_fee: number,
+  metadata: Record<string, unknown>
+) => {
+  const meetingType = await getMeetingTypeFromDB(payload.meeting_type_id)
+  const { data, error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .update({
+      status: PaymentStatus.COMPLETED,
+      provider_reference_id: reference_id,
+      confirmed_at: new Date().toISOString(),
+      total_fee,
+      fee_breakdown: {
+        application_fee: total_fee,
+      },
+      metadata: {
+        ...metadata,
+        receiver_address: meetingType.account_owner_address.toLowerCase(),
+        sender_address: payload.guest_address,
+      },
+    })
+    .eq('id', payload.transaction_id)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
+
+  const meetingSessions: Array<BaseMeetingSession> = Array.from(
+    { length: totalNoOfSlots },
+    (_, i) => ({
+      meeting_type_id: payload.meeting_type_id!,
+      transaction_id: data?.id,
+      session_number: i + 1,
+      guest_address: payload.guest_address,
+      guest_email: payload?.guest_email,
+      guest_name: payload?.guest_name,
+      owner_address: meetingType?.account_owner_address,
+    })
+  )
+  const { error: slotError } = await db.supabase
+    .from('meeting_sessions')
+    .insert(meetingSessions)
+  if (slotError) {
+    throw new Error(slotError.message)
+  }
+
+  // Only send receipt if guest email and name are provided
+  if (payload.guest_email && payload.guest_name) {
+    try {
+      // don't wait for receipt to be sent before serving a response
+      sendReceiptEmail(payload.guest_email, payload.guest_name, {
+        full_name: payload.guest_name,
+        email_address: payload.guest_email,
+        plan: meetingType?.title || '',
+        number_of_sessions: totalNoOfSlots.toString(),
+        price: data.amount?.toString() || '0',
+        payment_method: data?.method,
+        transaction_fee: String(data.total_fee || 0),
+        transaction_status: PaymentStatus.COMPLETED,
+        transaction_hash: data.transaction_hash || '',
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }
+}
+const handleUpdateTransactionStatus = async (
+  id: string,
+  status: PaymentStatus
+) => {
+  const { error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .update({ status })
+    .eq('id', id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
 }
 const createCryptoTransaction = async (
   transactionRequest: ConfirmCryptoTransactionRequest,
@@ -5336,7 +5441,7 @@ const getMeetingSessionsByTxHash = async (
       `
     )
     .eq('transaction_hash', tx.toLowerCase())
-    .single()
+    .maybeSingle()
   if (error) {
     throw new Error(error.message)
   }
@@ -5361,7 +5466,7 @@ const getTransactionBytxHashAndMeetingType = async (
     )
     .eq('transaction_hash', tx.toLowerCase())
     .eq('meeting_type_id', meeting_type_id)
-    .single()
+    .maybeSingle()
 
   if (error) {
     throw new Error(error.message)
@@ -5380,7 +5485,7 @@ const getMeetingSessionByMeetingId = async (
     .select('*')
     .eq('id', meeting_id)
     .eq('meeting_type_id', meeting_type_id)
-    .single()
+    .maybeSingle()
   if (error) {
     throw new Error(error.message)
   }
@@ -7053,10 +7158,10 @@ const getQuickPollParticipantByIdentifier = async (
     )
   }
 }
-const getActivePaymentAccount = async (
+const getActivePaymentAccountDB = async (
   account_address: string,
   provider = PaymentProvider.STRIPE
-): Promise<ActivePaymentAccount> => {
+) => {
   const { data, error } = await db.supabase
     .from<Tables<'payment_accounts'>>('payment_accounts')
     .select()
@@ -7068,7 +7173,16 @@ const getActivePaymentAccount = async (
     throw new Error('Could not fetch payment account')
   }
 
-  const payment_account = Array.isArray(data) ? data[0] : data
+  return Array.isArray(data) ? data[0] : data
+}
+const getActivePaymentAccount = async (
+  account_address: string,
+  provider = PaymentProvider.STRIPE
+): Promise<ActivePaymentAccount> => {
+  const payment_account = await getActivePaymentAccountDB(
+    account_address,
+    provider
+  )
   if (
     payment_account?.provider_account_id &&
     payment_account.provider === PaymentProvider.STRIPE
@@ -7086,6 +7200,21 @@ const getActivePaymentAccount = async (
           ? `${account.individual.first_name} ${account.individual.last_name}`
           : 'Unnamed'),
     }
+  }
+  return payment_account
+}
+const getPaymentAccountByProviderId = async (
+  provider_account_id: string,
+  provider = PaymentProvider.STRIPE
+): Promise<Tables<'payment_accounts'> | null> => {
+  const { data: payment_account, error } = await db.supabase
+    .from<Tables<'payment_accounts'>>('payment_accounts')
+    .select()
+    .eq('provider_account_id', provider_account_id)
+    .eq('provider', provider)
+    .maybeSingle()
+  if (error) {
+    throw new Error('Could not fetch payment account')
   }
   return payment_account
 }
@@ -7153,6 +7282,7 @@ export {
   changeGroupRole,
   checkContactExists,
   cleanupExpiredVerifications,
+  confirmFiatTransaction,
   connectedCalendarExists,
   contactInviteByEmailExists,
   createCheckOutTransaction,
@@ -7220,6 +7350,7 @@ export {
   getOrCreatePaymentAccount,
   getOwnerPublicUrlServer,
   getPaidSessionsByMeetingType,
+  getPaymentAccountByProviderId,
   getPaymentPreferences,
   getQuickPollById,
   getQuickPollBySlug,
@@ -7235,8 +7366,10 @@ export {
   getTgConnection,
   getTgConnectionByTgId,
   getTransactionsById,
+  getTransactionsStatusById,
   handleGuestCancel,
   handleMeetingCancelSync,
+  handleUpdateTransactionStatus,
   handleWebhookEvent,
   initAccountDBForWallet,
   initDB,
