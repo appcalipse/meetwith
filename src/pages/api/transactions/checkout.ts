@@ -33,6 +33,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const avatarUrl = await getAccountAvatarUrl(
         meetingType.account_owner_address
       )
+      const metadata = {
+        guest_address: payload?.guest_address || '',
+        guest_email: payload?.guest_email || '',
+        guest_name: payload?.guest_name || '',
+        meeting_type_id: payload?.meeting_type_id || '',
+        transaction_id: transaction.id,
+      }
       const session = await stripe.checkout.sessions.create({
         line_items: [
           {
@@ -48,15 +55,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             quantity: meetingType.plan.no_of_slot || 1,
           },
         ],
-        metadata: {
-          guest_address: payload?.guest_address || '',
-          guest_email: payload?.guest_email || '',
-          guest_name: payload?.guest_name || '',
-          meeting_type_id: payload?.meeting_type_id || '',
-        },
+        metadata,
         mode: 'payment',
         payment_intent_data: {
+          metadata,
           application_fee_amount: payload.amount * 0.05 * 100, // 5% platform fee
+          on_behalf_of: paymentAccount?.provider_account_id,
           transfer_data: {
             destination: paymentAccount?.provider_account_id || '',
           },
@@ -64,12 +68,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         success_url:
           payload.redirectUrl +
           `&transaction_id=${transaction.id}&checkoutState=success`,
-        cancel_url:
-          payload.redirectUrl +
-          `&transaction_id=${transaction.id}&checkoutState=cancelled`,
+        cancel_url: payload.redirectUrl + `&checkoutState=cancelled`,
       })
       return res.status(200).json({ url: session.url })
     } catch (e: unknown) {
+      console.error(e)
       res.status(500).json({ error: 'Error sending transaction invoice' })
     }
   }
