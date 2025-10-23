@@ -258,3 +258,13 @@ export interface RequestInvoiceRequest {
   payment_method: PaymentType
   url: string
 }
+
+export interface MeetingCheckoutRequest {
+  meeting_type_id: string
+  // message_channel: string
+  guest_email?: string
+  guest_name: string
+  guest_address?: string
+  amount: number
+  redirectUrl: string
+}
