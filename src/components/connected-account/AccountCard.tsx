@@ -35,6 +35,7 @@ interface DisconnectConfig {
   errorMessage: string
   logEvent?: boolean
 }
+import usePoller from '@/hooks/usePoller'
 import { AccountContext } from '@/providers/AccountProvider'
 import {
   ActivePaymentAccount,
@@ -55,6 +56,18 @@ const getContent = (connect_account: ConnectedAccount) => {
       return null
   }
 }
+const getIconColor = (status: Enums<'PaymentAccountStatus'>) => {
+  switch (status) {
+    case PaymentAccountStatus.CONNECTED:
+      return 'green.500'
+    case PaymentAccountStatus.PENDING:
+      return 'yellow.500'
+    case PaymentAccountStatus.FAILED:
+      return 'red.500'
+    default:
+      return 'green.500'
+  }
+}
 const AccountCard: FC<IProps> = props => {
   const [isDisconnecting, setDisconnecting] = React.useState(false)
   const { updateUser, currentAccount } = useContext(AccountContext)
@@ -62,6 +75,7 @@ const AccountCard: FC<IProps> = props => {
   const [isConnecting, setIsConnecting] = React.useState(false)
   const [isGeneratingLink, setIsGeneratingLink] = React.useState(false)
   const { showSuccessToast, showErrorToast } = useToastHelpers()
+  const poll = usePoller()
   const disconnectConfigs: Record<ConnectedAccount, DisconnectConfig> = {
     [ConnectedAccount.TELEGRAM]: {
       handler: async () => {
@@ -116,28 +130,37 @@ const AccountCard: FC<IProps> = props => {
   }
   const connectConfigs: Record<ConnectedAccount, DisconnectConfig> = {
     [ConnectedAccount.TELEGRAM]: {
-      handler: () =>
-        new Promise<boolean>(async (resolve, reject) => {
-          // TODO: Check if account has been already successfully connected
-          const hash = await createTelegramHash()
-          const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
-          window.open(url, '_blank', 'noopener noreferrer')
+      handler: async () => {
+        // TODO: Check if account has been already successfully connected
+        const hash = await createTelegramHash()
+        const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
+        window.open(url, '_blank', 'noopener noreferrer')
+        const abortController = new AbortController()
+        const timeoutMs = 5 * 60 * 1000 // 5 minutes
+        let timeoutId: ReturnType<typeof setTimeout> | undefined
 
-          const intervalId = setInterval(async () => {
-            const pendingConnection = await getPendingTgConnection()
-            if (!pendingConnection) {
-              clearInterval(intervalId)
-              resolve(true)
-            }
-          }, 5000)
-
-          // If the connection is not established after 5 minutes, show an error toast
-          setTimeout(() => {
-            clearInterval(intervalId)
-            reject(new Error('Telegram connection timeout'))
-            resolve(false)
-          }, 5 * 60 * 1000)
-        }),
+        try {
+          await Promise.race([
+            poll(
+              async () => {
+                const pendingConnection = await getPendingTgConnection()
+                return { completed: !pendingConnection }
+              },
+              abortController.signal,
+              5000
+            ),
+            new Promise((_res, reject) => {
+              timeoutId = setTimeout(() => {
+                abortController.abort()
+                reject(new Error('Telegram connection timeout'))
+              }, timeoutMs)
+            }),
+          ])
+          return true
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId)
+        }
+      },
       errorMessage:
         'Could not verify Telegram connection in time. Please try again.',
       logEvent: true,
@@ -228,18 +251,6 @@ const AccountCard: FC<IProps> = props => {
     }
   }
 
-  const getIconColor = (status: Enums<'PaymentAccountStatus'>) => {
-    switch (status) {
-      case PaymentAccountStatus.CONNECTED:
-        return 'green.500'
-      case PaymentAccountStatus.PENDING:
-        return 'yellow.500'
-      case PaymentAccountStatus.FAILED:
-        return 'red.500'
-      default:
-        return 'green.500'
-    }
-  }
   const isPaymentAccount = (
     account: ConnectedAccountInfo
   ): account is {
