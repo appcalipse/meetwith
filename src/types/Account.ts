@@ -1,5 +1,6 @@
 import {
   PaymentChannel,
+  PaymentType,
   PlanType,
   SessionType,
 } from '@utils/constants/meeting-types'
@@ -26,7 +27,6 @@ export interface Account {
   internal_pub_key: string
   encoded_signature: string
   preferences: AccountPreferences
-  paymentPreferences?: PaymentPreferences
   nonce: number
   is_invited: boolean
   subscriptions: Subscription[]
@@ -37,6 +37,7 @@ export interface Account {
 
 export interface PublicAccount extends Account {
   meetingTypes?: MeetingType[]
+  payment_methods?: PaymentType[]
 }
 
 export interface SimpleAccountInfo {

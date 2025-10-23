@@ -10,9 +10,13 @@ import {
 import ChainLogo from '@components/icons/ChainLogo'
 import FiatLogo from '@components/icons/FiatLogo'
 import InvoiceIcon from '@components/icons/InvoiceIcon'
-import { PublicScheduleContext } from '@components/public-meeting/index'
+import {
+  PublicScheduleContext,
+  ScheduleStateContext,
+} from '@components/public-meeting/index'
 import PaymentMethod from '@components/public-meeting/PaymentMethod'
 import {
+  PaymentRedirectType,
   PaymentStep,
   PaymentType,
   PublicSchedulingSteps,
@@ -23,18 +27,75 @@ import { v4 } from 'uuid'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
-import { getUserLocale } from '@/utils/api_helper'
+import { MeetingCheckoutRequest } from '@/types/Requests'
+import { generateCheckoutLink, getUserLocale } from '@/utils/api_helper'
+import { getAccountDomainUrl } from '@/utils/calendar_manager'
+import { appUrl } from '@/utils/constants'
 
 import CheckoutWidgetModal from './CheckoutWidgetModal'
 
 const MakeYourPayment = () => {
-  const { setCurrentStep, selectedType } = useContext(PublicScheduleContext)
+  const { setCurrentStep, selectedType, paymentType, account } = useContext(
+    PublicScheduleContext
+  )
   const toast = useToast()
+  const {
+    participants,
+    meetingProvider,
+    meetingNotification,
+    meetingRepeat,
+    content,
+    name,
+    title,
+    doSendEmailReminders,
+    scheduleType,
+    userEmail,
+    meetingUrl,
+    pickedTime,
+    guestEmail,
+  } = useContext(ScheduleStateContext)
   const currentAccount = useAccountContext()
   const { needsReconnection, attemptReconnection } = useSmartReconnect()
   const [country, setCountry] = useState<string | undefined>()
   const handleBack = () => {
     setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
+  }
+  const handleFiatPayment = async () => {
+    const baseUrl = `${appUrl}/${getAccountDomainUrl(account)}/${
+      selectedType?.slug || ''
+    }`
+
+    const params = new URLSearchParams({
+      payment_type: PaymentType.FIAT,
+      title,
+      name,
+      email: guestEmail,
+      schedule_type: String(scheduleType),
+      meeting_provider: meetingProvider,
+      content,
+      participants: JSON.stringify(participants),
+      meeting_notification: meetingNotification.map(val => val.value).join(','),
+      meeting_repeat: meetingRepeat.value,
+      do_send_email_reminders: String(doSendEmailReminders),
+      picked_time: pickedTime?.toISOString() || '',
+      meeting_url: meetingUrl,
+      user_email: userEmail,
+      type: PaymentRedirectType.CHECKOUT,
+    })
+    const url = `${baseUrl}?${params.toString()}`
+    const amount =
+      (selectedType?.plan?.price_per_slot || 0) *
+      (selectedType?.plan?.no_of_slot || 0)
+    const payload: MeetingCheckoutRequest = {
+      amount,
+      guest_address: currentAccount?.address,
+      guest_email: guestEmail,
+      guest_name: name,
+      meeting_type_id: selectedType?.id || '',
+      redirectUrl: url,
+    }
+    const checkOutUrl = await generateCheckoutLink(payload)
+    window.open(checkOutUrl, '_self', 'noopener noreferrer')
   }
   const { query } = useRouter()
 
@@ -63,8 +124,9 @@ const MakeYourPayment = () => {
     onOpen()
   }
   const paymentMethods = useMemo(() => {
-    const methods = [
-      {
+    const methods = []
+    if (account.payment_methods?.includes(PaymentType.CRYPTO)) {
+      methods.push({
         id: 'pay-with-crypto',
         name: 'Pay with Crypto',
         step: PaymentStep.SELECT_CRYPTO_NETWORK,
@@ -72,28 +134,27 @@ const MakeYourPayment = () => {
         type: PaymentType.CRYPTO,
         onClick: handleOpen,
         loading: isOpen,
-      },
-      {
+      })
+    }
+    if (account.payment_methods?.includes(PaymentType.FIAT)) {
+      methods.push({
         id: 'pay-with-card',
         name: 'Pay with Card',
         tag: 'Your fiat cards',
         step: PaymentStep.CONFIRM_PAYMENT,
         icon: FiatLogo,
         type: PaymentType.FIAT,
-        disabled: true,
-      },
-      {
+        onClick: handleFiatPayment,
+      })
+    }
+    if (query.type !== PaymentRedirectType.INVOICE) {
+      methods.push({
         id: 'pay-with-invoice',
         name: 'Pay via Invoice',
         step: PaymentStep.HANDLE_SEND_INVOICE,
         icon: InvoiceIcon,
         type: PaymentType.FIAT,
-      },
-    ]
-    if (query.type === 'direct-invoice') {
-      return methods.filter(
-        method => method.step !== PaymentStep.HANDLE_SEND_INVOICE
-      )
+      })
     }
     return methods
   }, [query, isOpen])

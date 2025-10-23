@@ -41,6 +41,7 @@ import {
   listConnectedCalendars,
 } from '@utils/api_helper'
 import {
+  PaymentRedirectType,
   PaymentStep,
   PaymentType,
   PublicSchedulingSteps,
@@ -87,8 +88,10 @@ import {
 import { decryptContent } from '@/utils/cryptography'
 import { isJson } from '@/utils/generic_utils'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
+import { useToastHelpers } from '@/utils/toasts'
 
 import Loading from '../Loading'
+
 const tzs = timezones.map(tz => {
   return {
     value: String(tz.tzCode),
@@ -435,6 +438,7 @@ const PublicPage: FC<IProps> = props => {
   >(undefined)
   const [rescheduleSlotLoading, setRescheduleSlotLoading] =
     useState<boolean>(false)
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
   const handleNavigateToBook = (tx?: Address) => {
     setTx(tx)
   }
@@ -587,11 +591,25 @@ const PublicPage: FC<IProps> = props => {
       }
     }
     if (query.payment_type) {
+      if (query.checkoutState === 'cancelled') {
+        showErrorToast(
+          'Payment cancelled',
+          'Your payment was cancelled. Please try again.'
+        )
+      } else if (query.checkoutState === 'success') {
+        showSuccessToast(
+          'Payment successful',
+          "Payment received, we're verifying it now. You'll be able to schedule once it's confirmed."
+        )
+      }
       const paymentType = query.payment_type as PaymentType
       setPaymentType(paymentType)
       setPaymentStep(
-        query.type === 'direct-invoice'
+        query.type === PaymentRedirectType.INVOICE ||
+          query.checkoutState === 'cancelled'
           ? PaymentStep.SELECT_PAYMENT_METHOD
+          : query.type === PaymentRedirectType.CHECKOUT
+          ? PaymentStep.FIAT_PAYMENT_VERIFYING
           : PaymentStep.CONFIRM_PAYMENT
       )
       setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
