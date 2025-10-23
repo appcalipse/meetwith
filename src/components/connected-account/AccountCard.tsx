@@ -241,11 +241,11 @@ const AccountCard: FC<IProps> = props => {
         await queryClient.invalidateQueries(
           QueryKeys.connectedAccounts(currentAccount?.address)
         )
+        showSuccessToast(
+          `${props.account} Connected`,
+          `Your ${props.account} account has been connected`
+        )
       }
-      showSuccessToast(
-        '${props.account} Connected',
-        `Your ${props.account} account has been connected`
-      )
     } finally {
       setIsConnecting(false)
     }
