@@ -1,5 +1,6 @@
 import {
   PaymentChannel,
+  PaymentType,
   PlanType,
   SessionType,
 } from '@utils/constants/meeting-types'
@@ -36,6 +37,7 @@ export interface Account {
 
 export interface PublicAccount extends Account {
   meetingTypes?: MeetingType[]
+  payment_methods?: PaymentType[]
 }
 
 export interface SimpleAccountInfo {
