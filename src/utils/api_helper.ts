@@ -1972,6 +1972,26 @@ export const addQuickPollParticipant = async (
   )
 }
 
+export interface BulkAddParticipantsRequest {
+  participants: Array<{
+    account_address?: string
+    guest_name?: string
+    guest_email: string
+    participant_type: QuickPollParticipantType
+  }>
+}
+
+export const addQuickPollParticipants = async (
+  pollId: string,
+  participants: BulkAddParticipantsRequest['participants']
+) => {
+  return await internalFetch(
+    `/secure/quickpoll/${pollId}/participants/bulk`,
+    'POST',
+    { participants }
+  )
+}
+
 export const getQuickPollBySlug = async (slug: string) => {
   return await internalFetch(`/quickpoll/${slug}`)
 }
