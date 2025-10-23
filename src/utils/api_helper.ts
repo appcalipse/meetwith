@@ -94,6 +94,7 @@ import {
   QUICKPOLL_DEFAULT_LIMIT,
   QUICKPOLL_DEFAULT_OFFSET,
 } from './constants'
+import { PaymentStatus } from './constants/meeting-types'
 import {
   AccountNotFoundError,
   AllMeetingSlotsUsedError,
@@ -2143,4 +2144,12 @@ export const getTransactionById = async (
   transactionId: string
 ): Promise<Transaction> => {
   return await internalFetch<Transaction>(`/transactions/${transactionId}`)
+}
+
+export const getTransactionStatus = async (
+  transactionId: string
+): Promise<PaymentStatus> => {
+  return await internalFetch<PaymentStatus>(
+    `/transactions/${transactionId}/status`
+  )
 }
