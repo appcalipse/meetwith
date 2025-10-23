@@ -66,7 +66,7 @@ const MakeYourPayment = () => {
     }`
 
     const params = new URLSearchParams({
-      payment_type: paymentType || '',
+      payment_type: PaymentType.FIAT,
       title,
       name,
       email: guestEmail,
@@ -124,8 +124,9 @@ const MakeYourPayment = () => {
     onOpen()
   }
   const paymentMethods = useMemo(() => {
-    const methods = [
-      {
+    const methods = []
+    if (account.payment_methods?.includes(PaymentType.CRYPTO)) {
+      methods.push({
         id: 'pay-with-crypto',
         name: 'Pay with Crypto',
         step: PaymentStep.SELECT_CRYPTO_NETWORK,
@@ -133,8 +134,10 @@ const MakeYourPayment = () => {
         type: PaymentType.CRYPTO,
         onClick: handleOpen,
         loading: isOpen,
-      },
-      {
+      })
+    }
+    if (account.payment_methods?.includes(PaymentType.FIAT)) {
+      methods.push({
         id: 'pay-with-card',
         name: 'Pay with Card',
         tag: 'Your fiat cards',
@@ -142,19 +145,16 @@ const MakeYourPayment = () => {
         icon: FiatLogo,
         type: PaymentType.FIAT,
         onClick: handleFiatPayment,
-      },
-      {
+      })
+    }
+    if (query.type !== PaymentRedirectType.INVOICE) {
+      methods.push({
         id: 'pay-with-invoice',
         name: 'Pay via Invoice',
         step: PaymentStep.HANDLE_SEND_INVOICE,
         icon: InvoiceIcon,
         type: PaymentType.FIAT,
-      },
-    ]
-    if (query.type === 'direct-invoice') {
-      return methods.filter(
-        method => method.step !== PaymentStep.HANDLE_SEND_INVOICE
-      )
+      })
     }
     return methods
   }, [query, isOpen])
