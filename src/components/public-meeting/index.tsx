@@ -718,7 +718,24 @@ const PublicPage: FC<IProps> = props => {
           setPickedTime(pickedTimeDate)
           setCurrentMonth(pickedTimeDate)
           setSelectedMonth(pickedTimeDate)
-          setPickedDay(pickedTimeDate)
+          setPickedDay(
+            DateTime.fromJSDate(pickedTimeDate)
+              .setZone(
+                (urlParams.timezone as string) ||
+                  timezone.value ||
+                  Intl.DateTimeFormat().resolvedOptions().timeZone
+              )
+              .toJSDate()
+          )
+          setTimezone(
+            tzs.find(
+              val =>
+                val.value ===
+                ((urlParams.timezone as string) ||
+                  timezone.value ||
+                  Intl.DateTimeFormat().resolvedOptions().timeZone)
+            ) || tzs[0]
+          )
           setShowSlots(true)
           setShowConfirm(true)
         }
