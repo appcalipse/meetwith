@@ -126,8 +126,15 @@ const MakeYourPayment = () => {
     onOpen()
   }
   const paymentMethods = useMemo(() => {
+    const filteredMethod = selectedType?.plan?.payment_methods?.filter(method =>
+      account.payment_methods?.includes(method)
+    )
+    const availableMethods =
+      (filteredMethod?.length || 0) > 0
+        ? filteredMethod
+        : account.payment_methods
     const methods = []
-    if (account.payment_methods?.includes(PaymentType.CRYPTO)) {
+    if (availableMethods?.includes(PaymentType.CRYPTO)) {
       methods.push({
         id: 'pay-with-crypto',
         name: 'Pay with Crypto',
@@ -138,7 +145,7 @@ const MakeYourPayment = () => {
         loading: isOpen,
       })
     }
-    if (account.payment_methods?.includes(PaymentType.FIAT)) {
+    if (availableMethods?.includes(PaymentType.FIAT)) {
       methods.push({
         id: 'pay-with-card',
         name: 'Pay with Card',
