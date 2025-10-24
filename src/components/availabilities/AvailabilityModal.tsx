@@ -462,9 +462,8 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                         : 'New Availability Block'}
                     </Text>
                     <Button
-                      colorScheme="orange"
+                      colorScheme="primary"
                       bg="primary.200"
-                      color="neutral.800"
                       _hover={{ bg: 'primary.200' }}
                       size="sm"
                       onClick={handleSave}
