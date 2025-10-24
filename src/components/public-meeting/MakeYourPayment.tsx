@@ -35,7 +35,7 @@ import { appUrl } from '@/utils/constants'
 import CheckoutWidgetModal from './CheckoutWidgetModal'
 
 const MakeYourPayment = () => {
-  const { setCurrentStep, selectedType, paymentType, account } = useContext(
+  const { setCurrentStep, selectedType, account } = useContext(
     PublicScheduleContext
   )
   const toast = useToast()
@@ -53,6 +53,7 @@ const MakeYourPayment = () => {
     meetingUrl,
     pickedTime,
     guestEmail,
+    timezone,
   } = useContext(ScheduleStateContext)
   const currentAccount = useAccountContext()
   const { needsReconnection, attemptReconnection } = useSmartReconnect()
@@ -81,6 +82,7 @@ const MakeYourPayment = () => {
       meeting_url: meetingUrl,
       user_email: userEmail,
       type: PaymentRedirectType.CHECKOUT,
+      timezone: timezone.value || '',
     })
     const url = `${baseUrl}?${params.toString()}`
     const amount =
