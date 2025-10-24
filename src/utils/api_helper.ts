@@ -55,8 +55,8 @@ import {
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
+import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
-  AddParticipantData,
   AddParticipantRequest,
   AvailabilitySlot,
   CancelQuickPollResponse,
@@ -65,7 +65,6 @@ import {
   QuickPollBusyParticipant,
   QuickPollListResponse,
   QuickPollParticipant,
-  QuickPollParticipantType,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
@@ -255,7 +254,7 @@ export const getExistingAccounts = async (
           fullInformation,
         }) as Promise<Account[]>
     )
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw e
   }
 }
@@ -2172,4 +2171,8 @@ export const getTransactionStatus = async (
   return await internalFetch<PaymentStatus>(
     `/transactions/${transactionId}/status`
   )
+}
+
+export const getStripeStatus = async (): Promise<PaymentAccountStatus> => {
+  return await internalFetch<PaymentAccountStatus>(`/secure/stripe/status`)
 }
