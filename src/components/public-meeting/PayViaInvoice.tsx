@@ -56,6 +56,7 @@ const PayViaInvoice = () => {
     userEmail,
     meetingUrl,
     pickedTime,
+    timezone,
     guestEmail,
   } = useContext(ScheduleStateContext)
   const [isInvoiceLoading, setIsInvoiceLoading] = React.useState(false)
@@ -108,6 +109,7 @@ const PayViaInvoice = () => {
         guest_email: email,
         meeting_url: meetingUrl,
         user_email: userEmail,
+        timezone: timezone.value || '',
         type: PaymentRedirectType.INVOICE,
       })
 

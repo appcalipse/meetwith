@@ -5470,6 +5470,7 @@ const getTransactionBytxHashAndMeetingType = async (
     )
     .eq('transaction_hash', tx.toLowerCase())
     .eq('meeting_type_id', meeting_type_id)
+    .eq('status', PaymentStatus.COMPLETED)
     .maybeSingle()
 
   if (error) {
