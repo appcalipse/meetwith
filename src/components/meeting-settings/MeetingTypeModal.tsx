@@ -148,11 +148,14 @@ const MeetingTypeModal: FC<IProps> = props => {
         }
   )
   const [paymentPlatforms, setPaymentPlatforms] = useState<PaymentType[]>(
-    props?.initialValues?.plan?.payment_methods ||
-      props.stripeStatus === PaymentAccountStatus.CONNECTED
+    props?.initialValues?.plan?.payment_methods &&
+      (props?.initialValues?.plan?.payment_methods?.length || 0) > 0
+      ? props?.initialValues?.plan?.payment_methods
+      : props.stripeStatus === PaymentAccountStatus.CONNECTED
       ? [PaymentType.FIAT, PaymentType.CRYPTO]
       : [PaymentType.CRYPTO]
   )
+
   const handlePaymentPlatformChange = (value: PaymentType) => {
     let updatedPlatforms: PaymentType[] = []
     if (paymentPlatforms?.includes(value)) {
@@ -404,6 +407,7 @@ const MeetingTypeModal: FC<IProps> = props => {
       await props.refetch()
       props.onClose()
     } catch (e) {
+      console.error(e)
       if (e instanceof z.ZodError) {
         e.errors.forEach(err => {
           dispatchErrors({
@@ -1319,7 +1323,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                       justifyContent="space-between"
                       w="100%"
                       borderColor={
-                        !!errors.meeting_platforms
+                        !!errors.plan?.payment_methods
                           ? 'red.500'
                           : paymentPlatforms.includes(PaymentType.CRYPTO)
                           ? 'border-default-primary'
@@ -1336,7 +1340,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                       <Text
                         fontWeight="600"
                         color={
-                          !!errors.meeting_platforms
+                          !!errors.plan?.payment_methods
                             ? 'red.500'
                             : paymentPlatforms.includes(PaymentType.CRYPTO)
                             ? 'border-default-primary'
@@ -1358,7 +1362,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                       justifyContent="space-between"
                       w="100%"
                       borderColor={
-                        !!errors.meeting_platforms
+                        !!errors.plan?.payment_methods
                           ? 'red.500'
                           : paymentPlatforms.includes(PaymentType.FIAT)
                           ? 'border-default-primary'
@@ -1375,7 +1379,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                       <Text
                         fontWeight="700"
                         color={
-                          !!errors.meeting_platforms
+                          !!errors.plan?.payment_methods
                             ? 'red.500'
                             : paymentPlatforms.includes(PaymentType.FIAT)
                             ? 'border-default-primary'
