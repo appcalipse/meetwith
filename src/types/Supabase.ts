@@ -844,6 +844,7 @@ export type Database = {
           no_of_slot: number
           payment_address: string
           payment_channel: Database['public']['Enums']['PaymentChannel']
+          payment_methods: Database['public']['Enums']['PaymentType'][]
           price_per_slot: number
           type: Database['public']['Enums']['PlanType']
           updated_at: string | null
@@ -857,6 +858,7 @@ export type Database = {
           no_of_slot?: number
           payment_address: string
           payment_channel: Database['public']['Enums']['PaymentChannel']
+          payment_methods?: Database['public']['Enums']['PaymentType'][]
           price_per_slot: number
           type: Database['public']['Enums']['PlanType']
           updated_at?: string | null
@@ -870,6 +872,7 @@ export type Database = {
           no_of_slot?: number
           payment_address?: string
           payment_channel?: Database['public']['Enums']['PaymentChannel']
+          payment_methods?: Database['public']['Enums']['PaymentType'][]
           price_per_slot?: number
           type?: Database['public']['Enums']['PlanType']
           updated_at?: string | null
