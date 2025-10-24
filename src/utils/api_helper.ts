@@ -65,6 +65,7 @@ import {
   QuickPollBusyParticipant,
   QuickPollListResponse,
   QuickPollParticipant,
+  QuickPollParticipantType,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
