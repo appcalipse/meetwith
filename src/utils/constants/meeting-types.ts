@@ -179,6 +179,7 @@ export const getDefaultValues = (): Partial<MeetingType> => ({
     default_token: AcceptedToken.USDC,
     created_at: new Date(),
     updated_at: new Date(),
+    payment_methods: [],
     id: '',
   },
 })
