@@ -39,6 +39,7 @@ export class PriceFeedService {
         [AcceptedToken.USDT]: '0x5e37AF40A7A344ec9b03CCD34a250F3dA9a20B02',
         [AcceptedToken.CUSD]: '0xe38A27BE4E7d866327e09736F3C570F256FFd048',
         [AcceptedToken.CELO]: '0x0568fD19986748cEfF3301e55c0eb1E729E0Ab7e',
+        // No dedicated cEUR price feed available on Celo network - will fall back to default price of $1.00
       },
       [SupportedChain.CELO_ALFAJORES]: {
         [AcceptedToken.USDC]: '0x8b255b1FB27d4D06bD8899f81095627464868EEE',
