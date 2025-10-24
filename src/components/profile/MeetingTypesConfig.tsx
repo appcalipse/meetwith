@@ -21,9 +21,11 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { AvailabilityBlock } from '@/types/availability'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
+import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
   getAvailabilityBlocks,
   getMeetingTypes,
+  getStripeStatus,
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { getDefaultValues } from '@/utils/constants/meeting-types'
@@ -59,6 +61,12 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
     useQuery<AvailabilityBlock[]>({
       queryKey: ['availabilityBlocks', currentAccount?.address],
       queryFn: () => getAvailabilityBlocks(),
+      enabled: !!currentAccount?.id,
+    })
+  const { data: stripeStatus, isLoading: isStripeLoading } =
+    useQuery<PaymentAccountStatus>({
+      queryKey: ['stripeStatus', currentAccount?.address],
+      queryFn: () => getStripeStatus(),
       enabled: !!currentAccount?.id,
     })
 
@@ -168,6 +176,8 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         canDelete={meetingTypes.length > 1}
         availabilityBlocks={availabilityBlocks || []}
         isAvailabilityLoading={isAvailabilityLoading}
+        stripeStatus={stripeStatus}
+        isStripeLoading={isStripeLoading}
         onDelete={() => {
           openDeleteConfirmationModal()
           closeModal()
