@@ -11,6 +11,7 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect, useRef, useState } from 'react'
+import { FaPlus } from 'react-icons/fa'
 
 import CustomLoading from '@/components/CustomLoading'
 import {
@@ -202,16 +203,18 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
             </Text>
           </Box>
           <Button
-            leftIcon={<AddIcon color="neutral.800" />}
-            colorScheme="orange"
             bg="primary.200"
-            color="neutral.800"
             _hover={{ bg: 'primary.200' }}
             onClick={handleCreateBlock}
-            fontSize="sm"
             px={6}
             flexShrink={0}
             width={{ base: '100%', md: 'auto' }}
+            colorScheme="primary"
+            leftIcon={<FaPlus />}
+            fontSize={{
+              base: 'xs',
+              md: 'md',
+            }}
           >
             New Availability block
           </Button>

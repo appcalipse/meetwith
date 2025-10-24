@@ -304,6 +304,7 @@ export function SchedulePickTime({
         groupAvailability,
         currentAccount?.address
       )
+        .filter(val => val.account_address)
         .map(val => val.account_address)
         .concat([currentAccount?.address]) as string[]
       const [busySlots, meetingMembers] = await Promise.all([
@@ -320,7 +321,13 @@ export function SchedulePickTime({
             ),
           }))
         ),
-        getExistingAccounts(deduplicateArray(allParticipants)),
+        getExistingAccounts(deduplicateArray(allParticipants)).catch(error => {
+          console.warn(
+            'Failed to fetch existing accounts for availability calculation:',
+            error
+          )
+          return []
+        }),
       ])
       const accountBusySlots = accounts.map(account => {
         return busySlots.filter(slot => slot.account_address === account)
@@ -331,16 +338,24 @@ export function SchedulePickTime({
       >()
       for (const memberAccount of meetingMembers) {
         if (!memberAccount.address) continue
-        const availabilities = parseMonthAvailabilitiesToDate(
-          memberAccount?.preferences?.availabilities || [],
-          monthStart,
-          monthEnd,
-          memberAccount?.preferences?.timezone || 'UTC'
-        )
-        availableSlotsMap.set(
-          memberAccount.address.toLowerCase(),
-          availabilities
-        )
+        try {
+          const availabilities = parseMonthAvailabilitiesToDate(
+            memberAccount?.preferences?.availabilities || [],
+            monthStart,
+            monthEnd,
+            memberAccount?.preferences?.timezone || 'UTC'
+          )
+          availableSlotsMap.set(
+            memberAccount.address.toLowerCase(),
+            availabilities
+          )
+        } catch (error) {
+          console.warn(
+            'Failed to parse availability for member:',
+            memberAccount.address,
+            error
+          )
+        }
       }
       const busySlotsMap: Map<string, Interval[]> = new Map()
       for (const account of accountBusySlots) {

@@ -276,6 +276,10 @@ const newTheme = {
         default: 'neutral.100',
         _dark: 'neutral.700',
       },
+      'dropdown-hover': {
+        default: 'neutral.50',
+        _dark: 'neutral.800',
+      },
     },
   },
 }

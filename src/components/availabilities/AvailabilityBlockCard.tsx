@@ -155,10 +155,9 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
       >
         <Button
           bg="primary.200"
-          color="neutral.800"
           _hover={{ bg: 'primary.200' }}
+          colorScheme="primary"
           fontSize={15}
-          fontWeight={700}
           width={{ base: '100%', md: '185px' }}
           height="38px"
           borderRadius={8}
