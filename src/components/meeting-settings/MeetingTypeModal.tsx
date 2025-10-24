@@ -42,6 +42,7 @@ import {
   MinNoticeTimeOptions,
   PaymentChannel,
   PaymentChannelOptions,
+  PaymentType,
   PlanType,
   PlanTypeOptions,
   SessionType,
@@ -75,13 +76,10 @@ import { z } from 'zod'
 import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
-import {
-  AcceptedToken,
-  getSupportedChain,
-  getSupportedChainFromId,
-} from '@/types/chains'
+import { AcceptedToken, getSupportedChainFromId } from '@/types/chains'
 import { EditMode } from '@/types/Dashboard'
 import { MeetingProvider } from '@/types/Meeting'
+import { PaymentAccountStatus } from '@/types/PaymentAccount'
 
 import InfoTooltip from '../profile/components/Tooltip'
 
@@ -96,6 +94,8 @@ interface IProps {
   canDelete: boolean
   availabilityBlocks: Array<AvailabilityBlock>
   isAvailabilityLoading: boolean
+  stripeStatus?: PaymentAccountStatus | null
+  isStripeLoading?: boolean
 }
 
 const MeetingTypeModal: FC<IProps> = props => {
@@ -130,8 +130,10 @@ const MeetingTypeModal: FC<IProps> = props => {
     })) || []
   )
   const [cryptoNetwork, setCryptoNetwork] = useState<Option<number>>(
-    CryptoNetworkForCardSettlementOptions.find(
-      option => option.value === props.initialValues?.plan?.default_chain_id
+    CryptoNetworkForCardSettlementOptions.find(option =>
+      props.initialValues?.plan?.default_chain_id
+        ? option.value === props.initialValues?.plan?.default_chain_id
+        : option.value === currentAccount?.payment_preferences?.default_chain_id
     ) || CryptoNetworkForCardSettlementOptions[0]
   )
   const [defaultToken, setDefaultToken] = useState<Option<AcceptedToken>>(
@@ -145,6 +147,21 @@ const MeetingTypeModal: FC<IProps> = props => {
           label: AcceptedToken.USDC,
         }
   )
+  const [paymentPlatforms, setPaymentPlatforms] = useState<PaymentType[]>(
+    props?.initialValues?.plan?.payment_methods ||
+      props.stripeStatus === PaymentAccountStatus.CONNECTED
+      ? [PaymentType.FIAT, PaymentType.CRYPTO]
+      : [PaymentType.CRYPTO]
+  )
+  const handlePaymentPlatformChange = (value: PaymentType) => {
+    let updatedPlatforms: PaymentType[] = []
+    if (paymentPlatforms?.includes(value)) {
+      updatedPlatforms = paymentPlatforms.filter(platform => platform !== value)
+    } else {
+      updatedPlatforms = [...(paymentPlatforms || []), value]
+    }
+    setPaymentPlatforms(updatedPlatforms)
+  }
   const TokenOptions = useMemo(() => {
     const selectedNetworkInfo = getSupportedChainFromId(cryptoNetwork?.value)
     return (
@@ -354,6 +371,10 @@ const MeetingTypeModal: FC<IProps> = props => {
                   : currentAccount?.address || '',
               crypto_network: cryptoNetwork.value,
               default_token: defaultToken.value,
+              payment_methods:
+                props.stripeStatus === PaymentAccountStatus.CONNECTED
+                  ? paymentPlatforms
+                  : undefined,
             },
     }
     try {
@@ -895,7 +916,7 @@ const MeetingTypeModal: FC<IProps> = props => {
               </FormControl>
             </HStack>
             <VStack alignItems="flex-start" width="100%" bg={bgColor} gap={1}>
-              <VStack alignItems="flex-start" width="100%" gap={0}>
+              <VStack alignItems="flex-start" width="100%" gap={0} mb={2}>
                 <Heading fontSize="2xl">Meeting Platform</Heading>
                 <Text color="neutral.400" mt={2}>
                   Choose your default Meeting Platform
@@ -922,13 +943,13 @@ const MeetingTypeModal: FC<IProps> = props => {
                       }
                       colorScheme="primary"
                       value={provider}
-                      p={4}
                       isChecked={selectedProviders.includes(provider)}
                       onChange={e => {
                         handleMeetingPlatformChange(
                           e.target.value as MeetingProvider
                         )
                       }}
+                      p={4}
                       flexDirection="row-reverse"
                       justifyContent="space-between"
                       w="100%"
@@ -1217,6 +1238,174 @@ const MeetingTypeModal: FC<IProps> = props => {
                     )}
                   </FormControl>
                 )}
+                <VStack w={'100%'} alignItems="flex-start" gap={2}>
+                  <Heading size={'sm'}>Payment Settings</Heading>
+                  <Text color={'neutral.400'} mt={0}>
+                    Enable payment channels you want your guests to pay through
+                  </Text>
+                </VStack>
+                {props.isStripeLoading ? (
+                  <HStack spacing={3}>
+                    <Button
+                      isLoading
+                      loadingText="Loading..."
+                      bg="bg-surface-tertiary-2"
+                      color="text-secondary"
+                      size="md"
+                      px={6}
+                      isDisabled
+                    >
+                      Loading...
+                    </Button>
+                  </HStack>
+                ) : props.stripeStatus !== PaymentAccountStatus.CONNECTED ? (
+                  <HStack w="100%">
+                    <Checkbox
+                      borderRadius={8}
+                      borderWidth={1}
+                      maxW={200}
+                      borderColor={'border-default-primary'}
+                      colorScheme="primary"
+                      value={PaymentType.CRYPTO}
+                      p={4}
+                      isChecked
+                      isReadOnly
+                      flexDirection="row-reverse"
+                      justifyContent="space-between"
+                      w="100%"
+                    >
+                      <Text
+                        fontWeight="border-default-primary"
+                        cursor="pointer"
+                        textTransform="capitalize"
+                      >
+                        {PaymentType.CRYPTO}
+                      </Text>
+                    </Checkbox>
+                    <Checkbox
+                      borderRadius={8}
+                      borderWidth={1}
+                      maxW={200}
+                      borderColor={'neutral.500'}
+                      colorScheme="primary"
+                      value={PaymentType.CRYPTO}
+                      p={4}
+                      isChecked={false}
+                      isDisabled
+                      flexDirection="row-reverse"
+                      justifyContent="space-between"
+                      w="100%"
+                      isReadOnly
+                    >
+                      <Text
+                        fontWeight="600"
+                        color="neutral.500"
+                        cursor="pointer"
+                        textTransform="capitalize"
+                      >
+                        Stripe
+                      </Text>
+                    </Checkbox>
+                  </HStack>
+                ) : (
+                  <HStack w="100%" gap={4}>
+                    <Checkbox
+                      borderRadius={8}
+                      borderWidth={1}
+                      maxW={200}
+                      value={PaymentType.CRYPTO}
+                      p={4}
+                      flexDirection="row-reverse"
+                      justifyContent="space-between"
+                      w="100%"
+                      borderColor={
+                        !!errors.meeting_platforms
+                          ? 'red.500'
+                          : paymentPlatforms.includes(PaymentType.CRYPTO)
+                          ? 'border-default-primary'
+                          : 'border-inverted-subtle'
+                      }
+                      colorScheme="primary"
+                      isChecked={paymentPlatforms.includes(PaymentType.CRYPTO)}
+                      onChange={e => {
+                        handlePaymentPlatformChange(
+                          e.target.value as PaymentType
+                        )
+                      }}
+                    >
+                      <Text
+                        fontWeight="600"
+                        color={
+                          !!errors.meeting_platforms
+                            ? 'red.500'
+                            : paymentPlatforms.includes(PaymentType.CRYPTO)
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
+                        }
+                        cursor="pointer"
+                        textTransform="capitalize"
+                      >
+                        {PaymentType.CRYPTO}
+                      </Text>
+                    </Checkbox>
+                    <Checkbox
+                      borderRadius={8}
+                      borderWidth={1}
+                      maxW={200}
+                      value={PaymentType.FIAT}
+                      p={4}
+                      flexDirection="row-reverse"
+                      justifyContent="space-between"
+                      w="100%"
+                      borderColor={
+                        !!errors.meeting_platforms
+                          ? 'red.500'
+                          : paymentPlatforms.includes(PaymentType.FIAT)
+                          ? 'border-default-primary'
+                          : 'border-inverted-subtle'
+                      }
+                      colorScheme="primary"
+                      isChecked={paymentPlatforms.includes(PaymentType.FIAT)}
+                      onChange={e => {
+                        handlePaymentPlatformChange(
+                          e.target.value as PaymentType
+                        )
+                      }}
+                    >
+                      <Text
+                        fontWeight="700"
+                        color={
+                          !!errors.meeting_platforms
+                            ? 'red.500'
+                            : paymentPlatforms.includes(PaymentType.FIAT)
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
+                        }
+                        cursor="pointer"
+                        textTransform="capitalize"
+                      >
+                        Stripe
+                      </Text>
+                    </Checkbox>
+                  </HStack>
+                )}
+                <Text
+                  color="primary.400"
+                  fontSize="16px"
+                  alignSelf={'flex-start'}
+                  fontWeight={700}
+                >
+                  A fiat payment channel is not connected.{' '}
+                  {/* TODO make the connection from this section */}
+                  <Link
+                    href="/dashboard/details#connected-accounts"
+                    color="primary.200"
+                    textDecor="underline"
+                  >
+                    {' '}
+                    Connect now.
+                  </Link>
+                </Text>
                 <FormControl
                   width={'100%'}
                   justifyContent={'space-between'}
@@ -1224,7 +1413,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                   isInvalid={!!errors.plan?.crypto_network}
                 >
                   <FormLabel fontSize={'16px'}>
-                    Crypto network for card payment settlement
+                    Crypto asset to Receive Payment in (Stablecoins)
                   </FormLabel>
                   <ChakraSelect
                     value={cryptoNetwork}
