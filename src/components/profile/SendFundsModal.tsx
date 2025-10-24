@@ -34,6 +34,7 @@ import { useOnClickOutside } from 'usehooks-ts'
 import { formatUnits } from 'viem'
 
 import { useCryptoBalance } from '@/hooks/useCryptoBalance'
+import { useDebounceCallback } from '@/hooks/useDebounceCallback'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import { useWallet } from '@/providers/WalletProvider'
 import {
@@ -62,6 +63,7 @@ import {
 } from '@/utils/constants/meeting-types'
 import { TokenType } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
+import { estimateGasFee, GasEstimationParams } from '@/utils/gasEstimation'
 import { formatCurrency, parseUnits, zeroAddress } from '@/utils/generic_utils'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { CurrencyService } from '@/utils/services/currency.service'
@@ -98,6 +100,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   isFromTokenView = false,
 }) => {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null)
+  const [estimatedFee, setEstimatedFee] = useState<number>(0)
+  const [isEstimatingFee, setIsEstimatingFee] = useState<boolean>(false)
+  const [feeError, setFeeError] = useState<boolean>(false)
 
   const [isTokenDropdownOpen, setIsTokenDropdownOpen] = useState(false)
   const [isNetworkDropdownOpen, setIsNetworkDropdownOpen] = useState(false)
@@ -217,7 +222,6 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     onClose()
   }
 
-  // Update sendNetwork when selectedNetwork prop changes
   useEffect(() => {
     setSendNetwork(selectedNetwork)
   }, [selectedNetwork])
@@ -252,6 +256,44 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     const num = parseFloat(amount)
     return !isNaN(num) && num > 0
   }
+
+  const handleGasEstimation = async () => {
+    if (!selectedToken || !activeWallet || !recipientAddress || !amount) {
+      setEstimatedFee(0)
+      setIsEstimatingFee(false)
+      setFeeError(false)
+      return
+    }
+
+    setIsEstimatingFee(true)
+    setFeeError(false)
+
+    const params: GasEstimationParams = {
+      selectedToken,
+      recipientAddress,
+      amount,
+      sendNetwork,
+      activeWallet,
+    }
+
+    const result = await estimateGasFee(params)
+
+    if (!result.success && result.error) {
+      handleApiError('Gas Estimation Failed', new Error(result.error))
+    }
+
+    setEstimatedFee(result.estimatedFee)
+    setIsEstimatingFee(false)
+    setFeeError(!result.success)
+  }
+
+  const debouncedEstimateGasFee = useDebounceCallback(handleGasEstimation, 500)
+
+  useEffect(() => {
+    if (selectedToken && recipientAddress && amount && activeWallet) {
+      debouncedEstimateGasFee()
+    }
+  }, [selectedToken, recipientAddress, amount, sendNetwork, activeWallet])
 
   const handleTokenSelection = async (token: AcceptedTokenInfo) => {
     if (!chain) return
@@ -1035,6 +1077,69 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                   isDisabled={isLoading}
                 />
               </Box>
+
+              {/* Fees Summary */}
+              {selectedToken && amount && parseFloat(amount) > 0 && (
+                <VStack spacing={3} align="stretch">
+                  <HStack justify="space-between">
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      Amount
+                    </Text>
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      ${amount} {selectedToken.symbol}
+                    </Text>
+                  </HStack>
+                  <HStack justify="space-between">
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      Transaction fee
+                    </Text>
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      {isEstimatingFee ? (
+                        <HStack spacing={1}>
+                          <Spinner size="xs" />
+                          <Text>Loading...</Text>
+                        </HStack>
+                      ) : feeError ? (
+                        "Couldn't fetch"
+                      ) : (
+                        `$${estimatedFee.toFixed(2)}`
+                      )}
+                    </Text>
+                  </HStack>
+                  <HStack justify="space-between">
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      Total to be debited
+                    </Text>
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      {isEstimatingFee ? (
+                        <HStack spacing={1}>
+                          <Spinner size="xs" />
+                          <Text>Loading...</Text>
+                        </HStack>
+                      ) : feeError ? (
+                        "Couldn't calculate"
+                      ) : (
+                        `$${(parseFloat(amount) + estimatedFee).toFixed(2)} ${
+                          selectedToken.symbol
+                        }`
+                      )}
+                    </Text>
+                  </HStack>
+                  <HStack justify="space-between">
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      Recipient
+                    </Text>
+                    <Text color="text-muted" fontSize="16px" fontWeight="500">
+                      {recipientAddress
+                        ? `${recipientAddress.slice(
+                            0,
+                            6
+                          )}...${recipientAddress.slice(-4)}`
+                        : 'Not specified'}
+                    </Text>
+                  </HStack>
+                </VStack>
+              )}
 
               {/* Send Button */}
               <Button
