@@ -17,7 +17,7 @@ import {
   getDiscordAccount,
   setAccountNotificationSubscriptions,
 } from '../database'
-
+let ready = false
 const client = new Client({
   intents: [
     GatewayIntentBits.DirectMessages,
@@ -27,6 +27,7 @@ const client = new Client({
 })
 
 client.on('ready', () => {
+  ready = true
   !isProduction && console.log(`Discord bot logged in as ${client.user?.tag}!`)
 })
 
@@ -37,7 +38,7 @@ client.on('error', error => {
 
 const doLogin = async () => {
   try {
-    if (!client.isReady()) {
+    if (!ready) {
       !isProduction && console.log('Logging in to Discord...')
       await client.login(process.env.DISCORD_TOKEN)
     }
