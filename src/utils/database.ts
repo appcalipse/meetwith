@@ -4535,7 +4535,7 @@ const createMeetingType = async (
   meetingType: CreateMeetingTypeRequest
 ) => {
   await checkSlugExists(account_address, meetingType.slug)
-  const payload: BaseMeetingType = {
+  const payload: TablesInsert<'meeting_type'> = {
     account_owner_address: account_address,
     type: meetingType.type,
     min_notice_minutes: meetingType.min_notice_minutes,
@@ -4596,6 +4596,9 @@ const createMeetingType = async (
           payment_address: meetingType?.plan.payment_address,
           default_chain_id: meetingType?.plan.crypto_network,
           default_token: meetingType?.plan.default_token,
+          payment_methods: meetingType?.plan?.payment_methods || [
+            PaymentType.CRYPTO,
+          ],
         },
       ])
     if (planError) {
@@ -4603,6 +4606,12 @@ const createMeetingType = async (
     }
   }
   return data?.[0] as MeetingType
+}
+const addPaymentMethodToAllMeetingTypes = (account_address: string) => {
+  const meeting_plans = db.supabase
+    .from<Tables<'meeting_type'>>('meeting_type')
+    .select()
+    .eq('account_owner_address', account_address)
 }
 const deleteMeetingType = async (
   account_address: string,
@@ -4739,7 +4748,7 @@ const updateMeetingType = async (
   }
   if (meetingType?.plan) {
     const { error: insertPlanError } = await db.supabase
-      .from('meeting_type_plan')
+      .from<Tables<'meeting_type_plan'>>('meeting_type_plan')
       .update({
         type: meetingType?.plan.type,
         price_per_slot: meetingType?.plan.price_per_slot,
@@ -4748,6 +4757,7 @@ const updateMeetingType = async (
         payment_address: meetingType?.plan.payment_address,
         default_chain_id: meetingType?.plan.crypto_network,
         default_token: meetingType?.plan.default_token,
+        payment_methods: meetingType?.plan?.payment_methods,
         updated_at: new Date().toISOString(),
       })
       .eq('meeting_type_id', meeting_type_id)
@@ -7273,6 +7283,7 @@ const updatePaymentAccount = async (
     ? updatedPaymentAccount[0]
     : updatedPaymentAccount
 }
+
 export {
   acceptContactInvite,
   addContactInvite,

@@ -219,6 +219,7 @@ export interface CreateMeetingTypeRequest {
     payment_address?: string
     crypto_network?: number
     default_token?: AcceptedToken
+    payment_methods?: PaymentType[]
   }
 }
 
