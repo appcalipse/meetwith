@@ -10,7 +10,6 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import LogoModalLoading from '@components/Loading/LogoModalLoading'
-import ModalLoading from '@components/Loading/ModalLoading'
 import MeetingScheduledDialog from '@components/meeting/MeetingScheduledDialog'
 import BasePage from '@components/public-meeting/BasePage'
 import BookingComponent from '@components/public-meeting/BookingComponent'
@@ -86,7 +85,6 @@ import {
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
 import { decryptContent } from '@/utils/cryptography'
-import { handleApiError } from '@/utils/error_helper'
 import { isJson } from '@/utils/generic_utils'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 

@@ -43,10 +43,7 @@ import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
-import {
-  customSelectComponents,
-  noClearCustomSelectComponent,
-} from '@/utils/constants/select'
+import { noClearCustomSelectComponent } from '@/utils/constants/select'
 import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
 import { formatCurrency, renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -55,7 +52,6 @@ import { AccountContext } from '../../../providers/AccountProvider'
 import {
   MeetingDecrypted,
   MeetingProvider,
-  MeetingRepeat,
   SchedulingType,
 } from '../../../types/Meeting'
 import { isEmptyString, isValidEmail } from '../../../utils/validations'
@@ -558,38 +554,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             }),
 
             placeholder: provided => ({
-              ...provided,
-              textAlign: 'left',
-            }),
-          }}
-        />
-      </FormControl>
-      <FormControl w="100%" maxW="100%">
-        <FormLabel>Meeting Repeat</FormLabel>
-        <Select
-          value={meetingRepeat}
-          colorScheme="primary"
-          onChange={newValue =>
-            setMeetingRepeat(
-              newValue as {
-                value: MeetingRepeat
-                label: string
-              }
-            )
-          }
-          className="noLeftBorder timezone-select"
-          options={MeetingRepeatOptions}
-          components={customSelectComponents}
-          chakraStyles={{
-            placeholder: provided => ({
-              ...provided,
-              textAlign: 'left',
-            }),
-            input: provided => ({
-              ...provided,
-              textAlign: 'left',
-            }),
-            control: provided => ({
               ...provided,
               textAlign: 'left',
             }),
