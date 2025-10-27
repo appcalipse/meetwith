@@ -181,6 +181,7 @@ export const internalFetch = async <T>(
       ((e instanceof TypeError &&
         (e.message.includes('Failed to fetch') ||
           e.message.includes('Network request failed') ||
+          e.message.includes('NetworkError') ||
           e.message.includes('timeout'))) ||
         (e &&
           typeof e === 'object' &&
