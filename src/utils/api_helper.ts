@@ -183,18 +183,12 @@ export const internalFetch = async <T>(
           e.message.includes('Network request failed') ||
           e.message.includes('NetworkError') ||
           e.message.includes('timeout'))) ||
-        (e &&
-          typeof e === 'object' &&
-          'status' in e &&
-          (e as any).status >= 500))
+        (e instanceof ApiFetchError && e.status >= 500))
 
     if (isRetryableError) {
-      const attemptsMade = 3 - maxRetries + 1
-      const delay = baseDelay * Math.pow(2, attemptsMade - 1)
-      console.warn(
-        `API call failed, retrying ${attemptsMade}/3 in ${delay}ms...`,
-        e
-      )
+      const retryCount = 3 - maxRetries
+      const delay = Math.max(1000 / (retryCount + 1), 100)
+      console.warn(`API call failed, retrying ${retryCount + 1} time...`, e)
       await new Promise(resolve => setTimeout(resolve, delay))
       return internalFetch<T>(
         path,
