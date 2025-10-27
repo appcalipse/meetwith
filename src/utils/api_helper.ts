@@ -1,4 +1,10 @@
-import { Address, ICoinConfig, MeetingSession } from '@meta/Transactions'
+import { ConnectedAccountInfo } from '@meta/ConnectedAccounts'
+import {
+  Address,
+  ICoinConfig,
+  MeetingSession,
+  Transaction,
+} from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -28,7 +34,7 @@ import {
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/DiscordUserInfo'
+import { DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
@@ -49,6 +55,19 @@ import {
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
+import { PaymentAccountStatus } from '@/types/PaymentAccount'
+import {
+  AddParticipantRequest,
+  AvailabilitySlot,
+  CancelQuickPollResponse,
+  CreateQuickPollRequest,
+  PollStatus,
+  QuickPollBusyParticipant,
+  QuickPollListResponse,
+  QuickPollParticipant,
+  QuickPollParticipantType,
+  UpdateQuickPollRequest,
+} from '@/types/QuickPoll'
 import {
   ChangeGroupAdminRequest,
   ConfirmCryptoTransactionRequest,
@@ -56,6 +75,7 @@ import {
   CreateMeetingTypeRequest,
   DuplicateAvailabilityBlockRequest,
   MeetingCancelRequest,
+  MeetingCheckoutRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
   RequestInvoiceRequest,
@@ -69,7 +89,12 @@ import { TelegramConnection } from '@/types/Telegram'
 import { TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
-import { apiUrl } from './constants'
+import {
+  apiUrl,
+  QUICKPOLL_DEFAULT_LIMIT,
+  QUICKPOLL_DEFAULT_OFFSET,
+} from './constants'
+import { PaymentStatus } from './constants/meeting-types'
 import {
   AccountNotFoundError,
   AllMeetingSlotsUsedError,
@@ -132,7 +157,6 @@ export const internalFetch = async <T>(
         ? undefined
         : {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
             ...headers,
           },
       ...options,
@@ -231,7 +255,7 @@ export const getExistingAccounts = async (
           fullInformation,
         }) as Promise<Account[]>
     )
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw e
   }
 }
@@ -605,6 +629,33 @@ export const fetchBusySlotsRawForMultipleAccounts = async (
     offset,
     isRaw: true,
   })) as TimeSlot[]
+
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
+
+export const fetchBusySlotsRawForQuickPollParticipants = async (
+  participants: QuickPollBusyParticipant[],
+  start: Date,
+  end: Date,
+  limit?: number,
+  offset?: number
+): Promise<TimeSlot[]> => {
+  const response = (await internalFetch(
+    `/quickpoll/busy/participants`,
+    'POST',
+    {
+      participants,
+      start,
+      end,
+      limit,
+      offset,
+      isRaw: true,
+    }
+  )) as TimeSlot[]
 
   return response.map(slot => ({
     ...slot,
@@ -1894,4 +1945,235 @@ export const getUserLocale = async (): Promise<UserLocale> => {
   return (await fetch('https://ipapi.co/json/').then(res =>
     res.json()
   )) as UserLocale
+}
+
+export const createQuickPoll = async (pollData: CreateQuickPollRequest) => {
+  return await internalFetch('/secure/quickpoll', 'POST', pollData)
+}
+
+export const getQuickPollById = async (pollId: string) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`)
+}
+export const updateQuickPoll = async (
+  pollId: string,
+  updates: UpdateQuickPollRequest
+) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`, 'PUT', updates)
+}
+
+export const deleteQuickPoll = async (pollId: string) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`, 'DELETE')
+}
+
+export const getQuickPollParticipants = async (pollId: string) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}/participants`)
+}
+
+export const addQuickPollParticipant = async (
+  participantData: AddParticipantRequest
+) => {
+  return await internalFetch(
+    `/secure/quickpoll/${participantData.poll_id}/participants`,
+    'POST',
+    participantData
+  )
+}
+
+export interface BulkAddParticipantsRequest {
+  participants: Array<{
+    account_address?: string
+    guest_name?: string
+    guest_email: string
+    participant_type: QuickPollParticipantType
+  }>
+}
+
+export const addQuickPollParticipants = async (
+  pollId: string,
+  participants: BulkAddParticipantsRequest['participants']
+) => {
+  return await internalFetch(
+    `/secure/quickpoll/${pollId}/participants/bulk`,
+    'POST',
+    { participants }
+  )
+}
+
+export const getQuickPollBySlug = async (slug: string) => {
+  return await internalFetch(`/quickpoll/${slug}`)
+}
+
+export const cancelQuickPoll = async (
+  pollId: string
+): Promise<CancelQuickPollResponse> => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`, 'PATCH')
+}
+
+export const updatePollParticipantAvailability = async (
+  participantId: string,
+  availableSlots: AvailabilitySlot[],
+  timezone?: string
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/availability`,
+    'PATCH',
+    {
+      available_slots: availableSlots,
+      timezone,
+    }
+  )
+}
+
+export const updateGuestParticipantDetails = async (
+  participantId: string,
+  guestName: string,
+  guestEmail: string
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/details`,
+    'PATCH',
+    {
+      guest_name: guestName,
+      guest_email: guestEmail,
+    }
+  )
+}
+
+export const addOrUpdateGuestParticipantWithAvailability = async (
+  pollSlug: string,
+  guestEmail: string,
+  availableSlots: AvailabilitySlot[],
+  timezone: string,
+  guestName?: string
+) => {
+  return await internalFetch(
+    `/quickpoll/${pollSlug}/guest-participant`,
+    'POST',
+    {
+      guest_email: guestEmail,
+      guest_name: guestName,
+      available_slots: availableSlots,
+      timezone,
+    }
+  )
+}
+
+export const getPollParticipantById = async (
+  participantId: string
+): Promise<QuickPollParticipant> => {
+  return await internalFetch(`/quickpoll/participants/${participantId}`)
+}
+
+export const savePollParticipantCalendar = async (
+  participantId: string,
+  email: string,
+  provider: string,
+  payload?: Record<string, unknown>
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/calendar`,
+    'POST',
+    {
+      email,
+      provider,
+      payload,
+    }
+  )
+}
+
+export const getPollParticipantByIdentifier = async (
+  slug: string,
+  identifier: string
+): Promise<QuickPollParticipant> => {
+  return await internalFetch(
+    `/quickpoll/${slug}/participant/${encodeURIComponent(identifier)}`
+  )
+}
+
+export const getQuickPollGoogleAuthConnectUrl = async (
+  state?: string | null
+) => {
+  return await internalFetch<ConnectResponse>(
+    `/quickpoll/calendar/google/connect${state ? `?state=${state}` : ''}`
+  )
+}
+
+export const getQuickPollOffice365ConnectUrl = async (
+  state?: string | null
+) => {
+  return await internalFetch<ConnectResponse>(
+    `/quickpoll/calendar/office365/connect${state ? `?state=${state}` : ''}`
+  )
+}
+
+export const getQuickPolls = async (
+  limit = QUICKPOLL_DEFAULT_LIMIT,
+  offset = QUICKPOLL_DEFAULT_OFFSET,
+  searchQuery?: string,
+  ...status: PollStatus[]
+): Promise<QuickPollListResponse> => {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+  })
+
+  if (status.length > 0) {
+    status.forEach(s => params.append('status', s))
+  }
+
+  if (searchQuery && searchQuery.trim()) {
+    params.append('searchQuery', searchQuery.trim())
+  }
+
+  return await internalFetch(`/secure/quickpoll?${params}`)
+}
+
+export const getConnectedAccounts = async (): Promise<
+  ConnectedAccountInfo[]
+> => {
+  return await internalFetch<ConnectedAccountInfo[]>(
+    `/secure/accounts/connected`
+  )
+}
+
+export const getStripeOnboardingLink = async () => {
+  return await internalFetch<{ url: string }>(`/secure/stripe/connect`).then(
+    res => res.url
+  )
+}
+
+export const disconnectStripeAccount = async () => {
+  return await internalFetch(`/secure/stripe/disconnect`, 'PATCH')
+}
+
+export const generateDashboardLink = async () => {
+  return await internalFetch<{ url: string }>(`/secure/stripe/login`).then(
+    res => res.url
+  )
+}
+
+export const generateCheckoutLink = async (payload: MeetingCheckoutRequest) => {
+  return await internalFetch<{ url: string }>(
+    `/transactions/checkout`,
+    'POST',
+    payload
+  ).then(res => res.url)
+}
+
+export const getTransactionById = async (
+  transactionId: string
+): Promise<Transaction> => {
+  return await internalFetch<Transaction>(`/transactions/${transactionId}`)
+}
+
+export const getTransactionStatus = async (
+  transactionId: string
+): Promise<PaymentStatus> => {
+  return await internalFetch<PaymentStatus>(
+    `/transactions/${transactionId}/status`
+  )
+}
+
+export const getStripeStatus = async (): Promise<PaymentAccountStatus> => {
+  return await internalFetch<PaymentAccountStatus>(`/secure/stripe/status`)
 }

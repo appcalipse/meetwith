@@ -13,12 +13,15 @@ import { useRouter } from 'next/router'
 import React, { FC, useContext, useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
+import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import InviteParticipants from '@/components/schedule/participants/InviteParticipants'
 import ScheduleBase from '@/components/schedule/ScheduleBase'
 import ScheduleCompleted from '@/components/schedule/ScheduleCompleted'
 import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
 import { AccountContext } from '@/providers/AccountProvider'
+import { MetricStateContext } from '@/providers/MetricStateProvider'
+import { QuickPollAvailabilityProvider } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import {
   ActionsContext,
   IActionsContext,
@@ -34,6 +37,12 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
+import {
+  PollStatus,
+  QuickPollBySlugResponse,
+  QuickPollParticipantStatus,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
@@ -41,6 +50,8 @@ import {
   getGroup,
   getGroupsMembers,
   getMeeting,
+  getQuickPollById,
+  updateQuickPoll,
 } from '@/utils/api_helper'
 import {
   decodeMeeting,
@@ -75,6 +86,7 @@ import {
   canAccountAccessPermission,
   isAccountSchedulerOrOwner,
 } from '@/utils/generic_utils'
+import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -89,6 +101,7 @@ interface IInitialProps {
   intent: Intents
   meetingId: string
   contactId: string
+  pollId?: string
 }
 
 const ScheduleMain: FC<IInitialProps> = ({
@@ -96,8 +109,10 @@ const ScheduleMain: FC<IInitialProps> = ({
   intent,
   meetingId,
   contactId,
+  pollId,
 }) => {
   const { currentAccount } = useContext(AccountContext)
+  const { fetchPollCounts } = useContext(MetricStateContext)
   const {
     title,
     content,
@@ -145,9 +160,11 @@ const ScheduleMain: FC<IInitialProps> = ({
     setCanEditMeetingDetails,
   } = useParticipantPermissions()
   const [isPrefetching, setIsPrefetching] = useState(true)
+  const [pollData, setPollData] = useState<QuickPollBySlugResponse | null>(null)
   const toast = useToast()
   const router = useRouter()
-  const { push } = router
+  const { push, query } = router
+  const isQuickPollFlow = query.ref === 'quickpoll'
 
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -206,6 +223,43 @@ const ScheduleMain: FC<IInitialProps> = ({
       handleApiError('Error prefetching contact.', error)
     }
   }
+
+  const handlePollPrefetch = async () => {
+    if (!pollId) return
+    try {
+      const poll = (await getQuickPollById(pollId)) as QuickPollBySlugResponse
+      setPollData(poll)
+      setTitle(poll.poll.title)
+      setContent(poll.poll.description)
+      setDuration(poll.poll.duration_minutes)
+
+      if (poll.poll.permissions && poll.poll.permissions.length > 0) {
+        setSelectedPermissions(poll.poll.permissions as MeetingPermissions[])
+      }
+
+      const pollParticipants: ParticipantInfo[] = poll.poll.participants.map(
+        participant => ({
+          account_address: participant.account_address || '',
+          name: participant.guest_name || participant.guest_email || 'Unknown',
+          status:
+            participant.status === QuickPollParticipantStatus.ACCEPTED
+              ? ParticipationStatus.Accepted
+              : ParticipationStatus.Pending,
+          type:
+            participant.participant_type === QuickPollParticipantType.SCHEDULER
+              ? ParticipantType.Scheduler
+              : ParticipantType.Invitee,
+          slot_id: '',
+          meeting_id: '',
+        })
+      )
+
+      setParticipants(pollParticipants)
+    } catch (error: unknown) {
+      handleApiError('Error prefetching poll.', error)
+    }
+  }
+
   const handleFetchMeetingInformation = async () => {
     if (!meetingId) return
     try {
@@ -357,6 +411,9 @@ const ScheduleMain: FC<IInitialProps> = ({
     if (groupId) {
       promises.push(handleGroupPrefetch())
     }
+    if (pollId) {
+      promises.push(handlePollPrefetch())
+    }
     if (intent === Intents.UPDATE_MEETING && meetingId) {
       promises.push(handleFetchMeetingInformation())
     }
@@ -376,6 +433,21 @@ const ScheduleMain: FC<IInitialProps> = ({
   useEffect(() => {
     void handlePrefetch()
   }, [groupId, contactId, intent, meetingId, currentAccount?.address])
+
+  useEffect(() => {
+    const selectedTimeParam = query.selectedTime as string
+    if (selectedTimeParam && router.isReady) {
+      try {
+        const selectedTime = new Date(decodeURIComponent(selectedTimeParam))
+        if (!isNaN(selectedTime.getTime())) {
+          setPickedTime(selectedTime)
+        }
+      } catch (error) {
+        console.warn('Failed to parse selectedTime from URL:', error)
+      }
+    }
+  }, [query.selectedTime, router.isReady, setPickedTime])
+
   const handleDelete = async (actor?: ParticipantInfo) => {
     if (!decryptedMeeting) return
     setIsDeleting(true)
@@ -524,6 +596,81 @@ const ScheduleMain: FC<IInitialProps> = ({
   const handleSchedule = async () => {
     try {
       setIsScheduling(true)
+
+      // Handle quickpoll scheduling
+      if (pollId && pollData) {
+        if (!pickedTime) {
+          toast({
+            title: 'No time selected',
+            description:
+              'Please select a time slot before scheduling the meeting.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+          setIsScheduling(false)
+          return
+        }
+
+        const start = new Date(pickedTime)
+        const end = addMinutes(new Date(start), duration)
+
+        // Get quickpoll participants
+        const quickpollParticipants = pollData.poll.participants.map(
+          participant => ({
+            account_address: participant.account_address || undefined,
+            guest_email: participant.guest_email || undefined,
+            name:
+              participant.guest_name || participant.guest_email || 'Unknown',
+            status: ParticipationStatus.Pending,
+            type:
+              participant.participant_type ===
+              QuickPollParticipantType.SCHEDULER
+                ? ParticipantType.Scheduler
+                : ParticipantType.Invitee,
+            slot_id: '',
+            meeting_id: '',
+          })
+        )
+
+        await scheduleMeeting(
+          true,
+          SchedulingType.REGULAR,
+          NO_MEETING_TYPE,
+          start,
+          end,
+          quickpollParticipants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          undefined,
+          title,
+          meetingNotification.map(n => n.value),
+          meetingRepeat.value,
+          selectedPermissions
+        )
+
+        try {
+          await updateQuickPoll(pollId, { status: PollStatus.COMPLETED })
+
+          queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
+          queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
+          queryClient.invalidateQueries({
+            queryKey: ['quickpoll-schedule', pollId],
+          })
+          queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+          void fetchPollCounts()
+        } catch (error) {
+          handleApiError('Failed to update poll status:', error)
+        }
+
+        handlePageSwitch(Page.COMPLETED)
+        return
+      }
+
+      // Regular meeting scheduling flow
       const isSchedulerOrOwner = [
         ParticipantType.Scheduler,
         ParticipantType.Owner,
@@ -803,7 +950,13 @@ const ScheduleMain: FC<IInitialProps> = ({
           <Tabs index={currentPage} isLazy>
             <TabPanels>
               <TabPanel p={0}>
-                <ScheduleTimeDiscover />
+                {isQuickPollFlow && pollId ? (
+                  <QuickPollAvailabilityProvider>
+                    <QuickPollAvailabilityDiscover pollId={pollId} />
+                  </QuickPollAvailabilityProvider>
+                ) : (
+                  <ScheduleTimeDiscover />
+                )}
               </TabPanel>
               <TabPanel p={0}>
                 <ScheduleBase />

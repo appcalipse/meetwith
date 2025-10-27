@@ -146,14 +146,14 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       </HStack>
       <Divider bg={'neutral.400'} />
       {groups.length > 0 && totalParticipantsCount > 1 && (
-        <VStack gap={2} alignItems="start">
+        <VStack gap={2} alignItems="start" w="100%">
           {groups.length > 0 && (
-            <Text>
+            <Text textAlign="left">
               <b>Groups Selected:</b> {groups.map(val => val.name).join(', ')}
             </Text>
           )}
           {totalParticipantsCount > 1 && (
-            <Text>
+            <Text textAlign="left">
               <b>Number of Participants:</b> {totalParticipantsCount}
             </Text>
           )}

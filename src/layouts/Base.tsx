@@ -16,6 +16,8 @@ import {
   DASHBOARD_ROUTE_PREFIX,
   DASHBOARD_SCHEDULE_ROUTE,
   PUBLIC_ADDRESS_ROUTE,
+  PUBLIC_POLL_GUEST_DETAILS_ROUTE,
+  PUBLIC_POLL_ROUTE,
   PUBLIC_USERNAME_ROUTE,
   SETTINGS_ROUTE_PREFIX,
 } from '@/utils/constants'
@@ -37,13 +39,40 @@ export const BaseLayout: React.FC<{
   const isPublicPage =
     router.pathname === PUBLIC_USERNAME_ROUTE ||
     router.pathname === PUBLIC_ADDRESS_ROUTE
+  const isPollPage = router.pathname === PUBLIC_POLL_ROUTE
+  const isPollGuestDetailsPage =
+    router.pathname === PUBLIC_POLL_GUEST_DETAILS_ROUTE
 
-  const navVisible =
-    !(logged && isDashboardPage && !isMobile) &&
-    !isPublicPage &&
-    !isSchedulePage &&
-    !isSettingsPage
-  const footerVisible = !(logged && isDashboardPage) && !isPublicPage
+  const pagesWithoutFooter = [
+    isDashboardPage,
+    isPublicPage,
+    isPollPage,
+    isPollGuestDetailsPage,
+    isSchedulePage,
+  ]
+
+  const pagesWithoutNav = [
+    isPublicPage,
+    isSchedulePage,
+    isSettingsPage,
+    isPollPage,
+    isPollGuestDetailsPage,
+  ]
+
+  const navVisible = (() => {
+    if (pagesWithoutNav.includes(true)) {
+      return false
+    }
+
+    if (isDashboardPage) {
+      return isMobile || !logged
+    }
+
+    return true
+  })()
+
+  const footerVisible =
+    !(logged && isDashboardPage) && !pagesWithoutFooter.includes(true)
 
   return (
     <ChakraProvider theme={customTheme}>
