@@ -222,7 +222,7 @@ const AccountCard: FC<IProps> = props => {
         )
       }
       showSuccessToast(
-        '${props.account} Disconnected',
+        `${props.account} Disconnected`,
         `Your ${props.account} account has been disconnected`
       )
     } finally {
