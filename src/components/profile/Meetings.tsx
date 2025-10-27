@@ -207,7 +207,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
         <Heading flex={1} fontSize="2xl">
           My Meetings
           <Text fontSize="sm" fontWeight={100} mt={1}>
-            Timezone: {currentAccount.preferences.timezone}
+            Timezone: {timezone}
           </Text>
         </Heading>
         <Button
