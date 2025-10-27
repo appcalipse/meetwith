@@ -51,9 +51,7 @@ import {
 } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
-import { ApiFetchError } from '@/utils/errors'
 import { deduplicateArray } from '@/utils/generic_utils'
-import { withRetry } from '@/utils/retry.client'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { suggestBestSlots } from '@/utils/slots.helper'
 
@@ -323,20 +321,7 @@ export function SchedulePickTime({
             ),
           }))
         ),
-        withRetry(
-          () => getExistingAccounts(deduplicateArray(allParticipants)),
-          {
-            retryCondition: error => {
-              if (error instanceof ApiFetchError && error.status >= 500) {
-                return true
-              }
-              if (error instanceof Error) {
-                return true
-              }
-              return false
-            },
-          }
-        ),
+        getExistingAccounts(deduplicateArray(allParticipants)),
       ])
       const accountBusySlots = accounts.map(account => {
         return busySlots.filter(slot => slot.account_address === account)

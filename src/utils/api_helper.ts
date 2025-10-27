@@ -147,42 +147,84 @@ export const internalFetch = async <T>(
   body?: unknown,
   options: RequestInit = {},
   headers = {},
-  isFormData = false
+  isFormData = false,
+  withRetry = true
 ) => {
-  try {
-    const response = await fetch(`${apiUrl}${path}`, {
-      method,
-      mode: 'cors',
-      headers: isFormData
-        ? undefined
-        : {
-            'Content-Type': 'application/json',
-            ...headers,
-          },
-      ...options,
-      body: isFormData
-        ? (body as FormData)
-        : (!!body && (JSON.stringify(body) as string)) || null,
-    })
-    if (response.status >= 200 && response.status < 300) {
-      return (await response.json()) as T
-    }
+  const fetchOperation = async () => {
+    try {
+      const response = await fetch(`${apiUrl}${path}`, {
+        method,
+        mode: 'cors',
+        headers: isFormData
+          ? undefined
+          : {
+              'Content-Type': 'application/json',
+              ...headers,
+            },
+        ...options,
+        body: isFormData
+          ? (body as FormData)
+          : (!!body && (JSON.stringify(body) as string)) || null,
+      })
+      if (response.status >= 200 && response.status < 300) {
+        return (await response.json()) as T
+      }
 
-    throw new ApiFetchError(response.status, await response.text())
-  } catch (e: unknown) {
-    // Exclude account not found error on sentry
-    if (
-      e instanceof ApiFetchError &&
-      !path.includes('accounts') &&
-      e.status === 404
-    ) {
-      Sentry.captureException(e)
-    } else if (e instanceof ApiFetchError && e.status === 504) {
-      Sentry.captureException(e)
-      throw new ServiceUnavailableError()
+      throw new ApiFetchError(response.status, await response.text())
+    } catch (e: unknown) {
+      // Exclude account not found error on sentry
+      if (
+        e instanceof ApiFetchError &&
+        !path.includes('accounts') &&
+        e.status === 404
+      ) {
+        Sentry.captureException(e)
+      } else if (e instanceof ApiFetchError && e.status === 504) {
+        Sentry.captureException(e)
+        throw new ServiceUnavailableError()
+      }
+      throw e
     }
-    throw e
   }
+
+  if (!withRetry) {
+    return fetchOperation()
+  }
+
+  // Retry logic
+  const maxRetries = 3
+  const baseDelay = 1000
+  let attempt = 0
+
+  while (attempt <= maxRetries) {
+    try {
+      return await fetchOperation()
+    } catch (error) {
+      const isRetryableError =
+        (error instanceof Error &&
+          (error.message.includes('Failed to fetch') ||
+            error.message.includes('Network request failed') ||
+            error.message.includes('timeout'))) ||
+        (error &&
+          typeof error === 'object' &&
+          'status' in error &&
+          (error as any).status >= 500)
+
+      if (!isRetryableError || attempt === maxRetries) {
+        throw error
+      }
+
+      attempt++
+      const delay = baseDelay * Math.pow(2, attempt - 1)
+      console.warn(
+        `API call failed, retrying ${attempt}/${maxRetries} in ${delay}ms...`,
+        error
+      )
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+
+  throw new Error('Retry limit exceeded')
 }
 
 export const getAccount = async (
