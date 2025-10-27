@@ -148,83 +148,80 @@ export const internalFetch = async <T>(
   options: RequestInit = {},
   headers = {},
   isFormData = false,
-  withRetry = true
-) => {
-  const fetchOperation = async () => {
-    try {
-      const response = await fetch(`${apiUrl}${path}`, {
-        method,
-        mode: 'cors',
-        headers: isFormData
-          ? undefined
-          : {
-              'Content-Type': 'application/json',
-              ...headers,
-            },
-        ...options,
-        body: isFormData
-          ? (body as FormData)
-          : (!!body && (JSON.stringify(body) as string)) || null,
-      })
-      if (response.status >= 200 && response.status < 300) {
-        return (await response.json()) as T
-      }
-
-      throw new ApiFetchError(response.status, await response.text())
-    } catch (e: unknown) {
-      // Exclude account not found error on sentry
-      if (
-        e instanceof ApiFetchError &&
-        !path.includes('accounts') &&
-        e.status === 404
-      ) {
-        Sentry.captureException(e)
-      } else if (e instanceof ApiFetchError && e.status === 504) {
-        Sentry.captureException(e)
-        throw new ServiceUnavailableError()
-      }
-      throw e
-    }
-  }
-
-  if (!withRetry) {
-    return fetchOperation()
-  }
-
-  // Retry logic
+  withRetry = true,
+  retryAttempt = 0
+): Promise<T> => {
   const maxRetries = 3
   const baseDelay = 1000
-  let attempt = 0
 
-  while (attempt <= maxRetries) {
-    try {
-      return await fetchOperation()
-    } catch (error) {
-      const isRetryableError =
-        (error instanceof Error &&
-          (error.message.includes('Failed to fetch') ||
-            error.message.includes('Network request failed') ||
-            error.message.includes('timeout'))) ||
-        (error &&
-          typeof error === 'object' &&
-          'status' in error &&
-          (error as any).status >= 500)
+  try {
+    const response = await fetch(`${apiUrl}${path}`, {
+      method,
+      mode: 'cors',
+      headers: isFormData
+        ? undefined
+        : {
+            'Content-Type': 'application/json',
+            ...headers,
+          },
+      ...options,
+      body: isFormData
+        ? (body as FormData)
+        : (!!body && (JSON.stringify(body) as string)) || null,
+    })
+    if (response.status >= 200 && response.status < 300) {
+      return (await response.json()) as T
+    }
 
-      if (!isRetryableError || attempt === maxRetries) {
-        throw error
-      }
+    throw new ApiFetchError(response.status, await response.text())
+  } catch (e: unknown) {
+    // Check if error is retryable
+    const isRetryableError =
+      withRetry &&
+      retryAttempt < maxRetries &&
+      ((e instanceof Error &&
+        (e.message.includes('Failed to fetch') ||
+          e.message.includes('Network request failed') ||
+          e.message.includes('timeout'))) ||
+        (e &&
+          typeof e === 'object' &&
+          'status' in e &&
+          (e as any).status >= 500))
 
-      attempt++
-      const delay = baseDelay * Math.pow(2, attempt - 1)
+    if (isRetryableError) {
+      const delay = baseDelay * Math.pow(2, retryAttempt)
       console.warn(
-        `API call failed, retrying ${attempt}/${maxRetries} in ${delay}ms...`,
-        error
+        `API call failed, retrying ${
+          retryAttempt + 1
+        }/${maxRetries} in ${delay}ms...`,
+        e
       )
       await new Promise(resolve => setTimeout(resolve, delay))
+      return internalFetch<T>(
+        path,
+        method,
+        body,
+        options,
+        headers,
+        isFormData,
+        withRetry,
+        retryAttempt + 1
+      )
     }
-  }
 
-  throw new Error('Retry limit exceeded')
+    // Exclude account not found error on sentry
+    if (
+      e instanceof ApiFetchError &&
+      !path.includes('accounts') &&
+      e.status === 404
+    ) {
+      Sentry.captureException(e)
+    } else if (e instanceof ApiFetchError && e.status === 504) {
+      Sentry.captureException(e)
+      throw new ServiceUnavailableError()
+    }
+    throw e
+  }
 }
 
 export const getAccount = async (
