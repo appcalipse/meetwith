@@ -281,21 +281,34 @@ const ScheduleMain: FC<IInitialProps> = ({
             MeetingPermissions.SEE_GUEST_LIST
           ) || isSchedulerOrOwner
         if (!canViewParticipants) {
-          const displayName = getAllParticipantsDisplayName(
-            decryptedMeeting?.participants,
-            currentAccount?.address,
-            false
+          const schedulerParticipant = participants.find(
+            p => p.type === ParticipantType.Scheduler
           )
-          setParticipants([
-            {
-              name: displayName,
+          const actorParticipant = participants.find(
+            p => p.account_address === currentAccount?.address
+          )
+          const othersCount = participants.length - 2 // exclude scheduler and self
+          const allParticipants = []
+          if (actorParticipant) {
+            allParticipants.push(actorParticipant)
+          }
+          if (schedulerParticipant) {
+            allParticipants.push(schedulerParticipant)
+          }
+          if (othersCount > 0) {
+            allParticipants.push({
+              name: `+${othersCount} other participant${
+                othersCount > 1 ? 's' : ''
+              }`,
               meeting_id: '',
               status: ParticipationStatus.Accepted,
               type: ParticipantType.Invitee,
               slot_id: '',
               isHidden: true,
-            },
-          ])
+            })
+          }
+
+          setParticipants(allParticipants)
         }
       }
       setMeetingUrl(decryptedMeeting.meeting_url)
