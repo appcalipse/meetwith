@@ -1280,7 +1280,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                     >
                       <Text
                         color="border-default-primary"
-fontWeight="600"
+                        fontWeight="600"
                         cursor="pointer"
                         textTransform="capitalize"
                       >
@@ -1394,23 +1394,25 @@ fontWeight="600"
                     </Checkbox>
                   </HStack>
                 )}
-                <Text
-                  color="primary.400"
-                  fontSize="16px"
-                  alignSelf={'flex-start'}
-                  fontWeight={700}
-                >
-                  A fiat payment channel is not connected.{' '}
-                  {/* TODO make the connection from this section */}
-                  <Link
-                    href="/dashboard/details#connected-accounts"
-                    color="primary.200"
-                    textDecor="underline"
+                {props.stripeStatus !== PaymentAccountStatus.CONNECTED && (
+                  <Text
+                    color="primary.400"
+                    fontSize="16px"
+                    alignSelf={'flex-start'}
+                    fontWeight={700}
                   >
-                    {' '}
-                    Connect now.
-                  </Link>
-                </Text>
+                    A fiat payment channel is not connected.{' '}
+                    {/* TODO make the connection from this section */}
+                    <Link
+                      href="/dashboard/details#connected-accounts"
+                      color="primary.200"
+                      textDecor="underline"
+                    >
+                      {' '}
+                      Connect now.
+                    </Link>
+                  </Text>
+                )}
                 <FormControl
                   width={'100%'}
                   justifyContent={'space-between'}
