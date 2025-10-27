@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import slugify from 'slugify'
 
 import { MeetingProvider } from '@/types/Meeting'
+import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
+
+import { MeetingPermissions } from './constants/schedule'
 
 export const zeroAddress = '0x0000000000000000000000000000000000000000' as const
 
@@ -42,6 +45,25 @@ export function parseUnits(value: `${number}`, decimals: number) {
 
   return BigInt(`${negative ? '-' : ''}${integer}${fraction}`)
 }
+export const isAccountSchedulerOrOwner = (
+  participants?: ParticipantInfo[],
+  address?: string,
+  participantsType = [ParticipantType.Scheduler, ParticipantType.Owner]
+) =>
+  participantsType.includes(
+    participants?.find(p => p.account_address === address)?.type ||
+      ParticipantType?.Invitee
+  )
+
+export const canAccountAccessPermission = (
+  permissions?: MeetingPermissions[],
+  participants?: ParticipantInfo[],
+  address?: string,
+  permission = MeetingPermissions.SEE_GUEST_LIST
+) =>
+  permissions === undefined ||
+  !!permissions?.includes(permission) ||
+  isAccountSchedulerOrOwner(participants, address)
 
 export function formatUnits(value: bigint, decimals: number) {
   let display = value.toString()
@@ -189,7 +211,9 @@ export const formatCurrency = (
 }
 
 export const deduplicateArray = <T = string>(arr: T[]): T[] => {
-  return Array.from(new Set(arr))
+  return Array.from(new Set(arr)).filter(
+    (item): item is T => item !== null && item !== undefined
+  )
 }
 
 export const formatCountdown = (seconds: number): string => {

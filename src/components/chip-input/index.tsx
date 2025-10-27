@@ -14,12 +14,13 @@ import {
   useState,
 } from 'react'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
-import { IGroupParticipant } from '@/types/schedule'
+import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import { BadgeChip } from './chip'
@@ -36,11 +37,13 @@ interface ChipInputProps {
   size?: InputProps['size']
   button?: ReactElement
   inputProps?: InputProps
+  addDisabled?: boolean
 }
 
 export const ChipInput: React.FC<ChipInputProps> = ({
   onChange,
   isReadOnly = false,
+  addDisabled = false,
   currentItems = [],
   renderItem,
   size = 'md',
@@ -50,7 +53,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
 }) => {
   const [current, setCurrent] = useState('')
   const [focused, setFocused] = useState(false)
-
+  const currentAccount = useAccountContext()
   const addItem = (items: string[], pasting?: boolean) => {
     // do nothing with an empty entry
 
@@ -108,7 +111,15 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   const badges = currentItems.map((it, idx) => {
     return (
       <Box key={`${idx}-${it}`}>
-        <BadgeChip onRemove={() => onRemoveItem(idx)} allowRemove={!isReadOnly}>
+        <BadgeChip
+          onRemove={() => onRemoveItem(idx)}
+          allowRemove={
+            !isGroupParticipant(it) &&
+            it?.account_address === currentAccount?.address
+              ? false
+              : !isReadOnly
+          }
+        >
           {renderItem(it as ParticipantInfo)}
         </BadgeChip>
       </Box>
@@ -174,13 +185,14 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       flex={1}
       flexWrap={'wrap'}
       spacing={0}
+      width="100%"
     >
       {badges}
       <Box flex={1} pos="relative">
         <Input
           size={size}
           display={'inline-block'}
-          visibility={isReadOnly ? 'hidden' : 'visible'}
+          visibility={isReadOnly || addDisabled ? 'hidden' : 'visible'}
           onPaste={onPaste}
           variant={'unstyled'}
           value={current}

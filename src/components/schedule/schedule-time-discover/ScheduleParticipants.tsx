@@ -15,11 +15,7 @@ import { IoMdClose } from 'react-icons/io'
 import { AccountContext } from '@/providers/AccountProvider'
 import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
+import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
@@ -55,7 +51,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
   const allAvailabilities = useMemo(
     () =>
       deduplicateArray(Object.values(groupAvailability).flat()).map(val =>
-        val.toLowerCase()
+        val?.toLowerCase()
       ),
     [groupAvailability]
   )
@@ -173,7 +169,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
               alignItems={'center'}
               h={'72px'}
             >
-              <HStack>
+              <HStack alignItems={'center'}>
                 <Box
                   onClick={() =>
                     handleAvailabilityChange(
@@ -207,7 +203,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                   <Heading
                     size="sm"
                     lineHeight={'normal'}
-                    maxW="300px"
+                    maxW="180px"
                     whiteSpace="nowrap"
                     overflow="hidden"
                     textOverflow="ellipsis"

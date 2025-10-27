@@ -17,15 +17,36 @@ import { ReactNode, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
 import { useMeetingDialog } from '@/components/schedule/meeting.dialog.hook'
+import { ActionsContext } from '@/providers/schedule/ActionsContext'
 import { Account } from '@/types/Account'
 import { Intents } from '@/types/Dashboard'
-import { ExtendedDBSlot, MeetingChangeType } from '@/types/Meeting'
+import {
+  ExtendedDBSlot,
+  MeetingChangeType,
+  MeetingDecrypted,
+} from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { getMeeting, getMeetingsForDashboard } from '@/utils/api_helper'
-import { decodeMeeting } from '@/utils/calendar_manager'
+import { decodeMeeting, deleteMeeting } from '@/utils/calendar_manager'
+import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
+import { handleApiError } from '@/utils/error_helper'
+import {
+  GateConditionNotValidError,
+  GoogleServiceUnavailable,
+  Huddle01ServiceUnavailable,
+  InvalidURL,
+  MeetingChangeConflictError,
+  MeetingCreationError,
+  MeetingWithYourselfError,
+  MultipleSchedulersError,
+  TimeNotAvailableError,
+  UrlCreationError,
+  ZoomServiceUnavailable,
+} from '@/utils/errors'
+import { getSignature } from '@/utils/storage'
 
 import MeetingCard from '../meeting/MeetingCard'
 import { useCancelDialog } from '../schedule/cancel.dialog.hook'
-
 const Meetings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
@@ -69,7 +90,147 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   useEffect(() => {
     void resetState()
   }, [currentAccount?.address])
-
+  const handleDelete = async (
+    actor?: ParticipantInfo,
+    decryptedMeeting?: MeetingDecrypted
+  ) => {
+    if (!decryptedMeeting) return
+    try {
+      const meeting = await deleteMeeting(
+        true,
+        currentAccount?.address || '',
+        NO_MEETING_TYPE,
+        decryptedMeeting?.start,
+        decryptedMeeting?.end,
+        decryptedMeeting,
+        getSignature(currentAccount?.address || '') || '',
+        actor
+      )
+      toast({
+        title: 'Meeting Deleted',
+        description: 'The meeting was deleted successfully',
+        status: 'success',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return meeting
+    } catch (e: unknown) {
+      if (e instanceof MeetingWithYourselfError) {
+        toast({
+          title: "Ops! Can't do that",
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof TimeNotAvailableError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GateConditionNotValidError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingCreationError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description:
+            'A meeting requires at least two participants. Please add more participants to schedule the meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description: 'A meeting must have only one scheduler',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingChangeConflictError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description:
+            'Someone else has updated this meeting. Please reload and try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof InvalidURL) {
+        toast({
+          title: 'Failed to delete meeting',
+          description: 'Please provide a valid url/link for your meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof Huddle01ServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof ZoomServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GoogleServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Google seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof UrlCreationError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description:
+            'There was an issue generating a meeting url for your meeting. try using a different location',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else {
+        handleApiError('Error deleting meeting', e)
+      }
+    }
+  }
+  const context = {
+    handleDelete,
+    handleSchedule: async () => {},
+    handleCancel: () => {},
+  }
   let content: ReactNode
 
   if (firstFetch) {
@@ -99,8 +260,13 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
             key={meeting.id}
             meeting={meeting}
             timezone={timezone}
-            onCancel={removed =>
-              afterClose(MeetingChangeType.DELETE, undefined, removed)
+            onCancel={(removed: string[], skipToast?: boolean) =>
+              afterClose(
+                MeetingChangeType.DELETE,
+                undefined,
+                removed,
+                skipToast
+              )
             }
           />
         ))}
@@ -124,7 +290,8 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const afterClose = (
     changeType: MeetingChangeType,
     meeting?: ExtendedDBSlot,
-    removedSlots?: string[]
+    removedSlots?: string[],
+    skipToast?: boolean
   ) => {
     // not using router API to avoid re-rendering component
     history.pushState(null, '', window.location.pathname)
@@ -145,6 +312,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
             (m1.start as Date).getTime() - (m2.start as Date).getTime()
         )
       )
+      if (skipToast) return
 
       let title, description
       switch (changeType) {
@@ -202,38 +370,40 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   }, [slotId])
 
   return (
-    <Flex direction={'column'} maxWidth="100%">
-      <HStack justifyContent="center" alignItems="flex-start" mb={4}>
-        <Heading flex={1} fontSize="2xl">
-          My Meetings
-          <Text fontSize="sm" fontWeight={100} mt={1}>
-            Timezone: {currentAccount.preferences.timezone}
-          </Text>
-        </Heading>
+    <ActionsContext.Provider value={context}>
+      <Flex direction={'column'} maxWidth="100%">
+        <HStack justifyContent="center" alignItems="flex-start" mb={4}>
+          <Heading flex={1} fontSize="2xl">
+            My Meetings
+            <Text fontSize="sm" fontWeight={100} mt={1}>
+              Timezone: {timezone}
+            </Text>
+          </Heading>
+          <Button
+            onClick={() => push(`/dashboard/schedule`)}
+            colorScheme="primary"
+            display={{ base: 'none', md: 'flex' }}
+            mt={{ base: 4, md: 0 }}
+            mb={4}
+            leftIcon={<FaPlus />}
+          >
+            New meeting
+          </Button>
+        </HStack>
         <Button
           onClick={() => push(`/dashboard/schedule`)}
           colorScheme="primary"
-          display={{ base: 'none', md: 'flex' }}
-          mt={{ base: 4, md: 0 }}
-          mb={4}
+          display={{ base: 'flex', md: 'none' }}
+          mb={8}
           leftIcon={<FaPlus />}
         >
           New meeting
         </Button>
-      </HStack>
-      <Button
-        onClick={() => push(`/dashboard/schedule`)}
-        colorScheme="primary"
-        display={{ base: 'flex', md: 'none' }}
-        mb={8}
-        leftIcon={<FaPlus />}
-      >
-        New meeting
-      </Button>
-      {content}
-      <MeetingDialog />
-      <CancelDialog />
-    </Flex>
+        {content}
+        <MeetingDialog />
+        <CancelDialog />
+      </Flex>
+    </ActionsContext.Provider>
   )
 }
 

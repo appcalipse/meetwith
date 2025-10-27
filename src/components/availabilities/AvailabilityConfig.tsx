@@ -9,7 +9,8 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useRouter } from 'next/router'
+import { useEffect, useRef, useState } from 'react'
 
 import CustomLoading from '@/components/CustomLoading'
 import {
@@ -28,9 +29,12 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const router = useRouter()
+  const { editBlock } = router.query
   const [selectedMeetingTypeIds, setSelectedMeetingTypeIds] = useState<
     string[]
   >([])
+  const processedEditBlock = useRef<string | null>(null)
 
   const {
     blocks: availabilityBlocks,
@@ -99,6 +103,22 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     onMeetingTypesSave: handleMeetingTypesSave,
     existingBlocks: availabilityBlocks,
   })
+
+  useEffect(() => {
+    if (
+      !editBlock ||
+      !availabilityBlocks?.length ||
+      processedEditBlock.current === editBlock
+    )
+      return
+
+    const blockToEdit = availabilityBlocks.find(block => block.id === editBlock)
+    if (blockToEdit) {
+      processedEditBlock.current = editBlock as string
+      handleEditBlock(blockToEdit)
+      router.replace('/dashboard/availability', undefined, { shallow: true })
+    }
+  }, [editBlock, availabilityBlocks, handleEditBlock, router])
 
   if (isLoading) {
     return <CustomLoading text="Loading your availability blocks..." />

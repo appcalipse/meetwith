@@ -1,5 +1,5 @@
 import { MeetingType } from '@/types/Account'
-import { SupportedChain, supportedChains } from '@/types/chains'
+import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
 import { MeetingProvider } from '@/types/Meeting'
 import { isProduction } from '@/utils/constants'
 
@@ -100,7 +100,7 @@ export const PaymentChannelOptions = (address: string) => [
 const devChains = [
   // SupportedChain.SEPOLIA,
   // SupportedChain.ARBITRUM_SEPOLIA,
-  // SupportedChain.ARBITRUM,
+  SupportedChain.ARBITRUM,
   SupportedChain.CELO,
   // SupportedChain.CELO_ALFAJORES,
 ]
@@ -172,7 +172,8 @@ export const getDefaultValues = (): Partial<MeetingType> => ({
     payment_channel: PaymentChannel.ACCOUNT_ADDRESS,
     payment_address: '',
     meeting_type_id: '',
-    default_chain_id: supportedChains[0].id,
+    default_chain_id: networkOptions[0].id,
+    default_token: AcceptedToken.USDC,
     created_at: new Date(),
     updated_at: new Date(),
     id: '',
