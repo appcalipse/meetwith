@@ -56,6 +56,7 @@ import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
 import WithdrawFundsModal from '../wallet/WithdrawFundsModal'
 import { Avatar } from './components/Avatar'
 import MagicLinkModal from './components/MagicLinkModal'
+import NetworkSelector from './components/NetworkSelector'
 import WalletActionButton from './components/WalletActionButton'
 import Pagination from './Pagination'
 import ReceiveFundsModal from './ReceiveFundsModal'
@@ -1082,132 +1083,16 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       ) : selectedNetwork ? (
                         <HStack spacing={2}>
                           <Box position="relative" ref={networkDropdownRef}>
-                            <Box
-                              bg="bg-surface-tertiary"
-                              borderRadius={{ base: '8px', md: '12px' }}
-                              px={{ base: 3, md: 4 }}
-                              py={2}
-                              display="flex"
-                              alignItems="center"
-                              gap={2}
-                              cursor="pointer"
-                              onClick={() =>
-                                !isNetworkLoading &&
-                                setIsNetworkDropdownOpen(!isNetworkDropdownOpen)
+                            <NetworkSelector
+                              networks={networks}
+                              selectedNetwork={selectedNetwork}
+                              isNetworkDropdownOpen={isNetworkDropdownOpen}
+                              isNetworkLoading={isNetworkLoading}
+                              setIsNetworkDropdownOpen={
+                                setIsNetworkDropdownOpen
                               }
-                              _hover={{ opacity: 0.8 }}
-                              border="1px solid"
-                              borderColor="border-subtle"
-                            >
-                              <Image
-                                src={
-                                  networks.find(
-                                    n =>
-                                      n.chainId === getChainId(selectedNetwork)
-                                  )?.icon
-                                }
-                                alt={
-                                  networks.find(
-                                    n =>
-                                      n.chainId === getChainId(selectedNetwork)
-                                  )?.name || selectedNetwork
-                                }
-                                borderRadius="full"
-                                w={{ base: '16px', md: '20px' }}
-                                h={{ base: '16px', md: '20px' }}
-                              />
-                              <Text
-                                color="text-primary"
-                                fontSize={{ base: '14px', md: '16px' }}
-                                fontWeight="700"
-                                pr={{ base: 2, md: 4 }}
-                              >
-                                {networks.find(
-                                  n => n.chainId === getChainId(selectedNetwork)
-                                )?.name || selectedNetwork}
-                              </Text>
-                              <Icon
-                                as={IoChevronDown}
-                                color="text-primary"
-                                fontSize={{ base: '16px', md: '16px' }}
-                                transform={
-                                  isNetworkDropdownOpen
-                                    ? 'rotate(180deg)'
-                                    : 'rotate(0deg)'
-                                }
-                                transition="transform 0.2s"
-                              />
-                            </Box>
-
-                            {/* Network Dropdown */}
-                            {isNetworkDropdownOpen && (
-                              <Box
-                                position="absolute"
-                                top="100%"
-                                left={0}
-                                width="max-content"
-                                minWidth="250px"
-                                mt={2}
-                                bg="bg-surface-secondary"
-                                borderRadius="12px"
-                                border="1px solid"
-                                borderColor="border-wallet-subtle"
-                                shadow="none"
-                                zIndex={1000}
-                                overflow="hidden"
-                                boxShadow="none"
-                              >
-                                <VStack spacing={0} align="stretch">
-                                  {networks.map(network => (
-                                    <Box
-                                      key={network.name}
-                                      px={4}
-                                      py={3}
-                                      cursor="pointer"
-                                      _hover={{ bg: 'dropdown-hover' }}
-                                      onClick={() => {
-                                        const supportedChain =
-                                          supportedChains.find(
-                                            c => c.name === network.name
-                                          )
-                                        if (supportedChain) {
-                                          setSelectedNetwork(
-                                            supportedChain.chain
-                                          )
-                                          setIsNetworkDropdownOpen(false)
-                                        }
-                                      }}
-                                    >
-                                      <HStack spacing={3}>
-                                        <Box
-                                          w="24px"
-                                          h="24px"
-                                          borderRadius="full"
-                                          bg="bg-surface-tertiary-2"
-                                          display="flex"
-                                          alignItems="center"
-                                          justifyContent="center"
-                                          overflow="hidden"
-                                        >
-                                          <Image
-                                            src={network.icon}
-                                            alt={network.name}
-                                            w="16px"
-                                            h="16px"
-                                          />
-                                        </Box>
-                                        <Text
-                                          color="text-primary"
-                                          fontSize="16px"
-                                        >
-                                          {network.name}
-                                        </Text>
-                                      </HStack>
-                                    </Box>
-                                  ))}
-                                </VStack>
-                              </Box>
-                            )}
+                              setSelectedNetwork={setSelectedNetwork}
+                            />
                           </Box>
 
                           <Tooltip
