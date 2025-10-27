@@ -71,7 +71,10 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
-import { isAccountSchedulerOrOwner } from '@/utils/generic_utils'
+import {
+  canAccountAccessPermission,
+  isAccountSchedulerOrOwner,
+} from '@/utils/generic_utils'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -273,10 +276,12 @@ const ScheduleMain: FC<IInitialProps> = ({
             MeetingPermissions.EDIT_MEETING
           ) || isSchedulerOrOwner
         setCanEditMeetingDetails(canEditMeetingDetails)
-        const canViewParticipants =
-          decryptedMeeting.permissions.includes(
-            MeetingPermissions.SEE_GUEST_LIST
-          ) || isSchedulerOrOwner
+        const canViewParticipants = canAccountAccessPermission(
+          decryptedMeeting?.permissions,
+          decryptedMeeting?.participants || [],
+          currentAccount?.address,
+          MeetingPermissions.SEE_GUEST_LIST
+        )
         if (!canViewParticipants) {
           const schedulerParticipant = participants.find(
             p => p.type === ParticipantType.Scheduler
