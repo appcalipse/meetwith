@@ -31,6 +31,7 @@ export interface Account {
   is_invited: boolean
   subscriptions: Subscription[]
   discord_account?: DiscordAccount
+  payment_preferences: PaymentPreferences | null
   signedUp?: boolean
   isCalendarConnected?: boolean
 }
@@ -92,6 +93,7 @@ export interface MeetingTypePlan {
   default_token: AcceptedToken
   payment_channel: PaymentChannel
   payment_address: string
+  payment_methods: PaymentType[]
   created_at: Date
   updated_at: Date
 }

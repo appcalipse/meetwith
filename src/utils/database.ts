@@ -709,16 +709,21 @@ const getAccountFromDB = async (
   if (data) {
     const account = Array.isArray(data) ? data[0] : data
 
-    const [subscriptions, preferences, discord_account] = await Promise.all([
-      getSubscriptionFromDBForAccount(account.address),
-      getAccountPreferences(account.address.toLowerCase()),
-      includePrivateInformation
-        ? getDiscordAccount(account.address)
-        : undefined,
-    ])
+    const [subscriptions, preferences, discord_account, payment_preferences] =
+      await Promise.all([
+        getSubscriptionFromDBForAccount(account.address),
+        getAccountPreferences(account.address.toLowerCase()),
+        includePrivateInformation
+          ? getDiscordAccount(account.address)
+          : undefined,
+        includePrivateInformation
+          ? getPaymentPreferences(account.address)
+          : undefined,
+      ])
     account.preferences = preferences
     account.subscriptions = subscriptions
     if (discord_account) account.discord_account = discord_account
+    if (payment_preferences) account.payment_preferences = payment_preferences
 
     return account
   } else if (error) {
@@ -4539,7 +4544,7 @@ const createMeetingType = async (
   meetingType: CreateMeetingTypeRequest
 ) => {
   await checkSlugExists(account_address, meetingType.slug)
-  const payload: BaseMeetingType = {
+  const payload: TablesInsert<'meeting_type'> = {
     account_owner_address: account_address,
     type: meetingType.type,
     min_notice_minutes: meetingType.min_notice_minutes,
@@ -4600,6 +4605,9 @@ const createMeetingType = async (
           payment_address: meetingType?.plan.payment_address,
           default_chain_id: meetingType?.plan.crypto_network,
           default_token: meetingType?.plan.default_token,
+          payment_methods: meetingType?.plan?.payment_methods || [
+            PaymentType.CRYPTO,
+          ],
         },
       ])
     if (planError) {
@@ -4607,6 +4615,36 @@ const createMeetingType = async (
     }
   }
   return data?.[0] as MeetingType
+}
+const addFiatPaymentMethodToAllMeetingTypes = async (
+  account_address: string
+) => {
+  const { data, error } = await db.supabase.rpc<Tables<'meeting_type_plan'>>(
+    'get_meeting_type_plans_by_account',
+    {
+      account_address,
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  await Promise.all(
+    data.map(async plan => {
+      if (!plan.payment_methods.includes(PaymentType.FIAT)) {
+        const updatedPaymentMethods = [PaymentType.CRYPTO, PaymentType.FIAT]
+        const { error: updateError } = await db.supabase
+          .from<Tables<'meeting_type_plan'>>('meeting_type_plan')
+          .update({
+            payment_methods: updatedPaymentMethods,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('meeting_type_id', plan.meeting_type_id)
+        if (updateError) {
+          return updateError
+        }
+      }
+    })
+  )
 }
 const deleteMeetingType = async (
   account_address: string,
@@ -4743,7 +4781,7 @@ const updateMeetingType = async (
   }
   if (meetingType?.plan) {
     const { error: insertPlanError } = await db.supabase
-      .from('meeting_type_plan')
+      .from<Tables<'meeting_type_plan'>>('meeting_type_plan')
       .update({
         type: meetingType?.plan.type,
         price_per_slot: meetingType?.plan.price_per_slot,
@@ -4752,6 +4790,7 @@ const updateMeetingType = async (
         payment_address: meetingType?.plan.payment_address,
         default_chain_id: meetingType?.plan.crypto_network,
         default_token: meetingType?.plan.default_token,
+        payment_methods: meetingType?.plan?.payment_methods,
         updated_at: new Date().toISOString(),
       })
       .eq('meeting_type_id', meeting_type_id)
@@ -5470,6 +5509,7 @@ const getTransactionBytxHashAndMeetingType = async (
     )
     .eq('transaction_hash', tx.toLowerCase())
     .eq('meeting_type_id', meeting_type_id)
+    .eq('status', PaymentStatus.COMPLETED)
     .maybeSingle()
 
   if (error) {
@@ -7320,6 +7360,7 @@ const getOrCreatePaymentAccount = async (
     if (insertError) {
       throw new Error('Could not create payment account')
     }
+    await addFiatPaymentMethodToAllMeetingTypes(account_address)
     return data
   } else {
     return payment_account[0]
@@ -7347,6 +7388,7 @@ const updatePaymentAccount = async (
     ? updatedPaymentAccount[0]
     : updatedPaymentAccount
 }
+
 export {
   acceptContactInvite,
   addContactInvite,
@@ -7389,6 +7431,7 @@ export {
   getAccountsNotificationSubscriptionEmails,
   getAccountsWithTgConnected,
   getActivePaymentAccount,
+  getActivePaymentAccountDB,
   getAppToken,
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,

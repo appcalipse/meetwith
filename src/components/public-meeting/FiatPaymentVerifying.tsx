@@ -122,7 +122,7 @@ const FiatPaymentVerifying = () => {
               status === PaymentStatus.COMPLETED &&
               transactionData?.transaction_hash
             ) {
-              handleNavigateToBook(transactionData.transaction_hash)
+              handleNavigateToBook(transactionData?.transaction_hash)
               showSuccessToast(
                 'Payment verified',
                 'Your payment has been verified successfully.'
@@ -156,6 +156,10 @@ const FiatPaymentVerifying = () => {
   useEffect(() => {
     void handleConfirmation()
   }, [query.transaction_id])
+  useEffect(() => {
+    if (transactionData?.transaction_hash)
+      handleNavigateToBook(transactionData?.transaction_hash)
+  }, [transactionData?.transaction_hash])
   const handleSchedule = async () => {
     setIsScheduling(true)
     try {

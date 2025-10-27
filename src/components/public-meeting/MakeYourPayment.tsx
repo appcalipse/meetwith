@@ -35,7 +35,7 @@ import { appUrl } from '@/utils/constants'
 import CheckoutWidgetModal from './CheckoutWidgetModal'
 
 const MakeYourPayment = () => {
-  const { setCurrentStep, selectedType, paymentType, account } = useContext(
+  const { setCurrentStep, selectedType, account } = useContext(
     PublicScheduleContext
   )
   const toast = useToast()
@@ -53,6 +53,7 @@ const MakeYourPayment = () => {
     meetingUrl,
     pickedTime,
     guestEmail,
+    timezone,
   } = useContext(ScheduleStateContext)
   const currentAccount = useAccountContext()
   const { needsReconnection, attemptReconnection } = useSmartReconnect()
@@ -81,6 +82,7 @@ const MakeYourPayment = () => {
       meeting_url: meetingUrl,
       user_email: userEmail,
       type: PaymentRedirectType.CHECKOUT,
+      timezone: timezone.value || '',
     })
     const url = `${baseUrl}?${params.toString()}`
     const amount =
@@ -124,8 +126,15 @@ const MakeYourPayment = () => {
     onOpen()
   }
   const paymentMethods = useMemo(() => {
+    const filteredMethod = selectedType?.plan?.payment_methods?.filter(method =>
+      account.payment_methods?.includes(method)
+    )
+    const availableMethods =
+      (filteredMethod?.length || 0) > 0
+        ? filteredMethod
+        : account.payment_methods
     const methods = []
-    if (account.payment_methods?.includes(PaymentType.CRYPTO)) {
+    if (availableMethods?.includes(PaymentType.CRYPTO)) {
       methods.push({
         id: 'pay-with-crypto',
         name: 'Pay with Crypto',
@@ -136,7 +145,7 @@ const MakeYourPayment = () => {
         loading: isOpen,
       })
     }
-    if (account.payment_methods?.includes(PaymentType.FIAT)) {
+    if (availableMethods?.includes(PaymentType.FIAT)) {
       methods.push({
         id: 'pay-with-card',
         name: 'Pay with Card',

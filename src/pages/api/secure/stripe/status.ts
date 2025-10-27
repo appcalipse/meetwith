@@ -1,6 +1,5 @@
 import { PaymentProvider } from '@meta/PaymentAccount'
 import Sentry from '@sentry/nextjs'
-import { StripeService } from '@utils/services/stripe.service'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
@@ -10,20 +9,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     try {
       const account_address = req.session.account!.address
-      const stripe = new StripeService()
       const provider = await getActivePaymentAccountDB(
         account_address,
         PaymentProvider.STRIPE
       )
-
-      const accountId = provider?.provider_account_id
-      if (!accountId) {
-        return res.status(404).send('Stripe account not found.')
-      }
-      const loginLink = await stripe.accounts.createLoginLink(accountId)
-      return res.status(200).json({
-        url: loginLink.url,
-      })
+      return res.status(200).json(provider?.status)
     } catch (e) {
       console.error(e)
       Sentry.captureException(e)

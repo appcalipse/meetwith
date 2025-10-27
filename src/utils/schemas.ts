@@ -1,5 +1,6 @@
 import {
   PaymentChannel,
+  PaymentType,
   PlanType,
   SessionType,
 } from '@utils/constants/meeting-types'
@@ -48,6 +49,13 @@ export const baseMeetingSchema = z.object({
       type: z.nativeEnum(PlanType, {
         errorMap: () => ({ message: 'Invalid plan type' }),
       }), // PlanType enum
+      payment_methods: z
+        .array(
+          z.nativeEnum(PaymentType, {
+            errorMap: () => ({ message: 'Invalid payment method' }),
+          })
+        )
+        .optional(),
       price_per_slot: z
         .number({ message: 'Price per slot is required.' })
         .min(0.05, 'Price per slot must be greater than 0.05'), // Positive price
