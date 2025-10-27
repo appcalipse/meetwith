@@ -71,6 +71,10 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
+import {
+  canAccountAccessPermission,
+  isAccountSchedulerOrOwner,
+} from '@/utils/generic_utils'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -237,7 +241,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         .map(val => val.account_address)
         .filter(value => Boolean(value)) as string[]
       setGroupAvailability({
-        no_group: allAddresses,
+        [NO_GROUP_KEY]: allAddresses,
       })
       const start = utcToZonedTime(meeting.start, timezone)
       const end = utcToZonedTime(meeting.end, timezone)
@@ -255,13 +259,9 @@ const ScheduleMain: FC<IInitialProps> = ({
 
       setSelectedPermissions(decryptedMeeting.permissions || undefined)
 
-      const isSchedulerOrOwner = [
-        ParticipantType.Scheduler,
-        ParticipantType.Owner,
-      ].includes(
-        decryptedMeeting?.participants?.find(
-          p => p.account_address === currentAccount?.address
-        )?.type || ParticipantType?.Invitee
+      const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+        decryptedMeeting?.participants,
+        currentAccount?.address
       )
       if (isSchedulerOrOwner && participants.length === 2) {
         setCanCancel(true)
@@ -276,26 +276,41 @@ const ScheduleMain: FC<IInitialProps> = ({
             MeetingPermissions.EDIT_MEETING
           ) || isSchedulerOrOwner
         setCanEditMeetingDetails(canEditMeetingDetails)
-        const canViewParticipants =
-          decryptedMeeting.permissions.includes(
-            MeetingPermissions.SEE_GUEST_LIST
-          ) || isSchedulerOrOwner
+        const canViewParticipants = canAccountAccessPermission(
+          decryptedMeeting?.permissions,
+          decryptedMeeting?.participants || [],
+          currentAccount?.address,
+          MeetingPermissions.SEE_GUEST_LIST
+        )
         if (!canViewParticipants) {
-          const displayName = getAllParticipantsDisplayName(
-            decryptedMeeting?.participants,
-            currentAccount?.address,
-            false
+          const schedulerParticipant = participants.find(
+            p => p.type === ParticipantType.Scheduler
           )
-          setParticipants([
-            {
-              name: displayName,
+          const actorParticipant = participants.find(
+            p => p.account_address === currentAccount?.address
+          )
+          const othersCount = participants.length - 2 // exclude scheduler and self
+          const allParticipants = []
+          if (actorParticipant) {
+            allParticipants.push(actorParticipant)
+          }
+          if (schedulerParticipant) {
+            allParticipants.push(schedulerParticipant)
+          }
+          if (othersCount > 0) {
+            allParticipants.push({
+              name: `+${othersCount} other participant${
+                othersCount > 1 ? 's' : ''
+              }`,
               meeting_id: '',
               status: ParticipationStatus.Accepted,
               type: ParticipantType.Invitee,
               slot_id: '',
               isHidden: true,
-            },
-          ])
+            })
+          }
+
+          setParticipants(allParticipants)
         }
       }
       setMeetingUrl(decryptedMeeting.meeting_url)
