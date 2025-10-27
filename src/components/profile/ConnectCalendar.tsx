@@ -154,13 +154,23 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
 
   return (
     <Box mb={8}>
-      <VStack alignItems="flex-start" mb={8}>
+      <VStack alignItems="flex-start" mb={6}>
         <Heading fontSize="2xl">Connected Calendars</Heading>
         <Text>
           When you connect a calendar we will use its events to block your
           availabilities and also to add your new events to it.
         </Text>
       </VStack>
+
+      <Button
+        onClick={onOpen}
+        colorScheme="primary"
+        mb={7}
+        alignSelf="flex-start"
+        leftIcon={<FaPlus />}
+      >
+        Add calendar connection
+      </Button>
 
       <ConnectedCalendars
         activeCalendarConnections={activeCalendarConnections}
@@ -173,17 +183,6 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         onClose={onClose}
         refetch={loadCalendars}
       />
-
-      <Button
-        onClick={onOpen}
-        colorScheme="primary"
-        mb={4}
-        mt={4}
-        alignSelf="flex-start"
-        leftIcon={<FaPlus />}
-      >
-        Add calendar connection
-      </Button>
     </Box>
   )
 }

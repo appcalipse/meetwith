@@ -673,15 +673,29 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 justifyContent="flex-end"
                 width={{ base: '20px', md: '70px' }}
               >
-                <Icon
-                  as={TbSettings2}
+                <Tooltip
+                  label="Go to wallet settings"
+                  placement="top"
+                  hasArrow
+                  bg="bg-surface-tertiary"
                   color="text-primary"
-                  cursor="pointer"
-                  fontSize={{ base: '20px', md: '24px' }}
-                  onClick={handleSettingsClick}
-                  _hover={{ color: 'primary.400' }}
-                  transition="color 0.2s"
-                />
+                  borderRadius="8px"
+                  px={3}
+                  py={2}
+                  fontSize="sm"
+                >
+                  <Box display="inline-flex">
+                    <Icon
+                      as={TbSettings2}
+                      color="text-primary"
+                      cursor="pointer"
+                      fontSize={{ base: '20px', md: '24px' }}
+                      onClick={handleSettingsClick}
+                      _hover={{ opacity: 0.8 }}
+                      transition="color 0.2s"
+                    />
+                  </Box>
+                </Tooltip>
               </Box>
             </Flex>
           </VStack>

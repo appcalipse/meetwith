@@ -2,12 +2,12 @@ import {
   Box,
   Button,
   HStack,
-  Link,
   Spinner,
   Switch,
   Text,
   VStack,
 } from '@chakra-ui/react'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { Account } from '@/types/Account'
@@ -116,8 +116,16 @@ const DiscordNotificationConfig: React.FC<Props> = ({
           {!loading && !discordConnected && (
             <Text>
               (Please first{' '}
-              <Link href="/dashboard/details#connected-accounts">
-                connect your Discord account
+              <Link href="/dashboard/details#connected-accounts" passHref>
+                <Text
+                  as="span"
+                  color="primary.200"
+                  fontWeight="600"
+                  textDecoration="underline"
+                  cursor="pointer"
+                >
+                  connect your Discord account
+                </Text>
               </Link>{' '}
               to enable it)
             </Text>

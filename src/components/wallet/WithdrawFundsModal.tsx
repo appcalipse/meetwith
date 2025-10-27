@@ -25,19 +25,20 @@ import {
 } from '@chakra-ui/react'
 import { OnrampWebSDK } from '@onramp.money/onramp-web-sdk'
 import { useQuery } from '@tanstack/react-query'
-import React, { useState } from 'react'
+import React, { useContext, useMemo, useState } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import {
   AcceptedToken,
   getSupportedChainFromId,
   getTokenIcon,
 } from '@/types/chains'
 import { Address } from '@/types/Transactions'
+import { getCoinConfig } from '@/utils/api_helper'
 import { formatUnits } from '@/utils/generic_utils'
 import { getOnRampMoneyNetworkAndCoinCode } from '@/utils/services/onramp.money'
-import { useToastHelpers } from '@/utils/toasts'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 import { NETWORKS } from '@/utils/walletConfig'
 
@@ -50,54 +51,46 @@ type Props = {
 const WithdrawFundsModal = (props: Props) => {
   const currentAccount = useAccountContext()
   const { needsReconnection, attemptReconnection } = useSmartReconnect()
-  const { showErrorToast } = useToastHelpers()
+  const { openConnection } = useContext(OnboardingModalContext)
+
   const [processLoading, setProcessLoading] = useState(false)
-  const activeChainId =
-    NETWORKS.find(network => network.name === props.selectedNetwork)?.chainId ||
-    0
-  const selectedNetworkInfo = getSupportedChainFromId(activeChainId)
+  const { activeChainId, selectedNetworkInfo, acceptedTokens } = useMemo(() => {
+    const activeChainId =
+      NETWORKS.find(
+        network =>
+          network.name.toLowerCase() === props.selectedNetwork.toLowerCase()
+      )?.chainId || 0
+    const selectedNetworkInfo = getSupportedChainFromId(activeChainId)
+    const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(
+      token => ![AcceptedToken.ETHER].includes(token.token)
+    )
+    return { activeChainId, selectedNetworkInfo, acceptedTokens }
+  }, [props.selectedNetwork])
   const [token, setToken] = React.useState<AcceptedToken>(AcceptedToken.USDC)
   const [amount, setAmount] = React.useState<string>('')
   const toast = useToast({
     position: 'top',
   })
-  const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(token =>
-    [AcceptedToken.USDC, AcceptedToken.CEUR, AcceptedToken.CUSD].includes(
-      token.token
-    )
-  )
+
   const selectedAssetInfo = acceptedTokens?.find(
     acceptedToken => acceptedToken.token === token
   )
   const { data, isLoading } = useQuery({
     queryKey: [
-      'token-balance',
+      'tokenBalance',
       currentAccount?.address,
       selectedAssetInfo?.contractAddress,
-      activeChainId,
     ],
     queryFn: async () => {
-      if (
-        !currentAccount?.address ||
-        !selectedAssetInfo?.contractAddress ||
-        activeChainId === 0 ||
-        !selectedNetworkInfo?.chain
-      )
-        return {
-          balance: 0n,
-          tokenInfo: null,
-        }
-
-      // Get token balance from blockchain
       const [balance, tokenInfo] = await Promise.all([
         getTokenBalance(
-          currentAccount.address,
-          selectedAssetInfo.contractAddress as Address,
-          selectedNetworkInfo?.chain
+          currentAccount!.address,
+          selectedAssetInfo!.contractAddress as Address,
+          selectedNetworkInfo!.chain
         ),
         getTokenInfo(
-          selectedAssetInfo.contractAddress as Address,
-          selectedNetworkInfo?.chain
+          selectedAssetInfo!.contractAddress as Address,
+          selectedNetworkInfo!.chain
         ),
       ])
       return {
@@ -105,12 +98,34 @@ const WithdrawFundsModal = (props: Props) => {
         tokenInfo,
       }
     },
-    enabled:
-      !!currentAccount?.address &&
-      !!selectedAssetInfo?.contractAddress &&
-      activeChainId !== 0,
-    staleTime: 30000,
-    cacheTime: 60000,
+    enabled: Boolean(
+      currentAccount?.address &&
+        selectedAssetInfo?.contractAddress &&
+        activeChainId !== 0 &&
+        selectedNetworkInfo?.chain
+    ),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  })
+  const { data: tokens, isLoading: isTokenLoading } = useQuery({
+    queryKey: ['allowedTokens', props.selectedNetwork, activeChainId],
+    queryFn: async () => {
+      const coinConfig = await getCoinConfig()
+      const [networkCode] =
+        Object.entries(coinConfig.networkConfig).find(
+          ([_, n]) => n.networkId === activeChainId
+        ) || []
+      const allowedAssets = acceptedTokens?.filter(token => {
+        const config = coinConfig?.allCoinConfig?.[token.token.toLowerCase()]
+        return (
+          config &&
+          networkCode !== undefined &&
+          config.networks.includes(Number(networkCode))
+        )
+      })
+
+      return allowedAssets || []
+    },
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   })
@@ -119,10 +134,14 @@ const WithdrawFundsModal = (props: Props) => {
     if (needsReconnection) {
       const reconnectedWallet = await attemptReconnection()
       if (!reconnectedWallet) {
-        showErrorToast(
-          'Wallet Reconnection Failed',
-          'Please reconnect your wallet and try again'
-        )
+        openConnection(undefined, false)
+        toast({
+          title: 'Wallet Not Connected',
+          description: 'Please connect your wallet to proceed.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
         return
       }
     }
@@ -144,6 +163,7 @@ const WithdrawFundsModal = (props: Props) => {
       activeChainId,
       token
     )
+
     if (!offrampInfo.coinId) {
       toast({
         title: 'Error',
@@ -218,6 +238,8 @@ const WithdrawFundsModal = (props: Props) => {
                   textAlign="left"
                   variant="outline"
                   borderColor="neutral.400"
+                  isLoading={isTokenLoading}
+                  loadingText="Loading assets"
                 >
                   {selectedAssetInfo ? (
                     <HStack>
@@ -235,7 +257,7 @@ const WithdrawFundsModal = (props: Props) => {
                   )}
                 </MenuButton>
                 <MenuList w="100%">
-                  {acceptedTokens?.map(token => (
+                  {tokens?.map(token => (
                     <MenuItem
                       key={token.token}
                       onClick={async () => setToken(token.token)}
@@ -313,6 +335,18 @@ const WithdrawFundsModal = (props: Props) => {
               isLoading={processLoading}
               onClick={handleShowWithdrawWidget}
               colorScheme="primary"
+              isDisabled={
+                isLoading ||
+                isTokenLoading ||
+                processLoading ||
+                !amount ||
+                Number(amount) <= 0 ||
+                amount >
+                  formatUnits(
+                    data?.balance || 0n,
+                    data?.tokenInfo?.decimals || 6
+                  )
+              }
             >
               Continue to withdraw
             </Button>
