@@ -189,7 +189,9 @@ export const formatCurrency = (
 }
 
 export const deduplicateArray = <T = string>(arr: T[]): T[] => {
-  return Array.from(new Set(arr))
+  return Array.from(new Set(arr)).filter(
+    (item): item is T => item !== null && item !== undefined
+  )
 }
 
 export const formatCountdown = (seconds: number): string => {

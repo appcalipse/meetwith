@@ -45,7 +45,6 @@ import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
-import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -61,7 +60,7 @@ import {
 } from '@/utils/user_manager'
 
 const ScheduleBase = () => {
-  const { query, push } = useRouter()
+  const { query } = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const [isTitleValid, setIsTitleValid] = useState(true)
   const toast = useToast()
@@ -117,6 +116,7 @@ const ScheduleBase = () => {
   const [hasPickedNewTime, setHasPickedNewTime] = useState(false)
   const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM)
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
+
   const handleClose = () => {
     handlePageSwitch(Page.SCHEDULE_TIME)
   }
