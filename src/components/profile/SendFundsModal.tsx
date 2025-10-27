@@ -69,9 +69,11 @@ import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { CurrencyService } from '@/utils/services/currency.service'
 import { useToastHelpers } from '@/utils/toasts'
 import { getTokenDecimals, getTokenInfo } from '@/utils/token.service'
-import { thirdWebClient } from '@/utils/user_manager'
+import { ellipsizeAddress, thirdWebClient } from '@/utils/user_manager'
 
 import MagicLinkModal from './components/MagicLinkModal'
+import NetworkDropdown from './components/NetworkDropdown'
+import TokenDropdown from './components/TokenDropdown'
 import TransactionVerificationModal from './components/TransactionVerificationModal'
 import TransactionSuccessModal from './TransactionSuccessModal'
 
@@ -317,6 +319,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
       console.error('Error fetching token decimals:', error)
       handleApiError('Token Information Failed', error)
     }
+  }
+
+  const handleNetworkSelection = (chainType: SupportedChain) => {
+    setSendNetwork(chainType)
+    setSelectedToken(null)
+    setIsTokenDropdownOpen(false)
+    setIsNetworkDropdownOpen(false)
   }
 
   const checkNetworkMatch = async (): Promise<boolean> => {
@@ -782,68 +791,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
                   {/* Token Dropdown */}
                   {isTokenDropdownOpen && (
-                    <Box
-                      position="absolute"
-                      top="100%"
-                      left={0}
-                      width="max-content"
-                      minWidth="280px"
-                      mt={2}
-                      bg="bg-surface-secondary"
-                      borderRadius="12px"
-                      border="1px solid"
-                      borderColor="border-wallet-subtle"
-                      shadow="none"
-                      zIndex={1000}
-                      overflow="hidden"
-                      boxShadow="none"
-                    >
-                      <VStack spacing={0} align="stretch">
-                        {availableTokens.map((token: AcceptedTokenInfo) => {
-                          const tokenName = getTokenName(token.token)
-                          const tokenSymbol = getTokenSymbol(token.token)
-
-                          return (
-                            <Box
-                              key={tokenSymbol}
-                              px={4}
-                              py={3}
-                              cursor="pointer"
-                              _hover={{ bg: 'dropdown-hover' }}
-                              onClick={async () => {
-                                await handleTokenSelection(token)
-                                setIsTokenDropdownOpen(false)
-                              }}
-                            >
-                              <HStack spacing={3}>
-                                <Image
-                                  src={
-                                    getTokenIcon(token.token) ||
-                                    '/assets/chains/ethereum.svg'
-                                  }
-                                  alt={tokenSymbol}
-                                  w="24px"
-                                  h="24px"
-                                  borderRadius="full"
-                                />
-                                <VStack align="start" spacing={0}>
-                                  <Text
-                                    color="text-primary"
-                                    fontSize="16px"
-                                    fontWeight="500"
-                                  >
-                                    {tokenName}
-                                  </Text>
-                                  <Text color="text-muted" fontSize="14px">
-                                    {chain?.name || sendNetwork}
-                                  </Text>
-                                </VStack>
-                              </HStack>
-                            </Box>
-                          )
-                        })}
-                      </VStack>
-                    </Box>
+                    <TokenDropdown
+                      availableTokens={availableTokens}
+                      chain={chain}
+                      sendNetwork={sendNetwork}
+                      onSelectToken={handleTokenSelection}
+                      onClose={() => setIsTokenDropdownOpen(false)}
+                    />
                   )}
                 </Box>
 
@@ -924,69 +878,11 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
                     {/* Network Dropdown */}
                     {isNetworkDropdownOpen && (
-                      <Box
-                        position="absolute"
-                        top="100%"
-                        left={0}
-                        width="max-content"
-                        minWidth="280px"
-                        mt={2}
-                        bg="bg-surface-secondary"
-                        borderRadius="12px"
-                        border="1px solid"
-                        borderColor="border-wallet-subtle"
-                        shadow="none"
-                        zIndex={1000}
-                        overflow="hidden"
-                        boxShadow="none"
-                      >
-                        <VStack spacing={0} align="stretch">
-                          {Object.entries(NETWORK_CONFIG).map(
-                            ([displayName, chainType]) => {
-                              const chainInfo = supportedChains.find(
-                                c => c.chain === chainType
-                              )
-                              return (
-                                <Box
-                                  key={chainType}
-                                  px={4}
-                                  py={3}
-                                  cursor="pointer"
-                                  _hover={{ bg: 'dropdown-hover' }}
-                                  onClick={() => {
-                                    setSendNetwork(chainType)
-                                    setSelectedToken(null) // Reset token when network changes
-                                    setIsTokenDropdownOpen(false) // Close token dropdown if open
-                                    setIsNetworkDropdownOpen(false)
-                                  }}
-                                >
-                                  <HStack spacing={3}>
-                                    <Image
-                                      src={
-                                        chainInfo?.image ||
-                                        '/assets/chains/ethereum.svg'
-                                      }
-                                      alt={displayName}
-                                      w="24px"
-                                      h="24px"
-                                      borderRadius="full"
-                                    />
-                                    <VStack align="start" spacing={0}>
-                                      <Text
-                                        color="text-primary"
-                                        fontSize="16px"
-                                        fontWeight="500"
-                                      >
-                                        {displayName}
-                                      </Text>
-                                    </VStack>
-                                  </HStack>
-                                </Box>
-                              )
-                            }
-                          )}
-                        </VStack>
-                      </Box>
+                      <NetworkDropdown
+                        networkConfig={NETWORK_CONFIG}
+                        onSelectNetwork={handleNetworkSelection}
+                        onClose={() => setIsNetworkDropdownOpen(false)}
+                      />
                     )}
                   </Box>
                 </Box>
@@ -1131,10 +1027,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                     </Text>
                     <Text color="text-muted" fontSize="16px" fontWeight="500">
                       {recipientAddress
-                        ? `${recipientAddress.slice(
-                            0,
-                            6
-                          )}...${recipientAddress.slice(-4)}`
+                        ? ellipsizeAddress(recipientAddress)
                         : 'Not specified'}
                     </Text>
                   </HStack>
