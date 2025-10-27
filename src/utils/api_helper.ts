@@ -149,9 +149,8 @@ export const internalFetch = async <T>(
   headers = {},
   isFormData = false,
   withRetry = true,
-  retryAttempt = 0
+  maxRetries = 3
 ): Promise<T> => {
-  const maxRetries = 3
   const baseDelay = 1000
 
   try {
@@ -178,8 +177,8 @@ export const internalFetch = async <T>(
     // Check if error is retryable
     const isRetryableError =
       withRetry &&
-      retryAttempt < maxRetries &&
-      ((e instanceof Error &&
+      maxRetries > 0 &&
+      ((e instanceof TypeError &&
         (e.message.includes('Failed to fetch') ||
           e.message.includes('Network request failed') ||
           e.message.includes('timeout'))) ||
@@ -189,11 +188,10 @@ export const internalFetch = async <T>(
           (e as any).status >= 500))
 
     if (isRetryableError) {
-      const delay = baseDelay * Math.pow(2, retryAttempt)
+      const attemptsMade = 3 - maxRetries + 1
+      const delay = baseDelay * Math.pow(2, attemptsMade - 1)
       console.warn(
-        `API call failed, retrying ${
-          retryAttempt + 1
-        }/${maxRetries} in ${delay}ms...`,
+        `API call failed, retrying ${attemptsMade}/3 in ${delay}ms...`,
         e
       )
       await new Promise(resolve => setTimeout(resolve, delay))
@@ -205,7 +203,7 @@ export const internalFetch = async <T>(
         headers,
         isFormData,
         withRetry,
-        retryAttempt + 1
+        maxRetries - 1
       )
     }
 
