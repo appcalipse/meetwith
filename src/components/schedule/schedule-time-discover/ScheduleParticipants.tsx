@@ -169,7 +169,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
               alignItems={'center'}
               h={'72px'}
             >
-              <HStack>
+              <HStack alignItems={'center'}>
                 <Box
                   onClick={() =>
                     handleAvailabilityChange(
