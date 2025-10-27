@@ -225,6 +225,7 @@ import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import {
   sendCryptoDebitEmail,
+  sendPollInviteEmail,
   sendReceiptEmail,
   sendSessionBookingIncomeEmail,
 } from './email_helper'
@@ -238,6 +239,7 @@ import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
+import { EmailQueue } from './workers/email.queue'
 
 const PIN_SALT = process.env.PIN_SALT
 
@@ -260,6 +262,8 @@ const initDB = () => {
 }
 
 initDB()
+
+const emailQueue = new EmailQueue()
 
 const initAccountDBForWallet = async (
   address: string,
@@ -6474,6 +6478,32 @@ const createQuickPoll = async (
 
     if (participantsError) throw participantsError
 
+    // Send invitation emails to all participants (excluding the host)
+    const inviterName =
+      ownerAccount.preferences?.name || ellipsizeAddress(owner_address)
+
+    for (const participant of invitees) {
+      if (participant.guest_email) {
+        emailQueue.add(async () => {
+          try {
+            await sendPollInviteEmail(
+              participant.guest_email,
+              inviterName,
+              pollData.title,
+              slug
+            )
+            return true
+          } catch (error) {
+            console.error(
+              `Failed to send invitation email to ${participant.guest_email}:`,
+              error
+            )
+            return false
+          }
+        })
+      }
+    }
+
     return poll
   } catch (error) {
     if (error instanceof QuickPollSlugGenerationError) {
@@ -6773,11 +6803,56 @@ const updateQuickPollParticipants = async (
   }
 ) => {
   try {
+    // Get poll details for email
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('title, slug')
+      .eq('id', pollId)
+      .single()
+
+    if (pollError) throw pollError
+
+    // Get poll owner info for email
+    const { data: ownerParticipant, error: ownerError } = await db.supabase
+      .from('quick_poll_participants')
+      .select('account_address, guest_name')
+      .eq('poll_id', pollId)
+      .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+      .single()
+
+    if (ownerError || !ownerParticipant) {
+      throw new QuickPollUpdateError('Poll owner not found')
+    }
+
+    const inviterName = ownerParticipant.guest_name || 'Poll Host'
+
     // Add new participants
     if (participantUpdates.toAdd && participantUpdates.toAdd.length > 0) {
       for (const participantData of participantUpdates.toAdd) {
         try {
           await addQuickPollParticipant(pollId, participantData)
+
+          // Send invitation email to the new participant
+          const participantEmail = participantData.guest_email
+          if (participantEmail) {
+            emailQueue.add(async () => {
+              try {
+                await sendPollInviteEmail(
+                  participantEmail,
+                  inviterName,
+                  poll.title,
+                  poll.slug
+                )
+                return true
+              } catch (emailError) {
+                console.error(
+                  `Failed to send invitation email to ${participantEmail}:`,
+                  emailError
+                )
+                return false
+              }
+            })
+          }
         } catch (addError) {
           throw addError
         }
@@ -7453,6 +7528,7 @@ export {
   updateQuickPoll,
   updateQuickPollGuestDetails,
   updateQuickPollParticipantAvailability,
+  updateQuickPollParticipants,
   updateQuickPollParticipantStatus,
   updateRecurringSlots,
   upsertGateCondition,
