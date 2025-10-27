@@ -65,6 +65,7 @@ import {
   QuickPollBusyParticipant,
   QuickPollListResponse,
   QuickPollParticipant,
+  QuickPollParticipantType,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
@@ -1975,6 +1976,26 @@ export const addQuickPollParticipant = async (
     `/secure/quickpoll/${participantData.poll_id}/participants`,
     'POST',
     participantData
+  )
+}
+
+export interface BulkAddParticipantsRequest {
+  participants: Array<{
+    account_address?: string
+    guest_name?: string
+    guest_email: string
+    participant_type: QuickPollParticipantType
+  }>
+}
+
+export const addQuickPollParticipants = async (
+  pollId: string,
+  participants: BulkAddParticipantsRequest['participants']
+) => {
+  return await internalFetch(
+    `/secure/quickpoll/${pollId}/participants/bulk`,
+    'POST',
+    { participants }
   )
 }
 

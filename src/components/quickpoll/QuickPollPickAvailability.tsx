@@ -229,9 +229,7 @@ export function QuickPollPickAvailability({
       const visibleParticipants = groupAvailability[groupKey] || []
 
       return pollData.poll.participants
-        .filter(
-          p => (p.account_address || p.guest_email) && p.available_slots?.length
-        )
+        .filter(p => p.account_address || p.guest_email)
         .map(
           p =>
             (p.account_address?.toLowerCase() || p.guest_email?.toLowerCase())!
@@ -858,6 +856,20 @@ export function QuickPollPickAvailability({
               {isEditingAvailability
                 ? 'Save availability'
                 : 'Edit/Add your availability'}
+            </Button>
+          )}
+          {onImportCalendar && !isSchedulingIntent && (
+            <Button
+              variant="outline"
+              colorScheme="primary"
+              onClick={onImportCalendar}
+              w="100%"
+              py={3}
+              fontSize="16px"
+              fontWeight="600"
+              borderRadius="8px"
+            >
+              Import from calendar
             </Button>
           )}
           {onSharePoll && (

@@ -155,7 +155,7 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
           data-selected={isQuickPoll ? isSelected : undefined}
         />
       </Tooltip.Trigger>
-      <Tooltip.Content style={{ zIndex: 10 }}>
+      <Tooltip.Content style={{ zIndex: 10 }} side="right">
         <Box
           p={2}
           bg={itemsBgColor}
@@ -167,21 +167,6 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
           <Text mb="7px">
             {formatWithOrdinal(slot)} ({timezone})
           </Text>
-          {isQuickPoll && (
-            <Text
-              fontSize="sm"
-              color={isSelected ? 'green.500' : 'gray.500'}
-              mb={2}
-            >
-              {!isEditingAvailability
-                ? isSelected
-                  ? 'Available'
-                  : 'Not available'
-                : isSelected
-                ? 'Available - Click to remove'
-                : 'Click to mark available'}
-            </Text>
-          )}
           <VStack w="fit-content" gap={1} align="flex-start">
             {userStates?.map((userState, index) => (
               <HStack key={index}>
