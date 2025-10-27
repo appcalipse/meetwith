@@ -1279,7 +1279,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                       w="100%"
                     >
                       <Text
-                        fontWeight="border-default-primary"
+                        color="border-default-primary"
+fontWeight="600"
                         cursor="pointer"
                         textTransform="capitalize"
                       >
