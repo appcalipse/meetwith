@@ -8,7 +8,6 @@ import type { Account } from 'thirdweb/wallets'
 import { parseUnits } from 'viem'
 
 import { AcceptedToken, getChainInfo, SupportedChain } from '@/types/chains'
-import { zeroAddress } from '@/utils/generic_utils'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
@@ -119,10 +118,12 @@ export const estimateGasFee = async (
     const feeInNative = (Number(gasEstimate) * Number(gasPrice)) / 1e18
 
     // Convert to USD using native token price
-    const nativeTokenInfo = chainInfo.acceptableTokens.find(
-      token => token.contractAddress === zeroAddress
-    )
-    const nativeToken = nativeTokenInfo?.token || AcceptedToken.ETHER
+    const nativeTokenSymbolMap: Record<string, AcceptedToken> = {
+      ETH: AcceptedToken.ETHER,
+      CELO: AcceptedToken.CELO,
+    }
+    const nativeToken =
+      nativeTokenSymbolMap[chainInfo.nativeTokenSymbol] || AcceptedToken.ETHER
 
     const nativeTokenPrice = await priceFeed.getPrice(sendNetwork, nativeToken)
 
