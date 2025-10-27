@@ -92,7 +92,9 @@ const ScheduleDetails = () => {
   const fetchGroupMembers = async () => {
     setLoading(true)
     const actualMembers = deduplicateArray<string>(
-      Object.values(groupParticipants).flat()
+      Object.values(groupParticipants)
+        .flat()
+        .filter((val): val is string => Boolean(val))
     )
     const members = await getExistingAccounts(actualMembers)
     setGroupsMembers(

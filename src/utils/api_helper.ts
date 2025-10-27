@@ -6,7 +6,6 @@ import {
   Account,
   MeetingType,
   PaidMeetingTypes,
-  PartialPaymentPreferences,
   PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,
@@ -67,6 +66,7 @@ import {
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
 import { TelegramConnection } from '@/types/Telegram'
+import { TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { apiUrl } from './constants'
@@ -1357,6 +1357,11 @@ export const getPendingTgConnection = async () => {
   ).data
 }
 
+export const getTelegramUserInfo =
+  async (): Promise<TelegramUserInfo | null> => {
+    return await internalFetch(`/secure/telegram/user-info`)
+  }
+
 export const subscribeWithCoupon = async (
   coupon: string,
   domain?: string
@@ -1881,10 +1886,8 @@ export const verifyVerificationCode = async (
 }
 
 export const getCoinConfig = async (): Promise<ICoinConfig> => {
-  // bypass cors
-  return internalFetch<ICoinConfig>(
-    '/integrations/onramp-money/all-config',
-    'GET'
+  return await queryClient.fetchQuery(QueryKeys.coinConfig(), () =>
+    internalFetch<ICoinConfig>('/integrations/onramp-money/all-config', 'GET')
   )
 }
 export const getUserLocale = async (): Promise<UserLocale> => {

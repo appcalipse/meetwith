@@ -296,8 +296,7 @@ export function SchedulePickTime({
 
       const accounts = deduplicateArray(
         Object.values(groupAvailability).flat()
-      ).filter(val => Boolean(val))
-
+      ).filter((val): val is string => Boolean(val))
       const allParticipants = getMergedParticipants(
         participants,
         groups,

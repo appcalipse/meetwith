@@ -51,7 +51,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
   const allAvailabilities = useMemo(
     () =>
       deduplicateArray(Object.values(groupAvailability).flat()).map(val =>
-        val.toLowerCase()
+        val?.toLowerCase()
       ),
     [groupAvailability]
   )
@@ -203,7 +203,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                   <Heading
                     size="sm"
                     lineHeight={'normal'}
-                    maxW="300px"
+                    maxW="180px"
                     whiteSpace="nowrap"
                     overflow="hidden"
                     textOverflow="ellipsis"
