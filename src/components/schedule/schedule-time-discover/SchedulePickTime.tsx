@@ -36,6 +36,7 @@ import {
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
   fetchBusySlotsRawForMultipleAccounts,
   getExistingAccounts,
@@ -56,7 +57,9 @@ import { getMergedParticipants } from '@/utils/schedule.helper'
 import { suggestBestSlots } from '@/utils/slots.helper'
 
 import ScheduleTimeSlot from './ScheduleTimeSlot'
-
+interface AccountAddressRecord extends ParticipantInfo {
+  account_address: string
+}
 export enum State {
   ALL_AVAILABLE,
   MOST_AVAILABLE,
@@ -304,9 +307,9 @@ export function SchedulePickTime({
         groupAvailability,
         currentAccount?.address
       )
-        .filter(val => val.account_address)
+        .filter((val): val is AccountAddressRecord => !!val.account_address)
         .map(val => val.account_address)
-        .concat([currentAccount?.address]) as string[]
+        .concat([currentAccount?.address || ''])
       const [busySlots, meetingMembers] = await Promise.all([
         fetchBusySlotsRawForMultipleAccounts(
           accounts,
