@@ -48,11 +48,15 @@ import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
+  MeetingPermissions,
   MeetingRepeatOptions,
   MeetingSchedulePermissions,
 } from '@/utils/constants/schedule'
 import { noClearCustomSelectComponent } from '@/utils/constants/select'
-import { renderProviderName } from '@/utils/generic_utils'
+import {
+  canAccountAccessPermission,
+  renderProviderName,
+} from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import {
   ellipsizeAddress,
@@ -96,6 +100,7 @@ const ScheduleBase = () => {
     setMeetingRepeat,
     setSelectedPermissions,
     setContent,
+    decryptedMeeting,
   } = useScheduleState()
   const {
     groupParticipants,
@@ -116,7 +121,16 @@ const ScheduleBase = () => {
   const [hasPickedNewTime, setHasPickedNewTime] = useState(false)
   const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM)
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
-
+  const canViewParticipants = useMemo(
+    () =>
+      canAccountAccessPermission(
+        decryptedMeeting?.permissions,
+        decryptedMeeting?.participants || [],
+        currentAccount?.address,
+        MeetingPermissions.SEE_GUEST_LIST
+      ),
+    [decryptedMeeting, currentAccount]
+  )
   const handleClose = () => {
     handlePageSwitch(Page.SCHEDULE_TIME)
   }
@@ -212,7 +226,13 @@ const ScheduleBase = () => {
           <HStack alignItems="flex-end">
             <Text>
               Participants:{' '}
-              <b>{getAllParticipantsDisplayName(meetingParticipants)}</b>
+              <b>
+                {getAllParticipantsDisplayName(
+                  meetingParticipants,
+                  currentAccount?.address,
+                  canViewParticipants
+                )}
+              </b>
               {canEditMeetingDetails && (
                 <Text
                   color="border-default-primary"
