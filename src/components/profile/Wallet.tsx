@@ -4,13 +4,6 @@ import {
   HStack,
   Icon,
   Image,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
-  ModalOverlay,
-  Radio,
-  RadioGroup,
   Spinner,
   Text,
   Tooltip,
@@ -55,6 +48,7 @@ import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
 
 import WithdrawFundsModal from '../wallet/WithdrawFundsModal'
 import { Avatar } from './components/Avatar'
+import CurrencySelector from './components/CurrencySelector'
 import MagicLinkModal from './components/MagicLinkModal'
 import NetworkSelector from './components/NetworkSelector'
 import WalletActionButton from './components/WalletActionButton'
@@ -77,6 +71,13 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
   useOnClickOutside(networkDropdownRef, () => {
     setIsNetworkDropdownOpen(false)
+  })
+
+  const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false)
+  const currencyDropdownRef = useRef<HTMLDivElement>(null)
+
+  useOnClickOutside(currencyDropdownRef, () => {
+    setIsCurrencyDropdownOpen(false)
   })
 
   // PIN protection state
@@ -133,8 +134,6 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     isNetworkLoading,
 
     // Modal states
-    isCurrencyModalOpen,
-    setIsCurrencyModalOpen,
     isSendModalOpen,
     setIsSendModalOpen,
     isReceiveModalOpen,
@@ -228,7 +227,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
   const handleCurrencyChange = (value: string) => {
     setSelectedCurrency(value)
-    setIsCurrencyModalOpen(false)
+    setIsCurrencyDropdownOpen(false)
   }
 
   // Reset pagination when selected crypto changes
@@ -641,38 +640,14 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 </HStack>
               </Box>
 
-              <Box
-                bg="bg-surface-tertiary-4"
-                borderRadius={{ base: '8px', md: '12px' }}
-                px={{ base: 2, md: 3 }}
-                py={{ base: '8px', md: '10px' }}
-                display="flex"
-                alignItems="center"
-                gap={2}
-                cursor="pointer"
-                onClick={() => setIsCurrencyModalOpen(true)}
-                _hover={{ opacity: 0.8 }}
-              >
-                <Image
-                  src={currencies.find(c => c.code === selectedCurrency)?.flag}
-                  alt={selectedCurrency}
-                  w={{ base: '16px', md: '20px' }}
-                  h={{ base: '16px', md: '20px' }}
-                />
-                <Text
-                  color="text-primary"
-                  fontSize={{ base: '14px', md: '16px' }}
-                  fontWeight="500"
-                >
-                  {selectedCurrency}
-                  {selectedCurrency !== 'USD' && !exchangeRate && (
-                    <Spinner size="xs" ml={1} color="text-muted" />
-                  )}
-                </Text>
-                <Icon
-                  as={IoChevronDown}
-                  color="text-secondary"
-                  fontSize={{ base: '14px', md: '16px' }}
+              <Box position="relative" ref={currencyDropdownRef}>
+                <CurrencySelector
+                  currencies={currencies}
+                  selectedCurrency={selectedCurrency}
+                  isCurrencyDropdownOpen={isCurrencyDropdownOpen}
+                  exchangeRate={exchangeRate}
+                  setIsCurrencyDropdownOpen={setIsCurrencyDropdownOpen}
+                  onCurrencyChange={handleCurrencyChange}
                 />
               </Box>
 
@@ -1743,64 +1718,6 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
           )}
         </Box>
       )}
-
-      {/* Currency Selection Modal */}
-      <Modal
-        isOpen={isCurrencyModalOpen}
-        onClose={() => setIsCurrencyModalOpen(false)}
-        size="md"
-        isCentered
-      >
-        <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
-        <ModalContent
-          bg="bg-surface-secondary"
-          borderRadius="12px"
-          border="1px solid"
-          borderColor="border-wallet-subtle"
-          shadow="none"
-        >
-          <ModalHeader
-            color="text-primary"
-            fontSize="20px"
-            fontWeight="600"
-            pb={2}
-          >
-            Show value in
-          </ModalHeader>
-          <ModalBody pb={6}>
-            <RadioGroup
-              value={selectedCurrency}
-              onChange={handleCurrencyChange}
-            >
-              <VStack spacing={6} align="stretch">
-                {currencies.map(currency => (
-                  <Radio
-                    key={currency.code}
-                    value={currency.code}
-                    colorScheme="orange"
-                    size="lg"
-                    variant="filled"
-                    py={1}
-                  >
-                    <HStack spacing={3}>
-                      <Image
-                        src={currency.flag}
-                        alt={currency.code}
-                        w="24px"
-                        h="24px"
-                        borderRadius="full"
-                      />
-                      <Text color="text-primary" fontSize="16px">
-                        {currency.name}
-                      </Text>
-                    </HStack>
-                  </Radio>
-                ))}
-              </VStack>
-            </RadioGroup>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
 
       {/* Send Funds Modal */}
       <SendFundsModal
