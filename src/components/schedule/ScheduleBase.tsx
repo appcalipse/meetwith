@@ -613,10 +613,17 @@ const ScheduleBase = () => {
                   w="100%"
                   py={3}
                   h={'auto'}
-                  colorScheme="primary"
+                  borderColor="red.500"
+                  borderWidth={1}
+                  color="red.500"
+                  bg="transparent"
                   onClick={handleCancel}
                   flex={1}
                   flexBasis="40%"
+                  _hover={{
+                    bg: 'red.500',
+                    color: 'white',
+                  }}
                 >
                   Cancel Meeting
                 </Button>
