@@ -583,7 +583,12 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                   </Text>
                 </HStack>
               </MenuButton>
-              <MenuList bg="bg-surface-secondary" borderColor="border-default">
+              <MenuList
+                bg="bg-surface-secondary"
+                borderColor="border-default"
+                boxShadow="none"
+                shadow="none"
+              >
                 {paymentNetworkOptions.map(option => (
                   <MenuItem
                     key={option.value}

@@ -335,16 +335,24 @@ export function SchedulePickTime({
       >()
       for (const memberAccount of meetingMembers) {
         if (!memberAccount.address) continue
-        const availabilities = parseMonthAvailabilitiesToDate(
-          memberAccount?.preferences?.availabilities || [],
-          monthStart,
-          monthEnd,
-          memberAccount?.preferences?.timezone || 'UTC'
-        )
-        availableSlotsMap.set(
-          memberAccount.address.toLowerCase(),
-          availabilities
-        )
+        try {
+          const availabilities = parseMonthAvailabilitiesToDate(
+            memberAccount?.preferences?.availabilities || [],
+            monthStart,
+            monthEnd,
+            memberAccount?.preferences?.timezone || 'UTC'
+          )
+          availableSlotsMap.set(
+            memberAccount.address.toLowerCase(),
+            availabilities
+          )
+        } catch (error) {
+          console.warn(
+            'Failed to parse availability for member:',
+            memberAccount.address,
+            error
+          )
+        }
       }
       const busySlotsMap: Map<string, Interval[]> = new Map()
       for (const account of accountBusySlots) {
