@@ -218,6 +218,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     setIsVerificationModalOpen(false)
     setIsNetworkSwitchModalOpen(false)
     setNetworkMismatch(null)
+    setSendNetwork(selectedNetwork)
     onMagicLinkClose()
     setIsSendingMagicLink(false)
     setNotificationEmail(null)
