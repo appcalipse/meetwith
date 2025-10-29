@@ -97,8 +97,8 @@ export default class Office365CalendarService
       process.env.MS_GRAPH_CLIENT_ID!,
     ]
 
-    const refreshAccessToken = (refreshToken: string) => {
-      return fetch(
+    const refreshAccessToken = async (refreshToken: string) => {
+      const response = await fetch(
         'https://login.microsoftonline.com/common/oauth2/v2.0/token',
         {
           method: 'POST',
@@ -112,21 +112,18 @@ export default class Office365CalendarService
           }),
         }
       )
-        .then(handleErrorsResponse)
-        .then((responseBody: TokenResponse) => {
-          credential.access_token = responseBody.access_token
-          credential.expiry_date = Math.round(
-            new Date().getTime() / 1000 + responseBody.expires_in
-          )
-          return updateCalendarPayload(
-            address,
-            email,
-            TimeSlotSource.OFFICE,
-            credential
-          ).then(() => {
-            return credential.access_token
-          })
-        })
+      const responseBody = await handleErrorsResponse(response)
+      credential.access_token = responseBody.access_token
+      credential.expiry_date = Math.round(
+        new Date().getTime() / 1000 + responseBody.expires_in
+      )
+      await updateCalendarPayload(
+        address,
+        email,
+        TimeSlotSource.OFFICE,
+        credential
+      )
+      return credential.access_token
     }
 
     return {
