@@ -841,12 +841,12 @@ const getSlotsForAccountMinimal = async (
 }
 const updateRecurringSlots = async (identifier: string) => {
   const account = await getAccountFromDB(identifier)
-  const _end = new Date().toISOString()
+  const now = new Date()
   const { data: allSlots, error } = await db.supabase
     .from('slots')
     .select()
     .eq('account_address', account.address)
-    .lte('end', _end)
+    .lte('end', now.toISOString())
     .neq('recurrence', MeetingRepeat.NO_REPEAT)
   if (error) {
     return
@@ -869,100 +869,140 @@ const updateRecurringSlots = async (identifier: string) => {
   }
 }
 const updateAllRecurringSlots = async () => {
-  const _end = new Date().toISOString()
+  const now = new Date()
   const { data: allSlots, error } = await db.supabase
     .from('slots')
     .select()
-    .lte('end', _end)
+    .lte('end', now.toISOString())
     .neq('recurrence', MeetingRepeat.NO_REPEAT)
-  if (error) {
-    return
+  if (error || !allSlots?.length) return
+
+  const allTempSlots = await db.supabase
+    .from<Database['public']['Tables']['temp_slots']['Row']>('temp_slots')
+    .select()
+    .in('slot_id', allSlots.map(s => s.id).filter(Boolean))
+    .gte('start', sub(new Date(), { months: 6 }).toISOString())
+  const tempSlotsBySlotId = new Map<
+    string,
+    Array<Database['public']['Tables']['temp_slots']['Row']>
+  >()
+  for (const slot of allSlots) {
+    const tempSlots =
+      allTempSlots.data?.filter(ts => ts.slot_id === slot.id) || []
+    tempSlotsBySlotId.set(slot.id, tempSlots)
   }
-  if (allSlots) {
-    const toUpdate = []
-    for (const data of allSlots) {
-      const slot = data as DBSlot
-      if (!slot.id) continue
-      const { data: tempSlots } = await db.supabase
-        .from<Database['public']['Tables']['temp_slots']['Row']>('temp_slots')
-        .select()
-        .eq('slot_id', slot.id)
-      const interval = addRecurrence(
-        new Date(slot.start),
-        new Date(slot.end),
+  const toUpdate = []
+  const toInsert = []
+  for (const data of allSlots) {
+    const slot = data as DBSlot
+    if (!slot.id) continue
+    const tempSlots = tempSlotsBySlotId.get(slot.id) || []
+    let nextInterval = addRecurrence(
+      new Date(slot.start),
+      new Date(slot.end),
+      slot.recurrence
+    )
+    while (new Date(nextInterval.start) <= now) {
+      nextInterval = addRecurrence(
+        new Date(nextInterval.start),
+        new Date(nextInterval.end),
         slot.recurrence
       )
-      const activeTempSlot = (tempSlots || []).find(
+    }
+    const interval = addRecurrence(
+      new Date(slot.start),
+      new Date(slot.end),
+      slot.recurrence
+    )
+    const activeTempSlot = tempSlots.find(
+      ts =>
+        DateTime.fromJSDate(interval.start).hasSame(
+          DateTime.fromISO(ts.start),
+          'hour'
+        ) &&
+        DateTime.fromJSDate(interval.end).hasSame(
+          DateTime.fromISO(ts.end),
+          'hour'
+        )
+    )
+    if (activeTempSlot) {
+      const currentSlotWasUnconfirmedTempSlot = (tempSlots || []).find(
         ts =>
-          DateTime.fromJSDate(interval.start).hasSame(
+          DateTime.fromJSDate(new Date(slot.start)).hasSame(
             DateTime.fromISO(ts.start),
             'hour'
           ) &&
-          DateTime.fromJSDate(interval.end).hasSame(
+          DateTime.fromJSDate(new Date(slot.end)).hasSame(
             DateTime.fromISO(ts.end),
             'hour'
-          )
+          ) &&
+          ts.status !== RecurringStatus.CONFIRMED
       )
-      if (activeTempSlot) {
-        const currentSlotWasUnconfirmedTempSlot = (tempSlots || []).find(
-          ts =>
-            DateTime.fromJSDate(new Date(slot.start)).hasSame(
-              DateTime.fromISO(ts.start),
-              'hour'
-            ) &&
-            DateTime.fromJSDate(new Date(slot.end)).hasSame(
-              DateTime.fromISO(ts.end),
-              'hour'
-            ) &&
-            ts.status !== RecurringStatus.CONFIRMED
+      if (!currentSlotWasUnconfirmedTempSlot) {
+        let currentInterval = addRecurrence(
+          new Date(activeTempSlot.start),
+          new Date(activeTempSlot.end),
+          slot.recurrence
         )
-        if (!currentSlotWasUnconfirmedTempSlot) {
-          let currentInterval = addRecurrence(
-            new Date(activeTempSlot.start),
-            new Date(activeTempSlot.end),
+        let iterations = 0
+        const MAX_ITERATIONS = 365
+        while (
+          tempSlots &&
+          tempSlots.length > 0 &&
+          iterations < MAX_ITERATIONS
+        ) {
+          const previousInterval = currentInterval
+          const existingTempSlot = tempSlots.find(
+            ts =>
+              DateTime.fromJSDate(currentInterval.start).hasSame(
+                DateTime.fromISO(ts.start),
+                'hour'
+              ) &&
+              DateTime.fromJSDate(currentInterval.end).hasSame(
+                DateTime.fromISO(ts.end),
+                'hour'
+              )
+          )
+
+          if (!existingTempSlot) {
+            // Found an interval without a temp slot, we can use this one
+            break
+          }
+
+          // This interval has a temp slot, move to the next one
+          currentInterval = addRecurrence(
+            currentInterval.start,
+            currentInterval.end,
             slot.recurrence
           )
-          while (tempSlots && tempSlots.length > 0) {
-            const existingTempSlot = tempSlots.find(
-              ts =>
-                DateTime.fromJSDate(currentInterval.start).hasSame(
-                  DateTime.fromISO(ts.start),
-                  'hour'
-                ) &&
-                DateTime.fromJSDate(currentInterval.end).hasSame(
-                  DateTime.fromISO(ts.end),
-                  'hour'
-                )
-            )
-
-            if (!existingTempSlot) {
-              // Found an interval without a temp slot, we can use this one
-              break
-            }
-
-            // This interval has a temp slot, move to the next one
-            currentInterval = addRecurrence(
-              currentInterval.start,
-              currentInterval.end,
-              slot.recurrence
-            )
+          if (
+            currentInterval.start.getTime() === previousInterval.start.getTime()
+          ) {
+            console.warn('Recurrence not advancing, breaking loop')
+            break
           }
-          const newTempSlot: Database['public']['Tables']['temp_slots']['Insert'] =
-            {
-              ...slot,
-              id: v4(),
-              slot_id: slot.id!,
-              start: currentInterval.start.toISOString(),
-              end: currentInterval.end.toISOString(),
-              status: RecurringStatus.CONFIRMED,
-              created_at: new Date().toISOString(),
-            }
-          await db.supabase.from('temp_slots').insert(newTempSlot)
+          iterations++
         }
+        if (iterations >= MAX_ITERATIONS) {
+          console.error('Max iterations reached finding slot to fill')
+        }
+        const newTempSlot: Database['public']['Tables']['temp_slots']['Insert'] =
+          {
+            ...slot,
+            id: v4(),
+            slot_id: slot.id!,
+            start: currentInterval.start.toISOString(),
+            end: currentInterval.end.toISOString(),
+            status: RecurringStatus.CONFIRMED,
+            created_at: new Date().toISOString(),
+          }
+        toInsert.push(newTempSlot)
+      }
+      if (activeTempSlot.status !== RecurringStatus.CANCELLED) {
         const newSlot: Database['public']['Tables']['slots']['Insert'] = {
           id: slot.id!,
           account_address: slot.account_address,
-          meeting_info_encrypted: activeTempSlot,
+          meeting_info_encrypted: activeTempSlot.meeting_info_encrypted,
           start: activeTempSlot.start,
           end: activeTempSlot.end,
           recurrence: slot.recurrence,
@@ -971,13 +1011,25 @@ const updateAllRecurringSlots = async () => {
           version: activeTempSlot.version,
         }
         toUpdate.push(newSlot)
-      } else {
-        const newSlot = { ...slot, start: interval.start, end: interval.end }
-        toUpdate.push(newSlot)
       }
+    } else {
+      const newSlot = { ...slot, start: interval.start, end: interval.end }
+      toUpdate.push(newSlot)
     }
-    if (toUpdate.length > 0) {
-      await db.supabase.from('slots').upsert(toUpdate)
+  }
+
+  if (toInsert.length > 0) {
+    const { error } = await db.supabase.from('temp_slots').insert(toInsert)
+    if (error) {
+      console.error('Failed to insert temp slots:', error)
+      Sentry.captureException(error)
+    }
+  }
+  if (toUpdate.length > 0) {
+    const { error } = await db.supabase.from('slots').upsert(toUpdate)
+    if (error) {
+      console.error('Failed to upsert slots:', error)
+      Sentry.captureException(error)
     }
   }
 }
