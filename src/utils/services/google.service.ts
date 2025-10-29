@@ -1,20 +1,20 @@
 import * as Sentry from '@sentry/nextjs'
-import { format, getWeekOfMonth } from 'date-fns'
 import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
+import { DateTime } from 'luxon'
 
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
-import { MeetingReminders } from '@/types/common'
+import { MeetingReminders, RecurringStatus } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
-import { updateCalendarPayload } from '../database'
+import { getTempSlotsBySlotId, updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
 import { withRetry } from './retry.service'
@@ -290,11 +290,14 @@ export default class GoogleCalendarService
             meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
           ) {
             let RRULE = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()};INTERVAL=1`
-            const dayOfWeek = format(
-              meetingDetails.start,
-              'eeeeee'
-            ).toUpperCase()
-            const weekOfMonth = getWeekOfMonth(meetingDetails.start)
+            const startDateTime = DateTime.fromJSDate(
+              new Date(meetingDetails.start)
+            )
+            const dayOfWeek = startDateTime
+              .toFormat('EEE')
+              .toUpperCase()
+              .substring(0, 2)
+            const weekOfMonth = Math.ceil(startDateTime.day / 7)
 
             switch (meetingDetails.meetingRepeat) {
               case MeetingRepeat.WEEKLY:
@@ -440,9 +443,42 @@ export default class GoogleCalendarService
         meetingDetails.meetingRepeat &&
         meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
       ) {
-        payload.recurrence = [
-          `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`,
-        ]
+        let rrule = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`
+
+        // Add INTERVAL
+        rrule += `;INTERVAL=1`
+
+        // Add day rules for weekly/monthly (like in createEvent)
+        const startDateTime = DateTime.fromJSDate(
+          new Date(meetingDetails.start)
+        )
+        const dayOfWeek = startDateTime
+          .toFormat('EEE')
+          .toUpperCase()
+          .substring(0, 2)
+        const weekOfMonth = Math.ceil(startDateTime.day / 7)
+
+        switch (meetingDetails.meetingRepeat) {
+          case MeetingRepeat.WEEKLY:
+            rrule += `;BYDAY=${dayOfWeek}`
+            break
+          case MeetingRepeat.MONTHLY:
+            rrule += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+            break
+        }
+        const excludedDates = await getTempSlotsBySlotId(
+          slot_id || '',
+          RecurringStatus.CANCELLED
+        )
+        // Add exclusion dates if provided
+        if (excludedDates && excludedDates.length > 0) {
+          const exdates = excludedDates
+            .map(slot => DateTime.fromISO(slot.start).toFormat('yyyyMMdd'))
+            .join(',')
+          rrule += `\nEXDATE:${exdates}`
+        }
+
+        payload.recurrence = [rrule]
       }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
