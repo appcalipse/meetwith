@@ -24,6 +24,7 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { writeFileSync } from 'fs'
 import { GaxiosError } from 'gaxios'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
@@ -839,6 +840,21 @@ const getSlotsForAccountMinimal = async (
 
   return data || []
 }
+const getTempSlotsBySlotId = async (
+  slot_id: string,
+  status: RecurringStatus
+) => {
+  const { data, error } = await db.supabase
+    .from<Database['public']['Tables']['temp_slots']['Row']>('temp_slots')
+    .select()
+    .eq('slot_id', slot_id)
+    .eq('status', status)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data || []
+}
 const updateRecurringSlots = async (identifier: string) => {
   const account = await getAccountFromDB(identifier)
   const now = new Date()
@@ -1439,17 +1455,22 @@ const deleteMeetingFromDB = async (
   if (guestSlotsError) {
     throw new Error(guestSlotsError.message)
   }
-  const { error } = isRecurring
-    ? await db.supabase.from('temp_slots').insert(
-        oldSlots.map(slot => ({
-          ...slot,
-          id: v4(),
-          slot_id: slot.id,
-          status: RecurringStatus.CANCELLED,
-        }))
-      )
-    : await db.supabase.from('slots').delete().in('id', slotIds)
 
+  let query
+  if (isRecurring) {
+    query = db.supabase.from('temp_slots').upsert(
+      oldSlots.map(slot => ({
+        ...slot,
+        id: v4(),
+        slot_id: slot.id,
+        status: RecurringStatus.CANCELLED,
+      }))
+    )
+  } else {
+    query = db.supabase.from('slots').delete().in('id', slotIds)
+  }
+
+  const { error } = await query
   if (error) {
     throw new Error(error.message)
   }
@@ -3381,7 +3402,7 @@ const updateMeeting = async (
   // to the point that our checks will not be able to stop conflicts
   let query
   if (meetingUpdateRequest.isRecurring) {
-    query = await db.supabase.from('temp_slots').insert(
+    query = await db.supabase.from('temp_slots').upsert(
       slots.map(val => ({
         ...val,
         id: v4(),
@@ -5990,10 +6011,19 @@ const handleWebhookEvent = async (
   }
   const calendar: ConnectedCalendar = data?.connected_calendar
   if (!calendar) return false
-  const lower_limit = new Date()
-  const upper_limit = add(new Date(), {
-    months: 6,
-  })
+  const now = DateTime.now()
+  const syncRanges = [
+    {
+      label: 'upcoming',
+      start: now,
+      end: now.plus({ months: 3 }), // ← 3 months for upcoming
+    },
+    {
+      label: 'far_future',
+      start: now.plus({ months: 3 }),
+      end: now.plus({ years: 1 }), // ← 1 year total coverage
+    },
+  ]
 
   const integration = getConnectedCalendarIntegration(
     calendar.account_address,
@@ -6001,14 +6031,27 @@ const handleWebhookEvent = async (
     TimeSlotSource.GOOGLE,
     calendar.payload
   )
+  let allEvents: calendar_v3.Schema$Event[] = []
 
-  let calendar_availabilities =
-    (await integration.listEvents(
-      data.calendar_id,
-      lower_limit,
-      upper_limit
-    )) || []
-  calendar_availabilities = calendar_availabilities.sort((a, b) => {
+  for (const range of syncRanges) {
+    try {
+      const events =
+        (await integration.listEvents(
+          data.calendar_id,
+          range.start.toJSDate(),
+          range.end.toJSDate()
+        )) || []
+
+      allEvents = allEvents.concat(events)
+    } catch (error) {
+      console.error(`Failed to sync ${range.label} range:`, error)
+      Sentry.captureException(error, {
+        extra: { range: range.label, calendar: calendar.id },
+      })
+      // Continue with other ranges even if one fails
+    }
+  }
+  allEvents = allEvents.sort((a, b) => {
     // Group by recurringEventId first
     const aKey = a.id || ''
     const bKey = b.id || ''
@@ -6018,7 +6061,7 @@ const handleWebhookEvent = async (
     // Within same group, sort by sequence (highest first)
     return (b.sequence || 0) - (a.sequence || 0)
   })
-  const recentlyUpdated = calendar_availabilities.filter(event => {
+  const recentlyUpdated = allEvents.filter(event => {
     const now = new Date()
     // We can't update recently updated meeting to prevent infinite syncing when we update or create meetings
     if (event.extendedProperties?.private?.lastUpdatedAt) {
@@ -6028,7 +6071,7 @@ const handleWebhookEvent = async (
       if (
         eventLastUpdatedAt >
         sub(now, {
-          seconds: 15,
+          seconds: 30,
         })
       ) {
         return false
@@ -6038,7 +6081,7 @@ const handleWebhookEvent = async (
     if (!recordChangeDate) return
     const eventDate = new Date(recordChangeDate)
 
-    return eventDate > add(now, { minutes: -2 })
+    return eventDate > add(now, { minutes: -10 })
   })
   const recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
     meeting => meeting.recurringEventId
@@ -6058,8 +6101,7 @@ const handleWebhookEvent = async (
         handleSyncRecurringEvents(
           recentlyUpdatedRecurringMeetings,
           calendar,
-          data.calendar_id,
-          upper_limit
+          data.calendar_id
         )
       )
   )
@@ -6068,8 +6110,7 @@ const handleWebhookEvent = async (
 const handleSyncRecurringEvents = async (
   events: calendar_v3.Schema$Event[],
   calendar: ConnectedCalendar,
-  calendarId: string,
-  upper_limit: Date
+  calendarId: string
 ) => {
   const groupedRecurringEvents = groupByFields<calendar_v3.Schema$Event>(
     events,
@@ -6085,7 +6126,13 @@ const handleSyncRecurringEvents = async (
       'location',
     ])
   )
-
+  if (groupedRecurringEvents.length > 0) {
+    writeFileSync(
+      `groupedRecurringEvents_${Date.now()}.json`,
+      JSON.stringify(groupedRecurringEvents, null, 2)
+    )
+    writeFileSync(`events_${Date.now()}.json`, JSON.stringify(events, null, 2))
+  }
   for (const group of groupedRecurringEvents) {
     for (const item of group) {
       if (item.length < 10) {
@@ -7977,6 +8024,7 @@ export {
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
+  getTempSlotsBySlotId,
   getTgConnection,
   getTgConnectionByTgId,
   getTransactionsById,
