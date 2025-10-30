@@ -34,6 +34,7 @@ interface DisconnectConfig {
   handler: DisconnectHandler
   errorMessage: string
   logEvent?: boolean
+  disableSuccessAction?: boolean
 }
 import usePoller from '@/hooks/usePoller'
 import { AccountContext } from '@/providers/AccountProvider'
@@ -183,11 +184,10 @@ const AccountCard: FC<IProps> = props => {
       logEvent: true,
     },
     [ConnectedAccount.STRIPE]: {
-      handler: async () => {
-        props.openSelectCountry()
-      },
+      handler: async () => props.openSelectCountry(),
       errorMessage: 'Stripe Connection error, Please retry',
       logEvent: true,
+      disableSuccessAction: true,
     },
   }
   const handleUpdateDetails = async () => {
@@ -207,7 +207,7 @@ const AccountCard: FC<IProps> = props => {
         logEvent(`Connect ${accountType}`)
       }
       await config.handler()
-      return true
+      return !config.disableSuccessAction
     } catch (error) {
       console.error(config.errorMessage, error)
       onError(config.errorMessage)
@@ -243,7 +243,7 @@ const AccountCard: FC<IProps> = props => {
         showErrorToast('Connection Failed', msg)
       )
 
-      if (isSuccessful && props.account !== ConnectedAccount.STRIPE) {
+      if (isSuccessful) {
         await queryClient.invalidateQueries(
           QueryKeys.connectedAccounts(currentAccount?.address)
         )
