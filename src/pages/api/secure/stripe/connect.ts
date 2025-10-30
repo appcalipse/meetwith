@@ -1,6 +1,7 @@
 import { PaymentAccountStatus, PaymentProvider } from '@meta/PaymentAccount'
 import Sentry from '@sentry/nextjs'
 import { apiUrl } from '@utils/constants'
+import { extractQuery } from '@utils/generic_utils'
 import { StripeService } from '@utils/services/stripe.service'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -13,6 +14,7 @@ import {
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     try {
+      const countryCode = extractQuery(req.query, 'country_code')
       const account_address = req.session.account!.address
       const stripe = new StripeService()
       const provider = await getOrCreatePaymentAccount(
@@ -28,6 +30,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (!accountId) {
         const account = await stripe.accounts.create({
           type: 'express',
+          country: countryCode,
           capabilities: {
             card_payments: { requested: true },
             transfers: { requested: true },
