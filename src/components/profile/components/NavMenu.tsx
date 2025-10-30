@@ -58,6 +58,7 @@ interface LinkItemProps {
     mode: EditMode
   }>
   isBeta?: boolean
+  isDisabled?: boolean
 }
 
 export const NavMenu: React.FC<{
@@ -97,6 +98,13 @@ export const NavMenu: React.FC<{
         isBeta: true,
       },
       {
+        name: 'QuickPoll',
+        icon: FaUsers,
+        mode: EditMode.QUICKPOLL,
+        isBeta: true,
+        isDisabled: isProduction,
+      },
+      {
         name: 'Session Settings',
         icon: FaCalendarWeek,
         mode: EditMode.MEETING_SETTINGS,
@@ -114,15 +122,7 @@ export const NavMenu: React.FC<{
 
       { name: 'Settings', icon: FaCog, mode: EditMode.DETAILS },
     ]
-    if (!isProduction) {
-      tabs.splice(3, 0, {
-        name: 'QuickPoll',
-        icon: FaUsers,
-        mode: EditMode.QUICKPOLL,
-        isBeta: true,
-      })
-    }
-    return tabs
+    return tabs.filter(item => !item.isDisabled)
   }, [groupInvitesCount, contactsRequestCount])
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
