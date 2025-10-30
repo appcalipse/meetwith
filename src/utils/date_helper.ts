@@ -295,3 +295,86 @@ export const getFormattedDateAndDuration = (
     timeDuration,
   }
 }
+
+// Format a date range for QuickPoll display (e.g., "24th April - 24th June, 2025")
+
+export const formatPollDateRange = (startDate: string, endDate: string) => {
+  const start = DateTime.fromISO(startDate)
+  const end = DateTime.fromISO(endDate)
+
+  const getOrdinalSuffix = (day: number) => {
+    const j = day % 10
+    const k = day % 100
+    if (j === 1 && k !== 11) return 'st'
+    if (j === 2 && k !== 12) return 'nd'
+    if (j === 3 && k !== 13) return 'rd'
+    return 'th'
+  }
+
+  const startDay = start.day
+  const endDay = end.day
+  const startDayOrdinal = `${startDay}${getOrdinalSuffix(startDay)}`
+  const endDayOrdinal = `${endDay}${getOrdinalSuffix(endDay)}`
+
+  // Same year
+  if (start.year === end.year) {
+    // Same month
+    if (start.month === end.month) {
+      return `${startDayOrdinal} - ${endDayOrdinal} ${start.toFormat(
+        'MMMM, yyyy'
+      )}`
+    }
+    // Different months, same year
+    return `${startDayOrdinal} ${start.toFormat(
+      'MMMM'
+    )} - ${endDayOrdinal} ${end.toFormat('MMMM, yyyy')}`
+  }
+
+  // Different years
+  return `${startDayOrdinal} ${start.toFormat(
+    'MMMM, yyyy'
+  )} - ${endDayOrdinal} ${end.toFormat('MMMM, yyyy')}`
+}
+
+// Format a single date for QuickPoll display (e.g., "25th May, 2025")
+
+export const formatPollSingleDate = (date: string) => {
+  const dateTime = DateTime.fromISO(date)
+  const day = dateTime.day
+
+  const getOrdinalSuffix = (day: number) => {
+    const j = day % 10
+    const k = day % 100
+    if (j === 1 && k !== 11) return 'st'
+    if (j === 2 && k !== 12) return 'nd'
+    if (j === 3 && k !== 13) return 'rd'
+    return 'th'
+  }
+
+  const dayOrdinal = `${day}${getOrdinalSuffix(day)}`
+  return `${dayOrdinal} ${dateTime.toFormat('MMMM, yyyy')}`
+}
+
+export const createLocalDateTime = (date: Date, time: Date): string => {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const day = date.getDate()
+  const hours = time.getHours()
+  const minutes = time.getMinutes()
+  const seconds = time.getSeconds()
+
+  const localDateTime = new Date(year, month, day, hours, minutes, seconds)
+
+  return localDateTime.toISOString()
+}
+
+// Helper function to create a date at start of day in local timezone
+export const createLocalDate = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const day = date.getDate()
+
+  const localDate = new Date(year, month, day, 0, 0, 0)
+
+  return localDate.toISOString()
+}
