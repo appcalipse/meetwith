@@ -1,4 +1,4 @@
-import { ConnectedAccountInfo } from '@meta/ConnectedAccounts'
+import { ConnectedAccountInfo, StripeCountry } from '@meta/ConnectedAccounts'
 import {
   Address,
   ICoinConfig,
@@ -2167,10 +2167,12 @@ export const getConnectedAccounts = async (): Promise<
   )
 }
 
-export const getStripeOnboardingLink = async () => {
-  return await internalFetch<{ url: string }>(`/secure/stripe/connect`).then(
-    res => res.url
-  )
+export const getStripeOnboardingLink = async (countryCode?: string) => {
+  let url = `/secure/stripe/connect`
+  if (countryCode) {
+    url += `?country_code=${countryCode}`
+  }
+  return await internalFetch<{ url: string }>(url).then(res => res.url)
 }
 
 export const disconnectStripeAccount = async () => {
@@ -2207,4 +2209,15 @@ export const getTransactionStatus = async (
 
 export const getStripeStatus = async (): Promise<PaymentAccountStatus> => {
   return await internalFetch<PaymentAccountStatus>(`/secure/stripe/status`)
+}
+
+export const getStripeSupportedCountries = async () => {
+  return await internalFetch<StripeCountry[]>(
+    `/secure/stripe/supported-countries`
+  ).then(countries =>
+    countries.map(country => ({
+      label: country.name,
+      value: country.id,
+    }))
+  )
 }

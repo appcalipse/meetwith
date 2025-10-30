@@ -43,7 +43,9 @@ import {
 } from '@/types/PaymentAccount'
 import { Enums } from '@/types/Supabase'
 
-type IProps = ConnectedAccountInfo
+interface IProps extends ConnectedAccountInfo {
+  openSelectCountry: () => void
+}
 const getContent = (connect_account: ConnectedAccount) => {
   switch (connect_account) {
     case ConnectedAccount.STRIPE:
@@ -107,6 +109,7 @@ const AccountCard: FC<IProps> = props => {
       logEvent: true,
     },
   }
+
   const executeDisconnect = async (
     accountType: ConnectedAccount,
     onError: (msg: string) => void
@@ -174,19 +177,22 @@ const AccountCard: FC<IProps> = props => {
         )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
           JSON.stringify({ origin: OnboardingSubject.DiscordConnectedInPage })
         ).toString('base64')}`
-        window.open(url, '_self', 'noopener noreferrer')
+        window.open(url, '_self')
       },
       errorMessage: 'Discord Connection error, Please retry',
       logEvent: true,
     },
     [ConnectedAccount.STRIPE]: {
       handler: async () => {
-        const url = await getStripeOnboardingLink()
-        window.open(url, '_self', 'noopener noreferrer')
+        props.openSelectCountry()
       },
       errorMessage: 'Stripe Connection error, Please retry',
       logEvent: true,
     },
+  }
+  const handleUpdateDetails = async () => {
+    const url = await getStripeOnboardingLink()
+    window.open(url, '_self')
   }
   const executeConnect = async (
     accountType: ConnectedAccount,
@@ -380,7 +386,7 @@ const AccountCard: FC<IProps> = props => {
             <Button
               colorScheme="primary"
               isLoading={isConnecting}
-              onClick={handleConnect}
+              onClick={handleUpdateDetails}
               px={6}
               fontWeight={700}
               textTransform="capitalize"
