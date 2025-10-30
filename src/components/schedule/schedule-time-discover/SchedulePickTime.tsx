@@ -18,6 +18,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { isProduction } from '@utils/constants'
 import { Select, SingleValue } from 'chakra-react-select'
 import { DateTime, Interval } from 'luxon'
 import React, { useEffect, useMemo, useState } from 'react'
@@ -617,16 +618,18 @@ export function SchedulePickTime({
           </HStack>
         </HStack>
 
-        <VStack
-          gap={4}
-          w="100%"
-          alignItems={{ base: 'flex-start', md: 'center' }}
-          display={{ base: 'flex', lg: 'none' }}
-        >
-          <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-            Jump to Best Slot
-          </Button>
-        </VStack>
+        {!isProduction && (
+          <VStack
+            gap={4}
+            w="100%"
+            alignItems={{ base: 'flex-start', md: 'center' }}
+            display={{ base: 'flex', lg: 'none' }}
+          >
+            <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
+              Jump to Best Slot
+            </Button>
+          </VStack>
+        )}
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
           <VStack
@@ -655,15 +658,15 @@ export function SchedulePickTime({
                   gap={0}
                 />
               </HStack>
-
-              <Button
-                colorScheme="primary"
-                onClick={handleJumpToBestSlot}
-                display={{ lg: 'block', base: 'none' }}
-              >
-                Jump to Best Slot
-              </Button>
-
+              {!isProduction && (
+                <Button
+                  colorScheme="primary"
+                  onClick={handleJumpToBestSlot}
+                  display={{ lg: 'block', base: 'none' }}
+                >
+                  Jump to Best Slot
+                </Button>
+              )}
               <Box
                 maxW="350px"
                 textAlign="center"
