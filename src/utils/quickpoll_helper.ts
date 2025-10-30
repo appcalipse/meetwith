@@ -137,24 +137,27 @@ export const processPollParticipantAvailabilities = (
       if (!daySlot.ranges?.length) continue
 
       for (const range of daySlot.ranges) {
-        // Create intervals for each day in the month that matches this weekday
-        const startOfMonth = DateTime.fromJSDate(monthStart).setZone(timezone)
-        const endOfMonth = DateTime.fromJSDate(monthEnd).setZone(timezone)
+        const [startHour, startMinute] = range.start.split(':').map(Number)
+        const [endHour, endMinute] = range.end.split(':').map(Number)
 
-        let currentDay = startOfMonth.startOf('month')
-        while (currentDay <= endOfMonth.endOf('month')) {
-          // Convert weekday (0=Sunday) to Luxon weekday (1=Monday, 7=Sunday)
-          const luxonWeekday = daySlot.weekday === 0 ? 7 : daySlot.weekday
+        // If a specific date is provided, only create interval for that date
+        if (daySlot.date) {
+          const specificDate = DateTime.fromISO(daySlot.date, {
+            zone: participant.timezone || timezone,
+          })
 
-          if (currentDay.weekday === luxonWeekday) {
-            const [startHour, startMinute] = range.start.split(':').map(Number)
-            const [endHour, endMinute] = range.end.split(':').map(Number)
+          const monthStartDT = DateTime.fromJSDate(monthStart).setZone(timezone)
+          const monthEndDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
 
-            const slotStart = currentDay.set({
+          if (
+            specificDate >= monthStartDT.startOf('day') &&
+            specificDate <= monthEndDT.endOf('day')
+          ) {
+            const slotStart = specificDate.set({
               hour: startHour,
               minute: startMinute,
             })
-            const slotEnd = currentDay.set({
+            const slotEnd = specificDate.set({
               hour: endHour,
               minute: endMinute,
             })
@@ -164,7 +167,33 @@ export const processPollParticipantAvailabilities = (
               participantAvailabilities.push(interval)
             }
           }
-          currentDay = currentDay.plus({ days: 1 })
+        } else {
+          // If no specific date, treat as recurring weekly availability
+          const startOfMonth = DateTime.fromJSDate(monthStart).setZone(timezone)
+          const endOfMonth = DateTime.fromJSDate(monthEnd).setZone(timezone)
+
+          let currentDay = startOfMonth.startOf('month')
+          while (currentDay <= endOfMonth.endOf('month')) {
+            // Convert weekday (0=Sunday) to Luxon weekday (1=Monday, 7=Sunday)
+            const luxonWeekday = daySlot.weekday === 0 ? 7 : daySlot.weekday
+
+            if (currentDay.weekday === luxonWeekday) {
+              const slotStart = currentDay.set({
+                hour: startHour,
+                minute: startMinute,
+              })
+              const slotEnd = currentDay.set({
+                hour: endHour,
+                minute: endMinute,
+              })
+
+              const interval = Interval.fromDateTimes(slotStart, slotEnd)
+              if (interval.isValid) {
+                participantAvailabilities.push(interval)
+              }
+            }
+            currentDay = currentDay.plus({ days: 1 })
+          }
         }
       }
     }

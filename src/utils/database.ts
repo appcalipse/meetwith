@@ -104,6 +104,7 @@ import {
   QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
+  QuickPollParticipantUpdateFields,
   QuickPollWithParticipants,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
@@ -6292,6 +6293,7 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
       `
       )
       .eq('poll_id', pollId)
+      .neq('status', QuickPollParticipantStatus.DELETED)
 
     if (participantsError) throw participantsError
 
@@ -6580,7 +6582,13 @@ const updateQuickPollParticipants = async (
           await addQuickPollParticipant(pollId, participantData)
 
           // Send invitation email to the new participant
-          const participantEmail = participantData.guest_email
+          const participantEmail =
+            participantData.guest_email ||
+            (participantData.account_address
+              ? await getAccountNotificationSubscriptionEmail(
+                  participantData.account_address
+                )
+              : '')
           if (participantEmail) {
             emailQueue.add(async () => {
               try {
@@ -6606,11 +6614,10 @@ const updateQuickPollParticipants = async (
       }
     }
 
-    // Remove participants
     if (participantUpdates.toRemove && participantUpdates.toRemove.length > 0) {
       const { error: removeError } = await db.supabase
         .from('quick_poll_participants')
-        .delete()
+        .update({ status: QuickPollParticipantStatus.DELETED })
         .in('id', participantUpdates.toRemove)
         .eq('poll_id', pollId)
         .select()
@@ -6757,6 +6764,7 @@ const getQuickPollParticipants = async (pollId: string) => {
       `
       )
       .eq('poll_id', pollId)
+      .neq('status', QuickPollParticipantStatus.DELETED)
       .order('created_at', { ascending: true })
 
     if (error) throw error
@@ -6775,6 +6783,56 @@ const addQuickPollParticipant = async (
   participantData: AddParticipantData
 ) => {
   try {
+    // If a matching deleted participant exists, revive instead of inserting new
+    let existingParticipant: any | null = null
+
+    if (participantData.account_address) {
+      const { data, error: existingByAccountError } = (await db.supabase
+        .from('quick_poll_participants')
+        .select('*')
+        .eq('poll_id', pollId)
+        .eq('account_address', participantData.account_address)
+        .maybeSingle?.()) ?? { data: null, error: null }
+
+      if (existingByAccountError) throw existingByAccountError
+      existingParticipant = data
+    } else if (participantData.guest_email) {
+      const { data, error: existingByEmailError } = (await db.supabase
+        .from('quick_poll_participants')
+        .select('*')
+        .eq('poll_id', pollId)
+        .eq('guest_email', participantData.guest_email)
+        .maybeSingle?.()) ?? { data: null, error: null }
+
+      if (existingByEmailError) throw existingByEmailError
+      existingParticipant = data
+    }
+
+    if (existingParticipant) {
+      if (existingParticipant.status === QuickPollParticipantStatus.DELETED) {
+        const updates: QuickPollParticipantUpdateFields = {
+          status: QuickPollParticipantStatus.PENDING,
+        }
+        // Optionally refresh name or type if provided now
+        if (participantData.guest_name)
+          updates.guest_name = participantData.guest_name
+
+        const { data: revivedParticipant, error: reviveParticipantError } =
+          await db.supabase
+            .from('quick_poll_participants')
+            .update(updates)
+            .eq('id', existingParticipant.id)
+            .select()
+            .single()
+
+        if (reviveParticipantError) throw reviveParticipantError
+        return revivedParticipant
+      }
+
+      // Already present and not deleted: just return it
+      return existingParticipant
+    }
+
     const { data: participant, error } = await db.supabase
       .from('quick_poll_participants')
       .insert([
