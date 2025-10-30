@@ -109,6 +109,49 @@ export const newGroupInviteEmail = async (
   }
   return true
 }
+export const sendPollInviteEmail = async (
+  toEmail: string,
+  inviterName: string,
+  pollTitle: string,
+  pollSlug: string
+): Promise<boolean> => {
+  const email = new Email()
+  const pollLink = `${appUrl}/poll/${pollSlug}`
+  const locals = {
+    inviterName,
+    pollTitle,
+    pollLink,
+  }
+
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'poll_invite')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: `${inviterName} invited you to participate in "${pollTitle}". View the poll and add your availability here: ${pollLink}`,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'quickpoll',
+        value: 'invite',
+      },
+    ],
+  }
+
+  try {
+    await resend.emails.send(msg)
+    return true
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+    return false
+  }
+}
+
 export const newGroupRejectEmail = async (
   toEmail: string,
   participant: ParticipantInfoForInviteNotification,

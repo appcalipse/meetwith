@@ -152,6 +152,13 @@ export interface UpdateGuestDetailsRequest {
   guest_email: string
 }
 
+export interface AddOrUpdateGuestParticipantRequest {
+  guest_email: string
+  guest_name?: string
+  available_slots: AvailabilitySlot[]
+  timezone: string
+}
+
 export interface OAuthCallbackQuery {
   code?: string | string[]
   error?: string | string[]
