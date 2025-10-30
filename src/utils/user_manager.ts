@@ -202,10 +202,11 @@ const getAllParticipantsDisplayName = (
       getParticipantDisplay(participant, noScheduler, currentAccountAddress)
     )
   }
-
-  displayNames = displayNames.sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: 'base' })
-  )
+  if (canSeeGuestList) {
+    displayNames = displayNames.sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    )
+  }
 
   // Move "You" to the front if present
   const youIndex = displayNames.findIndex(name => name === 'You')
