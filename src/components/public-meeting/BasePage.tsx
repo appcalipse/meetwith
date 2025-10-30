@@ -89,7 +89,7 @@ const BasePage: FC = () => {
         )}
       </Flex>
       <VStack gap={4} w={'100%'} alignItems="flex-start">
-        {currentAccount?.address && !isProduction && (
+        {currentAccount?.address && (
           <PaidMeetings setPaidSessionsExists={setPaidSessionsExists} />
         )}
         <VStack gap={4} w={'100%'} alignItems="flex-start">
