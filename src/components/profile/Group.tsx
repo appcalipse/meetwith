@@ -245,7 +245,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         {currentAccount?.preferences?.availaibility_id && (
           <Box
             bg="neutral.700"
-            borderRadius="12px"
+            borderRadius="8px"
             px={3}
             py={1}
             mb={4}

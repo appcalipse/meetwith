@@ -11,6 +11,7 @@ import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
   AvailabilitySlot,
+  PollVisibility,
   QuickPollBySlugResponse,
   QuickPollIntent,
   QuickPollParticipant,
@@ -32,7 +33,6 @@ import {
   useAvailabilityTracker,
 } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import GuestIdentificationModal from './GuestIdentificationModal'
-import PollSuccessScreen from './PollSuccessScreen'
 import { QuickPollParticipants } from './QuickPollParticipants'
 import { QuickPollPickAvailability } from './QuickPollPickAvailability'
 
@@ -137,7 +137,10 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   }
 
   const handleEditAvailability = () => {
-    if (!currentAccount) {
+    if (
+      !currentAccount &&
+      currentPollData?.poll.visibility === PollVisibility.PRIVATE
+    ) {
       if (!currentParticipantId || !currentGuestEmail) {
         setShowGuestIdModal(true)
       } else {
@@ -150,14 +153,6 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   const handleSaveAvailability = async () => {
     if (!currentAccount) {
-      if (!currentParticipantId || !currentGuestEmail) {
-        showErrorToast(
-          'Missing information',
-          'Please identify yourself first before saving availability.'
-        )
-        return
-      }
-
       const slotsByWeekday = new Map<number, { start: string; end: string }[]>()
 
       for (const slot of selectedSlots) {
@@ -190,10 +185,6 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
       if (onNavigateToGuestDetails) {
         onNavigateToGuestDetails()
-      } else {
-        router.push(
-          `/dashboard/schedule?ref=quickpoll&pollId=${currentPollData?.poll.id}&intent=edit_availability&tab=guest-details&participantId=${currentParticipantId}`
-        )
       }
     } else {
       if (!currentPollData) return
@@ -201,9 +192,9 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
       setIsSavingAvailability(true)
 
       try {
-        let participant: QuickPollParticipant
-
         if (currentAccount) {
+          let participant: QuickPollParticipant
+
           try {
             participant = (await getPollParticipantByIdentifier(
               currentPollData.poll.slug,
@@ -257,7 +248,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
       if (participant) {
         setCurrentParticipantId(participant.id)
-        setCurrentGuestEmail(email) // Store guest email in context
+        setCurrentGuestEmail(email)
         setShowGuestIdModal(false)
 
         if (showCalendarImportFlow) {
@@ -294,37 +285,25 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     })
   }
 
-  const handleGuestSaveAvailability = () => {
-    if (!currentAccount) {
-      if (currentParticipantId) {
-        router.push(
-          `/poll/${
-            currentPollData!.poll.slug
-          }/guest-details?participantId=${currentParticipantId}`
-        )
-      } else {
+  const handleCalendarImport = () => {
+    if (
+      !currentAccount &&
+      currentPollData?.poll.visibility === PollVisibility.PRIVATE
+    ) {
+      if (!currentParticipantId || !currentGuestEmail) {
+        setShowCalendarImportFlow(true)
         setShowGuestIdModal(true)
+      } else {
+        setShowCalendarModal(true)
       }
     } else {
-      handleSaveAvailability()
-    }
-  }
-
-  const handleCalendarImport = () => {
-    if (currentAccount) {
       setShowCalendarModal(true)
-    } else {
-      setShowCalendarImportFlow(true)
-      setShowGuestIdModal(true)
     }
   }
 
-  const handleCalendarConnectSuccess = () => {
-    setShowCalendarModal(false)
-    showSuccessToast(
-      'Calendar connected',
-      'Your calendar has been connected successfully!'
-    )
+  const handleCloseGuestIdModal = () => {
+    setShowGuestIdModal(false)
+    setShowCalendarImportFlow(false)
   }
 
   const handleAvailabilityAction = () => {
@@ -486,15 +465,17 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         participantId={currentParticipantId}
         pollData={currentPollData}
         refetch={refreshAvailabilities}
+        pollSlug={currentPollData?.poll.slug}
       />
 
-      {/* Guest Identification Modal */}
-      <GuestIdentificationModal
-        isOpen={showGuestIdModal}
-        onClose={() => setShowGuestIdModal(false)}
-        onSubmit={handleGuestIdentification}
-        pollTitle={currentPollData?.poll.title}
-      />
+      {currentPollData?.poll.visibility === PollVisibility.PRIVATE && (
+        <GuestIdentificationModal
+          isOpen={showGuestIdModal}
+          onClose={handleCloseGuestIdModal}
+          onSubmit={handleGuestIdentification}
+          pollTitle={currentPollData?.poll.title}
+        />
+      )}
     </VStack>
   )
 }

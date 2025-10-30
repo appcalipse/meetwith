@@ -1,4 +1,10 @@
-import { Address, ICoinConfig, MeetingSession } from '@meta/Transactions'
+import { ConnectedAccountInfo, StripeCountry } from '@meta/ConnectedAccounts'
+import {
+  Address,
+  ICoinConfig,
+  MeetingSession,
+  Transaction,
+} from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -28,7 +34,7 @@ import {
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/DiscordUserInfo'
+import { DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
@@ -49,8 +55,8 @@ import {
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
+import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
-  AddParticipantData,
   AddParticipantRequest,
   AvailabilitySlot,
   CancelQuickPollResponse,
@@ -69,6 +75,7 @@ import {
   CreateMeetingTypeRequest,
   DuplicateAvailabilityBlockRequest,
   MeetingCancelRequest,
+  MeetingCheckoutRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
   RequestInvoiceRequest,
@@ -87,6 +94,7 @@ import {
   QUICKPOLL_DEFAULT_LIMIT,
   QUICKPOLL_DEFAULT_OFFSET,
 } from './constants'
+import { PaymentStatus } from './constants/meeting-types'
 import {
   AccountNotFoundError,
   AllMeetingSlotsUsedError,
@@ -149,7 +157,6 @@ export const internalFetch = async <T>(
         ? undefined
         : {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
             ...headers,
           },
       ...options,
@@ -248,7 +255,7 @@ export const getExistingAccounts = async (
           fullInformation,
         }) as Promise<Account[]>
     )
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw e
   }
 }
@@ -1972,6 +1979,26 @@ export const addQuickPollParticipant = async (
   )
 }
 
+export interface BulkAddParticipantsRequest {
+  participants: Array<{
+    account_address?: string
+    guest_name?: string
+    guest_email: string
+    participant_type: QuickPollParticipantType
+  }>
+}
+
+export const addQuickPollParticipants = async (
+  pollId: string,
+  participants: BulkAddParticipantsRequest['participants']
+) => {
+  return await internalFetch(
+    `/secure/quickpoll/${pollId}/participants/bulk`,
+    'POST',
+    { participants }
+  )
+}
+
 export const getQuickPollBySlug = async (slug: string) => {
   return await internalFetch(`/quickpoll/${slug}`)
 }
@@ -2010,6 +2037,31 @@ export const updateGuestParticipantDetails = async (
       guest_email: guestEmail,
     }
   )
+}
+
+export const addOrUpdateGuestParticipantWithAvailability = async (
+  pollSlug: string,
+  guestEmail: string,
+  availableSlots: AvailabilitySlot[],
+  timezone: string,
+  guestName?: string
+) => {
+  return await internalFetch(
+    `/quickpoll/${pollSlug}/guest-participant`,
+    'POST',
+    {
+      guest_email: guestEmail,
+      guest_name: guestName,
+      available_slots: availableSlots,
+      timezone,
+    }
+  )
+}
+
+export const getPollParticipantById = async (
+  participantId: string
+): Promise<QuickPollParticipant> => {
+  return await internalFetch(`/quickpoll/participants/${participantId}`)
 }
 
 export const savePollParticipantCalendar = async (
@@ -2074,4 +2126,67 @@ export const getQuickPolls = async (
   }
 
   return await internalFetch(`/secure/quickpoll?${params}`)
+}
+
+export const getConnectedAccounts = async (): Promise<
+  ConnectedAccountInfo[]
+> => {
+  return await internalFetch<ConnectedAccountInfo[]>(
+    `/secure/accounts/connected`
+  )
+}
+
+export const getStripeOnboardingLink = async (countryCode?: string) => {
+  let url = `/secure/stripe/connect`
+  if (countryCode) {
+    url += `?country_code=${countryCode}`
+  }
+  return await internalFetch<{ url: string }>(url).then(res => res.url)
+}
+
+export const disconnectStripeAccount = async () => {
+  return await internalFetch(`/secure/stripe/disconnect`, 'PATCH')
+}
+
+export const generateDashboardLink = async () => {
+  return await internalFetch<{ url: string }>(`/secure/stripe/login`).then(
+    res => res.url
+  )
+}
+
+export const generateCheckoutLink = async (payload: MeetingCheckoutRequest) => {
+  return await internalFetch<{ url: string }>(
+    `/transactions/checkout`,
+    'POST',
+    payload
+  ).then(res => res.url)
+}
+
+export const getTransactionById = async (
+  transactionId: string
+): Promise<Transaction> => {
+  return await internalFetch<Transaction>(`/transactions/${transactionId}`)
+}
+
+export const getTransactionStatus = async (
+  transactionId: string
+): Promise<PaymentStatus> => {
+  return await internalFetch<PaymentStatus>(
+    `/transactions/${transactionId}/status`
+  )
+}
+
+export const getStripeStatus = async (): Promise<PaymentAccountStatus> => {
+  return await internalFetch<PaymentAccountStatus>(`/secure/stripe/status`)
+}
+
+export const getStripeSupportedCountries = async () => {
+  return await internalFetch<StripeCountry[]>(
+    `/secure/stripe/supported-countries`
+  ).then(countries =>
+    countries.map(country => ({
+      label: country.name,
+      value: country.id,
+    }))
+  )
 }

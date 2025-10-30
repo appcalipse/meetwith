@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-syntax */
+import { DiscordUserInfo } from '@meta/Discord'
 import * as Sentry from '@sentry/nextjs'
 import { Client, GatewayIntentBits } from 'discord.js'
 
@@ -8,7 +9,6 @@ import {
   NotificationChannel,
 } from '@/types/AccountNotifications'
 
-import { DiscordUserInfo } from '../../types/DiscordUserInfo'
 import { discordRedirectUrl, isProduction } from '../constants'
 import {
   createOrUpdatesDiscordAccount,
@@ -35,7 +35,6 @@ client.on('error', error => {
   console.error('Discord client error:', error)
   Sentry.captureException(error)
 })
-
 const doLogin = async () => {
   try {
     if (!ready) {

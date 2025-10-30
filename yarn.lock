@@ -17061,6 +17061,7 @@ __metadata:
     sharp: "npm:^0.34.1"
     slugify: "npm:^1.6.5"
     spacetime: "npm:^7.7.0"
+    stripe: "npm:^19.1.0"
     styled-components: "npm:^4.2.0"
     swiper: "npm:^8.4.5"
     thirdweb: "patch:thirdweb@patch%3Athirdweb@npm%253A5.105.43%23~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch%3A%3Aversion=5.105.43&hash=8fd311#~/patches/thirdweb-patch-c45de60fca.patch"
@@ -19703,7 +19704,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qs@npm:^6.10.3, qs@npm:^6.7.0":
+"qs@npm:^6.10.3, qs@npm:^6.11.0, qs@npm:^6.7.0":
   version: 6.14.0
   resolution: "qs@npm:6.14.0"
   dependencies:
@@ -21527,6 +21528,20 @@ __metadata:
   version: 2.0.1
   resolution: "strip-json-comments@npm:2.0.1"
   checksum: 10c0/b509231cbdee45064ff4f9fd73609e2bcc4e84a4d508e9dd0f31f70356473fde18abfb5838c17d56fb236f5a06b102ef115438de0600b749e818a35fbbc48c43
+  languageName: node
+  linkType: hard
+
+"stripe@npm:^19.1.0":
+  version: 19.1.0
+  resolution: "stripe@npm:19.1.0"
+  dependencies:
+    qs: "npm:^6.11.0"
+  peerDependencies:
+    "@types/node": ">=16"
+  peerDependenciesMeta:
+    "@types/node":
+      optional: true
+  checksum: 10c0/d1f6412373962a585f877af6b5933a000573dad1b0c5fe3937633ccb7117764ad46c8fb565431d846ac08f32811c150ffdce3a273717905a983e416ea131091f
   languageName: node
   linkType: hard
 

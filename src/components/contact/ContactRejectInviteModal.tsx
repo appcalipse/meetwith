@@ -185,7 +185,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
     >
       <ModalOverlay backdropFilter="blur(10px)" bg="rgba(0, 0, 0, 0.6)" />
       <ModalContent
-        bg="neutral.900"
+        bg="bg-surface"
         fontWeight={500}
         rounded={12}
         overflow={'hidden'}
