@@ -231,6 +231,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           weekday: value.weekday,
           ranges: value.ranges,
           date,
+          timezone,
         })
       })
 
@@ -263,7 +264,10 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             return
           }
 
-          const availabilitySlots = getAvailabilitySlots()
+          const availabilitySlots = getAvailabilitySlots().map(slot => ({
+            ...slot,
+            timezone: currentAccount.preferences?.timezone || 'UTC',
+          }))
 
           await updatePollParticipantAvailability(
             participant.id,

@@ -7041,22 +7041,22 @@ const addQuickPollParticipant = async (
     let existingParticipant: any | null = null
 
     if (participantData.account_address) {
-      const { data, error: existingByAccountError } = (await db.supabase
+      const { data, error: existingByAccountError } = await db.supabase
         .from('quick_poll_participants')
         .select('*')
         .eq('poll_id', pollId)
         .eq('account_address', participantData.account_address)
-        .maybeSingle?.()) ?? { data: null, error: null }
+        .maybeSingle()
 
       if (existingByAccountError) throw existingByAccountError
       existingParticipant = data
     } else if (participantData.guest_email) {
-      const { data, error: existingByEmailError } = (await db.supabase
+      const { data, error: existingByEmailError } = await db.supabase
         .from('quick_poll_participants')
         .select('*')
         .eq('poll_id', pollId)
         .eq('guest_email', participantData.guest_email)
-        .maybeSingle?.()) ?? { data: null, error: null }
+        .maybeSingle()
 
       if (existingByEmailError) throw existingByEmailError
       existingParticipant = data
