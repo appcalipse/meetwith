@@ -67,13 +67,11 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
         name: 'Account plans & Billing',
         section: SettingsSection.ACCOUNT_PLANS_BILLING,
       },
-    ]
-    if (!isProduction) {
-      tabs.push({
+      {
         name: 'Wallet & Payments',
         section: SettingsSection.WALLET_PAYMENT,
-      })
-    }
+      },
+    ]
     return tabs
   }, [])
   const [activeSection, setActiveSection] = useState<
