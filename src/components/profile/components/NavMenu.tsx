@@ -80,7 +80,7 @@ export const NavMenu: React.FC<{
   const isDarkMode = useColorModeValue(false, true)
 
   const LinkItems: Array<LinkItemProps> = useMemo(() => {
-    const tabs = [
+    const tabs: Array<LinkItemProps> = [
       { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
       {
         name: 'My Groups',
@@ -97,15 +97,14 @@ export const NavMenu: React.FC<{
         isBeta: true,
       },
       {
-        name: 'QuickPoll',
-        icon: FaUsers,
-        mode: EditMode.QUICKPOLL,
-        isBeta: true,
-      },
-      {
         name: 'Session Settings',
         icon: FaCalendarWeek,
         mode: EditMode.MEETING_SETTINGS,
+      },
+      {
+        name: 'Wallet',
+        icon: FaWallet,
+        mode: EditMode.WALLET,
       },
       {
         name: 'Availabilities',
@@ -116,10 +115,11 @@ export const NavMenu: React.FC<{
       { name: 'Settings', icon: FaCog, mode: EditMode.DETAILS },
     ]
     if (!isProduction) {
-      tabs.splice(5, 0, {
-        name: 'Wallet',
-        icon: FaWallet,
-        mode: EditMode.WALLET,
+      tabs.splice(3, 0, {
+        name: 'QuickPoll',
+        icon: FaUsers,
+        mode: EditMode.QUICKPOLL,
+        isBeta: true,
       })
     }
     return tabs
