@@ -6,6 +6,7 @@ import { Crypto } from '@peculiar/webcrypto'
 import { TextDecoder, TextEncoder } from 'util'
 global.TextDecoder = TextDecoder
 global.TextEncoder = TextEncoder
+global.ReadableStream = ReadableStream
 global.fetch = jest.fn().mockImplementation(path => {
   return Promise.resolve({
     status: 200,
