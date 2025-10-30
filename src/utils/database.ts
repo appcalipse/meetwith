@@ -5995,7 +5995,7 @@ const getPaymentPreferences = async (
     .from('payment_preferences')
     .select()
     .eq('owner_account_address', owner_account_address.toLowerCase())
-    .single()
+    .maybeSingle()
 
   if (error) {
     console.error('Database error in getPaymentPreferences:', error)
