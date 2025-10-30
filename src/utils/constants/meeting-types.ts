@@ -17,13 +17,11 @@ export const SessionTypeOptions = [
     value: SessionType.FREE,
     label: 'Free',
   },
-]
-if (!isProduction) {
-  SessionTypeOptions.push({
+  {
     value: SessionType.PAID,
     label: 'Paid',
-  })
-}
+  },
+]
 export const BASE_PROVIDERS = [
   MeetingProvider.GOOGLE_MEET,
   MeetingProvider.ZOOM,
@@ -155,7 +153,10 @@ export enum PaymentStep {
   SELECT_CRYPTO_NETWORK = 'select-crypto-network',
   HANDLE_SEND_INVOICE = 'handle-send-invoice',
 }
-
+export enum PaymentRedirectType {
+  INVOICE = 'direct-invoice',
+  CHECKOUT = 'checkout',
+}
 export const getDefaultValues = (): Partial<MeetingType> => ({
   type: SessionType.FREE,
   slug: '',
@@ -176,6 +177,7 @@ export const getDefaultValues = (): Partial<MeetingType> => ({
     default_token: AcceptedToken.USDC,
     created_at: new Date(),
     updated_at: new Date(),
+    payment_methods: [],
     id: '',
   },
 })

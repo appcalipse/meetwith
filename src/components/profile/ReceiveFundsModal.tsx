@@ -227,8 +227,8 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
             {/* Wallet Address */}
             <Box w="100%">
               <Box
-                bg="bg-surface-tertiary"
-                borderRadius={{ base: '8px', md: '12px' }}
+                bg="transparent"
+                borderRadius="8px"
                 px={{ base: 3, md: 4 }}
                 py={{ base: 2, md: 3 }}
                 display="flex"

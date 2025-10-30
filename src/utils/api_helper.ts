@@ -1,4 +1,10 @@
-import { Address, ICoinConfig, MeetingSession } from '@meta/Transactions'
+import { ConnectedAccountInfo, StripeCountry } from '@meta/ConnectedAccounts'
+import {
+  Address,
+  ICoinConfig,
+  MeetingSession,
+  Transaction,
+} from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -28,7 +34,7 @@ import {
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/DiscordUserInfo'
+import { DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
@@ -49,8 +55,8 @@ import {
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
+import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
-  AddParticipantData,
   AddParticipantRequest,
   AvailabilitySlot,
   CancelQuickPollResponse,
@@ -69,6 +75,7 @@ import {
   CreateMeetingTypeRequest,
   DuplicateAvailabilityBlockRequest,
   MeetingCancelRequest,
+  MeetingCheckoutRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
   RequestInvoiceRequest,
@@ -87,6 +94,7 @@ import {
   QUICKPOLL_DEFAULT_LIMIT,
   QUICKPOLL_DEFAULT_OFFSET,
 } from './constants'
+import { PaymentStatus } from './constants/meeting-types'
 import {
   AccountNotFoundError,
   AllMeetingSlotsUsedError,
@@ -139,8 +147,12 @@ export const internalFetch = async <T>(
   body?: unknown,
   options: RequestInit = {},
   headers = {},
-  isFormData = false
-) => {
+  isFormData = false,
+  withRetry = true,
+  remainingRetries = 3
+): Promise<T> => {
+  const baseDelay = 1000
+
   try {
     const response = await fetch(`${apiUrl}${path}`, {
       method,
@@ -149,7 +161,6 @@ export const internalFetch = async <T>(
         ? undefined
         : {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
             ...headers,
           },
       ...options,
@@ -163,6 +174,33 @@ export const internalFetch = async <T>(
 
     throw new ApiFetchError(response.status, await response.text())
   } catch (e: unknown) {
+    // Check if error is retryable
+    const isRetryableError =
+      withRetry &&
+      remainingRetries > 0 &&
+      ((e instanceof TypeError &&
+        (e.message.includes('Failed to fetch') ||
+          e.message.includes('Network request failed') ||
+          e.message.includes('NetworkError') ||
+          e.message.includes('timeout'))) ||
+        (e instanceof ApiFetchError && e.status >= 500))
+
+    if (isRetryableError) {
+      const delay = Math.max(baseDelay / remainingRetries, 100)
+      console.warn(`API call failed, retrying...`, e)
+      await new Promise(resolve => setTimeout(resolve, delay))
+      return internalFetch<T>(
+        path,
+        method,
+        body,
+        options,
+        headers,
+        isFormData,
+        withRetry,
+        remainingRetries - 1
+      )
+    }
+
     // Exclude account not found error on sentry
     if (
       e instanceof ApiFetchError &&
@@ -248,7 +286,7 @@ export const getExistingAccounts = async (
           fullInformation,
         }) as Promise<Account[]>
     )
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw e
   }
 }
@@ -2119,4 +2157,67 @@ export const getQuickPolls = async (
   }
 
   return await internalFetch(`/secure/quickpoll?${params}`)
+}
+
+export const getConnectedAccounts = async (): Promise<
+  ConnectedAccountInfo[]
+> => {
+  return await internalFetch<ConnectedAccountInfo[]>(
+    `/secure/accounts/connected`
+  )
+}
+
+export const getStripeOnboardingLink = async (countryCode?: string) => {
+  let url = `/secure/stripe/connect`
+  if (countryCode) {
+    url += `?country_code=${countryCode}`
+  }
+  return await internalFetch<{ url: string }>(url).then(res => res.url)
+}
+
+export const disconnectStripeAccount = async () => {
+  return await internalFetch(`/secure/stripe/disconnect`, 'PATCH')
+}
+
+export const generateDashboardLink = async () => {
+  return await internalFetch<{ url: string }>(`/secure/stripe/login`).then(
+    res => res.url
+  )
+}
+
+export const generateCheckoutLink = async (payload: MeetingCheckoutRequest) => {
+  return await internalFetch<{ url: string }>(
+    `/transactions/checkout`,
+    'POST',
+    payload
+  ).then(res => res.url)
+}
+
+export const getTransactionById = async (
+  transactionId: string
+): Promise<Transaction> => {
+  return await internalFetch<Transaction>(`/transactions/${transactionId}`)
+}
+
+export const getTransactionStatus = async (
+  transactionId: string
+): Promise<PaymentStatus> => {
+  return await internalFetch<PaymentStatus>(
+    `/transactions/${transactionId}/status`
+  )
+}
+
+export const getStripeStatus = async (): Promise<PaymentAccountStatus> => {
+  return await internalFetch<PaymentAccountStatus>(`/secure/stripe/status`)
+}
+
+export const getStripeSupportedCountries = async () => {
+  return await internalFetch<StripeCountry[]>(
+    `/secure/stripe/supported-countries`
+  ).then(countries =>
+    countries.map(country => ({
+      label: country.name,
+      value: country.id,
+    }))
+  )
 }
