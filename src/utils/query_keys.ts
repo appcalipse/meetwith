@@ -61,4 +61,7 @@ export default class QueryKeys {
   static connectedAccounts(accountAddress?: string) {
     return ['connectedAccounts', accountAddress]
   }
+  static supportedCountries() {
+    return ['supportedCountries']
+  }
 }
