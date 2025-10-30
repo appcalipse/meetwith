@@ -41,6 +41,7 @@ import {
   getExistingAccounts,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { isProduction } from '@/utils/constants'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
@@ -611,9 +612,11 @@ export function SchedulePickTime({
               the required participants.
             </Text>
           </Box>
-          <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-            Jump to Best Slot
-          </Button>
+          {!isProduction && (
+            <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
+              Jump to Best Slot
+            </Button>
+          )}
         </VStack>
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
@@ -641,13 +644,15 @@ export function SchedulePickTime({
                 isDisabled={isBackDisabled}
                 gap={0}
               />
-              <Button
-                colorScheme="primary"
-                onClick={handleJumpToBestSlot}
-                display={{ lg: 'block', base: 'none' }}
-              >
-                Jump to Best Slot
-              </Button>
+              {!isProduction && (
+                <Button
+                  colorScheme="primary"
+                  onClick={handleJumpToBestSlot}
+                  display={{ lg: 'block', base: 'none' }}
+                >
+                  Jump to Best Slot
+                </Button>
+              )}
               <Box
                 maxW="350px"
                 textAlign="center"
