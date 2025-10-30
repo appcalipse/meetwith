@@ -1,5 +1,6 @@
-import { Box, Grid, Heading, VStack } from '@chakra-ui/react'
+import { Box, Grid, Heading, useDisclosure, VStack } from '@chakra-ui/react'
 import AccountCard from '@components/connected-account/AccountCard'
+import SelectCountry from '@components/connected-account/SelectCountry'
 import Loading from '@components/Loading'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
@@ -9,6 +10,7 @@ import { AccountContext } from '@/providers/AccountProvider'
 import {
   generateDiscordAccount,
   getConnectedAccounts,
+  getStripeSupportedCountries,
 } from '@/utils/api_helper'
 import { OnboardingSubject } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
@@ -30,9 +32,25 @@ const ConnectedAccounts: React.FC = () => {
       staleTime: 0,
       refetchOnMount: true,
       onError: (error: unknown) => {
-        handleApiError('Error Fetching Telegram Username', error)
+        handleApiError('Error Fetching Connected Accounts', error)
       },
     })
+  const { data: supportedCountries, isLoading: isSupportedCountriesLoading } =
+    useQuery({
+      queryKey: QueryKeys.supportedCountries(),
+      queryFn: getStripeSupportedCountries,
+      enabled: !!currentAccount?.address,
+      staleTime: 1000 * 60 * 60 * 24,
+      refetchOnMount: true,
+      onError: (error: unknown) => {
+        handleApiError('Error Fetching Supported countries', error)
+      },
+    })
+  const {
+    isOpen: isSupportedCountryModalOpen,
+    onOpen: openSupportedCountryModal,
+    onClose: closeSupportedCountryModal,
+  } = useDisclosure()
 
   const generateDiscord = async () => {
     const { code, state } = router.query
@@ -91,10 +109,17 @@ const ConnectedAccounts: React.FC = () => {
               account={account.account}
               info={account.info}
               key={`connected-account-${account.account}`}
+              openSelectCountry={openSupportedCountryModal}
             />
           ))}
         </Grid>
       )}
+      <SelectCountry
+        countries={supportedCountries}
+        isCountriesLoading={isSupportedCountriesLoading}
+        isOpen={isSupportedCountryModalOpen}
+        onClose={closeSupportedCountryModal}
+      />
     </VStack>
   )
 }
