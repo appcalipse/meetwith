@@ -243,7 +243,7 @@ const AccountCard: FC<IProps> = props => {
         showErrorToast('Connection Failed', msg)
       )
 
-      if (isSuccessful) {
+      if (isSuccessful && props.account !== ConnectedAccount.STRIPE) {
         await queryClient.invalidateQueries(
           QueryKeys.connectedAccounts(currentAccount?.address)
         )
