@@ -46,6 +46,7 @@ import { handleApiError } from '@/utils/error_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 import Block from './components/Block'
+import InfoTooltip from './components/Tooltip'
 
 const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
@@ -439,14 +440,18 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
 
         <VStack align="stretch" spacing={4}>
           <Box mt={2}>
-            <Text fontSize="md" fontWeight="medium" mb={3} color="text-primary">
-              {paymentPreferences?.hasPin ||
-              isPreferencesLoading ||
-              isPreferencesFetching
-                ? 'Transaction Pin'
-                : "Enable Transaction PIN - You'll need this to send and withdraw funds from your wallet."}
+            <Heading
+              fontSize="base"
+              fontWeight={700}
+              mb={3}
+              color="text-primary"
+            >
+              Enable Transaction Pin
+            </Heading>
+            <Text pb="4">
+              Protect your funds by setting a transaction pin for sending and
+              withdrawing from your wallet
             </Text>
-
             {isPreferencesLoading || isPreferencesFetching ? (
               <HStack spacing={3}>
                 <Button
@@ -516,14 +521,25 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
         {/* Payment settings */}
         <Box mt={10}>
           <Heading fontSize="xl" mb={4}>
-            Payment settings
+            Payment channels
           </Heading>
 
           <FormControl>
-            <FormLabel fontSize="md" color="text-primary">
-              Network to receive payment
-            </FormLabel>
-
+            <Heading
+              fontSize="base"
+              mb={4}
+              textTransform="uppercase"
+              color="neutral.200"
+              fontWeight={500}
+            >
+              CRYPTO SETTINGS
+            </Heading>
+            <Box mb={4}>
+              <FormLabel fontSize="md" color="text-primary">
+                Network you prefer your payment to be settled in{' '}
+                <InfoTooltip text="Clients can pay you in any EVM network and we settle you in your preferred network." />
+              </FormLabel>
+            </Box>
             {/* Custom dropdown with chain icons, environment-aware options */}
             <Menu matchWidth>
               <MenuButton
@@ -567,7 +583,12 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                   </Text>
                 </HStack>
               </MenuButton>
-              <MenuList bg="bg-surface-secondary" borderColor="border-default">
+              <MenuList
+                bg="bg-surface-secondary"
+                borderColor="border-default"
+                boxShadow="none"
+                shadow="none"
+              >
                 {paymentNetworkOptions.map(option => (
                   <MenuItem
                     key={option.value}
