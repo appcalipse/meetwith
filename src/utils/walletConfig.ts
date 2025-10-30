@@ -8,7 +8,6 @@ import {
 import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 import { getPriceForChain } from '@/utils/services/chainlink.service'
 
-import { isProduction } from './constants'
 import { zeroAddress } from './generic_utils'
 
 export interface Currency {

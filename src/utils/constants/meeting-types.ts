@@ -17,13 +17,11 @@ export const SessionTypeOptions = [
     value: SessionType.FREE,
     label: 'Free',
   },
-]
-if (!isProduction) {
-  SessionTypeOptions.push({
+  {
     value: SessionType.PAID,
     label: 'Paid',
-  })
-}
+  },
+]
 export const BASE_PROVIDERS = [
   MeetingProvider.GOOGLE_MEET,
   MeetingProvider.ZOOM,
