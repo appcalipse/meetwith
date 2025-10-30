@@ -260,7 +260,7 @@ const InviteParticipants: FC<IProps> = ({
               isLoading={isLoading}
               isDisabled={isLoading || newInvitees.length === 0}
             >
-              Send Invite
+              Send Invite & Add Participant(s)
             </Button>
           )}
 
