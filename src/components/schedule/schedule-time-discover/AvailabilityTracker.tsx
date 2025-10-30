@@ -6,6 +6,7 @@ import { mergeTimeRanges } from '@/utils/quickpoll_helper'
 interface AvailabilitySlot {
   weekday: number
   ranges: Array<{ start: string; end: string }>
+  date?: string
 }
 
 interface SelectedTimeSlot {
@@ -67,36 +68,32 @@ export const AvailabilityTrackerProvider: React.FC<{
   }
 
   const getAvailabilitySlots = (): AvailabilitySlot[] => {
-    // Group slots by weekday
-    const slotsByWeekday = new Map<
-      number,
-      Array<{ start: string; end: string }>
-    >()
+    // Group slots by specific calendar date (yyyy-MM-dd)
+    const slotsByDate = new Map<string, Array<{ start: string; end: string }>>()
 
     selectedSlots.forEach(slot => {
-      const weekday = slot.start.weekday % 7
+      const dateKey = slot.start.toFormat('yyyy-MM-dd')
       const startTime = slot.start.toFormat('HH:mm')
       const endTime = slot.end.toFormat('HH:mm')
 
-      if (!slotsByWeekday.has(weekday)) {
-        slotsByWeekday.set(weekday, [])
+      if (!slotsByDate.has(dateKey)) {
+        slotsByDate.set(dateKey, [])
       }
 
-      slotsByWeekday.get(weekday)!.push({ start: startTime, end: endTime })
+      slotsByDate.get(dateKey)!.push({ start: startTime, end: endTime })
     })
 
     // Convert to AvailabilitySlot format
     const availabilitySlots: AvailabilitySlot[] = []
 
-    for (let weekday = 0; weekday < 7; weekday++) {
-      const ranges = slotsByWeekday.get(weekday) || []
-
-      // Merge overlapping/adjacent ranges
+    for (const [dateKey, ranges] of slotsByDate.entries()) {
       const mergedRanges = mergeTimeRanges(ranges)
+      const weekday = DateTime.fromFormat(dateKey, 'yyyy-MM-dd').weekday % 7
 
       availabilitySlots.push({
         weekday,
         ranges: mergedRanges,
+        date: dateKey,
       })
     }
 
