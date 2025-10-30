@@ -1,5 +1,5 @@
 import { PaymentProvider } from '@meta/PaymentAccount'
-import Sentry from '@sentry/nextjs'
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
