@@ -13,3 +13,7 @@ export interface ConnectedAccountInfo {
   account: ConnectedAccount
   info: DiscordAccountInfo | TelegramAccountInfo | ActivePaymentAccount | null
 }
+export interface StripeCountry {
+  id: string
+  name: string
+}
