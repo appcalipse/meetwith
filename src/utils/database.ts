@@ -5282,23 +5282,20 @@ const confirmFiatTransaction = async (
   }
 
   // Only send receipt if guest email and name are provided
-  if (payload.guest_email && payload.guest_name) {
-    try {
-      // don't wait for receipt to be sent before serving a response
-      sendReceiptEmail(payload.guest_email, payload.guest_name, {
-        full_name: payload.guest_name,
-        email_address: payload.guest_email,
-        plan: meetingType?.title || '',
-        number_of_sessions: totalNoOfSlots.toString(),
-        price: data.amount?.toString() || '0',
-        payment_method: data?.method,
-        transaction_fee: String(data.total_fee || 0),
-        transaction_status: PaymentStatus.COMPLETED,
-        transaction_hash: data.transaction_hash || '',
-      })
-    } catch (e) {
-      console.error(e)
-    }
+  if (payload.guest_name) {
+    // don't wait for receipt to be sent before serving a response
+    sendReceiptEmailToGuest({
+      guest_name: payload.guest_name,
+      account_address: payload.guest_address,
+      guest_email: payload.guest_email,
+      plan: meetingType?.title || '',
+      number_of_sessions: totalNoOfSlots.toString(),
+      price: data.amount?.toString() || '0',
+      payment_method: data?.method,
+      transaction_fee: String(data.total_fee || 0),
+      transaction_status: PaymentStatus.COMPLETED,
+      transaction_hash: data.transaction_hash || '',
+    })
   }
 }
 const handleUpdateTransactionStatus = async (
@@ -5444,33 +5441,63 @@ const createCryptoTransaction = async (
     }
 
     // Only send receipt if guest email and name are provided
-    if (transactionRequest.guest_email && transactionRequest.guest_name) {
-      try {
-        // don't wait for receipt to be sent before serving a response
-        sendReceiptEmail(
-          transactionRequest.guest_email,
-          transactionRequest.guest_name,
-          {
-            full_name: transactionRequest.guest_name,
-            email_address: transactionRequest.guest_email,
-            plan: meetingType?.title || '',
-            number_of_sessions: totalNoOfSlots.toString(),
-            price: transactionRequest.amount.toString(),
-            payment_method: transactionRequest.payment_method,
-            transaction_fee: String(transactionRequest.total_fee || 0),
-            transaction_status: PaymentStatus.COMPLETED,
-            transaction_hash: transactionRequest.transaction_hash,
-          }
-        )
-      } catch (e) {
-        console.error(e)
-      }
+    if (transactionRequest.guest_name) {
+      sendReceiptEmailToGuest({
+        guest_name: transactionRequest.guest_name,
+        guest_email: transactionRequest.guest_email,
+        account_address,
+        plan: meetingType?.title || '',
+        number_of_sessions: totalNoOfSlots.toString(),
+        price: transactionRequest.amount.toString(),
+        payment_method: transactionRequest.payment_method,
+        transaction_fee: String(transactionRequest.total_fee || 0),
+        transaction_status: PaymentStatus.COMPLETED,
+        transaction_hash: transactionRequest.transaction_hash,
+      })
     }
 
     // Notify host about income
     await sendSessionIncomeEmail(meetingType, transactionRequest)
   }
   return data[0]
+}
+
+const sendReceiptEmailToGuest = async (opts: {
+  guest_name: string
+  guest_email?: string
+  account_address?: string
+  plan: string
+  number_of_sessions: string
+  price: string
+  payment_method: string
+  transaction_fee: string
+  transaction_status: PaymentStatus
+  transaction_hash: string
+}) => {
+  try {
+    let guest_email = opts.guest_email
+    if (!guest_email && opts?.account_address) {
+      guest_email = await getAccountNotificationSubscriptionEmail(
+        opts.account_address
+      )
+    }
+    if (!guest_email || !opts.guest_name) return
+
+    // don't wait for receipt to be sent before serving a response
+    await sendReceiptEmail(guest_email, {
+      full_name: opts.guest_name,
+      email_address: guest_email,
+      plan: opts?.plan || '',
+      number_of_sessions: opts?.number_of_sessions || '1',
+      price: opts?.price || '0',
+      payment_method: opts?.payment_method,
+      transaction_fee: opts?.transaction_fee || '0',
+      transaction_status: opts?.transaction_status,
+      transaction_hash: opts?.transaction_hash,
+    })
+  } catch (e) {
+    console.error('sendReceiptEmailToGuest error:', e)
+  }
 }
 
 const getMeetingSessionsByTxHash = async (
