@@ -47,7 +47,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
               currency: 'usd',
               product_data: {
                 name: meetingType.title || 'Meeting',
-                description: meetingType.description || '',
+                description: meetingType.description || undefined,
                 images: avatarUrl ? [avatarUrl] : [],
               },
               unit_amount: meetingType.plan.price_per_slot * 100,
@@ -59,7 +59,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         mode: 'payment',
         payment_intent_data: {
           metadata,
-          application_fee_amount: payload.amount * 0.05 * 100, // 5% platform fee
+          application_fee_amount: Math.ceil(payload.amount * 0.005 * 100), // 0.5% platform fee
           on_behalf_of: paymentAccount?.provider_account_id,
           transfer_data: {
             destination: paymentAccount?.provider_account_id || '',
