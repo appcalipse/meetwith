@@ -7087,6 +7087,46 @@ const addQuickPollParticipant = async (
       return existingParticipant
     }
 
+    // For account owners, fetch their weekly availability
+    let availableSlots: AvailabilitySlot[] = []
+    let timezone = 'UTC'
+
+    if (participantData.account_address) {
+      try {
+        const participantAccount = await getAccountFromDB(
+          participantData.account_address
+        )
+        timezone = participantAccount.preferences?.timezone || 'UTC'
+
+        // Get the user's default availability block
+        const availabilityId = await getDefaultAvailabilityBlockId(
+          participantData.account_address
+        )
+        if (availabilityId) {
+          const { data: availability } = await db.supabase
+            .from('availabilities')
+            .select('weekly_availability')
+            .eq('id', availabilityId)
+            .single()
+
+          if (availability?.weekly_availability) {
+            // Convert weekly availability to poll format
+            availableSlots = availability.weekly_availability.map(
+              (day: AvailabilitySlot) => ({
+                weekday: day.weekday,
+                ranges: day.ranges || [],
+              })
+            )
+          }
+        }
+      } catch (error) {
+        console.warn(
+          `Could not fetch timezone/availability for ${participantData.account_address}:`,
+          error
+        )
+      }
+    }
+
     const { data: participant, error } = await db.supabase
       .from('quick_poll_participants')
       .insert([
@@ -7097,6 +7137,8 @@ const addQuickPollParticipant = async (
           guest_email: participantData.guest_email,
           status: QuickPollParticipantStatus.PENDING,
           participant_type: participantData.participant_type,
+          timezone,
+          available_slots: availableSlots,
         },
       ])
       .select()

@@ -96,7 +96,7 @@ export interface QuickPollParticipantWithAccount extends QuickPollParticipant {
 // Request interfaces
 export interface CreateQuickPollRequest {
   title: string
-  description: string
+  description?: string
   duration_minutes: number
   starts_at: string
   ends_at: string
