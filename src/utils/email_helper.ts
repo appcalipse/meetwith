@@ -784,7 +784,6 @@ const createPdfBuffer = async (html: string): Promise<Buffer> => {
 }
 export const sendReceiptEmail = async (
   toEmail: string,
-  userName: string,
   receiptMetadata: ReceiptMetadata
 ) => {
   const email = new Email({
