@@ -2076,8 +2076,8 @@ export const addOrUpdateGuestParticipantWithAvailability = async (
   availableSlots: AvailabilitySlot[],
   timezone: string,
   guestName?: string
-) => {
-  return await internalFetch(
+): Promise<{ participant: QuickPollParticipant }> => {
+  return await internalFetch<{ participant: QuickPollParticipant }>(
     `/quickpoll/${pollSlug}/guest-participant`,
     'POST',
     {

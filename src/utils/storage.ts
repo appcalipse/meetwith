@@ -1,6 +1,9 @@
+import { GuestPollDetails } from '@/types/QuickPoll'
+
 const SIGNATURE_KEY = 'current_user_sig'
 const SCHEDULES = 'meetings_scheduled'
 const NOTIFICATION = 'group_notification'
+const GUEST_POLL_DETAILS = 'quickpoll_guest_details'
 const ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
@@ -73,11 +76,38 @@ const getNotificationTime = (account_address?: string): number | null => {
     return null
   }
 }
+const saveGuestPollDetails = (
+  pollId: string,
+  guestDetails: GuestPollDetails
+) => {
+  window.localStorage.setItem(
+    `${GUEST_POLL_DETAILS}:${pollId}`,
+    JSON.stringify(guestDetails)
+  )
+}
+
+const getGuestPollDetails = (pollId: string): GuestPollDetails | null => {
+  const stored = window.localStorage.getItem(`${GUEST_POLL_DETAILS}:${pollId}`)
+  if (!stored) return null
+  try {
+    return JSON.parse(stored)
+  } catch {
+    return null
+  }
+}
+
+const removeGuestPollDetails = (pollId: string) => {
+  window.localStorage.removeItem(`${GUEST_POLL_DETAILS}:${pollId}`)
+}
+
 export {
+  getGuestPollDetails,
   getMeetingsScheduled,
   getNotificationTime,
   getSignature,
+  removeGuestPollDetails,
   removeSignature,
+  saveGuestPollDetails,
   saveMeetingsScheduled,
   saveNotificationTime,
   saveSignature,

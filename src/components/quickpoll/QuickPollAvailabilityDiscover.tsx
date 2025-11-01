@@ -29,6 +29,8 @@ import {
   updatePollParticipantAvailability,
   updateQuickPoll,
 } from '@/utils/api_helper'
+import { convertSelectedSlotsToAvailabilitySlots } from '@/utils/quickpoll_helper'
+import { getGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
@@ -143,6 +145,22 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     setCurrentTimezone,
   } = useQuickPollAvailability()
 
+  // Load guest details from localStorage for guests
+  useEffect(() => {
+    if (!currentAccount && currentPollData) {
+      const storedDetails = getGuestPollDetails(currentPollData.poll.id)
+      if (storedDetails) {
+        setCurrentParticipantId(storedDetails.participantId)
+        setCurrentGuestEmail(storedDetails.email)
+      }
+    }
+  }, [
+    currentAccount,
+    currentPollData,
+    setCurrentParticipantId,
+    setCurrentGuestEmail,
+  ])
+
   useEffect(() => {
     if (router.query.intent) {
       setCurrentIntent(router.query.intent as QuickPollIntent)
@@ -204,43 +222,51 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   const handleSaveAvailability = async () => {
     if (!currentAccount) {
-      const slotsByDate = new Map<
-        string,
-        { weekday: number; ranges: Array<{ start: string; end: string }> }
-      >()
+      // Check if guest has saved details in localStorage
+      const storedDetails = getGuestPollDetails(currentPollData?.poll.id || '')
 
-      for (const slot of selectedSlots) {
-        const date = slot.start.toFormat('yyyy-MM-dd')
-        const weekday = slot.start.weekday === 7 ? 0 : slot.start.weekday
-        const startTime = slot.start.toFormat('HH:mm')
-        const endTime = slot.end.toFormat('HH:mm')
+      const availabilitySlots = convertSelectedSlotsToAvailabilitySlots(
+        selectedSlots,
+        timezone
+      )
 
-        if (!slotsByDate.has(date)) {
-          slotsByDate.set(date, { weekday, ranges: [] })
+      if (storedDetails && currentParticipantId) {
+        setIsSavingAvailability(true)
+
+        try {
+          await updatePollParticipantAvailability(
+            storedDetails.participantId,
+            availabilitySlots,
+            timezone
+          )
+
+          setIsEditingAvailability(false)
+          refreshAvailabilities()
+          clearSlots()
+
+          queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+          queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
+
+          showSuccessToast(
+            'Availability saved',
+            'Your availability has been saved successfully.'
+          )
+        } catch (error) {
+          showErrorToast(
+            'Failed to save availability',
+            'There was an error saving your availability. Please try again.'
+          )
+        } finally {
+          setIsSavingAvailability(false)
         }
+      } else {
+        // First-time guest: navigate to details form
+        setGuestAvailabilitySlots(availabilitySlots)
+        setCurrentTimezone(timezone)
 
-        slotsByDate.get(date)!.ranges.push({
-          start: startTime,
-          end: endTime,
-        })
-      }
-
-      const availabilitySlots: AvailabilitySlot[] = []
-      slotsByDate.forEach((value, date) => {
-        availabilitySlots.push({
-          weekday: value.weekday,
-          ranges: value.ranges,
-          date,
-          timezone,
-        })
-      })
-
-      // Store slots and timezone in context
-      setGuestAvailabilitySlots(availabilitySlots)
-      setCurrentTimezone(timezone)
-
-      if (onNavigateToGuestDetails) {
-        onNavigateToGuestDetails()
+        if (onNavigateToGuestDetails) {
+          onNavigateToGuestDetails()
+        }
       }
     } else {
       if (!currentPollData) return

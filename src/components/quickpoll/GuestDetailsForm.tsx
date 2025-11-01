@@ -22,11 +22,13 @@ import {
   getPollParticipantById,
   updateGuestParticipantDetails,
 } from '@/utils/api_helper'
+import { getGuestPollDetails, saveGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
 
 interface GuestDetailsFormProps {
   pollSlug: string
+  pollId: string
   onSuccess: () => void
   pollTitle?: string
   onNavigateBack?: () => void
@@ -34,6 +36,7 @@ interface GuestDetailsFormProps {
 
 const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
   pollSlug,
+  pollId,
   onSuccess,
   onNavigateBack,
 }) => {
@@ -95,6 +98,8 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     setIsLoading(true)
 
     try {
+      let participantId = currentParticipantId
+
       if (currentParticipantId && calendarConnected) {
         await updateGuestParticipantDetails(
           currentParticipantId,
@@ -106,19 +111,30 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
           'Your calendar is connected and your details have been saved.'
         )
       } else {
-        await addOrUpdateGuestParticipantWithAvailability(
+        const response = await addOrUpdateGuestParticipantWithAvailability(
           pollSlug,
           email.trim().toLowerCase(),
           guestAvailabilitySlots,
           currentTimezone || 'UTC',
           fullName.trim()
         )
+        participantId = response?.participant?.id
         clearGuestAvailabilitySlots()
         showSuccessToast(
           'Availability saved!',
           'Your availability has been added to the poll.'
         )
       }
+
+      // Save guest details to localStorage
+      if (participantId) {
+        saveGuestPollDetails(pollId, {
+          participantId,
+          email: email.trim().toLowerCase(),
+          name: fullName.trim(),
+        })
+      }
+
       setIsEditingAvailability(false)
 
       onSuccess()
