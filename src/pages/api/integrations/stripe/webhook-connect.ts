@@ -6,6 +6,7 @@ import {
 } from '@utils/services/stripe.helper'
 import { StripeService } from '@utils/services/stripe.service'
 import { NextApiRequest, NextApiResponse } from 'next'
+import posthog from 'posthog-js'
 import Stripe from 'stripe'
 
 import { extractQuery } from '@/utils/generic_utils'
@@ -48,7 +49,18 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       })
     } catch (e) {
       console.error(e)
-      Sentry.captureException(e)
+      posthog.captureException(e, {
+        extra: {
+          requestBody: req.body,
+          requestHeaders: req.headers,
+        },
+      })
+      Sentry.captureException(e, {
+        extra: {
+          requestBody: req.body,
+          requestHeaders: req.headers,
+        },
+      })
       return res.status(500).send('An unexpected error occurred.')
     }
   }
