@@ -48,8 +48,6 @@ const doLogin = async () => {
 }
 const MWW_DISCORD_SERVER_ID = '915252743529181224'
 
-doLogin()
-
 export const generateDiscordAuthToken = async (
   discordCode: string
 ): Promise<AuthToken | null> => {
@@ -227,10 +225,12 @@ export const dmAccount = async (
   try {
     let attempts = 0
     const maxAttempts = 20 // 10 seconds total
-
+    if (!client.isReady()) {
+      doLogin()
+    }
     while (!client.isReady() && attempts < maxAttempts) {
       console.log(`Waiting for Discord client... attempt ${attempts + 1}`)
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, 1500))
       attempts++
     }
 
