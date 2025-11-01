@@ -148,7 +148,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     duration: 30,
     startDate: new Date(),
     endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
-    expiryDate: new Date(),
+    expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     expiryTime: new Date(),
     description: '',
   })
@@ -306,8 +306,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         title: '',
         duration: 30,
         startDate: new Date(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        expiryDate: new Date(),
+        endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         expiryTime: new Date(),
         description: '',
       })

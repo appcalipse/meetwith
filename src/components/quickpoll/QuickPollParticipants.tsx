@@ -37,6 +37,7 @@ interface QuickPollParticipantsProps {
   onAvailabilityToggle?: () => void
   currentGuestEmail?: string
   onParticipantAdded?: () => void
+  onParticipantRemoved?: (participantId: string) => void
 }
 
 const convertQuickPollParticipant = (participant: any): ParticipantInfo => {
@@ -64,6 +65,7 @@ export function QuickPollParticipants({
   onAvailabilityToggle,
   currentGuestEmail,
   onParticipantAdded,
+  onParticipantRemoved,
 }: QuickPollParticipantsProps) {
   const { currentAccount } = useContext(AccountContext)
   const {
@@ -191,6 +193,21 @@ export function QuickPollParticipants({
   }
 
   const handleParticipantRemove = (participant: ParticipantInfo) => {
+    if (pollData?.poll?.participants) {
+      const match = pollData.poll.participants.find(p => {
+        const id1 = (p.account_address || p.guest_email || '').toLowerCase()
+        const id2 = (
+          participant.account_address ||
+          participant.guest_email ||
+          ''
+        ).toLowerCase()
+        return id1 && id1 === id2
+      })
+      if (match?.id) {
+        onParticipantRemoved?.(match.id)
+      }
+    }
+
     const identifier = (
       participant.account_address || participant.guest_email
     )?.toLowerCase()

@@ -132,7 +132,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const cleanUpdateData = {
         ...updateData,
         title: updateData.title?.trim(),
-        description: updateData.description?.trim(),
+        description: updateData.description?.trim() || '',
       }
 
       const poll = await updateQuickPoll(pollId, address, cleanUpdateData)
