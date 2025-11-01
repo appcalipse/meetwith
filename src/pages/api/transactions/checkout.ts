@@ -40,36 +40,37 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         meeting_type_id: payload?.meeting_type_id || '',
         transaction_id: transaction.id,
       }
-      const session = await stripe.checkout.sessions.create({
-        line_items: [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: meetingType.title || 'Meeting',
-                description: meetingType.description || undefined,
-                images: avatarUrl ? [avatarUrl] : [],
+      const session = await stripe.checkout.sessions.create(
+        {
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: meetingType.title || 'Meeting',
+                  description: meetingType.description || undefined,
+                  images: avatarUrl ? [avatarUrl] : [],
+                },
+                unit_amount: meetingType.plan.price_per_slot * 100,
               },
-              unit_amount: meetingType.plan.price_per_slot * 100,
+              quantity: meetingType.plan.no_of_slot || 1,
             },
-            quantity: meetingType.plan.no_of_slot || 1,
-          },
-        ],
-        metadata,
-        mode: 'payment',
-        payment_intent_data: {
+          ],
           metadata,
-          application_fee_amount: Math.ceil(payload.amount * 0.005 * 100), // 0.5% platform fee
-          on_behalf_of: paymentAccount?.provider_account_id,
-          transfer_data: {
-            destination: paymentAccount?.provider_account_id || '',
+          mode: 'payment',
+          payment_intent_data: {
+            metadata,
+            application_fee_amount: Math.ceil(payload.amount * 0.005 * 100), // 0.5% platform fee
           },
+          success_url:
+            payload.redirectUrl +
+            `&transaction_id=${transaction.id}&checkoutState=success`,
+          cancel_url: payload.redirectUrl + `&checkoutState=cancelled`,
         },
-        success_url:
-          payload.redirectUrl +
-          `&transaction_id=${transaction.id}&checkoutState=success`,
-        cancel_url: payload.redirectUrl + `&checkoutState=cancelled`,
-      })
+        {
+          stripeAccount: paymentAccount?.provider_account_id,
+        }
+      )
       return res.status(200).json({ url: session.url })
     } catch (e: unknown) {
       console.error(e)
