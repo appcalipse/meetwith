@@ -213,3 +213,9 @@ export interface QuickPollBusyParticipant {
   account_address?: string
   participant_id?: string
 }
+
+export interface GuestPollDetails {
+  participantId: string
+  email: string
+  name: string
+}

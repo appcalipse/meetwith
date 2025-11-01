@@ -62,6 +62,54 @@ export const mergeTimeRanges = (
   return merged
 }
 
+export const convertSelectedSlotsToAvailabilitySlots = (
+  selectedSlots: Array<{ start: DateTime; end: DateTime; date: string }>,
+  timezone: string
+): Array<{
+  weekday: number
+  ranges: Array<{ start: string; end: string }>
+  date: string
+  timezone: string
+}> => {
+  const slotsByDate = new Map<
+    string,
+    { weekday: number; ranges: Array<{ start: string; end: string }> }
+  >()
+
+  for (const slot of selectedSlots) {
+    const date = slot.start.toFormat('yyyy-MM-dd')
+    const weekday = slot.start.weekday === 7 ? 0 : slot.start.weekday
+    const startTime = slot.start.toFormat('HH:mm')
+    const endTime = slot.end.toFormat('HH:mm')
+
+    if (!slotsByDate.has(date)) {
+      slotsByDate.set(date, { weekday, ranges: [] })
+    }
+
+    slotsByDate.get(date)!.ranges.push({
+      start: startTime,
+      end: endTime,
+    })
+  }
+
+  const availabilitySlots: Array<{
+    weekday: number
+    ranges: Array<{ start: string; end: string }>
+    date: string
+    timezone: string
+  }> = []
+  slotsByDate.forEach((value, date) => {
+    availabilitySlots.push({
+      weekday: value.weekday,
+      ranges: value.ranges,
+      date,
+      timezone,
+    })
+  })
+
+  return availabilitySlots
+}
+
 export const generateQuickPollBestSlots = (
   startDate: Date,
   endDate: Date,
