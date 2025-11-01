@@ -5153,7 +5153,11 @@ const sendWalletDebitEmail = async (
 
 const sendSessionIncomeEmail = async (
   meetingType: MeetingType | undefined | null,
-  tx: ConfirmCryptoTransactionRequest
+  tx: {
+    fiat_equivalent: number
+    guest_name?: string
+    transaction_hash: string
+  }
 ) => {
   try {
     const hostAddress = meetingType?.account_owner_address
@@ -5161,7 +5165,9 @@ const sendSessionIncomeEmail = async (
 
     // Respect host preferences: only send if 'receive-tokens' is enabled
     const prefs = await getPaymentPreferences(hostAddress)
-    const notifications = prefs?.notification || []
+    const notifications = prefs?.notification || [
+      PaymentNotificationType.RECEIVE_TOKENS,
+    ] // default to sending notification if no channel is set
     if (!notifications.includes(PaymentNotificationType.RECEIVE_TOKENS)) return
 
     const hostEmail = await getAccountNotificationSubscriptionEmail(hostAddress)
@@ -5169,7 +5175,7 @@ const sendSessionIncomeEmail = async (
 
     await sendSessionBookingIncomeEmail(hostEmail, {
       amount: tx.fiat_equivalent,
-      currency: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      currency: Currency.USD,
       senderName: tx.guest_name || 'Guest',
       transactionId: tx.transaction_hash,
       transactionDate: new Date().toLocaleString(),
@@ -5297,6 +5303,11 @@ const confirmFiatTransaction = async (
       transaction_hash: data.transaction_hash || '',
     })
   }
+  sendSessionIncomeEmail(meetingType, {
+    fiat_equivalent: data.amount || 0,
+    transaction_hash: data.transaction_hash || '',
+    guest_name: payload.guest_name,
+  })
 }
 const handleUpdateTransactionStatus = async (
   id: string,
@@ -5521,7 +5532,6 @@ const getMeetingSessionsByTxHash = async (
 
   return transaction.meeting_sessions || []
 }
-
 const getTransactionBytxHashAndMeetingType = async (
   tx: Address,
   meeting_type_id: string
