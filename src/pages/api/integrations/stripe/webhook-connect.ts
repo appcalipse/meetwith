@@ -1,5 +1,9 @@
 import * as Sentry from '@sentry/nextjs'
-import { getRawBody, handleAccountUpdate } from '@utils/services/stripe.helper'
+import {
+  getRawBody,
+  handleChargeFailed,
+  handleChargeSucceeded,
+} from '@utils/services/stripe.helper'
 import { StripeService } from '@utils/services/stripe.service'
 import { NextApiRequest, NextApiResponse } from 'next'
 import Stripe from 'stripe'
@@ -15,7 +19,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       const rawBody = await getRawBody(req)
       const stripe = new StripeService()
-      const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || ''
+      const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET_CONNECT || ''
       let event: Stripe.Event
       try {
         event = stripe.webhooks.constructEvent(rawBody, sig, endpointSecret)
@@ -28,8 +32,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         }
       }
       switch (event.type) {
-        case 'account.updated':
-          await handleAccountUpdate(event)
+        case 'charge.succeeded':
+          await handleChargeSucceeded(event)
+          break
+        case 'checkout.session.expired':
+        case 'charge.failed':
+          await handleChargeFailed(event)
           break
         default:
           // eslint-disable-next-line no-restricted-syntax
