@@ -1544,6 +1544,29 @@ export type Database = {
           role: string
         }[]
       }
+      get_meeting_type_plans_by_account: {
+        Args: { account_address: string }
+        Returns: {
+          created_at: string
+          default_chain_id: number
+          default_token: Database['public']['Enums']['AcceptedToken'] | null
+          id: number
+          meeting_type_id: string
+          no_of_slot: number
+          payment_address: string
+          payment_channel: Database['public']['Enums']['PaymentChannel']
+          payment_methods: Database['public']['Enums']['PaymentType'][]
+          price_per_slot: number
+          type: Database['public']['Enums']['PlanType']
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'meeting_type_plan'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_paid_sessions:
         | {
             Args: { account_address: string; current_account: string }
@@ -1649,9 +1672,13 @@ export type Database = {
       PlanType: 'one_off' | 'sessions'
       PollStatus: 'ongoing' | 'completed' | 'cancelled' | 'expired'
       PollVisibility: 'public' | 'private'
-      QuickPollParticipantStatus: 'pending' | 'declined' | 'accepted'
+      QuickPollParticipantStatus:
+        | 'pending'
+        | 'declined'
+        | 'accepted'
+        | 'deleted'
       QuickPollParticipantType: 'scheduler' | 'invitee' | 'owner'
-      RecurringStatus: 'confirmed' | 'cancelled'
+      RecurringStatus: 'confirmed' | 'cancelled' | 'updated'
       SessionType: 'paid' | 'free'
       TimeSlotSource: 'mww' | 'Google' | 'iCloud' | 'Office 365' | 'Webdav'
       TokenType: 'erc20' | 'erc721' | 'stablecoin' | 'nft' | 'native'
@@ -1820,9 +1847,14 @@ export const Constants = {
       PlanType: ['one_off', 'sessions'],
       PollStatus: ['ongoing', 'completed', 'cancelled', 'expired'],
       PollVisibility: ['public', 'private'],
-      QuickPollParticipantStatus: ['pending', 'declined', 'accepted'],
+      QuickPollParticipantStatus: [
+        'pending',
+        'declined',
+        'accepted',
+        'deleted',
+      ],
       QuickPollParticipantType: ['scheduler', 'invitee', 'owner'],
-      RecurringStatus: ['confirmed', 'cancelled'],
+      RecurringStatus: ['confirmed', 'cancelled', 'updated'],
       SessionType: ['paid', 'free'],
       TimeSlotSource: ['mww', 'Google', 'iCloud', 'Office 365', 'Webdav'],
       TokenType: ['erc20', 'erc721', 'stablecoin', 'nft', 'native'],
