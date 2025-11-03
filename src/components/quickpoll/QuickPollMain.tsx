@@ -98,8 +98,7 @@ const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
   return (
     <Box width="100%" minHeight="100vh" bg="bg-canvas-dark">
       <GuestDetailsForm
-        pollSlug={pollData.poll.slug}
-        pollId={pollData.poll.id}
+        pollData={pollData}
         onSuccess={handleSuccess}
         pollTitle="Poll Details"
         onNavigateBack={onNavigateBack}

@@ -63,13 +63,11 @@ export const mergeTimeRanges = (
 }
 
 export const convertSelectedSlotsToAvailabilitySlots = (
-  selectedSlots: Array<{ start: DateTime; end: DateTime; date: string }>,
-  timezone: string
+  selectedSlots: Array<{ start: DateTime; end: DateTime; date: string }>
 ): Array<{
   weekday: number
   ranges: Array<{ start: string; end: string }>
   date: string
-  timezone: string
 }> => {
   const slotsByDate = new Map<
     string,
@@ -96,14 +94,12 @@ export const convertSelectedSlotsToAvailabilitySlots = (
     weekday: number
     ranges: Array<{ start: string; end: string }>
     date: string
-    timezone: string
   }> = []
   slotsByDate.forEach((value, date) => {
     availabilitySlots.push({
       weekday: value.weekday,
       ranges: value.ranges,
       date,
-      timezone,
     })
   })
 
