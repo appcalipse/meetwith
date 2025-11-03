@@ -6172,7 +6172,7 @@ const handleCalendarRsvps = async (
           calendar.payload
         )
 
-        if (integration.updateEventRSVP && actor?.responseStatus) {
+        if (actor?.responseStatus) {
           const actorEmail = noNoReplyEmailForAccount(
             (actorAccount.preferences.name || actorAccount.address)!
           )
@@ -6214,8 +6214,8 @@ const handleCalendarRsvps = async (
     TimeSlotSource.GOOGLE,
     calendar.payload
   )
-  integration.updateEventExtendedProperties &&
-    integration.updateEventExtendedProperties(meetingId, calendarId)
+
+  await integration.updateEventExtendedProperties(meetingId, calendarId)
 }
 const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
   if (isProAccount(account)) {

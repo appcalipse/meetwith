@@ -12,67 +12,31 @@ import Office365CalendarService, {
   O365AuthCredentials,
 } from './office365.service'
 
-function getConnectedCalendarIntegration(
-  address: string,
-  email: string,
-  provider: TimeSlotSource,
-  credentials:
-    | string
-    | Auth.Credentials
-    | O365AuthCredentials
-    | CaldavCredentials
-): BaseCalendarService
+// Overload for Google
 function getConnectedCalendarIntegration(
   address: string,
   email: string,
   provider: TimeSlotSource.GOOGLE,
-  credentials:
-    | string
-    | Auth.Credentials
-    | O365AuthCredentials
-    | CaldavCredentials
+  credentials: string | Auth.Credentials
 ): IGoogleCalendarService
-function getConnectedCalendarIntegration(
-  address: string,
-  email: string,
-  provider: TimeSlotSource.ICLOUD,
-  credentials:
-    | string
-    | Auth.Credentials
-    | O365AuthCredentials
-    | CaldavCredentials
-): BaseCalendarService
+
+// Overload for Office365
 function getConnectedCalendarIntegration(
   address: string,
   email: string,
   provider: TimeSlotSource.OFFICE,
-  credentials:
-    | string
-    | Auth.Credentials
-    | O365AuthCredentials
-    | CaldavCredentials
-): BaseCalendarService
-function getConnectedCalendarIntegration(
-  address: string,
-  email: string,
-  provider: TimeSlotSource.WEBDAV,
-  credentials:
-    | string
-    | Auth.Credentials
-    | O365AuthCredentials
-    | CaldavCredentials
-): BaseCalendarService
-function getConnectedCalendarIntegration(
-  address: string,
-  email: string,
-  provider: TimeSlotSource.MWW,
-  credentials:
-    | string
-    | Auth.Credentials
-    | O365AuthCredentials
-    | CaldavCredentials
+  credentials: string | O365AuthCredentials
 ): BaseCalendarService
 
+// Overload for CalDAV providers (iCloud, WebDAV)
+function getConnectedCalendarIntegration(
+  address: string,
+  email: string,
+  provider: TimeSlotSource.ICLOUD | TimeSlotSource.WEBDAV,
+  credentials: CaldavCredentials
+): BaseCalendarService
+
+// Implementation signature
 function getConnectedCalendarIntegration(
   address: string,
   email: string,
