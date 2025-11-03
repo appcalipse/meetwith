@@ -1143,6 +1143,56 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_slots: {
+        Row: {
+          account_address: string
+          created_at: string | null
+          end: string
+          id: string
+          meeting_info_encrypted: Json
+          recurrence: Database['public']['Enums']['MeetingRepeat']
+          role: Database['public']['Enums']['ParticipantType']
+          slot_id: string
+          start: string
+          status: Database['public']['Enums']['RecurringStatus']
+          version: number
+        }
+        Insert: {
+          account_address: string
+          created_at?: string | null
+          end: string
+          id: string
+          meeting_info_encrypted: Json
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          role: Database['public']['Enums']['ParticipantType']
+          slot_id?: string
+          start: string
+          status: Database['public']['Enums']['RecurringStatus']
+          version?: number
+        }
+        Update: {
+          account_address?: string
+          created_at?: string | null
+          end?: string
+          id?: string
+          meeting_info_encrypted?: Json
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          role?: Database['public']['Enums']['ParticipantType']
+          slot_id?: string
+          start?: string
+          status?: Database['public']['Enums']['RecurringStatus']
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'temp_slots_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
       result: {
         Row: {
           jsonb_agg: Json | null
