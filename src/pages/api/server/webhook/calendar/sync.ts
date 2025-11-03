@@ -28,6 +28,7 @@ export default async function recurrenceSync(
       }
       return res.status(200).json(event)
     } catch (error) {
+      console.error(error)
       return res.status(500).json({ error: (error as Error).message })
     }
   }
