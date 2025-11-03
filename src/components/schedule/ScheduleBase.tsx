@@ -618,6 +618,7 @@ const ScheduleBase = () => {
                   color="red.500"
                   bg="transparent"
                   onClick={handleCancel}
+                  variant="outline"
                   flex={1}
                   flexBasis="40%"
                   _hover={{
