@@ -180,6 +180,7 @@ export type Database = {
           expires_at: string
           id: number
           resource_id: string
+          sync_token: string | null
         }
         Insert: {
           calendar_id: string
@@ -189,6 +190,7 @@ export type Database = {
           expires_at: string
           id?: number
           resource_id: string
+          sync_token?: string | null
         }
         Update: {
           calendar_id?: string
@@ -198,6 +200,7 @@ export type Database = {
           expires_at?: string
           id?: number
           resource_id?: string
+          sync_token?: string | null
         }
         Relationships: [
           {
