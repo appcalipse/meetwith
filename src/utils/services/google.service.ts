@@ -155,7 +155,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
 
   async listEvents(
     calendarId: string,
-    syncToken: string,
+    syncToken: string | undefined | null,
     dateFrom: Date,
     dateTo: Date
   ): Promise<EventList> {
@@ -170,12 +170,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
     do {
       const response = await calendar.events.list({
         calendarId,
-        timeMin: dateFrom.toISOString(),
-        timeMax: dateTo.toISOString(),
-        syncToken,
+        syncToken: syncToken ?? undefined,
         singleEvents: true,
-        orderBy: 'updated',
-        q: 'meetingId',
         showDeleted: true,
         pageToken: token,
       })
@@ -915,6 +911,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           pageToken: token,
           timeMin: dateFrom,
           timeMax: dateTo,
+          singleEvents: true,
+          showDeleted: true,
         })
         token = response.data.nextPageToken!
         const storedSyncToken = response.data.nextSyncToken
