@@ -852,7 +852,7 @@ const getTempSlotsBySlotId = async (
   status: RecurringStatus
 ) => {
   const { data, error } = await db.supabase
-    .from<Database['public']['Tables']['temp_slots']['Row']>('temp_slots')
+    .from<Tables<'temp_slots'>>('temp_slots')
     .select()
     .eq('slot_id', slot_id)
     .eq('status', status)
@@ -901,14 +901,11 @@ const updateAllRecurringSlots = async () => {
   if (error || !allSlots?.length) return
 
   const allTempSlots = await db.supabase
-    .from<Database['public']['Tables']['temp_slots']['Row']>('temp_slots')
+    .from<Tables<'temp_slots'>>('temp_slots')
     .select()
     .in('slot_id', allSlots.map(s => s.id).filter(Boolean))
     .gte('start', sub(new Date(), { months: 6 }).toISOString())
-  const tempSlotsBySlotId = new Map<
-    string,
-    Array<Database['public']['Tables']['temp_slots']['Row']>
-  >()
+  const tempSlotsBySlotId = new Map<string, Array<Tables<'temp_slots'>>>()
   for (const slot of allSlots) {
     const tempSlots =
       allTempSlots.data?.filter(ts => ts.slot_id === slot.id) || []
@@ -1009,20 +1006,19 @@ const updateAllRecurringSlots = async () => {
         if (iterations >= MAX_ITERATIONS) {
           console.error('Max iterations reached finding slot to fill')
         }
-        const newTempSlot: Database['public']['Tables']['temp_slots']['Insert'] =
-          {
-            ...slot,
-            id: v4(),
-            slot_id: slot.id!,
-            start: currentInterval.start.toISOString(),
-            end: currentInterval.end.toISOString(),
-            status: RecurringStatus.CONFIRMED,
-            created_at: new Date().toISOString(),
-          }
+        const newTempSlot = {
+          ...slot,
+          id: v4(),
+          slot_id: slot.id!,
+          start: currentInterval.start.toISOString(),
+          end: currentInterval.end.toISOString(),
+          status: RecurringStatus.CONFIRMED,
+          created_at: new Date().toISOString(),
+        }
         toInsert.push(newTempSlot)
       }
       if (activeTempSlot.status !== RecurringStatus.CANCELLED) {
-        const newSlot: Database['public']['Tables']['slots']['Insert'] = {
+        const newSlot: TablesInsert<'slots'> = {
           id: slot.id!,
           account_address: slot.account_address,
           meeting_info_encrypted: activeTempSlot.meeting_info_encrypted,
@@ -6006,6 +6002,8 @@ const updateResourcesSyncToken = async (
     .from('calendar_webhooks')
     .update({
       sync_token: syncToken,
+      resource_id: resourceId,
+      channel_id: channelId,
     })
     .eq('channel_id', channelId)
     .eq('resource_id', resourceId)
@@ -6021,8 +6019,12 @@ const handleWebhookEvent = async (
   console.trace(
     `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
   )
-  const { data } = await db.supabase
-    .from('calendar_webhooks')
+  const { data, error } = await db.supabase
+    .from<
+      Tables<'calendar_webhooks'> & {
+        connected_calendar: ConnectedCalendar
+      }
+    >('calendar_webhooks')
     .select(
       `
       *,
@@ -6062,22 +6064,27 @@ const handleWebhookEvent = async (
   }
   let allEvents: calendar_v3.Schema$Event[] = []
 
-    try {
-       allEvents =
-        (await integration.listEvents(
-          data.calendar_id,
-          start.toJSDate(),
-          end.toJSDate()
-        )) || []
-
-    } catch (error) {
-      console.error(`Failed to sync ${range.label} range:`, error)
-      Sentry.captureException(error, {
-        extra: { range: range.label, calendar: calendar.id },
-      })
-      // Continue with other ranges even if one fails
-    }
-
+  try {
+    const { events, nextSyncToken } = await integration.listEvents(
+      data.calendar_id,
+      data.sync_token,
+      start.toJSDate(),
+      end.toJSDate()
+    )
+    if (nextSyncToken)
+      await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
+    allEvents = events
+  } catch (error) {
+    console.error(`Failed to sync  range:`, error)
+    Sentry.captureException(error, {
+      extra: { calendar: calendar.id },
+    })
+  }
+  writeFileSync(
+    `allEvents-${Date.now()}.json`,
+    JSON.stringify(allEvents, null, 2)
+  )
+  // return true
   allEvents = allEvents.sort((a, b) => {
     // Group by recurringEventId first
     const aKey = a.id || ''
