@@ -225,10 +225,8 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
       // Check if guest has saved details in localStorage
       const storedDetails = getGuestPollDetails(currentPollData?.poll.id || '')
 
-      const availabilitySlots = convertSelectedSlotsToAvailabilitySlots(
-        selectedSlots,
-        timezone
-      )
+      const availabilitySlots =
+        convertSelectedSlotsToAvailabilitySlots(selectedSlots)
 
       if (storedDetails && currentParticipantId) {
         setIsSavingAvailability(true)
@@ -290,10 +288,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             return
           }
 
-          const availabilitySlots = getAvailabilitySlots().map(slot => ({
-            ...slot,
-            timezone: currentAccount.preferences?.timezone || 'UTC',
-          }))
+          const availabilitySlots = getAvailabilitySlots()
 
           await updatePollParticipantAvailability(
             participant.id,

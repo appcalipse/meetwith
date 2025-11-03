@@ -7,7 +7,6 @@ interface AvailabilitySlot {
   weekday: number
   ranges: Array<{ start: string; end: string }>
   date?: string
-  timezone?: string
 }
 
 interface SelectedTimeSlot {

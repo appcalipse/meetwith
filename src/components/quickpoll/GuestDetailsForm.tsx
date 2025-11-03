@@ -17,6 +17,7 @@ import { FaArrowLeft } from 'react-icons/fa'
 
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
+import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
   addOrUpdateGuestParticipantWithAvailability,
   getPollParticipantById,
@@ -27,16 +28,14 @@ import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
 
 interface GuestDetailsFormProps {
-  pollSlug: string
-  pollId: string
+  pollData: QuickPollBySlugResponse
   onSuccess: () => void
   pollTitle?: string
   onNavigateBack?: () => void
 }
 
 const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
-  pollSlug,
-  pollId,
+  pollData,
   onSuccess,
   onNavigateBack,
 }) => {
@@ -112,7 +111,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
         )
       } else {
         const response = await addOrUpdateGuestParticipantWithAvailability(
-          pollSlug,
+          pollData.poll.slug,
           email.trim().toLowerCase(),
           guestAvailabilitySlots,
           currentTimezone || 'UTC',
@@ -128,7 +127,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
 
       // Save guest details to localStorage
       if (participantId) {
-        saveGuestPollDetails(pollId, {
+        saveGuestPollDetails(pollData.poll.id, {
           participantId,
           email: email.trim().toLowerCase(),
           name: fullName.trim(),
