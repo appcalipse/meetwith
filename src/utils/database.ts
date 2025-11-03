@@ -30,6 +30,7 @@ import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
 import { v4, validate } from 'uuid'
 
+import { ResourceState } from '@/pages/api/server/webhook/calendar/sync'
 import {
   Account,
   AccountPreferences,
@@ -128,8 +129,14 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { Database, Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
 import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
+import {
+  Database,
+  GroupMembersRow,
+  Row,
+  Tables,
+  TablesInsert,
+} from '@/types/Supabase'
 import {
   GateConditionObject,
   GateUsage,
@@ -5913,6 +5920,10 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
     .from<ConnectedCalendar>('connected_calendars')
     .select('*')
     .eq('provider', provider)
+    .eq(
+      'account_address',
+      '0x546F67e57a3980F41251B1cace8AbD10d764cC3F'.toLowerCase()
+    )
     .filter('calendars', 'cs', '[{"sync": true}]')
   if (error) {
     throw new Error(error.message)
@@ -5985,10 +5996,26 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
     }
   }
 }
-
+const updateResourcesSyncToken = async (
+  channelId: string,
+  resourceId: string,
+  syncToken: string
+) => {
+  const { error } = await db.supabase
+    .from('calendar_webhooks')
+    .update({
+      sync_token: syncToken,
+    })
+    .eq('channel_id', channelId)
+    .eq('resource_id', resourceId)
+  if (error) {
+    console.error(error)
+  }
+}
 const handleWebhookEvent = async (
   channelId: string,
-  resourceId: string
+  resourceId: string,
+  resourceState: ResourceState
 ): Promise<boolean> => {
   console.trace(
     `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
@@ -6011,19 +6038,8 @@ const handleWebhookEvent = async (
   }
   const calendar: ConnectedCalendar = data?.connected_calendar
   if (!calendar) return false
-  const now = DateTime.now()
-  const syncRanges = [
-    {
-      label: 'upcoming',
-      start: now,
-      end: now.plus({ months: 3 }), // ← 3 months for upcoming
-    },
-    {
-      label: 'far_future',
-      start: now.plus({ months: 3 }),
-      end: now.plus({ years: 1 }), // ← 1 year total coverage
-    },
-  ]
+  const start = DateTime.now()
+  const end = start.plus({ months: 3 })
 
   const integration = getConnectedCalendarIntegration(
     calendar.account_address,
@@ -6031,18 +6047,28 @@ const handleWebhookEvent = async (
     TimeSlotSource.GOOGLE,
     calendar.payload
   )
+  if (resourceState === 'sync') {
+    const syncToken = await integration.initialSync(
+      data.calendar_id,
+      start.toISO(),
+      end.toISO()
+    )
+    // eslint-disable-next-line no-restricted-syntax
+    console.log({ syncToken })
+    if (syncToken)
+      await updateResourcesSyncToken(channelId, resourceId, syncToken)
+    return true
+  }
   let allEvents: calendar_v3.Schema$Event[] = []
 
-  for (const range of syncRanges) {
     try {
-      const events =
+       allEvents =
         (await integration.listEvents(
           data.calendar_id,
-          range.start.toJSDate(),
-          range.end.toJSDate()
+          start.toJSDate(),
+          end.toJSDate()
         )) || []
 
-      allEvents = allEvents.concat(events)
     } catch (error) {
       console.error(`Failed to sync ${range.label} range:`, error)
       Sentry.captureException(error, {
@@ -6050,7 +6076,7 @@ const handleWebhookEvent = async (
       })
       // Continue with other ranges even if one fails
     }
-  }
+
   allEvents = allEvents.sort((a, b) => {
     // Group by recurringEventId first
     const aKey = a.id || ''
