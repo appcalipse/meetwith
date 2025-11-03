@@ -17,6 +17,16 @@ import { Office365CalendarService } from './office365.service'
 function getConnectedCalendarIntegration(
   address: string,
   email: string,
+  provider: TimeSlotSource,
+  credentials:
+    | string
+    | Auth.Credentials
+    | O365AuthCredentials
+    | CaldavCredentials
+): BaseCalendarService
+function getConnectedCalendarIntegration(
+  address: string,
+  email: string,
   provider: TimeSlotSource.GOOGLE,
   credentials: string | Auth.Credentials
 ): IGoogleCalendarService
