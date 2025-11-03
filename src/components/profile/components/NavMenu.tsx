@@ -13,6 +13,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { MAX_DAILY_NOTIFICATIONS_LOOKUPS } from '@utils/constants'
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo } from 'react'
@@ -36,12 +37,12 @@ import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
+import { isProduction } from '@/utils/constants'
 import {
   getNotificationTime,
   incrementNotificationLookup,
   saveNotificationTime,
 } from '@/utils/storage'
-import { isProduction } from '@/utils/constants'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { ThemeSwitcher } from '../../ThemeSwitcher'
@@ -203,7 +204,7 @@ export const NavMenu: React.FC<{
 
     if (
       lastNotificationTime === null ||
-      (lastNotificationTime.lookups === 2 &&
+      (lastNotificationTime.lookups === MAX_DAILY_NOTIFICATIONS_LOOKUPS &&
         DateTime.fromMillis(lastNotificationTime.date).hasSame(
           DateTime.now(),
           'day'
@@ -213,7 +214,7 @@ export const NavMenu: React.FC<{
     }
     void handleEmptyGroupCheck()
     if (
-      lastNotificationTime.lookups === 2 ||
+      lastNotificationTime.lookups === MAX_DAILY_NOTIFICATIONS_LOOKUPS ||
       !DateTime.fromMillis(lastNotificationTime.date).hasSame(
         DateTime.now(),
         'day'
