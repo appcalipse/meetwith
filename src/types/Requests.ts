@@ -36,7 +36,6 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   slotsToRemove: string[]
   guestsToRemove: ParticipantInfo[]
   version: number
-  isRecurring?: boolean
   eventId?: string
 }
 
