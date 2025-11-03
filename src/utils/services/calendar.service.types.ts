@@ -234,4 +234,21 @@ export interface ICaldavCalendarService {
       attendees: Attendee[]
     }
   >
+  refreshWebhook(
+    oldChannelId: string,
+    oldResourceId: string,
+    webhookUrl: string,
+    calendarId?: string
+  ): Promise<{
+    channelId: string | null | undefined
+    resourceId: string | null | undefined
+    expiration: string | null | undefined
+    calendarId: string
+    webhookUrl: string
+  }>
+}
+
+export type EventList = {
+  events: calendar_v3.Schema$Event[]
+  nextSyncToken: string | null | undefined
 }
