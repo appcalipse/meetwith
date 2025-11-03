@@ -78,7 +78,7 @@ export interface IGoogleCalendarService extends BaseCalendarService {
    */
   listEvents(
     calendarId: string,
-    syncToken: string,
+    syncToken: string | null,
     dateFrom: Date,
     dateTo: Date
   ): Promise<EventList>
