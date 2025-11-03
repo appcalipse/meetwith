@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
+import { writeFileSync } from 'fs'
 import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
 import { DateTime } from 'luxon'
@@ -19,7 +20,7 @@ import { MeetingPermissions } from '../constants/schedule'
 import { getOwnerPublicUrlServer, updateCalendarPayload } from '../database'
 import { getCalendarPrimaryEmail } from '../sync_helper'
 import { CalendarServiceHelper } from './calendar.helper'
-import { IGoogleCalendarService } from './calendar.service.types'
+import { EventList, IGoogleCalendarService } from './calendar.service.types'
 import { withRetry } from './retry.service'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -157,41 +158,39 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
 
   async listEvents(
     calendarId: string,
+    syncToken: string,
     dateFrom: Date,
     dateTo: Date
-  ): Promise<calendar_v3.Schema$Event[]> {
-    return new Promise((resolve, reject) =>
-      this.auth.getToken().then(myGoogleAuth => {
-        const calendar = google.calendar({
-          version: 'v3',
-          auth: myGoogleAuth,
-        })
-
-        calendar.events.list(
-          {
-            calendarId,
-            timeMin: dateFrom.toISOString(),
-            timeMax: dateTo.toISOString(),
-            singleEvents: true,
-            orderBy: 'updated',
-            q: 'meetingId',
-            showDeleted: true,
-            updatedMin: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
-          },
-          (err, res) => {
-            if (err) {
-              console.error(
-                'There was an error contacting google calendar service: ',
-                err
-              )
-              return reject(err)
-            }
-            const events = res?.data.items || []
-            return resolve(events)
-          }
-        )
+  ): Promise<EventList> {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    const aggregatedEvents: calendar_v3.Schema$Event[] = []
+    let nextSyncToken: string | undefined
+    let token: string | undefined
+    do {
+      const response = await calendar.events.list({
+        calendarId,
+        timeMin: dateFrom.toISOString(),
+        timeMax: dateTo.toISOString(),
+        syncToken,
+        singleEvents: true,
+        orderBy: 'updated',
+        q: 'meetingId',
+        showDeleted: true,
+        pageToken: token,
       })
-    )
+      aggregatedEvents.push(...(response.data.items || []))
+      token = response.data.nextPageToken || undefined
+      const storedSyncToken = response.data.nextSyncToken
+      if (storedSyncToken) nextSyncToken = storedSyncToken
+    } while (token)
+    return {
+      events: aggregatedEvents,
+      nextSyncToken,
+    }
   }
 
   async createEvent(
@@ -1019,7 +1018,29 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       }
     })
   }
-
+  async initialSync(calendarId: string, dateFrom: string, dateTo: string) {
+    try {
+      const myGoogleAuth = await this.auth.getToken()
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+      let token: string | undefined
+      do {
+        const response = await calendar.events.list({
+          calendarId: calendarId,
+          pageToken: token,
+          timeMin: dateFrom,
+          timeMax: dateTo,
+        })
+        token = response.data.nextPageToken!
+        const storedSyncToken = response.data.nextSyncToken
+        if (storedSyncToken) return storedSyncToken
+      } while (token)
+    } catch (error) {
+      console.error('Initial sync error:', error)
+    }
+  }
   private googleAuth = (
     address: string,
     email: string,
