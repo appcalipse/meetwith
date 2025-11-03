@@ -1,6 +1,6 @@
 const SIGNATURE_KEY = 'current_user_sig'
 const SCHEDULES = 'meetings_scheduled'
-const NOTIFICATION = 'group_notification'
+const NOTIFICATION = 'group_notification_new'
 const ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
@@ -59,16 +59,32 @@ const saveNotificationTime = (account_address?: string) => {
   if (!account_address) return
   window.localStorage.setItem(
     `${NOTIFICATION}:${account_address.toLowerCase()}`,
-    String(Date.now() + ONE_DAY_IN_MILLISECONDS)
+    JSON.stringify({ date: Date.now() + ONE_DAY_IN_MILLISECONDS, lookups: 0 })
   )
 }
-const getNotificationTime = (account_address?: string): number | null => {
+const incrementNotificationLookup = (account_address?: string) => {
+  if (!account_address) return
+  const notificationData = getNotificationTime(account_address)
+  if (notificationData) {
+    window.localStorage.setItem(
+      `${NOTIFICATION}:${account_address.toLowerCase()}`,
+      JSON.stringify({
+        date: notificationData.date,
+        lookups: notificationData.lookups + 1,
+      })
+    )
+  }
+}
+const getNotificationTime = (account_address?: string) => {
   if (account_address) {
-    return parseInt(
+    return JSON.parse(
       window.localStorage.getItem(
         `${NOTIFICATION}:${account_address.toLowerCase()}`
-      ) || '0'
-    )
+      ) || '{ "date": 0, "lookups": 0 }'
+    ) as {
+      date: number
+      lookups: number
+    }
   } else {
     return null
   }
@@ -77,6 +93,7 @@ export {
   getMeetingsScheduled,
   getNotificationTime,
   getSignature,
+  incrementNotificationLookup,
   removeSignature,
   saveMeetingsScheduled,
   saveNotificationTime,
