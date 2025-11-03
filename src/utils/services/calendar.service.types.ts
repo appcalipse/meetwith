@@ -111,6 +111,7 @@ export interface IGoogleCalendarService extends BaseCalendarService {
    */
   listEvents(
     calendarId: string,
+    syncToken: string | null,
     dateFrom: Date,
     dateTo: Date
   ): Promise<calendar_v3.Schema$Event[]>
