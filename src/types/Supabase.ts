@@ -217,7 +217,7 @@ export type Database = {
           email: string
           id: number
           payload: string
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           sync: boolean
           updated: string | null
         }
@@ -228,7 +228,7 @@ export type Database = {
           email: string
           id?: number
           payload: string
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           sync?: boolean
           updated?: string | null
         }
@@ -239,7 +239,7 @@ export type Database = {
           email?: string
           id?: number
           payload?: string
-          provider?: string
+          provider?: Database['public']['Enums']['TimeSlotSource']
           sync?: boolean
           updated?: string | null
         }
@@ -844,6 +844,7 @@ export type Database = {
           no_of_slot: number
           payment_address: string
           payment_channel: Database['public']['Enums']['PaymentChannel']
+          payment_methods: Database['public']['Enums']['PaymentType'][]
           price_per_slot: number
           type: Database['public']['Enums']['PlanType']
           updated_at: string | null
@@ -857,6 +858,7 @@ export type Database = {
           no_of_slot?: number
           payment_address: string
           payment_channel: Database['public']['Enums']['PaymentChannel']
+          payment_methods?: Database['public']['Enums']['PaymentType'][]
           price_per_slot: number
           type: Database['public']['Enums']['PlanType']
           updated_at?: string | null
@@ -870,6 +872,7 @@ export type Database = {
           no_of_slot?: number
           payment_address?: string
           payment_channel?: Database['public']['Enums']['PaymentChannel']
+          payment_methods?: Database['public']['Enums']['PaymentType'][]
           price_per_slot?: number
           type?: Database['public']['Enums']['PlanType']
           updated_at?: string | null
@@ -953,6 +956,36 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_accounts: {
+        Row: {
+          created_at: string | null
+          id: number
+          owner_account_address: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_account_id: string | null
+          status: Database['public']['Enums']['PaymentAccountStatus']
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          owner_account_address: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_account_id?: string | null
+          status: Database['public']['Enums']['PaymentAccountStatus']
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          owner_account_address?: string
+          provider?: Database['public']['Enums']['PaymentProvider']
+          provider_account_id?: string | null
+          status?: Database['public']['Enums']['PaymentAccountStatus']
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       payment_preferences: {
         Row: {
           created_at: string
@@ -995,7 +1028,7 @@ export type Database = {
           id: number
           participant_id: string | null
           payload: Json | null
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           updated_at: string | null
         }
         Insert: {
@@ -1004,7 +1037,7 @@ export type Database = {
           id?: number
           participant_id?: string | null
           payload?: Json | null
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           updated_at?: string | null
         }
         Update: {
@@ -1013,7 +1046,7 @@ export type Database = {
           id?: number
           participant_id?: string | null
           payload?: Json | null
-          provider?: string
+          provider?: Database['public']['Enums']['TimeSlotSource']
           updated_at?: string | null
         }
         Relationships: [
@@ -1287,7 +1320,7 @@ export type Database = {
           id: string
           meeting_info_encrypted: Json
           recurrence?: Database['public']['Enums']['MeetingRepeat']
-          role?: Database['public']['Enums']['ParticipantType']
+          role: Database['public']['Enums']['ParticipantType']
           slot_id?: string
           start: string
           status: Database['public']['Enums']['RecurringStatus']
@@ -1458,14 +1491,8 @@ export type Database = {
         Args: { current_account: string; user_address: string }
         Returns: boolean
       }
-      fetch_account: {
-        Args: { identifier: string }
-        Returns: Json
-      }
-      find_account: {
-        Args: { identifier: string }
-        Returns: Json
-      }
+      fetch_account: { Args: { identifier: string }; Returns: Json }
+      find_account: { Args: { identifier: string }; Returns: Json }
       get_accounts: {
         Args: { address: string; max: number; search: string; skip: number }
         Returns: Record<string, unknown>
@@ -1490,7 +1517,7 @@ export type Database = {
         }[]
       }
       get_discord_notifications: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           account_address: string
           discord_id: string
@@ -1517,14 +1544,37 @@ export type Database = {
           role: string
         }[]
       }
-      get_paid_sessions: {
-        Args:
-          | { account_address: string; current_account: string }
-          | { current_account: string }
-        Returns: Json
+      get_meeting_type_plans_by_account: {
+        Args: { account_address: string }
+        Returns: {
+          created_at: string
+          default_chain_id: number
+          default_token: Database['public']['Enums']['AcceptedToken'] | null
+          id: number
+          meeting_type_id: string
+          no_of_slot: number
+          payment_address: string
+          payment_channel: Database['public']['Enums']['PaymentChannel']
+          payment_methods: Database['public']['Enums']['PaymentType'][]
+          price_per_slot: number
+          type: Database['public']['Enums']['PlanType']
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'meeting_type_plan'
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
+      get_paid_sessions:
+        | {
+            Args: { account_address: string; current_account: string }
+            Returns: Json
+          }
+        | { Args: { current_account: string }; Returns: Json }
       get_telegram_notifications: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           account_address: string
           telegram_id: string
@@ -1613,17 +1663,24 @@ export type Database = {
       MeetingRepeat: 'no-repeat' | 'daily' | 'weekly' | 'monthly'
       MeetingVersion: 'V1' | 'V2'
       ParticipantType: 'scheduler' | 'owner' | 'invitee'
+      PaymentAccountStatus: 'pending' | 'connected' | 'disconnected' | 'failed'
       PaymentChannel: 'account_address' | 'custom_address'
       PaymentDirection: 'debit' | 'credit'
+      PaymentProvider: 'stripe'
       PaymentStatus: 'cancelled' | 'pending' | 'completed' | 'failed'
       PaymentType: 'fiat' | 'crypto'
       PlanType: 'one_off' | 'sessions'
       PollStatus: 'ongoing' | 'completed' | 'cancelled' | 'expired'
       PollVisibility: 'public' | 'private'
-      QuickPollParticipantStatus: 'pending' | 'declined' | 'accepted'
+      QuickPollParticipantStatus:
+        | 'pending'
+        | 'declined'
+        | 'accepted'
+        | 'deleted'
       QuickPollParticipantType: 'scheduler' | 'invitee' | 'owner'
-      RecurringStatus: 'confirmed' | 'cancelled'
+      RecurringStatus: 'confirmed' | 'cancelled' | 'updated'
       SessionType: 'paid' | 'free'
+      TimeSlotSource: 'mww' | 'Google' | 'iCloud' | 'Office 365' | 'Webdav'
       TokenType: 'erc20' | 'erc721' | 'stablecoin' | 'nft' | 'native'
       VerificationChannel: 'transaction-pin' | 'reset-email'
       VideoMeeting: 'None' | 'GoogleMeet'
@@ -1781,25 +1838,28 @@ export const Constants = {
       MeetingRepeat: ['no-repeat', 'daily', 'weekly', 'monthly'],
       MeetingVersion: ['V1', 'V2'],
       ParticipantType: ['scheduler', 'owner', 'invitee'],
+      PaymentAccountStatus: ['pending', 'connected', 'disconnected', 'failed'],
       PaymentChannel: ['account_address', 'custom_address'],
       PaymentDirection: ['debit', 'credit'],
+      PaymentProvider: ['stripe'],
       PaymentStatus: ['cancelled', 'pending', 'completed', 'failed'],
       PaymentType: ['fiat', 'crypto'],
       PlanType: ['one_off', 'sessions'],
       PollStatus: ['ongoing', 'completed', 'cancelled', 'expired'],
       PollVisibility: ['public', 'private'],
-      QuickPollParticipantStatus: ['pending', 'declined', 'accepted'],
+      QuickPollParticipantStatus: [
+        'pending',
+        'declined',
+        'accepted',
+        'deleted',
+      ],
       QuickPollParticipantType: ['scheduler', 'invitee', 'owner'],
-      RecurringStatus: ['confirmed', 'cancelled'],
+      RecurringStatus: ['confirmed', 'cancelled', 'updated'],
       SessionType: ['paid', 'free'],
+      TimeSlotSource: ['mww', 'Google', 'iCloud', 'Office 365', 'Webdav'],
       TokenType: ['erc20', 'erc721', 'stablecoin', 'nft', 'native'],
       VerificationChannel: ['transaction-pin', 'reset-email'],
       VideoMeeting: ['None', 'GoogleMeet'],
     },
   },
 } as const
-
-export type GroupMembersRow =
-  Database['public']['Tables']['group_members']['Row']
-export type Row<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Row']

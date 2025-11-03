@@ -88,7 +88,6 @@ const DeleteGroupModal: React.FC<IGroupInviteCardModal> = props => {
               </Text>
             </HStack>
             <FormControl>
-              <FormLabel>Group name</FormLabel>
               <Input
                 type="email"
                 value={input}

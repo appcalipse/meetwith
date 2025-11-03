@@ -44,6 +44,7 @@ const ContactRequestItem: FC<Props> = ({
       await refetch()
       toast({
         title: 'Success',
+        position: 'top',
         description: 'Contact invite accepted successfully',
         status: 'success',
         duration: 5000,

@@ -138,13 +138,19 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
 
   if (loading) {
     return (
-      <VStack alignItems="center">
-        <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
-        <HStack pt={8}>
-          <Spinner />
-          <Text fontSize="lg">Checking your calendars...</Text>
-        </HStack>
-      </VStack>
+      <HStack minH={'450px'} w={'100%'} justifyContent="center">
+        <VStack alignItems="center">
+          <Image
+            src="/assets/no_calendars.svg"
+            height="200px"
+            alt="Loading..."
+          />
+          <HStack pt={8}>
+            <Spinner />
+            <Text fontSize="lg">Checking your calendars...</Text>
+          </HStack>
+        </VStack>
+      </HStack>
     )
   }
 

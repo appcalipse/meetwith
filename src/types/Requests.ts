@@ -223,6 +223,7 @@ export interface CreateMeetingTypeRequest {
     payment_address?: string
     crypto_network?: number
     default_token?: AcceptedToken
+    payment_methods?: PaymentType[]
   }
 }
 
@@ -261,4 +262,14 @@ export interface RequestInvoiceRequest {
   meeting_type_id: string
   payment_method: PaymentType
   url: string
+}
+
+export interface MeetingCheckoutRequest {
+  meeting_type_id: string
+  // message_channel: string
+  guest_email?: string
+  guest_name: string
+  guest_address?: string
+  amount: number
+  redirectUrl: string
 }

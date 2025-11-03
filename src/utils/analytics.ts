@@ -1,4 +1,4 @@
-import posthog from 'posthog-js'
+import posthog, { CapturedNetworkRequest } from 'posthog-js'
 
 import { isProduction } from './constants'
 
@@ -10,6 +10,16 @@ const initAnalytics = async () => {
     capture_exceptions: true,
     debug: false,
     autocapture: isProduction,
+    session_recording: {
+      recordBody: true,
+      maskCapturedNetworkRequestFn: (request: CapturedNetworkRequest) => {
+        request.responseBody = request.responseBody?.replace(
+          /"signature":\s*"[^"]*"/g,
+          '"signature": "redacted-signature"'
+        )
+        return request
+      },
+    },
   })
 }
 

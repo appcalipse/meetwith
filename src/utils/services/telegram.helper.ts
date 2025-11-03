@@ -1,3 +1,5 @@
+import { TelegramUserInfo } from '@meta/Telegram'
+
 const apiUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`
 
 export const sendDm = async (chat_id: string, text: string) => {
@@ -15,7 +17,9 @@ export const sendDm = async (chat_id: string, text: string) => {
   return await response.json()
 }
 
-export const getTelegramUserInfo = async (chat_id: string) => {
+export const getTelegramUserInfo = async (
+  chat_id: string
+): Promise<TelegramUserInfo | null> => {
   try {
     const response = await fetch(`${apiUrl}/getChat`, {
       method: 'POST',

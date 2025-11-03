@@ -15,7 +15,7 @@ import {
   DiscordNotificationType,
   NotificationChannel,
 } from '@/types/AccountNotifications'
-import { DiscordUserInfo } from '@/types/DiscordUserInfo'
+import { DiscordUserInfo } from '@/types/Discord'
 import { getDiscordInfo } from '@/utils/api_helper'
 import { MWW_DISCORD_SERVER } from '@/utils/constants'
 import { isProAccount } from '@/utils/subscription_manager'

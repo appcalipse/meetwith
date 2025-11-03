@@ -683,10 +683,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       }
     } catch (error) {
       console.error('Failed to register Google Calendar webhook:', error)
-      Sentry.captureException(error, {
-        tags: { service: 'google_calendar', action: 'webhook_setup' },
-        extra: { webhookUrl, calendarId, email: this.email },
-      })
       throw error
     }
   }
@@ -704,10 +700,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       })
     } catch (error) {
       console.error('Failed to stop Google Calendar webhook:', error)
-      Sentry.captureException(error, {
-        tags: { service: 'google_calendar', action: 'webhook_stop' },
-        extra: { channelId, resourceId, email: this.email },
-      })
       throw error
     }
   }
@@ -725,10 +717,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       return await this.setWebhookUrl(webhookUrl, calendarId)
     } catch (error) {
       console.error('Failed to refresh Google Calendar webhook:', error)
-      Sentry.captureException(error, {
-        tags: { service: 'google_calendar', action: 'webhook_refresh' },
-        extra: { oldChannelId, webhookUrl, calendarId, email: this.email },
-      })
       throw error
     }
   }

@@ -114,6 +114,7 @@
     "sharp": "^0.34.1",
     "slugify": "^1.6.5",
     "spacetime": "^7.7.0",
+    "stripe": "^19.1.0",
     "styled-components": "^4.2.0",
     "swiper": "^8.4.5",
     "thirdweb": "patch:thirdweb@patch%3Athirdweb@npm%253A5.105.43%23~/patches/thirdweb-npm-5.105.43-61a6b6abee.patch%3A%3Aversion=5.105.43&hash=8fd311#~/patches/thirdweb-patch-c45de60fca.patch",

@@ -83,12 +83,25 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
         state: props.invitePending ? 'pending' : 'accepted',
       }),
   })
+  const getInviteParams = () => {
+    if (!props.invitePending) {
+      return { address: undefined, displayName: undefined }
+    }
+
+    return {
+      address: props.address || undefined,
+      displayName: props.address ? undefined : props.displayName,
+    }
+  }
+
+  const { address, displayName } = getInviteParams()
+
   const {
     isLoading: isInviteLoading,
     mutateAsync: sendInviteAsync,
     isSuccess: isInviteSuccess,
   } = useMutation({
-    mutationFn: () => sendContactListInvite(undefined, props.displayName),
+    mutationFn: () => sendContactListInvite(address, displayName),
   })
   const isSuccess = isAddSuccess || isInviteSuccess
   const toast = useToast()
@@ -165,20 +178,12 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const handleAddToContacts = async () => {
     try {
       let description = ''
-      if (props.address) {
+      if (!props.invitePending) {
         await addGroupMemberToContactAsync()
         description = 'Contact added successfully'
-      } else if (props.invitePending && props.displayName) {
-        if (isValidEmail(props.displayName)) {
-          await sendInviteAsync()
-          description = 'Contact invite sent successfully'
-        } else {
-          handleApiError(
-            'Error adding to contacts',
-            'Unable to send invite to email address'
-          )
-          return
-        }
+      } else if (props.invitePending) {
+        await sendInviteAsync()
+        description = 'Contact invite sent successfully'
       }
       toast({
         title: 'Success',

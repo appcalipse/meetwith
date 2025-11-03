@@ -9,7 +9,9 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useRouter } from 'next/router'
+import { useEffect, useRef, useState } from 'react'
+import { FaPlus } from 'react-icons/fa'
 
 import CustomLoading from '@/components/CustomLoading'
 import {
@@ -28,9 +30,12 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const router = useRouter()
+  const { editBlock } = router.query
   const [selectedMeetingTypeIds, setSelectedMeetingTypeIds] = useState<
     string[]
   >([])
+  const processedEditBlock = useRef<string | null>(null)
 
   const {
     blocks: availabilityBlocks,
@@ -99,6 +104,22 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     onMeetingTypesSave: handleMeetingTypesSave,
     existingBlocks: availabilityBlocks,
   })
+
+  useEffect(() => {
+    if (
+      !editBlock ||
+      !availabilityBlocks?.length ||
+      processedEditBlock.current === editBlock
+    )
+      return
+
+    const blockToEdit = availabilityBlocks.find(block => block.id === editBlock)
+    if (blockToEdit) {
+      processedEditBlock.current = editBlock as string
+      handleEditBlock(blockToEdit)
+      router.replace('/dashboard/availability', undefined, { shallow: true })
+    }
+  }, [editBlock, availabilityBlocks, handleEditBlock, router])
 
   if (isLoading) {
     return <CustomLoading text="Loading your availability blocks..." />
@@ -182,16 +203,18 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
             </Text>
           </Box>
           <Button
-            leftIcon={<AddIcon color="neutral.800" />}
-            colorScheme="orange"
             bg="primary.200"
-            color="neutral.800"
             _hover={{ bg: 'primary.200' }}
             onClick={handleCreateBlock}
-            fontSize="sm"
             px={6}
             flexShrink={0}
             width={{ base: '100%', md: 'auto' }}
+            colorScheme="primary"
+            leftIcon={<FaPlus />}
+            fontSize={{
+              base: 'xs',
+              md: 'md',
+            }}
           >
             New Availability block
           </Button>

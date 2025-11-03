@@ -1,11 +1,12 @@
 import '@testing-library/jest-dom/extend-expect'
 import 'isomorphic-fetch'
 
-import { loadEnvConfig } from '@next/env'
 import { Crypto } from '@peculiar/webcrypto'
+import { ReadableStream } from 'stream/web'
 import { TextDecoder, TextEncoder } from 'util'
 global.TextDecoder = TextDecoder
 global.TextEncoder = TextEncoder
+global.ReadableStream = ReadableStream
 global.fetch = jest.fn().mockImplementation(path => {
   return Promise.resolve({
     status: 200,

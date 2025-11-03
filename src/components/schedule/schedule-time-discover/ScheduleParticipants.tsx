@@ -15,11 +15,7 @@ import { IoMdClose } from 'react-icons/io'
 import { AccountContext } from '@/providers/AccountProvider'
 import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
+import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
@@ -150,14 +146,14 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       </HStack>
       <Divider bg={'neutral.400'} />
       {groups.length > 0 && totalParticipantsCount > 1 && (
-        <VStack gap={2} alignItems="start">
+        <VStack gap={2} alignItems="start" w="100%">
           {groups.length > 0 && (
-            <Text>
+            <Text textAlign="left">
               <b>Groups Selected:</b> {groups.map(val => val.name).join(', ')}
             </Text>
           )}
           {totalParticipantsCount > 1 && (
-            <Text>
+            <Text textAlign="left">
               <b>Number of Participants:</b> {totalParticipantsCount}
             </Text>
           )}
@@ -173,7 +169,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
               alignItems={'center'}
               h={'72px'}
             >
-              <HStack>
+              <HStack alignItems={'center'}>
                 <Box
                   onClick={() =>
                     handleAvailabilityChange(

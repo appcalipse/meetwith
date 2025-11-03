@@ -8,7 +8,6 @@ import {
 import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 import { getPriceForChain } from '@/utils/services/chainlink.service'
 
-import { isProduction } from './constants'
 import { zeroAddress } from './generic_utils'
 
 export interface Currency {
@@ -67,7 +66,11 @@ export const CURRENCIES: Currency[] = [
 export const NETWORKS: Network[] = supportedChains
   .filter(
     chain =>
-      chain.walletSupported && supportedPaymentChains.includes(chain.chain)
+      chain.walletSupported &&
+      supportedPaymentChains.includes(chain.chain) &&
+      chain.acceptableTokens.some(
+        token => token.walletSupported && token.contractAddress !== zeroAddress
+      )
   )
   .map(chain => ({
     name: chain.name,

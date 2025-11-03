@@ -45,15 +45,18 @@ import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
-import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
+  MeetingPermissions,
   MeetingRepeatOptions,
   MeetingSchedulePermissions,
 } from '@/utils/constants/schedule'
 import { noClearCustomSelectComponent } from '@/utils/constants/select'
-import { renderProviderName } from '@/utils/generic_utils'
+import {
+  canAccountAccessPermission,
+  renderProviderName,
+} from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import {
   ellipsizeAddress,
@@ -61,7 +64,7 @@ import {
 } from '@/utils/user_manager'
 
 const ScheduleBase = () => {
-  const { query, push } = useRouter()
+  const { query } = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const [isTitleValid, setIsTitleValid] = useState(true)
   const toast = useToast()
@@ -97,6 +100,7 @@ const ScheduleBase = () => {
     setMeetingRepeat,
     setSelectedPermissions,
     setContent,
+    decryptedMeeting,
   } = useScheduleState()
   const {
     groupParticipants,
@@ -117,6 +121,16 @@ const ScheduleBase = () => {
   const [hasPickedNewTime, setHasPickedNewTime] = useState(false)
   const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM)
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
+  const canViewParticipants = useMemo(
+    () =>
+      canAccountAccessPermission(
+        decryptedMeeting?.permissions,
+        decryptedMeeting?.participants || [],
+        currentAccount?.address,
+        MeetingPermissions.SEE_GUEST_LIST
+      ),
+    [decryptedMeeting, currentAccount]
+  )
   const handleClose = () => {
     handlePageSwitch(Page.SCHEDULE_TIME)
   }
@@ -212,7 +226,13 @@ const ScheduleBase = () => {
           <HStack alignItems="flex-end">
             <Text>
               Participants:{' '}
-              <b>{getAllParticipantsDisplayName(meetingParticipants)}</b>
+              <b>
+                {getAllParticipantsDisplayName(
+                  meetingParticipants,
+                  currentAccount?.address,
+                  canViewParticipants
+                )}
+              </b>
               {canEditMeetingDetails && (
                 <Text
                   color="border-default-primary"
@@ -593,10 +613,17 @@ const ScheduleBase = () => {
                   w="100%"
                   py={3}
                   h={'auto'}
-                  colorScheme="primary"
+                  borderColor="red.500"
+                  borderWidth={1}
+                  color="red.500"
+                  bg="transparent"
                   onClick={handleCancel}
                   flex={1}
                   flexBasis="40%"
+                  _hover={{
+                    bg: 'red.500',
+                    color: 'white',
+                  }}
                 >
                   Cancel Meeting
                 </Button>

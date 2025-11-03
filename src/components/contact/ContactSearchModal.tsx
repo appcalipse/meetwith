@@ -89,7 +89,7 @@ const ContactSearchModal = (props: Props) => {
       }}
     >
       <ModalOverlay backdropFilter="blur(10px)" bg="rgba(0, 0, 0, 0.6)" />
-      <ModalContent p={0} bg="neutral.900" rounded={12}>
+      <ModalContent p={0} bg="bg-surface" rounded={12}>
         {action && (
           <ModalHeader
             pt={10}

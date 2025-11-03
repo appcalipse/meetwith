@@ -44,10 +44,7 @@ import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
-import {
-  customSelectComponents,
-  noClearCustomSelectComponent,
-} from '@/utils/constants/select'
+import { noClearCustomSelectComponent } from '@/utils/constants/select'
 import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
 import { formatCurrency, renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -56,7 +53,6 @@ import { AccountContext } from '../../../providers/AccountProvider'
 import {
   MeetingDecrypted,
   MeetingProvider,
-  MeetingRepeat,
   SchedulingType,
 } from '../../../types/Meeting'
 import { isEmptyString, isValidEmail } from '../../../utils/validations'
@@ -498,82 +494,39 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           )}
         </FormControl>
       )}
-      <FormControl w="100%" maxW="100%">
-        <FormLabel>Meeting reminders (optional)</FormLabel>
-        <Select
-          value={meetingNotification}
-          colorScheme="gray"
-          onChange={val => {
-            const meetingNotification = val as Array<{
-              value: MeetingReminders
-              label?: string
-            }>
-            // can't select more than 5 notifications
-            if (meetingNotification.length > 5) {
-              toast({
-                title: 'Limit reached',
-                description: 'You can select up to 5 notifications only.',
-                status: 'warning',
-                duration: 3000,
-                isClosable: true,
-              })
-              return
-            }
-            setMeetingNotification(meetingNotification)
-          }}
-          className="noLeftBorder timezone-select"
-          placeholder="Select Notification Alerts"
-          isMulti
-          tagVariant={'solid'}
-          options={MeetingNotificationOptions}
-          components={noClearCustomSelectComponent}
-          chakraStyles={{
-            container: provided => ({
-              ...provided,
-              borderRadius: 'md',
-              maxW: '100%',
-              display: 'block',
-            }),
 
-            placeholder: provided => ({
-              ...provided,
-              textAlign: 'left',
-            }),
+      {!addGuest ? (
+        <Button
+          bg="transparent"
+          color="primary.200"
+          _hover={{ bg: 'transparent' }}
+          border="1px solid"
+          borderColor="primary.200"
+          borderRadius={8}
+          onClick={() => setAddGuest(true)}
+          py={2}
+        >
+          Add other participants
+        </Button>
+      ) : (
+        <ChipInput
+          currentItems={participants}
+          placeholder="Enter participants"
+          onChange={setParticipants}
+          renderItem={p => {
+            if (p.account_address) {
+              return p.name || ellipsizeAddress(p.account_address!)
+            } else if (p.name && p.guest_email) {
+              return `${p.name} - ${p.guest_email}`
+            } else if (p.name) {
+              return `${p.name}`
+            } else {
+              return p.guest_email!
+            }
           }}
         />
-      </FormControl>
-      <FormControl w="100%" maxW="100%">
-        <FormLabel>Meeting Repeat</FormLabel>
-        <Select
-          value={meetingRepeat}
-          colorScheme="primary"
-          onChange={newValue =>
-            setMeetingRepeat(
-              newValue as {
-                value: MeetingRepeat
-                label: string
-              }
-            )
-          }
-          className="noLeftBorder timezone-select"
-          options={MeetingRepeatOptions}
-          components={customSelectComponents}
-          chakraStyles={{
-            placeholder: provided => ({
-              ...provided,
-              textAlign: 'left',
-            }),
-            input: provided => ({
-              ...provided,
-              textAlign: 'left',
-            }),
-            control: provided => ({
-              ...provided,
-              textAlign: 'left',
-            }),
-          }}
-        />
-      </FormControl>
+      )}
+
       <FormControl>
         <Flex
           alignItems="center"
@@ -628,6 +581,51 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           placeholder="Give a title for your meeting"
         />
       </FormControl>
+
+      <FormControl w="100%" maxW="100%">
+        <FormLabel>Meeting reminders (optional)</FormLabel>
+        <Select
+          value={meetingNotification}
+          colorScheme="gray"
+          onChange={val => {
+            const meetingNotification = val as Array<{
+              value: MeetingReminders
+              label?: string
+            }>
+            // can't select more than 5 notifications
+            if (meetingNotification.length > 5) {
+              toast({
+                title: 'Limit reached',
+                description: 'You can select up to 5 notifications only.',
+                status: 'warning',
+                duration: 3000,
+                isClosable: true,
+              })
+              return
+            }
+            setMeetingNotification(meetingNotification)
+          }}
+          className="noLeftBorder timezone-select"
+          placeholder="Select Notification Alerts"
+          isMulti
+          tagVariant={'solid'}
+          options={MeetingNotificationOptions}
+          components={noClearCustomSelectComponent}
+          chakraStyles={{
+            container: provided => ({
+              ...provided,
+              borderRadius: 'md',
+              maxW: '100%',
+              display: 'block',
+            }),
+
+            placeholder: provided => ({
+              ...provided,
+              textAlign: 'left',
+            }),
+          }}
+        />
+      </FormControl>
       <FormControl
         textAlign="left"
         w="100%"
@@ -636,10 +634,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           md: '550px',
         }}
       >
-        <FormLabel>What is this meeting about? </FormLabel>
+        <FormLabel>Meeting description </FormLabel>
         <RichTextEditor
           isDisabled={isSchedulingExternal}
-          placeholder="Any information you want to share prior to the meeting?"
+          placeholder="Add meeting details here"
           value={content}
           onValueChange={setContent}
         />
@@ -731,32 +729,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               )}
           </VStack>
         )}
-      {!addGuest ? (
-        <Button
-          colorScheme="orangeButton"
-          variant="outline"
-          onClick={() => setAddGuest(true)}
-        >
-          Add other participants
-        </Button>
-      ) : (
-        <ChipInput
-          currentItems={participants}
-          placeholder="Enter participants"
-          onChange={setParticipants}
-          renderItem={p => {
-            if (p.account_address) {
-              return p.name || ellipsizeAddress(p.account_address!)
-            } else if (p.name && p.guest_email) {
-              return `${p.name} - ${p.guest_email}`
-            } else if (p.name) {
-              return `${p.name}`
-            } else {
-              return p.guest_email!
-            }
-          }}
-        />
-      )}
       <HStack>
         <Button
           width="full"

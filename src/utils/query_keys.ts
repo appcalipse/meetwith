@@ -58,4 +58,10 @@ export default class QueryKeys {
   static coinConfig() {
     return ['coinConfig']
   }
+  static connectedAccounts(accountAddress?: string) {
+    return ['connectedAccounts', accountAddress]
+  }
+  static supportedCountries() {
+    return ['supportedCountries']
+  }
 }

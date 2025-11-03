@@ -33,14 +33,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (error) {
     Sentry.captureException(error)
     if (!stateObject)
-      return res.redirect(`/dashboard/calendars?calendarResult=error`)
+      return res.redirect(
+        `/dashboard/details?calendarResult=error#connected-calendars`
+      )
     else {
       stateObject.error = 'Google Calendar integration failed.'
       const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
         'base64'
       )
       return res.redirect(
-        `/dashboard/calendars?calendarResult=error&state=${newState64}`
+        `/dashboard/details?calendarResult=error&state=${newState64}#connected-calendars`
       )
     }
   }
@@ -152,9 +154,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.redirect(redirect_url)
   }
   return res.redirect(
-    `/dashboard/calendars?calendarResult=success${
+    `/dashboard/details?calendarResult=success${
       !!state ? `&state=${newState64}` : ''
-    }`
+    }#connected-calendars`
   )
 }
 

@@ -110,6 +110,12 @@ export enum MeetingPermissions {
   EDIT_MEETING = 'edit_meeting',
 }
 
+export enum QuickPollPermissions {
+  VIEW_GUESTS = 'view_guests',
+  SCHEDULE_MEETING = 'schedule_meeting',
+  ADD_PARTICIPANTS = 'add_participants',
+}
+
 export const MeetingSchedulePermissions = [
   {
     value: MeetingPermissions.SEE_GUEST_LIST,
@@ -122,6 +128,22 @@ export const MeetingSchedulePermissions = [
   {
     value: MeetingPermissions.EDIT_MEETING,
     label: 'Permission to edit the meeting',
+    info: 'Guests will be able to modify the meeting title, description, location, and other details, but not the invitees.',
+  },
+]
+
+export const QuickPollPermissionsList = [
+  {
+    value: MeetingPermissions.SEE_GUEST_LIST,
+    label: 'Guests can see guest list',
+  },
+  {
+    value: MeetingPermissions.INVITE_GUESTS,
+    label: 'Guests can add participants',
+  },
+  {
+    value: MeetingPermissions.EDIT_MEETING,
+    label: 'Guests can edit the meeting',
     info: 'Guests will be able to modify the meeting title, description, location, and other details, but not the invitees.',
   },
 ]

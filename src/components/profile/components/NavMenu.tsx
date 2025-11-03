@@ -25,6 +25,7 @@ import {
   FaWallet,
 } from 'react-icons/fa'
 import { FaUserGroup } from 'react-icons/fa6'
+import { FaUsers } from 'react-icons/fa6'
 
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
@@ -57,6 +58,7 @@ interface LinkItemProps {
     mode: EditMode
   }>
   isBeta?: boolean
+  isDisabled?: boolean
 }
 
 export const NavMenu: React.FC<{
@@ -65,15 +67,12 @@ export const NavMenu: React.FC<{
   closeMenu?: () => void
 }> = ({ currentSection, isMenuOpen, closeMenu }) => {
   const { currentAccount } = useContext(AccountContext)
-  const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
   const { toggleColorMode } = useColorMode()
   const router = useRouter()
   const toast = useToast()
-  const [noOfInvitedGroups, setNoOfInvitedGroups] = React.useState<number>(0)
   const { contactsRequestCount, groupInvitesCount } =
     useContext(MetricStateContext)
 
-  const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'neutral.900')
   const dividerColor = useColorModeValue('neutral.200', 'neutral.700')
   const scrollbarThumbColor = useColorModeValue('gray.300', 'gray.600')
@@ -82,7 +81,7 @@ export const NavMenu: React.FC<{
   const isDarkMode = useColorModeValue(false, true)
 
   const LinkItems: Array<LinkItemProps> = useMemo(() => {
-    const tabs = [
+    const tabs: Array<LinkItemProps> = [
       { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
       {
         name: 'My Groups',
@@ -99,9 +98,21 @@ export const NavMenu: React.FC<{
         isBeta: true,
       },
       {
+        name: 'QuickPoll',
+        icon: FaUsers,
+        mode: EditMode.QUICKPOLL,
+        isBeta: true,
+        isDisabled: isProduction,
+      },
+      {
         name: 'Session Settings',
         icon: FaCalendarWeek,
         mode: EditMode.MEETING_SETTINGS,
+      },
+      {
+        name: 'Wallet',
+        icon: FaWallet,
+        mode: EditMode.WALLET,
       },
       {
         name: 'Availabilities',
@@ -111,14 +122,7 @@ export const NavMenu: React.FC<{
 
       { name: 'Settings', icon: FaCog, mode: EditMode.DETAILS },
     ]
-    if (!isProduction) {
-      tabs.splice(5, 0, {
-        name: 'Wallet',
-        icon: FaWallet,
-        mode: EditMode.WALLET,
-      })
-    }
-    return tabs
+    return tabs.filter(item => !item.isDisabled)
   }, [groupInvitesCount, contactsRequestCount])
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
@@ -187,29 +191,7 @@ export const NavMenu: React.FC<{
       }
     })
   }
-  useEffect(() => {
-    if (calendarResult === 'error') {
-      toast({
-        title: 'Error connecting calendar',
-        description:
-          'Please make sure to give access to Meetwith within your calendar provider page.',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-    } else if (calendarResult === 'success') {
-      reloadOnboardingInfo()
-      toast({
-        title: 'Calendar connected',
-        description: "You've just connected a new calendar provider.",
-        status: 'success',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-    }
-  }, [])
+
   useEffect(() => {
     if (!currentAccount) return
     void handleGroupInvites()
@@ -257,7 +239,7 @@ export const NavMenu: React.FC<{
           display={{ base: 'none', lg: 'flex' }}
           backgroundColor={'transparent'}
         >
-          <VStack width="100%" gap={6} px={5} py={12} flexShrink={0}>
+          <VStack width="100%" gap={6} px={5} py={8} flexShrink={0}>
             <HStack width="100%" textAlign="center">
               <Box width="64px" height="64px">
                 <Avatar

@@ -31,7 +31,7 @@ import { TimeRange } from '@/types/Account'
 import { NotificationChannel } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { EditMode } from '@/types/Dashboard'
-import { DiscordUserInfo } from '@/types/DiscordUserInfo'
+import { DiscordUserInfo } from '@/types/Discord'
 import { TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import {

@@ -1,5 +1,6 @@
 import {
   PaymentChannel,
+  PaymentType,
   PlanType,
   SessionType,
 } from '@utils/constants/meeting-types'
@@ -31,17 +32,18 @@ export interface Account {
   internal_pub_key: string
   encoded_signature: string
   preferences: AccountPreferences
-  paymentPreferences?: PaymentPreferences
   nonce: number
   is_invited: boolean
   subscriptions: Subscription[]
   discord_account?: DiscordAccount
+  payment_preferences: PaymentPreferences | null
   signedUp?: boolean
   isCalendarConnected?: boolean
 }
 
 export interface PublicAccount extends Account {
   meetingTypes?: MeetingType[]
+  payment_methods?: PaymentType[]
 }
 
 export interface SimpleAccountInfo {
@@ -96,6 +98,7 @@ export interface MeetingTypePlan {
   default_token: AcceptedToken
   payment_channel: PaymentChannel
   payment_address: string
+  payment_methods: PaymentType[]
   created_at: Date
   updated_at: Date
 }

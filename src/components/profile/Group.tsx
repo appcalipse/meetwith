@@ -1,9 +1,11 @@
 import {
   Badge,
+  Box,
   Button,
   Flex,
   Heading,
   HStack,
+  Link,
   Tab,
   TabList,
   TabPanel,
@@ -15,14 +17,16 @@ import {
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
+import { FaArrowRight } from 'react-icons/fa'
 
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
 import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
+import { useAvailabilityBlock } from '@/hooks/availability'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
-import { Intents, InviteType } from '@/types/Dashboard'
+import { EditMode, Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
 import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
 
@@ -39,6 +43,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const groupRef = useRef<GroupRef>(null)
   const groupInviteRef = useRef<GroupInvitesRef>(null)
+
+  const {
+    block: defaultAvailabilityBlock,
+    isLoading: isLoadingAvailabilityBlocks,
+  } = useAvailabilityBlock(currentAccount?.preferences?.availaibility_id)
 
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
@@ -90,6 +99,14 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     const group = await getGroupExternal(group_id)
     setInviteGroupData(group)
     setInviteDataIsLoading(false)
+  }
+
+  const handleViewAvailabilityBlock = () => {
+    if (defaultAvailabilityBlock) {
+      router.push(
+        `/dashboard/availability?editBlock=${defaultAvailabilityBlock.id}`
+      )
+    }
   }
   useEffect(() => {
     if (join) {
@@ -223,6 +240,51 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             Create new group
           </Button>
         </HStack>
+
+        {/* Availability Block Banner */}
+        {currentAccount?.preferences?.availaibility_id && (
+          <Box
+            bg="neutral.700"
+            borderRadius="8px"
+            px={3}
+            py={1}
+            mb={4}
+            width="max-content"
+          >
+            <Text color="white" fontSize="sm">
+              Availability block used for groups:{' '}
+              {isLoadingAvailabilityBlocks ? (
+                <Text as="span" fontWeight="700" color="primary.200">
+                  Loading...
+                </Text>
+              ) : defaultAvailabilityBlock ? (
+                <Text
+                  as="button"
+                  onClick={handleViewAvailabilityBlock}
+                  color="primary.200"
+                  fontWeight="700"
+                  cursor="pointer"
+                  textDecoration="underline"
+                  bg="transparent"
+                  border="none"
+                  p={0}
+                  m={0}
+                  fontSize="inherit"
+                  lineHeight="inherit"
+                  _hover={{
+                    color: 'primary.300',
+                  }}
+                >
+                  {defaultAvailabilityBlock.title}
+                </Text>
+              ) : (
+                <Text as="span" fontWeight="700" color="red.300">
+                  Not found
+                </Text>
+              )}
+            </Text>
+          </Box>
+        )}
 
         <TabPanels p={0}>
           <TabPanel p={0}>

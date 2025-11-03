@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-syntax */
+import { DiscordUserInfo } from '@meta/Discord'
 import * as Sentry from '@sentry/nextjs'
 import { Client, GatewayIntentBits } from 'discord.js'
 
@@ -8,7 +9,6 @@ import {
   NotificationChannel,
 } from '@/types/AccountNotifications'
 
-import { DiscordUserInfo } from '../../types/DiscordUserInfo'
 import { discordRedirectUrl, isProduction } from '../constants'
 import {
   createOrUpdatesDiscordAccount,
@@ -17,7 +17,7 @@ import {
   getDiscordAccount,
   setAccountNotificationSubscriptions,
 } from '../database'
-
+let ready = false
 const client = new Client({
   intents: [
     GatewayIntentBits.DirectMessages,
@@ -27,6 +27,7 @@ const client = new Client({
 })
 
 client.on('ready', () => {
+  ready = true
   !isProduction && console.log(`Discord bot logged in as ${client.user?.tag}!`)
 })
 
@@ -34,10 +35,9 @@ client.on('error', error => {
   console.error('Discord client error:', error)
   Sentry.captureException(error)
 })
-
 const doLogin = async () => {
   try {
-    if (!client.isReady()) {
+    if (!ready) {
       !isProduction && console.log('Logging in to Discord...')
       await client.login(process.env.DISCORD_TOKEN)
     }
@@ -47,8 +47,6 @@ const doLogin = async () => {
   }
 }
 const MWW_DISCORD_SERVER_ID = '915252743529181224'
-
-doLogin()
 
 export const generateDiscordAuthToken = async (
   discordCode: string
@@ -227,10 +225,12 @@ export const dmAccount = async (
   try {
     let attempts = 0
     const maxAttempts = 20 // 10 seconds total
-
+    if (!client.isReady()) {
+      doLogin()
+    }
     while (!client.isReady() && attempts < maxAttempts) {
       console.log(`Waiting for Discord client... attempt ${attempts + 1}`)
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, 1500))
       attempts++
     }
 
