@@ -53,6 +53,17 @@ function getConnectedCalendarIntegration(
     | CaldavCredentials
 ): BaseCalendarService
 
+function getConnectedCalendarIntegration(
+  address: string,
+  email: string,
+  provider: TimeSlotSource,
+  credentials:
+    | string
+    | Auth.Credentials
+    | O365AuthCredentials
+    | CaldavCredentials
+): BaseCalendarService
+
 // Implementation signature
 function getConnectedCalendarIntegration(
   address: string,
