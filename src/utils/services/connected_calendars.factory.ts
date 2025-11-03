@@ -17,16 +17,6 @@ import { Office365CalendarService } from './office365.service'
 function getConnectedCalendarIntegration(
   address: string,
   email: string,
-  provider: TimeSlotSource,
-  credentials:
-    | string
-    | Auth.Credentials
-    | O365AuthCredentials
-    | CaldavCredentials
-): BaseCalendarService
-function getConnectedCalendarIntegration(
-  address: string,
-  email: string,
   provider: TimeSlotSource.GOOGLE,
   credentials: string | Auth.Credentials
 ): IGoogleCalendarService
@@ -36,17 +26,22 @@ function getConnectedCalendarIntegration(
   address: string,
   email: string,
   provider: TimeSlotSource.OFFICE,
-  credentials: string | O365AuthCredentials
-): IOffcie365CalendarService
-
-// Overload for CalDAV providers (iCloud, WebDAV)
+  credentials:
+    | string
+    | Auth.Credentials
+    | O365AuthCredentials
+    | CaldavCredentials
+): BaseCalendarService
 function getConnectedCalendarIntegration(
   address: string,
   email: string,
-  provider: TimeSlotSource.ICLOUD | TimeSlotSource.WEBDAV,
-  credentials: CaldavCredentials
-): ICaldavCalendarService
-
+  provider: TimeSlotSource.WEBDAV,
+  credentials:
+    | string
+    | Auth.Credentials
+    | O365AuthCredentials
+    | CaldavCredentials
+): BaseCalendarService
 function getConnectedCalendarIntegration(
   address: string,
   email: string,
