@@ -1,7 +1,14 @@
-import { Heading, HStack, Icon, useToast, VStack } from '@chakra-ui/react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Button,
+  Heading,
+  HStack,
+  Icon,
+  useToast,
+  VStack,
+} from '@chakra-ui/react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
@@ -20,7 +27,10 @@ import {
   getPollParticipantByIdentifier,
   getQuickPollById,
   updatePollParticipantAvailability,
+  updateQuickPoll,
 } from '@/utils/api_helper'
+import { convertSelectedSlotsToAvailabilitySlots } from '@/utils/quickpoll_helper'
+import { getGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
@@ -35,6 +45,7 @@ import {
 import GuestIdentificationModal from './GuestIdentificationModal'
 import { QuickPollParticipants } from './QuickPollParticipants'
 import { QuickPollPickAvailability } from './QuickPollPickAvailability'
+import QuickPollSaveChangesModal from './QuickPollSaveChangesModal'
 
 export type MeetingMembers = ParticipantInfo & { isCalendarConnected?: boolean }
 
@@ -115,12 +126,40 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     pollId || (router.query.pollId as string) || currentPollData?.poll.id
   const currentPollTitle = currentPollData?.poll.title || 'Poll'
 
+  const showBack = !!currentAccount
+
+  // Track participant removals to prompt save
+  const [removedParticipantIds, setRemovedParticipantIds] = useState<string[]>(
+    []
+  )
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+
+  const onParticipantRemoved = (id: string) => {
+    setRemovedParticipantIds(prev => (prev.includes(id) ? prev : [...prev, id]))
+  }
+
   const {
     currentIntent,
     setCurrentIntent,
     setGuestAvailabilitySlots,
     setCurrentTimezone,
   } = useQuickPollAvailability()
+
+  // Load guest details from localStorage for guests
+  useEffect(() => {
+    if (!currentAccount && currentPollData) {
+      const storedDetails = getGuestPollDetails(currentPollData.poll.id)
+      if (storedDetails) {
+        setCurrentParticipantId(storedDetails.participantId)
+        setCurrentGuestEmail(storedDetails.email)
+      }
+    }
+  }, [
+    currentAccount,
+    currentPollData,
+    setCurrentParticipantId,
+    setCurrentGuestEmail,
+  ])
 
   useEffect(() => {
     if (router.query.intent) {
@@ -132,7 +171,37 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
 
+  const { mutate: saveRemovals, isLoading: isSavingRemovals } = useMutation({
+    mutationFn: async () =>
+      updateQuickPoll(currentPollId!, {
+        participants: { toRemove: removedParticipantIds },
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+      await queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
+      showSuccessToast('Changes saved', 'Participant updates have been saved.')
+      setIsConfirmOpen(false)
+      setRemovedParticipantIds([])
+      router.push(`/dashboard/${EditMode.QUICKPOLL}`)
+    },
+    onError: () => {
+      showErrorToast(
+        'Failed to save changes',
+        'There was an error saving participant changes.'
+      )
+    },
+  })
+
   const handleClose = () => {
+    if (removedParticipantIds.length > 0) {
+      setIsConfirmOpen(true)
+    } else {
+      router.push(`/dashboard/${EditMode.QUICKPOLL}`)
+    }
+  }
+
+  const handleDiscard = () => {
+    setIsConfirmOpen(false)
     router.push(`/dashboard/${EditMode.QUICKPOLL}`)
   }
 
@@ -153,38 +222,49 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   const handleSaveAvailability = async () => {
     if (!currentAccount) {
-      const slotsByWeekday = new Map<number, { start: string; end: string }[]>()
+      // Check if guest has saved details in localStorage
+      const storedDetails = getGuestPollDetails(currentPollData?.poll.id || '')
 
-      for (const slot of selectedSlots) {
-        const weekday = slot.start.weekday === 7 ? 0 : slot.start.weekday
-        const startTime = slot.start.toFormat('HH:mm')
-        const endTime = slot.end.toFormat('HH:mm')
+      const availabilitySlots =
+        convertSelectedSlotsToAvailabilitySlots(selectedSlots)
 
-        if (!slotsByWeekday.has(weekday)) {
-          slotsByWeekday.set(weekday, [])
+      if (storedDetails && currentParticipantId) {
+        setIsSavingAvailability(true)
+
+        try {
+          await updatePollParticipantAvailability(
+            storedDetails.participantId,
+            availabilitySlots,
+            timezone
+          )
+
+          setIsEditingAvailability(false)
+          refreshAvailabilities()
+          clearSlots()
+
+          queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+          queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
+
+          showSuccessToast(
+            'Availability saved',
+            'Your availability has been saved successfully.'
+          )
+        } catch (error) {
+          showErrorToast(
+            'Failed to save availability',
+            'There was an error saving your availability. Please try again.'
+          )
+        } finally {
+          setIsSavingAvailability(false)
         }
+      } else {
+        // First-time guest: navigate to details form
+        setGuestAvailabilitySlots(availabilitySlots)
+        setCurrentTimezone(timezone)
 
-        slotsByWeekday.get(weekday)!.push({
-          start: startTime,
-          end: endTime,
-        })
-      }
-
-      const availabilitySlots: AvailabilitySlot[] = []
-      for (let weekday = 0; weekday < 7; weekday++) {
-        const ranges = slotsByWeekday.get(weekday) || []
-        availabilitySlots.push({
-          weekday,
-          ranges,
-        })
-      }
-
-      // Store slots and timezone in context
-      setGuestAvailabilitySlots(availabilitySlots)
-      setCurrentTimezone(timezone)
-
-      if (onNavigateToGuestDetails) {
-        onNavigateToGuestDetails()
+        if (onNavigateToGuestDetails) {
+          onNavigateToGuestDetails()
+        }
       }
     } else {
       if (!currentPollData) return
@@ -344,17 +424,19 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         gap={4}
         w="100%"
       >
-        <HStack
-          cursor="pointer"
-          onClick={handleClose}
-          gap={2}
-          alignItems={'center'}
-        >
-          <Icon as={FaArrowLeft} size="1.2em" color={'primary.500'} />
-          <Heading fontSize={14} color="primary.500">
-            Back
-          </Heading>
-        </HStack>
+        {showBack && (
+          <HStack
+            cursor="pointer"
+            onClick={handleClose}
+            gap={2}
+            alignItems={'center'}
+          >
+            <Icon as={FaArrowLeft} size="1.2em" color={'primary.500'} />
+            <Heading fontSize={14} color="primary.500">
+              Back
+            </Heading>
+          </HStack>
+        )}
 
         <Heading fontSize="20px" fontWeight="700" color="text-primary">
           {isSchedulingIntent ? 'Schedule Meeting' : 'Add/Edit Availability'}
@@ -371,17 +453,20 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         alignItems={'flex-start'}
         display={{ base: 'none', md: 'flex' }}
       >
-        <HStack
-          mb={6}
-          cursor="pointer"
-          onClick={handleClose}
-          gap={4}
-          alignItems={'center'}
-        >
-          <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
-          <Heading fontSize={16} color="primary.500">
-            Back
-          </Heading>
+        <HStack mb={6} gap={4} alignItems={'center'}>
+          {showBack && (
+            <HStack
+              cursor="pointer"
+              onClick={handleClose}
+              gap={4}
+              alignItems={'center'}
+            >
+              <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
+              <Heading fontSize={16} color="primary.500">
+                Back
+              </Heading>
+            </HStack>
+          )}
 
           <Heading fontSize="24px" fontWeight="700" color="text-primary">
             {isSchedulingIntent ? 'Schedule Meeting' : 'Add/Edit Availability'}
@@ -438,12 +523,24 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         <InviteParticipants
           onClose={() => setIsInviteParticipantsOpen(false)}
           isOpen={isInviteParticipantsOpen}
+          isQuickPoll={true}
+          pollData={currentPollData}
+          onInviteSuccess={async () => {
+            await queryClient.invalidateQueries({
+              queryKey: ['quickpoll-public'],
+            })
+            await queryClient.invalidateQueries({
+              queryKey: ['quickpoll-schedule'],
+            })
+            setIsInviteParticipantsOpen(false)
+          }}
         />
         <QuickPollParticipants
           pollData={currentPollData}
           onAddParticipants={() => setIsInviteParticipantsOpen(true)}
           onAvailabilityToggle={refreshAvailabilities}
           currentGuestEmail={currentGuestEmail}
+          onParticipantRemoved={onParticipantRemoved}
         />
         <QuickPollPickAvailability
           openParticipantModal={() => setIsInviteParticipantsOpen(true)}
@@ -476,6 +573,14 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           pollTitle={currentPollData?.poll.title}
         />
       )}
+
+      <QuickPollSaveChangesModal
+        isOpen={isConfirmOpen}
+        removedCount={removedParticipantIds.length}
+        isSaving={isSavingRemovals}
+        onDiscard={handleDiscard}
+        onConfirm={() => saveRemovals()}
+      />
     </VStack>
   )
 }
