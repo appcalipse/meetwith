@@ -172,10 +172,7 @@ const updateMeetingServer = async (
   }
   const roleExists = !!actorSlot?.role
   const permissionExists = !!selectedPermissions
-  const isSchedulerOrOwner = isAccountSchedulerOrOwner(
-    [actorSlot],
-    actorSlot?.account_address
-  )
+
   const canEdit =
     !roleExists ||
     !permissionExists ||
@@ -429,7 +426,6 @@ export const handleCancelOrDelete = async (
       currentAccount?.preferences?.timezone || 'UTC',
       undefined,
       meetingTitle,
-      isRecurring,
       eventId
     )
   }
@@ -588,7 +584,6 @@ export const handleCancelOrDelete = async (
     slotsToRemove: toRemove.map(it => accountSlotMap[it]),
     version: actorSlot?.version + 1,
     guestsToRemove: [],
-    isRecurring,
     eventId,
   }
 
