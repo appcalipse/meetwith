@@ -12,59 +12,13 @@ export type EventBusyDate = Record<'start' | 'end', Date | string>
 /**
  * Calendar Service  Contract
  */
-export interface CalendarService<T extends TimeSlotSource> {
+export interface BaseCalendarService {
   /** which email is the calendar owner */
   getConnectedEmail: () => string
   /**
    * Refreshes the calendar connection, fetching the external calendar(s) info again
    */
   refreshConnection(): Promise<CalendarSyncInfo[]>
-
-  /**
-   * Lists events over a specific date range on target calendar
-   * @param calendarId the calendar ID to list events from
-   * @param dateFrom the start date to list events from
-   * @param dateTo the end date to list events from
-   */
-  listEvents?: T extends TimeSlotSource.GOOGLE
-    ? (
-        calendarId: string,
-        dateFrom: Date,
-        dateTo: Date
-      ) => Promise<calendar_v3.Schema$Event[]>
-    : never
-
-  /**
-   * Updates the RSVP status of an attendee for a specific event
-   * @param meeting_id
-   * @param attendeeEmail
-   * @param responseStatus
-   * @param _calendarId
-   */
-
-  updateEventRSVP?: T extends TimeSlotSource.GOOGLE
-    ? (
-        meeting_id: string,
-        attendeeEmail: string,
-        responseStatus: string,
-        _calendarId?: string
-      ) => Promise<NewCalendarEventType>
-    : never
-
-  /**
-   * Updates the extended properties of an event
-   * This is used to update the meeting link or other custom properties
-   * Only available for Google Calendar service
-   * @param meeting_id the event ID to update
-   * @param _calendarId the calendar ID to update the event in (optional)
-   */
-
-  updateEventExtendedProperties?: T extends TimeSlotSource.GOOGLE
-    ? (
-        meeting_id: string,
-        _calendarId?: string
-      ) => Promise<NewCalendarEventType>
-    : never
 
   /**
    * Creates a new event on target external calendar
@@ -114,6 +68,52 @@ export interface CalendarService<T extends TimeSlotSource> {
    * @param slot_id the event id to delete
    */
   deleteEvent(meeting_id: string, calendarId: string): Promise<void>
+}
+export interface IGoogleCalendarService extends BaseCalendarService {
+  /**
+   * Lists events over a specific date range on target calendar
+   * @param calendarId the calendar ID to list events from
+   * @param dateFrom the start date to list events from
+   * @param dateTo the end date to list events from
+   */
+  listEvents(
+    calendarId: string,
+    syncToken: string,
+    dateFrom: Date,
+    dateTo: Date
+  ): Promise<EventList>
+
+  initialSync(
+    calendarId: string,
+    dateFrom: string,
+    dateTo: string
+  ): Promise<string | null | undefined>
+
+  /**
+   * Updates the RSVP status of an attendee for a specific event
+   * @param meeting_id
+   * @param attendeeEmail
+   * @param responseStatus
+   * @param _calendarId
+   */
+  updateEventRSVP(
+    meeting_id: string,
+    attendeeEmail: string,
+    responseStatus: string,
+    _calendarId?: string
+  ): Promise<NewCalendarEventType>
+
+  /**
+   * Updates the extended properties of an event
+   * This is used to update the meeting link or other custom properties
+   * Only available for Google Calendar service
+   * @param meeting_id the event ID to update
+   * @param _calendarId the calendar ID to update the event in (optional)
+   */
+  updateEventExtendedProperties(
+    meeting_id: string,
+    _calendarId?: string
+  ): Promise<NewCalendarEventType>
 
   /**
    * Sets up a webhook URL for calendar change notifications
@@ -122,18 +122,16 @@ export interface CalendarService<T extends TimeSlotSource> {
    * @param webhookUrl the URL to receive webhook notifications
    * @param calendarId the calendar ID to watch (defaults to 'primary')
    */
-  setWebhookUrl?: T extends TimeSlotSource.GOOGLE
-    ? (
-        webhookUrl: string,
-        calendarId?: string
-      ) => Promise<{
-        channelId: string | null | undefined
-        resourceId: string | null | undefined
-        expiration: string | null | undefined
-        calendarId: string
-        webhookUrl: string
-      }>
-    : never
+  setWebhookUrl(
+    webhookUrl: string,
+    calendarId?: string
+  ): Promise<{
+    channelId: string | null | undefined
+    resourceId: string | null | undefined
+    expiration: string | null | undefined
+    calendarId: string
+    webhookUrl: string
+  }>
 
   /**
    * Stops an active webhook subscription
@@ -142,9 +140,7 @@ export interface CalendarService<T extends TimeSlotSource> {
    * @param channelId the channel ID of the webhook to stop
    * @param resourceId the resource ID of the webhook to stop
    */
-  stopWebhook?: T extends TimeSlotSource.GOOGLE
-    ? (channelId: string, resourceId: string) => Promise<void>
-    : never
+  stopWebhook(channelId: string, resourceId: string): Promise<void>
 
   /**
    * Refreshes an existing webhook subscription
@@ -154,18 +150,21 @@ export interface CalendarService<T extends TimeSlotSource> {
    * @param webhookUrl the webhook URL
    * @param calendarId the calendar ID
    */
-  refreshWebhook?: T extends TimeSlotSource.GOOGLE
-    ? (
-        oldChannelId: string,
-        oldResourceId: string,
-        webhookUrl: string,
-        calendarId?: string
-      ) => Promise<{
-        channelId: string | null | undefined
-        resourceId: string | null | undefined
-        expiration: string | null | undefined
-        calendarId: string
-        webhookUrl: string
-      }>
-    : never
+  refreshWebhook(
+    oldChannelId: string,
+    oldResourceId: string,
+    webhookUrl: string,
+    calendarId?: string
+  ): Promise<{
+    channelId: string | null | undefined
+    resourceId: string | null | undefined
+    expiration: string | null | undefined
+    calendarId: string
+    webhookUrl: string
+  }>
+}
+
+export type EventList = {
+  events: calendar_v3.Schema$Event[]
+  nextSyncToken: string | null | undefined
 }
