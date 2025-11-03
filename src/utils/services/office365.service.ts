@@ -20,7 +20,7 @@ import {
   updateCalendarPayload,
 } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
-import { CalendarService } from './calendar.service.types'
+import { BaseCalendarService } from './calendar.service.types'
 
 export type BufferedBusyTime = {
   start: string
@@ -62,9 +62,7 @@ export type O365AuthCredentials = {
   refresh_token: string
 }
 
-export default class Office365CalendarService
-  implements CalendarService<TimeSlotSource.OFFICE>
-{
+export default class Office365CalendarService implements BaseCalendarService {
   private auth: { getToken: () => Promise<string> }
   private email: string
 
