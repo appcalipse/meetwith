@@ -618,6 +618,7 @@ const ScheduleBase = () => {
                   h={'auto'}
                   colorScheme="primary"
                   onClick={handleCancel}
+                  variant="outline"
                   flex={1}
                   flexBasis="40%"
                 >
