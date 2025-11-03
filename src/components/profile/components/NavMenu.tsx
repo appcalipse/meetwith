@@ -13,6 +13,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo } from 'react'
 import { IconType } from 'react-icons'
@@ -24,8 +25,7 @@ import {
   FaSignOutAlt,
   FaWallet,
 } from 'react-icons/fa'
-import { FaUserGroup } from 'react-icons/fa6'
-import { FaUsers } from 'react-icons/fa6'
+import { FaUserGroup, FaUsers } from 'react-icons/fa6'
 
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
@@ -36,8 +36,12 @@ import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
+import {
+  getNotificationTime,
+  incrementNotificationLookup,
+  saveNotificationTime,
+} from '@/utils/storage'
 import { isProduction } from '@/utils/constants'
-import { getNotificationTime, saveNotificationTime } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { ThemeSwitcher } from '../../ThemeSwitcher'
@@ -196,10 +200,28 @@ export const NavMenu: React.FC<{
     if (!currentAccount) return
     void handleGroupInvites()
     const lastNotificationTime = getNotificationTime(currentAccount?.address)
-    if (lastNotificationTime === null) return
-    if (Date.now() > lastNotificationTime) {
-      void handleEmptyGroupCheck()
+
+    if (
+      lastNotificationTime === null ||
+      (lastNotificationTime.lookups === 2 &&
+        DateTime.fromMillis(lastNotificationTime.date).hasSame(
+          DateTime.now(),
+          'day'
+        ))
+    ) {
+      return
+    }
+    void handleEmptyGroupCheck()
+    if (
+      lastNotificationTime.lookups === 2 ||
+      !DateTime.fromMillis(lastNotificationTime.date).hasSame(
+        DateTime.now(),
+        'day'
+      )
+    ) {
       saveNotificationTime(currentAccount?.address)
+    } else {
+      incrementNotificationLookup(currentAccount?.address)
     }
   }, [currentAccount?.address])
 
