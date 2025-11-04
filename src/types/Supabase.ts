@@ -1176,16 +1176,27 @@ export type Database = {
         }
         Relationships: []
       }
-      recurring_slots: {
+      result: {
+        Row: {
+          jsonb_agg: Json | null
+        }
+        Insert: {
+          jsonb_agg?: Json | null
+        }
+        Update: {
+          jsonb_agg?: Json | null
+        }
+        Relationships: []
+      }
+      slot_instance: {
         Row: {
           account_address: string
           created_at: string | null
           end: string
           id: string
-          meeting_info_encrypted: Json
-          recurrence: Database['public']['Enums']['MeetingRepeat']
+          override_meeting_info_encrypted: Json
           role: Database['public']['Enums']['ParticipantType']
-          slot_id: string
+          series_id: string
           start: string
           status: Database['public']['Enums']['RecurringStatus']
           version: number
@@ -1195,10 +1206,9 @@ export type Database = {
           created_at?: string | null
           end: string
           id: string
-          meeting_info_encrypted: Json
-          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          override_meeting_info_encrypted: Json
           role: Database['public']['Enums']['ParticipantType']
-          slot_id?: string
+          series_id: string
           start: string
           status: Database['public']['Enums']['RecurringStatus']
           version?: number
@@ -1208,10 +1218,9 @@ export type Database = {
           created_at?: string | null
           end?: string
           id?: string
-          meeting_info_encrypted?: Json
-          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          override_meeting_info_encrypted?: Json
           role?: Database['public']['Enums']['ParticipantType']
-          slot_id?: string
+          series_id?: string
           start?: string
           status?: Database['public']['Enums']['RecurringStatus']
           version?: number
@@ -1226,17 +1235,49 @@ export type Database = {
           }
         ]
       }
-      result: {
+      slot_series: {
         Row: {
-          jsonb_agg: Json | null
+          account_address: string
+          created_at: string
+          default_meeting_info_encrypted: Json
+          id: string
+          original_end: string
+          original_start: string
+          recurrence: Database['public']['Enums']['MeetingRepeat']
+          rrule: string | null
+          slot_id: string
         }
         Insert: {
-          jsonb_agg?: Json | null
+          account_address: string
+          created_at?: string
+          default_meeting_info_encrypted: Json
+          id?: string
+          original_end: string
+          original_start: string
+          recurrence: Database['public']['Enums']['MeetingRepeat']
+          rrule?: string | null
+          slot_id: string
         }
         Update: {
-          jsonb_agg?: Json | null
+          account_address?: string
+          created_at?: string
+          default_meeting_info_encrypted?: Json
+          id?: string
+          original_end?: string
+          original_start?: string
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          rrule?: string | null
+          slot_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'slot_series_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       slots: {
         Row: {
@@ -1681,7 +1722,7 @@ export type Database = {
         | 'accepted'
         | 'deleted'
       QuickPollParticipantType: 'scheduler' | 'invitee' | 'owner'
-      RecurringStatus: 'confirmed' | 'cancelled' | 'updated'
+      RecurringStatus: 'confirmed' | 'cancelled' | 'modified'
       SessionType: 'paid' | 'free'
       TimeSlotSource: 'mww' | 'Google' | 'iCloud' | 'Office 365' | 'Webdav'
       TokenType: 'erc20' | 'erc721' | 'stablecoin' | 'nft' | 'native'
@@ -1857,7 +1898,7 @@ export const Constants = {
         'deleted',
       ],
       QuickPollParticipantType: ['scheduler', 'invitee', 'owner'],
-      RecurringStatus: ['confirmed', 'cancelled', 'updated'],
+      RecurringStatus: ['confirmed', 'cancelled', 'modified'],
       SessionType: ['paid', 'free'],
       TimeSlotSource: ['mww', 'Google', 'iCloud', 'Office 365', 'Webdav'],
       TokenType: ['erc20', 'erc721', 'stablecoin', 'nft', 'native'],
