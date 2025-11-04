@@ -10,12 +10,13 @@ import {
 } from '@/types/CalendarConnections'
 import { MeetingReminders, RecurringStatus } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
-import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
+import { DBSlot, MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
+import { Tables } from '@/types/Supabase'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
-import { getTempSlotsBySlotId, updateCalendarPayload } from '../database'
+import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { EventList, IGoogleCalendarService } from './calendar.service.types'
 import { withRetry } from './retry.service'
@@ -459,10 +460,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             rrule += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
             break
         }
-        const excludedDates = await getTempSlotsBySlotId(
-          slot_id || '',
-          RecurringStatus.CANCELLED
-        )
+        const excludedDates: Array<Tables<'slot_instance'>> = []
         // Add exclusion dates if provided
         if (excludedDates && excludedDates.length > 0) {
           const exdates = excludedDates
