@@ -119,10 +119,20 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     setIsNetworkDropdownOpen(false)
   })
 
-  const NETWORK_CONFIG = supportedPaymentChains.reduce((acc, chain) => {
-    acc[getNetworkDisplayName(chain)] = chain
-    return acc
-  }, {} as Record<string, SupportedChain>)
+  const NETWORK_CONFIG = supportedChains
+    .filter(
+      chain =>
+        chain.walletSupported &&
+        supportedPaymentChains.includes(chain.chain) &&
+        chain.acceptableTokens.some(
+          token =>
+            token.walletSupported && token.contractAddress !== zeroAddress
+        )
+    )
+    .reduce((acc, chain) => {
+      acc[getNetworkDisplayName(chain.chain)] = chain.chain
+      return acc
+    }, {} as Record<string, SupportedChain>)
 
   const [sendNetwork, setSendNetwork] =
     useState<SupportedChain>(selectedNetwork)
@@ -236,17 +246,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
   // Get available tokens dynamically from chain configuration (excluding native tokens)
   const availableTokens = chain
-    ? chain.acceptableTokens
-        .filter(token => token.contractAddress !== zeroAddress)
-        .filter(token => {
-          if (sendNetwork === SupportedChain.CELO) {
-            return (
-              token.token !== AcceptedToken.CELO &&
-              token.token !== AcceptedToken.CEUR
-            )
-          }
-          return true
-        })
+    ? chain.acceptableTokens.filter(
+        token => token.contractAddress !== zeroAddress
+      )
     : []
 
   // Validate recipient address
@@ -740,7 +742,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                     bg="transparent"
                     borderRadius="8px"
                     px={{ base: 3, md: 4 }}
-                    py={{ base: 2, md: 3 }}
+                    h="40px"
                     display="flex"
                     alignItems="center"
                     gap={3}
@@ -842,7 +844,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                       bg="transparent"
                       borderRadius="8px"
                       px={{ base: 3, md: 4 }}
-                      py={{ base: 2, md: 3 }}
+                      h="40px"
                       display="flex"
                       alignItems="center"
                       gap={3}

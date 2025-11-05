@@ -2,6 +2,7 @@ import { MeetingType } from '@/types/Account'
 import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
 import { MeetingProvider } from '@/types/Meeting'
 import { isProduction } from '@/utils/constants'
+import { zeroAddress } from '@/utils/generic_utils'
 
 export enum SessionType {
   PAID = 'paid',
@@ -185,7 +186,14 @@ export const getDefaultValues = (): Partial<MeetingType> => ({
 })
 
 export const networkOptions = supportedChains
-  .filter(val => (supportedPaymentChains || []).includes(val.chain))
+  .filter(
+    val =>
+      val.walletSupported &&
+      (supportedPaymentChains || []).includes(val.chain) &&
+      val.acceptableTokens.some(
+        token => token.walletSupported && token.contractAddress !== zeroAddress
+      )
+  )
   .map(val => ({
     id: val.id,
     name: val.fullName,
