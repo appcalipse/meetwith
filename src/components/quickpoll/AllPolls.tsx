@@ -55,6 +55,7 @@ const AllPolls = () => {
         align="stretch"
         maxW="1200px"
         mx="auto"
+        pb={10}
       >
         {/* Header Section */}
         <Flex
