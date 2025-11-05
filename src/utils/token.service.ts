@@ -7,11 +7,13 @@ import { Address } from 'viem'
 import { ERC721 } from '@/abis/erc721'
 import {
   AcceptedToken,
+  ChainInfo,
   getChainId,
   getChainInfo,
   getTokenAddress,
   getTokenSymbol,
   SupportedChain,
+  supportedChains,
   TokenMeta,
 } from '@/types/chains'
 import { GateInterface, TokenGateElement } from '@/types/TokenGating'
@@ -329,5 +331,88 @@ export const getTokenDecimals = async (
     console.error('Error getting token decimals:', error)
     // Fallback to default decimals for known tokens
     return 18
+  }
+}
+
+export const getNetworkWithHighestBalance = async (
+  walletAddress: string
+): Promise<SupportedChain | null> => {
+  try {
+    const walletSupportedChains = supportedChains.filter(
+      (chain: ChainInfo) =>
+        chain.walletSupported && supportedPaymentChains.includes(chain.chain)
+    )
+
+    const networkBalances: Array<{ chain: SupportedChain; balance: number }> =
+      []
+
+    // Calculate balance for each network
+    for (const chainInfo of walletSupportedChains) {
+      try {
+        let networkTotal = 0
+
+        // Get native balance for this network
+        try {
+          const nativeBalance = await getCryptoNativeBalance(
+            walletAddress,
+            chainInfo.chain
+          )
+          networkTotal += nativeBalance.balance
+        } catch (error) {
+          console.error(
+            `Error getting native balance for ${chainInfo.chain}:`,
+            error
+          )
+        }
+
+        // Get all token balances for this network
+        for (const tokenInfo of chainInfo.acceptableTokens) {
+          if (tokenInfo.contractAddress !== zeroAddress) {
+            try {
+              const tokenBalance = await getCryptoTokenBalance(
+                walletAddress,
+                tokenInfo.contractAddress,
+                chainInfo.chain
+              )
+              networkTotal += tokenBalance.balance
+            } catch (error) {
+              console.error(
+                `Error getting token balance for ${tokenInfo.token} on ${chainInfo.chain}:`,
+                error
+              )
+            }
+          }
+        }
+
+        networkBalances.push({
+          chain: chainInfo.chain,
+          balance: networkTotal,
+        })
+      } catch (error) {
+        console.error(
+          `Error calculating balance for ${chainInfo.chain}:`,
+          error
+        )
+      }
+    }
+
+    // Find the network with the highest balance
+    if (networkBalances.length === 0) {
+      return null
+    }
+
+    const highestBalanceNetwork = networkBalances.reduce((prev, current) =>
+      current.balance > prev.balance ? current : prev
+    )
+
+    // Only return if there's actually a balance (greater than 0)
+    if (highestBalanceNetwork.balance > 0) {
+      return highestBalanceNetwork.chain
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error getting network with highest balance:', error)
+    return null
   }
 }
