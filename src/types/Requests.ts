@@ -117,6 +117,7 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meetingRepeat?: MeetingRepeat
   meetingPermissions?: Array<MeetingPermissions>
   eventId?: string
+  notification_hash?: string
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
