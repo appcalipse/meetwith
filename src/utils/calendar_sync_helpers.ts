@@ -1,6 +1,7 @@
 import { Account } from '@meta/Account'
-import { DBSlot, SchedulingType } from '@meta/Meeting'
+import { ConferenceMeeting, DBSlot, SchedulingType } from '@meta/Meeting'
 import {
+  ParticipantBaseInfo,
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
@@ -21,11 +22,17 @@ import {
 } from '@utils/generic_utils'
 import { getAccountDisplayName } from '@utils/user_manager'
 import { calendar_v3 } from 'googleapis'
+import { DateTime } from 'luxon'
 import { v4 as uuidv4 } from 'uuid'
 
 import { RecurringStatus } from '@/types/common'
 import { TablesUpdate } from '@/types/Supabase'
 
+import {
+  MeetingCreationRequest,
+  MeetingCreationSyncRequest,
+} from '../types/Requests'
+import { apiUrl } from './constants'
 import { NO_MEETING_TYPE } from './constants/meeting-types'
 import {
   deleteMeetingFromDB,
@@ -40,6 +47,7 @@ import {
   parseParticipantSlots,
   updateMeeting,
 } from './database'
+import { checkHasSameScheduleTime } from './date_helper'
 
 const getBaseEventId = (googleEventId: string): string => {
   const sanitizedMeetingId = googleEventId.split('_')[0] // '02cd383a77214840b5a1ad4ceb545ff8'
@@ -360,7 +368,7 @@ const handleUpdateParseMeetingInfo = async (
   if (!participantActing) {
     throw new MeetingChangeConflictError()
   }
-  return { participantActing, payload }
+  return { participantActing, payload, existingMeeting }
 }
 
 const updateMeetingServer = async (
@@ -487,7 +495,8 @@ const handleUpdateSingleRecurringInstance = async (
   const startTime = event.start?.dateTime
   const endTime = event.end?.dateTime
   if (!event.id || !startTime || !endTime) return
-  const meetingId = getBaseEventId(event.id)
+  const meetingId =
+    event?.extendedProperties?.private?.meetingId || getBaseEventId(event.id)
   if (!meetingId) {
     console.warn(`Skipping event ${event.id} due to missing  meetingId`)
     return
@@ -560,6 +569,15 @@ const handleUpdateSingleRecurringInstance = async (
     )
     const slotToUpdate = await Promise.all(slotToUpdatePromises)
     const slotsToRemove = await Promise.all(slotsToRemovePromises)
+    handleSendEventNotification(
+      eventInstance.payload,
+      eventInstance.existingMeeting,
+      eventInstance.participantActing,
+      currentAccountAddress,
+      startTime,
+      endTime,
+      event.id
+    )
     return slotToUpdate.concat(slotsToRemove)
   }
   return undefined
@@ -705,11 +723,92 @@ const handleCancelOrDeleteForRecurringInstance = async (
   }
   return undefined
 }
+const handleSendEventNotification = (
+  payload: MeetingCreationRequest,
+  existingMeeting: ConferenceMeeting,
+  participantActing: ParticipantBaseInfo,
+  currentAccountAddress: string,
+  startTime: string,
+  endTime: string,
+  eventId: string
+) => {
+  let changingTime = null
+  if (
+    !(
+      checkHasSameScheduleTime(
+        new Date(existingMeeting.start),
+        new Date(startTime)
+      ) &&
+      checkHasSameScheduleTime(new Date(existingMeeting.end), new Date(endTime))
+    )
+  ) {
+    const oldStartDateTime = DateTime.fromJSDate(
+      new Date(existingMeeting.start)
+    )
+    const oldEndDateTime = DateTime.fromJSDate(new Date(existingMeeting.end))
+    const newStartDateTime = DateTime.fromJSDate(new Date(startTime))
+    const newEndDateTime = DateTime.fromJSDate(new Date(endTime))
+
+    changingTime = {
+      oldStart: newStartDateTime
+        .set({
+          hour: oldStartDateTime.hour,
+          minute: oldStartDateTime.minute,
+          second: oldStartDateTime.second,
+          millisecond: oldStartDateTime.millisecond,
+        })
+        .toJSDate(),
+      oldEnd: newEndDateTime
+        .set({
+          hour: oldEndDateTime.hour,
+          minute: oldEndDateTime.minute,
+          second: oldEndDateTime.second,
+          millisecond: oldEndDateTime.millisecond,
+        })
+        .toJSDate(),
+    }
+  }
+  const actor = payload.participants_mapping.find(
+    p =>
+      p.account_address?.toLowerCase() === currentAccountAddress.toLowerCase()
+  )
+  const notification_hash = actor?.privateInfoHash + startTime + endTime
+
+  const body: MeetingCreationSyncRequest = {
+    participantActing: participantActing,
+    meeting_id: payload.meeting_id,
+    start: payload.start,
+    end: payload.end,
+    created_at: existingMeeting.created_at,
+    timezone: actor?.timeZone || 'UTC',
+    meeting_url: payload.meeting_url,
+    meetingProvider: payload.meetingProvider,
+    participants: payload.participants_mapping,
+    title: payload.title,
+    content: payload.content,
+    changes: changingTime ? { dateChange: changingTime } : undefined,
+    meetingReminders: payload.meetingReminders,
+    meetingRepeat: payload.meetingRepeat,
+    meetingPermissions: payload.meetingPermissions,
+    notification_hash,
+    eventId,
+  }
+  // Send notification update as non_blocking event
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
+    },
+  })
+}
 export {
   extractMeetingDescription,
   extractSlotIdFromDescription,
   getBaseEventId,
   handleCancelOrDeleteForRecurringInstance,
+  handleSendEventNotification,
   handleUpdateParseMeetingInfo,
   handleUpdateSingleRecurringInstance,
   handleParticipants,
