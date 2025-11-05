@@ -271,6 +271,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
               private: {
                 updatedBy: 'meetwith',
                 lastUpdatedAt: new Date().toISOString(),
+                meetingId: meetingDetails.meeting_id,
               },
             },
           }
