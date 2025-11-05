@@ -24,6 +24,7 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { writeFileSync } from 'fs'
 import { GaxiosError } from 'gaxios'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
@@ -128,6 +129,7 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
+import { Database, Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
 import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
 import {
   Database,
@@ -151,6 +153,7 @@ import {
   Transaction,
 } from '@/types/Transactions'
 import {
+  MODIFIED_BY_APP_TIMEOUT,
   PaymentNotificationType,
   QUICKPOLL_DEFAULT_LIMIT,
   QUICKPOLL_DEFAULT_OFFSET,
@@ -231,6 +234,7 @@ import {
   getBaseEventId,
   handleCancelOrDelete,
   handleCancelOrDeleteForRecurringInstance,
+  handleSendEventNotification,
   handleUpdateParseMeetingInfo,
   handleUpdateSingleRecurringInstance,
   updateMeetingServer,
@@ -3715,7 +3719,6 @@ const updateMeeting = async (
       meetingUpdateRequest.meetingTypeId === NO_MEETING_TYPE
         ? undefined
         : meetingUpdateRequest.meetingTypeId,
-    eventId: meetingUpdateRequest.eventId,
   }
 
   // Doing notifications and syncs asynchronously
@@ -6299,9 +6302,6 @@ const handleWebhookEvent = async (
     allEvents = events
   } catch (error) {
     console.error(`Failed to sync  range:`, error)
-    Sentry.captureException(error, {
-      extra: { calendar: calendar.id },
-    })
   }
   const recentlyUpdated = allEvents.filter(event => {
     const now = new Date()
@@ -6313,7 +6313,7 @@ const handleWebhookEvent = async (
       if (
         eventLastUpdatedAt >
         sub(now, {
-          seconds: 7.5,
+          seconds: MODIFIED_BY_APP_TIMEOUT,
         })
       ) {
         return false
@@ -6325,16 +6325,43 @@ const handleWebhookEvent = async (
 
     return eventDate > add(now, { minutes: -10 })
   })
+  const recurringIdSet = new Set<string>()
   if (recentlyUpdated.length === 0) {
     // eslint-disable-next-line no-restricted-syntax
     console.info('No recently updated events found')
     return false
   }
+
+  // First pass: collect all recurring event IDs
+  recentlyUpdated.forEach(meeting => {
+    if (meeting.recurringEventId) {
+      recurringIdSet.add(meeting.recurringEventId)
+    }
+  })
+  writeFileSync(
+    `all_event_${Date.now()}.json`,
+    JSON.stringify(recentlyUpdated, null, 2)
+  )
+  const isRecurringInstance = (meeting: calendar_v3.Schema$Event): boolean => {
+    if (meeting.recurringEventId) return true
+
+    if (meeting.id) {
+      for (const recId of recurringIdSet) {
+        // filter out deleted recurring instances converted to ordinary meetings with deleted recurring instances namespaces
+        if (meeting.id.startsWith(recId)) return true
+      }
+    }
+    return false
+  }
   const recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
-    meeting => !!meeting.recurringEventId
+    meeting => !!meeting.recurringEventId // only consider events with recurringEventId
   )
   const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
-    meeting => !meeting.recurringEventId
+    meeting => !isRecurringInstance(meeting)
+  )
+  writeFileSync(
+    `all_non_rec_event_${Date.now()}.json`,
+    JSON.stringify(recentlyUpdatedNonRecurringMeetings, null, 2)
   )
   const actions = await Promise.all(
     recentlyUpdatedNonRecurringMeetings
@@ -6348,6 +6375,48 @@ const handleWebhookEvent = async (
       )
   )
   return actions.length > 0
+}
+
+const getEventNotification = async (eventId: string) => {
+  const { data, error } = await db.supabase
+    .from<Tables<'event_notifications'>>('event_notifications')
+    .select('*')
+    .eq('event_id', eventId)
+    .maybeSingle()
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const createOrUpdateEventNotification = async (
+  eventNotification: TablesInsert<'event_notifications'>
+) => {
+  const { data, error } = await db.supabase
+    .from<Tables<'event_notifications'>>('event_notifications')
+    .upsert(eventNotification, { onConflict: 'event_id' })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+
+const bulkUpdateSlotSeriesConfirmedSlots = async (
+  series_id: string,
+  start_time: Date,
+  end_time: Date
+) => {
+  const { error } = await db.supabase.rpc<Database['public']['Functions']>(
+    'update_confirmed_slot_times',
+    {
+      p_series_id: series_id,
+      p_new_start_time: DateTime.fromJSDate(start_time).toFormat('HH:mm:ss'),
+      p_new_end_time: DateTime.fromJSDate(end_time).toFormat('HH:mm:ss'),
+    } as Database['public']['Functions']['update_confirmed_slot_times']['Args']
+  )
+  if (error) {
+    console.error(error)
+  }
 }
 const handleSyncRecurringEvents = async (
   events: calendar_v3.Schema$Event[],
@@ -6366,104 +6435,101 @@ const handleSyncRecurringEvents = async (
       'summary',
       'reminders',
       'location',
+      'status',
     ])
   )
+
   const slotSeriesUpdates: Array<TablesUpdate<'slot_series'>> = []
   const slotIntanceUpdates: Array<TablesUpdate<'slot_instance'>> = []
   for (const groupedRecurringEvent of groupedRecurringEvents) {
     // remove the last element of the series which would be the one with most elements updated, The update on this should go to the master series as it covers all bulk changes
+    if (groupedRecurringEvent.length > 0) {
+      writeFileSync(
+        `groupedRecurringEvents_${Date.now()}.json`,
+        JSON.stringify(groupedRecurringEvents, null, 2)
+      )
+      writeFileSync(
+        `events_${Date.now()}.json`,
+        JSON.stringify(events, null, 2)
+      )
+    }
     const lastEventBatch = groupedRecurringEvent.pop()
-    const singleInstanceEvent = lastEventBatch?.at(-1)
-    if (
-      lastEventBatch &&
-      singleInstanceEvent?.id &&
-      singleInstanceEvent.start?.dateTime &&
-      singleInstanceEvent.end?.dateTime
-    ) {
+    const singleInstanceEvent = lastEventBatch?.sort((a, b) => {
+      const aDate = new Date(a.updated || a.created || 0).getTime()
+      const bDate = new Date(b.updated || b.created || 0).getTime()
+      return aDate - bDate
+    })[0]
+    const startTime = singleInstanceEvent?.start?.dateTime
+    const endTime = singleInstanceEvent?.end?.dateTime
+    if (lastEventBatch && singleInstanceEvent?.id && startTime && endTime) {
       try {
-        const meetingId = getBaseEventId(singleInstanceEvent.id)
+        const meetingId =
+          singleInstanceEvent?.extendedProperties?.private?.meetingId ||
+          getBaseEventId(singleInstanceEvent.id)
         const eventInstance = await handleUpdateParseMeetingInfo(
           meetingId,
           calendar.account_address,
-          new Date(singleInstanceEvent.start?.dateTime),
-          new Date(singleInstanceEvent.end?.dateTime),
+          new Date(startTime),
+          new Date(endTime),
           singleInstanceEvent.attendees || [],
           extractMeetingDescription(singleInstanceEvent.description || '') ||
             '',
           singleInstanceEvent.location || '',
           singleInstanceEvent.summary || ''
         )
+
         if (eventInstance) {
+          handleSendEventNotification(
+            eventInstance.payload,
+            eventInstance.existingMeeting,
+            eventInstance.participantActing,
+            calendar.account_address,
+            startTime,
+            endTime,
+            singleInstanceEvent.id
+          )
           const { slots } = await parseParticipantSlots(
             eventInstance.participantActing,
             eventInstance.payload
           )
-          const toUpdate = await Promise.all(
-            slots.map(async (slot): Promise<TablesUpdate<'slot_series'>> => {
-              const slotSeries = await getSlotSeries(slot.id!)
-              return {
-                ...slotSeries,
-                slot_id: slot.id,
-                account_address: slot.account_address,
-                default_meeting_info_encrypted: slot.meeting_info_encrypted,
-                recurrence: slot.recurrence,
-              }
-            })
-          )
-          slotSeriesUpdates.push(...toUpdate)
-          const instancesToUpdatePromises = lastEventBatch.map(async event => {
-            const startTime = event.start?.dateTime
-            const endTime = event.end?.dateTime
-            if (startTime && endTime) {
-              const basicString = event.id!.split('_').at(-1)
-              if (!basicString) return
-              const year = basicString.substring(0, 4)
-              const month = basicString.substring(4, 6)
-              const day = basicString.substring(6, 8)
-              const time = basicString.substring(9, 15)
-              const extendedString = `${year}-${month}-${day}T${time.substring(
-                0,
-                2
-              )}:${time.substring(2, 4)}:${time.substring(4, 6)}Z`
-              const timeStamp = new Date(extendedString).getTime()
+          if (groupedRecurringEvent.length > 0) {
+            await deleteRecurringSlotInstances(
+              eventInstance.payload.slotsToRemove
+            )
+            const toUpdate = await Promise.all(
+              slots.map(async (slot): Promise<TablesUpdate<'slot_series'>> => {
+                const slotSeries = await getSlotSeries(slot.id!)
 
-              return await Promise.all(
-                slots.map(
-                  async (slot): Promise<TablesUpdate<'slot_instance'>> => {
-                    const series_id = await getSlotSeriesId(slot.id!)
-                    return {
-                      id: slot.id + '_' + timeStamp,
-                      version: slot.version + 1,
-                      start: new Date(startTime).toISOString(),
-                      end: new Date(endTime).toISOString(),
-                      status: RecurringStatus.CONFIRMED,
-                      role: slot.role,
-                      override_meeting_info_encrypted: null,
-                      account_address: slot.account_address,
-                      series_id,
-                    }
-                  }
+                await bulkUpdateSlotSeriesConfirmedSlots(
+                  slotSeries!.id,
+                  new Date(slot.start),
+                  new Date(slot.end)
                 )
-              )
-            }
-            return
-          })
-          const instancesToUpdateResolved = await Promise.all(
-            instancesToUpdatePromises
-          )
-          const instancesToUpdate = instancesToUpdateResolved.filter(
-            (val): val is Array<TablesUpdate<'slot_instance'>> => Boolean(val)
-          )
-          slotIntanceUpdates.push(...instancesToUpdate.flat())
+                return {
+                  ...slotSeries,
+                  slot_id: slot.id,
+                  account_address: slot.account_address,
+                  default_meeting_info_encrypted: slot.meeting_info_encrypted,
+                  recurrence: slot.recurrence,
+                }
+              })
+            )
+            slotSeriesUpdates.push(...toUpdate)
+          } else {
+            // If an update to all slots in the series was made, we delete the existing instances and recreate them with the new ids and data, this accounts for all modified and cancelled instances
+            await deleteRecurringSlotInstances(
+              slots.map(s => s.id!).concat(eventInstance.payload.slotsToRemove)
+            )
+            saveRecurringMeetings(slots, slots[0]?.recurrence)
+          }
         }
       } catch (e) {
+        console.error(e)
         if (e instanceof MeetingDetailsModificationDenied) {
           // update only the rsvp on other calendars
           await handleCalendarRsvps(singleInstanceEvent, calendar, calendarId)
-          return
-        } else {
-          throw e
         }
+        return undefined
       }
     }
 
@@ -6486,13 +6552,8 @@ const handleSyncRecurringEvents = async (
               if (e instanceof MeetingDetailsModificationDenied) {
                 // update only the rsvp on other calendars
                 await handleCalendarRsvps(event, calendar, calendarId)
-                return undefined
-              } else {
-                Sentry.captureException(e, {
-                  extra: { eventId: event.id, calendarId: calendar.id },
-                })
-                return undefined
               }
+              return undefined
             }
           }
         )
@@ -6504,27 +6565,38 @@ const handleSyncRecurringEvents = async (
       .filter((val): val is TablesUpdate<'slot_instance'> => Boolean(val))
     slotIntanceUpdates.push(...otherSlots)
 
-    await db.supabase
-      .from('slot_series')
-      .upsert(slotSeriesUpdates, {
-        onConflict: 'slot_id',
-      })
-      .then(({ error }) => {
-        if (error) {
-          console.error('Error updating slot_series:', error)
-        }
-      })
-    await db.supabase
-      .from('slot_instance')
-      .upsert(slotIntanceUpdates, {
-        onConflict: 'id',
-        ignoreDuplicates: true,
-      })
-      .then(({ error }) => {
-        if (error) {
-          console.error('Error updating slot_instance:', error)
-        }
-      })
+    if (slotSeriesUpdates.length > 0) {
+      await db.supabase
+        .from('slot_series')
+        .upsert(slotSeriesUpdates, {
+          onConflict: 'slot_id',
+        })
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error updating slot_series:', error)
+          }
+          console.debug(
+            'Updated slot_series records:',
+            JSON.stringify(slotSeriesUpdates, null, 2)
+          )
+        })
+    }
+    if (slotIntanceUpdates.length > 0) {
+      await db.supabase
+        .from('slot_instance')
+        .upsert(slotIntanceUpdates, {
+          onConflict: 'id',
+        })
+        .then(({ error, data }) => {
+          if (error) {
+            console.error('Error updating slot_instance:', error)
+          }
+          console.debug(
+            'Updated slot_instance records:',
+            JSON.stringify(data, null, 2)
+          )
+        })
+    }
   }
 }
 const getSlotSeriesId = async (slot_id: string) => {
@@ -6551,7 +6623,8 @@ const handleSyncEvent = async (
   try {
     // eslint-disable-next-line no-restricted-syntax
     if (!event.id) return
-    const meetingId = getBaseEventId(event.id)
+    const meetingId =
+      event?.extendedProperties?.private?.meetingId || getBaseEventId(event.id)
     if (!meetingId) {
       console.warn(`Skipping event ${event.id} due to missing  meetingId`)
       return
@@ -8332,6 +8405,7 @@ export {
   createCheckOutTransaction,
   createCryptoTransaction,
   createMeetingType,
+  createOrUpdateEventNotification,
   createPaymentPreferences,
   createPinHash,
   createQuickPoll,
@@ -8370,6 +8444,7 @@ export {
   getContactLean,
   getContacts,
   getDiscordAccounts,
+  getEventNotification,
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
