@@ -19,7 +19,7 @@ const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 const discordRedirectUrl = `${baseURL}/dashboard/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwith.xyz'
-
+const MODIFIED_BY_APP_TIMEOUT = 7.5 // in seconds
 const WEBHOOK_URL = `${apiUrl}/server/webhook/calendar/sync`
 
 const EMAIL_CHANGE_TOKEN_EXPIRY = '5m'
@@ -121,6 +121,7 @@ export {
   EMAIL_CHANGE_TOKEN_EXPIRY,
   isProduction,
   MAX_DAILY_NOTIFICATIONS_LOOKUPS,
+  MODIFIED_BY_APP_TIMEOUT,
   MWW_DISCORD_SERVER,
   NO_REPLY_EMAIL,
   PIN_ENABLE_TOKEN_EXPIRY,
