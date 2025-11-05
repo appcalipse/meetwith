@@ -400,6 +400,35 @@ export type Database = {
         }
         Relationships: []
       }
+      event_notifications: {
+        Row: {
+          account_address: string
+          created_at: string
+          event_id: string
+          last_notified_hash: string
+        }
+        Insert: {
+          account_address: string
+          created_at?: string
+          event_id: string
+          last_notified_hash: string
+        }
+        Update: {
+          account_address?: string
+          created_at?: string
+          event_id?: string
+          last_notified_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'event_notifications_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
       gate_definition: {
         Row: {
           definition: Json
@@ -1194,7 +1223,7 @@ export type Database = {
           created_at: string | null
           end: string
           id: string
-          override_meeting_info_encrypted: Json
+          override_meeting_info_encrypted: Json | null
           role: Database['public']['Enums']['ParticipantType']
           series_id: string
           start: string
@@ -1206,7 +1235,7 @@ export type Database = {
           created_at?: string | null
           end: string
           id: string
-          override_meeting_info_encrypted: Json
+          override_meeting_info_encrypted?: Json | null
           role: Database['public']['Enums']['ParticipantType']
           series_id: string
           start: string
@@ -1218,7 +1247,7 @@ export type Database = {
           created_at?: string | null
           end?: string
           id?: string
-          override_meeting_info_encrypted?: Json
+          override_meeting_info_encrypted?: Json | null
           role?: Database['public']['Enums']['ParticipantType']
           series_id?: string
           start?: string
@@ -1679,6 +1708,14 @@ export type Database = {
           skip: number
         }
         Returns: Json
+      }
+      update_confirmed_slot_times: {
+        Args: {
+          p_new_end_time: string
+          p_new_start_time: string
+          p_series_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
