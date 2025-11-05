@@ -1,4 +1,3 @@
-import Sentry from '@sentry/nextjs'
 import {
   format,
   getDate,
