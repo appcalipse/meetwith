@@ -3,12 +3,14 @@ import {
   Box,
   Button,
   FormLabel,
+  Heading,
   HStack,
   Input,
   Modal,
   ModalBody,
   ModalCloseButton,
   ModalContent,
+  ModalHeader,
   ModalOverlay,
   Spinner,
   Table,
@@ -18,22 +20,17 @@ import {
   Text,
   Th,
   Thead,
-  Tooltip,
   Tr,
-  useToast,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
-import { Jazzicon } from '@ukstv/jazzicon-react'
+import { useRouter } from 'next/router'
 import React, { useEffect } from 'react'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
-import { ContactSearch, LeanAccount } from '@/types/Contacts'
-import { searchForAccounts, sendContactListInvite } from '@/utils/api_helper'
-import {
-  CantInviteYourself,
-  ContactAlreadyExists,
-  ContactInviteAlreadySent,
-} from '@/utils/errors'
+import { ContactSearch } from '@/types/Contacts'
+import { searchForAccounts } from '@/utils/api_helper'
+
+import ContactSearchItem from './ContactSearchItem'
 
 type Props = {
   isOpen: boolean
@@ -43,44 +40,33 @@ type Props = {
 const ContactSearchModal = (props: Props) => {
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const [result, setResult] = React.useState<ContactSearch | null>(null)
-  const toast = useToast()
 
+  const action = useRouter().query.action as string
   const { isLoading, mutateAsync, reset } = useMutation({
     mutationFn: (data: { query: string; offset?: number }) =>
       searchForAccounts(data?.query?.toLowerCase(), data?.offset),
   })
-  const { isLoading: isInviteLoading, mutateAsync: sendInviteAsync } =
-    useMutation({
-      mutationFn: (data: { email?: string; address?: string }) =>
-        sendContactListInvite(data?.address, data?.email),
-    })
 
-  const [pendingForIndex, setPendingForIndex] = React.useState<number | null>(
-    null
-  )
   const [isMoreLoading, setMoreLoading] = React.useState(false)
 
   useEffect(() => {
     if (!debouncedValue || debouncedValue.length === 0) {
       setResult(null)
-      setPendingForIndex(null)
       reset()
     } else {
-      handleSearch()
+      void handleSearch()
     }
     ;() => {
-      reset()
+      void reset()
     }
   }, [debouncedValue])
   const handleSearch = async (reset = true) => {
     const search = await mutateAsync({
-      query: debouncedValue,
+      query: debouncedValue.trim().toLowerCase(),
       offset: reset ? 0 : result?.result?.length,
     })
 
     setResult(search)
-
-    setPendingForIndex(null)
   }
   const handleLoadMore = async () => {
     setMoreLoading(true)
@@ -90,68 +76,6 @@ const ContactSearchModal = (props: Props) => {
       result: result?.result?.concat(data?.result || []),
     })
     setMoreLoading(false)
-  }
-  const handleInvite = async (account: LeanAccount, index: number) => {
-    try {
-      setPendingForIndex(index)
-      const invite = await sendInviteAsync({
-        email: account.email,
-        address: account.address,
-      })
-      if (invite?.success) {
-        const updatedResult = result
-        if (updatedResult?.result) {
-          updatedResult.result[index].is_invited = true
-          setResult(updatedResult)
-        }
-        toast({
-          title: 'Invitation sent successfully',
-          description: '',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
-      }
-    } catch (e: unknown) {
-      if (e instanceof ContactAlreadyExists) {
-        toast({
-          title: 'Error',
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
-      } else if (e instanceof ContactInviteAlreadySent) {
-        toast({
-          title: 'Error',
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
-      } else if (e instanceof CantInviteYourself) {
-        toast({
-          title: 'Error',
-          description: 'You can&apos;t invite yourself',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Could not load contact invite request',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
-      }
-    }
   }
   return (
     <Modal
@@ -165,7 +89,19 @@ const ContactSearchModal = (props: Props) => {
       }}
     >
       <ModalOverlay backdropFilter="blur(10px)" bg="rgba(0, 0, 0, 0.6)" />
-      <ModalContent p={0} bg="neutral.900" rounded={12}>
+      <ModalContent p={0} bg="bg-surface" rounded={12}>
+        {action && (
+          <ModalHeader
+            pt={10}
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            px={10}
+          >
+            <Heading size={'md'}>Add new Contact</Heading>
+            <ModalCloseButton />
+          </ModalHeader>
+        )}
         <ModalBody
           pt={10}
           pb={result?.result && result.result.length > 0 ? 0 : 10}
@@ -237,50 +173,20 @@ const ContactSearchModal = (props: Props) => {
                 </Thead>
                 <Tbody>
                   {result.result.map((account, index) => (
-                    <Tr
-                      key={index}
-                      bg={index % 2 === 0 ? 'neutral.825' : 'none'}
-                    >
-                      <Td colSpan={4}>
-                        <HStack>
-                          <Jazzicon
-                            address={account.address || ''}
-                            className="contact-avatar"
-                          />
-                          <Text maxW={{ base: 120, md: 200 }} isTruncated>
-                            {account.name ||
-                              `no name - ${account.email || account.address}`}
-                          </Text>
-                        </HStack>
-                      </Td>
-                      <Td>
-                        <Tooltip
-                          label={'Contact Already Invited'}
-                          isDisabled={!account.is_invited}
-                        >
-                          <Button
-                            colorScheme="primary"
-                            isLoading={
-                              pendingForIndex === index && isInviteLoading
-                            }
-                            isDisabled={isInviteLoading || account.is_invited}
-                            _disabled={{
-                              bg: account.is_invited ? 'neutral.400' : '',
-                            }}
-                            _hover={{
-                              bg: account.is_invited
-                                ? 'neutral.400'
-                                : 'primary.300',
-                            }}
-                            onClick={() => handleInvite(account, index)}
-                          >
-                            {account.is_invited
-                              ? 'Request Already Sent'
-                              : 'Send request'}
-                          </Button>
-                        </Tooltip>
-                      </Td>
-                    </Tr>
+                    <ContactSearchItem
+                      key={`contact-invite-${
+                        account.address || account.email
+                      }-${index}`}
+                      index={index}
+                      {...account}
+                      handleUpdateResult={() => {
+                        const updatedResult = result
+                        if (updatedResult?.result) {
+                          updatedResult.result[index].is_invited = true
+                          setResult(updatedResult)
+                        }
+                      }}
+                    />
                   ))}
                   {result.total_count > result?.result?.length && (
                     <Tr color="white">

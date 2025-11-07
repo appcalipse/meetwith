@@ -7,101 +7,38 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { Account } from '@meta/Account'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { formatWithOrdinal, getMeetingBoundaries } from '@utils/date_helper'
-import { getAccountDisplayName } from '@utils/user_manager'
 import { DateTime, Interval } from 'luxon'
-import React, { useEffect, useMemo } from 'react'
+import React, { FC } from 'react'
 
 import { getBgColor, State } from './SchedulePickTime'
 
 export interface ScheduleTimeSlotProps {
-  slot: Interval<true>
-  busySlots: Map<string, Interval<true>[]>
-  availableSlots: Map<string, Interval<true>[]>
+  slotData: {
+    slot: Interval<true>
+    state: State
+    userStates: Array<{ state: boolean; displayName: string }>
+    slotKey: string
+  }
   pickedTime: Date | null
-  handleTimePick?: (time: Date) => void
-  meetingMembers: Account[]
+  handleTimePick: (time: Date) => void
   timezone: string
   duration: number
 }
 
-type UserState = {
-  state: boolean
-  displayName?: string
-}
-
-const ScheduleTimeSlot = (props: ScheduleTimeSlotProps) => {
-  const {
-    slot,
-    busySlots,
-    availableSlots,
-    meetingMembers,
-    timezone,
-    pickedTime,
-    duration,
-  } = props
+const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
+  slotData,
+  pickedTime,
+  handleTimePick: pickTime,
+  timezone,
+  duration,
+}) => {
   const itemsBgColor = useColorModeValue('white', 'gray.600')
-  const [state, setState] = React.useState<State>(State.NONE_AVAILABLE)
-  const [userState, setUserState] = React.useState<Array<UserState>>([])
+  const { slot, state, userStates } = slotData
   const toast = useToast()
-  const slotKey = useMemo(() => {
-    return `${slot.start.toMillis()}-${slot.end.toMillis()}-${duration}-${timezone}-${
-      availableSlots.size
-    }-${busySlots.size}`
-  }, [slot, duration, timezone, availableSlots.size, busySlots.size])
-
-  useEffect(() => {
-    const isSlotAvailable = []
-    const userStates: Array<UserState> = []
-    const accounts = Array.from(availableSlots.keys())
-    for (const account of accounts) {
-      const slots = availableSlots.get(account) || []
-      const busySlotsForAccount = busySlots.get(account) || []
-      const userAccount = meetingMembers.find(
-        member => member.address === account
-      )
-      let isUserAvailable = true
-
-      for (const busySlots of busySlotsForAccount) {
-        if (busySlots.overlaps(slot)) {
-          isUserAvailable = false
-          break
-        }
-      }
-      if (slot.start < DateTime.now().setZone(timezone)) {
-        isUserAvailable = false
-      }
-      const hasOverlap = slots.some(availableSlot =>
-        availableSlot.overlaps(slot)
-      )
-      if (!hasOverlap) {
-        isUserAvailable = false
-      }
-      isSlotAvailable.push(isUserAvailable)
-      userStates.push({
-        state: isUserAvailable,
-        displayName: userAccount ? getAccountDisplayName(userAccount) : '',
-      })
-    }
-    setUserState(userStates)
-    let newStates
-    const numberOfAvailable = isSlotAvailable.filter(val => val).length
-    if (numberOfAvailable === 0) {
-      newStates = State.NONE_AVAILABLE
-    } else if (numberOfAvailable === isSlotAvailable.length) {
-      newStates = State.ALL_AVAILABLE
-    } else if (numberOfAvailable >= isSlotAvailable.length / 2) {
-      newStates = State.MOST_AVAILABLE
-    } else {
-      newStates = State.SOME_AVAILABLE
-    }
-
-    setState(newStates)
-  }, [busySlots, availableSlots, meetingMembers, slotKey])
   const handleTimePick = () => {
-    if (props.handleTimePick) {
+    if (pickTime) {
       if (slot.start < DateTime.now().setZone(timezone)) {
         toast({
           title: 'Invalid time selection',
@@ -112,7 +49,7 @@ const ScheduleTimeSlot = (props: ScheduleTimeSlotProps) => {
         })
         return
       }
-      props.handleTimePick(slot.start.toJSDate())
+      pickTime(slot.start.toJSDate())
     }
   }
   const isActive = pickedTime
@@ -150,7 +87,7 @@ const ScheduleTimeSlot = (props: ScheduleTimeSlotProps) => {
           }}
         />
       </Tooltip.Trigger>
-      <Tooltip.Content style={{ zIndex: 10 }}>
+      <Tooltip.Content style={{ zIndex: 10 }} side="right">
         <Box
           p={2}
           bg={itemsBgColor}
@@ -160,10 +97,10 @@ const ScheduleTimeSlot = (props: ScheduleTimeSlotProps) => {
           px={4}
         >
           <Text mb={'7px'}>
-            {formatWithOrdinal(slot)} ({props.timezone})
+            {formatWithOrdinal(slot)} ({timezone})
           </Text>
           <VStack w="fit-content" gap={1} align={'flex-start'}>
-            {userState?.map((userState, index) => (
+            {userStates?.map((userState, index) => (
               <HStack key={index}>
                 <Box
                   w={4}
@@ -181,4 +118,4 @@ const ScheduleTimeSlot = (props: ScheduleTimeSlotProps) => {
     </Tooltip.Root>
   )
 }
-export default ScheduleTimeSlot
+export default React.memo(ScheduleTimeSlot)

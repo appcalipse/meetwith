@@ -23,7 +23,6 @@ export const ConnectModal: React.FC = ({}) => {
 
   const { currentAccount, logged, logout } = useContext(AccountContext)
   const [tryingToConnect, setTryingToConnect] = useState(false)
-
   const wallet = useActiveWallet()
 
   wallet?.subscribe('accountChanged', async account => {
@@ -49,8 +48,6 @@ export const ConnectModal: React.FC = ({}) => {
         } else if (logged && wallet) {
           doLogin(wallet)
         }
-      } else if (tryingToConnect && status === 'disconnected' && logged) {
-        logout()
       }
     } catch (e) {
       Sentry.captureException(e)
@@ -62,6 +59,11 @@ export const ConnectModal: React.FC = ({}) => {
       auth: {
         options: ['email', 'google', 'phone', 'passkey'],
       },
+
+      // executionMode: {
+      //   mode: 'EIP7702',
+      //   sponsorGas: true,
+      // },
     }),
     createWallet('io.metamask'),
     createWallet('com.coinbase.wallet'),

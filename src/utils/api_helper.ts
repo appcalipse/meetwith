@@ -1,4 +1,10 @@
-import { Address, MeetingSession } from '@meta/Transactions'
+import { ConnectedAccountInfo, StripeCountry } from '@meta/ConnectedAccounts'
+import {
+  Address,
+  ICoinConfig,
+  MeetingSession,
+  Transaction,
+} from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -6,6 +12,7 @@ import {
   Account,
   MeetingType,
   PaidMeetingTypes,
+  PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
@@ -22,11 +29,12 @@ import {
   Contact,
   ContactInvite,
   ContactSearch,
+  InviteGroupMember,
   LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/DiscordUserInfo'
+import { DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
@@ -35,6 +43,7 @@ import {
   GroupInvitePayload,
   GroupMember,
 } from '@/types/Group'
+import { UserLocale } from '@/types/Locale'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -46,6 +55,19 @@ import {
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
+import { PaymentAccountStatus } from '@/types/PaymentAccount'
+import {
+  AddParticipantRequest,
+  AvailabilitySlot,
+  CancelQuickPollResponse,
+  CreateQuickPollRequest,
+  PollStatus,
+  QuickPollBusyParticipant,
+  QuickPollListResponse,
+  QuickPollParticipant,
+  QuickPollParticipantType,
+  UpdateQuickPollRequest,
+} from '@/types/QuickPoll'
 import {
   ChangeGroupAdminRequest,
   ConfirmCryptoTransactionRequest,
@@ -53,6 +75,7 @@ import {
   CreateMeetingTypeRequest,
   DuplicateAvailabilityBlockRequest,
   MeetingCancelRequest,
+  MeetingCheckoutRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
   RequestInvoiceRequest,
@@ -63,9 +86,15 @@ import {
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
 import { TelegramConnection } from '@/types/Telegram'
+import { TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
-import { apiUrl } from './constants'
+import {
+  apiUrl,
+  QUICKPOLL_DEFAULT_LIMIT,
+  QUICKPOLL_DEFAULT_OFFSET,
+} from './constants'
+import { PaymentStatus } from './constants/meeting-types'
 import {
   AccountNotFoundError,
   AllMeetingSlotsUsedError,
@@ -91,9 +120,12 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  MeetingSessionNotFoundError,
   MeetingSlugAlreadyExists,
+  MemberDoesNotExist,
   NoActiveSubscription,
   OwnInviteError,
+  ServiceUnavailableError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   TransactionCouldBeNotFoundError,
@@ -115,8 +147,12 @@ export const internalFetch = async <T>(
   body?: unknown,
   options: RequestInit = {},
   headers = {},
-  isFormData = false
-) => {
+  isFormData = false,
+  withRetry = true,
+  remainingRetries = 3
+): Promise<T> => {
+  const baseDelay = 1000
+
   try {
     const response = await fetch(`${apiUrl}${path}`, {
       method,
@@ -125,7 +161,6 @@ export const internalFetch = async <T>(
         ? undefined
         : {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
             ...headers,
           },
       ...options,
@@ -139,6 +174,33 @@ export const internalFetch = async <T>(
 
     throw new ApiFetchError(response.status, await response.text())
   } catch (e: unknown) {
+    // Check if error is retryable
+    const isRetryableError =
+      withRetry &&
+      remainingRetries > 0 &&
+      ((e instanceof TypeError &&
+        (e.message.includes('Failed to fetch') ||
+          e.message.includes('Network request failed') ||
+          e.message.includes('NetworkError') ||
+          e.message.includes('timeout'))) ||
+        (e instanceof ApiFetchError && e.status >= 500))
+
+    if (isRetryableError) {
+      const delay = Math.max(baseDelay / remainingRetries, 100)
+      console.warn(`API call failed, retrying...`, e)
+      await new Promise(resolve => setTimeout(resolve, delay))
+      return internalFetch<T>(
+        path,
+        method,
+        body,
+        options,
+        headers,
+        isFormData,
+        withRetry,
+        remainingRetries - 1
+      )
+    }
+
     // Exclude account not found error on sentry
     if (
       e instanceof ApiFetchError &&
@@ -146,6 +208,9 @@ export const internalFetch = async <T>(
       e.status === 404
     ) {
       Sentry.captureException(e)
+    } else if (e instanceof ApiFetchError && e.status === 504) {
+      Sentry.captureException(e)
+      throw new ServiceUnavailableError()
     }
     throw e
   }
@@ -170,8 +235,8 @@ export const getAccount = async (
 
 export const getOwnAccount = async (identifier: string): Promise<Account> => {
   try {
-    const account = await internalFetch('/secure/accounts')
-    return account as Account
+    const account = await internalFetch<Account>('/secure/accounts')
+    return account
   } catch (e: unknown) {
     if (e instanceof ApiFetchError && e.status === 404) {
       throw new AccountNotFoundError(identifier)
@@ -221,7 +286,7 @@ export const getExistingAccounts = async (
           fullInformation,
         }) as Promise<Account[]>
     )
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw e
   }
 }
@@ -355,17 +420,23 @@ export const updateMeetingAsGuest = async (
       'PUT',
       meeting
     )) as DBSlot
-  } catch (e: any) {
-    if (e.status && e.status === 409) {
-      throw new TimeNotAvailableError()
-    } else if (e.status && e.status === 412) {
-      throw new MeetingCreationError()
-    } else if (e.status && e.status === 417) {
-      throw new MeetingChangeConflictError()
-    } else if (e.status && e.status === 404) {
-      throw new MeetingNotFoundError(slotId)
-    } else if (e.status && e.status === 401) {
-      throw new UnauthorizedError()
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status && e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status && e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status && e.status === 404) {
+        throw e.message === 'MeetingSessionNotFoundError'
+          ? new MeetingSessionNotFoundError(slotId)
+          : new MeetingNotFoundError(slotId)
+      } else if (e.status && e.status === 401) {
+        throw new UnauthorizedError()
+      }
     }
     throw e
   }
@@ -384,12 +455,20 @@ export const updateMeeting = async (
     await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
     return response
   } catch (e: unknown) {
-    if (e instanceof ApiFetchError && e.status && e.status === 409) {
-      throw new TimeNotAvailableError()
-    } else if (e instanceof ApiFetchError && e.status === 412) {
-      throw new MeetingCreationError()
-    } else if (e instanceof ApiFetchError && e.status === 417) {
-      throw new MeetingChangeConflictError()
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status === 404) {
+        throw new MeetingNotFoundError(slotId)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      }
     }
     throw e
   }
@@ -521,6 +600,11 @@ export const getBusySlots = async (
   limit?: number,
   offset?: number
 ): Promise<Interval[]> => {
+  const url = `/meetings/busy/${accountIdentifier}?limit=${
+    limit || undefined
+  }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
+    end?.getTime() || undefined
+  }`
   const response = await queryClient.fetchQuery(
     QueryKeys.busySlots({
       id: accountIdentifier?.toLowerCase(),
@@ -529,14 +613,7 @@ export const getBusySlots = async (
       limit,
       offset,
     }),
-    () =>
-      internalFetch(
-        `/meetings/busy/${accountIdentifier}?limit=${
-          limit || undefined
-        }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
-          end?.getTime() || undefined
-        }`
-      ) as Promise<Interval[]>
+    () => internalFetch(url) as Promise<Interval[]>
   )
   return response.map(slot => ({
     ...slot,
@@ -591,6 +668,33 @@ export const fetchBusySlotsRawForMultipleAccounts = async (
   }))
 }
 
+export const fetchBusySlotsRawForQuickPollParticipants = async (
+  participants: QuickPollBusyParticipant[],
+  start: Date,
+  end: Date,
+  limit?: number,
+  offset?: number
+): Promise<TimeSlot[]> => {
+  const response = (await internalFetch(
+    `/quickpoll/busy/participants`,
+    'POST',
+    {
+      participants,
+      start,
+      end,
+      limit,
+      offset,
+      isRaw: true,
+    }
+  )) as TimeSlot[]
+
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
+
 export const getMeetingsForDashboard = async (
   accountIdentifier: string,
   end: Date,
@@ -610,30 +714,28 @@ export const getMeetingsForDashboard = async (
   }))
 }
 export const syncMeeting = async (
-  decryptedMeetingData: MeetingInfo
+  decryptedMeetingData: MeetingInfo,
+  slotId: string
 ): Promise<void> => {
   try {
     await internalFetch(`/secure/meetings/sync`, 'PATCH', {
       decryptedMeetingData,
+      slotId,
     })
   } catch (e) {}
 }
-export const getGroups = async (
-  limit?: number,
-  offset?: number
-): Promise<Array<GetGroupsResponse>> => {
-  const response = await internalFetch<Array<GetGroupsResponse>>(
-    `/secure/group/user?limit=${limit}&offset=${offset}`
-  )
-  return response
-}
+
 export const getGroupsFull = async (
   limit?: number,
-  offset?: number
+  offset?: number,
+  search?: string,
+  includeInvites = true
 ): Promise<Array<GetGroupsFullResponse>> => {
-  const response = await internalFetch<Array<GetGroupsFullResponse>>(
-    `/secure/group/full?limit=${limit}&offset=${offset}`
-  )
+  let url = `/secure/group/full?limit=${limit}&offset=${offset}&includeInvites=${includeInvites}`
+  if (search) {
+    url += `&search=${search}`
+  }
+  const response = await internalFetch<Array<GetGroupsFullResponse>>(url)
   return response
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
@@ -643,10 +745,12 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   return response
 }
 
-export const getGroupsInvites = async (address: string) => {
-  const response = await internalFetch<Array<EmptyGroupsResponse>>(
-    `/secure/group/user/${address}`
-  )
+export const getGroupsInvites = async (search?: string) => {
+  let url = `/secure/group/invites`
+  if (search) {
+    url += `?search=${search}`
+  }
+  const response = await internalFetch<Array<EmptyGroupsResponse>>(url)
   return response
 }
 
@@ -860,10 +964,15 @@ export const getNotificationSubscriptions =
   }
 
 export const setNotificationSubscriptions = async (
-  notifications: AccountNotifications
+  notifications: AccountNotifications,
+  code?: string
 ): Promise<AccountNotifications> => {
+  let url = `/secure/notifications`
+  if (code && code.length > 0) {
+    url += `?code=${code}`
+  }
   return (await internalFetch(
-    `/secure/notifications`,
+    url,
     'POST',
     notifications
   )) as AccountNotifications
@@ -933,13 +1042,17 @@ export const signup = async (
   signature: string,
   timezone: string,
   nonce: number
-): Promise<Account> => {
-  return (await internalFetch(`/auth/signup`, 'POST', {
-    address,
-    signature,
-    timezone,
-    nonce,
-  })) as Account
+): Promise<Account & { jti: string }> => {
+  return await internalFetch<Account & { jti: string }>(
+    `/auth/signup`,
+    'POST',
+    {
+      address,
+      signature,
+      timezone,
+      nonce,
+    }
+  )
 }
 
 export const listConnectedCalendars = async (
@@ -958,6 +1071,7 @@ export const deleteConnectedCalendar = async (
   email: string,
   provider: TimeSlotSource
 ): Promise<ConnectedCalendarCore[]> => {
+  await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
   return (await internalFetch(`/secure/calendar_integrations`, 'DELETE', {
     email,
     provider,
@@ -969,6 +1083,7 @@ export const updateConnectedCalendar = async (
   provider: TimeSlotSource,
   calendars: CalendarSyncInfo[]
 ): Promise<ConnectedCalendar> => {
+  await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
   return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
     email,
     provider,
@@ -1127,8 +1242,7 @@ export const getSuggestedSlots = async (
   addresses: string[],
   startDate: Date,
   endDate: Date,
-  duration: number,
-  includePast = false
+  duration: number
 ): Promise<Interval[]> => {
   try {
     return (
@@ -1137,7 +1251,6 @@ export const getSuggestedSlots = async (
         startDate,
         endDate,
         duration,
-        includePast,
       })
     ).map(slot => ({
       start: new Date(slot.start),
@@ -1304,6 +1417,10 @@ export const inviteUsers = async (
   }
 }
 
+export const getGroupInviteCount = async () => {
+  return await internalFetch<number>(`/secure/group/invites/metrics`)
+}
+
 export const createTelegramHash = async () => {
   return (
     await internalFetch<{ data: TelegramConnection }>(
@@ -1321,6 +1438,11 @@ export const getPendingTgConnection = async () => {
     )
   ).data
 }
+
+export const getTelegramUserInfo =
+  async (): Promise<TelegramUserInfo | null> => {
+    return await internalFetch(`/secure/telegram/user-info`)
+  }
 
 export const subscribeWithCoupon = async (
   coupon: string,
@@ -1405,6 +1527,27 @@ export const sendContactListInvite = async (
       }
       if (e.status && e.status === 403) {
         throw new CantInviteYourself()
+      } else if (e.status && e.status === 409) {
+        throw new ContactInviteAlreadySent()
+      }
+    }
+  }
+}
+export const addGroupMemberToContact = async (payload: InviteGroupMember) => {
+  try {
+    return await internalFetch<{ success: boolean; message: string }>(
+      `/secure/contact/add-group-member`,
+      'POST',
+      payload
+    )
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 400) {
+        throw new ContactAlreadyExists()
+      } else if (e.status && e.status === 403) {
+        throw new CantInviteYourself()
+      } else if (e.status && e.status === 404) {
+        throw new MemberDoesNotExist()
       } else if (e.status && e.status === 409) {
         throw new ContactInviteAlreadySent()
       }
@@ -1584,6 +1727,10 @@ export const getMeetingTypes = async (
   )
 }
 
+export const getMeetingType = async (id: string): Promise<MeetingType> => {
+  return await internalFetch<MeetingType>(`/secure/meetings/type/${id}`)
+}
+
 export const createCryptoTransaction = async (
   transaction: ConfirmCryptoTransactionRequest
 ): Promise<{ success: true }> => {
@@ -1654,5 +1801,423 @@ export const requestInvoice = async (
     `/transactions/invoice`,
     'POST',
     payload
+  )
+}
+
+export const getWalletTransactions = async (
+  wallet_address: string,
+  token_address?: string,
+  chain_id?: number,
+  limit?: number,
+  offset?: number,
+  search_query?: string
+) => {
+  return await internalFetch(`/secure/transactions/wallet`, 'POST', {
+    wallet_address,
+    token_address,
+    chain_id,
+    limit,
+    offset,
+    search_query,
+  })
+}
+
+export const getPaymentPreferences =
+  async (): Promise<PaymentPreferences | null> => {
+    try {
+      return await internalFetch<PaymentPreferences>(
+        '/secure/preferences/payment'
+      )
+    } catch (e) {
+      if (e instanceof ApiFetchError && e.status === 404) {
+        return null
+      }
+      throw e
+    }
+  }
+
+export const createPaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >
+): Promise<PaymentPreferences> => {
+  return await internalFetch<PaymentPreferences>(
+    '/secure/preferences/payment',
+    'POST',
+    { data }
+  )
+}
+
+export const updatePaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >,
+  oldPin?: string
+): Promise<PaymentPreferences> => {
+  const requestBody: { updates: typeof data; oldPin?: string } = {
+    updates: data,
+  }
+
+  if (oldPin) {
+    requestBody.oldPin = oldPin
+  }
+
+  return await internalFetch<PaymentPreferences>(
+    '/secure/preferences/payment',
+    'PATCH',
+    requestBody
+  )
+}
+
+export const verifyPin = async (pin: string): Promise<{ valid: boolean }> => {
+  return await internalFetch<{ valid: boolean }>(
+    '/secure/payments/pin/verify',
+    'POST',
+    {
+      pin,
+    }
+  )
+}
+
+export const sendResetPinLink = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/pin/reset',
+    'POST',
+    {
+      email,
+    }
+  )
+}
+
+export const sendChangeEmailLink = async (
+  currentEmail: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/change',
+    'POST',
+    {
+      currentEmail,
+    }
+  )
+}
+
+export const sendEnablePinLink = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/pin/enable',
+    'POST',
+    {
+      email,
+    }
+  )
+}
+
+export const changeEmailWithToken = async (
+  newEmail: string,
+  token: string
+): Promise<{ success: boolean; message: string; account: Account }> => {
+  return await internalFetch(`/secure/accounts/change-email`, 'POST', {
+    newEmail,
+    token,
+  })
+}
+
+export const enablePinWithToken = async (
+  pin: string,
+  token: string
+): Promise<PaymentPreferences> => {
+  return await internalFetch(`/secure/preferences/payment/enable-pin`, 'POST', {
+    pin,
+    token,
+  })
+}
+
+export const resetPinWithToken = async (
+  newPin: string,
+  token: string
+): Promise<PaymentPreferences> => {
+  return await internalFetch(`/secure/preferences/payment/reset-pin`, 'POST', {
+    newPin,
+    token,
+  })
+}
+
+export const sendVerificationCode = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/verification',
+    'POST',
+    { email }
+  )
+}
+
+export const verifyVerificationCode = async (
+  code: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/verify',
+    'POST',
+    { code }
+  )
+}
+
+export const getCoinConfig = async (): Promise<ICoinConfig> => {
+  return await queryClient.fetchQuery(QueryKeys.coinConfig(), () =>
+    internalFetch<ICoinConfig>('/integrations/onramp-money/all-config', 'GET')
+  )
+}
+export const getUserLocale = async (): Promise<UserLocale> => {
+  return (await fetch('https://ipapi.co/json/').then(res =>
+    res.json()
+  )) as UserLocale
+}
+
+export const createQuickPoll = async (pollData: CreateQuickPollRequest) => {
+  return await internalFetch('/secure/quickpoll', 'POST', pollData)
+}
+
+export const getQuickPollById = async (pollId: string) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`)
+}
+export const updateQuickPoll = async (
+  pollId: string,
+  updates: UpdateQuickPollRequest
+) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`, 'PUT', updates)
+}
+
+export const deleteQuickPoll = async (pollId: string) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`, 'DELETE')
+}
+
+export const getQuickPollParticipants = async (pollId: string) => {
+  return await internalFetch(`/secure/quickpoll/${pollId}/participants`)
+}
+
+export const addQuickPollParticipant = async (
+  participantData: AddParticipantRequest
+) => {
+  return await internalFetch(
+    `/secure/quickpoll/${participantData.poll_id}/participants`,
+    'POST',
+    participantData
+  )
+}
+
+export interface BulkAddParticipantsRequest {
+  participants: Array<{
+    account_address?: string
+    guest_name?: string
+    guest_email: string
+    participant_type: QuickPollParticipantType
+  }>
+}
+
+export const addQuickPollParticipants = async (
+  pollId: string,
+  participants: BulkAddParticipantsRequest['participants']
+) => {
+  return await internalFetch(
+    `/secure/quickpoll/${pollId}/participants/bulk`,
+    'POST',
+    { participants }
+  )
+}
+
+export const getQuickPollBySlug = async (slug: string) => {
+  return await internalFetch(`/quickpoll/${slug}`)
+}
+
+export const cancelQuickPoll = async (
+  pollId: string
+): Promise<CancelQuickPollResponse> => {
+  return await internalFetch(`/secure/quickpoll/${pollId}`, 'PATCH')
+}
+
+export const updatePollParticipantAvailability = async (
+  participantId: string,
+  availableSlots: AvailabilitySlot[],
+  timezone?: string
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/availability`,
+    'PATCH',
+    {
+      available_slots: availableSlots,
+      timezone,
+    }
+  )
+}
+
+export const updateGuestParticipantDetails = async (
+  participantId: string,
+  guestName: string,
+  guestEmail: string
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/details`,
+    'PATCH',
+    {
+      guest_name: guestName,
+      guest_email: guestEmail,
+    }
+  )
+}
+
+export const addOrUpdateGuestParticipantWithAvailability = async (
+  pollSlug: string,
+  guestEmail: string,
+  availableSlots: AvailabilitySlot[],
+  timezone: string,
+  guestName?: string
+): Promise<{ participant: QuickPollParticipant }> => {
+  return await internalFetch<{ participant: QuickPollParticipant }>(
+    `/quickpoll/${pollSlug}/guest-participant`,
+    'POST',
+    {
+      guest_email: guestEmail,
+      guest_name: guestName,
+      available_slots: availableSlots,
+      timezone,
+    }
+  )
+}
+
+export const getPollParticipantById = async (
+  participantId: string
+): Promise<QuickPollParticipant> => {
+  return await internalFetch(`/quickpoll/participants/${participantId}`)
+}
+
+export const savePollParticipantCalendar = async (
+  participantId: string,
+  email: string,
+  provider: string,
+  payload?: Record<string, unknown>
+) => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/calendar`,
+    'POST',
+    {
+      email,
+      provider,
+      payload,
+    }
+  )
+}
+
+export const getPollParticipantByIdentifier = async (
+  slug: string,
+  identifier: string
+): Promise<QuickPollParticipant> => {
+  return await internalFetch(
+    `/quickpoll/${slug}/participant/${encodeURIComponent(identifier)}`
+  )
+}
+
+export const getQuickPollGoogleAuthConnectUrl = async (
+  state?: string | null
+) => {
+  return await internalFetch<ConnectResponse>(
+    `/quickpoll/calendar/google/connect${state ? `?state=${state}` : ''}`
+  )
+}
+
+export const getQuickPollOffice365ConnectUrl = async (
+  state?: string | null
+) => {
+  return await internalFetch<ConnectResponse>(
+    `/quickpoll/calendar/office365/connect${state ? `?state=${state}` : ''}`
+  )
+}
+
+export const getQuickPolls = async (
+  limit = QUICKPOLL_DEFAULT_LIMIT,
+  offset = QUICKPOLL_DEFAULT_OFFSET,
+  searchQuery?: string,
+  ...status: PollStatus[]
+): Promise<QuickPollListResponse> => {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+  })
+
+  if (status.length > 0) {
+    status.forEach(s => params.append('status', s))
+  }
+
+  if (searchQuery && searchQuery.trim()) {
+    params.append('searchQuery', searchQuery.trim())
+  }
+
+  return await internalFetch(`/secure/quickpoll?${params}`)
+}
+
+export const getConnectedAccounts = async (): Promise<
+  ConnectedAccountInfo[]
+> => {
+  return await internalFetch<ConnectedAccountInfo[]>(
+    `/secure/accounts/connected`
+  )
+}
+
+export const getStripeOnboardingLink = async (countryCode?: string) => {
+  let url = `/secure/stripe/connect`
+  if (countryCode) {
+    url += `?country_code=${countryCode}`
+  }
+  return await internalFetch<{ url: string }>(url).then(res => res.url)
+}
+
+export const disconnectStripeAccount = async () => {
+  return await internalFetch(`/secure/stripe/disconnect`, 'PATCH')
+}
+
+export const generateDashboardLink = async () => {
+  return await internalFetch<{ url: string }>(`/secure/stripe/login`).then(
+    res => res.url
+  )
+}
+
+export const generateCheckoutLink = async (payload: MeetingCheckoutRequest) => {
+  return await internalFetch<{ url: string }>(
+    `/transactions/checkout`,
+    'POST',
+    payload
+  ).then(res => res.url)
+}
+
+export const getTransactionById = async (
+  transactionId: string
+): Promise<Transaction> => {
+  return await internalFetch<Transaction>(`/transactions/${transactionId}`)
+}
+
+export const getTransactionStatus = async (
+  transactionId: string
+): Promise<PaymentStatus> => {
+  return await internalFetch<PaymentStatus>(
+    `/transactions/${transactionId}/status`
+  )
+}
+
+export const getStripeStatus = async (): Promise<PaymentAccountStatus> => {
+  return await internalFetch<PaymentAccountStatus>(`/secure/stripe/status`)
+}
+
+export const getStripeSupportedCountries = async () => {
+  return await internalFetch<StripeCountry[]>(
+    `/secure/stripe/supported-countries`
+  ).then(countries =>
+    countries.map(country => ({
+      label: country.name,
+      value: country.id,
+    }))
   )
 }

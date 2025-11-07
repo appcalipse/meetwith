@@ -1,8 +1,23 @@
+import {
+  ActivePaymentAccount,
+  PaymentAccountStatus,
+  PaymentProvider,
+} from '@meta/PaymentAccount'
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import { getDiscordInfoForAddress } from '@utils/services/discord.helper'
+import {
+  currenciesMap,
+  Currency,
+  extractOnRampStatus,
+  getChainIdFromOnrampMoneyNetwork,
+  getOnrampMoneyTokenAddress,
+} from '@utils/services/onramp.money'
+import { getTelegramUserInfo } from '@utils/services/telegram.helper'
+import * as argon2 from 'argon2'
+import { createHash } from 'crypto'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
   Encrypted,
@@ -10,6 +25,7 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { GaxiosError } from 'gaxios'
 import { calendar_v3 } from 'googleapis'
+import { DateTime, Interval } from 'luxon'
 import { validate } from 'uuid'
 
 import {
@@ -19,6 +35,7 @@ import {
   DiscordConnectedAccounts,
   MeetingType,
   PaidMeetingTypes,
+  PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,
   TgConnectedAccounts,
@@ -27,6 +44,7 @@ import {
 import {
   AccountNotifications,
   NotificationChannel,
+  VerificationChannel,
 } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
@@ -34,7 +52,11 @@ import {
   ConnectedCalendar,
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
-import { getChainInfo, SupportedChain } from '@/types/chains'
+import {
+  getChainInfo,
+  resolveTokenSymbolFromAddress,
+  SupportedChain,
+} from '@/types/chains'
 import {
   ContactSearch,
   DBContact,
@@ -43,7 +65,7 @@ import {
   SingleDBContact,
   SingleDBContactInvite,
 } from '@/types/Contacts'
-import { DiscordAccount } from '@/types/Discord'
+import { DiscordAccount, DiscordAccountInfo } from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
@@ -65,7 +87,7 @@ import {
   GroupMeetingRequest,
   GroupNotificationType,
   MeetingAccessType,
-  MeetingDecrypted,
+  MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
   MeetingVersion,
@@ -78,17 +100,31 @@ import {
   ParticipantType,
 } from '@/types/ParticipantInfo'
 import {
+  AddParticipantData,
+  AvailabilitySlot,
+  CreateQuickPollRequest,
+  PollStatus,
+  PollVisibility,
+  QuickPollParticipant,
+  QuickPollParticipantStatus,
+  QuickPollParticipantType,
+  QuickPollParticipantUpdateFields,
+  QuickPollWithParticipants,
+  UpdateQuickPollRequest,
+} from '@/types/QuickPoll'
+import {
   ConfirmCryptoTransactionRequest,
   CreateMeetingTypeRequest,
   GroupInviteNotifyRequest,
   MeetingCancelSyncRequest,
+  MeetingCheckoutRequest,
   MeetingCreationRequest,
   MeetingCreationSyncRequest,
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { GroupMembersRow, Row, TablesInsert } from '@/types/supabase'
-import { TelegramConnection } from '@/types/Telegram'
+import { Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
+import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
   GateUsage,
@@ -98,11 +134,21 @@ import {
   Address,
   BaseMeetingSession,
   BaseTransaction,
+  ICheckoutMetadata,
   MeetingSession,
+  OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
 import {
-  Currency,
+  PaymentNotificationType,
+  QUICKPOLL_DEFAULT_LIMIT,
+  QUICKPOLL_DEFAULT_OFFSET,
+  QUICKPOLL_MAX_LIMIT,
+  QUICKPOLL_SLUG_FALLBACK_LENGTH,
+  QUICKPOLL_SLUG_MAX_ATTEMPTS,
+} from '@/utils/constants'
+import {
+  NO_MEETING_TYPE,
   PaymentDirection,
   PaymentStatus,
   PaymentType,
@@ -134,12 +180,26 @@ import {
   MeetingCreationError,
   MeetingDetailsModificationDenied,
   MeetingNotFoundError,
+  MeetingSessionNotFoundError,
   MeetingSlugAlreadyExists,
   MeetingTypeNotFound,
   NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
   OwnInviteError,
+  QuickPollAlreadyCancelledError,
+  QuickPollAlreadyCompletedError,
+  QuickPollCancellationError,
+  QuickPollCreationError,
+  QuickPollDeletionError,
+  QuickPollNotFoundError,
+  QuickPollParticipantCreationError,
+  QuickPollParticipantNotFoundError,
+  QuickPollParticipantUpdateError,
+  QuickPollSlugGenerationError,
+  QuickPollSlugNotFoundError,
+  QuickPollUnauthorizedError,
+  QuickPollUpdateError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   TransactionIsRequired,
@@ -148,10 +208,10 @@ import {
   UploadError,
 } from '@/utils/errors'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
+import { generatePollSlug } from '@/utils/quickpoll_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
-  generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
   noNoReplyEmailForAccount,
@@ -165,14 +225,25 @@ import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
-import { sendReceiptEmail } from './email_helper'
+import {
+  sendCryptoDebitEmail,
+  sendPollInviteEmail,
+  sendReceiptEmail,
+  sendSessionBookingIncomeEmail,
+} from './email_helper'
+import { deduplicateArray } from './generic_utils'
+import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { CalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
+import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
+import { EmailQueue } from './workers/email.queue'
+
+const PIN_SALT = process.env.PIN_SALT
 
 // TODO: better typing
 type SupabaseRecords = { ready: boolean } & Record<string, SupabaseClient>
@@ -193,6 +264,8 @@ const initDB = () => {
 }
 
 initDB()
+
+const emailQueue = new EmailQueue()
 
 const initAccountDBForWallet = async (
   address: string,
@@ -229,57 +302,48 @@ const initAccountDBForWallet = async (
       is_invited: is_invited || false,
     },
   ])
-
   if (createdUserAccount.error) {
     throw new Error(createdUserAccount.error.message)
-  }
-  const defaultMeetingType = generateDefaultMeetingType()
-  const defaultAvailabilities = generateEmptyAvailabilities()
-
-  const preferences: AccountPreferences = {
-    availableTypes: [defaultMeetingType],
-    description: '',
-    availabilities: defaultAvailabilities,
-    socialLinks: [],
-    timezone,
-    meetingProviders: [MeetingProvider.GOOGLE_MEET],
   }
 
   if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
     throw new Error('User account not created')
   }
-  const user_account = createdUserAccount.data[0]
+  const user_account: Account = createdUserAccount.data[0]
+  const defaultMeetingType = generateDefaultMeetingType(user_account.address)
+  const defaultAvailabilities = generateEmptyAvailabilities()
 
+  const defaultBlock = await createAvailabilityBlock(
+    user_account.address,
+    'Default',
+    timezone,
+    defaultAvailabilities,
+    false // don't set as default yet
+  )
+
+  const meetingType: CreateMeetingTypeRequest = {
+    ...defaultMeetingType,
+    fixed_link: false,
+    availability_ids: [defaultBlock.id],
+    calendars: [],
+  }
+  const preferences: AccountPreferences = {
+    description: '',
+    availabilities: defaultAvailabilities,
+    socialLinks: [],
+    timezone,
+    meetingProviders: [MeetingProvider.GOOGLE_MEET],
+    availaibility_id: defaultBlock.id,
+  }
   try {
     const responsePrefs = await db.supabase.from('account_preferences').insert({
       ...preferences,
       owner_account_address: user_account.address,
     })
-
     if (responsePrefs.error) {
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
-
-    // Create default availability block for new users
-    const defaultWeeklyAvailability = generateDefaultAvailabilities()
-
-    const defaultBlock = await createAvailabilityBlock(
-      user_account.address,
-      'Default',
-      timezone,
-      defaultWeeklyAvailability,
-      true // Set as default
-    )
-
-    // Update account preferences to reference the default availability block
-    await db.supabase
-      .from('account_preferences')
-      .update({
-        availaibility_id: defaultBlock.id,
-      })
-      .eq('owner_account_address', user_account.address)
-
     user_account.preferences = preferences
     user_account.is_invited = is_invited || false
 
@@ -414,14 +478,16 @@ const findAccountByIdentifier = async (
     Sentry.captureException(error)
     return []
   }
-  return await Promise.all(
-    data.map(async account => {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
+  return data?.length > 0
+    ? await Promise.all(
+        data?.map(async account => {
+          account.preferences = await getAccountPreferences(
+            account.address.toLowerCase()
+          )
+          return account
+        })
       )
-      return account
-    })
-  )
+    : []
 }
 
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
@@ -433,8 +499,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     url: link.url?.trim(),
   }))
 
-  await workMeetingTypeGates(account.preferences.availableTypes || [])
-
   const responsePrefsUpdate = await db.supabase
     .from('account_preferences')
     .update({
@@ -443,7 +507,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       availabilities: preferences.availabilities,
       name: preferences.name,
       socialLinks: preferences.socialLinks,
-      availableTypes: preferences.availableTypes,
       meetingProviders: preferences.meetingProviders,
     })
     .match({ owner_account_address: account.address.toLowerCase() })
@@ -468,7 +531,6 @@ const updatePreferenceAvatar = async (
 ) => {
   const contentType = mimeType
   const file = `uploads/${Date.now()}-${filename}`
-  console.log({ supabase: db.supabase })
   const { error } = await db.supabase.storage
     .from('avatars')
     .upload(file, buffer, {
@@ -506,6 +568,18 @@ const updatePreferenceAvatar = async (
 
   return publicUrl
 }
+const getAccountAvatarUrl = async (address: string): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('account_preferences')
+    .select('avatar_url')
+    .eq('owner_account_address', address.toLowerCase())
+    .single()
+  if (error) {
+    Sentry.captureException(error)
+    return null
+  }
+  return data.avatar_url || null
+}
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
   const query = validate(identifier)
@@ -526,11 +600,12 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 export const getAccountPreferences = async (
   owner_account_address: string
 ): Promise<AccountPreferences> => {
-  const { data: account_preferences, error: account_preferences_error } =
-    await db.supabase
-      .from('account_preferences')
-      .select(
-        `
+  try {
+    const { data: account_preferences, error: account_preferences_error } =
+      await db.supabase
+        .from('account_preferences')
+        .select(
+          `
         *,
         default_availability:availabilities!account_preferences_availaibility_id_fkey(
           id,
@@ -541,26 +616,29 @@ export const getAccountPreferences = async (
           updated_at
         )
       `
-      )
-      .eq('owner_account_address', owner_account_address.toLowerCase())
-      .single()
+        )
+        .eq('owner_account_address', owner_account_address.toLowerCase())
+        .single()
+    if (account_preferences_error || !account_preferences) {
+      console.error(account_preferences_error)
+      throw new Error("Couldn't get account's preferences")
+    }
 
-  if (account_preferences_error || !account_preferences) {
-    console.error(account_preferences_error)
+    // Transform the joined data to match the expected format
+    const { default_availability, ...preferences } = account_preferences
+
+    if (default_availability) {
+      preferences.availabilities = default_availability.weekly_availability
+      preferences.timezone = default_availability.timezone
+    } else {
+      preferences.availabilities = generateEmptyAvailabilities()
+    }
+
+    return preferences as AccountPreferences
+  } catch (e) {
+    Sentry.captureException(e)
     throw new Error("Couldn't get account's preferences")
   }
-
-  // Transform the joined data to match the expected format
-  const { default_availability, ...preferences } = account_preferences
-
-  if (default_availability) {
-    preferences.availabilities = default_availability.weekly_availability
-    preferences.timezone = default_availability.timezone
-  } else {
-    preferences.availabilities = generateEmptyAvailabilities()
-  }
-
-  return preferences as AccountPreferences
 }
 
 async function getExistingAccountsFromDB(
@@ -575,16 +653,27 @@ async function getExistingAccountsFromDB(
   addresses: string[],
   fullInformation?: boolean
 ): Promise<SimpleAccountInfo[] | Account[]> {
-  let queryString = ` 
+  let queryString = `
       address,
       internal_pub_key
     `
   if (fullInformation) {
     queryString += `
       ,calendars: connected_calendars(provider),
-      preferences: account_preferences(*)
+      preferences: account_preferences(
+      *,
+      default_availability:availabilities!account_preferences_availaibility_id_fkey(
+          id,
+          title,
+          timezone,
+          weekly_availability,
+          created_at,
+          updated_at
+        )
+      )
       `
   }
+
   const { data, error } = await db.supabase
     .from('accounts')
     .select(queryString)
@@ -599,6 +688,12 @@ async function getExistingAccountsFromDB(
   for (const account of data) {
     if (account.calendars) {
       account.isCalendarConnected = account?.calendars?.length > 0
+      const { default_availability, ...preferences } = account.preferences
+      if (default_availability) {
+        preferences.availabilities = default_availability.weekly_availability
+        preferences.timezone = default_availability.timezone
+      }
+      account.preferences = preferences
       delete account.calendars
     }
   }
@@ -615,20 +710,23 @@ const getAccountFromDB = async (
   })
   if (data) {
     const account = Array.isArray(data) ? data[0] : data
-    try {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
-      )
-    } catch (e) {
-      Sentry.captureException(e)
-      throw new Error("Couldn't get account's preferences")
-    }
-    account.subscriptions = await getSubscriptionFromDBForAccount(
-      account.address
-    )
-    if (includePrivateInformation) {
-      account.discord_account = await getDiscordAccount(account.address)
-    }
+
+    const [subscriptions, preferences, discord_account, payment_preferences] =
+      await Promise.all([
+        getSubscriptionFromDBForAccount(account.address),
+        getAccountPreferences(account.address.toLowerCase()),
+        includePrivateInformation
+          ? getDiscordAccount(account.address)
+          : undefined,
+        includePrivateInformation
+          ? getPaymentPreferences(account.address)
+          : undefined,
+      ])
+    account.preferences = preferences
+    account.subscriptions = subscriptions
+    if (discord_account) account.discord_account = discord_account
+    if (payment_preferences) account.payment_preferences = payment_preferences
+
     return account
   } else if (error) {
     throw new Error(error.message)
@@ -640,11 +738,21 @@ const getAccountFromDBPublic = async (
   identifier: string
 ): Promise<PublicAccount> => {
   const account: PublicAccount = await getAccountFromDB(identifier)
+  const payment_methods = [PaymentType.CRYPTO]
+  const paymentAccount = await getActivePaymentAccountDB(account.address)
+  if (
+    paymentAccount?.provider_account_id &&
+    paymentAccount.status === PaymentAccountStatus.CONNECTED
+  ) {
+    payment_methods.push(PaymentType.FIAT)
+  }
   const meetingTypes = await getMeetingTypes(account.address, 100, 0)
   account.meetingTypes = meetingTypes.map(val => ({
     ...val,
     calendars: undefined,
   }))
+  account.payment_methods = payment_methods
+
   return account
 }
 
@@ -666,7 +774,7 @@ const getSlotsForAccount = async (
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
     .order('start')
 
   if (error) {
@@ -693,7 +801,7 @@ const getSlotsForAccountMinimal = async (
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
     .order('start')
 
   if (error) {
@@ -806,31 +914,64 @@ const isSlotAvailable = async (
   start: Date,
   end: Date,
   meetingTypeId: string,
-  txHash?: Address | null
+  txHash?: Address | null,
+  meeting_id?: string
 ): Promise<boolean> => {
-  const meetingType = await getMeetingTypeFromDB(meetingTypeId)
-  const minTime = meetingType.min_notice_minutes
-  if (meetingType?.plan) {
-    if (!txHash) {
-      throw new TransactionIsRequired()
+  if (meetingTypeId !== NO_MEETING_TYPE) {
+    const meetingType = await getMeetingTypeFromDB(meetingTypeId)
+    const minTime = meetingType.min_notice_minutes
+    if (meetingType?.plan) {
+      if (meeting_id) {
+        const meetingSession = await getMeetingSessionByMeetingId(
+          meeting_id,
+          meetingTypeId
+        )
+        if (!meetingSession) {
+          throw new MeetingSessionNotFoundError(meeting_id)
+        }
+      } else {
+        if (!txHash) {
+          throw new TransactionIsRequired()
+        }
+        const transaction = await getTransactionBytxHashAndMeetingType(
+          txHash,
+          meetingTypeId
+        )
+        const meetingSessions = transaction.meeting_sessions || []
+        const isAnyMeetingSlotFree = meetingSessions.some(
+          session => session.used_at === null
+        )
+        if (!isAnyMeetingSlotFree) {
+          throw new AllMeetingSlotsUsedError()
+        }
+      }
     }
-    const transaction = await getTransactionBytxHashAndMeetingType(
-      txHash,
-      meetingTypeId
-    )
-    const meetingSessions = transaction.meeting_sessions || []
-    const isAnyMeetingSlotFree = meetingSessions.some(
-      session => session.used_at === null
-    )
-    if (!isAnyMeetingSlotFree) {
-      throw new AllMeetingSlotsUsedError()
+
+    if (isAfter(addMinutes(new Date(), minTime), start)) {
+      return false
     }
   }
-
-  if (isAfter(addMinutes(new Date(), minTime), start)) {
+  const interval = Interval.fromDateTimes(
+    DateTime.fromJSDate(start),
+    DateTime.fromJSDate(end)
+  )
+  if (!interval.isValid) {
     return false
   }
-  return (await getSlotsForAccount(account_address, start, end)).length == 0
+  const busySlots = (
+    await CalendarBackendHelper.getBusySlotsForAccount(
+      account_address,
+      interval.start?.startOf('day').toJSDate(),
+      interval.end?.endOf('day').toJSDate()
+    )
+  ).map(slot =>
+    Interval.fromDateTimes(
+      DateTime.fromJSDate(new Date(slot.start)),
+      DateTime.fromJSDate(new Date(slot.end))
+    )
+  )
+  const isAvailable = busySlots.every(slot => !slot.overlaps(interval))
+  return isAvailable
 }
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
@@ -946,7 +1087,7 @@ const handleGuestCancel = async (
   }
   await saveConferenceMeetingToDB({
     ...conferenceMeeting,
-    slots: conferenceMeeting.slots.filter(s => slotsToRemove.includes(s)),
+    slots: conferenceMeeting.slots.filter(s => !slotsToRemove.includes(s)),
   })
 
   const body: MeetingCancelSyncRequest = {
@@ -971,7 +1112,8 @@ const handleGuestCancel = async (
   })
 }
 const handleMeetingCancelSync = async (
-  decryptedMeetingData: MeetingDecrypted
+  decryptedMeetingData: MeetingInfo,
+  actorSlotId: string
 ) => {
   const conferenceMeeting = await getConferenceMeetingFromDB(
     decryptedMeetingData.meeting_id
@@ -979,13 +1121,10 @@ const handleMeetingCancelSync = async (
   if (!conferenceMeeting) {
     throw new MeetingNotFoundError(decryptedMeetingData.meeting_id)
   }
-  decryptedMeetingData.related_slot_ids =
-    decryptedMeetingData.related_slot_ids.filter(id =>
-      conferenceMeeting?.slots.includes(id)
-    )
-  decryptedMeetingData.participants = decryptedMeetingData.participants.filter(
-    p => conferenceMeeting?.slots.includes(p.slot_id!)
-  )
+  // The conference meeting is the authoritative source of truth for which slots exist
+  // Update the meeting data to match the conference reality
+
+  // Fetch all slots that currently exist in the conference meeting
   const { error, data: oldSlots } = await db.supabase
     .from<DBSlot>('slots')
     .select()
@@ -994,6 +1133,76 @@ const handleMeetingCancelSync = async (
     throw new Error(error.message)
   }
 
+  // Find orphaned slots: slots that exist in DB but have no corresponding participant data
+  const existingSlotIds = oldSlots.map(slot => slot.id!)
+  const missingParticipantSlots = existingSlotIds.filter(
+    slotId => !decryptedMeetingData.participants.some(p => p.slot_id === slotId)
+  )
+  if (missingParticipantSlots.length > 0) {
+    console.warn(
+      `Found orphaned slots without corresponding participants, deleting them: ${missingParticipantSlots.join(
+        ', '
+      )}`
+    )
+
+    const { error: deleteOrphanedError } = await db.supabase
+      .from('slots')
+      .delete()
+      .in('id', missingParticipantSlots)
+
+    if (deleteOrphanedError) {
+      console.warn(
+        'Failed to delete orphaned slots:',
+        deleteOrphanedError.message
+      )
+    }
+    conferenceMeeting.slots = conferenceMeeting.slots.filter(
+      slotId => !missingParticipantSlots.includes(slotId)
+    )
+    await saveConferenceMeetingToDB(conferenceMeeting)
+    const validSlots = oldSlots.filter(
+      slot => !missingParticipantSlots.includes(slot.id!)
+    )
+    oldSlots.length = 0
+    oldSlots.push(...validSlots)
+  }
+
+  // Find and clean up any orphaned slots that might exist for this meeting
+  // but are no longer in the conference (edge case handling)
+  const originalSlotIds = decryptedMeetingData.related_slot_ids.concat([
+    actorSlotId,
+  ])
+  //e7c8f220-f2d8-43e3-9189-4b71f60e148c
+  const orphanedSlotIds = originalSlotIds.filter(
+    id => !conferenceMeeting.slots.includes(id)
+  )
+
+  if (orphanedSlotIds.length > 0) {
+    console.warn(
+      `Found orphaned slots that are no longer in the conference: ${orphanedSlotIds.join(
+        ', '
+      )}`
+    )
+    const { error: deleteError } = await db.supabase
+      .from('slots')
+      .delete()
+      .in('id', orphanedSlotIds)
+
+    if (deleteError) {
+      console.warn(
+        'Failed to delete orphaned slots:',
+        deleteError.message,
+        orphanedSlotIds
+      )
+    }
+  }
+  decryptedMeetingData.related_slot_ids = conferenceMeeting.slots.filter(
+    id => id !== actorSlotId // Exclude the current slot from related_slot_ids
+  )
+  decryptedMeetingData.participants = decryptedMeetingData.participants.filter(
+    p => conferenceMeeting?.slots.includes(p.slot_id!)
+  )
+  // Update all existing conference slots with the synced meeting data
   for (const slot of oldSlots) {
     const account = await getAccountFromDB(slot.account_address)
     await db.supabase
@@ -1003,7 +1212,8 @@ const handleMeetingCancelSync = async (
           account.internal_pub_key,
           JSON.stringify(decryptedMeetingData)
         ),
-        version: slot.version + 1,
+        // Don't increment version for background sync operations
+        // The version was already incremented during the original cancellation
       })
       .eq('id', slot.id)
   }
@@ -1150,27 +1360,39 @@ const saveMeeting = async (
             meeting.meetingTypeId,
             meeting.txHash
           ))
-        const isTimeAvailable = () =>
+        let isTimeAvailable = () =>
           ownerAccount &&
           isTimeInsideAvailabilities(
-            utcToZonedTime(
-              meeting.start,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            utcToZonedTime(
-              meeting.end,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            ownerAccount?.preferences.availabilities || []
+            new Date(meeting.start),
+            new Date(meeting.end),
+            ownerAccount?.preferences.availabilities || [],
+            ownerAccount?.preferences.timezone
           )
-        // TODO: check slots by meeting type and not users default Availaibility
-        //   if (
-        //     participantIsOwner &&
-        //     ownerIsNotScheduler &&
-        //     ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
-        //       (await slotIsTaken()))
-        //   )
-        //     throw new TimeNotAvailableError()
+        if (
+          meeting.meetingTypeId &&
+          meeting.meetingTypeId !== NO_MEETING_TYPE
+        ) {
+          const accountAvailabilities =
+            await getTypeMeetingAvailabilityTypeFromDB(meeting.meetingTypeId)
+          isTimeAvailable = () =>
+            ownerAccount &&
+            accountAvailabilities?.some(availability =>
+              isTimeInsideAvailabilities(
+                new Date(meeting.start),
+                new Date(meeting.end),
+                availability?.weekly_availability || [],
+                availability?.timezone
+              )
+            )
+        }
+        // TODO: check slots by meeting type and not users default Availability
+        if (
+          participantIsOwner &&
+          ownerIsNotScheduler &&
+          ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
+            (await slotIsTaken()))
+        )
+          throw new TimeNotAvailableError()
       }
 
       let account: Account
@@ -1267,6 +1489,10 @@ const saveMeeting = async (
     meetingReminders: meeting.meetingReminders,
     meetingRepeat: meeting.meetingRepeat,
     meetingPermissions: meeting.meetingPermissions,
+    meeting_type_id:
+      meeting.meetingTypeId === NO_MEETING_TYPE
+        ? undefined
+        : meeting.meetingTypeId,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -1346,120 +1572,39 @@ const getAccountsNotificationSubscriptionEmails = async (
   return userEmails
 }
 
-const getUserGroups = async (
-  address: string,
-  limit: number,
-  offset: number,
-  email?: string
-): Promise<Array<UserGroups>> => {
-  const { data: invites, error: invitesError } = await db.supabase
-    .from('group_invites')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .or(
-      `user_id.eq.${address.toLowerCase()}${email ? `,email.eq.${email}` : ''}`
-    )
-    .range(
-      offset || 0,
-      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-    )
-  const { data, error } = await db.supabase
-    .from('group_members')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .eq('member_id', address.toLowerCase())
-    .range(
-      offset || 0,
-      (offset || 0) +
-        (limit ? limit - 1 - (invites?.length || 0) : 999_999_999_999_999)
-    )
-
-  if (invitesError) {
-    throw new Error(invitesError.message)
-  }
-  if (error) {
-    throw new Error(error.message)
-  }
-  if (data || invites) {
-    return invites
-      .map(val => ({ ...val, invitePending: true }))
-      .concat(data.map(val => ({ ...val, invitePending: false })))
-  }
-  return []
-}
 const getGroupsAndMembers = async (
   address: string,
-  limit: number,
-  offset: number
+  limit?: string,
+  offset?: string,
+  search?: string,
+  includeInvites?: boolean
 ): Promise<Array<GetGroupsFullResponse>> => {
-  const { data, error } = await db.supabase
-    .from('group_members')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .eq('member_id', address.toLowerCase())
-    .range(
-      offset || 0,
-      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-    )
+  const { data, error } = await db.supabase.rpc<GetGroupsFullResponse>(
+    'get_user_groups_with_members',
+    {
+      user_address: address.toLowerCase(),
+      search_term: search || null,
+      limit_count: limit || 1000,
+      offset_count: offset || 0,
+    }
+  )
+
   if (error) {
     throw new Error(error.message)
   }
-  const groups = []
-  for (const group of data) {
-    const { data: membersData, error: membersError } = await db.supabase
-      .from('group_members')
-      .select()
-      .eq('group_id', group.group.id)
-    if (membersError) {
-      throw new Error(membersError.message)
-    }
-    const addresses = membersData.map(
-      (member: GroupMemberQuery) => member.member_id
-    )
-    const { data: members, error } = await db.supabase
-      .from('accounts')
-      .select(
-        `
-         group_members: group_members(*),
-         preferences: account_preferences(name)
-    `
-      )
-      .in('address', addresses)
-      .filter('group_members.group_id', 'eq', group.group.id)
-      .range(
-        offset || 0,
-        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-      )
-    if (error) {
-      throw new Error(error.message)
-    }
 
-    if (data) {
-      groups.push({
-        ...group.group,
-        members: members.map(member => ({
-          userId: member.group_members?.[0]?.id,
-          displayName: member.preferences?.name,
-          address: member.group_members?.[0]?.member_id as string,
-          role: member.group_members?.[0].role,
-          invitePending: false,
-        })),
-      })
-    }
-  }
-  return groups
+  return data.map(group => ({
+    id: group.id,
+    name: group.name,
+    slug: group.slug,
+    members:
+      group.members.filter(member => {
+        if (includeInvites) {
+          return true
+        }
+        return !member.invitePending
+      }) || [],
+  })) as GetGroupsFullResponse[]
 }
 
 async function findGroupsWithSingleMember(
@@ -1563,12 +1708,46 @@ const getGroupInvites = async ({
   discord_id,
   limit,
   offset,
+  search,
 }: GroupInviteFilters): Promise<Array<UserGroups>> => {
-  let query = db.supabase.from('group_invites').select(`
-    id,
-    role,
-    group: groups(id, name, slug)
-  `)
+  const { data, error } = await db.supabase.rpc(
+    'get_group_invites_with_search',
+    {
+      user_address: address || null,
+      target_group_id: group_id || null,
+      target_user_id: user_id || null,
+      target_email: email || null,
+      target_discord_id: discord_id || null,
+      search_term: search || null,
+      limit_count: limit || 1000,
+      offset_count: offset || 0,
+    }
+  )
+
+  if (error) {
+    console.error('Error executing query:', error)
+    throw new Error(error.message)
+  }
+
+  return data.map(item => ({
+    id: item.id,
+    role: item.role,
+    group: {
+      id: item.group_id,
+      name: item.group_name,
+      slug: item.group_slug,
+    },
+    invitePending: item.invite_pending,
+  }))
+}
+const getGroupInvitesCount = async ({
+  address,
+  group_id,
+  user_id,
+  email,
+  discord_id,
+}: GroupInviteFilters): Promise<number | null> => {
+  let query = db.supabase.from('group_invites').select('id', { count: 'exact' })
   let orQuery = ''
   if (address) {
     orQuery = `user_id.eq.${address.toLowerCase()}`
@@ -1587,32 +1766,11 @@ const getGroupInvites = async ({
     orQuery += (orQuery ? ',' : '') + `discord_id.eq.${discord_id}`
   }
   query.or(orQuery)
-  query = query.range(
-    offset || 0,
-    (offset || 0) + (limit ? limit - 1 : 999999999999999)
-  )
-
-  try {
-    const { data, error } = await query
-    if (error) {
-      console.error('Error executing query:', error)
-      throw new Error(error.message)
-    }
-
-    const result = data.map((item: any) => ({
-      ...item,
-      invitePending: true, // Since this is from group_invites, set invitePending to true
-    }))
-    return result
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error('Error in getGroupInvites function:', error.message)
-      throw new Error(error.message)
-    } else {
-      console.error('Unexpected error in getGroupInvites function:', error)
-      throw new Error('An unexpected error occurred')
-    }
+  const { count, error } = await query
+  if (error) {
+    throw new Error(error.message)
   }
+  return count
 }
 const publicGroupJoin = async (group_id: string, address: string) => {
   const groupUsers = await getGroupMembersInternal(group_id)
@@ -1669,7 +1827,7 @@ const addUserToGroup = async (
 
 const getGroupAdminsFromDb = async (
   group_id: string
-): Promise<Array<GroupMembersRow>> => {
+): Promise<Array<Tables<'group_members'>>> => {
   const { data, error } = await db.supabase
     .from('group_members')
     .select('member_id')
@@ -1693,7 +1851,7 @@ const rejectGroupInvite = async (
     accountsToNotify: admins.map(val => val.member_id),
     notifyType: GroupNotificationType.REJECT,
   }
-  fetch(`${apiUrl}/server/groups/syncAndNotify`, {
+  void fetch(`${apiUrl}/server/groups/syncAndNotify`, {
     method: 'POST',
     body: JSON.stringify(body),
     headers: {
@@ -1802,16 +1960,13 @@ const getGroupUsers = async (
       group_members: group_members(*),
       group_invites: group_invites(*),
       preferences: account_preferences(name),
-      subscriptions: subscriptions(*) 
+      subscriptions: subscriptions(*)
     `
       )
       .in('address', addresses)
       .filter('group_members.group_id', 'eq', group_id)
       .filter('group_invites.group_id', 'eq', group_id)
-      .range(
-        offset || 0,
-        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-      )
+      .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
     if (error) {
       throw new Error(error.message)
     }
@@ -2202,6 +2357,52 @@ const getConnectedCalendars = async (
   return connectedCalendars
 }
 
+const getQuickPollCalendars = async (
+  participantId: string,
+  {
+    syncOnly,
+    activeOnly: _activeOnly,
+  }: {
+    syncOnly?: boolean
+    activeOnly?: boolean
+  }
+): Promise<ConnectedCalendar[]> => {
+  const { data, error } = await db.supabase
+    .from<Tables<'quick_poll_calendars'>>('quick_poll_calendars')
+    .select('*')
+    .eq('participant_id', participantId)
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data) return []
+
+  const connectedCalendars: ConnectedCalendar[] = data.map(calendar => ({
+    id: calendar.id,
+    account_address: '',
+    email: calendar.email,
+    provider: calendar.provider as TimeSlotSource,
+    payload: calendar.payload,
+    calendars: [],
+    enabled: true,
+    created: new Date(calendar.created_at) || new Date(),
+  }))
+
+  if (syncOnly) {
+    const calendars: ConnectedCalendar[] = JSON.parse(
+      JSON.stringify(connectedCalendars)
+    )
+    for (const cal of calendars) {
+      cal.calendars = cal.calendars.filter(c => c.sync)
+    }
+    return calendars
+  }
+
+  return connectedCalendars
+}
+
 const connectedCalendarExists = async (
   address: string,
   email: string,
@@ -2225,7 +2426,7 @@ export const updateCalendarPayload = async (
   address: string,
   email: string,
   provider: TimeSlotSource,
-  payload: any
+  payload: unknown
 ): Promise<void> => {
   const { error } = await db.supabase
     .from('connected_calendars')
@@ -2271,6 +2472,7 @@ const addOrUpdateConnectedCalendar = async (
       calendars[0].enabled = true
       // ensure at least one is enabled when adding it
     }
+
     queryPromise = db.supabase.from('connected_calendars').insert({
       email,
       payload,
@@ -2287,18 +2489,90 @@ const addOrUpdateConnectedCalendar = async (
   }
   const calendar = data[0] as ConnectedCalendar
   try {
-    const integration = getConnectedCalendarIntegration(
-      address.toLowerCase(),
-      email,
-      provider,
-      payload
-    )
-    for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
-      await handleWebHook(cal.calendarId, calendar.id, integration)
+    await addNewCalendarToAllExistingMeetingTypes(address, calendar)
+  } catch (e) {
+    Sentry.captureException(e, {
+      extra: {
+        accountAddress: address,
+        email,
+        provider,
+      },
+    })
+  }
+  if (provider === TimeSlotSource.GOOGLE) {
+    try {
+      const integration = getConnectedCalendarIntegration(
+        address.toLowerCase(),
+        email,
+        provider,
+        payload
+      )
+      for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+        // don't parellelize this as it can make us hit google's rate limit
+        await handleWebHook(cal.calendarId, calendar.id, integration)
+      }
+    } catch (e) {
+      Sentry.captureException(e, {
+        extra: {
+          calendarId: calendar.id,
+          accountAddress: address,
+          email,
+          provider,
+        },
+      })
+      console.error('Error adding new calendar to existing meeting types:', e)
     }
-  } catch (e) {}
-
+  }
   return calendar
+}
+
+const addNewCalendarToAllExistingMeetingTypes = async (
+  account_address: string,
+  calendar: ConnectedCalendar
+) => {
+  const meetingTypes = await getMeetingTypesLean(account_address.toLowerCase())
+  if (!meetingTypes || meetingTypes.length === 0) return
+
+  await Promise.all(
+    meetingTypes.map(async meetingType => {
+      if (
+        await checkCalendarAlreadyExistsForMeetingType(
+          calendar.id,
+          meetingType.id
+        )
+      ) {
+        return
+      }
+      const { error } = await db.supabase
+        .from('meeting_type_calendars')
+        .insert({
+          meeting_type_id: meetingType.id,
+          calendar_id: calendar.id,
+        })
+      if (error) {
+        console.error('Error adding calendar to meeting type:', error)
+        Sentry.captureException(error, {
+          extra: {
+            calendarId: calendar.id,
+            meetingTypeId: meetingType.id,
+            accountAddress: account_address,
+          },
+        })
+      }
+    })
+  )
+  return true
+}
+const checkCalendarAlreadyExistsForMeetingType = async (
+  calendarId: number,
+  meetingTypeId: string
+) => {
+  const { data: current } = await db.supabase
+    .from('meeting_type_calendars')
+    .select()
+    .eq('meeting_type_id', meetingTypeId)
+    .eq('calendar_id', calendarId)
+  return current && current.length > 0
 }
 const handleWebHook = async (
   calId: string,
@@ -2337,20 +2611,21 @@ const handleWebHook = async (
         }
         return
       }
-    }
-    const result = await integration.setWebhookUrl(WEBHOOK_URL, calId)
-    const { calendarId, channelId, expiration, resourceId } = result
-    const { error: updateError } = await db.supabase
-      .from('calendar_webhooks')
-      .insert({
-        channel_id: channelId,
-        resource_id: resourceId,
-        calendar_id: calendarId,
-        connected_calendar_id: connectedCalendarId,
-        expires_at: new Date(Number(expiration)).toISOString(),
-      })
-    if (updateError) {
-      console.error(updateError)
+    } else {
+      const result = await integration.setWebhookUrl(WEBHOOK_URL, calId)
+      const { calendarId, channelId, expiration, resourceId } = result
+      const { error: updateError } = await db.supabase
+        .from('calendar_webhooks')
+        .insert({
+          channel_id: channelId,
+          resource_id: resourceId,
+          calendar_id: calendarId,
+          connected_calendar_id: connectedCalendarId,
+          expires_at: new Date(Number(expiration)).toISOString(),
+        })
+      if (updateError) {
+        console.error(updateError)
+      }
     }
   } catch (e) {
     console.error('Error refreshing webhook:', e)
@@ -2367,14 +2642,40 @@ const removeConnectedCalendar = async (
     .eq('account_address', address.toLowerCase())
     .ilike('email', email.toLowerCase())
     .eq('provider', provider)
-
+    .select('*')
   if (error) {
     throw new Error(error.message)
   }
-
-  return Array.isArray(data) ? data[0] : data
+  const calendar = Array.isArray(data) ? data[0] : data
+  await removeCalendarFromAllExistingMeetingTypes(address, calendar)
+  return calendar
 }
 
+const removeCalendarFromAllExistingMeetingTypes = async (
+  account_address: string,
+  calendar: ConnectedCalendar
+) => {
+  const meetingTypes = await getMeetingTypesLean(account_address.toLowerCase())
+  if (!meetingTypes || meetingTypes.length === 0) return
+
+  const { error } = await db.supabase
+    .from('meeting_type_calendars')
+    .delete()
+    .eq('calendar_id', calendar.id)
+    .in(
+      'meeting_type_id',
+      meetingTypes.map(mt => mt.id)
+    )
+  if (error) {
+    Sentry.captureException(error, {
+      extra: {
+        account_address,
+        calendar,
+      },
+    })
+  }
+  return true
+}
 export const getSubscriptionFromDBForAccount = async (
   accountAddress: string,
   chain?: SupportedChain
@@ -2729,22 +3030,38 @@ const updateMeeting = async (
             participant.account_address!,
             new Date(meetingUpdateRequest.start),
             new Date(meetingUpdateRequest.end),
-            meetingUpdateRequest.meetingTypeId
+            meetingUpdateRequest.meetingTypeId,
+            undefined,
+            meetingUpdateRequest.meeting_id
           ))
 
-        const isTimeAvailable = () =>
+        let isTimeAvailable = () =>
           ownerAccount &&
           isTimeInsideAvailabilities(
-            utcToZonedTime(
-              meetingUpdateRequest.start,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            utcToZonedTime(
-              meetingUpdateRequest.end,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            ownerAccount?.preferences.availabilities
+            new Date(meetingUpdateRequest.start),
+            new Date(meetingUpdateRequest.end),
+            ownerAccount?.preferences.availabilities || [],
+            ownerAccount?.preferences.timezone
           )
+        if (
+          meetingUpdateRequest.meetingTypeId &&
+          meetingUpdateRequest.meetingTypeId !== NO_MEETING_TYPE
+        ) {
+          const accountAvailabilities =
+            await getTypeMeetingAvailabilityTypeFromDB(
+              meetingUpdateRequest.meetingTypeId
+            )
+          isTimeAvailable = () =>
+            ownerAccount &&
+            accountAvailabilities?.some(availability =>
+              isTimeInsideAvailabilities(
+                new Date(meetingUpdateRequest.start),
+                new Date(meetingUpdateRequest.end),
+                availability?.weekly_availability || [],
+                availability?.timezone
+              )
+            )
+        }
 
         if (
           participantIsOwner &&
@@ -2831,11 +3148,6 @@ const updateMeeting = async (
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
-  // TODO: for now
-  let meetingProvider = MeetingProvider.CUSTOM
-  if (meetingUpdateRequest.meeting_url.includes('huddle')) {
-    meetingProvider = MeetingProvider.HUDDLE
-  }
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
   )
@@ -2860,8 +3172,9 @@ const updateMeeting = async (
     end: meetingUpdateRequest.end,
     meeting_url: meetingUpdateRequest.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
-    provider: meetingProvider,
+    provider: meetingUpdateRequest.meetingProvider,
     recurrence: meetingUpdateRequest.meetingRepeat,
+    reminders: meetingUpdateRequest.meetingReminders,
     version: MeetingVersion.V2,
     title: meetingUpdateRequest.title,
     slots: updatedSlots,
@@ -2889,6 +3202,10 @@ const updateMeeting = async (
     meetingReminders: meetingUpdateRequest.meetingReminders,
     meetingRepeat: meetingUpdateRequest.meetingRepeat,
     meetingPermissions: meetingUpdateRequest.meetingPermissions,
+    meeting_type_id:
+      meetingUpdateRequest.meetingTypeId === NO_MEETING_TYPE
+        ? undefined
+        : meetingUpdateRequest.meetingTypeId,
   }
 
   // Doing notifications and syncs asynchronously
@@ -2975,7 +3292,38 @@ export const getDiscordAccount = async (
 
   return data[0] as DiscordAccount
 }
-
+export const getDiscordAccountAndInfo = async (
+  account_address: string
+): Promise<DiscordAccountInfo | undefined> => {
+  const [discord, info] = await Promise.all([
+    getDiscordAccount(account_address),
+    getDiscordInfoForAddress(account_address),
+  ])
+  if (!discord) return undefined
+  return {
+    ...discord,
+    ...info,
+  }
+}
+export const getTelegramAccountAndInfo = async (
+  account_address: string
+): Promise<TelegramAccountInfo | null> => {
+  try {
+    const subs = await getAccountNotificationSubscriptions(account_address)
+    const telegramNotification = subs.notification_types.find(
+      n => n.channel === NotificationChannel.TELEGRAM
+    )
+    if (!telegramNotification) return null
+    const userInfo = await getTelegramUserInfo(telegramNotification.destination)
+    return {
+      ...telegramNotification,
+      ...(userInfo || {}),
+    }
+  } catch (e) {
+    Sentry.captureException(e)
+  }
+  return null
+}
 export const getAccountFromDiscordId = async (
   discord_id: string
 ): Promise<Account | null> => {
@@ -3000,7 +3348,7 @@ export async function isUserAdminOfGroup(
   userAddress: string
 ): Promise<boolean> {
   const { data, error } = await db.supabase
-    .from<GroupMembersRow>('group_members')
+    .from<Tables<'group_members'>>('group_members')
     .select('role')
     .eq('group_id', groupId)
     .eq('member_id', userAddress)
@@ -3129,7 +3477,7 @@ const getTgConnection = async (
 }
 const getNumberOfCouponClaimed = async (plan_id: string) => {
   const couponUsageData = await db.supabase
-    .from<Row<'subscriptions'>>('subscriptions')
+    .from<Tables<'subscriptions'>>('subscriptions')
     .select('id', { count: 'exact' })
     .eq('plan_id', plan_id)
   return couponUsageData.count ?? 0
@@ -3156,7 +3504,7 @@ const subscribeWithCoupon = async (
   }
 
   const { data: subscriptionData, error: subscriptionError } = await db.supabase
-    .from<Row<'subscriptions'>>('subscriptions')
+    .from<Tables<'subscriptions'>>('subscriptions')
     .select()
     .eq('owner_account', account_address)
     .eq('plan_id', coupon.plan_id)
@@ -3167,7 +3515,7 @@ const subscribeWithCoupon = async (
     throw new CouponAlreadyUsed()
   }
   const { data: planData, error: planError } = await db.supabase
-    .from<Row<'subscriptions'>>('subscriptions')
+    .from<Tables<'subscriptions'>>('subscriptions')
     .insert([
       {
         plan_id: coupon.plan_id,
@@ -3188,7 +3536,7 @@ const updateCustomSubscriptionDomain = async (
   domain: string
 ) => {
   const { data: subscriptionData, error: subscriptionError } = await db.supabase
-    .from<Row<'subscriptions'>>('subscriptions')
+    .from<Tables<'subscriptions'>>('subscriptions')
     .select()
     .eq('owner_account', account_address)
     .gte('expiry_time', new Date().toISOString())
@@ -3241,6 +3589,7 @@ const getAccountsWithTgConnected = async (): Promise<
   }
   return data
 }
+
 const getDiscordAccounts = async (): Promise<
   Array<DiscordConnectedAccounts>
 > => {
@@ -3273,7 +3622,21 @@ const findAccountsByText = async (
   }
   return data?.[0]
 }
-
+const getGroupMembersOrInvite = async (
+  group_id: string,
+  address: string,
+  state: 'pending' | 'accepted'
+) => {
+  const { data, error: searchError } = await db.supabase
+    .from(state === 'accepted' ? 'group_members' : 'group_invites')
+    .select()
+    .eq('group_id', group_id)
+    .eq(state === 'accepted' ? 'member_id' : 'user_id', address)
+  if (searchError) {
+    throw new Error(searchError.message)
+  }
+  return data?.[0]
+}
 const getOrCreateContactInvite = async (
   owner_address: string,
   address?: string,
@@ -3297,7 +3660,6 @@ const getOrCreateContactInvite = async (
   if (address) {
     channel = ChannelType.ACCOUNT
   }
-
   const { data: insertData, error: insertError } = await db.supabase
     .from('contact_invite')
     .insert([
@@ -3337,7 +3699,7 @@ const isUserContact = async (owner_address: string, address: string) => {
 const getContacts = async (
   address: string,
   query = '',
-  limit = 10,
+  limit = 1000,
   offset = 0
 ): Promise<DBContact> => {
   const { data, error } = await db.supabase.rpc('search_contacts', {
@@ -3349,13 +3711,13 @@ const getContacts = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContact
+  return Array.isArray(data) ? data[0] : data
 }
 
 const getContactLean = async (
   address: string,
   query = '',
-  limit = 10,
+  limit = 1000,
   offset = 0
 ): Promise<DBContactLean> => {
   const { data, error } = await db.supabase.rpc<DBContactLean>(
@@ -3370,7 +3732,7 @@ const getContactLean = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContactLean
+  return Array.isArray(data) ? data[0] : data
 }
 
 const checkContactExists = async (
@@ -3387,7 +3749,7 @@ const checkContactExists = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContactLean
+  return Array.isArray(data) ? data[0] : data
 }
 
 const getContactById = async (
@@ -3429,16 +3791,18 @@ const getContactInvites = async (
   limit = 10,
   offset = 0
 ): Promise<DBContactInvite> => {
+  const userEmail = await getAccountNotificationSubscriptionEmail(address)
   const { data, error } = await db.supabase.rpc('search_contact_invites', {
     search: query,
     max_results: limit,
     skip: offset,
     current_account: address,
+    current_account_email: userEmail || '',
   })
   if (error) {
     throw new Error(error.message)
   }
-  return data as unknown as DBContactInvite
+  return Array.isArray(data) ? data[0] : data
 }
 const _getContactByAddress = async (
   owner_address: string,
@@ -3469,10 +3833,12 @@ const _getContactByAddress = async (
   return data
 }
 const getContactInvitesCount = async (address: string) => {
+  const userEmail = await getAccountNotificationSubscriptionEmail(address)
+  const query = `destination.eq.${address},destination.eq.${userEmail}`
   const { error, count } = await db.supabase
     .from('contact_invite')
     .select('id', { count: 'exact' })
-    .eq('destination', address)
+    .or(query)
   if (error) {
     throw new Error(error.message)
   }
@@ -3590,9 +3956,49 @@ const acceptContactInvite = async (
       account_address,
       invite?.account_owner_address,
     ])
-    .in('destination', [account_address, invite?.account_owner_address])
+    .in(
+      'destination',
+      deduplicateArray([
+        account_address,
+        invite?.account_owner_address,
+        invite.destination,
+      ])
+    )
+
   if (deleteError) {
     throw new Error(deleteError.message)
+  }
+}
+const addContactInvite = async (
+  account_address: string,
+  contact_address: string
+) => {
+  const { error: insertError } = await db.supabase.from('contact').insert([
+    {
+      account_owner_address: account_address,
+      contact_address,
+      status: ContactStatus.ACTIVE,
+    },
+    {
+      account_owner_address: contact_address,
+      contact_address: account_address,
+      status: ContactStatus.ACTIVE,
+    },
+  ])
+
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
+  // clean up old status contacts
+  const { error: contactClearError } = await db.supabase
+    .from('contact')
+    .delete()
+    .in('account_owner_address', [account_address, contact_address])
+    .in('contact_address', [account_address, contact_address])
+    .eq('status', ContactStatus.INACTIVE)
+
+  if (contactClearError) {
+    throw new Error(contactClearError.message)
   }
 }
 const rejectContactInvite = async (
@@ -3627,6 +4033,21 @@ const rejectContactInvite = async (
     .from('contact_invite')
     .delete()
     .eq('id', invite_identifier)
+  await db.supabase
+    .from('contact_invite')
+    .delete()
+    .in('account_owner_address', [
+      account_address,
+      invite?.account_owner_address,
+    ])
+    .in(
+      'destination',
+      deduplicateArray([
+        account_address,
+        invite?.account_owner_address,
+        invite.destination,
+      ])
+    )
   if (deleteError) {
     throw new Error(deleteError.message)
   }
@@ -3985,6 +4406,21 @@ export const getAvailabilityBlocks = async (account_address: string) => {
   return sortedBlocks
 }
 
+const getMeetingTypesLean = async (
+  account_address: string
+): Promise<Array<MeetingType> | null> => {
+  // we do not need all the details, just the basic info
+  const { data, error } = await db.supabase
+    .from<MeetingType>('meeting_type')
+    .select(`*`)
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+  if (error) {
+    Sentry.captureException(error)
+  }
+  return data
+}
 const getMeetingTypes = async (
   account_address: string,
   limit = 10,
@@ -4110,7 +4546,7 @@ const createMeetingType = async (
   meetingType: CreateMeetingTypeRequest
 ) => {
   await checkSlugExists(account_address, meetingType.slug)
-  const payload: BaseMeetingType = {
+  const payload: TablesInsert<'meeting_type'> = {
     account_owner_address: account_address,
     type: meetingType.type,
     min_notice_minutes: meetingType.min_notice_minutes,
@@ -4170,6 +4606,10 @@ const createMeetingType = async (
           payment_channel: meetingType?.plan.payment_channel,
           payment_address: meetingType?.plan.payment_address,
           default_chain_id: meetingType?.plan.crypto_network,
+          default_token: meetingType?.plan.default_token,
+          payment_methods: meetingType?.plan?.payment_methods || [
+            PaymentType.CRYPTO,
+          ],
         },
       ])
     if (planError) {
@@ -4177,6 +4617,36 @@ const createMeetingType = async (
     }
   }
   return data?.[0] as MeetingType
+}
+const addFiatPaymentMethodToAllMeetingTypes = async (
+  account_address: string
+) => {
+  const { data, error } = await db.supabase.rpc<Tables<'meeting_type_plan'>>(
+    'get_meeting_type_plans_by_account',
+    {
+      account_address,
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  await Promise.all(
+    data.map(async plan => {
+      if (!plan.payment_methods.includes(PaymentType.FIAT)) {
+        const updatedPaymentMethods = [PaymentType.CRYPTO, PaymentType.FIAT]
+        const { error: updateError } = await db.supabase
+          .from<Tables<'meeting_type_plan'>>('meeting_type_plan')
+          .update({
+            payment_methods: updatedPaymentMethods,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('meeting_type_id', plan.meeting_type_id)
+        if (updateError) {
+          return updateError
+        }
+      }
+    })
+  )
 }
 const deleteMeetingType = async (
   account_address: string,
@@ -4313,7 +4783,7 @@ const updateMeetingType = async (
   }
   if (meetingType?.plan) {
     const { error: insertPlanError } = await db.supabase
-      .from('meeting_type_plan')
+      .from<Tables<'meeting_type_plan'>>('meeting_type_plan')
       .update({
         type: meetingType?.plan.type,
         price_per_slot: meetingType?.plan.price_per_slot,
@@ -4321,6 +4791,8 @@ const updateMeetingType = async (
         payment_channel: meetingType?.plan.payment_channel,
         payment_address: meetingType?.plan.payment_address,
         default_chain_id: meetingType?.plan.crypto_network,
+        default_token: meetingType?.plan.default_token,
+        payment_methods: meetingType?.plan?.payment_methods,
         updated_at: new Date().toISOString(),
       })
       .eq('meeting_type_id', meeting_type_id)
@@ -4359,9 +4831,67 @@ const updateAvailabilityBlockMeetingTypes = async (
   )
 }
 
+const getTypeMeetingAvailabilityTypeFromDB = async (
+  id: string
+): Promise<MeetingType['availabilities'] | null> => {
+  if (id === NO_MEETING_TYPE) return null
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .select(
+      `
+    *,
+    availabilities: meeting_type_availabilities(availabilities(*))
+    `
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new MeetingTypeNotFound()
+  }
+  return data?.availabilities?.map(
+    (availability: { availabilities: MeetingType['availabilities'][0] }) =>
+      availability.availabilities
+  )
+}
 const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
   const { data, error } = await db.supabase
     .from('meeting_type')
+    .select(
+      `
+    *,
+    plan: meeting_type_plan(*),
+    connected_calendars: meeting_type_calendars(
+       connected_calendars(id, email, provider)
+    )
+    `
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new MeetingTypeNotFound()
+  }
+  data.plan = data.plan?.[0] || null
+  data.calendars = data?.connected_calendars?.map(
+    (calendar: { connected_calendars: ConnectedCalendarCore }) =>
+      calendar.connected_calendars
+  )
+  return data
+}
+const getMeetingTypeFromDBLean = async (id: string) => {
+  const { data, error } = await db.supabase
+    .from<
+      Tables<'meeting_type'> & {
+        plan: Tables<'meeting_type_plan'>
+      }
+    >('meeting_type')
     .select(
       `
     *,
@@ -4377,59 +4907,378 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
   if (!data) {
     throw new MeetingTypeNotFound()
   }
-  data.plan = data.plan?.[0] || null
+  data.plan = Array.isArray(data.plan) ? data.plan[0] : data.plan
   return data
 }
-const createCryptoTransaction = async (
-  transactionRequest: ConfirmCryptoTransactionRequest,
-  account_address: string
+// Function to get transactions for a wallet (both sent and received) with optional token filtering
+export const getWalletTransactions = async (
+  walletAddress: string,
+  tokenAddress?: string,
+  chainId?: number,
+  limit = 50,
+  offset = 0,
+  searchQuery?: string
 ) => {
-  const chainInfo = getChainInfo(transactionRequest.chain)
-  if (!chainInfo?.id) {
-    throw new ChainNotFound(transactionRequest.chain)
+  // Build base query for count
+  let countQuery = db.supabase
+    .from('transactions')
+    .select('*', { count: 'exact', head: true })
+    .or(
+      `initiator_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
+    )
+
+  // Apply optional token and chain filters to count query
+  if (tokenAddress && typeof tokenAddress === 'string') {
+    countQuery = countQuery.eq('token_address', tokenAddress.toLowerCase())
   }
-  const { feeInUSD, gasUsed, from } = await getTransactionFeeThirdweb(
-    transactionRequest.transaction_hash,
-    transactionRequest.chain
-  )
-  const payload: BaseTransaction = {
-    method: PaymentType.CRYPTO,
-    transaction_hash:
-      transactionRequest.transaction_hash.toLowerCase() as Address,
-    amount: transactionRequest.amount,
-    direction: PaymentDirection.CREDIT,
-    chain_id: chainInfo?.id,
-    token_address: from,
-    fiat_equivalent: transactionRequest.fiat_equivalent,
-    meeting_type_id: transactionRequest?.meeting_type_id,
-    initiator_address: account_address,
-    status: PaymentStatus.COMPLETED,
-    token_type: TokenType.ERC20,
-    confirmed_at: new Date().toISOString(),
-    currency: Currency.USD,
-    total_fee: feeInUSD,
-    metadata: {},
-    fee_breakdown: {
-      gas_used: gasUsed,
-      fee_in_usd: feeInUSD,
-    },
+
+  if (chainId && typeof chainId === 'number') {
+    countQuery = countQuery.eq('chain_id', chainId)
   }
-  const { data, error } = await db.supabase.from('transactions').insert(payload)
+
+  const { count: totalCount, error: countError } = await countQuery
+
+  if (countError) {
+    throw new Error(countError.message)
+  }
+
+  // Build base query for transactions
+  let query = db.supabase
+    .from('transactions')
+    .select('*')
+    .or(
+      `initiator_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
+    )
+
+  // Apply optional token and chain filters
+  if (tokenAddress && typeof tokenAddress === 'string') {
+    query = query.eq('token_address', tokenAddress.toLowerCase())
+  }
+
+  if (chainId && typeof chainId === 'number') {
+    query = query.eq('chain_id', chainId)
+  }
+
+  const { data: transactions, error } = await query
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
   if (error) {
     throw new Error(error.message)
   }
-  const meetingType = await getMeetingTypeFromDB(
-    transactionRequest.meeting_type_id
+
+  // Get meeting data for transactions that have meeting_type_id
+  const transactionsWithMeetingData = await Promise.all(
+    (transactions || []).map(async tx => {
+      if (tx.meeting_type_id) {
+        // Get meeting type data with joined meeting sessions
+        let meetingQuery = db.supabase
+          .from('meeting_type')
+          .select(
+            `
+            id,
+            title,
+            account_owner_address,
+            description,
+            meeting_sessions!inner(
+              id,
+              guest_email,
+              guest_name,
+              session_number,
+              created_at,
+              updated_at
+            )
+          `
+          )
+          .eq('id', tx.meeting_type_id)
+          .eq('meeting_sessions.transaction_id', tx.id)
+
+        if (searchQuery && searchQuery.trim()) {
+          meetingQuery = meetingQuery.filter(
+            'meeting_sessions.guest_name',
+            'ilike',
+            `%${searchQuery.trim().toLowerCase()}%`
+          )
+        }
+
+        const { data: meetingTypeData, error: typeError } =
+          await meetingQuery.single()
+
+        if (typeError) {
+          console.error('Error fetching meeting type:', typeError)
+        }
+
+        let meeting_host_name: string | null = null
+        if (meetingTypeData?.account_owner_address) {
+          const ownerAddr = meetingTypeData.account_owner_address.toLowerCase()
+          const { data: hostPrefs } = await db.supabase
+            .from('account_preferences')
+            .select('name')
+            .eq('owner_account_address', ownerAddr)
+            .single()
+          meeting_host_name = hostPrefs?.name || null
+          if (!meeting_host_name && ownerAddr) {
+            meeting_host_name = `${ownerAddr.slice(0, 3)}***${ownerAddr.slice(
+              -2
+            )}`
+          }
+        }
+
+        const meetingSessions = meetingTypeData?.meeting_sessions || []
+
+        return {
+          ...tx,
+          meeting_types: meetingTypeData
+            ? [
+                {
+                  id: meetingTypeData.id,
+                  title: meetingTypeData.title,
+                  account_owner_address: meetingTypeData.account_owner_address,
+                  description: meetingTypeData.description,
+                },
+              ]
+            : [],
+          meeting_sessions: meetingSessions,
+          meeting_host_name,
+        }
+      } else {
+        return {
+          ...tx,
+          meeting_types: [],
+          meeting_sessions: [],
+        }
+      }
+    })
   )
+
+  const transactionsToProcess =
+    searchQuery && searchQuery.trim()
+      ? transactionsWithMeetingData.filter(
+          tx => tx.meeting_sessions && tx.meeting_sessions.length > 0
+        )
+      : transactionsWithMeetingData
+
+  const processedTransactions = transactionsToProcess.map(tx => {
+    const metadata = tx.metadata
+
+    const isSender =
+      tx.initiator_address.toLowerCase() === walletAddress.toLowerCase()
+    const isReceiver =
+      metadata?.receiver_address?.toLowerCase() === walletAddress.toLowerCase()
+
+    // Determine direction based on whether current wallet is sender or receiver
+    let direction: 'debit' | 'credit' | 'unknown' = 'unknown'
+    let counterparty_address: string | undefined
+    let counterparty_name: string | undefined
+
+    if (isSender) {
+      direction = 'debit'
+      counterparty_address = metadata?.receiver_address
+    } else if (isReceiver) {
+      direction = 'credit'
+      counterparty_address = tx.initiator_address
+    } else {
+      direction = 'unknown'
+      counterparty_address = undefined
+    }
+
+    if (tx.meeting_type_id) {
+      if (direction === 'credit') {
+        counterparty_name = tx?.meeting_sessions?.[0]?.guest_name || undefined
+      } else if (direction === 'debit') {
+        counterparty_name = tx?.meeting_host_name || undefined
+      }
+    }
+
+    return {
+      ...tx,
+      direction,
+      counterparty_address,
+      counterparty_name,
+      has_full_metadata: !!(tx.initiator_address && metadata?.receiver_address),
+    }
+  })
+
+  return {
+    transactions: processedTransactions,
+    totalCount:
+      searchQuery && searchQuery.trim()
+        ? transactionsToProcess.length
+        : totalCount || 0,
+  }
+}
+
+export const getWalletTransactionsByToken = async (
+  walletAddress: string,
+  tokenAddress?: string,
+  chainId?: number,
+  limit = 50,
+  offset = 0
+) => {
+  return getWalletTransactions(
+    walletAddress,
+    tokenAddress,
+    chainId,
+    limit,
+    offset
+  )
+}
+
+const sendWalletDebitEmail = async (
+  initiatorAddress: string,
+  tx: ConfirmCryptoTransactionRequest,
+  fallbackReceiver?: string | null
+) => {
+  try {
+    // Respect user preferences: only send if 'send-tokens' is enabled
+    const prefs = await getPaymentPreferences(initiatorAddress)
+    const notifications = prefs?.notification || []
+    if (!notifications.includes(PaymentNotificationType.SEND_TOKENS)) return
+
+    const senderEmail = await getAccountNotificationSubscriptionEmail(
+      initiatorAddress
+    )
+    if (!senderEmail) return
+
+    await sendCryptoDebitEmail(senderEmail, {
+      amount: tx.fiat_equivalent,
+      currency: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      recipientName:
+        tx.receiver_address || fallbackReceiver || 'Unknown Recipient',
+      transactionId: tx.transaction_hash,
+      transactionDate: new Date().toLocaleString(),
+    })
+  } catch (e) {
+    console.warn('Failed to send wallet transfer email:', e)
+  }
+}
+
+const sendSessionIncomeEmail = async (
+  meetingType: MeetingType | undefined | null,
+  tx: {
+    fiat_equivalent: number
+    guest_name?: string
+    transaction_hash: string
+  }
+) => {
+  try {
+    const hostAddress = meetingType?.account_owner_address
+    if (!hostAddress) return
+
+    // Respect host preferences: only send if 'receive-tokens' is enabled
+    const prefs = await getPaymentPreferences(hostAddress)
+    const notifications = prefs?.notification || [
+      PaymentNotificationType.RECEIVE_TOKENS,
+    ] // default to sending notification if no channel is set
+    if (!notifications.includes(PaymentNotificationType.RECEIVE_TOKENS)) return
+
+    const hostEmail = await getAccountNotificationSubscriptionEmail(hostAddress)
+    if (!hostEmail) return
+
+    await sendSessionBookingIncomeEmail(hostEmail, {
+      amount: tx.fiat_equivalent,
+      currency: Currency.USD,
+      senderName: tx.guest_name || 'Guest',
+      transactionId: tx.transaction_hash,
+      transactionDate: new Date().toLocaleString(),
+    })
+  } catch (e) {
+    console.warn('Failed to send session booking income email:', e)
+  }
+}
+const createCheckOutTransaction = async (
+  transactionRequest: MeetingCheckoutRequest
+) => {
+  const transaction_hash = createHash('sha256')
+    .update(Date.now().toString())
+    .digest('hex')
+    .slice(0, 16)
+  const payload: TablesInsert<'transactions'> = {
+    method: PaymentType.FIAT,
+    status: PaymentStatus.PENDING,
+    meeting_type_id: transactionRequest.meeting_type_id,
+    amount: transactionRequest.amount,
+    direction: PaymentDirection.CREDIT,
+    initiator_address: transactionRequest.guest_address,
+    fiat_equivalent: transactionRequest.amount,
+    currency: Currency.USD,
+    transaction_hash,
+    metadata: {},
+  }
+  const { data, error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .insert(payload)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const getTransactionsById = async (id: string) => {
+  const { data, error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .select()
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const getTransactionsStatusById = async (id: string) => {
+  const { data, error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .select('status')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data?.status
+}
+const confirmFiatTransaction = async (
+  reference_id: string,
+  payload: ICheckoutMetadata,
+  total_fee: number,
+  metadata: Record<string, unknown>
+) => {
+  const meetingType = await getMeetingTypeFromDB(payload.meeting_type_id)
+  const { data, error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .update({
+      status: PaymentStatus.COMPLETED,
+      provider_reference_id: reference_id,
+      confirmed_at: new Date().toISOString(),
+      total_fee,
+      fee_breakdown: {
+        application_fee: total_fee,
+      },
+      metadata: {
+        ...metadata,
+        receiver_address: meetingType.account_owner_address.toLowerCase(),
+        sender_address: payload.guest_address,
+      },
+    })
+    .eq('id', payload.transaction_id)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
   const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
+
   const meetingSessions: Array<BaseMeetingSession> = Array.from(
     { length: totalNoOfSlots },
     (_, i) => ({
-      meeting_type_id: transactionRequest.meeting_type_id,
-      transaction_id: data[0]?.id,
+      meeting_type_id: payload.meeting_type_id!,
+      transaction_id: data?.id,
       session_number: i + 1,
-      guest_address: transactionRequest?.guest_address,
-      guest_email: transactionRequest?.guest_email,
+      guest_address: payload.guest_address,
+      guest_email: payload?.guest_email,
+      guest_name: payload?.guest_name,
       owner_address: meetingType?.account_owner_address,
     })
   )
@@ -4439,27 +5288,231 @@ const createCryptoTransaction = async (
   if (slotError) {
     throw new Error(slotError.message)
   }
-  try {
+
+  // Only send receipt if guest email and name are provided
+  if (payload.guest_name) {
     // don't wait for receipt to be sent before serving a response
-    sendReceiptEmail(
-      transactionRequest.guest_email,
-      transactionRequest.guest_name,
-      {
-        full_name: transactionRequest.guest_name,
-        email_address: transactionRequest.guest_email,
-        plan: meetingType.title,
-        number_of_sessions: totalNoOfSlots.toString(),
-        price: transactionRequest.amount.toString(),
-        payment_method: PaymentType.CRYPTO,
-        transaction_fee: '0',
-        transaction_status: PaymentStatus.COMPLETED,
-        transaction_hash: transactionRequest.transaction_hash,
-      }
-    )
-  } catch (e) {
-    console.error(e)
+    sendReceiptEmailToGuest({
+      guest_name: payload.guest_name,
+      account_address: payload.guest_address,
+      guest_email: payload.guest_email,
+      plan: meetingType?.title || '',
+      number_of_sessions: totalNoOfSlots.toString(),
+      price: data.amount?.toString() || '0',
+      payment_method: data?.method,
+      transaction_fee: String(data.total_fee || 0),
+      transaction_status: PaymentStatus.COMPLETED,
+      transaction_hash: data.transaction_hash || '',
+    })
+  }
+  sendSessionIncomeEmail(meetingType, {
+    fiat_equivalent: data.amount || 0,
+    transaction_hash: data.transaction_hash || '',
+    guest_name: payload.guest_name,
+  })
+}
+const handleUpdateTransactionStatus = async (
+  id: string,
+  status: PaymentStatus
+) => {
+  const { error } = await db.supabase
+    .from<Tables<'transactions'>>('transactions')
+    .update({ status })
+    .eq('id', id)
+
+  if (error) {
+    throw new Error(error.message)
   }
 }
+const createCryptoTransaction = async (
+  transactionRequest: ConfirmCryptoTransactionRequest,
+  account_address?: string
+) => {
+  const chainInfo = getChainInfo(transactionRequest.chain)
+  if (!chainInfo?.id) {
+    throw new ChainNotFound(transactionRequest.chain)
+  }
+  // Fallback if RPC is unavailable
+  let feeInUSD = 0
+  let gasUsed = '0'
+  let receiverAddress: string | null = null
+
+  try {
+    const feeDetails = await getTransactionFeeThirdweb(
+      transactionRequest.transaction_hash,
+      transactionRequest.chain
+    )
+    feeInUSD = feeDetails.feeInUSD
+    gasUsed = feeDetails.gasUsed
+    receiverAddress = feeDetails.receiverAddress
+  } catch (error) {
+    console.warn('Failed to fetch transaction details from RPC:', error)
+    // Use fallback values - transaction will still be created
+    feeInUSD = 0
+    gasUsed = '0'
+    receiverAddress = transactionRequest.receiver_address || null
+  }
+
+  // Determine payment direction based on transaction type
+  const isWalletTransfer = !transactionRequest.meeting_type_id
+  const paymentDirection = isWalletTransfer
+    ? PaymentDirection.DEBIT
+    : PaymentDirection.CREDIT
+
+  const payload: BaseTransaction = {
+    method: transactionRequest.payment_method,
+    transaction_hash:
+      transactionRequest.transaction_hash.toLowerCase() as Address,
+    amount: transactionRequest.amount,
+    direction: paymentDirection,
+    chain_id: chainInfo?.id,
+    token_address: transactionRequest.token_address,
+    fiat_equivalent: transactionRequest.fiat_equivalent,
+    meeting_type_id: transactionRequest?.meeting_type_id,
+    initiator_address: account_address,
+    status: PaymentStatus.COMPLETED,
+    token_type: TokenType.ERC20,
+    confirmed_at: new Date().toISOString(),
+    provider_reference_id: transactionRequest.provider_reference_id,
+    currency: Currency.USD,
+    total_fee: transactionRequest.total_fee || feeInUSD,
+    metadata: {
+      ...transactionRequest.metadata,
+      ...(receiverAddress && {
+        receiver_address: receiverAddress.toLowerCase(),
+      }),
+    },
+    fee_breakdown: {
+      gas_used: gasUsed,
+      fee_in_usd: feeInUSD,
+      ...transactionRequest.fee_breakdown,
+    },
+  }
+  const { data, error } = await db.supabase
+    .from<Transaction>('transactions')
+    .insert(payload)
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  // Notify parties via email
+  if (isWalletTransfer) {
+    await sendWalletDebitEmail(
+      account_address!,
+      transactionRequest,
+      receiverAddress
+    )
+  }
+
+  // Only create meeting sessions and send receipt if this is a meeting-related transaction
+  if (!isWalletTransfer) {
+    const meetingType = await getMeetingTypeFromDB(
+      transactionRequest.meeting_type_id!
+    )
+    const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
+
+    // For meeting payments, add the meeting owner's address to metadata as receiver
+    if (meetingType?.account_owner_address) {
+      const { error: updateError } = await db.supabase
+        .from('transactions')
+        .update({
+          metadata: {
+            sender_address: account_address?.toLowerCase(),
+            receiver_address: meetingType.account_owner_address.toLowerCase(),
+          },
+        })
+        .eq(
+          'transaction_hash',
+          transactionRequest.transaction_hash.toLowerCase()
+        )
+
+      if (updateError) {
+        console.error(
+          'Failed to update transaction metadata with receiver address:',
+          updateError
+        )
+      }
+    }
+
+    const meetingSessions: Array<BaseMeetingSession> = Array.from(
+      { length: totalNoOfSlots },
+      (_, i) => ({
+        meeting_type_id: transactionRequest.meeting_type_id!,
+        transaction_id: data[0]?.id,
+        session_number: i + 1,
+        guest_address: account_address,
+        guest_email: transactionRequest?.guest_email,
+        guest_name: transactionRequest?.guest_name,
+        owner_address: meetingType?.account_owner_address,
+      })
+    )
+    const { error: slotError } = await db.supabase
+      .from('meeting_sessions')
+      .insert(meetingSessions)
+    if (slotError) {
+      throw new Error(slotError.message)
+    }
+
+    // Only send receipt if guest email and name are provided
+    if (transactionRequest.guest_name) {
+      sendReceiptEmailToGuest({
+        guest_name: transactionRequest.guest_name,
+        guest_email: transactionRequest.guest_email,
+        account_address,
+        plan: meetingType?.title || '',
+        number_of_sessions: totalNoOfSlots.toString(),
+        price: transactionRequest.amount.toString(),
+        payment_method: transactionRequest.payment_method,
+        transaction_fee: String(transactionRequest.total_fee || 0),
+        transaction_status: PaymentStatus.COMPLETED,
+        transaction_hash: transactionRequest.transaction_hash,
+      })
+    }
+
+    // Notify host about income
+    await sendSessionIncomeEmail(meetingType, transactionRequest)
+  }
+  return data[0]
+}
+
+const sendReceiptEmailToGuest = async (opts: {
+  guest_name: string
+  guest_email?: string
+  account_address?: string
+  plan: string
+  number_of_sessions: string
+  price: string
+  payment_method: string
+  transaction_fee: string
+  transaction_status: PaymentStatus
+  transaction_hash: string
+}) => {
+  try {
+    let guest_email = opts.guest_email
+    if (!guest_email && opts?.account_address) {
+      guest_email = await getAccountNotificationSubscriptionEmail(
+        opts.account_address
+      )
+    }
+    if (!guest_email || !opts.guest_name) return
+
+    // don't wait for receipt to be sent before serving a response
+    await sendReceiptEmail(guest_email, {
+      full_name: opts.guest_name,
+      email_address: guest_email,
+      plan: opts?.plan || '',
+      number_of_sessions: opts?.number_of_sessions || '1',
+      price: opts?.price || '0',
+      payment_method: opts?.payment_method,
+      transaction_fee: opts?.transaction_fee || '0',
+      transaction_status: opts?.transaction_status,
+      transaction_hash: opts?.transaction_hash,
+    })
+  } catch (e) {
+    console.error('sendReceiptEmailToGuest error:', e)
+  }
+}
+
 const getMeetingSessionsByTxHash = async (
   tx: Address
 ): Promise<Array<MeetingSession>> => {
@@ -4471,7 +5524,7 @@ const getMeetingSessionsByTxHash = async (
       `
     )
     .eq('transaction_hash', tx.toLowerCase())
-    .single()
+    .maybeSingle()
   if (error) {
     throw new Error(error.message)
   }
@@ -4481,7 +5534,6 @@ const getMeetingSessionsByTxHash = async (
 
   return transaction.meeting_sessions || []
 }
-
 const getTransactionBytxHashAndMeetingType = async (
   tx: Address,
   meeting_type_id: string
@@ -4496,7 +5548,8 @@ const getTransactionBytxHashAndMeetingType = async (
     )
     .eq('transaction_hash', tx.toLowerCase())
     .eq('meeting_type_id', meeting_type_id)
-    .single()
+    .eq('status', PaymentStatus.COMPLETED)
+    .maybeSingle()
 
   if (error) {
     throw new Error(error.message)
@@ -4505,6 +5558,22 @@ const getTransactionBytxHashAndMeetingType = async (
     throw new TransactionNotFoundError(tx)
   }
   return transaction
+}
+const getMeetingSessionByMeetingId = async (
+  meeting_id: string,
+  meeting_type_id: string
+) => {
+  const { data: meetingSession, error } = await db.supabase
+    .from('meeting_sessions')
+    .select('*')
+    .eq('id', meeting_id)
+    .eq('meeting_type_id', meeting_type_id)
+    .maybeSingle()
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return meetingSession
 }
 
 const registerMeetingSession = async (tx: Address, meeting_id: string) => {
@@ -4850,36 +5919,1635 @@ const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
   }`
 }
 
-const getAccountCalendarUrl = (
+const getAccountCalendarUrl = async (
   account: Account,
-  ellipsize?: boolean
-): string => {
-  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+  ellipsize?: boolean,
+  meetingTypeId?: string
+): Promise<string> => {
+  let slug = ''
+  if (meetingTypeId) {
+    try {
+      const meetingType = await getMeetingTypeFromDB(meetingTypeId)
+      if (meetingType) {
+        slug = `/${meetingType.slug}`
+      }
+    } catch (e) {
+      Sentry.captureException(e, {
+        extra: {
+          accountAddress: account.address,
+          meetingTypeId,
+        },
+      })
+    }
+  }
+  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}${slug}`
 }
 
 const getOwnerPublicUrlServer = async (
-  ownerAccountAddress: string
+  ownerAccountAddress: string,
+  meetingTypeId?: string
 ): Promise<string> => {
   try {
     const ownerAccount = await getAccountFromDB(ownerAccountAddress)
-    return getAccountCalendarUrl(ownerAccount)
+    return await getAccountCalendarUrl(ownerAccount, undefined, meetingTypeId)
   } catch (error) {
-    // Fallback if account not found
+    Sentry.captureException(error, {
+      extra: {
+        ownerAccountAddress,
+        meetingTypeId,
+      },
+    })
     return `${appUrl}/address/${ownerAccountAddress}`
   }
+}
+const recordOffRampTransaction = async (event: OnrampMoneyWebhook) => {
+  const { data: transactionExists } = await db.supabase
+    .from<BaseTransaction>('transactions')
+    .select('*')
+    .eq('provider_reference_id', event.referenceId)
+    .eq('initiator_address', event.merchantRecognitionId.toLowerCase())
+    .eq('transaction_hash', event.transactionHash.toLowerCase())
+  const status = extractOnRampStatus(event.status)
+  const exists = transactionExists?.[0]
+  const chainId =
+    (await getChainIdFromOnrampMoneyNetwork(event.chainId)) || event.chainId
+  const payload: BaseTransaction = {
+    method: PaymentType.CRYPTO,
+    transaction_hash: event.transactionHash.toLowerCase() as Address,
+    amount: event.actualFiatAmount,
+    direction:
+      event.eventType.toLowerCase() === 'offramp'
+        ? PaymentDirection.DEBIT
+        : PaymentDirection.CREDIT,
+    chain_id: chainId,
+    token_address: await getOnrampMoneyTokenAddress(event.coinCode, chainId),
+    fiat_equivalent: event.actualFiatAmount,
+    initiator_address: event.merchantRecognitionId.toLowerCase() as Address,
+    status,
+    token_type: TokenType.ERC20,
+    confirmed_at: status === 'completed' ? new Date().toISOString() : undefined,
+    currency: currenciesMap[event.fiatType],
+    provider_reference_id: event.referenceId,
+    fee_breakdown: {
+      client_fee: event.clientFee,
+      gateway_fee: event.gatewayFee,
+      on_ramp_fee: event.onRampFee,
+    },
+    total_fee: event.clientFee + event.gatewayFee + event.onRampFee,
+    metadata: {
+      order_id: event.orderId,
+      actual_quantity: event.actualQuantity,
+      kyc_needed: event?.kycNeeded,
+      payment_type: event.paymentType,
+    },
+  }
+
+  if (exists) {
+    // If transaction already exists, update it
+    payload.updated_at = new Date()
+    const { data, error } = await db.supabase
+      .from('transactions')
+      .update(payload)
+      .eq('provider_reference_id', event.referenceId)
+      .eq('initiator_address', event.merchantRecognitionId.toLowerCase())
+    if (error) {
+      throw new Error(error.message)
+    }
+    return data?.[0] as Transaction
+  } else {
+    // If transaction does not exist, insert it
+    const { data, error } = await db.supabase
+      .from('transactions')
+      .insert([payload])
+    if (error) {
+      throw new Error(error.message)
+    }
+    return data?.[0] as Transaction
+  }
+  //TODO: send notification
+}
+
+const getPaymentPreferences = async (
+  owner_account_address: string
+): Promise<PaymentPreferences | null> => {
+  const { data, error } = await db.supabase
+    .from('payment_preferences')
+    .select()
+    .eq('owner_account_address', owner_account_address.toLowerCase())
+    .maybeSingle()
+
+  if (error) {
+    console.error('Database error in getPaymentPreferences:', error)
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
+    Sentry.captureException(error)
+    throw new Error('Could not get payment preferences')
+  }
+
+  // Transform the data to include hasPin without exposing pin_hash
+  if (data) {
+    const { pin_hash, ...rest } = data
+    return {
+      ...rest,
+      hasPin: !!pin_hash,
+    }
+  }
+
+  return null
+}
+
+const createPaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >
+): Promise<PaymentPreferences> => {
+  try {
+    let insertData: typeof data & { pin_hash?: string } = { ...data }
+    if ('pin' in data && typeof data.pin === 'string') {
+      const pinHash = await createPinHash(data.pin)
+      insertData = { ...data, pin_hash: pinHash }
+      delete insertData.pin
+    }
+
+    // Set default notification preferences if not provided
+    if (!insertData.notification || insertData.notification.length === 0) {
+      insertData.notification = [
+        PaymentNotificationType.SEND_TOKENS,
+        PaymentNotificationType.RECEIVE_TOKENS,
+      ]
+    }
+
+    const { data: result, error } = await db.supabase
+      .from('payment_preferences')
+      .upsert(
+        {
+          ...insertData,
+          owner_account_address: owner_account_address.toLowerCase(),
+        },
+        { onConflict: 'owner_account_address' }
+      )
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Database error in createPaymentPreferences:', error)
+      Sentry.captureException(error)
+      throw new Error('Could not create payment preferences')
+    }
+
+    if (!result) {
+      throw new Error('No data returned from database operation')
+    }
+
+    const { pin_hash, ...rest } = result
+    return {
+      ...rest,
+      hasPin: !!pin_hash,
+    }
+  } catch (error) {
+    console.error('Unexpected error in createPaymentPreferences:', error)
+    Sentry.captureException(error)
+    throw error instanceof Error
+      ? error
+      : new Error('Could not create payment preferences')
+  }
+}
+
+const updatePaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >
+): Promise<PaymentPreferences> => {
+  try {
+    let updateData: typeof data & { pin_hash?: string | null } = { ...data }
+    if ('pin' in data) {
+      if (data.pin === null) {
+        updateData = { ...data, pin_hash: null }
+        delete updateData.pin
+      } else if (typeof data.pin === 'string') {
+        const pinHash = await createPinHash(data.pin)
+        updateData = { ...data, pin_hash: pinHash }
+        delete updateData.pin
+      }
+    }
+
+    const { data: result, error } = await db.supabase
+      .from('payment_preferences')
+      .update(updateData)
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Database error in updatePaymentPreferences:', error)
+      Sentry.captureException(error)
+      throw new Error('Could not update payment preferences')
+    }
+
+    if (!result) {
+      throw new Error('No data returned from database operation')
+    }
+
+    const { pin_hash, ...rest } = result
+    return {
+      ...rest,
+      hasPin: !!pin_hash,
+    }
+  } catch (error) {
+    console.error('Unexpected error in updatePaymentPreferences:', error)
+    Sentry.captureException(error)
+    throw error instanceof Error
+      ? error
+      : new Error('Could not update payment preferences')
+  }
+}
+
+const createPinHash = async (pin: string): Promise<string> => {
+  const pinWithSalt = `${pin}${PIN_SALT}`
+  return await argon2.hash(pinWithSalt, {
+    type: argon2.argon2id,
+    memoryCost: 2 ** 16,
+    timeCost: 3,
+    parallelism: 1,
+  })
+}
+
+const verifyUserPin = async (
+  owner_account_address: string,
+  pin: string
+): Promise<boolean> => {
+  try {
+    // Get raw data including pin_hash for verification
+    const { data, error } = await db.supabase
+      .from('payment_preferences')
+      .select('pin_hash')
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .single()
+
+    if (error) {
+      console.error('Error fetching PIN for verification:', error)
+      return false
+    }
+
+    if (!data?.pin_hash) {
+      return false
+    }
+
+    const pinWithSalt = `${pin}${PIN_SALT}`
+    const isValid = await argon2.verify(data.pin_hash, pinWithSalt)
+    return isValid
+  } catch (error) {
+    console.error('Unexpected error in verifyUserPin:', error)
+    return false
+  }
+}
+
+const createVerification = async (
+  owner_account_address: string,
+  code: string,
+  channel: VerificationChannel,
+  expiresAt: Date
+): Promise<void> => {
+  try {
+    const { error } = await db.supabase.from('verifications').insert({
+      owner_account_address: owner_account_address,
+      code_hash: await createPinHash(code),
+      channel: channel,
+      expires_at: expiresAt.toISOString(),
+    })
+
+    if (error) {
+      console.error('Error creating verification:', error)
+      throw new Error('Failed to create verification')
+    }
+  } catch (error) {
+    console.error('Error in createVerification:', error)
+    throw error
+  }
+}
+
+const verifyVerificationCode = async (
+  owner_account_address: string,
+  code: string,
+  channel: VerificationChannel
+): Promise<boolean> => {
+  try {
+    const { data, error } = await db.supabase
+      .from('verifications')
+      .select('*')
+      .eq('owner_account_address', owner_account_address)
+      .eq('channel', channel)
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error('Error fetching verification:', error)
+      return false
+    }
+
+    if (!data || data.length === 0) {
+      return false
+    }
+
+    const verification = data[0]
+
+    const codeWithSalt = `${code}${PIN_SALT}`
+    const isValid = await argon2.verify(verification.code_hash, codeWithSalt)
+
+    if (isValid) {
+      await deleteVerifications(verification.id)
+      return true
+    }
+
+    return false
+  } catch (error) {
+    console.error('Error in verifyVerificationCode:', error)
+    throw error
+  }
+}
+
+const cleanupExpiredVerifications = async (): Promise<void> => {
+  try {
+    const { error } = await db.supabase
+      .from('verifications')
+      .delete()
+      .lt('expires_at', new Date().toISOString())
+
+    if (error) {
+      console.error('Error cleaning up expired verifications:', error)
+      throw new Error('Failed to clean up expired verifications')
+    }
+  } catch (error) {
+    console.error('Error in cleanupExpiredVerifications:', error)
+    throw error
+  }
+}
+
+const invalidatePreviousVerifications = async (
+  owner_account_address: string,
+  channel: VerificationChannel
+): Promise<void> => {
+  try {
+    const { error } = await db.supabase
+      .from('verifications')
+      .update({ expires_at: new Date().toISOString() })
+      .eq('owner_account_address', owner_account_address)
+      .eq('channel', channel)
+      .gt('expires_at', new Date().toISOString())
+
+    if (error) {
+      console.error('Error invalidating previous verifications:', error)
+      throw new Error('Failed to invalidate previous verifications')
+    }
+  } catch (error) {
+    console.error('Error in invalidatePreviousVerifications:', error)
+    throw error
+  }
+}
+
+const deleteVerifications = async (verificationId: string): Promise<void> => {
+  try {
+    const { error } = await db.supabase
+      .from('verifications')
+      .delete()
+      .eq('id', verificationId)
+
+    if (error) {
+      console.error('Error deleting verification:', error)
+      throw new Error('Failed to delete verification')
+    }
+
+    await cleanupExpiredVerifications()
+  } catch (error) {
+    console.error('Error in deleteVerifications:', error)
+    throw error
+  }
+}
+
+const generateUniquePollSlug = async (title: string): Promise<string> => {
+  try {
+    let slug = generatePollSlug(title)
+    let attempts = 0
+
+    while (
+      (await checkPollSlugExists(slug)) &&
+      attempts < QUICKPOLL_SLUG_MAX_ATTEMPTS
+    ) {
+      slug = generatePollSlug(title)
+      attempts++
+    }
+
+    if (attempts >= QUICKPOLL_SLUG_MAX_ATTEMPTS) {
+      // Fallback with timestamp
+      const timestamp = Date.now().toString(36)
+      slug = `${generatePollSlug(title).substring(
+        0,
+        QUICKPOLL_SLUG_FALLBACK_LENGTH
+      )}-${timestamp}`
+    }
+
+    return slug
+  } catch (error) {
+    throw new QuickPollSlugGenerationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const checkPollSlugExists = async (slug: string): Promise<boolean> => {
+  try {
+    const { data, error } = await db.supabase
+      .from('quick_polls')
+      .select('id')
+      .eq('slug', slug)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      throw error
+    }
+
+    return !!data
+  } catch (error) {
+    throw new QuickPollSlugGenerationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const createQuickPoll = async (
+  owner_address: string,
+  pollData: CreateQuickPollRequest
+) => {
+  try {
+    const slug = await generateUniquePollSlug(pollData.title)
+
+    // Create the poll
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .insert([
+        {
+          title: pollData.title,
+          description: pollData.description,
+          duration_minutes: pollData.duration_minutes,
+          starts_at: pollData.starts_at,
+          ends_at: pollData.ends_at,
+          expires_at: pollData.expires_at,
+          status: PollStatus.ONGOING,
+          visibility: PollVisibility.PUBLIC,
+          permissions: pollData.permissions,
+          slug,
+        },
+      ])
+      .select()
+      .single()
+
+    if (pollError) throw pollError
+
+    // Add the owner as a participant
+    const ownerAccount = await getAccountFromDB(owner_address)
+    const ownerEmail = await getAccountNotificationSubscriptionEmail(
+      owner_address
+    )
+
+    // Get owner's availability
+    let ownerAvailableSlots: AvailabilitySlot[] = []
+    try {
+      const availabilityId = await getDefaultAvailabilityBlockId(owner_address)
+      if (availabilityId) {
+        const { data: availability } = await db.supabase
+          .from('availabilities')
+          .select('weekly_availability')
+          .eq('id', availabilityId)
+          .single()
+
+        if (availability?.weekly_availability) {
+          ownerAvailableSlots = availability.weekly_availability.map(
+            (day: AvailabilitySlot) => ({
+              weekday: day.weekday,
+              ranges: day.ranges || [],
+            })
+          )
+        }
+      }
+    } catch (error) {
+      console.warn(`Could not fetch owner availability:`, error)
+    }
+
+    const ownerParticipant = {
+      poll_id: poll.id,
+      account_address: owner_address,
+      guest_name: ownerAccount.preferences?.name || '',
+      guest_email: ownerEmail || '',
+      status: QuickPollParticipantStatus.ACCEPTED,
+      participant_type: QuickPollParticipantType.SCHEDULER,
+      timezone: ownerAccount.preferences?.timezone || 'UTC',
+      available_slots: ownerAvailableSlots,
+    }
+
+    const invitees = await Promise.all(
+      pollData.participants.map(async p => {
+        let timezone = 'UTC'
+        let email = ''
+        let availableSlots: AvailabilitySlot[] = []
+
+        // For account owners, fetch their timezone and availability from account preferences
+        if (p.account_address) {
+          try {
+            const participantAccount = await getAccountFromDB(p.account_address)
+            email = await getAccountNotificationSubscriptionEmail(
+              p.account_address
+            )
+            timezone = participantAccount.preferences?.timezone || 'UTC'
+
+            // Get the user's default availability block
+            const availabilityId = await getDefaultAvailabilityBlockId(
+              p.account_address
+            )
+            if (availabilityId) {
+              const { data: availability } = await db.supabase
+                .from('availabilities')
+                .select('weekly_availability')
+                .eq('id', availabilityId)
+                .single()
+
+              if (availability?.weekly_availability) {
+                // Convert weekly availability to poll format
+                availableSlots = availability.weekly_availability.map(
+                  (day: AvailabilitySlot) => ({
+                    weekday: day.weekday,
+                    ranges: day.ranges || [],
+                  })
+                )
+              }
+            }
+          } catch (error) {
+            console.warn(
+              `Could not fetch timezone/availability for ${p.account_address}:`,
+              error
+            )
+          }
+        } else if (p.guest_email) {
+          // For guest participants, use the provided email directly
+          email = p.guest_email
+        }
+
+        return {
+          poll_id: poll.id,
+          account_address: p.account_address,
+          guest_name: p.name || '',
+          guest_email: email || '',
+          status: QuickPollParticipantStatus.PENDING,
+          participant_type: QuickPollParticipantType.INVITEE,
+          timezone,
+          available_slots: availableSlots,
+        }
+      })
+    )
+
+    const participantsToAdd = [ownerParticipant, ...invitees]
+
+    const { error: participantsError } = await db.supabase
+      .from('quick_poll_participants')
+      .insert(participantsToAdd)
+
+    if (participantsError) throw participantsError
+
+    // Send invitation emails to all participants (excluding the host)
+    const inviterName =
+      ownerAccount.preferences?.name || ellipsizeAddress(owner_address)
+
+    for (const participant of invitees) {
+      if (participant.guest_email) {
+        emailQueue.add(async () => {
+          try {
+            await sendPollInviteEmail(
+              participant.guest_email,
+              inviterName,
+              pollData.title,
+              slug
+            )
+            return true
+          } catch (error) {
+            console.error(
+              `Failed to send invitation email to ${participant.guest_email}:`,
+              error
+            )
+            return false
+          }
+        })
+      }
+    }
+
+    return poll
+  } catch (error) {
+    if (error instanceof QuickPollSlugGenerationError) {
+      throw error
+    }
+    throw new QuickPollCreationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
+  try {
+    // Get the poll
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('*')
+      .eq('id', pollId)
+      .single()
+
+    if (pollError) throw pollError
+    if (!poll) {
+      throw new QuickPollNotFoundError(pollId)
+    }
+
+    // Get participants with account information
+    const { data: participants, error: participantsError } = await db.supabase
+      .from('quick_poll_participants')
+      .select(
+        `
+        *,
+        accounts:account_address (
+          address,
+          account_preferences (
+            name,
+            description
+          )
+        )
+      `
+      )
+      .eq('poll_id', pollId)
+      .neq('status', QuickPollParticipantStatus.DELETED)
+
+    if (participantsError) throw participantsError
+
+    // Get host information
+    const hostParticipant = participants.find(
+      p => p.participant_type === QuickPollParticipantType.SCHEDULER
+    )
+    let hostName = ''
+    let hostAddress = ''
+
+    if (hostParticipant) {
+      hostAddress = hostParticipant.account_address || ''
+      if (hostParticipant.accounts?.account_preferences?.[0]?.name) {
+        hostName = hostParticipant.accounts.account_preferences[0].name
+      } else if (hostParticipant.guest_name) {
+        hostName = hostParticipant.guest_name
+      }
+    }
+
+    // Check if requesting user is a participant
+    const isParticipant = requestingAddress
+      ? participants.some(p => p.account_address === requestingAddress)
+      : false
+
+    // Check if requesting user can edit (is scheduler/owner)
+    const canEdit = requestingAddress
+      ? participants.some(
+          p =>
+            p.account_address === requestingAddress &&
+            (p.participant_type === QuickPollParticipantType.SCHEDULER ||
+              p.participant_type === QuickPollParticipantType.OWNER)
+        )
+      : false
+
+    return {
+      poll: {
+        ...poll,
+        participants: participants.map(p => ({
+          ...p,
+          account_name:
+            p.accounts?.account_preferences?.[0]?.name || p.guest_name,
+        })),
+        participant_count: participants.length,
+        host_name: hostName,
+        host_address: hostAddress,
+      },
+      is_participant: isParticipant,
+      can_edit: canEdit,
+    }
+  } catch (error) {
+    if (error instanceof QuickPollNotFoundError) {
+      throw error
+    }
+    throw new Error(error instanceof Error ? error.message : 'Unknown error')
+  }
+}
+
+const getQuickPollBySlug = async (slug: string, requestingAddress?: string) => {
+  try {
+    // Get the poll
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('*')
+      .eq('slug', slug)
+      .single()
+
+    if (pollError) throw pollError
+    if (!poll) {
+      throw new QuickPollSlugNotFoundError(slug)
+    }
+
+    return getQuickPollById(poll.id, requestingAddress)
+  } catch (error) {
+    if (
+      error instanceof QuickPollSlugNotFoundError ||
+      error instanceof QuickPollNotFoundError
+    ) {
+      throw error
+    }
+    throw new Error(error instanceof Error ? error.message : 'Unknown error')
+  }
+}
+
+const getQuickPollsForAccount = async (
+  accountAddress: string,
+  limit = QUICKPOLL_DEFAULT_LIMIT,
+  offset = QUICKPOLL_DEFAULT_OFFSET,
+  status?: PollStatus | PollStatus[],
+  searchQuery?: string
+) => {
+  try {
+    const safeLimit = Math.min(limit, QUICKPOLL_MAX_LIMIT)
+
+    const { data: userParticipations, error: participationError } =
+      await db.supabase
+        .from('quick_poll_participants')
+        .select('poll_id')
+        .eq('account_address', accountAddress)
+
+    if (participationError) throw participationError
+
+    if (!userParticipations || userParticipations.length === 0) {
+      return {
+        polls: [],
+        total_count: 0,
+        has_more: false,
+      }
+    }
+
+    const pollIds = userParticipations.map(p => p.poll_id)
+
+    // Now get all polls with all their participants
+    let query = db.supabase
+      .from('quick_polls')
+      .select(
+        `
+        *,
+        quick_poll_participants (
+          participant_type,
+          status,
+          account_address,
+          guest_name,
+          accounts:account_address (
+            account_preferences (name)
+          )
+        )
+      `
+      )
+      .in('id', pollIds)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + safeLimit - 1)
+
+    if (status) {
+      if (Array.isArray(status)) {
+        query = query.in('status', status)
+      } else {
+        query = query.eq('status', status)
+      }
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      query = query.ilike('title', `%${searchQuery.trim()}%`)
+    }
+
+    const { data: polls, error } = await query
+
+    if (error) throw error
+
+    let countQuery = db.supabase
+      .from('quick_polls')
+      .select('*', { count: 'exact', head: true })
+      .in('id', pollIds)
+
+    if (status) {
+      if (Array.isArray(status)) {
+        countQuery = countQuery.in('status', status)
+      } else {
+        countQuery = countQuery.eq('status', status)
+      }
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      countQuery = countQuery.ilike('title', `%${searchQuery.trim()}%`)
+    }
+
+    const { count: totalCount, error: countError } = await countQuery
+
+    if (countError) throw countError
+
+    // Process the results
+    const processedPolls = polls.map(poll => {
+      // Find the requesting user's participation details
+      const userParticipating = poll.quick_poll_participants.find(
+        (p: QuickPollParticipant) => p.account_address === accountAddress
+      )
+
+      // Find the host (scheduler)
+      const host = poll.quick_poll_participants.find(
+        (p: QuickPollParticipant) =>
+          p.participant_type === QuickPollParticipantType.SCHEDULER
+      )
+
+      return {
+        ...poll,
+        host_name:
+          host?.accounts?.account_preferences?.name ||
+          host?.guest_name ||
+          'Unknown',
+        host_address: host?.account_address || '',
+        user_participant_type: userParticipating?.participant_type,
+        user_status: userParticipating?.status,
+      }
+    })
+
+    return {
+      polls: processedPolls,
+      total_count: totalCount || 0,
+      has_more: offset + processedPolls.length < (totalCount || 0),
+    }
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Unknown error')
+  }
+}
+
+const updateQuickPoll = async (
+  pollId: string,
+  ownerAddress: string,
+  updates: UpdateQuickPollRequest
+) => {
+  try {
+    // Verify the user can edit this poll
+    const { data: participant, error: participantError } = await db.supabase
+      .from('quick_poll_participants')
+      .select('participant_type')
+      .eq('poll_id', pollId)
+      .eq('account_address', ownerAddress)
+      .in('participant_type', ['scheduler', 'owner'])
+      .single()
+
+    if (participantError || !participant) {
+      throw new QuickPollUnauthorizedError('You cannot edit this poll')
+    }
+
+    // Handle participant updates if provided
+    if (updates.participants) {
+      await updateQuickPollParticipants(pollId, updates.participants)
+    }
+
+    const { participants, ...pollUpdates } = updates
+
+    const { data: poll, error } = await db.supabase
+      .from('quick_polls')
+      .update({ ...pollUpdates, updated_at: new Date().toISOString() })
+      .eq('id', pollId)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return poll
+  } catch (error) {
+    if (error instanceof QuickPollUnauthorizedError) {
+      throw error
+    }
+    throw new QuickPollUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const updateQuickPollParticipants = async (
+  pollId: string,
+  participantUpdates: {
+    toAdd?: AddParticipantData[]
+    toRemove?: string[]
+  }
+) => {
+  try {
+    // Get poll details for email
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('title, slug')
+      .eq('id', pollId)
+      .single()
+
+    if (pollError) throw pollError
+
+    // Get poll owner info for email
+    const { data: ownerParticipant, error: ownerError } = await db.supabase
+      .from('quick_poll_participants')
+      .select('account_address, guest_name')
+      .eq('poll_id', pollId)
+      .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+      .single()
+
+    if (ownerError || !ownerParticipant) {
+      throw new QuickPollUpdateError('Poll owner not found')
+    }
+
+    const inviterName = ownerParticipant.guest_name || 'Poll Host'
+
+    // Add new participants
+    if (participantUpdates.toAdd && participantUpdates.toAdd.length > 0) {
+      for (const participantData of participantUpdates.toAdd) {
+        try {
+          await addQuickPollParticipant(pollId, participantData)
+
+          // Send invitation email to the new participant
+          const participantEmail =
+            participantData.guest_email ||
+            (participantData.account_address
+              ? await getAccountNotificationSubscriptionEmail(
+                  participantData.account_address
+                )
+              : '')
+          if (participantEmail) {
+            emailQueue.add(async () => {
+              try {
+                await sendPollInviteEmail(
+                  participantEmail,
+                  inviterName,
+                  poll.title,
+                  poll.slug
+                )
+                return true
+              } catch (emailError) {
+                console.error(
+                  `Failed to send invitation email to ${participantEmail}:`,
+                  emailError
+                )
+                return false
+              }
+            })
+          }
+        } catch (addError) {
+          throw addError
+        }
+      }
+    }
+
+    if (participantUpdates.toRemove && participantUpdates.toRemove.length > 0) {
+      const { error: removeError } = await db.supabase
+        .from('quick_poll_participants')
+        .update({ status: QuickPollParticipantStatus.DELETED })
+        .in('id', participantUpdates.toRemove)
+        .eq('poll_id', pollId)
+        .select()
+
+      if (removeError) {
+        throw removeError
+      }
+    }
+  } catch (error) {
+    if (error instanceof QuickPollParticipantCreationError) {
+      throw error
+    }
+
+    throw new QuickPollUpdateError(
+      `Failed to update participants: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    )
+  }
+}
+
+const deleteQuickPoll = async (pollId: string, ownerAddress: string) => {
+  try {
+    // Verify the user can delete this poll
+    const { data: participant, error: participantError } = await db.supabase
+      .from('quick_poll_participants')
+      .select('participant_type')
+      .eq('poll_id', pollId)
+      .eq('account_address', ownerAddress)
+      .in('participant_type', ['scheduler', 'owner'])
+      .single()
+
+    if (participantError || !participant) {
+      throw new QuickPollUnauthorizedError('You cannot delete this poll')
+    }
+
+    // Delete participants first
+    const { error: participantsError } = await db.supabase
+      .from('quick_poll_participants')
+      .delete()
+      .eq('poll_id', pollId)
+
+    if (participantsError) throw participantsError
+
+    // Delete the poll
+    const { error: pollError } = await db.supabase
+      .from('quick_polls')
+      .delete()
+      .eq('id', pollId)
+
+    if (pollError) throw pollError
+
+    return { success: true }
+  } catch (error) {
+    if (error instanceof QuickPollUnauthorizedError) {
+      throw error
+    }
+    throw new QuickPollDeletionError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const expireStalePolls = async () => {
+  try {
+    const now = new Date().toISOString()
+
+    const { data, error } = await db.supabase
+      .from('quick_polls')
+      .update({ status: PollStatus.EXPIRED, updated_at: now })
+      .eq('status', PollStatus.ONGOING)
+      .lt('expires_at', now)
+      .select('id')
+
+    if (error) throw error
+
+    const expiredCount = data?.length || 0
+
+    return {
+      success: true,
+      expiredCount,
+      timestamp: now,
+    }
+  } catch (error) {
+    throw new Error(
+      `Failed to expire polls: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    )
+  }
+}
+
+const updateQuickPollParticipantStatus = async (
+  participantId: string,
+  status: QuickPollParticipantStatus,
+  availableSlots?: Record<string, any>[]
+) => {
+  try {
+    const updates: any = {
+      status,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (availableSlots) {
+      updates.available_slots = availableSlots
+    }
+
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update(updates)
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new QuickPollParticipantUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const getQuickPollParticipants = async (pollId: string) => {
+  try {
+    const { data: participants, error } = await db.supabase
+      .from('quick_poll_participants')
+      .select(
+        `
+        *,
+        accounts:account_address (
+          account_preferences (
+            name,
+            description
+          )
+        )
+      `
+      )
+      .eq('poll_id', pollId)
+      .neq('status', QuickPollParticipantStatus.DELETED)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+
+    return participants.map(p => ({
+      ...p,
+      account_name: p.accounts?.account_preferences?.[0]?.name || p.guest_name,
+    }))
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Unknown error')
+  }
+}
+
+const addQuickPollParticipant = async (
+  pollId: string,
+  participantData: AddParticipantData
+) => {
+  try {
+    // If a matching deleted participant exists, revive instead of inserting new
+    let existingParticipant: any | null = null
+
+    if (participantData.account_address) {
+      const { data, error: existingByAccountError } = await db.supabase
+        .from('quick_poll_participants')
+        .select('*')
+        .eq('poll_id', pollId)
+        .eq('account_address', participantData.account_address)
+        .maybeSingle()
+
+      if (existingByAccountError) throw existingByAccountError
+      existingParticipant = data
+    } else if (participantData.guest_email) {
+      const { data, error: existingByEmailError } = await db.supabase
+        .from('quick_poll_participants')
+        .select('*')
+        .eq('poll_id', pollId)
+        .eq('guest_email', participantData.guest_email)
+        .maybeSingle()
+
+      if (existingByEmailError) throw existingByEmailError
+      existingParticipant = data
+    }
+
+    if (existingParticipant) {
+      if (existingParticipant.status === QuickPollParticipantStatus.DELETED) {
+        const updates: QuickPollParticipantUpdateFields = {
+          status: QuickPollParticipantStatus.PENDING,
+        }
+        // Optionally refresh name or type if provided now
+        if (participantData.guest_name)
+          updates.guest_name = participantData.guest_name
+
+        const { data: revivedParticipant, error: reviveParticipantError } =
+          await db.supabase
+            .from('quick_poll_participants')
+            .update(updates)
+            .eq('id', existingParticipant.id)
+            .select()
+            .single()
+
+        if (reviveParticipantError) throw reviveParticipantError
+        return revivedParticipant
+      }
+
+      // Already present and not deleted: just return it
+      return existingParticipant
+    }
+
+    // For account owners, fetch their weekly availability
+    let availableSlots: AvailabilitySlot[] = []
+    let timezone = 'UTC'
+
+    if (participantData.account_address) {
+      try {
+        const participantAccount = await getAccountFromDB(
+          participantData.account_address
+        )
+        timezone = participantAccount.preferences?.timezone || 'UTC'
+
+        // Get the user's default availability block
+        const availabilityId = await getDefaultAvailabilityBlockId(
+          participantData.account_address
+        )
+        if (availabilityId) {
+          const { data: availability } = await db.supabase
+            .from('availabilities')
+            .select('weekly_availability')
+            .eq('id', availabilityId)
+            .single()
+
+          if (availability?.weekly_availability) {
+            // Convert weekly availability to poll format
+            availableSlots = availability.weekly_availability.map(
+              (day: AvailabilitySlot) => ({
+                weekday: day.weekday,
+                ranges: day.ranges || [],
+              })
+            )
+          }
+        }
+      } catch (error) {
+        console.warn(
+          `Could not fetch timezone/availability for ${participantData.account_address}:`,
+          error
+        )
+      }
+    }
+
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .insert([
+        {
+          poll_id: pollId,
+          account_address: participantData.account_address,
+          guest_name: participantData.guest_name,
+          guest_email: participantData.guest_email,
+          status: QuickPollParticipantStatus.PENDING,
+          participant_type: participantData.participant_type,
+          timezone,
+          available_slots: availableSlots,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return participant
+  } catch (error) {
+    throw new QuickPollParticipantCreationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
+  try {
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('id, status')
+      .eq('id', pollId)
+      .single()
+
+    if (pollError) throw pollError
+    if (!poll) {
+      throw new QuickPollNotFoundError(pollId)
+    }
+
+    if (poll.status === PollStatus.CANCELLED) {
+      throw new QuickPollAlreadyCancelledError()
+    }
+
+    if (poll.status === PollStatus.COMPLETED) {
+      throw new QuickPollAlreadyCompletedError()
+    }
+
+    // Check if user is the owner (has SCHEDULER role)
+    const { data: participant, error: participantError } = await db.supabase
+      .from('quick_poll_participants')
+      .select('participant_type')
+      .eq('poll_id', pollId)
+      .eq('account_address', ownerAddress)
+      .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+      .single()
+
+    if (participantError || !participant) {
+      throw new QuickPollUnauthorizedError(
+        'Only the poll creator can cancel this poll'
+      )
+    }
+
+    // Update poll status to cancelled and set expires_at to current time
+    const { data: updatedPoll, error: updateError } = await db.supabase
+      .from('quick_polls')
+      .update({
+        status: PollStatus.CANCELLED,
+        expires_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pollId)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
+
+    return updatedPoll
+  } catch (error) {
+    if (
+      error instanceof QuickPollNotFoundError ||
+      error instanceof QuickPollUnauthorizedError ||
+      error instanceof QuickPollAlreadyCancelledError ||
+      error instanceof QuickPollAlreadyCompletedError
+    ) {
+      throw error
+    }
+    throw new QuickPollCancellationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const updateQuickPollParticipantAvailability = async (
+  participantId: string,
+  availableSlots: AvailabilitySlot[],
+  timezone?: string
+) => {
+  try {
+    const updates: any = {
+      available_slots: availableSlots,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (timezone) {
+      updates.timezone = timezone
+    }
+
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update(updates)
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new QuickPollParticipantUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const updateQuickPollGuestDetails = async (
+  participantId: string,
+  guestName: string,
+  guestEmail: string
+) => {
+  try {
+    const updates = {
+      guest_name: guestName,
+      guest_email: guestEmail,
+      status: QuickPollParticipantStatus.ACCEPTED,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update(updates)
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new QuickPollParticipantUpdateError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const saveQuickPollCalendar = async (
+  participantId: string,
+  email: string,
+  provider: string,
+  payload?: Record<string, unknown>
+) => {
+  try {
+    const { data: calendar, error } = await db.supabase
+      .from('quick_poll_calendars')
+      .insert([
+        {
+          participant_id: participantId,
+          email,
+          provider,
+          payload,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+    return calendar
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to save calendar'
+    )
+  }
+}
+
+const getQuickPollParticipantById = async (participantId: string) => {
+  try {
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .select('*')
+      .eq('id', participantId)
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to get participant'
+    )
+  }
+}
+
+const getQuickPollParticipantByIdentifier = async (
+  pollId: string,
+  identifier: string // either account_address or guest_email
+) => {
+  try {
+    const { data: participant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .select('*')
+      .eq('poll_id', pollId)
+      .or(`account_address.eq.${identifier},guest_email.eq.${identifier}`)
+      .single()
+
+    if (error) throw error
+    if (!participant) {
+      throw new QuickPollParticipantNotFoundError(identifier)
+    }
+
+    return participant
+  } catch (error) {
+    if (error instanceof QuickPollParticipantNotFoundError) {
+      throw error
+    }
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to get participant'
+    )
+  }
+}
+const getActivePaymentAccountDB = async (
+  account_address: string,
+  provider = PaymentProvider.STRIPE
+) => {
+  const { data, error } = await db.supabase
+    .from<Tables<'payment_accounts'>>('payment_accounts')
+    .select()
+    .eq('owner_account_address', account_address)
+    .eq('provider', provider)
+    .neq('status', PaymentAccountStatus.DISCONNECTED)
+
+  if (error) {
+    throw new Error('Could not fetch payment account')
+  }
+
+  return Array.isArray(data) ? data[0] : data
+}
+const getActivePaymentAccount = async (
+  account_address: string,
+  provider = PaymentProvider.STRIPE
+): Promise<ActivePaymentAccount> => {
+  const payment_account = await getActivePaymentAccountDB(
+    account_address,
+    provider
+  )
+  if (
+    payment_account?.provider_account_id &&
+    payment_account.provider === PaymentProvider.STRIPE
+  ) {
+    const stripe = new StripeService()
+    const account = await stripe.accounts.retrieve(
+      payment_account?.provider_account_id
+    )
+
+    return {
+      ...payment_account,
+      username:
+        account?.business_profile?.name ||
+        (account?.individual?.first_name
+          ? `${account.individual.first_name} ${account.individual.last_name}`
+          : 'Unnamed'),
+    }
+  }
+  return payment_account
+}
+const getPaymentAccountByProviderId = async (
+  provider_account_id: string,
+  provider = PaymentProvider.STRIPE
+): Promise<Tables<'payment_accounts'> | null> => {
+  const { data: payment_account, error } = await db.supabase
+    .from<Tables<'payment_accounts'>>('payment_accounts')
+    .select()
+    .eq('provider_account_id', provider_account_id)
+    .eq('provider', provider)
+    .maybeSingle()
+  if (error) {
+    throw new Error('Could not fetch payment account')
+  }
+  return payment_account
+}
+const getOrCreatePaymentAccount = async (
+  account_address: string,
+  provider = PaymentProvider.STRIPE
+): Promise<Tables<'payment_accounts'>> => {
+  const { data: payment_account, error } = await db.supabase
+    .from<Tables<'payment_accounts'>>('payment_accounts')
+    .select()
+    .eq('owner_account_address', account_address)
+    .eq('provider', provider)
+  if (error) {
+    throw new Error('Could not fetch payment account')
+  }
+  if (!payment_account || payment_account.length === 0) {
+    const { data, error: insertError } = await db.supabase
+      .from<Tables<'payment_accounts'>>('payment_accounts')
+      .insert([
+        {
+          owner_account_address: account_address,
+          provider,
+          status: PaymentAccountStatus.PENDING,
+        },
+      ])
+      .select()
+      .single()
+    if (insertError) {
+      throw new Error('Could not create payment account')
+    }
+    await addFiatPaymentMethodToAllMeetingTypes(account_address)
+    return data
+  } else {
+    return payment_account[0]
+  }
+}
+
+const updatePaymentAccount = async (
+  id: number,
+  owner_account_address: string,
+  data: TablesUpdate<'payment_accounts'>
+) => {
+  const { data: updatedPaymentAccount, error } = await db.supabase
+    .from<Tables<'payment_accounts'>>('payment_accounts')
+    .update({
+      ...data,
+      owner_account_address,
+      id,
+    })
+    .eq('id', id)
+    .eq('owner_account_address', owner_account_address)
+  if (error) {
+    throw new Error('Could not update payment account')
+  }
+  return Array.isArray(updatedPaymentAccount)
+    ? updatedPaymentAccount[0]
+    : updatedPaymentAccount
 }
 
 export {
   acceptContactInvite,
+  addContactInvite,
   addOrUpdateConnectedCalendar,
+  addQuickPollParticipant,
   addUserToGroup,
+  cancelQuickPoll,
   changeGroupRole,
   checkContactExists,
+  cleanupExpiredVerifications,
+  confirmFiatTransaction,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  createCheckOutTransaction,
   createCryptoTransaction,
   createMeetingType,
+  createPaymentPreferences,
+  createPinHash,
+  createQuickPoll,
   createTgConnection,
+  createVerification,
   deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
@@ -4887,11 +7555,15 @@ export {
   deleteGroupMembers,
   deleteMeetingFromDB,
   deleteMeetingType,
+  deleteQuickPoll,
   deleteTgConnection,
+  deleteVerifications,
   editGroup,
+  expireStalePolls,
   findAccountByIdentifier,
   findAccountsByText,
   findGroupsWithSingleMember,
+  getAccountAvatarUrl,
   getAccountFromDB,
   getAccountFromDBPublic,
   getAccountNonce,
@@ -4900,6 +7572,8 @@ export {
   getAccountsNotificationSubscriptionEmails,
   getAccountsNotificationSubscriptions,
   getAccountsWithTgConnected,
+  getActivePaymentAccount,
+  getActivePaymentAccountDB,
   getAppToken,
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
@@ -4918,7 +7592,9 @@ export {
   getGroupAdminsFromDb,
   getGroupInternal,
   getGroupInvites,
+  getGroupInvitesCount,
   getGroupMembersInternal,
+  getGroupMembersOrInvite,
   getGroupName,
   getGroupsAndMembers,
   getGroupsEmpty,
@@ -4928,26 +7604,40 @@ export {
   getMeetingSessionsByTxHash,
   getMeetingsFromDB,
   getMeetingTypeFromDB,
+  getMeetingTypeFromDBLean,
   getMeetingTypes,
   getMeetingTypesForAvailabilityBlock,
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
+  getOrCreatePaymentAccount,
   getOwnerPublicUrlServer,
   getPaidSessionsByMeetingType,
+  getPaymentAccountByProviderId,
+  getPaymentPreferences,
+  getQuickPollById,
+  getQuickPollBySlug,
+  getQuickPollCalendars,
+  getQuickPollParticipantById,
+  getQuickPollParticipantByIdentifier,
+  getQuickPollParticipants,
+  getQuickPollsForAccount,
   getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
-  getUserGroups,
+  getTransactionsById,
+  getTransactionsStatusById,
   handleGuestCancel,
   handleMeetingCancelSync,
+  handleUpdateTransactionStatus,
   handleWebhookEvent,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
+  invalidatePreviousVerifications,
   isGroupAdmin,
   isGroupExists,
   isSlotAvailable,
@@ -4956,6 +7646,7 @@ export {
   leaveGroup,
   manageGroupInvite,
   publicGroupJoin,
+  recordOffRampTransaction,
   registerMeetingSession,
   rejectContactInvite,
   rejectGroupInvite,
@@ -4965,6 +7656,7 @@ export {
   saveConferenceMeetingToDB,
   saveEmailToDB,
   saveMeeting,
+  saveQuickPollCalendar,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   subscribeWithCoupon,
@@ -4977,8 +7669,17 @@ export {
   updateCustomSubscriptionDomain,
   updateMeeting,
   updateMeetingType,
+  updatePaymentAccount,
+  updatePaymentPreferences,
   updatePreferenceAvatar,
+  updateQuickPoll,
+  updateQuickPollGuestDetails,
+  updateQuickPollParticipantAvailability,
+  updateQuickPollParticipants,
+  updateQuickPollParticipantStatus,
   updateRecurringSlots,
   upsertGateCondition,
+  verifyUserPin,
+  verifyVerificationCode,
   workMeetingTypeGates,
 }

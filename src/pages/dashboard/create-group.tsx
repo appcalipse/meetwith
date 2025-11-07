@@ -5,12 +5,17 @@ import {
   FormControl,
   FormLabel,
   Heading,
+  HStack,
+  Icon,
   Input,
+  Link,
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { EditMode } from '@meta/Dashboard'
 import { useRouter } from 'next/router'
 import React, { useState } from 'react'
+import { FaArrowLeft } from 'react-icons/fa'
 
 import { createGroup } from '@/utils/api_helper'
 import { isJson } from '@/utils/generic_utils'
@@ -61,7 +66,7 @@ const CreateGroupPage = () => {
   }
 
   return (
-    <Flex direction="column" align="center" minH="100vh" mt={36}>
+    <Flex direction="column" align="center" minH="100vh" mt={8}>
       <Box maxW="400px" w="full" data-component="create-group-form">
         <VStack
           as="form"
@@ -70,13 +75,15 @@ const CreateGroupPage = () => {
           align="stretch"
           p={8}
         >
-          <Heading
-            as="h1"
-            size="xl"
-            fontWeight="700"
-            lineHeight="1.2"
-            textAlign="left"
-          >
+          <Link href={`/dashboard/${EditMode.GROUPS}`}>
+            <HStack alignItems="flex-start" mb={0} cursor="pointer">
+              <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
+              <Heading fontSize={16} color="primary.500">
+                Back
+              </Heading>
+            </HStack>
+          </Link>
+          <Heading flex={1} fontSize="2xl">
             Set up your Group
           </Heading>
           <FormControl>

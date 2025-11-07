@@ -1,13 +1,14 @@
+/* eslint-disable no-restricted-syntax */
+import { DiscordUserInfo } from '@meta/Discord'
 import * as Sentry from '@sentry/nextjs'
-import { Client, Intents } from 'discord.js'
+import { Client, GatewayIntentBits } from 'discord.js'
 
 import { AuthToken } from '@/types/Account'
-
 import {
   DiscordNotificationType,
   NotificationChannel,
-} from '../../types/AccountNotifications'
-import { DiscordUserInfo } from '../../types/DiscordUserInfo'
+} from '@/types/AccountNotifications'
+
 import { discordRedirectUrl, isProduction } from '../constants'
 import {
   createOrUpdatesDiscordAccount,
@@ -16,27 +17,36 @@ import {
   getDiscordAccount,
   setAccountNotificationSubscriptions,
 } from '../database'
-
-const client = new Client({ ws: { intents: [Intents.FLAGS.DIRECT_MESSAGES] } })
 let ready = false
+const client = new Client({
+  intents: [
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.DirectMessageReactions,
+    GatewayIntentBits.MessageContent,
+  ],
+})
 
 client.on('ready', () => {
   ready = true
-  // eslint-disable-next-line no-restricted-syntax
-  !isProduction && console.log(`Logged in as ${client.user?.tag}!`)
+  !isProduction && console.log(`Discord bot logged in as ${client.user?.tag}!`)
 })
 
+client.on('error', error => {
+  console.error('Discord client error:', error)
+  Sentry.captureException(error)
+})
 const doLogin = async () => {
   try {
-    !ready && (await (client as Client).login(process.env.DISCORD_TOKEN))
+    if (!ready) {
+      !isProduction && console.log('Logging in to Discord...')
+      await client.login(process.env.DISCORD_TOKEN)
+    }
   } catch (error) {
+    console.error('Discord login error:', error)
     Sentry.captureException(error)
   }
 }
-
 const MWW_DISCORD_SERVER_ID = '915252743529181224'
-
-doLogin()
 
 export const generateDiscordAuthToken = async (
   discordCode: string
@@ -162,7 +172,7 @@ export const getDiscordInfoForAddress = async (
 export const getDiscordAccountInfo = async (
   discordAccessToken: AuthToken
 ): Promise<DiscordUserInfo | null> => {
-  if (!ready) {
+  if (!client.isReady()) {
     await doLogin()
   }
   try {
@@ -212,13 +222,55 @@ export const dmAccount = async (
   discord_user_id: string,
   message: string
 ): Promise<boolean> => {
-  if (!ready) {
-    await doLogin()
-  }
   try {
+    let attempts = 0
+    const maxAttempts = 20 // 10 seconds total
+    if (!client.isReady()) {
+      doLogin()
+    }
+    while (!client.isReady() && attempts < maxAttempts) {
+      console.log(`Waiting for Discord client... attempt ${attempts + 1}`)
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      attempts++
+    }
+
+    if (!client.isReady()) {
+      throw new Error('Discord client not ready after waiting')
+    }
+
+    console.log(
+      `Discord client ready, attempting to send DM to user ${discord_user_id}`
+    )
+    console.log(`Attempting to send DM to user ${discord_user_id}`)
+
     const user = await client.users.fetch(discord_user_id)
-    await user.send(message)
-  } catch (error) {
+    console.log(`User fetched: ${user.tag}`)
+
+    const sentMessage = await user.send(message)
+    console.log(`Message sent successfully: ${sentMessage.id}`)
+
+    return true
+  } catch (error: any) {
+    let context
+    console.error('Discord DM Error:', {
+      error: error.message,
+      code: error.code,
+      userId: discord_user_id,
+      accountAddress,
+    })
+
+    // Handle specific Discord errors
+    if (error.code === 50007) {
+      console.log('Cannot send messages to this user (privacy settings)')
+      context = 'Cannot send messages to this user (privacy settings)'
+    } else if (error.code === 10013) {
+      console.log('Unknown user')
+      context = 'Unknown user'
+    } else if (error.code === 50001) {
+      console.log('Missing access')
+      context = 'Missing access'
+    }
+
     const notifications = await getAccountNotificationSubscriptions(
       accountAddress
     )
@@ -235,8 +287,13 @@ export const dmAccount = async (
       await setAccountNotificationSubscriptions(accountAddress, notifications)
     }
 
-    Sentry.captureException(error)
+    Sentry.captureException(error, {
+      extra: {
+        context,
+        accountAddress,
+        discord_user_id,
+      },
+    })
     return false
   }
-  return true
 }

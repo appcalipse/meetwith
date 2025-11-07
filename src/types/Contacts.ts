@@ -22,6 +22,12 @@ export interface InviteContact {
   email?: string
 }
 
+export interface InviteGroupMember {
+  address: string
+  groupId: string
+  state: 'accepted' | 'pending'
+}
+
 export interface DBContact {
   total_count: number
   result: Array<Contact>
@@ -76,6 +82,7 @@ export interface DBContactInvite {
 export interface Contact {
   id: string
   address: string
+  domain?: string | null
   status: ContactStatus
   name: string
   avatar_url: string

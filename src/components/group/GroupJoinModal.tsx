@@ -22,10 +22,11 @@ import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCardModal {
   group: Group | undefined
-  resetState: () => void
+  resetState: () => Promise<unknown>
   onClose: () => void
   inviteEmail?: string
   type?: InviteType
+  shouldOpen: boolean
 }
 
 const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
@@ -48,12 +49,12 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
     setDeclining(true)
     try {
       await rejectGroup(props.group.id, props.inviteEmail)
-    } catch (error: any) {
+      await props.resetState()
+    } catch (error: unknown) {
       handleApiError('Error rejecting invite', error)
     }
     props.onClose()
     void push('/dashboard/groups')
-    props.resetState()
     setDeclining(false)
   }
   const handleAccept = async () => {
@@ -65,12 +66,12 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
         group: props.group,
         email: props.inviteEmail,
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error accepting invite', error)
     }
     push('/dashboard/groups')
+    await props.resetState()
     props.onClose()
-    props.resetState()
     setAccepting(false)
   }
   return (
@@ -79,7 +80,7 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
         props.onClose()
         push('/dashboard/groups')
       }}
-      isOpen={!!props.group?.id}
+      isOpen={props.shouldOpen && !!props.group?.id}
       blockScrollOnMount={false}
       size={'lg'}
       isCentered

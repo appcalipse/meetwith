@@ -22,7 +22,7 @@ import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCardModal {
   groupID: string | null
-  resetState: () => void
+  resetState: () => Promise<void>
   onClose: () => void
   isOpen: boolean
   groupName: string | null
@@ -40,9 +40,9 @@ const DeleteGroupModal: React.FC<IGroupInviteCardModal> = props => {
       const isSuccessful = await deleteGroup(props.groupID)
       setIsDeleting(false)
       if (!isSuccessful) return
-      props.resetState()
+      await props.resetState()
       props.onClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error deleting group', error)
     }
     setIsDeleting(false)
@@ -83,12 +83,11 @@ const DeleteGroupModal: React.FC<IGroupInviteCardModal> = props => {
             >
               <WarningTwoIcon w={5} h={5} />
               <Text fontWeight="500">
-                Confirm that you would like to delete this group by typing the
-                group name below.
+                Confirm that you would like to delete this group by typing{' '}
+                <b>DELETE</b> below.
               </Text>
             </HStack>
             <FormControl>
-              <FormLabel>Group name</FormLabel>
               <Input
                 type="email"
                 value={input}
@@ -108,7 +107,7 @@ const DeleteGroupModal: React.FC<IGroupInviteCardModal> = props => {
                 isLoading={isDeleting}
                 onClick={handleDeleteGroup}
                 colorScheme="primary"
-                isDisabled={input !== props.groupName}
+                isDisabled={input !== 'DELETE' || isDeleting}
               >
                 Delete group
               </Button>

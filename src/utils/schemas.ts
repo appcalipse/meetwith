@@ -1,9 +1,12 @@
 import {
   PaymentChannel,
+  PaymentType,
   PlanType,
   SessionType,
 } from '@utils/constants/meeting-types'
 import { z } from 'zod'
+
+import { AcceptedToken } from '@/types/chains'
 
 // Meeting Types
 
@@ -35,6 +38,9 @@ export const baseMeetingSchema = z.object({
   availability_ids: z.array(z.string()).min(1, {
     message: 'At least one availability block must be selected.',
   }),
+  meeting_platforms: z.array(z.string()).min(1, {
+    message: 'At least one meeting platform must be selected.',
+  }),
 
   calendars: z.array(z.number()).optional(), // Array of calendar IDs
 
@@ -43,9 +49,16 @@ export const baseMeetingSchema = z.object({
       type: z.nativeEnum(PlanType, {
         errorMap: () => ({ message: 'Invalid plan type' }),
       }), // PlanType enum
+      payment_methods: z
+        .array(
+          z.nativeEnum(PaymentType, {
+            errorMap: () => ({ message: 'Invalid payment method' }),
+          })
+        )
+        .optional(),
       price_per_slot: z
         .number({ message: 'Price per slot is required.' })
-        .min(0.1, 'Price per slot must be greater than 0.'), // Positive price
+        .min(0.05, 'Price per slot must be greater than 0.05'), // Positive price
 
       no_of_slot: z
         .number({ message: 'Number of slots is required.' })
@@ -62,6 +75,9 @@ export const baseMeetingSchema = z.object({
           'Invalid payment address (must be a valid address)'
         ),
       crypto_network: z.number().int().positive('Crypto network must be valid'), // Positive integer
+      default_token: z.nativeEnum(AcceptedToken, {
+        errorMap: () => ({ message: 'Invalid default token' }),
+      }),
     })
     .optional(), // Plan object is optional
 })
@@ -213,3 +229,40 @@ export const errorReducerSingle = (
       return state
   }
 }
+
+export const quickPollSchema = z
+  .object({
+    title: z.string().min(1, 'Title is required'),
+    description: z.string().optional(),
+    duration: z.number().min(1, 'Duration must be at least 1 minute'),
+    startDate: z.date(),
+    endDate: z.date(),
+    expiryDate: z.date(),
+    expiryTime: z.date(),
+    participants: z
+      .array(z.any())
+      .min(1, 'At least one participant is required'),
+  })
+  .refine(data => data.startDate < data.endDate, {
+    message: 'Start date must be before end date',
+    path: ['endDate'],
+  })
+  .refine(
+    data => {
+      const year = data.expiryDate.getFullYear()
+      const month = data.expiryDate.getMonth()
+      const day = data.expiryDate.getDate()
+      const hours = data.expiryTime.getHours()
+      const minutes = data.expiryTime.getMinutes()
+      const seconds = data.expiryTime.getSeconds()
+
+      const expiryDateTime = new Date(year, month, day, hours, minutes, seconds)
+      return expiryDateTime > new Date()
+    },
+    {
+      message: 'Expiry date must be in the future',
+      path: ['expiryDate'],
+    }
+  )
+
+export type QuickPollFormData = z.infer<typeof quickPollSchema>

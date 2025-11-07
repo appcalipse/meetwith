@@ -1,4 +1,3 @@
-import { Link } from '@chakra-ui/next-js'
 import {
   Alert,
   AlertDescription,
@@ -12,6 +11,7 @@ import {
   Heading,
   HStack,
   Input,
+  Link,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -67,6 +67,7 @@ import {
   selectDefaultProvider,
   updateMeeting,
 } from '@/utils/calendar_manager'
+import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
@@ -373,7 +374,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         meetingResult = await scheduleMeeting(
           ignoreAvailabilities,
           SchedulingType.REGULAR,
-          'no_type',
+          NO_MEETING_TYPE,
           start,
           end,
           _participants.valid,
@@ -393,7 +394,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         meetingResult = await updateMeeting(
           true,
           currentAccount!.address,
-          'no_type',
+          NO_MEETING_TYPE,
           start,
           end,
           decryptedMeeting!,

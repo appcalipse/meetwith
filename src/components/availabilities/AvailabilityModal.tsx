@@ -262,16 +262,18 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
     <Modal isOpen={isOpen} onClose={handleClose} isCentered>
       <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
       <ModalContent
-        bg="neutral.900"
+        bg="bg-surface"
         border="1px solid"
         borderRadius={{ base: 0, md: 12 }}
-        borderColor="neutral.800"
+        borderColor="border-wallet-subtle"
         minHeight={{ base: '100%', md: '21rem' }}
         maxHeight={{ base: '100%', md: '90vh' }}
         minWidth={{ base: '100%', md: '600px' }}
         overflowY="hidden"
         margin={{ base: 0, md: 4 }}
         width={{ base: '800px', md: 'auto' }}
+        shadow="none"
+        boxShadow="none"
       >
         <Box
           overflowY="auto"
@@ -291,10 +293,10 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
               transition: 'background 0.2s ease',
             },
             '&:hover::-webkit-scrollbar-thumb': {
-              background: 'neutral.800',
+              background: 'bg-surface-tertiary',
             },
             '&::-webkit-scrollbar-thumb:hover': {
-              background: 'neutral.600',
+              background: 'bg-surface-tertiary-2',
             },
             '&::-webkit-scrollbar-corner': {
               background: 'transparent',
@@ -303,27 +305,27 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
         >
           {showSelectDefaultModal ? (
             <>
-              <ModalHeader color="neutral.0" pb={2}>
-                <Text color="neutral.0" fontWeight={700} fontSize={22}>
+              <ModalHeader color="text-primary" pb={2}>
+                <Text color="text-primary" fontWeight={700} fontSize={22}>
                   {selectDefaultModalConfig?.title}
                 </Text>
               </ModalHeader>
 
               <ModalBody pb={6} px={{ base: 4, md: 6 }}>
                 <VStack spacing={6} align="stretch">
-                  <Text color="neutral.300" fontSize={16}>
+                  <Text color="text-secondary" fontSize={16}>
                     {selectDefaultModalConfig?.description}
                   </Text>
 
                   {availableBlocks && availableBlocks.length === 0 ? (
                     <Box
-                      bg="neutral.800"
+                      bg="bg-surface-tertiary"
                       borderRadius={8}
                       p={4}
                       border="1px solid"
                       borderColor="neutral.700"
                     >
-                      <Text color="neutral.300" fontSize={14}>
+                      <Text color="text-secondary" fontSize={14}>
                         No other availability blocks available. Please create
                         another availability block first.
                       </Text>
@@ -339,18 +341,18 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                           .map(block => (
                             <Box
                               key={block.id}
-                              bg="neutral.850"
+                              bg="bg-surface-secondary"
                               borderRadius={8}
                               p={4}
                               border="1px solid"
                               borderColor={
                                 selectedBlockId === block.id
                                   ? 'primary.200'
-                                  : 'neutral.700'
+                                  : 'border-default'
                               }
                               _hover={{
                                 borderColor: isLoading
-                                  ? 'neutral.700'
+                                  ? 'border-default'
                                   : 'primary.200',
                               }}
                               cursor={isLoading ? 'not-allowed' : 'pointer'}
@@ -369,13 +371,13 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                               >
                                 <VStack align="start" spacing={1} ml={2}>
                                   <Text
-                                    color="neutral.0"
+                                    color="text-primary"
                                     fontWeight={500}
                                     fontSize={16}
                                   >
                                     {block.title}
                                   </Text>
-                                  <Text color="neutral.300" fontSize={14}>
+                                  <Text color="text-secondary" fontSize={14}>
                                     {block.timezone}
                                   </Text>
                                 </VStack>
@@ -416,7 +418,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                     <Button
                       colorScheme="orange"
                       bg="primary.200"
-                      color="neutral.800"
+                      color="text-primary"
                       _hover={{ bg: 'primary.200' }}
                       size="sm"
                       onClick={() => {
@@ -448,21 +450,20 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                 <Box
                   position="sticky"
                   top={0}
-                  bg="neutral.900"
+                  bg="bg-surface"
                   zIndex={1}
                   px={{ base: 4, md: 6 }}
                   py={4}
                 >
                   <Flex justify="space-between" align="center">
-                    <Text color="neutral.0" fontWeight={700} fontSize={22}>
+                    <Text color="text-primary" fontWeight={700} fontSize={22}>
                       {isEditing
                         ? 'Edit Availability Block'
                         : 'New Availability Block'}
                     </Text>
                     <Button
-                      colorScheme="orange"
+                      colorScheme="primary"
                       bg="primary.200"
-                      color="neutral.800"
                       _hover={{ bg: 'primary.200' }}
                       size="sm"
                       onClick={handleSave}
@@ -480,8 +481,8 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
 
               {/* Regular header for create mode */}
               {!isEditing && !duplicatingBlockId && (
-                <ModalHeader color="neutral.0" pb={2}>
-                  <Text color="neutral.0" fontWeight={700} fontSize={22}>
+                <ModalHeader color="text-primary" pb={2}>
+                  <Text color="text-primary" fontWeight={700} fontSize={22}>
                     New Availability Block
                   </Text>
                 </ModalHeader>
@@ -498,14 +499,14 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       _active={{ border: 'none' }}
                       onChange={e => onIsDefaultChange(e.target.checked)}
                     />
-                    <Text color="neutral.0" fontSize={16} fontWeight={700}>
+                    <Text color="text-primary" fontSize={16} fontWeight={700}>
                       Set as default
                     </Text>
                   </HStack>
 
                   <FormControl>
                     <FormLabel
-                      color="neutral.0"
+                      color="text-primary"
                       fontSize={15}
                       fontWeight={500}
                       mb={2}
@@ -516,11 +517,11 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       placeholder="Enter availability block title"
                       value={formState.title}
                       onChange={e => onTitleChange(e.target.value)}
-                      bg="neutral.900"
+                      bg="bg-surface"
                       border="1px solid"
-                      borderColor="neutral.800"
-                      color="neutral.0"
-                      _placeholder={{ color: 'neutral.300' }}
+                      borderColor="border-default"
+                      color="text-primary"
+                      _placeholder={{ color: 'text-secondary' }}
                       _focus={{
                         borderColor: 'orange.400',
                         boxShadow: '0 0 0 1px var(--chakra-colors-orange-400)',
@@ -530,7 +531,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
 
                   <FormControl>
                     <FormLabel
-                      color="neutral.0"
+                      color="text-primary"
                       fontSize={15}
                       fontWeight={500}
                       mb={2}
@@ -545,7 +546,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
 
                   <FormControl>
                     <FormLabel
-                      color="neutral.0"
+                      color="text-primary"
                       fontSize={15}
                       fontWeight={500}
                       mb={2}
@@ -566,13 +567,13 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       chakraStyles={{
                         control: provided => ({
                           ...provided,
-                          background: 'neutral.900',
-                          borderColor: 'neutral.800',
-                          color: 'neutral.0',
+                          background: 'bg-surface',
+                          borderColor: 'border-default',
+                          color: 'text-primary',
                         }),
                       }}
                     />
-                    <Text color="neutral.300" fontSize={14} mt={2}>
+                    <Text color="text-secondary" fontSize={14} mt={2}>
                       Select which meeting types should use this availability
                       block.
                     </Text>
@@ -586,11 +587,11 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       flexDirection={{ base: 'column', sm: 'row' }}
                       gap={2}
                     >
-                      <Text color="neutral.0" fontSize={16} fontWeight={500}>
+                      <Text color="text-primary" fontSize={16} fontWeight={500}>
                         Weekly Schedule
                       </Text>
                       <HStack spacing={2}>
-                        <Text color="neutral.300" fontSize={14}>
+                        <Text color="text-secondary" fontSize={14}>
                           {useDirectInput
                             ? 'Direct input mode'
                             : 'Dropdown mode'}
@@ -603,15 +604,15 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                           }
                           placement="top"
                           hasArrow
-                          bg="neutral.800"
-                          color="neutral.0"
+                          bg="bg-surface-tertiary"
+                          color="text-primary"
                           borderRadius="md"
                           fontSize="sm"
                           px={3}
                           py={2}
                         >
                           <IconButton
-                            color="neutral.300"
+                            color="text-secondary"
                             aria-label="toggle input mode"
                             icon={
                               useDirectInput ? (
@@ -667,7 +668,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                     >
                       Close
                     </Button>
-                    <HStack spacing={4}>
+                    <HStack spacing={4} width={{ base: '100%', sm: 'auto' }}>
                       {!isEditing && !duplicatingBlockId && (
                         <Button
                           colorScheme="orange"
@@ -695,6 +696,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                           onClick={onShowDeleteConfirmation}
                           px={6}
                           height="48px"
+                          width="100%"
                           borderRadius={8}
                           fontSize={16}
                           fontWeight={700}
@@ -710,8 +712,8 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
           ) : (
             // Delete Confirmation Screen
             <>
-              <ModalHeader color="neutral.0" pb={2}>
-                <Text color="neutral.0" fontWeight={700} fontSize={22}>
+              <ModalHeader color="text-primary" pb={2}>
+                <Text color="text-primary" fontWeight={700} fontSize={22}>
                   Delete Availability Block
                 </Text>
               </ModalHeader>
@@ -720,7 +722,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                 <VStack spacing={6} align="stretch">
                   <Box>
                     <Text
-                      color="neutral.0"
+                      color="text-primary"
                       fontSize={20}
                       fontWeight={500}
                       mb={4}
@@ -740,25 +742,37 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       {currentEditingBlock &&
                         getFormattedSchedule(
                           currentEditingBlock.weekly_availability
-                        ).map((line, index) => (
-                          <Text
-                            key={index}
-                            color="neutral.300"
-                            fontSize={16}
-                            fontWeight={500}
-                          >
-                            {line}
-                          </Text>
+                        ).map((schedule, index) => (
+                          <Flex key={index} align="center" gap={1}>
+                            <Text
+                              color="text-secondary"
+                              fontSize={16}
+                              fontWeight={700}
+                            >
+                              {schedule.weekdays}
+                            </Text>
+                            <Text
+                              color="text-secondary"
+                              fontSize={16}
+                              fontWeight={500}
+                            >
+                              : {schedule.timeRange}
+                            </Text>
+                          </Flex>
                         ))}
 
                       <Box
                         borderTop="1px solid"
-                        borderColor="neutral.400"
+                        borderColor="border-subtle"
                         width="100%"
                         my={3}
                       />
 
-                      <Text color="neutral.300" fontSize={16} fontWeight={500}>
+                      <Text
+                        color="text-secondary"
+                        fontSize={16}
+                        fontWeight={500}
+                      >
                         Timezone: {currentEditingBlock?.timezone}
                       </Text>
                     </VStack>
@@ -771,7 +785,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
 
                     <Text color="red.500" fontSize={16} fontWeight={500} mb={6}>
                       Deleting this availability block will affect your
-                      availability in those groups and session types you have.
+                      availability in the groups and session types you have.
                     </Text>
                   </Box>
 
@@ -838,10 +852,10 @@ const SessionTypesAssociationSection: React.FC<{
 
   return (
     <Box mb={4}>
-      <Text color="neutral.0" fontSize={20} fontWeight={500} mt={6} mb={2}>
+      <Text color="text-primary" fontSize={20} fontWeight={500} mt={6} mb={2}>
         Which is connected to these Session types
       </Text>
-      <Text color="neutral.0" fontWeight={500} fontSize={16} mb={1}>
+      <Text color="text-primary" fontWeight={500} fontSize={16} mb={1}>
         Session types
       </Text>
       <VStack align="start" spacing={1} mb={2}>

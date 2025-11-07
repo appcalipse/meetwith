@@ -1,6 +1,6 @@
 import { Flex } from '@chakra-ui/react'
 import { NextComponentType, NextPageContext } from 'next'
-import router from 'next/router'
+import { useRouter } from 'next/router'
 import { useContext } from 'react'
 
 import Loading from '../components/Loading'
@@ -31,22 +31,38 @@ const redirectBasedOnLogin = async (
   redirectType: AuthRedirect
 ): Promise<Account | null> => {
   const currentAccount = await validateAuthentication(ctx)
-
+  const currentRoute = ctx.asPath || ''
   const shouldRedirect =
     redirectType === AuthRedirect.REDIRECT_IF_AUTHED
       ? !!currentAccount
       : !currentAccount
+
+  // Prevent redirecting to the same route to avoid infinite loops
+  if (shouldRedirect && currentRoute === route) {
+    return currentAccount
+  }
+
+  let redirectUrl = route
+  if (currentRoute && currentRoute !== route) {
+    let redirectQuery = ''
+    if (currentRoute) {
+      redirectQuery = `?redirect=${encodeURIComponent(currentRoute)}`
+    }
+    redirectUrl = `${route}${redirectQuery}`
+  }
 
   // Only redirect here if we are on server side
   if (!!ctx.req && shouldRedirect) {
     // https://github.com/zeit/next.js/wiki/Redirecting-in-%60getInitialProps%60
     if (ctx.res) {
       ctx.res.writeHead(302, {
-        Location: route,
+        Location: redirectUrl,
       })
       ctx.res.end()
     } else {
-      router.push(route)
+      // For client-side redirects in getInitialProps, use Router (not useRouter)
+      const Router = (await import('next/router')).default
+      Router.push(redirectUrl)
     }
     return null
   }
@@ -60,12 +76,48 @@ const withAuthRedirect =
     function HOC(props: any) {
       const { checkAuthOnClient } = props
       const { logged, currentAccount } = useContext(AccountContext)
+      const router = useRouter()
+
+      // Prevent infinite redirects by checking if we're already on the target route
+      const currentRoute = router.pathname
+      const isOnTargetRoute = currentRoute === route
 
       // On the client side, if the user is not logged in,
       // then redirect it to the equivalent endpoint
-      if (!logged && redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED) {
-        router.push(route)
+      if (
+        !logged &&
+        redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED &&
+        !isOnTargetRoute
+      ) {
+        let redirectUrl = route
+        if (currentRoute && currentRoute !== route) {
+          let redirectQuery = ''
+          if (currentRoute) {
+            redirectQuery = `?redirect=${encodeURIComponent(currentRoute)}`
+          }
+          redirectUrl = `${route}${redirectQuery}`
+        }
+        router.push(redirectUrl)
 
+        return (
+          <Flex
+            width="100%"
+            height="100%"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Loading />
+          </Flex>
+        )
+      }
+
+      // Similar check for authenticated users
+      if (
+        logged &&
+        redirectType === AuthRedirect.REDIRECT_IF_AUTHED &&
+        !isOnTargetRoute
+      ) {
+        router.push(route)
         return (
           <Flex
             width="100%"
@@ -90,7 +142,6 @@ const withAuthRedirect =
           </Flex>
         )
       }
-
       return <Page {...props} />
     }
 

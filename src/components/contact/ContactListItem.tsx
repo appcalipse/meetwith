@@ -1,11 +1,11 @@
-import { Button, HStack, Text, Th, Tr, useToast } from '@chakra-ui/react'
+import { Box, Button, HStack, Text, Th, Tr, useToast } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
-import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useRouter } from 'next/router'
 import React, { FC } from 'react'
 
 import { Contact } from '@/types/Contacts'
 import { removeContact, sendContactListInvite } from '@/utils/api_helper'
+import { appUrl } from '@/utils/constants'
 import { ContactStatus } from '@/utils/constants/contact'
 import {
   AccountNotFoundError,
@@ -13,6 +13,8 @@ import {
   ContactAlreadyExists,
 } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
+
+import { Avatar } from '../profile/components/Avatar'
 
 type Props = {
   account: Contact
@@ -108,7 +110,10 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
     }
   }
   return (
-    <Tr bg={index % 2 === 0 ? 'neutral.825' : 'none'} color="white">
+    <Tr
+      bg={index % 2 === 0 ? 'bg-surface-tertiary' : 'none'}
+      color="text-primary"
+    >
       <Th w="fit-content" py={8}>
         <HStack w="fit-content" pos={'relative'}>
           {account.status === ContactStatus.INACTIVE && (
@@ -116,12 +121,17 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
               Removed you as a contact
             </Text>
           )}
-          <Jazzicon
-            address={account.address || ''}
-            className="contact-avatar"
-          />
+          <Box className="contact-avatar">
+            <Avatar
+              avatar_url={account.avatar_url}
+              address={account.address || ''}
+              name={account.name || ellipsizeAddress(account.address)}
+            />
+          </Box>
           <Text maxW={{ base: 120, md: 200 }} isTruncated>
-            {account.name || account.address || account.email_address}
+            {account.name ||
+              account.email_address ||
+              `No Name - ${ellipsizeAddress(account.address)}`}
           </Text>
         </HStack>
       </Th>
@@ -147,7 +157,7 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
           <Button
             colorScheme="primary"
             onClick={() => {
-              push(`/dashboard/schedule?ref=contact&contactId=${account.id}`)
+              push(`${appUrl}/${account.domain || account.address}`)
             }}
           >
             Schedule

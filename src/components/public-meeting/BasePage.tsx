@@ -1,5 +1,11 @@
 import { Box, HStack, Text } from '@chakra-ui/layout'
-import { Button, Flex, Heading, VStack } from '@chakra-ui/react'
+import {
+  Button,
+  Flex,
+  Heading,
+  useColorModeValue,
+  VStack,
+} from '@chakra-ui/react'
 import { Avatar } from '@components/profile/components/Avatar'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import SessionTypeCard from '@components/public-meeting/SessionTypeCard'
@@ -8,6 +14,7 @@ import React, { FC, useContext } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { isProduction } from '@/utils/constants'
 
 import PaidMeetings from './PaidMeetings'
 
@@ -16,6 +23,7 @@ const BasePage: FC = () => {
   const currentAccount = useAccountContext()
   const [paidSessionsExists, setPaidSessionsExists] = React.useState(false)
   const { openConnection } = useContext(OnboardingModalContext)
+  const borderColor = useColorModeValue('neutral.200', 'neutral.800')
 
   return (
     <VStack
@@ -37,7 +45,7 @@ const BasePage: FC = () => {
       >
         <Box
           borderWidth="1px"
-          borderColor="neutral.800"
+          borderColor={borderColor}
           borderRadius="md"
           p={4}
           w="max-content"
@@ -48,14 +56,20 @@ const BasePage: FC = () => {
         >
           <HStack gap={{ md: 4, base: 2 }} alignItems="center">
             <Box w={10} h={10}>
-              <Avatar account={account} />
+              <Avatar
+                address={account.address}
+                avatar_url={account.preferences?.avatar_url || ''}
+                name={getAccountDisplayName(account)}
+              />
             </Box>
             <Text fontSize={{ md: 'lg', base: 'medium' }} fontWeight="500">
               {getAccountDisplayName(account)}
             </Text>
           </HStack>
           {account.preferences?.description && (
-            <Text fontWeight="700">{account.preferences.description}</Text>
+            <Text fontWeight="700" w={{ base: '80%', lg: '100%' }}>
+              {account.preferences.description}
+            </Text>
           )}
         </Box>
         {!currentAccount && (

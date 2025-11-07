@@ -17,7 +17,9 @@ import { formatCurrency } from '@/utils/generic_utils'
 
 type IProps = PaidMeetingTypes
 const PaidMeetingsCard: FC<IProps> = props => {
-  const { handleNavigateToBook, account } = useContext(PublicScheduleContext)
+  const { handleNavigateToBook, account, setShowHeader } = useContext(
+    PublicScheduleContext
+  )
   const { push } = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -29,11 +31,12 @@ const PaidMeetingsCard: FC<IProps> = props => {
     // wait for the page to load before setting the selected type
     await new Promise(resolve => setTimeout(resolve, 100))
     handleNavigateToBook(props.transaction_hash)
+    setShowHeader(false)
     setLoading(false)
   }
   return (
     <VStack
-      bg={'neutral.825'}
+      bg={'bg-surface-tertiary'}
       flexBasis={{ base: '100%', '2xl': '49%' }}
       alignItems={'flex-start'}
       p={6}

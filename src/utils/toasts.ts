@@ -3,23 +3,46 @@ import { useToast } from '@chakra-ui/react'
 export const useToastHelpers = () => {
   const toast = useToast()
 
-  const showSuccessToast = (title: string, description: string) => {
+  const showSuccessToast = (
+    title: string,
+    description: string,
+    duration = 3000
+  ) => {
     toast({
       title,
       description,
       status: 'success',
-      duration: 3000,
+      duration,
       position: 'top',
       isClosable: true,
     })
   }
 
-  const showErrorToast = (title: string, description: string) => {
+  const showErrorToast = (
+    title: string,
+    description: string,
+    duration = 3000
+  ) => {
     toast({
       title,
       description,
       status: 'error',
-      duration: 3000,
+      duration,
+      position: 'top',
+      isClosable: true,
+    })
+  }
+
+  const showInfoToast = (
+    title: string,
+    description: string,
+    duration = 3000
+  ) => {
+    toast({
+      title,
+      description,
+      status: 'info',
+      duration,
       position: 'top',
       isClosable: true,
     })
@@ -28,5 +51,6 @@ export const useToastHelpers = () => {
   return {
     showSuccessToast,
     showErrorToast,
+    showInfoToast,
   }
 }

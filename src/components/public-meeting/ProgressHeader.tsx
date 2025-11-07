@@ -5,32 +5,21 @@ import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import React, { Fragment, useContext } from 'react'
 const items = [
   {
-    label: 'Pay for Session',
+    label: 'Pick a slot ',
     activeSteps: [
-      PublicSchedulingSteps.PAY_FOR_SESSION,
       PublicSchedulingSteps.BOOK_SESSION,
+      PublicSchedulingSteps.PAY_FOR_SESSION,
     ],
   },
   {
-    label: 'Schedule with Host',
-    activeSteps: [PublicSchedulingSteps.BOOK_SESSION],
+    label: 'Pay and Complete Scheduling',
+    activeSteps: [PublicSchedulingSteps.PAY_FOR_SESSION],
   },
 ]
 const ProgressHeader = () => {
   const { currentStep } = useContext(PublicScheduleContext)
 
-  return (
-    <HStack w={'100%'} gap={0} alignItems="center">
-      {items.map((item, index) => (
-        <Fragment key={item.label}>
-          <ProgressHeaderItem currentStep={currentStep} {...item} />
-          {index < items.length - 1 && (
-            <Box flex={0.6} borderBottomWidth={3} borderStyle="dotted" />
-          )}
-        </Fragment>
-      ))}
-    </HStack>
-  )
+  return <HStack w={'100%'} gap={0} alignItems="center"></HStack>
 }
 
 export default ProgressHeader

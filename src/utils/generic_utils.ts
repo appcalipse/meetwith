@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import slugify from 'slugify'
 
 import { MeetingProvider } from '@/types/Meeting'
+import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
+
+import { MeetingPermissions } from './constants/schedule'
 
 export const zeroAddress = '0x0000000000000000000000000000000000000000' as const
 
@@ -42,6 +45,25 @@ export function parseUnits(value: `${number}`, decimals: number) {
 
   return BigInt(`${negative ? '-' : ''}${integer}${fraction}`)
 }
+export const isAccountSchedulerOrOwner = (
+  participants?: ParticipantInfo[],
+  address?: string,
+  participantsType = [ParticipantType.Scheduler, ParticipantType.Owner]
+) =>
+  participantsType.includes(
+    participants?.find(p => p.account_address === address)?.type ||
+      ParticipantType?.Invitee
+  )
+
+export const canAccountAccessPermission = (
+  permissions?: MeetingPermissions[],
+  participants?: ParticipantInfo[],
+  address?: string,
+  permission = MeetingPermissions.SEE_GUEST_LIST
+) =>
+  permissions === undefined ||
+  !!permissions?.includes(permission) ||
+  isAccountSchedulerOrOwner(participants, address)
 
 export function formatUnits(value: bigint, decimals: number) {
   let display = value.toString()
@@ -167,7 +189,7 @@ export const extractQuery = <T extends string = string>(
     result = value
   }
 
-  if (!result) return undefined
+  if (!result || result === 'undefined') return undefined
 
   // If valid values provided, check against them
   if (validValues && !validValues.includes(result as T)) {
@@ -186,4 +208,47 @@ export const formatCurrency = (
     currency,
     minimumFractionDigits,
   }).format(amount)
+}
+
+export const deduplicateArray = <T = string>(arr: T[]): T[] => {
+  return Array.from(new Set(arr)).filter(
+    (item): item is T => item !== null && item !== undefined
+  )
+}
+
+export const formatCountdown = (seconds: number): string => {
+  if (seconds >= 60) {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+  return `${seconds}s`
+}
+
+/**
+ * Creates a handler function to clear a specific validation error on blur
+ * @param setErrors - The setState function for validation errors
+ * @param fieldName - The name of the field to clear the error for
+ * @returns A function to be used as an onBlur handler
+ *
+ * @example
+ * ```tsx
+ * <Input
+ *   onBlur={clearValidationError(setValidationErrors, 'title')}
+ * />
+ * ```
+ */
+export const clearValidationError = <T extends Record<string, any>>(
+  setErrors: React.Dispatch<React.SetStateAction<T>>,
+  fieldName: keyof T
+) => {
+  return () => {
+    setErrors(prev => {
+      if (prev[fieldName]) {
+        const { [fieldName]: _, ...rest } = prev
+        return rest as T
+      }
+      return prev
+    })
+  }
 }

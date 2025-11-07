@@ -46,4 +46,22 @@ export default class QueryKeys {
   ) {
     return ['chainLinkAggregator', feedAddress, chainId, method]
   }
+  static groups(accountAddress?: string, search?: string) {
+    return ['groups', accountAddress, search]
+  }
+  static groupInvites(accountAddress?: string, search?: string) {
+    return ['groupInvites', accountAddress, search]
+  }
+  static exchangeRate(currency: string) {
+    return ['exchangeRate', currency]
+  }
+  static coinConfig() {
+    return ['coinConfig']
+  }
+  static connectedAccounts(accountAddress?: string) {
+    return ['connectedAccounts', accountAddress]
+  }
+  static supportedCountries() {
+    return ['supportedCountries']
+  }
 }

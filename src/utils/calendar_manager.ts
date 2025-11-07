@@ -1,3 +1,4 @@
+import Sentry from '@sentry/nextjs'
 import {
   format,
   getDate,
@@ -18,8 +19,14 @@ import {
 } from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
-import { Account, DayAvailability, MeetingType } from '@/types/Account'
+import {
+  Account,
+  BaseMeetingType,
+  DayAvailability,
+  MeetingType,
+} from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
+import { Intents } from '@/types/Dashboard'
 import {
   DBSlot,
   ExtendedDBSlot,
@@ -62,12 +69,14 @@ import {
 
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
+import { NO_MEETING_TYPE, SessionType } from './constants/meeting-types'
 import { MeetingPermissions } from './constants/schedule'
 import { getContentFromEncrypted, simpleHash } from './cryptography'
 import {
   GuestListModificationDenied,
   GuestRescheduleForbiddenError,
   InvalidURL,
+  MeetingCancelConflictError,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
   MeetingCreationError,
@@ -76,7 +85,7 @@ import {
   MultipleSchedulersError,
   TimeNotAvailableError,
 } from './errors'
-import { getSlugFromText } from './generic_utils'
+import { canAccountAccessPermission, getSlugFromText } from './generic_utils'
 import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
 import { CalendarServiceHelper } from './services/calendar.helper'
@@ -84,7 +93,6 @@ import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress, getAccountDisplayName } from './user_manager'
 import { isValidEmail, isValidUrl } from './validations'
-
 export const sanitizeParticipants = (
   participants: ParticipantInfo[]
 ): ParticipantInfo[] => {
@@ -388,6 +396,7 @@ const buildMeetingData = async (
 
 const updateMeetingAsGuest = async (
   slotId: string,
+  meetingTypeId: string,
   startTime: Date,
   endTime: Date,
   participants: ParticipantInfo[],
@@ -399,14 +408,9 @@ const updateMeetingAsGuest = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
-  const guestMeetingData = await getMeetingGuest(slotId)
-  if (!guestMeetingData) {
-    throw new Error('Guest meeting data not found')
-  }
-
-  const fullMeetingData = await getConferenceMeeting(guestMeetingData.id!)
+  const fullMeetingData = await getMeetingGuest(slotId)
   if (!fullMeetingData) {
-    throw new Error('Full meeting data not found')
+    throw new Error('meeting data not found')
   }
 
   // Get all slots for this meeting from the database
@@ -434,9 +438,9 @@ const updateMeetingAsGuest = async (
     if (slot.account_address) {
       existingParticipants.push({
         account_address: slot.account_address,
-        type: ParticipantType.Owner,
+        type: slot.role || ParticipantType.Owner,
         slot_id: slot.id!,
-        meeting_id: guestMeetingData.id || '',
+        meeting_id: fullMeetingData.id || '',
         status: ParticipationStatus.Accepted,
         name: '', // Will be filled by handleParticipants
       })
@@ -498,7 +502,7 @@ const updateMeetingAsGuest = async (
       meetingProvider !== fullMeetingData.provider)
   ) {
     const generated = await generateMeetingUrl({
-      meeting_id: guestMeetingData.id || '',
+      meeting_id: fullMeetingData.id || '',
       title: meetingTitle || fullMeetingData.title || 'No Title',
       end: endTime,
       start: startTime,
@@ -514,7 +518,7 @@ const updateMeetingAsGuest = async (
 
   const meetingData = await buildMeetingData(
     SchedulingType.GUEST,
-    'no_type',
+    meetingTypeId,
     startTime,
     endTime,
     participantData.sanitizedParticipants,
@@ -524,7 +528,7 @@ const updateMeetingAsGuest = async (
     undefined,
     meetingContent,
     finalMeetingUrl,
-    guestMeetingData.id,
+    fullMeetingData.id,
     meetingTitle,
     meetingReminders,
     meetingRepeat,
@@ -600,20 +604,12 @@ const updateMeeting = async (
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
   }
-  const isSchedulerOrOwner = [
-    ParticipantType.Scheduler,
-    ParticipantType.Owner,
-  ].includes(
-    decryptedMeeting?.participants?.find(
-      p => p.account_address === currentAccountAddress
-    )?.type || ParticipantType?.Invitee
+  const canUpdateOtherGuests = canAccountAccessPermission(
+    decryptedMeeting?.permissions,
+    decryptedMeeting?.participants,
+    currentAccountAddress,
+    MeetingPermissions.INVITE_GUESTS
   )
-  const canUpdateOtherGuests =
-    decryptedMeeting?.permissions === undefined ||
-    !!decryptedMeeting?.permissions?.includes(
-      MeetingPermissions.INVITE_GUESTS
-    ) ||
-    isSchedulerOrOwner
   if (
     !canUpdateOtherGuests &&
     decryptedMeeting?.participants?.length !== participants.length
@@ -621,12 +617,12 @@ const updateMeeting = async (
     throw new GuestListModificationDenied()
   }
 
-  const canEditMeetingDetails =
-    decryptedMeeting?.permissions === undefined ||
-    !!decryptedMeeting?.permissions?.includes(
-      MeetingPermissions.EDIT_MEETING
-    ) ||
-    isSchedulerOrOwner
+  const canEditMeetingDetails = canAccountAccessPermission(
+    decryptedMeeting?.permissions,
+    decryptedMeeting?.participants,
+    currentAccountAddress,
+    MeetingPermissions.EDIT_MEETING
+  )
 
   if (
     !canEditMeetingDetails &&
@@ -651,7 +647,6 @@ const updateMeeting = async (
     currentAccount,
     signature
   )
-  const meetingPermissions = existingMeeting?.permissions
 
   //TODO: anyone can update a meeting, but we might need to change the participants statuses
 
@@ -666,12 +661,6 @@ const updateMeeting = async (
     existingMeeting!
   )
 
-  const actingParticipant = existingMeeting?.participants.find(
-    user => user.account_address === currentAccountAddress
-  )
-  if (!actingParticipant) {
-    throw new MeetingChangeConflictError()
-  }
   // those are the users that we need to remove the slots
   const toRemove = diff(
     existingMeetingAccounts,
@@ -692,10 +681,8 @@ const updateMeeting = async (
   // If the acting user is NOT the scheduler and the number of participants has changed,
   // throw an error to block unauthorized modifications to the meeting's participant list.
   if (
-    meetingPermissions &&
-    !meetingPermissions?.includes(MeetingPermissions.INVITE_GUESTS) &&
-    participants.length !== decryptedMeeting.participants.length &&
-    actingParticipant.type! === ParticipantType.Scheduler
+    !canUpdateOtherGuests &&
+    participants.length !== decryptedMeeting.participants.length
   ) {
     throw new MeetingChangeConflictError()
   }
@@ -981,14 +968,16 @@ const cancelMeeting = async (
   )
 
   // Only the owner or scheduler of the meeting can cancel it
-  const meetingOwner = existingMeeting!.participants.find(
+  const meetingOwners = existingMeeting!.participants.filter(
     user => user.type === ParticipantType.Owner
   )
   const meetingScheduler = existingMeeting!.participants.find(
     user => user.type === ParticipantType.Scheduler
   )
   if (
-    meetingOwner?.account_address !== currentAccountAddress &&
+    meetingOwners?.every(
+      account => account.account_address !== currentAccountAddress
+    ) &&
     meetingScheduler?.account_address !== currentAccountAddress
   ) {
     throw new MeetingCancelForbiddenError()
@@ -999,7 +988,6 @@ const cancelMeeting = async (
   if (decryptedMeeting.version !== existingDBSlot.version) {
     throw new MeetingChangeConflictError()
   }
-
   // Fetch the updated data one last time
   const response = await apiCancelMeeting(
     decryptedMeeting,
@@ -1200,6 +1188,10 @@ const generateIcs = (
   if (!isValidUrl(url)) {
     url = 'https://meetwith.xyz'
   }
+  const hasGuest =
+    meeting.participants.some(
+      p => p.guest_email && p.guest_email.trim() !== ''
+    ) && !!destination?.accountAddress
   const event: EventAttributes = {
     uid: meeting.id.replaceAll('-', ''),
     start: [
@@ -1225,7 +1217,8 @@ const generateIcs = (
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
-      changeUrl
+      changeUrl,
+      hasGuest
     ),
     url,
     location: meeting.meeting_url,
@@ -1237,7 +1230,6 @@ const generateIcs = (
       getMinutes(meeting.created_at!),
     ],
     organizer: {
-      // required by some services
       name: 'Meetwith',
       email: NO_REPLY_EMAIL,
     },
@@ -1297,7 +1289,6 @@ const generateIcs = (
   const icsEvent = createEvent(event)
   return icsEvent
 }
-
 const participantStatusToICSStatus = (status: ParticipationStatus) => {
   switch (status) {
     case ParticipationStatus.Accepted:
@@ -1322,7 +1313,6 @@ const decryptMeeting = async (
   if (!content) return null
 
   const meetingInfo = JSON.parse(content) as MeetingInfo
-
   if (
     meeting?.conferenceData &&
     meeting?.conferenceData.version === MeetingVersion.V2
@@ -1330,7 +1320,7 @@ const decryptMeeting = async (
     if (
       meeting.conferenceData.slots.length !== meetingInfo.participants.length
     ) {
-      void syncMeeting(meetingInfo)
+      void syncMeeting(meetingInfo, meeting.id!)
       // Hide the removed participants from the UI while they're being removed from the backend
       meetingInfo.related_slot_ids = meetingInfo.related_slot_ids.filter(id =>
         meeting.conferenceData?.slots.includes(id)
@@ -1340,6 +1330,7 @@ const decryptMeeting = async (
       )
     }
   }
+
   return {
     id: meeting.id!,
     ...meeting,
@@ -1406,7 +1397,7 @@ const dateToHumanReadable = (
 ): string => {
   let result = `${format(utcToZonedTime(date, timezone), 'PPPPpp')}`
   if (includeTimezone) {
-    result += ` - ${timezone}`
+    result += ` (${timezone})`
   }
   return result
 }
@@ -1470,15 +1461,16 @@ export const getOwnerPublicUrl = async (
   }
 }
 
-const generateDefaultMeetingType = (): MeetingType => {
+const generateDefaultMeetingType = (account_owner_address: string) => {
   const title = '30 minutes meeting'
-  const meetingType: MeetingType = {
-    id: uuidv4(),
+  const meetingType = {
     title,
     slug: getSlugFromText(title),
     duration_minutes: 30,
     min_notice_minutes: 60,
-  } as any
+    type: SessionType.FREE,
+    account_owner_address,
+  }
 
   return meetingType
 }
@@ -1541,6 +1533,7 @@ const googleUrlParsedDate = (date: Date) =>
 const outLookUrlParsedDate = (date: Date) =>
   formatInTimeZone(date, 'UTC', "yyyy-MM-dd:HH:mm:SS'Z'")
 const generateGoogleCalendarUrl = (
+  slot_id: string,
   start?: Date | number,
   end?: Date | number,
   title?: string,
@@ -1549,6 +1542,7 @@ const generateGoogleCalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
+  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl = 'https://calendar.google.com/calendar/r/eventedit?sf=true'
   if (start && end) {
     baseUrl += `&dates=${googleUrlParsedDate(
@@ -1559,10 +1553,12 @@ const generateGoogleCalendarUrl = (
     baseUrl += `&text=${title}`
   }
   if (content || meeting_url) {
+    const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
     baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`
+      changeUrl,
+      hasGuests
     )}`
   }
   if (timezone) {
@@ -1577,6 +1573,7 @@ const generateGoogleCalendarUrl = (
   return baseUrl
 }
 const generateOffice365CalendarUrl = (
+  slot_id: string,
   start?: Date | number,
   end?: Date | number,
   title?: string,
@@ -1585,6 +1582,7 @@ const generateOffice365CalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
+  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl =
     'https://outlook.office.com/calendar/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&online=true'
   if (start) {
@@ -1597,10 +1595,12 @@ const generateOffice365CalendarUrl = (
     baseUrl += `&subject=${title}`
   }
   if (content || meeting_url) {
+    const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
     baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`
+      changeUrl,
+      hasGuests
     )}`
   }
   if (participants) {

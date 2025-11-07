@@ -4,14 +4,13 @@ import {
   Button,
   Flex,
   Icon,
-  Image,
   Text,
   useBreakpointValue,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 
-import { ellipsizeAddress } from '@/utils/user_manager'
+import { ellipsizeAddress, getAccountDisplayName } from '@/utils/user_manager'
 
 import { Account } from '../../types/Account'
 import { EditMode } from '../../types/Dashboard'
@@ -24,6 +23,7 @@ interface NavBarLoggedProfileProps {
   currentSection?: EditMode
   handleSetActiveLink: (id: string) => void
   isOpen?: boolean
+  disableNavMenu?: boolean
 }
 const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
   const accountName = ellipsizeAddress(props.account.address)
@@ -37,7 +37,9 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
     props.handleSetActiveLink('/dashboard')
   }
   const openMenu = () => {
-    setNavOpen(true)
+    if (!props.disableNavMenu) {
+      setNavOpen(true)
+    }
   }
 
   const variantAction = useBreakpointValue({
@@ -74,7 +76,11 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         backgroundColor={'neutral.50'}
       >
         <Box width="24px" height="24px" mr={{ base: 0, lg: 2 }}>
-          <Avatar account={props.account} />
+          <Avatar
+            address={props.account.address}
+            avatar_url={props.account.preferences?.avatar_url || ''}
+            name={getAccountDisplayName(props.account)}
+          />
         </Box>
         {props.isOpen && (
           <Text fontSize={'sm'} ml={2}>
@@ -86,7 +92,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         </Text>
       </Flex>
 
-      {navOpen && (
+      {navOpen && !props.disableNavMenu && (
         <NavMenu
           currentSection={section as EditMode}
           isMenuOpen={navOpen}

@@ -28,9 +28,12 @@ import { useRouter } from 'next/router'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import React from 'react'
 import { FaEdit, FaEllipsisV, FaRegCopy, FaTrash } from 'react-icons/fa'
+import { MdCancel } from 'react-icons/md'
 import sanitizeHtml from 'sanitize-html'
 
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
+import { DeleteMeetingDialog } from '@/components/schedule/delete-dialog'
+import ScheduleParticipantsSchedulerModal from '@/components/schedule/ScheduleParticipantsSchedulerModal'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Intents } from '@/types/Dashboard'
 import {
@@ -50,21 +53,22 @@ import {
 } from '@/utils/calendar_manager'
 import { appUrl, isProduction } from '@/utils/constants'
 import { MeetingPermissions } from '@/utils/constants/schedule'
+import {
+  canAccountAccessPermission,
+  isAccountSchedulerOrOwner,
+} from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
-
 interface MeetingCardProps {
   meeting: ExtendedDBSlot
   timezone: string
-  onCancel: (removed: string[]) => void
+  onCancel: (removed: string[], skipToast?: boolean) => void
 }
 
 interface Label {
   color: string
   text: string
 }
-
-const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-10-21')
 
 const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const defineLabel = (start: Date, end: Date): Label | null => {
@@ -89,7 +93,21 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const label = defineLabel(meeting.start as Date, meeting.end as Date)
   const toast = useToast()
 
-  const { isOpen, onOpen, onClose } = useDisclosure()
+  const {
+    isOpen: isCancelOpen,
+    onOpen: onCancelOpen,
+    onClose: onCancelClose,
+  } = useDisclosure()
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure()
+  const {
+    isOpen: isEditSchedulerOpen,
+    onOpen: onEditSchedulerOpen,
+    onClose: onEditSchedulerClose,
+  } = useDisclosure()
 
   const [decryptedMeeting, setDecryptedMeeting] = useState(
     undefined as MeetingDecrypted | undefined
@@ -155,12 +173,17 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       canSeeGuestList
     )
   }
+  const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+    decryptedMeeting?.participants,
+    currentAccount?.address
+  )
 
   const menuItems = useMemo(
     () => [
       {
         label: 'Add to Google Calendar',
         link: generateGoogleCalendarUrl(
+          decryptedMeeting?.id || '',
           decryptedMeeting?.start,
           decryptedMeeting?.end,
           decryptedMeeting?.title || 'No Title',
@@ -173,6 +196,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       {
         label: 'Add to Office 365 Calendar',
         link: generateOffice365CalendarUrl(
+          decryptedMeeting?.id || '',
           decryptedMeeting?.start,
           decryptedMeeting?.end,
           decryptedMeeting?.title || 'No Title',
@@ -191,6 +215,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
     ],
     [decryptedMeeting, currentAccount, timezone]
   )
+
   const handleCopy = async () => {
     try {
       if ('clipboard' in navigator) {
@@ -207,28 +232,53 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       setCopyFeedbackOpen(false)
     }, 2000)
   }
-  const showEdit =
-    isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
-    isAfter(meeting.start, new Date())
-
+  const handleDelete = () => {
+    if (
+      isAccountSchedulerOrOwner(
+        decryptedMeeting?.participants,
+        currentAccount?.address,
+        [ParticipantType.Scheduler]
+      )
+    ) {
+      onEditSchedulerOpen()
+    } else {
+      onDeleteOpen()
+    }
+  }
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
     meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
-  const isSchedulerOrOwner = [
-    ParticipantType.Scheduler,
-    ParticipantType.Owner,
-  ].includes(
-    decryptedMeeting?.participants?.find(
-      p => p.account_address === currentAccount?.address
-    )?.type || ParticipantType?.Invitee
+  const canSeeGuestList = canAccountAccessPermission(
+    decryptedMeeting?.permissions,
+    decryptedMeeting?.participants || [],
+    currentAccount?.address,
+    MeetingPermissions.SEE_GUEST_LIST
   )
-  const canSeeGuestList =
-    decryptedMeeting?.permissions === undefined ||
-    !!decryptedMeeting?.permissions?.includes(
-      MeetingPermissions.SEE_GUEST_LIST
-    ) ||
-    isSchedulerOrOwner
-
+  const handleEditMeeting = async () => {
+    if (decryptedMeeting) {
+      try {
+        await push(
+          `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
+        )
+      } catch (error) {
+        toast({
+          title: 'Navigation Error',
+          description: 'Failed to navigate to edit page.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
+    } else {
+      toast({
+        title: 'Meeting Data Unavailable',
+        description: 'Unable to edit this meeting.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      })
+    }
+  }
   return (
     <>
       {loading ? (
@@ -238,7 +288,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
         </HStack>
       ) : decryptedMeeting ? (
         <Box
-          shadow="md"
+          shadow="sm"
           width="100%"
           borderRadius="lg"
           position="relative"
@@ -335,105 +385,91 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                   >
                     <Button colorScheme="primary">Join meeting</Button>
                   </Link>
-                  <>
-                    {showEdit && (
-                      <>
-                        <IconButton
-                          color={iconColor}
-                          aria-label="edit"
-                          icon={<FaEdit size={16} />}
-                          onClick={async () => {
-                            if (decryptedMeeting) {
-                              try {
-                                await push(
-                                  `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
-                                )
-                              } catch (error) {
-                                toast({
-                                  title: 'Navigation Error',
-                                  description:
-                                    'Failed to navigate to edit page.',
-                                  status: 'error',
-                                  duration: 5000,
-                                  isClosable: true,
-                                })
-                              }
-                            } else {
-                              toast({
-                                title: 'Meeting Data Unavailable',
-                                description: 'Unable to edit this meeting.',
-                                status: 'warning',
-                                duration: 5000,
-                                isClosable: true,
-                              })
-                            }
-                          }}
-                        />
-                        <IconButton
-                          color={iconColor}
-                          aria-label="remove"
-                          icon={<FaTrash size={16} />}
-                          onClick={onOpen}
-                        />
-                      </>
-                    )}
-                    <Menu>
-                      <MenuButton
-                        as={IconButton}
+                  <Tooltip label="Edit meeting" placement="top">
+                    <IconButton
+                      color={iconColor}
+                      aria-label="edit"
+                      icon={<FaEdit size={16} />}
+                      onClick={handleEditMeeting}
+                    />
+                  </Tooltip>
+                  {isSchedulerOrOwner && (
+                    <Tooltip
+                      label="Cancel meeting for everyone"
+                      placement="top"
+                    >
+                      <IconButton
                         color={iconColor}
-                        aria-label="option"
-                        icon={<FaEllipsisV size={16} />}
-                        key={`${meeting?.id}-option`}
+                        aria-label="remove"
+                        icon={<MdCancel size={16} />}
+                        onClick={onCancelOpen}
                       />
-                      <Portal>
-                        <MenuList backgroundColor={menuBgColor}>
-                          {menuItems.map((val, index, arr) => [
-                            val.link ? (
-                              <MenuItem
-                                as="a"
-                                href={val.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                key={`${val.label}-${meeting?.id}`}
-                                backgroundColor={menuBgColor}
-                              >
-                                {val.label}
-                              </MenuItem>
-                            ) : (
-                              <MenuItem
-                                onClick={val.onClick}
-                                backgroundColor={menuBgColor}
-                                key={`${val.label}-${meeting?.id}`}
-                              >
-                                {val.label}
-                              </MenuItem>
-                            ),
-                            index !== arr.length - 1 && (
-                              <MenuDivider
-                                key="divider"
-                                borderColor="neutral.600"
-                              />
-                            ),
-                          ])}
-                          {!isProduction && (
-                            <>
-                              <MenuDivider
-                                key="divider2"
-                                borderColor="neutral.600"
-                              />
-                              <MenuItem
-                                key="log-info"
-                                backgroundColor={menuBgColor}
-                                onClick={() => console.debug(decryptedMeeting)}
-                              >
-                                Log info (for debugging)
-                              </MenuItem>
-                            </>
-                          )}
-                        </MenuList>
-                      </Portal>
-                    </Menu>
-                  </>
+                    </Tooltip>
+                  )}
+                  <Tooltip label="Delete meeting" placement="top">
+                    <IconButton
+                      color={iconColor}
+                      aria-label="delete"
+                      icon={<FaTrash size={16} />}
+                      onClick={handleDelete}
+                    />
+                  </Tooltip>
+                  <Menu>
+                    <MenuButton
+                      as={IconButton}
+                      color={iconColor}
+                      aria-label="option"
+                      icon={<FaEllipsisV size={16} />}
+                      key={`${meeting?.id}-option`}
+                    />
+                    <Portal>
+                      <MenuList backgroundColor={menuBgColor}>
+                        {menuItems.map((val, index, arr) => [
+                          val.link ? (
+                            <MenuItem
+                              as="a"
+                              href={val.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              key={`${val.label}-${meeting?.id}`}
+                              backgroundColor={menuBgColor}
+                            >
+                              {val.label}
+                            </MenuItem>
+                          ) : (
+                            <MenuItem
+                              onClick={val.onClick}
+                              backgroundColor={menuBgColor}
+                              key={`${val.label}-${meeting?.id}`}
+                            >
+                              {val.label}
+                            </MenuItem>
+                          ),
+                          index !== arr.length - 1 && (
+                            <MenuDivider
+                              key="divider"
+                              borderColor="neutral.600"
+                            />
+                          ),
+                        ])}
+                        {!isProduction && (
+                          <>
+                            <MenuDivider
+                              key="divider2"
+                              borderColor="neutral.600"
+                            />
+                            <MenuItem
+                              key="log-info"
+                              backgroundColor={menuBgColor}
+                              onClick={() => console.debug(decryptedMeeting)}
+                            >
+                              Log info (for debugging)
+                            </MenuItem>
+                          </>
+                        )}
+                      </MenuList>
+                    </Portal>
+                  </Menu>
                 </HStack>
               </Flex>
 
@@ -511,9 +547,23 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
           <Text>Failed to decode information</Text>
         </HStack>
       )}
+
+      <ScheduleParticipantsSchedulerModal
+        isOpen={isEditSchedulerOpen}
+        onClose={onEditSchedulerClose}
+        participants={decryptedMeeting?.participants || []}
+        decryptedMeeting={decryptedMeeting}
+      />
       <CancelMeetingDialog
-        isOpen={isOpen}
-        onClose={onClose}
+        isOpen={isCancelOpen}
+        onClose={onCancelClose}
+        decryptedMeeting={decryptedMeeting}
+        currentAccount={currentAccount}
+        afterCancel={onCancel}
+      />
+      <DeleteMeetingDialog
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
         decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}

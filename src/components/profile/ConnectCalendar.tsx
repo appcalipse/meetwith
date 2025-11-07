@@ -1,10 +1,10 @@
-import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
   Heading,
   HStack,
   Image,
+  Link,
   Spinner,
   Text,
   useDisclosure,
@@ -138,13 +138,19 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
 
   if (loading) {
     return (
-      <VStack alignItems="center">
-        <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
-        <HStack pt={8}>
-          <Spinner />
-          <Text fontSize="lg">Checking your calendars...</Text>
-        </HStack>
-      </VStack>
+      <HStack minH={'450px'} w={'100%'} justifyContent="center">
+        <VStack alignItems="center">
+          <Image
+            src="/assets/no_calendars.svg"
+            height="200px"
+            alt="Loading..."
+          />
+          <HStack pt={8}>
+            <Spinner />
+            <Text fontSize="lg">Checking your calendars...</Text>
+          </HStack>
+        </VStack>
+      </HStack>
     )
   }
 
@@ -154,7 +160,7 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
 
   return (
     <Box mb={8}>
-      <VStack alignItems="flex-start" mb={8}>
+      <VStack alignItems="flex-start" mb={6}>
         <Heading fontSize="2xl">Connected Calendars</Heading>
         <Text>
           When you connect a calendar we will use its events to block your
@@ -162,24 +168,27 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         </Text>
       </VStack>
 
+      <Button
+        onClick={onOpen}
+        colorScheme="primary"
+        mb={7}
+        alignSelf="flex-start"
+        leftIcon={<FaPlus />}
+      >
+        Add calendar connection
+      </Button>
+
       <ConnectedCalendars
         activeCalendarConnections={activeCalendarConnections}
         disabledCalendarConnections={disabledCalendarConnections}
         onDelete={loadCalendars}
       />
 
-      <ConnectCalendarModal isOpen={isOpen} onClose={onClose} />
-
-      <Button
-        onClick={onOpen}
-        colorScheme="primary"
-        mb={4}
-        mt={4}
-        alignSelf="flex-start"
-        leftIcon={<FaPlus />}
-      >
-        Add calendar connection
-      </Button>
+      <ConnectCalendarModal
+        isOpen={isOpen}
+        onClose={onClose}
+        refetch={loadCalendars}
+      />
     </Box>
   )
 }

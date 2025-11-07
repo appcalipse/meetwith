@@ -21,9 +21,11 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { AvailabilityBlock } from '@/types/availability'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
+import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
   getAvailabilityBlocks,
   getMeetingTypes,
+  getStripeStatus,
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { getDefaultValues } from '@/utils/constants/meeting-types'
@@ -59,6 +61,12 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
     useQuery<AvailabilityBlock[]>({
       queryKey: ['availabilityBlocks', currentAccount?.address],
       queryFn: () => getAvailabilityBlocks(),
+      enabled: !!currentAccount?.id,
+    })
+  const { data: stripeStatus, isLoading: isStripeLoading } =
+    useQuery<PaymentAccountStatus>({
+      queryKey: ['stripeStatus', currentAccount?.address],
+      queryFn: () => getStripeStatus(),
       enabled: !!currentAccount?.id,
     })
 
@@ -168,6 +176,8 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         canDelete={meetingTypes.length > 1}
         availabilityBlocks={availabilityBlocks || []}
         isAvailabilityLoading={isAvailabilityLoading}
+        stripeStatus={stripeStatus}
+        isStripeLoading={isStripeLoading}
         onDelete={() => {
           openDeleteConfirmationModal()
           closeModal()
@@ -184,14 +194,20 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         <VStack alignItems="flex-start" width="100%" maxW="100%" gap={2}>
           <HStack
             width="100%"
-            alignItems="flex-start"
+            alignItems={{ base: 'center', md: 'flex-start' }}
             justifyContent="space-between"
           >
-            <Heading fontSize="2xl">Meeting Types</Heading>
+            <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
+              Meeting Types
+            </Heading>
             <Button
               colorScheme="primary"
               onClick={openModal}
               leftIcon={<AddIcon width={15} height={15} />}
+              fontSize={{
+                base: 'xs',
+                md: 'md',
+              }}
             >
               New Meeting Type
             </Button>

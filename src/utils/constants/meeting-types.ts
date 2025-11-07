@@ -1,12 +1,14 @@
 import { MeetingType } from '@/types/Account'
-import { SupportedChain, supportedChains } from '@/types/chains'
+import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
+import { MeetingProvider } from '@/types/Meeting'
 import { isProduction } from '@/utils/constants'
+import { zeroAddress } from '@/utils/generic_utils'
 
 export enum SessionType {
   PAID = 'paid',
   FREE = 'free',
 }
-
+export const NO_MEETING_TYPE = 'no_type'
 export const isSessionType = (value: string): value is SessionType => {
   return Object.values(SessionType).some(type => type === value)
 }
@@ -16,13 +18,17 @@ export const SessionTypeOptions = [
     value: SessionType.FREE,
     label: 'Free',
   },
-]
-if (!isProduction) {
-  SessionTypeOptions.push({
+  {
     value: SessionType.PAID,
     label: 'Paid',
-  })
-}
+  },
+]
+export const BASE_PROVIDERS = [
+  MeetingProvider.GOOGLE_MEET,
+  MeetingProvider.ZOOM,
+  MeetingProvider.HUDDLE,
+  MeetingProvider.JITSI_MEET,
+]
 export const MinNoticeTimeOptions = [
   {
     value: 'minutes',
@@ -91,13 +97,13 @@ export const PaymentChannelOptions = (address: string) => [
   },
 ]
 const devChains = [
-  // SupportedChain.SEPOLIA,
+  SupportedChain.SEPOLIA,
   SupportedChain.ARBITRUM_SEPOLIA,
+  SupportedChain.ARBITRUM,
+  SupportedChain.CELO,
   // SupportedChain.CELO_ALFAJORES,
 ]
-const prodChains = [
-  SupportedChain.ARBITRUM, //SupportedChain.CELO
-]
+const prodChains = [SupportedChain.ARBITRUM, SupportedChain.CELO]
 export const supportedPaymentChains = isProduction ? prodChains : devChains
 
 export const CryptoNetworkForCardSettlementOptions = supportedChains
@@ -146,8 +152,12 @@ export enum PaymentStep {
   CONFIRM_PAYMENT = 'confirm-payment',
   FIAT_PAYMENT_VERIFYING = 'fiat-payment-verifying',
   SELECT_CRYPTO_NETWORK = 'select-crypto-network',
+  HANDLE_SEND_INVOICE = 'handle-send-invoice',
 }
-
+export enum PaymentRedirectType {
+  INVOICE = 'direct-invoice',
+  CHECKOUT = 'checkout',
+}
 export const getDefaultValues = (): Partial<MeetingType> => ({
   type: SessionType.FREE,
   slug: '',
@@ -164,19 +174,24 @@ export const getDefaultValues = (): Partial<MeetingType> => ({
     payment_channel: PaymentChannel.ACCOUNT_ADDRESS,
     payment_address: '',
     meeting_type_id: '',
-    default_chain_id: supportedChains[0].id,
+    default_chain_id: networkOptions[0].id,
+    default_token: AcceptedToken.USDC,
     created_at: new Date(),
     updated_at: new Date(),
+    payment_methods: [],
     id: '',
   },
 })
 
-export enum Currency {
-  USD = 'USD',
-}
-
 export const networkOptions = supportedChains
-  .filter(val => (supportedPaymentChains || []).includes(val.chain))
+  .filter(
+    val =>
+      val.walletSupported &&
+      (supportedPaymentChains || []).includes(val.chain) &&
+      val.acceptableTokens.some(
+        token => token.walletSupported && token.contractAddress !== zeroAddress
+      )
+  )
   .map(val => ({
     id: val.id,
     name: val.fullName,

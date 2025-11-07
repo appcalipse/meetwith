@@ -7,7 +7,7 @@ import {
 } from '@utils/constants/meeting-types'
 import { Encrypted } from 'eth-crypto'
 
-import { SupportedChain } from '@/types/chains'
+import { AcceptedToken, SupportedChain } from '@/types/chains'
 import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
@@ -99,6 +99,7 @@ export interface MeetingSyncRequest {
   end: Date
   created_at: Date
   timezone: string
+  meeting_type_id?: string
 }
 
 export interface MeetingChange {
@@ -217,6 +218,8 @@ export interface CreateMeetingTypeRequest {
     payment_channel?: PaymentChannel
     payment_address?: string
     crypto_network?: number
+    default_token?: AcceptedToken
+    payment_methods?: PaymentType[]
   }
 }
 
@@ -231,14 +234,22 @@ export interface DeleteMeetingTypeRequest {
 export interface ConfirmCryptoTransactionRequest {
   transaction_hash: Address
   amount: number
-  meeting_type_id: string
+  meeting_type_id: string | null
   token_address: string
   token_type: TokenType
   chain: SupportedChain
   fiat_equivalent: number
+  receiver_address?: string
   guest_address?: string
-  guest_email: string
-  guest_name: string
+  guest_email?: string
+  guest_name?: string
+  payment_method: PaymentType
+  provider_reference_id?: string
+  total_fee?: number
+  metadata?: Record<string, unknown>
+  fee_breakdown?: {
+    [key: string]: number
+  }
 }
 
 export interface RequestInvoiceRequest {
@@ -247,4 +258,14 @@ export interface RequestInvoiceRequest {
   meeting_type_id: string
   payment_method: PaymentType
   url: string
+}
+
+export interface MeetingCheckoutRequest {
+  meeting_type_id: string
+  // message_channel: string
+  guest_email?: string
+  guest_name: string
+  guest_address?: string
+  amount: number
+  redirectUrl: string
 }

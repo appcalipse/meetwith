@@ -37,7 +37,7 @@ export const formatTime = (time: string | undefined): string => {
 
 export const getFormattedSchedule = (
   availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
-): string[] => {
+): Array<{ weekdays: string; timeRange: string }> => {
   if (!availabilities) return []
 
   const workingDays = availabilities.filter(
@@ -56,48 +56,68 @@ export const getFormattedSchedule = (
     return getWeekdayOrder(a.weekday) - getWeekdayOrder(b.weekday)
   })
 
-  // group consecutive days with same time ranges
-  const consecutiveGroups: Array<{ days: number[]; timeRange: string }> = []
+  // Build a comparable signature and a display string for all ranges in a day
+  const getDaySignatureAndDisplay = (ranges: TimeRange[] | undefined) => {
+    if (!ranges || ranges.length === 0) {
+      return { signature: '', display: '' }
+    }
+
+    // Sort ranges by start time for stable comparison and display
+    const sortedRanges = [...ranges].sort((a, b) =>
+      (a.start || '').localeCompare(b.start || '')
+    )
+
+    const signature = sortedRanges.map(r => `${r.start}-${r.end}`).join('|')
+
+    const display = sortedRanges
+      .map(r => `${formatTime(r.start)} - ${formatTime(r.end)}`)
+      .join(', ')
+
+    return { signature, display }
+  }
+
+  // Group consecutive days that share identical sets of ranges
+  const consecutiveGroups: Array<{
+    days: number[]
+    signature: string
+    display: string
+  }> = []
   let currentGroup: number[] = []
-  let currentTimeRange = ''
+  let currentSignature = ''
+  let currentDisplay = ''
 
   sortedDays.forEach((day, index) => {
-    const timeRange =
-      day.ranges && day.ranges.length > 0
-        ? `${formatTime(day.ranges[0].start)} - ${formatTime(
-            day.ranges[0].end
-          )}`
-        : ''
+    const { signature, display } = getDaySignatureAndDisplay(day.ranges)
 
     if (index === 0) {
       currentGroup = [day.weekday]
-      currentTimeRange = timeRange
+      currentSignature = signature
+      currentDisplay = display
     } else {
       const prevDay = sortedDays[index - 1]
-      const prevTimeRange =
-        prevDay.ranges && prevDay.ranges.length > 0
-          ? `${formatTime(prevDay.ranges[0].start)} - ${formatTime(
-              prevDay.ranges[0].end
-            )}`
-          : ''
+      const { signature: prevSignature } = getDaySignatureAndDisplay(
+        prevDay.ranges
+      )
 
-      if (
-        timeRange === prevTimeRange &&
-        (day.weekday === currentGroup[currentGroup.length - 1] + 1 ||
-          (currentGroup[currentGroup.length - 1] === 6 && day.weekday === 0))
-      ) {
-        // Same time range and consecutive day
+      const isConsecutive =
+        day.weekday === currentGroup[currentGroup.length - 1] + 1 ||
+        (currentGroup[currentGroup.length - 1] === 6 && day.weekday === 0)
+
+      if (signature === prevSignature && isConsecutive) {
+        // Same ranges and consecutive day
         currentGroup.push(day.weekday)
       } else {
-        // Different time range or non-consecutive day
+        // Different ranges or non-consecutive day
         if (currentGroup.length > 0) {
           consecutiveGroups.push({
             days: [...currentGroup],
-            timeRange: currentTimeRange,
+            signature: currentSignature,
+            display: currentDisplay,
           })
         }
         currentGroup = [day.weekday]
-        currentTimeRange = timeRange
+        currentSignature = signature
+        currentDisplay = display
       }
     }
 
@@ -106,39 +126,45 @@ export const getFormattedSchedule = (
       if (currentGroup.length > 0) {
         consecutiveGroups.push({
           days: [...currentGroup],
-          timeRange: currentTimeRange,
+          signature: currentSignature,
+          display: currentDisplay,
         })
       }
     }
   })
 
-  // Now group non-consecutive days with same time ranges
-  const timeRangeMap: Map<string, number[]> = new Map()
+  // Now group non-consecutive days that share identical sets of ranges
+  const signatureMap: Map<string, { days: number[]; display: string }> =
+    new Map()
 
   consecutiveGroups.forEach(group => {
-    if (!timeRangeMap.has(group.timeRange)) {
-      timeRangeMap.set(group.timeRange, [])
+    if (!signatureMap.has(group.signature)) {
+      signatureMap.set(group.signature, { days: [], display: group.display })
     }
-    timeRangeMap.get(group.timeRange)!.push(...group.days)
+    const entry = signatureMap.get(group.signature)!
+    entry.days.push(...group.days)
   })
 
   // Convert to formatted strings
-  const scheduleLines: string[] = []
-  timeRangeMap.forEach((days, timeRange) => {
-    const groupText = formatDayGroup(days, timeRange)
-    if (groupText) scheduleLines.push(groupText)
+  const scheduleLines: Array<{ weekdays: string; timeRange: string }> = []
+  signatureMap.forEach(({ days, display }) => {
+    const groupText = formatDayGroup(days, display)
+    if (groupText.weekdays) scheduleLines.push(groupText)
   })
 
   return scheduleLines
 }
 
-export const formatDayGroup = (days: number[], timeRange: string): string => {
-  if (days.length === 0) return ''
+export const formatDayGroup = (
+  days: number[],
+  timeRange: string
+): { weekdays: string; timeRange: string } => {
+  if (days.length === 0) return { weekdays: '', timeRange: '' }
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   if (days.length === 1) {
-    return `${dayNames[days[0]]} : ${timeRange}`
+    return { weekdays: dayNames[days[0]], timeRange }
   } else {
     let consecutive = true
     for (let i = 1; i < days.length; i++) {
@@ -151,12 +177,13 @@ export const formatDayGroup = (days: number[], timeRange: string): string => {
     }
 
     if (consecutive) {
-      return `${dayNames[days[0]]} - ${
-        dayNames[days[days.length - 1]]
-      } : ${timeRange}`
+      return {
+        weekdays: `${dayNames[days[0]]} - ${dayNames[days[days.length - 1]]}`,
+        timeRange,
+      }
     } else {
       const dayLabels = days.map(day => dayNames[day]).join(', ')
-      return `${dayLabels} : ${timeRange}`
+      return { weekdays: dayLabels, timeRange }
     }
   }
 }

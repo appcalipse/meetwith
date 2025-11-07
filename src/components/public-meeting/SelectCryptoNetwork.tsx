@@ -1,4 +1,4 @@
-import { ChevronDownIcon } from '@chakra-ui/icons'
+import { ArrowBackIcon, ChevronDownIcon } from '@chakra-ui/icons'
 import {
   Button,
   FormControl,
@@ -13,7 +13,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import { AcceptedToken, getTokenIcon, supportedChains } from '@meta/chains'
+import { AcceptedToken, getSupportedChain, getTokenIcon } from '@meta/chains'
 import {
   networkOptions,
   PaymentStep,
@@ -34,7 +34,7 @@ const SelectCryptoNetwork = () => {
     setPaymentStep,
     setPaymentType,
   } = useContext(PublicScheduleContext)
-  const selectedNetworkInfo = supportedChains.find(val => val.chain === chain)
+  const selectedNetworkInfo = getSupportedChain(chain)
   const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(token =>
     [AcceptedToken.USDC, AcceptedToken.CEUR, AcceptedToken.CUSD].includes(
       token.token
@@ -50,25 +50,28 @@ const SelectCryptoNetwork = () => {
       networkOptions.find(
         network => network.id === selectedType?.plan?.default_chain_id
       )?.value || undefined
-    const selectedNetworkInfo = supportedChains.find(
-      val => val.chain === selectedChain
-    )
-    const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(
-      token =>
-        [AcceptedToken.USDC, AcceptedToken.CEUR, AcceptedToken.CUSD].includes(
-          token.token
-        )
-    )
-
-    const selectedToken = acceptedTokens?.[0]?.token || undefined
-    handleSetTokenAndChain(selectedToken, selectedChain)
+    handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
   }, [selectedType])
   const handleContinue = async () => {
     setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
     setPaymentType(PaymentType.CRYPTO)
   }
+  const handleBack = () => {
+    setPaymentStep(PaymentStep.SELECT_PAYMENT_METHOD)
+  }
   return (
     <VStack alignItems="flex-start" w={'100%'} spacing={4}>
+      <HStack
+        color={'primary.400'}
+        onClick={handleBack}
+        left={6}
+        w={'fit-content'}
+        cursor="pointer"
+        role={'button'}
+      >
+        <ArrowBackIcon w={6} h={6} />
+        <Text fontSize={16}>Back</Text>
+      </HStack>
       <Heading size="lg">Make your Payment</Heading>
       <Text fontWeight={700}>Select payment method</Text>
 
@@ -86,12 +89,12 @@ const SelectCryptoNetwork = () => {
               <HStack>
                 <Image
                   src={selectedNetworkInfo.image}
-                  alt={selectedNetworkInfo.fullName}
+                  alt={selectedNetworkInfo.name}
                   boxSize="20px"
                   borderRadius="full"
                   mr={2}
                 />
-                <Text>{selectedNetworkInfo.fullName}</Text>
+                <Text>{selectedNetworkInfo.name}</Text>
               </HStack>
             ) : (
               'Select Network'

@@ -9,7 +9,9 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useRouter } from 'next/router'
+import { useEffect, useRef, useState } from 'react'
+import { FaPlus } from 'react-icons/fa'
 
 import CustomLoading from '@/components/CustomLoading'
 import {
@@ -28,9 +30,12 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const router = useRouter()
+  const { editBlock } = router.query
   const [selectedMeetingTypeIds, setSelectedMeetingTypeIds] = useState<
     string[]
   >([])
+  const processedEditBlock = useRef<string | null>(null)
 
   const {
     blocks: availabilityBlocks,
@@ -100,6 +105,22 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     existingBlocks: availabilityBlocks,
   })
 
+  useEffect(() => {
+    if (
+      !editBlock ||
+      !availabilityBlocks?.length ||
+      processedEditBlock.current === editBlock
+    )
+      return
+
+    const blockToEdit = availabilityBlocks.find(block => block.id === editBlock)
+    if (blockToEdit) {
+      processedEditBlock.current = editBlock as string
+      handleEditBlock(blockToEdit)
+      router.replace('/dashboard/availability', undefined, { shallow: true })
+    }
+  }, [editBlock, availabilityBlocks, handleEditBlock, router])
+
   if (isLoading) {
     return <CustomLoading text="Loading your availability blocks..." />
   }
@@ -108,14 +129,15 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     <VStack
       alignItems="start"
       flex={1}
+      mt={3}
       mb={8}
       spacing={6}
       width="100%"
       maxWidth="100%"
-      px={{ base: 2, sm: 4, md: 6, lg: 4, xl: 6, '2xl': 10 }}
+      px={0}
     >
-      <Heading fontSize="2xl" color="neutral.0" width="100%">
-        My Availability
+      <Heading fontSize="2xl" color="text-primary" width="100%">
+        Availabilities
       </Heading>
 
       <Box
@@ -128,9 +150,9 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
           xl: '1200px',
           '2xl': '1400px',
         }}
-        padding={{ base: 4, sm: 6, md: 8, lg: 10, xl: 12, '2xl': 16 }}
+        padding={{ base: 4, sm: 6, md: 8, lg: 10, xl: 12, '2xl': 12 }}
         borderRadius={12}
-        background="neutral.900"
+        bg="bg-surface"
         position="relative"
         mx="auto"
       >
@@ -147,10 +169,14 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
             flex={{ md: 1 }}
             minWidth={0}
           >
-            <Heading fontSize={{ base: 18, md: 22 }} color="neutral.0" mb={2}>
+            <Heading
+              fontSize={{ base: 18, md: 22 }}
+              color="text-primary"
+              mb={2}
+            >
               Availability blocks
             </Heading>
-            <Text color="neutral.0" fontSize={{ base: 14, md: 16 }}>
+            <Text color="text-primary" fontSize={{ base: 14, md: 16 }}>
               Define when you&apos;re free to meet. Different{' '}
               <Link href="/dashboard/groups">
                 <Text
@@ -177,16 +203,18 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
             </Text>
           </Box>
           <Button
-            leftIcon={<AddIcon color="neutral.800" />}
-            colorScheme="orange"
             bg="primary.200"
-            color="neutral.800"
             _hover={{ bg: 'primary.200' }}
             onClick={handleCreateBlock}
-            fontSize="sm"
             px={6}
             flexShrink={0}
             width={{ base: '100%', md: 'auto' }}
+            colorScheme="primary"
+            leftIcon={<FaPlus />}
+            fontSize={{
+              base: 'xs',
+              md: 'md',
+            }}
           >
             New Availability block
           </Button>

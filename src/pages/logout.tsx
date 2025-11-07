@@ -1,6 +1,6 @@
 import { Container, VStack } from '@chakra-ui/react'
 import { queryClient } from '@utils/react_query'
-import router from 'next/router'
+import router, { useRouter } from 'next/router'
 import { useContext, useEffect } from 'react'
 import { useActiveWallet } from 'thirdweb/react'
 
@@ -9,7 +9,6 @@ import { AccountContext } from '../providers/AccountProvider'
 
 export default function LogoutPage() {
   const { logout } = useContext(AccountContext)
-
   useEffect(() => {
     doLogout()
   }, [])

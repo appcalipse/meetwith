@@ -1,6 +1,4 @@
 import {
-  addDays,
-  addHours,
   addMinutes,
   compareAsc,
   format,
@@ -8,12 +6,13 @@ import {
   getHours,
   Interval,
   isAfter,
-  isToday,
 } from 'date-fns'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime, Interval as LuxonInterval } from 'luxon'
 
-import { DayAvailability } from '@/types/Account'
+import { Account, DayAvailability } from '@/types/Account'
+
+import { parseMonthAvailabilitiesToDate } from './date_helper'
 
 export const generateTimeSlots = (
   selectedDate: Date,
@@ -21,7 +20,7 @@ export const generateTimeSlots = (
   fromStartDate: boolean,
   timezone = 'UTC',
   endDate?: Date
-): Interval[] => {
+): LuxonInterval<true>[] => {
   // Convert to Luxon DateTime in the specified timezone
   const selectedDateTime = DateTime.fromJSDate(selectedDate).setZone(timezone)
   const _isToday = selectedDateTime.hasSame(
@@ -54,18 +53,18 @@ export const generateTimeSlots = (
     ? DateTime.fromJSDate(endDate).setZone(timezone)
     : selectedDateTime.plus({ days: 1 }).startOf('day')
 
-  const timeSlots: Interval[] = []
+  const timeSlots: LuxonInterval[] = []
   let current = start
 
   while (current < end) {
     const slotEnd = current.plus({ minutes: slotSizeMinutes })
 
-    timeSlots.push({ start: current.toJSDate(), end: slotEnd.toJSDate() })
+    timeSlots.push(LuxonInterval.fromDateTimes(current, slotEnd))
 
     current = slotEnd
   }
 
-  return timeSlots
+  return timeSlots.filter(val => val.isValid)
 }
 
 export const isSlotAvailable = (
@@ -115,47 +114,20 @@ export const isSlotAvailable = (
 export const isTimeInsideAvailabilities = (
   startOnTargetTimezone: Date,
   endOnTargetTimezone: Date,
-  targetAvailabilities: DayAvailability[]
+  targetAvailabilities: DayAvailability[],
+  timezone?: string
 ): boolean => {
-  const startTime = format(startOnTargetTimezone, 'HH:mm')
-  let endTime = format(endOnTargetTimezone, 'HH:mm')
-  if (endTime === '00:00') {
-    endTime = '24:00'
-  }
-
-  const compareTimes = (t1: string, t2: string) => {
-    const [h1, m1] = t1.split(':')
-    const [h2, m2] = t2.split(':')
-
-    if (h1 !== h2) {
-      return h1 > h2 ? 1 : -1
-    }
-
-    if (m1 !== m2) {
-      return m1 > m2 ? 1 : -1
-    }
-
-    return 0
-  }
-
-  //After midnight
-  if (compareTimes(startTime, endTime) > 0) {
-    endTime = `${getHours(endOnTargetTimezone) + 24}:00`
-  }
-
-  for (const availability of targetAvailabilities) {
-    if (availability.weekday === getDay(startOnTargetTimezone)) {
-      for (const range of availability.ranges) {
-        if (compareTimes(startTime, range.start) >= 0) {
-          if (compareTimes(endTime, range.end) <= 0) {
-            return true
-          }
-        }
-      }
-    }
-  }
-
-  return false
+  const startTime = DateTime.fromJSDate(startOnTargetTimezone).setZone(timezone)
+  const endTime = DateTime.fromJSDate(endOnTargetTimezone).setZone(timezone)
+  const slots = parseMonthAvailabilitiesToDate(
+    targetAvailabilities,
+    startTime.toJSDate(),
+    endTime.toJSDate(),
+    timezone || 'UTC'
+  )
+  return slots.some(slot =>
+    slot.overlaps(LuxonInterval.fromDateTimes(startTime, endTime))
+  )
 }
 
 export const getBlockedAvailabilities = (
@@ -166,3 +138,43 @@ export const getAvailabilitiesForWeekDay = (
   availabilities?: DayAvailability[],
   day?: Date
 ) => availabilities?.find(_ => !!day && _.weekday === getDay(day))?.ranges ?? []
+
+export const suggestBestSlots = (
+  startDate: Date,
+  duration: number,
+  endDate: Date,
+  timezone: string,
+  busySlots: LuxonInterval<true>[],
+  accounts: Account[]
+) => {
+  const accountAvailabilities = accounts.map(account => ({
+    account,
+    availabilities: parseMonthAvailabilitiesToDate(
+      account.preferences.availabilities || [],
+      startDate,
+      endDate,
+      account.preferences.timezone || 'UTC'
+    ),
+  }))
+  const sortedBusySlots = busySlots.sort(
+    (a, b) => a.start.toMillis() - b.start.toMillis()
+  )
+  const now = DateTime.now()
+  const allSlots: LuxonInterval<true>[] = generateTimeSlots(
+    startDate,
+    duration || 30,
+    true,
+    timezone,
+    endDate
+  ).filter(slot => slot.isValid)
+  return allSlots
+    .filter(slot => slot.start >= now)
+    .filter(slot => {
+      return accountAvailabilities.every(({ availabilities }) =>
+        availabilities.some(availability => availability.overlaps(slot))
+      )
+    })
+    .filter(slot => {
+      return !sortedBusySlots.some(busySlot => busySlot.overlaps(slot))
+    })
+}

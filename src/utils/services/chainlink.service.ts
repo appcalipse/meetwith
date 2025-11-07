@@ -7,6 +7,20 @@ import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { thirdWebClient } from '@/utils/user_manager'
 
+export const getPriceForChain = async (
+  chain: SupportedChain,
+  token: AcceptedToken
+): Promise<string> => {
+  const priceService = new PriceFeedService()
+  try {
+    const price = await priceService.getPrice(chain, token)
+    return `$${price.toFixed(2)}`
+  } catch (error) {
+    console.warn(`Failed to get price for ${token} on ${chain}:`, error)
+    return '$1.00' // Fallback price
+  }
+}
+
 export class PriceFeedService {
   #PRICE_FEEDS: Record<Partial<SupportedChain>, Record<string, string>>
 
@@ -14,6 +28,7 @@ export class PriceFeedService {
     this.#PRICE_FEEDS = {
       [SupportedChain.ARBITRUM]: {
         [AcceptedToken.USDC]: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
+        [AcceptedToken.USDT]: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
         [AcceptedToken.ETHER]: '0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612',
       },
       [SupportedChain.ARBITRUM_SEPOLIA]: {
@@ -21,8 +36,10 @@ export class PriceFeedService {
         [AcceptedToken.ETHER]: '0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165',
       },
       [SupportedChain.CELO]: {
-        [AcceptedToken.USDC]: '0xe38A27BE4E7d866327e09736F3C570F256FFd048',
+        [AcceptedToken.USDT]: '0x5e37AF40A7A344ec9b03CCD34a250F3dA9a20B02',
+        [AcceptedToken.CUSD]: '0xe38A27BE4E7d866327e09736F3C570F256FFd048',
         [AcceptedToken.CELO]: '0x0568fD19986748cEfF3301e55c0eb1E729E0Ab7e',
+        [AcceptedToken.CEUR]: '0x9a48d9b0AF457eF040281A9Af3867bc65522Fecd',
       },
       [SupportedChain.CELO_ALFAJORES]: {
         [AcceptedToken.USDC]: '0x8b255b1FB27d4D06bD8899f81095627464868EEE',
@@ -39,6 +56,7 @@ export class PriceFeedService {
         [AcceptedToken.ETHER]: '0x694AA1769357215DE4FAC081bf1f309aDC325306',
       },
       [SupportedChain.METIS_ANDROMEDA]: {},
+
       [SupportedChain.CUSTOM]: {},
     }
   }

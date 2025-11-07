@@ -1,10 +1,12 @@
 import {
   PaymentChannel,
+  PaymentType,
   PlanType,
   SessionType,
 } from '@utils/constants/meeting-types'
 
 import { ConnectedCalendarCore } from './CalendarConnections'
+import { AcceptedToken } from './chains'
 import { DiscordAccount } from './Discord'
 import { MeetingProvider } from './Meeting'
 import { Subscription } from './Subscription'
@@ -29,12 +31,14 @@ export interface Account {
   is_invited: boolean
   subscriptions: Subscription[]
   discord_account?: DiscordAccount
+  payment_preferences: PaymentPreferences | null
   signedUp?: boolean
   isCalendarConnected?: boolean
 }
 
 export interface PublicAccount extends Account {
   meetingTypes?: MeetingType[]
+  payment_methods?: PaymentType[]
 }
 
 export interface SimpleAccountInfo {
@@ -86,8 +90,10 @@ export interface MeetingTypePlan {
   price_per_slot: number
   no_of_slot: number
   default_chain_id: number
+  default_token: AcceptedToken
   payment_channel: PaymentChannel
   payment_address: string
+  payment_methods: PaymentType[]
   created_at: Date
   updated_at: Date
 }
@@ -105,7 +111,6 @@ export interface TimeRange {
 export interface AccountPreferences {
   id?: string
   timezone: string | undefined
-  availableTypes: MeetingType[]
   description?: string
   availabilities: DayAvailability[]
   availaibility_id?: string
@@ -113,6 +118,24 @@ export interface AccountPreferences {
   name?: string
   avatar_url?: string
   meetingProviders: Array<MeetingProvider>
+}
+
+export interface PaymentPreferences {
+  id?: number
+  created_at?: Date
+  owner_account_address: string
+  pin?: string | null
+  hasPin?: boolean
+  default_chain_id?: number
+  notification?: Array<'send-tokens' | 'receive-tokens'>
+}
+
+// For partial updates (e.g., just PIN operations)
+export interface PartialPaymentPreferences {
+  owner_account_address: string
+  pin_hash?: string | null
+  default_chain_id?: number
+  notification?: Array<'send-tokens' | 'receive-tokens'>
 }
 
 export enum SocialLinkType {

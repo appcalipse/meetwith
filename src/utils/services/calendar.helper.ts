@@ -52,17 +52,28 @@ export const CalendarServiceHelper = {
   getMeetingSummary: function (
     meetingDescription?: string,
     meeting_url?: string,
-    meetingChangeLink?: string
+    meetingChangeLink?: string,
+    hasGuests?: boolean
   ) {
-    let message = `Your meeting will happen at ${
+    let message = ''
+    if (meetingDescription) {
+      message += `${this.convertHtmlToPlainText(meetingDescription)}`
+    }
+
+    const meetingLocationText = `\n\nYour meeting will happen at ${
       meeting_url ? meeting_url : 'Meetwith'
-    } `
+    }`
+
+    message += meetingLocationText
+
     if (meetingChangeLink) {
       message += `\n\nTo reschedule or cancel the meeting, please go to ${meetingChangeLink}`
     }
-    if (meetingDescription) {
-      message += `\n\n${this.convertHtmlToPlainText(meetingDescription)}`
+
+    if (hasGuests) {
+      message += `\n\nGuests have to use the reschedule or cancel link in their meeting confirmation email to manage their booking`
     }
+
     return message
   },
 

@@ -1,6 +1,6 @@
 import { useToast } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
-import router from 'next/router'
+import router, { useRouter } from 'next/router'
 import { useContext } from 'react'
 import { Wallet } from 'thirdweb/wallets'
 import { getUserEmail } from 'thirdweb/wallets/in-app'
@@ -19,6 +19,7 @@ export const useLogin = () => {
   const { logged, currentAccount, login, loginIn, setLoginIn, logout } =
     useContext(AccountContext)
   const toast = useToast()
+  const { asPath, query } = useRouter()
   const handleLogin = async (
     wallet: Wallet | undefined,
     useWaiting = true,
@@ -51,7 +52,7 @@ export const useLogin = () => {
         // redirect new accounts to onboarding
         if (account.signedUp) {
           const stateObj: any = { signedUp: true }
-
+          stateObj.jti = account?.jti
           if (wallet.id === 'inApp') {
             // needed due bug in the SDK that returns the last email even if a new EOA signs in
             const email = await getUserEmail({ client: thirdWebClient })
@@ -80,7 +81,6 @@ export const useLogin = () => {
             stateObj.redirectTo = redirectPath
           }
           const state = Buffer.from(JSON.stringify(stateObj)).toString('base64')
-
           shouldRedirect &&
             (await router.push(
               redirectPath
@@ -101,16 +101,18 @@ export const useLogin = () => {
         ) {
           shouldRedirect &&
             (await router.push(
-              `/dashboard/meetings${
-                redirectPath ? `?redirect=${redirectPath}` : ''
-              }`
+              query.redirect && !query.redirect?.includes('[section]')
+                ? (query.redirect as string)
+                : `/dashboard/meetings${
+                    redirectPath ? `?redirect=${redirectPath}` : ''
+                  }`
             ))
           return
         }
       }
     } catch (error: any) {
       if (error instanceof InvalidSessionError) {
-        await router.push('/logout')
+        await router.push(`/logout?redirect=${asPath}`)
         return
       }
       Sentry.captureException(error)

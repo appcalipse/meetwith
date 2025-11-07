@@ -21,7 +21,7 @@ import { handleApiError } from '@/utils/error_helper'
 
 export interface IEditGroupNameModal {
   groupID: string | null
-  resetState: () => void
+  resetState: () => Promise<void>
   onClose: () => void
   isOpen: boolean
   groupSlug: string | null
@@ -41,12 +41,11 @@ const EditGroupSlugModal: React.FC<IEditGroupNameModal> = props => {
     if (!props.groupID) return
     setIsUpdating(true)
     try {
-      const isSuccessful = await editGroup(props.groupID, undefined, input)
+      await editGroup(props.groupID, undefined, input)
+      await props.resetState()
       setIsUpdating(false)
-      if (!isSuccessful) return
-      props.resetState()
       props.onClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error changing slug', error)
     }
     setIsUpdating(false)
@@ -84,7 +83,7 @@ const EditGroupSlugModal: React.FC<IEditGroupNameModal> = props => {
                 borderColor="neutral.400 !important"
                 pr={0}
               >
-                meetwithwallet.xyz/
+                meetwith.xyz/
               </InputLeftAddon>
               <Input
                 placeholder="my-group-name"

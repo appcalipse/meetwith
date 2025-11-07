@@ -133,15 +133,25 @@ export class GateConditionNotValidError extends Error {
 
 export class MeetingChangeConflictError extends Error {
   constructor() {
-    super(`Somebody edited the meeting before you.`)
+    super(
+      `Somebody edited the meeting before you, Please refresh the page to get the latest status.`
+    )
     this.name = 'MeetingChangeConflictError'
+  }
+}
+export class MeetingCancelConflictError extends Error {
+  constructor() {
+    super(
+      `Somebody else cancelled the meeting before you. Please refresh the page to get the latest status.`
+    )
+    this.name = 'MeetingCancelConflictError'
   }
 }
 
 export class MeetingCancelForbiddenError extends Error {
   constructor() {
     super(
-      `Only the host can cancel the meeting. You can RSPV "no" from the calendar-invite and/or ask the host to reschedule`
+      `Only the host or owners can cancel the meeting. You can RSPV "no" from the calendar-invite and/or ask the host to reschedule`
     )
     this.name = 'MeetingCancelForbiddenError'
   }
@@ -282,6 +292,12 @@ export class CantInviteYourself extends Error {
     this.name = 'CantInviteYourself'
   }
 }
+export class MemberDoesNotExist extends Error {
+  constructor() {
+    super(`Member does not exist in this group`)
+    this.name = 'MemberDoesNotExist'
+  }
+}
 
 export class PermissionDenied extends Error {
   constructor(message = `You do not have permission to perform this action`) {
@@ -400,5 +416,134 @@ export class GuestRescheduleForbiddenError extends Error {
   constructor() {
     super('Only the scheduler can reschedule this meeting.')
     this.name = 'GuestRescheduleForbiddenError'
+  }
+}
+export class MeetingSessionNotFoundError extends Error {
+  constructor(meeting_id: string) {
+    super(`Meeting session not found for id: ${meeting_id}`)
+    this.name = 'MeetingSessionNotFoundError'
+  }
+}
+
+export class ServiceUnavailableError extends Error {
+  constructor() {
+    super(
+      'We’re having trouble connecting at the moment. Please try again shortly.'
+    )
+    this.name = 'Service Unavailable'
+  }
+}
+
+export class QuickPollNotFoundError extends Error {
+  constructor(pollId: string) {
+    super(`Quick poll with id ${pollId} not found`)
+    this.name = 'QuickPollNotFoundError'
+  }
+}
+
+export class QuickPollSlugNotFoundError extends Error {
+  constructor(slug: string) {
+    super(`Quick poll with slug ${slug} not found`)
+    this.name = 'QuickPollSlugNotFoundError'
+  }
+}
+
+export class QuickPollUnauthorizedError extends Error {
+  constructor(
+    message = 'You do not have permission to perform this action on this poll'
+  ) {
+    super(message)
+    this.name = 'QuickPollUnauthorizedError'
+  }
+}
+
+export class QuickPollCreationError extends Error {
+  constructor(message = 'Error creating quick poll') {
+    super(message)
+    this.name = 'QuickPollCreationError'
+  }
+}
+
+export class QuickPollUpdateError extends Error {
+  constructor(message = 'Error updating quick poll') {
+    super(message)
+    this.name = 'QuickPollUpdateError'
+  }
+}
+
+export class QuickPollCancellationError extends Error {
+  constructor(message = 'Error cancelling quick poll') {
+    super(message)
+    this.name = 'QuickPollCancellationError'
+  }
+}
+
+export class QuickPollDeletionError extends Error {
+  constructor(message = 'Error deleting quick poll') {
+    super(message)
+    this.name = 'QuickPollDeletionError'
+  }
+}
+
+export class QuickPollParticipantNotFoundError extends Error {
+  constructor(participantId: string) {
+    super(`Quick poll participant with id ${participantId} not found`)
+    this.name = 'QuickPollParticipantNotFoundError'
+  }
+}
+
+export class QuickPollParticipantCreationError extends Error {
+  constructor(message = 'Error adding participant to quick poll') {
+    super(message)
+    this.name = 'QuickPollParticipantCreationError'
+  }
+}
+
+export class QuickPollParticipantUpdateError extends Error {
+  constructor(message = 'Error updating quick poll participant') {
+    super(message)
+    this.name = 'QuickPollParticipantUpdateError'
+  }
+}
+
+export class QuickPollSlugGenerationError extends Error {
+  constructor(message = 'Error generating unique poll slug') {
+    super(message)
+    this.name = 'QuickPollSlugGenerationError'
+  }
+}
+
+export class QuickPollValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'QuickPollValidationError'
+  }
+}
+
+export class QuickPollPermissionDeniedError extends Error {
+  constructor(message = 'You do not have permission to perform this action') {
+    super(message)
+    this.name = 'QuickPollPermissionDeniedError'
+  }
+}
+
+export class QuickPollExpiredError extends Error {
+  constructor() {
+    super('This poll has expired and is no longer accepting responses')
+    this.name = 'QuickPollExpiredError'
+  }
+}
+
+export class QuickPollAlreadyCancelledError extends Error {
+  constructor() {
+    super('This poll has already been cancelled')
+    this.name = 'QuickPollAlreadyCancelledError'
+  }
+}
+
+export class QuickPollAlreadyCompletedError extends Error {
+  constructor() {
+    super('This poll has already been completed')
+    this.name = 'QuickPollAlreadyCompletedError'
   }
 }

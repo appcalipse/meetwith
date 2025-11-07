@@ -5,8 +5,20 @@ import { viemAdapter } from 'thirdweb/adapters/viem'
 import { Address } from 'viem'
 
 import { ERC721 } from '@/abis/erc721'
-import { getChainInfo, SupportedChain, TokenMeta } from '@/types/chains'
+import {
+  AcceptedToken,
+  ChainInfo,
+  getChainId,
+  getChainInfo,
+  getTokenAddress,
+  getTokenSymbol,
+  SupportedChain,
+  supportedChains,
+  TokenMeta,
+} from '@/types/chains'
 import { GateInterface, TokenGateElement } from '@/types/TokenGating'
+import { supportedPaymentChains } from '@/utils/constants/meeting-types'
+import { zeroAddress } from '@/utils/generic_utils'
 
 import { thirdWebClient } from './user_manager'
 
@@ -137,6 +149,270 @@ export const getTokenInfo = async (
       contract: erc20Contract,
     }
   } catch (error) {
+    return null
+  }
+}
+
+// Formatted balance functions for API use
+export const getCryptoTokenBalance = async (
+  walletAddress: string,
+  tokenAddress: string,
+  chain: SupportedChain
+): Promise<{ balance: number }> => {
+  try {
+    const chainInfo = getChainInfo(chain)
+    if (!chainInfo) {
+      throw new Error(`Unsupported chain: ${chain}`)
+    }
+
+    const contract = getContract({
+      client: thirdWebClient,
+      chain: chainInfo.thirdwebChain,
+      address: tokenAddress as `0x${string}`,
+      abi: erc20Abi,
+    })
+
+    const balance = await readContract({
+      contract,
+      method: 'balanceOf',
+      params: [walletAddress as `0x${string}`],
+    })
+
+    // Get decimals for proper formatting
+    const decimals = await readContract({
+      contract,
+      method: 'decimals',
+    })
+
+    return { balance: Number(balance) / Math.pow(10, decimals) }
+  } catch (error) {
+    console.error('Error getting token balance:', error)
+    return { balance: 0 }
+  }
+}
+
+export const getCryptoNativeBalance = async (
+  walletAddress: string,
+  chain: SupportedChain
+): Promise<{ balance: number }> => {
+  try {
+    const chainInfo = getChainInfo(chain)
+    if (!chainInfo) {
+      throw new Error(`Unsupported chain: ${chain}`)
+    }
+
+    const publicClient = viemAdapter.publicClient.toViem({
+      chain: chainInfo.thirdwebChain,
+      client: thirdWebClient,
+    })
+
+    const balance = await publicClient.getBalance({
+      address: walletAddress as `0x${string}`,
+    })
+
+    return { balance: Number(balance) / 1e18 } // Convert from wei to ether
+  } catch (error) {
+    console.error('Error getting native balance:', error)
+    return { balance: 0 }
+  }
+}
+
+export const getTotalWalletBalance = async (
+  walletAddress: string
+): Promise<{ balance: number }> => {
+  try {
+    const supportedChains = supportedPaymentChains
+
+    const tokenConfigs = []
+
+    for (const chain of supportedChains) {
+      const chainInfo = getChainInfo(chain)
+      if (chainInfo) {
+        for (const tokenInfo of chainInfo.acceptableTokens) {
+          if (tokenInfo.contractAddress !== zeroAddress) {
+            tokenConfigs.push({
+              address: tokenInfo.contractAddress,
+              chain: chain,
+              symbol: getTokenSymbol(tokenInfo.token),
+            })
+          }
+        }
+      }
+    }
+
+    let totalBalance = 0
+
+    const balancePromises = [
+      ...supportedChains.map(async chain => {
+        try {
+          const nativeBalance = await getCryptoNativeBalance(
+            walletAddress,
+            chain
+          )
+          return nativeBalance.balance
+        } catch (error) {
+          console.error(
+            `Error getting native balance for chain ${chain}:`,
+            error
+          )
+          return 0
+        }
+      }),
+
+      ...tokenConfigs.map(async token => {
+        try {
+          const tokenBalance = await getCryptoTokenBalance(
+            walletAddress,
+            token.address,
+            token.chain
+          )
+          return tokenBalance.balance
+        } catch (error) {
+          console.error(
+            `Error getting token balance for ${token.symbol}:`,
+            error
+          )
+          return 0
+        }
+      }),
+    ]
+
+    // Wait for all balance requests to complete
+    const balances = await Promise.all(balancePromises)
+    totalBalance = balances.reduce((sum, balance) => sum + balance, 0)
+
+    return { balance: totalBalance }
+  } catch (error) {
+    console.error('Error getting total wallet balance:', error)
+    return { balance: 0 }
+  }
+}
+
+export const getCryptoBalance = async (
+  walletAddress: string,
+  tokenAddress: string,
+  chainId: number
+): Promise<{ balance: number }> => {
+  const chain = Object.values(SupportedChain).find(
+    supportedChain => getChainId(supportedChain) === chainId
+  )
+
+  if (!chain) {
+    throw new Error(`Unsupported chain ID: ${chainId}`)
+  }
+
+  return getCryptoTokenBalance(walletAddress, tokenAddress, chain)
+}
+
+export const getTokenDecimals = async (
+  tokenAddress: string,
+  chain: SupportedChain
+): Promise<number> => {
+  try {
+    const chainInfo = getChainInfo(chain)
+    if (!chainInfo) {
+      throw new Error(`Unsupported chain: ${chain}`)
+    }
+
+    const contract = getContract({
+      client: thirdWebClient,
+      chain: chainInfo.thirdwebChain,
+      address: tokenAddress as `0x${string}`,
+      abi: erc20Abi,
+    })
+
+    const decimals = await readContract({
+      contract,
+      method: 'decimals',
+    })
+
+    return Number(decimals)
+  } catch (error) {
+    console.error('Error getting token decimals:', error)
+    // Fallback to default decimals for known tokens
+    return 18
+  }
+}
+
+export const getNetworkWithHighestBalance = async (
+  walletAddress: string
+): Promise<SupportedChain | null> => {
+  try {
+    const walletSupportedChains = supportedChains.filter(
+      (chain: ChainInfo) =>
+        chain.walletSupported && supportedPaymentChains.includes(chain.chain)
+    )
+
+    const networkBalances: Array<{ chain: SupportedChain; balance: number }> =
+      []
+
+    // Calculate balance for each network
+    for (const chainInfo of walletSupportedChains) {
+      try {
+        let networkTotal = 0
+
+        // Get native balance for this network
+        try {
+          const nativeBalance = await getCryptoNativeBalance(
+            walletAddress,
+            chainInfo.chain
+          )
+          networkTotal += nativeBalance.balance
+        } catch (error) {
+          console.error(
+            `Error getting native balance for ${chainInfo.chain}:`,
+            error
+          )
+        }
+
+        // Get all token balances for this network
+        for (const tokenInfo of chainInfo.acceptableTokens) {
+          if (tokenInfo.contractAddress !== zeroAddress) {
+            try {
+              const tokenBalance = await getCryptoTokenBalance(
+                walletAddress,
+                tokenInfo.contractAddress,
+                chainInfo.chain
+              )
+              networkTotal += tokenBalance.balance
+            } catch (error) {
+              console.error(
+                `Error getting token balance for ${tokenInfo.token} on ${chainInfo.chain}:`,
+                error
+              )
+            }
+          }
+        }
+
+        networkBalances.push({
+          chain: chainInfo.chain,
+          balance: networkTotal,
+        })
+      } catch (error) {
+        console.error(
+          `Error calculating balance for ${chainInfo.chain}:`,
+          error
+        )
+      }
+    }
+
+    // Find the network with the highest balance
+    if (networkBalances.length === 0) {
+      return null
+    }
+
+    const highestBalanceNetwork = networkBalances.reduce((prev, current) =>
+      current.balance > prev.balance ? current : prev
+    )
+
+    // Only return if there's actually a balance (greater than 0)
+    if (highestBalanceNetwork.balance > 0) {
+      return highestBalanceNetwork.chain
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error getting network with highest balance:', error)
     return null
   }
 }

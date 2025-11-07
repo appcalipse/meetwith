@@ -12,9 +12,9 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useContext, useEffect, useState } from 'react'
+import React, { FC, useEffect, useState } from 'react'
 
-import { ScheduleContext } from '@/pages/dashboard/schedule'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { ellipsizeAddress } from '@/utils/user_manager'
 interface IProps {
@@ -23,7 +23,7 @@ interface IProps {
   participants: Array<ParticipantInfo>
 }
 const ScheduleParticipantsOwnersModal: FC<IProps> = props => {
-  const { meetingOwners, setMeetingOwners } = useContext(ScheduleContext)
+  const { meetingOwners, setMeetingOwners } = useParticipants()
   const [owners, setOwners] = useState<Array<ParticipantInfo>>(meetingOwners)
   const handleSave = () => {
     setMeetingOwners(owners)

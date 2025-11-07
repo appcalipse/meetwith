@@ -1,13 +1,14 @@
-import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   chakra,
   Flex,
   HStack,
   Image,
+  Link,
   Stack,
   Text,
   useColorModeValue,
+  useMediaQuery,
   VisuallyHidden,
   VStack,
 } from '@chakra-ui/react'
@@ -19,9 +20,26 @@ import { MWW_DISCORD_SERVER } from '@/utils/constants'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
 const Logo = () => {
+  const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
+    ssr: true,
+    fallback: false,
+  })
   return (
     <Link href={'/'}>
-      <Image boxSize="100px" src="/assets/logo.svg" alt="Meetwith" />
+      <Image
+        width={53}
+        height={33}
+        alt="Meetwith"
+        style={{
+          width: isMobile ? '75px' : '100px',
+          height: 'auto',
+          display: 'block',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          padding: 8,
+        }}
+        src="/assets/logo.svg"
+      />
     </Link>
   )
 }
@@ -100,7 +118,7 @@ export default function SmallWithLogoLeft() {
             }}
           >
             <Link
-              href="mailto:contact@meetwithwallet.xyz"
+              href="mailto:contact@meetwith.xyz"
               isExternal
               color={'inherit'}
             >
@@ -128,7 +146,7 @@ export default function SmallWithLogoLeft() {
             }}
           >
             <Link
-              href="mailto:contact@meetwithwallet.xyz"
+              href="mailto:contact@meetwith.xyz"
               color={'inherit'}
               isExternal
             >
@@ -137,10 +155,7 @@ export default function SmallWithLogoLeft() {
           </Text>
         </HStack>
         <Stack direction={'row'} spacing={6}>
-          <SocialButton
-            label={'Eamil'}
-            href={'mailto:contact@meetwithwallet.xyz'}
-          >
+          <SocialButton label={'Eamil'} href={'mailto:contact@meetwith.xyz'}>
             <FaEnvelope size={22} />
           </SocialButton>
           <SocialButton label={'Twitter'} href={'https://x.com/meetwithhq'}>

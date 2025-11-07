@@ -30,6 +30,7 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
   return {
     id: faker.datatype.uuid(),
     created_at: faker.date.past(),
+    payment_preferences: null,
     address: address || faker.finance.bitcoinAddress(),
     internal_pub_key: internal_pub_key || faker.finance.bitcoinAddress(),
     encoded_signature: faker.datatype.string(),
@@ -39,7 +40,6 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
     preferences: {
       name: faker.name.firstName(),
       timezone: faker.address.timeZone(),
-      availableTypes: [],
       description: faker.datatype.string(),
       availabilities: [],
       socialLinks: [],

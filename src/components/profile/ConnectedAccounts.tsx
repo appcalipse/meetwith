@@ -1,57 +1,56 @@
-import {
-  Box,
-  Button,
-  Flex,
-  Heading,
-  HStack,
-  Icon,
-  Text,
-  useColorModeValue,
-  useToast,
-  VStack,
-} from '@chakra-ui/react'
+import { Box, Grid, Heading, useDisclosure, VStack } from '@chakra-ui/react'
+import AccountCard from '@components/connected-account/AccountCard'
+import SelectCountry from '@components/connected-account/SelectCountry'
+import Loading from '@components/Loading'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useMemo, useState } from 'react'
-import { FaDiscord } from 'react-icons/fa'
+import React, { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import {
-  deleteDiscordIntegration,
   generateDiscordAccount,
+  getConnectedAccounts,
+  getStripeSupportedCountries,
 } from '@/utils/api_helper'
-import { discordRedirectUrl, OnboardingSubject } from '@/utils/constants'
+import { OnboardingSubject } from '@/utils/constants'
+import { handleApiError } from '@/utils/error_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import { useToastHelpers } from '@/utils/toasts'
 
-const DiscordConnection: React.FC = () => {
+const ConnectedAccounts: React.FC = () => {
   const { updateUser, currentAccount } = useContext(AccountContext)
-  const [isDiscordConnected, setIsDiscordConnected] = useState(
-    !!currentAccount?.discord_account
-  )
-  const [connecting, setConnecting] = useState(false)
-
-  const toast = useToast()
-
+  const [isConnecting, setIsConnecting] = useState(false)
   const router = useRouter()
+  const { showSuccessToast } = useToastHelpers()
 
-  const disconnect = async () => {
-    setConnecting(true)
-    await deleteDiscordIntegration()
-    await queryClient.invalidateQueries(
-      QueryKeys.account(currentAccount?.address?.toLowerCase())
-    )
-    await updateUser()
-    setConnecting(false)
-    toast({
-      title: 'Discord disconnected',
-      description: 'Your Discord account has been disconnected',
-      status: 'success',
-      duration: 3000,
-      position: 'top',
-      isClosable: true,
+  const { data: connectedAccounts, isLoading: isConnectedAccountsLoading } =
+    useQuery({
+      queryKey: QueryKeys.connectedAccounts(currentAccount?.address),
+      queryFn: getConnectedAccounts,
+      enabled: !!currentAccount?.address,
+      staleTime: 0,
+      refetchOnMount: true,
+      onError: (error: unknown) => {
+        handleApiError('Error Fetching Connected Accounts', error)
+      },
     })
-    setIsDiscordConnected(false)
-  }
+  const { data: supportedCountries, isLoading: isSupportedCountriesLoading } =
+    useQuery({
+      queryKey: QueryKeys.supportedCountries(),
+      queryFn: getStripeSupportedCountries,
+      enabled: !!currentAccount?.address,
+      staleTime: 1000 * 60 * 60 * 24,
+      refetchOnMount: true,
+      onError: (error: unknown) => {
+        handleApiError('Error Fetching Supported countries', error)
+      },
+    })
+  const {
+    isOpen: isSupportedCountryModalOpen,
+    onOpen: openSupportedCountryModal,
+    onClose: closeSupportedCountryModal,
+  } = useDisclosure()
 
   const generateDiscord = async () => {
     const { code, state } = router.query
@@ -60,115 +59,68 @@ const DiscordConnection: React.FC = () => {
       ? (JSON.parse(Buffer.from(state as string, 'base64').toString())
           ?.origin as OnboardingSubject | undefined)
       : undefined
-
+    if (isConnecting) return
     if (origin && code) {
-      setConnecting(true)
+      setIsConnecting(true)
       const uri = window.location.href.toString()
       if (uri.indexOf('?') > 0) {
         const clean_uri = uri.substring(0, uri.indexOf('?'))
         window.history.replaceState({}, document.title, clean_uri)
       }
       try {
-        await generateDiscordAccount(code as string)
+        await generateDiscordAccount(code as string).then(console.log)
+        await queryClient.invalidateQueries(
+          QueryKeys.account(currentAccount?.address?.toLowerCase())
+        )
         await updateUser()
-        setIsDiscordConnected(true)
-        toast({
-          title: 'Discord Connected',
-          description: 'Your Discord account has been connected',
-          status: 'success',
-          duration: 3000,
-          position: 'top',
-          isClosable: true,
-        })
+        await queryClient.invalidateQueries(
+          QueryKeys.connectedAccounts(currentAccount?.address)
+        )
+        showSuccessToast(
+          'Discord Connected',
+          'Your Discord account has been connected'
+        )
       } catch (error) {}
-      setConnecting(false)
+      setIsConnecting(false)
     }
   }
 
   useEffect(() => {
-    generateDiscord()
-  }, [])
-
-  const bgColor = useColorModeValue('gray.800', 'white')
-  const badgeColor = useColorModeValue('gray.600', 'gray.500')
-  const color = useColorModeValue('white', 'gray.800')
-
+    void generateDiscord()
+  }, [router.query])
   return (
-    <HStack>
-      <VStack flex={1} alignItems="flex-start">
-        <HStack>
-          <Flex
-            width="22px"
-            height="22px"
-            bgColor={bgColor}
-            borderRadius="50%"
-            justifyContent="center"
-            alignItems="center"
-          >
-            <Icon as={FaDiscord} color={color} />
-          </Flex>
-          <Text fontSize="lg" fontWeight="bold">
-            Discord
-          </Text>
-          {isDiscordConnected && (
-            <HStack borderRadius="6px" px={2} bgColor={badgeColor}>
-              <Box
-                borderRadius="50%"
-                w="8px"
-                h="8px"
-                bgColor="rgba(52, 199, 89, 1)"
-              />
-              <Text fontSize="xs" color="white">
-                Connected
-              </Text>
-            </HStack>
-          )}
-        </HStack>
-        <Text opacity="0.5">
-          Connect to enable notifications and Discord bot commands
-        </Text>
-      </VStack>
-
-      {isDiscordConnected ? (
-        <Button
-          variant="ghost"
-          colorScheme="primary"
-          isLoading={connecting}
-          onClick={disconnect}
-        >
-          Disconnect
-        </Button>
-      ) : (
-        <Button
-          as="a"
-          isLoading={connecting}
-          loadingText="Connecting"
-          variant="outline"
-          colorScheme="primary"
-          onClick={() => setConnecting(true)}
-          href={`https://discord.com/api/oauth2/authorize?client_id=${
-            process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
-          }&redirect_uri=${encodeURIComponent(
-            discordRedirectUrl
-          )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
-            JSON.stringify({ origin: OnboardingSubject.DiscordConnectedInPage })
-          ).toString('base64')}`}
-        >
-          Connect
-        </Button>
-      )}
-    </HStack>
-  )
-}
-
-const ConnectedAccounts: React.FC = () => {
-  return (
-    <>
+    <VStack w={'100%'} alignItems="flex-start">
       <Heading id="connected" fontSize="2xl" mb={8}>
         Connected Accounts
       </Heading>
-      <DiscordConnection />
-    </>
+      {isConnectedAccountsLoading || isConnecting ? (
+        <Box mx="auto">
+          <Loading />
+        </Box>
+      ) : (
+        <Grid
+          templateColumns={{ md: 'repeat(2, 1fr)', base: '1fr' }}
+          gap={6}
+          mb={12}
+          w={'100%'}
+        >
+          {connectedAccounts?.map(account => (
+            <AccountCard
+              account={account.account}
+              info={account.info}
+              key={`connected-account-${account.account}`}
+              openSelectCountry={openSupportedCountryModal}
+            />
+          ))}
+        </Grid>
+      )}
+      <SelectCountry
+        countries={supportedCountries}
+        isCountriesLoading={isSupportedCountriesLoading}
+        isOpen={isSupportedCountryModalOpen}
+        onClose={closeSupportedCountryModal}
+      />
+    </VStack>
   )
 }
 

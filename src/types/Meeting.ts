@@ -26,7 +26,14 @@ export enum TimeSlotSource {
   OFFICE = 'Office 365',
   WEBDAV = 'Webdav',
 }
-
+export interface ExistingMeetingData {
+  title?: string
+  content?: string
+  meetingUrl?: string
+  participants?: ParticipantInfo[]
+  start?: Date
+  end?: Date
+}
 export interface TimeSlot extends Interval {
   source?: string
   account_address: string
@@ -168,6 +175,7 @@ export enum GroupNotificationType {
   REJECT,
   LEAVE,
 }
+
 export enum NotBefore {
   OneHour = 1,
   TwoHours = 2,
@@ -190,5 +198,6 @@ export interface GuestMeetingCancel {
 }
 
 export interface MeetingCancelSyncRequest {
-  decryptedMeetingData: MeetingDecrypted
+  decryptedMeetingData: MeetingInfo
+  slotId: string
 }
