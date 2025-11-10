@@ -747,7 +747,7 @@ export function QuickPollPickAvailability({
             >
               {isEditingAvailability
                 ? 'Save availability'
-                : 'Edit availability'}
+                : 'Add/Edit availability'}
             </Button>
           )}
           <VStack gap={2} alignItems={'flex-start'} minW={'max-content'}>
@@ -878,7 +878,7 @@ export function QuickPollPickAvailability({
             >
               {isEditingAvailability
                 ? 'Save availability'
-                : 'Edit availability'}
+                : 'Add/Edit availability'}
             </Button>
           )}
           {onImportCalendar && !isSchedulingIntent && (

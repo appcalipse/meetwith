@@ -92,12 +92,12 @@ const AddFromGroups = () => {
     </VStack>
   ) : groups.length > 0 ? (
     <>
-      <Text>Add from Groups</Text>
+      <Text>Add from Group</Text>
       <VStack alignItems="flex-start" mt={4} mb={6} width="100%" gap={4}>
         <SearchInput
           setValue={setSearch}
           value={search}
-          placeholder="Search for person in groups"
+          placeholder="Search for person in group or contacts"
         />
         {previewGroups.concat(...restGroups).length > 0 ? (
           <Accordion gap={0} w="100%" allowToggle>

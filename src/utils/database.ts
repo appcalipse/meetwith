@@ -6592,6 +6592,7 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
       )
       .eq('poll_id', pollId)
       .neq('status', QuickPollParticipantStatus.DELETED)
+      .neq('status', QuickPollParticipantStatus.PENDING)
 
     if (participantsError) throw participantsError
 
@@ -6877,34 +6878,37 @@ const updateQuickPollParticipants = async (
     if (participantUpdates.toAdd && participantUpdates.toAdd.length > 0) {
       for (const participantData of participantUpdates.toAdd) {
         try {
-          await addQuickPollParticipant(pollId, participantData)
+          const status =
+            participantData.status || QuickPollParticipantStatus.PENDING
+          await addQuickPollParticipant(pollId, participantData, status)
 
-          // Send invitation email to the new participant
-          const participantEmail =
-            participantData.guest_email ||
-            (participantData.account_address
-              ? await getAccountNotificationSubscriptionEmail(
-                  participantData.account_address
-                )
-              : '')
-          if (participantEmail) {
-            emailQueue.add(async () => {
-              try {
-                await sendPollInviteEmail(
-                  participantEmail,
-                  inviterName,
-                  poll.title,
-                  poll.slug
-                )
-                return true
-              } catch (emailError) {
-                console.error(
-                  `Failed to send invitation email to ${participantEmail}:`,
-                  emailError
-                )
-                return false
-              }
-            })
+          if (status === QuickPollParticipantStatus.PENDING) {
+            const participantEmail =
+              participantData.guest_email ||
+              (participantData.account_address
+                ? await getAccountNotificationSubscriptionEmail(
+                    participantData.account_address
+                  )
+                : '')
+            if (participantEmail) {
+              emailQueue.add(async () => {
+                try {
+                  await sendPollInviteEmail(
+                    participantEmail,
+                    inviterName,
+                    poll.title,
+                    poll.slug
+                  )
+                  return true
+                } catch (emailError) {
+                  console.error(
+                    `Failed to send invitation email to ${participantEmail}:`,
+                    emailError
+                  )
+                  return false
+                }
+              })
+            }
           }
         } catch (addError) {
           throw addError
@@ -7063,6 +7067,7 @@ const getQuickPollParticipants = async (pollId: string) => {
       )
       .eq('poll_id', pollId)
       .neq('status', QuickPollParticipantStatus.DELETED)
+      .neq('status', QuickPollParticipantStatus.PENDING)
       .order('created_at', { ascending: true })
 
     if (error) throw error
@@ -7078,7 +7083,8 @@ const getQuickPollParticipants = async (pollId: string) => {
 
 const addQuickPollParticipant = async (
   pollId: string,
-  participantData: AddParticipantData
+  participantData: AddParticipantData,
+  status: QuickPollParticipantStatus = QuickPollParticipantStatus.PENDING
 ) => {
   try {
     // If a matching deleted participant exists, revive instead of inserting new
@@ -7109,7 +7115,7 @@ const addQuickPollParticipant = async (
     if (existingParticipant) {
       if (existingParticipant.status === QuickPollParticipantStatus.DELETED) {
         const updates: QuickPollParticipantUpdateFields = {
-          status: QuickPollParticipantStatus.PENDING,
+          status,
         }
         // Optionally refresh name or type if provided now
         if (participantData.guest_name)
@@ -7179,7 +7185,7 @@ const addQuickPollParticipant = async (
           account_address: participantData.account_address,
           guest_name: participantData.guest_name,
           guest_email: participantData.guest_email,
-          status: QuickPollParticipantStatus.PENDING,
+          status,
           participant_type: participantData.participant_type,
           timezone,
           available_slots: availableSlots,

@@ -162,6 +162,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
 
   const borderColor = useColorModeValue('gray.300', 'neutral.400')
   const hoverColor = useColorModeValue('#3182ce', '#63b3ed')
+  const disabledBg = useColorModeValue('gray.100', 'rgba(255, 255, 255, 0.04)')
 
   return (
     <HStack
@@ -185,6 +186,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       flex={1}
       flexWrap={'wrap'}
       spacing={0}
+      bg={isReadOnly || addDisabled ? disabledBg : 'transparent'}
       width="100%"
     >
       {badges}
