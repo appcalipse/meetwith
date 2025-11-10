@@ -138,6 +138,7 @@ export interface AddParticipantData {
   guest_name?: string
   guest_email: string
   participant_type: QuickPollParticipantType
+  status?: QuickPollParticipantStatus
 }
 
 export interface QuickPollParticipantUpdateFields {
