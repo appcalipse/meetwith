@@ -105,7 +105,12 @@ const GroupCard: FC<IGroupCard> = props => {
               }
             />
           </AccordionButton>
-          <AccordionPanel px={0} pb={0}>
+
+          <AccordionPanel
+            px={0}
+            pb={0}
+            key={`collapse-${props.id}-${isExpanded}`}
+          >
             <VStack my={0} width="100%" px={0} alignItems="flex-start">
               <Box px={6} mt={2} width="100%">
                 <SearchInput

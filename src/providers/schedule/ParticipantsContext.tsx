@@ -21,6 +21,7 @@ import { handleApiError } from '@/utils/error_helper'
 
 interface IParticipantsContext {
   participants: Array<ParticipantInfo | IGroupParticipant>
+  standAloneParticipants: Array<ParticipantInfo>
   groupParticipants: Record<string, Array<string> | undefined>
   groupAvailability: Record<string, Array<string> | undefined>
   meetingMembers: Array<Account>
@@ -32,6 +33,9 @@ interface IParticipantsContext {
   setGroups: React.Dispatch<React.SetStateAction<Array<GetGroupsFullResponse>>>
   setParticipants: React.Dispatch<
     React.SetStateAction<Array<ParticipantInfo | IGroupParticipant>>
+  >
+  setStandAloneParticipants: React.Dispatch<
+    React.SetStateAction<Array<ParticipantInfo>>
   >
   setGroupParticipants: React.Dispatch<
     React.SetStateAction<Record<string, Array<string> | undefined>>
@@ -60,10 +64,12 @@ export const useParticipants = () => {
 
 interface ParticipantsProviderProps {
   children: ReactNode
+  skipFetching?: boolean
 }
 
 export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   children,
+  skipFetching = false,
 }) => {
   const currentAccount = useAccountContext()
   const [participants, setParticipants] = useState<
@@ -79,6 +85,10 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
       isHidden: true,
     },
   ])
+
+  const [standAloneParticipants, setStandAloneParticipants] = useState<
+    Array<ParticipantInfo>
+  >([])
   const [groupParticipants, setGroupParticipants] = useState<
     Record<string, Array<string> | undefined>
   >({})
@@ -159,10 +169,13 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     await Promise.all([fetchContacts(), fetchGroups()])
   }
   useEffect(() => {
-    void handlePrefetchContacts()
-  }, [])
+    if (!skipFetching) {
+      void handlePrefetchContacts()
+    }
+  }, [skipFetching])
   const value = {
     participants,
+    standAloneParticipants,
     groupParticipants,
     groupAvailability,
     meetingMembers,
@@ -180,6 +193,7 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     removeGroup,
     contacts,
     isContactsPrefetching,
+    setStandAloneParticipants,
   }
 
   return (

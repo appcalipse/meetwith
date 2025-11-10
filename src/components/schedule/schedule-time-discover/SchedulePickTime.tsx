@@ -10,6 +10,7 @@ import {
   Heading,
   HStack,
   IconButton,
+  Select as ChakraSelect,
   SlideFade,
   Text,
   useBreakpointValue,
@@ -102,6 +103,7 @@ export type Dates = {
   date: Date
   slots: Array<Interval<true>>
 }
+
 interface ISchedulePickTimeProps {
   openParticipantModal: () => void
 }
@@ -144,6 +146,8 @@ export function SchedulePickTime({
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
   const [isLoading, setIsLoading] = useState(true)
+
+  const isDisplayLoading = isLoading
   const [availableSlots, setAvailableSlots] = useState<
     Map<string, Interval<true>[]>
   >(new Map())
@@ -471,6 +475,14 @@ export function SchedulePickTime({
     setPickedTime(bestSlot.start.toJSDate())
     handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
+
+  const handleTimeSelection = (time: Date) => {
+    React.startTransition(() => {
+      setPickedTime(time)
+    })
+    handlePageSwitch(Page.SCHEDULE_DETAILS)
+  }
+
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
@@ -543,24 +555,25 @@ export function SchedulePickTime({
                 *
               </Text>
             </FormLabel>
-            <Select
-              value={{
-                value: duration,
-                label: durationToHumanReadable(duration),
-              }}
-              colorScheme="primary"
-              onChange={newValue => _onChangeDuration(newValue)}
-              className="noLeftBorder timezone-select"
-              options={durationOptions}
-              components={customSelectComponents}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  borderColor: 'input-border',
-                  bg: 'select-bg',
-                }),
-              }}
-            />
+            <ChakraSelect
+              id="duration"
+              placeholder="Duration"
+              onChange={e =>
+                Number(e.target.value) && setDuration(Number(e.target.value))
+              }
+              value={duration}
+              borderColor="input-border"
+              width={'max-content'}
+              maxW="350px"
+              errorBorderColor="red.500"
+              bg="select-bg"
+            >
+              {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
+                <option key={type.id} value={type.duration}>
+                  {durationToHumanReadable(type.duration)}
+                </option>
+              ))}
+            </ChakraSelect>
           </FormControl>
           {isUpdatingMeeting && (
             <Button
@@ -666,6 +679,8 @@ export function SchedulePickTime({
                   and the required participants.
                 </Text>
               </Box>
+
+              <HStack spacing={4}>{/* Placeholder for alignment */}</HStack>
 
               <HStack gap={0}>
                 <Grid
@@ -795,7 +810,7 @@ export function SchedulePickTime({
               })}
             </HStack>
           </VStack>
-          {isLoading ? (
+          {isDisplayLoading ? (
             <VStack
               w="100%"
               borderWidth={1}
@@ -876,12 +891,7 @@ export function SchedulePickTime({
                               slotData={slotData}
                               pickedTime={pickedTime}
                               duration={duration}
-                              handleTimePick={time => {
-                                React.startTransition(() => {
-                                  setPickedTime(time)
-                                })
-                                handlePageSwitch(Page.SCHEDULE_DETAILS)
-                              }}
+                              handleTimePick={handleTimeSelection}
                               timezone={timezone}
                             />
                           )

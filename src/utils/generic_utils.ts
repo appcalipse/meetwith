@@ -241,3 +241,30 @@ export const deduplicateMembers = (members: GroupMember[]): GroupMember[] => {
   }
   return Array.from(seen.values())
 }
+/**
+ * Creates a handler function to clear a specific validation error on blur
+ * @param setErrors - The setState function for validation errors
+ * @param fieldName - The name of the field to clear the error for
+ * @returns A function to be used as an onBlur handler
+ *
+ * @example
+ * ```tsx
+ * <Input
+ *   onBlur={clearValidationError(setValidationErrors, 'title')}
+ * />
+ * ```
+ */
+export const clearValidationError = <T extends Record<string, any>>(
+  setErrors: React.Dispatch<React.SetStateAction<T>>,
+  fieldName: keyof T
+) => {
+  return () => {
+    setErrors(prev => {
+      if (prev[fieldName]) {
+        const { [fieldName]: _, ...rest } = prev
+        return rest as T
+      }
+      return prev
+    })
+  }
+}
