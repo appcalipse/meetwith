@@ -35,7 +35,7 @@ const SearchInput: FC<IProps> = ({ setValue, value, placeholder }) => {
         type="search"
         placeholder={placeholder}
         id="search"
-        defaultValue={value}
+        value={value}
         rounded={6}
         onChange={e => setValue(e.target.value)}
         autoComplete="off"

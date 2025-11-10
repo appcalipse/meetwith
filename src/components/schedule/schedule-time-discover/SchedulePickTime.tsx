@@ -42,6 +42,7 @@ import {
   getExistingAccounts,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { isProduction } from '@/utils/constants'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
@@ -615,9 +616,20 @@ export function SchedulePickTime({
           alignItems={{ base: 'flex-start', md: 'center' }}
           display={{ base: 'flex', lg: 'none' }}
         >
-          <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-            Jump to Best Slot
-          </Button>
+          <Box maxW="350px" textAlign="center" mx="auto">
+            <Heading fontSize="20px" fontWeight={700}>
+              Select time from available slots
+            </Heading>
+            <Text fontSize="12px">
+              All time slots shown below are the available times between you and
+              the required participants.
+            </Text>
+          </Box>
+          {!isProduction && (
+            <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
+              Jump to Best Slot
+            </Button>
+          )}
         </VStack>
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
@@ -638,24 +650,22 @@ export function SchedulePickTime({
             px={{ md: 6, base: 2 }}
           >
             <HStack w="100%" justify={'space-between'} position="relative">
-              <HStack spacing={4}>
-                <IconButton
-                  aria-label={'left-icon'}
-                  icon={<FaChevronLeft />}
-                  onClick={handleScheduledTimeBack}
-                  isDisabled={isBackDisabled}
-                  gap={0}
-                />
-              </HStack>
-
-              <Button
-                colorScheme="primary"
-                onClick={handleJumpToBestSlot}
-                display={{ lg: 'block', base: 'none' }}
-              >
-                Jump to Best Slot
-              </Button>
-
+              <IconButton
+                aria-label={'left-icon'}
+                icon={<FaChevronLeft />}
+                onClick={handleScheduledTimeBack}
+                isDisabled={isBackDisabled}
+                gap={0}
+              />
+              {!isProduction && (
+                <Button
+                  colorScheme="primary"
+                  onClick={handleJumpToBestSlot}
+                  display={{ lg: 'block', base: 'none' }}
+                >
+                  Jump to Best Slot
+                </Button>
+              )}
               <Box
                 maxW="350px"
                 textAlign="center"
