@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
+import * as db from '@/utils/database'
+
 import { mockSupabaseClient } from '../../../__mocks__/@supabase/supabase-js'
 describe('Database Tests', () => {
   let supabaseClient: any
