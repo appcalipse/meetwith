@@ -50,7 +50,7 @@ interface SettingsNavItem {
 const Settings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
-  const { showSuccessToast, showErrorToast } = useToastHelpers()
+  const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
   const settingsNavItems: SettingsNavItem[] = useMemo(() => {
     const tabs = [
       { name: 'Account details', section: SettingsSection.ACCOUNT_DETAILS },
@@ -67,13 +67,11 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
         name: 'Account plans & Billing',
         section: SettingsSection.ACCOUNT_PLANS_BILLING,
       },
-    ]
-    if (!isProduction) {
-      tabs.push({
+      {
         name: 'Wallet & Payments',
         section: SettingsSection.WALLET_PAYMENT,
-      })
-    }
+      },
+    ]
     return tabs
   }, [])
   const [activeSection, setActiveSection] = useState<
@@ -82,7 +80,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
   const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
-  const { calendarResult } = router.query
+  const { calendarResult, stripeResult } = router.query
   const [isMobile] = useMediaQuery('(max-width: 1024px)')
 
   const renderContent = () => {
@@ -159,7 +157,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
     )
   }
   useEffect(() => {
-    if (calendarResult) {
+    if (calendarResult || stripeResult) {
       if (calendarResult === 'error') {
         showErrorToast(
           'Error connecting calendar',
@@ -173,10 +171,29 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
           "You've just connected a new calendar.",
           15000
         )
+      } else if (stripeResult === 'error') {
+        showErrorToast(
+          'Error connecting Stripe account',
+          'Please make sure to complete all required fields within your Stripe dashboard.',
+          15000
+        )
+      } else if (stripeResult === 'success') {
+        showSuccessToast(
+          'Stripe account connected',
+          "You've just connected your Stripe account.",
+          15000
+        )
+      } else if (stripeResult === 'pending') {
+        showInfoToast(
+          'Stripe account pending',
+          'Your Stripe account is almost ready! Please complete any remaining steps in your Stripe dashboard.',
+          15000
+        )
       }
       const {
         section: _omit,
         calendarResult: _omit2,
+        stripeResult: _omit3,
         ...restQuery
       } = router.query ?? {}
 
@@ -189,14 +206,14 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
       void router.replace(
         {
           pathname: '/dashboard/details',
-          hash: 'connected-calendars',
+          hash: calendarResult ? 'connected-calendars' : 'connected-accounts',
           query,
         },
         undefined,
         { shallow: true }
       )
     }
-  }, [calendarResult])
+  }, [calendarResult, stripeResult])
   useEffect(() => {
     if (!router.isReady) return
     const hash = router.asPath.split('#')[1] || ''

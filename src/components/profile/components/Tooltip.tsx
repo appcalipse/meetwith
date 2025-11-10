@@ -6,7 +6,7 @@ const InfoTooltip: React.FC<{ text: string }> = ({ text }) => {
 
   return (
     <Tooltip label={text}>
-      <InfoIcon cursor="pointer" color={color} ml={2} />
+      <InfoIcon cursor="pointer" color={color} ml={2} mb={1} />
     </Tooltip>
   )
 }

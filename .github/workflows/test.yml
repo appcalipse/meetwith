@@ -12,6 +12,7 @@ jobs:
 
     env:
       DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_TEST }}
+      NODE_OPTIONS: --experimental-fetch
 
     steps:
     - name: Install Doppler
