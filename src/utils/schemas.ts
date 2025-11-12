@@ -8,6 +8,8 @@ import { z } from 'zod'
 
 import { AcceptedToken } from '@/types/chains'
 
+import { isValidEVMAddress } from './validations'
+
 // Meeting Types
 
 export const baseMeetingSchema = z.object({
@@ -71,8 +73,8 @@ export const baseMeetingSchema = z.object({
         .string()
         .min(1, 'Payment address is required')
         .refine(
-          val => !!val.match(/^0x[a-fA-F0-9]{40}$/), // Example validation for Ethereum address
-          'Invalid payment address (must be a valid address)'
+          val => isValidEVMAddress(val), // Example validation for Ethereum address
+          'Invalid payment address. Must be a valid Ethereum address (e.g., 0x742d...)'
         ),
       crypto_network: z.number().int().positive('Crypto network must be valid'), // Positive integer
       default_token: z.nativeEnum(AcceptedToken, {
