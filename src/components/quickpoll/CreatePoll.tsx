@@ -181,25 +181,41 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
 
   useEffect(() => {
-    const hasNonHiddenParticipant = participants.some(participant => {
+    const needsUpdate = participants.some(participant => {
       if (isGroupParticipant(participant)) {
         return false
       }
-      return !(participant as ParticipantInfo).isHidden
+      const participantInfo = participant as ParticipantInfo
+      const isScheduler =
+        participantInfo.type === ParticipantType.Scheduler ||
+        participantInfo.type === ParticipantType.Owner
+      if (isScheduler) {
+        return participantInfo.isHidden !== true
+      }
+      return participantInfo.isHidden === true
     })
 
-    if (hasNonHiddenParticipant) {
-      setParticipants(prev =>
-        prev.map(participant =>
-          isGroupParticipant(participant)
-            ? participant
-            : {
-                ...participant,
-                isHidden: true,
-              }
-        )
-      )
-    }
+    if (!needsUpdate) return
+
+    setParticipants(prev =>
+      prev.map(participant => {
+        if (isGroupParticipant(participant)) {
+          return participant
+        }
+        const participantInfo = participant as ParticipantInfo
+        const isScheduler =
+          participantInfo.type === ParticipantType.Scheduler ||
+          participantInfo.type === ParticipantType.Owner
+        if (isScheduler) {
+          return participantInfo.isHidden === true
+            ? participantInfo
+            : { ...participantInfo, isHidden: true }
+        }
+        return participantInfo.isHidden === true
+          ? { ...participantInfo, isHidden: false }
+          : participantInfo
+      })
+    )
   }, [participants, setParticipants])
 
   useEffect(() => {
@@ -540,7 +556,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     (_participants: Array<ParticipantInfo>) => {
       const normalizedParticipants = _participants.map(participant => ({
         ...participant,
-        isHidden: true,
+        isHidden: false,
       }))
 
       const currentMerged = allMergedParticipants
