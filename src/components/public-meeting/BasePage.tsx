@@ -1,8 +1,10 @@
-import { Box, HStack, Text } from '@chakra-ui/layout'
+import { Box, HStack, Link, Text } from '@chakra-ui/layout'
 import {
   Button,
   Flex,
   Heading,
+  IconButton,
+  Tooltip,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
@@ -10,11 +12,14 @@ import { Avatar } from '@components/profile/components/Avatar'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import SessionTypeCard from '@components/public-meeting/SessionTypeCard'
 import { getAccountDisplayName } from '@utils/user_manager'
-import React, { FC, useContext } from 'react'
+import React, { FC, useContext, useState } from 'react'
+import { FaDiscord, FaTelegram } from 'react-icons/fa'
+import { FaXTwitter } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { isProduction } from '@/utils/constants'
+import { SocialLinkType } from '@/types/Account'
+import { generateTelegramUrl, generateTwitterUrl } from '@/utils/generic_utils'
 
 import PaidMeetings from './PaidMeetings'
 
@@ -24,7 +29,27 @@ const BasePage: FC = () => {
   const [paidSessionsExists, setPaidSessionsExists] = React.useState(false)
   const { openConnection } = useContext(OnboardingModalContext)
   const borderColor = useColorModeValue('neutral.200', 'neutral.800')
+  const social = account.preferences?.socialLinks
+  let [twitter, telegram, discord] = ['', '', '']
+  const iconColor = useColorModeValue('gray.600', 'white')
 
+  if (social) {
+    twitter = social.filter(s => s.type === SocialLinkType.TWITTER)[0]?.url
+    discord = social.filter(s => s.type === SocialLinkType.DISCORD)[0]?.url
+    telegram = social.filter(s => s.type === SocialLinkType.TELEGRAM)[0]?.url
+  }
+  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
+  const copyDiscord = async () => {
+    if ('clipboard' in navigator) {
+      await navigator.clipboard.writeText(discord)
+    } else {
+      document.execCommand('copy', true, discord)
+    }
+    setCopyFeedbackOpen(true)
+    setTimeout(() => {
+      setCopyFeedbackOpen(false)
+    }, 200)
+  }
   return (
     <VStack
       gap={{ md: 8, base: 6 }}
@@ -71,6 +96,49 @@ const BasePage: FC = () => {
               {account.preferences.description}
             </Text>
           )}
+          <HStack gap={3} justifyContent="flex-start">
+            {telegram && (
+              <>
+                <Link
+                  color={iconColor}
+                  isExternal
+                  href={generateTelegramUrl(telegram)}
+                >
+                  <IconButton
+                    aria-label="Telegram icon"
+                    icon={<FaTelegram size={24} />}
+                    p={2}
+                  />
+                </Link>
+              </>
+            )}
+            {twitter && (
+              <>
+                <Link
+                  color={iconColor}
+                  isExternal
+                  href={generateTwitterUrl(twitter)}
+                >
+                  <IconButton
+                    aria-label="Twitter icon"
+                    icon={<FaXTwitter size={24} />}
+                    p={2}
+                  />
+                </Link>
+              </>
+            )}
+            {discord && (
+              <Tooltip
+                label="Discord username copied"
+                placement="top"
+                isOpen={copyFeedbackOpen}
+              >
+                <Box color={iconColor} onClick={copyDiscord} cursor="pointer">
+                  <FaDiscord size={24} />
+                </Box>
+              </Tooltip>
+            )}
+          </HStack>
         </Box>
         {!currentAccount && (
           <Text fontWeight={500}>
