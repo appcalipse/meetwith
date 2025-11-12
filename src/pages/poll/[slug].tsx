@@ -59,9 +59,26 @@ const PollPage = () => {
       title = 'Poll not found'
       description = "This poll doesn't exist or may have been deleted."
     } else if (errorObj?.status === 410) {
-      title = 'Poll expired'
+      const rawMessage =
+        typeof errorObj?.message === 'string' ? errorObj.message.trim() : ''
+
+      let parsedMessage = rawMessage
+      if (rawMessage.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(rawMessage)
+          parsedMessage =
+            (parsed?.message as string | undefined)?.trim() ??
+            (parsed?.error as string | undefined)?.trim() ??
+            rawMessage
+        } catch {
+          parsedMessage = rawMessage
+        }
+      }
+
+      title = 'Unable to load poll'
       description =
-        'This poll has expired and is no longer accepting responses.'
+        parsedMessage ||
+        'This poll is no longer available and cannot be viewed.'
     }
 
     return (
