@@ -46,6 +46,7 @@ import {
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
+import { Account } from '@/types/Account'
 import {
   QuickPollBySlugResponse,
   QuickPollIntent,
@@ -64,6 +65,7 @@ import { deduplicateArray } from '@/utils/generic_utils'
 import {
   createMockMeetingMembers,
   generateQuickPollBestSlots,
+  mergeLuxonIntervals,
   processPollParticipantAvailabilities,
 } from '@/utils/quickpoll_helper'
 import { getMergedParticipants } from '@/utils/schedule.helper'
@@ -408,7 +410,7 @@ export function QuickPollPickAvailability({
           Object.entries(groupAvailability).filter(([_, v]) => v !== undefined)
         ) as Record<string, string[]>
 
-        const availableSlotsMap = processPollParticipantAvailabilities(
+        const manualAvailabilityMap = processPollParticipantAvailabilities(
           pollData,
           filteredGroupAvailability,
           monthStart,
@@ -419,11 +421,291 @@ export function QuickPollPickAvailability({
           currentGuestEmail
         )
 
+        manualAvailabilityMap.forEach((intervals, identifier) => {
+          manualAvailabilityMap.set(identifier, mergeLuxonIntervals(intervals))
+        })
+
+        const participantMeta = new Map<string, { hasAccount: boolean }>()
+        pollData.poll.participants.forEach(participant => {
+          const identifier = (
+            participant.account_address || participant.guest_email
+          )?.toLowerCase()
+          if (!identifier) return
+          participantMeta.set(identifier, {
+            hasAccount: !!participant.account_address,
+          })
+        })
+
+        const accountAddresses = deduplicateArray(
+          pollData.poll.participants
+            .map(participant => participant.account_address?.toLowerCase())
+            .filter(Boolean) as string[]
+        )
+
+        const defaultAvailabilityMap = new Map<string, Interval[]>()
+        let quickPollAccountDetails: Account[] = []
+
+        if (accountAddresses.length > 0) {
+          quickPollAccountDetails = await getExistingAccounts(accountAddresses)
+
+          quickPollAccountDetails.forEach(account => {
+            const identifier = account.address?.toLowerCase()
+            if (!identifier) return
+
+            const defaultAvailability = mergeLuxonIntervals(
+              parseMonthAvailabilitiesToDate(
+                account.preferences?.availabilities || [],
+                monthStart,
+                monthEnd,
+                account.preferences?.timezone || timezone
+              )
+            )
+
+            if (defaultAvailability.length > 0) {
+              defaultAvailabilityMap.set(identifier, defaultAvailability)
+            }
+          })
+        }
+
+        const visibleParticipants = Array.from(
+          new Set(Object.values(filteredGroupAvailability).flat())
+        )
+        const visibleParticipantsData = pollData.poll.participants.filter(p => {
+          const identifier = (p.account_address || p.guest_email)?.toLowerCase()
+          return identifier && visibleParticipants.includes(identifier)
+        })
+
+        const quickPollParticipants = visibleParticipantsData.map(p => ({
+          account_address: p.account_address,
+          participant_id: p.id,
+        }))
+
+        const syntheticToRealIdMap = new Map<string, string>()
+        visibleParticipantsData.forEach(p => {
+          const realIdentifier = (
+            p.account_address || p.guest_email
+          )?.toLowerCase()
+          if (!realIdentifier) return
+          if (p.account_address) {
+            syntheticToRealIdMap.set(
+              p.account_address.toLowerCase(),
+              realIdentifier
+            )
+          } else if (p.id) {
+            syntheticToRealIdMap.set(`quickpoll_${p.id}`, realIdentifier)
+          }
+        })
+
+        const busySlotsRaw = await fetchBusySlotsRawForQuickPollParticipants(
+          quickPollParticipants,
+          monthStart,
+          monthEnd
+        )
+
+        const busySlotsMap: Map<string, Interval[]> = new Map()
+        busySlotsRaw.forEach(busySlot => {
+          const syntheticId = busySlot.account_address?.toLowerCase()
+          if (!syntheticId) return
+          const realIdentifier = syntheticToRealIdMap.get(syntheticId)
+          if (!realIdentifier) return
+
+          const interval = Interval.fromDateTimes(
+            new Date(busySlot.start),
+            new Date(busySlot.end)
+          )
+          if (interval.isValid) {
+            const existing = busySlotsMap.get(realIdentifier) || []
+            busySlotsMap.set(realIdentifier, [...existing, interval])
+          }
+        })
+
+        const subtractBusyTimesFromBlocks = (
+          blocks: Interval[],
+          busyTimes: Interval[]
+        ): Interval[] => {
+          if (!blocks.length) return []
+
+          const freeSlots: Interval[] = []
+
+          for (const block of blocks) {
+            let remainingIntervals = [block]
+
+            for (const busyTime of busyTimes) {
+              const newRemaining: Interval[] = []
+              for (const remaining of remainingIntervals) {
+                if (!remaining.overlaps(busyTime)) {
+                  newRemaining.push(remaining)
+                  continue
+                }
+
+                if (
+                  remaining.start &&
+                  busyTime.start &&
+                  remaining.start < busyTime.start
+                ) {
+                  const beforeBusy = Interval.fromDateTimes(
+                    remaining.start,
+                    busyTime.start
+                  )
+                  if (beforeBusy.isValid && beforeBusy.length('minutes') > 0) {
+                    newRemaining.push(beforeBusy)
+                  }
+                }
+                if (
+                  remaining.end &&
+                  busyTime.end &&
+                  remaining.end > busyTime.end
+                ) {
+                  const afterBusy = Interval.fromDateTimes(
+                    busyTime.end,
+                    remaining.end
+                  )
+                  if (afterBusy.isValid && afterBusy.length('minutes') > 0) {
+                    newRemaining.push(afterBusy)
+                  }
+                }
+              }
+              remainingIntervals = newRemaining
+            }
+
+            freeSlots.push(...remainingIntervals)
+          }
+
+          return freeSlots
+        }
+
+        const generateFullDayBlocks = (): Interval[] => {
+          const defaultBlocks: Interval[] = []
+          const startDT = DateTime.fromJSDate(monthStart).setZone(timezone)
+          const endDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
+
+          let currentDay = startDT.startOf('day')
+          while (currentDay <= endDT.endOf('day')) {
+            const dayStart = currentDay.set({ hour: 0, minute: 0 })
+            const dayEnd = currentDay.set({ hour: 23, minute: 59 })
+
+            const interval = Interval.fromDateTimes(dayStart, dayEnd)
+            if (interval.isValid) {
+              defaultBlocks.push(interval)
+            }
+
+            currentDay = currentDay.plus({ days: 1 })
+          }
+
+          return defaultBlocks
+        }
+
+        const clipIntervalsToBounds = (
+          intervals: Interval[],
+          bounds: Interval[]
+        ): Interval[] => {
+          if (!bounds.length || !intervals.length) return intervals
+
+          const clipped: Interval[] = []
+          for (const bound of bounds) {
+            for (const interval of intervals) {
+              const intersection = interval.intersection(bound)
+              if (
+                intersection &&
+                intersection.isValid &&
+                intersection.length('minutes') > 0
+              ) {
+                clipped.push(intersection)
+              }
+            }
+          }
+
+          return mergeLuxonIntervals(clipped)
+        }
+
+        const allIdentifiers = new Set<string>()
+        manualAvailabilityMap.forEach((_, identifier) =>
+          allIdentifiers.add(identifier)
+        )
+        defaultAvailabilityMap.forEach((_, identifier) =>
+          allIdentifiers.add(identifier)
+        )
+        busySlotsMap.forEach((_, identifier) => allIdentifiers.add(identifier))
+        visibleParticipants.forEach(identifier =>
+          allIdentifiers.add(identifier.toLowerCase())
+        )
+
+        const finalAvailabilityMap = new Map<string, Interval[]>()
+
+        allIdentifiers.forEach(identifier => {
+          if (!identifier) return
+
+          const manualAvailability = manualAvailabilityMap.get(identifier) || []
+          const defaultAvailability =
+            defaultAvailabilityMap.get(identifier) || []
+          const busyTimes = busySlotsMap.get(identifier) || []
+          const hasBusyEntry = busySlotsMap.has(identifier)
+          const hasAccount =
+            participantMeta.get(identifier)?.hasAccount ??
+            defaultAvailability.length > 0
+
+          let manualToInclude = manualAvailability
+          if (hasAccount && defaultAvailability.length > 0) {
+            manualToInclude = clipIntervalsToBounds(
+              manualAvailability,
+              defaultAvailability
+            )
+          }
+
+          let calendarBase: Interval[] = []
+          if (hasBusyEntry) {
+            if (hasAccount) {
+              if (defaultAvailability.length > 0) {
+                calendarBase = defaultAvailability
+              } else if (manualAvailability.length > 0) {
+                calendarBase = manualAvailability
+              } else {
+                calendarBase = generateFullDayBlocks()
+              }
+            } else {
+              calendarBase = generateFullDayBlocks()
+            }
+          } else if (hasAccount && defaultAvailability.length > 0) {
+            calendarBase = defaultAvailability
+          }
+
+          let calendarFree: Interval[] = []
+          if (hasBusyEntry && calendarBase.length > 0) {
+            if (busyTimes.length > 0) {
+              calendarFree = subtractBusyTimesFromBlocks(
+                calendarBase,
+                busyTimes
+              )
+            } else {
+              calendarFree = calendarBase
+            }
+          } else if (
+            !hasBusyEntry &&
+            hasAccount &&
+            defaultAvailability.length > 0
+          ) {
+            calendarFree = defaultAvailability
+          }
+
+          const combined = mergeLuxonIntervals([
+            ...manualToInclude,
+            ...calendarFree,
+          ])
+
+          finalAvailabilityMap.set(identifier, combined)
+        })
+
+        const freeSlotsMap: Map<string, Interval[]> = new Map()
+        finalAvailabilityMap.forEach((availabilities, identifier) => {
+          freeSlotsMap.set(identifier, mergeLuxonIntervals(availabilities))
+        })
+
         const mockMeetingMembers = createMockMeetingMembers(
           pollData,
           currentAccount,
           isHost,
-          currentGuestEmail
+          currentGuestEmail,
+          quickPollAccountDetails
         )
 
         const suggestedSlots = generateQuickPollBestSlots(
@@ -431,11 +713,11 @@ export function QuickPollPickAvailability({
           monthEnd,
           duration,
           timezone,
-          availableSlotsMap
+          freeSlotsMap
         )
 
-        setAvailableSlots(availableSlotsMap)
-        setBusySlots(new Map())
+        setAvailableSlots(freeSlotsMap)
+        setBusySlots(busySlotsMap)
         setDates(getDates(duration))
         setSuggestedTimes(suggestedSlots)
         setMeetingMembers(mockMeetingMembers)

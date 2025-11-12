@@ -12,6 +12,7 @@ import {
   Heading,
   HStack,
   Icon,
+  IconButton,
   Input,
   Link,
   Radio,
@@ -27,9 +28,20 @@ import ScheduleParticipantsSchedulerModal from '@components/schedule/SchedulePar
 import { Select as ChakraSelect } from 'chakra-react-select'
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useMemo, useState } from 'react'
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { FaArrowLeft, FaChevronDown } from 'react-icons/fa'
+import { IoPersonAddOutline } from 'react-icons/io5'
+import { MdOutlineEditCalendar } from 'react-icons/md'
 
+import { ChipInput } from '@/components/chip-input'
+import { SingleDatepicker } from '@/components/input-date-picker'
+import { InputTimePicker } from '@/components/input-time-picker'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal'
@@ -45,6 +57,9 @@ import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
+import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
+import { isGroupParticipant, Participant } from '@/types/schedule'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -55,6 +70,7 @@ import {
 import { noClearCustomSelectComponent } from '@/utils/constants/select'
 import {
   canAccountAccessPermission,
+  deduplicateArray,
   renderProviderName,
 } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
@@ -108,6 +124,11 @@ const ScheduleBase = () => {
     meetingOwners,
     participants,
     setMeetingOwners,
+    setParticipants,
+    removeGroup,
+    setGroupParticipants,
+    setGroupAvailability,
+    groupAvailability,
   } = useParticipants()
   const { handleCancel, handleSchedule } = useScheduleActions()
   const {
@@ -121,6 +142,7 @@ const ScheduleBase = () => {
   const [hasPickedNewTime, setHasPickedNewTime] = useState(false)
   const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM)
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
+  const canManageParticipants = canEditMeetingDetails && !isScheduling
   const canViewParticipants = useMemo(
     () =>
       canAccountAccessPermission(
@@ -165,6 +187,335 @@ const ScheduleBase = () => {
   const meetingParticipants = useMemo(
     () => getMergedParticipants(participants, groups, groupParticipants),
     [participants, groups, groupParticipants]
+  )
+
+  useEffect(() => {
+    const seenIdentifiers = new Set<string>()
+    let shouldUpdate = false
+
+    const nextParticipants: Array<Participant | ParticipantInfo> = []
+
+    participants.forEach(participant => {
+      if (isGroupParticipant(participant)) {
+        const groupKey = `group-${participant.id}`
+        if (seenIdentifiers.has(groupKey)) {
+          shouldUpdate = true
+          return
+        }
+        seenIdentifiers.add(groupKey)
+        nextParticipants.push(participant)
+        return
+      }
+
+      const participantInfo = participant as ParticipantInfo
+      const identifier =
+        participantInfo.account_address?.toLowerCase() ||
+        participantInfo.guest_email?.toLowerCase() ||
+        participantInfo.name?.toLowerCase()
+
+      if (identifier) {
+        if (seenIdentifiers.has(identifier)) {
+          shouldUpdate = true
+          return
+        }
+        seenIdentifiers.add(identifier)
+      }
+
+      if (!participantInfo.isHidden) {
+        shouldUpdate = true
+        nextParticipants.push({
+          ...participantInfo,
+          isHidden: true,
+        })
+        return
+      }
+
+      nextParticipants.push(participantInfo)
+    })
+
+    if (shouldUpdate || nextParticipants.length !== participants.length) {
+      setParticipants(nextParticipants)
+    }
+  }, [participants, setParticipants])
+  const displayParticipants = useMemo(() => {
+    const seenIdentifiers = new Set<string>()
+
+    return participants.reduce<Array<Participant | ParticipantInfo>>(
+      (accumulator, participant) => {
+        if (isGroupParticipant(participant)) {
+          const groupKey = `group-${participant.id}`
+          if (seenIdentifiers.has(groupKey)) {
+            return accumulator
+          }
+          seenIdentifiers.add(groupKey)
+          accumulator.push(participant)
+          return accumulator
+        }
+
+        const participantInfo = participant as ParticipantInfo
+        const identifier =
+          participantInfo.account_address?.toLowerCase() ||
+          participantInfo.guest_email?.toLowerCase() ||
+          participantInfo.name?.toLowerCase()
+
+        if (identifier) {
+          if (seenIdentifiers.has(identifier)) {
+            return accumulator
+          }
+          seenIdentifiers.add(identifier)
+        }
+
+        if (participantInfo.isHidden) {
+          accumulator.push({
+            ...participantInfo,
+            isHidden: false,
+          })
+          return accumulator
+        }
+
+        accumulator.push(participantInfo)
+        return accumulator
+      },
+      []
+    )
+  }, [participants])
+  const formattedDate = useMemo(() => {
+    if (!pickedTime) {
+      return 'Invalid date'
+    }
+    return DateTime.fromJSDate(pickedTime)
+      .setZone(timezone)
+      .toFormat('MM/dd/yyyy')
+  }, [pickedTime, timezone])
+  const formattedTime = useMemo(() => {
+    if (!pickedTime) {
+      return 'Invalid date'
+    }
+    return DateTime.fromJSDate(pickedTime).setZone(timezone).toFormat('hh:mm a')
+  }, [pickedTime, timezone])
+  const timezoneDate = useMemo(() => {
+    if (!pickedTime) {
+      return new Date()
+    }
+    return DateTime.fromJSDate(pickedTime).setZone(timezone).toJSDate()
+  }, [pickedTime, timezone])
+  const canModifyDateTime = useMemo(
+    () => canEditMeetingDetails && !isScheduling,
+    [canEditMeetingDetails, isScheduling]
+  )
+  const handlePickNewTime = useCallback(() => {
+    if (!canModifyDateTime) {
+      return
+    }
+    setHasPickedNewTime(true)
+    handlePageSwitch(Page.SCHEDULE_TIME)
+  }, [canModifyDateTime, handlePageSwitch, setHasPickedNewTime])
+  const handleParticipantsClick = useCallback(() => {
+    if (!canManageParticipants) {
+      return
+    }
+    setInviteModalOpen(true)
+  }, [canManageParticipants, setInviteModalOpen])
+  const getParticipantIdentifier = useCallback((participant: Participant) => {
+    if (isGroupParticipant(participant)) {
+      return `group-${participant.id}`
+    }
+    return (
+      participant.account_address?.toLowerCase() ||
+      participant.guest_email?.toLowerCase() ||
+      participant.name?.toLowerCase() ||
+      ''
+    )
+  }, [])
+  const renderParticipantChipLabel = useCallback(
+    (participant: Participant) => {
+      if (isGroupParticipant(participant)) {
+        return participant.name
+      }
+      const participantInfo = participant as ParticipantInfo
+      const isParticipantScheduler =
+        participantInfo.type === ParticipantType.Scheduler
+      const isCurrentUser =
+        participantInfo.account_address &&
+        participantInfo.account_address.toLowerCase() ===
+          currentAccount?.address?.toLowerCase()
+
+      if (isParticipantScheduler) {
+        if (isCurrentUser) {
+          return 'You (Scheduler)'
+        }
+        const baseName =
+          participantInfo.name ||
+          participantInfo.guest_email ||
+          ellipsizeAddress(participantInfo.account_address || '')
+        return `${baseName} (Scheduler)`
+      }
+
+      return (
+        participantInfo.name ||
+        participantInfo.guest_email ||
+        ellipsizeAddress(participantInfo.account_address || '')
+      )
+    },
+    [currentAccount?.address]
+  )
+  const handleChipInputChange = useCallback(
+    (updatedItems: ParticipantInfo[]) => {
+      if (!canManageParticipants) {
+        return
+      }
+      const updatedList = updatedItems as unknown as Array<
+        Participant | ParticipantInfo
+      >
+      const updatedIdentifiers = new Set(
+        updatedList.map(participant =>
+          getParticipantIdentifier(participant as Participant)
+        )
+      )
+
+      const removedItems = displayParticipants.filter(participant => {
+        const identifier = getParticipantIdentifier(participant)
+        return identifier && !updatedIdentifiers.has(identifier)
+      })
+
+      const removedGroupIds = removedItems
+        .filter(isGroupParticipant)
+        .map(group => group.id)
+
+      const removedParticipantIdentifiers = new Set(
+        removedItems
+          .filter(participant => !isGroupParticipant(participant))
+          .map(getParticipantIdentifier)
+      )
+
+      const removedParticipantAddresses = new Set(
+        removedItems
+          .filter(
+            (participant): participant is ParticipantInfo =>
+              !isGroupParticipant(participant) && !!participant.account_address
+          )
+          .map(participant => participant.account_address!.toLowerCase())
+      )
+
+      const addedItems = updatedList.filter(participant => {
+        const identifier = getParticipantIdentifier(participant as Participant)
+        if (!identifier) {
+          return false
+        }
+        return !displayParticipants.some(
+          existing => getParticipantIdentifier(existing) === identifier
+        )
+      })
+
+      if (removedGroupIds.length > 0) {
+        removedGroupIds.forEach(removeGroup)
+      }
+
+      if (removedParticipantIdentifiers.size > 0) {
+        setParticipants(prev =>
+          prev.filter(existingParticipant => {
+            if (isGroupParticipant(existingParticipant)) {
+              return !removedGroupIds.includes(existingParticipant.id)
+            }
+            const identifier = getParticipantIdentifier(existingParticipant)
+            return !removedParticipantIdentifiers.has(identifier)
+          })
+        )
+        setGroupParticipants(prev => {
+          const updated = { ...prev }
+          Object.keys(updated).forEach(key => {
+            const participantsForGroup = updated[key]?.filter(address => {
+              if (!address) return false
+              return !removedParticipantAddresses.has(address.toLowerCase())
+            })
+            if (participantsForGroup && participantsForGroup.length > 0) {
+              updated[key] = participantsForGroup
+            } else {
+              delete updated[key]
+            }
+          })
+          return updated
+        })
+        setGroupAvailability(prev => {
+          const updated = { ...prev }
+          Object.keys(updated).forEach(key => {
+            const availabilityForGroup = updated[key]?.filter(address => {
+              if (!address) return false
+              return !removedParticipantAddresses.has(address.toLowerCase())
+            })
+            if (availabilityForGroup && availabilityForGroup.length > 0) {
+              updated[key] = availabilityForGroup
+            } else {
+              delete updated[key]
+            }
+          })
+          return updated
+        })
+      }
+
+      if (addedItems.length > 0) {
+        const participantsToAdd = addedItems.filter(
+          (participant): participant is ParticipantInfo =>
+            !isGroupParticipant(participant as Participant)
+        )
+
+        if (participantsToAdd.length > 0) {
+          setParticipants(prev => {
+            const existingIdentifiers = new Set(
+              prev.map(existing =>
+                getParticipantIdentifier(existing as Participant)
+              )
+            )
+            const newParticipants = participantsToAdd
+              .map(participant => ({
+                ...participant,
+                isHidden: false,
+              }))
+              .filter(participant => {
+                const identifier = getParticipantIdentifier(
+                  participant as Participant
+                )
+                if (!identifier || existingIdentifiers.has(identifier)) {
+                  return false
+                }
+                existingIdentifiers.add(identifier)
+                return true
+              })
+            return [...prev, ...newParticipants]
+          })
+
+          const newAddresses = participantsToAdd
+            .map(participant => participant.account_address?.toLowerCase())
+            .filter((address): address is string => !!address)
+
+          if (newAddresses.length > 0) {
+            setGroupParticipants(prev => ({
+              ...prev,
+              [NO_GROUP_KEY]: deduplicateArray([
+                ...(prev[NO_GROUP_KEY] || []),
+                ...newAddresses,
+              ]),
+            }))
+            setGroupAvailability(prev => ({
+              ...prev,
+              [NO_GROUP_KEY]: deduplicateArray([
+                ...(prev[NO_GROUP_KEY] || []),
+                ...newAddresses,
+              ]),
+            }))
+          }
+        }
+      }
+    },
+    [
+      canManageParticipants,
+      displayParticipants,
+      getParticipantIdentifier,
+      removeGroup,
+      setGroupParticipants,
+      setGroupAvailability,
+      setParticipants,
+    ]
   )
   return (
     <Box w="100%">
@@ -223,71 +574,6 @@ const ScheduleBase = () => {
               </Heading>
             </HStack>
           )}
-          <HStack alignItems="flex-end">
-            <Text>
-              Participants:{' '}
-              <b>
-                {getAllParticipantsDisplayName(
-                  meetingParticipants,
-                  currentAccount?.address,
-                  canViewParticipants
-                )}
-              </b>
-              {canEditMeetingDetails && (
-                <Text
-                  color="border-default-primary"
-                  fontWeight={700}
-                  display="inline"
-                  ml={1}
-                  mt={2}
-                  textDecor="underline"
-                  cursor={'pointer'}
-                  onClick={() => setInviteModalOpen(true)}
-                >
-                  Add more participants
-                </Text>
-              )}
-            </Text>
-          </HStack>
-          <HStack
-            alignItems="flex-start"
-            onClick={() => setHasPickedNewTime(true)}
-          >
-            <Text>
-              Date:{' '}
-              <b>
-                {pickedTime
-                  ? DateTime.fromJSDate(pickedTime)
-                      .setZone(timezone)
-                      .toFormat('MMM d, yyyy')
-                  : 'Invalid date'}
-              </b>
-            </Text>
-          </HStack>
-          <HStack alignItems="flex-end">
-            <Text>
-              Time:{' '}
-              <b>
-                {pickedTime
-                  ? DateTime.fromJSDate(pickedTime)
-                      .setZone(timezone)
-                      .toFormat('hh:mm a')
-                  : 'Invalid date'}
-              </b>
-            </Text>
-            {canEditMeetingDetails && (
-              <Text
-                color="border-default-primary"
-                fontWeight={700}
-                mt={2}
-                textDecor="underline"
-                onClick={() => handlePageSwitch(Page.SCHEDULE_TIME)}
-                cursor={'pointer'}
-              >
-                Pick new time
-              </Text>
-            )}
-          </HStack>
           {!canEditMeetingDetails && (
             <HStack
               bg={'yellow.300'}
@@ -310,9 +596,126 @@ const ScheduleBase = () => {
           <Heading fontSize="x-large">
             {query.intent === Intents.UPDATE_MEETING
               ? 'Update meeting'
-              : 'Meeting Information'}
+              : 'Meeting information'}
           </Heading>
           <VStack width="100%" gap={4}>
+            <FormControl>
+              <FormLabel>Meeting participants</FormLabel>
+              <HStack alignItems="stretch" gap={3}>
+                {canViewParticipants ? (
+                  <Box
+                    flex="1"
+                    sx={{
+                      '& > div': {
+                        borderWidth: '1px',
+                        borderColor: 'neutral.400',
+                        borderRadius: '6px',
+                        backgroundColor: 'neutral.650',
+                        alignItems: 'center',
+                      },
+                    }}
+                  >
+                    <ChipInput
+                      currentItems={displayParticipants}
+                      onChange={handleChipInputChange}
+                      renderItem={participant =>
+                        renderParticipantChipLabel(participant as Participant)
+                      }
+                      placeholder="Add participants"
+                      addDisabled={!canManageParticipants}
+                      isReadOnly={!canManageParticipants}
+                    />
+                  </Box>
+                ) : (
+                  <Flex
+                    flex="1"
+                    borderWidth={1}
+                    borderColor="neutral.400"
+                    borderRadius="6px"
+                    bg="neutral.650"
+                    px={3}
+                    py={2}
+                    alignItems="center"
+                  >
+                    <Text color="neutral.400">
+                      {getAllParticipantsDisplayName(
+                        meetingParticipants,
+                        currentAccount?.address,
+                        canViewParticipants
+                      )}
+                    </Text>
+                  </Flex>
+                )}
+                <IconButton
+                  aria-label="Add participants"
+                  icon={<IoPersonAddOutline size={20} />}
+                  onClick={handleParticipantsClick}
+                  isDisabled={!canManageParticipants}
+                  bg="primary.200"
+                  color="neutral.900"
+                  borderRadius="6px"
+                  _hover={{
+                    bg: 'primary.300',
+                  }}
+                />
+              </HStack>
+            </FormControl>
+            <FormControl>
+              <FormLabel>Date/Time</FormLabel>
+              <HStack alignItems="stretch" gap={3}>
+                <Box
+                  flex="1"
+                  cursor={canModifyDateTime ? 'pointer' : 'default'}
+                  onClick={canModifyDateTime ? handlePickNewTime : undefined}
+                >
+                  <SingleDatepicker
+                    date={timezoneDate}
+                    onDateChange={() => undefined}
+                    iconColor="neutral.300"
+                    iconSize={20}
+                    inputProps={{
+                      py: 3,
+                      pl: 12,
+                      borderColor: 'neutral.400',
+                      borderRadius: '6px',
+                      bg: 'neutral.650',
+                    }}
+                  />
+                </Box>
+                <Box
+                  flex="1"
+                  cursor={canModifyDateTime ? 'pointer' : 'default'}
+                  onClick={canModifyDateTime ? handlePickNewTime : undefined}
+                >
+                  <InputTimePicker
+                    currentDate={timezoneDate}
+                    value={formattedTime}
+                    onChange={() => undefined}
+                    iconColor="neutral.300"
+                    iconSize={20}
+                    inputProps={{
+                      py: 3,
+                      pl: 12,
+                      borderColor: 'neutral.400',
+                      borderRadius: '6px',
+                      bg: 'neutral.650',
+                    }}
+                  />
+                </Box>
+                <IconButton
+                  aria-label="Edit date and time"
+                  icon={<MdOutlineEditCalendar size={20} />}
+                  onClick={handlePickNewTime}
+                  isDisabled={!canModifyDateTime}
+                  bg="primary.200"
+                  color="neutral.900"
+                  borderRadius="6px"
+                  _hover={{
+                    bg: 'primary.300',
+                  }}
+                />
+              </HStack>
+            </FormControl>
             <Flex width="100%" gap={4}>
               <FormControl
                 isInvalid={!isTitleValid}

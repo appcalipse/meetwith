@@ -181,6 +181,28 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
 
   useEffect(() => {
+    const hasNonHiddenParticipant = participants.some(participant => {
+      if (isGroupParticipant(participant)) {
+        return false
+      }
+      return !(participant as ParticipantInfo).isHidden
+    })
+
+    if (hasNonHiddenParticipant) {
+      setParticipants(prev =>
+        prev.map(participant =>
+          isGroupParticipant(participant)
+            ? participant
+            : {
+                ...participant,
+                isHidden: true,
+              }
+        )
+      )
+    }
+  }, [participants, setParticipants])
+
+  useEffect(() => {
     if (allMergedParticipants.length > 0 && validationErrors.participants) {
       setValidationErrors(prev => {
         const { participants, ...rest } = prev
@@ -254,6 +276,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             status: mapQuickPollStatus(participant.status),
             meeting_id: '',
             type: mapQuickPollType(participant.participant_type),
+            isHidden: true,
           })) || []
 
       setParticipants(participantInfos)
@@ -515,6 +538,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
+      const normalizedParticipants = _participants.map(participant => ({
+        ...participant,
+        isHidden: true,
+      }))
+
       const currentMerged = allMergedParticipants
       const isRemoval = _participants.length < currentMerged.length
 
@@ -525,7 +553,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             const groupParticipants = prev.filter(user =>
               isGroupParticipant(user)
             )
-            return [...groupParticipants, ..._participants]
+            return [...groupParticipants, ...normalizedParticipants]
           })
         })
 
@@ -580,7 +608,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             const groupParticipants = prevUsers.filter(user =>
               isGroupParticipant(user)
             )
-            return [...groupParticipants, ..._participants]
+            return [...groupParticipants, ...normalizedParticipants]
           })
 
           if (addressesToAdd.length > 0) {
