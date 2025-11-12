@@ -1224,7 +1224,9 @@ const MeetingTypeModal: FC<IProps> = props => {
                     alignItems="flex-start"
                     isInvalid={!!errors.plan?.payment_address}
                   >
-                    <FormLabel fontSize={'16px'}>Custom Address</FormLabel>
+                    <FormLabel fontSize={'16px'}>
+                      Custom Address (EVM Address)
+                    </FormLabel>
                     <Input
                       placeholder="Enter your custom address"
                       borderColor="neutral.400"
