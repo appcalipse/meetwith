@@ -123,6 +123,7 @@ const ScheduleBase = () => {
     groups,
     meetingOwners,
     participants,
+    standAloneParticipants,
     setMeetingOwners,
     setParticipants,
     removeGroup,
@@ -189,6 +190,20 @@ const ScheduleBase = () => {
     [participants, groups, groupParticipants]
   )
 
+  const standAloneIdentifiers = useMemo(() => {
+    const identifiers = new Set<string>()
+    standAloneParticipants.forEach(participant => {
+      const identifier =
+        participant.account_address?.toLowerCase() ||
+        participant.guest_email?.toLowerCase() ||
+        participant.name?.toLowerCase()
+      if (identifier) {
+        identifiers.add(identifier)
+      }
+    })
+    return identifiers
+  }, [standAloneParticipants])
+
   useEffect(() => {
     const seenIdentifiers = new Set<string>()
     let shouldUpdate = false
@@ -221,11 +236,18 @@ const ScheduleBase = () => {
         seenIdentifiers.add(identifier)
       }
 
-      if (!participantInfo.isHidden) {
+      const isSchedulerOrOwner =
+        participantInfo.type === ParticipantType.Scheduler ||
+        participantInfo.type === ParticipantType.Owner
+      const shouldHide =
+        isSchedulerOrOwner ||
+        !(identifier && standAloneIdentifiers.has(identifier))
+
+      if ((participantInfo.isHidden ?? false) !== shouldHide) {
         shouldUpdate = true
         nextParticipants.push({
           ...participantInfo,
-          isHidden: true,
+          isHidden: shouldHide,
         })
         return
       }
@@ -236,7 +258,7 @@ const ScheduleBase = () => {
     if (shouldUpdate || nextParticipants.length !== participants.length) {
       setParticipants(nextParticipants)
     }
-  }, [participants, setParticipants])
+  }, [participants, setParticipants, standAloneIdentifiers])
   const displayParticipants = useMemo(() => {
     const seenIdentifiers = new Set<string>()
 
