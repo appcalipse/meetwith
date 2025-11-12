@@ -2,7 +2,7 @@ import { DateTime, Interval } from 'luxon'
 import slugify from 'slugify'
 
 import { Account } from '@/types/Account'
-import { QuickPollBySlugResponse } from '@/types/QuickPoll'
+import { AvailabilitySlot, QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
   QuickPollParticipant,
   QuickPollParticipantType,
@@ -13,16 +13,46 @@ import { QUICKPOLL_SLUG_MAX_LENGTH } from './constants'
 import { generateTimeSlots } from './slots.helper'
 
 const convertQuickPollParticipant = (
-  participant: QuickPollParticipant
-): Partial<Account> => ({
-  address: participant.account_address || participant.guest_email!,
-  preferences: {
-    name: participant.guest_name || participant.guest_email,
-    timezone: participant.timezone || 'UTC',
-    availabilities: [],
-    meetingProviders: [],
-  },
-})
+  participant: QuickPollParticipant,
+  existingAccountsMap?: Map<string, Account>
+): Account => {
+  const identifier = participant.account_address?.toLowerCase()
+  const existingAccount = identifier
+    ? existingAccountsMap?.get(identifier)
+    : undefined
+
+  if (existingAccount) {
+    return {
+      ...existingAccount,
+      preferences: {
+        ...existingAccount.preferences,
+        name:
+          participant.guest_name ||
+          existingAccount.preferences?.name ||
+          participant.guest_email,
+        timezone:
+          existingAccount.preferences?.timezone ||
+          participant.timezone ||
+          existingAccount.preferences?.timezone ||
+          'UTC',
+        availabilities: existingAccount.preferences?.availabilities || [],
+        meetingProviders: existingAccount.preferences?.meetingProviders || [],
+      },
+    }
+  }
+
+  const mockAccount: Partial<Account> = {
+    address: participant.account_address || participant.guest_email!,
+    preferences: {
+      name: participant.guest_name || participant.guest_email,
+      timezone: participant.timezone || 'UTC',
+      availabilities: [],
+      meetingProviders: [],
+    },
+  }
+
+  return mockAccount as Account
+}
 
 // Generate a unique slug for a poll based on title and random characters
 export const generatePollSlug = (title: string): string => {
@@ -132,6 +162,102 @@ export const generateQuickPollBestSlots = (
       )
     })
     .slice(0, 10)
+}
+
+export const mergeLuxonIntervals = (intervals: Interval[]): Interval[] => {
+  const normalised = intervals.reduce<
+    Array<{ start: DateTime; end: DateTime }>
+  >((accumulator, interval) => {
+    if (!interval || !interval.isValid || !interval.start || !interval.end) {
+      return accumulator
+    }
+
+    accumulator.push({
+      start: interval.start,
+      end: interval.end,
+    })
+
+    return accumulator
+  }, [])
+
+  if (!normalised.length) {
+    return []
+  }
+
+  normalised.sort((a, b) => a.start.toMillis() - b.start.toMillis())
+
+  const merged: Array<{ start: DateTime; end: DateTime }> = [normalised[0]]
+
+  for (let i = 1; i < normalised.length; i++) {
+    const current = normalised[i]
+    const last = merged[merged.length - 1]
+
+    if (last.end.toMillis() >= current.start.toMillis()) {
+      if (current.end.toMillis() > last.end.toMillis()) {
+        last.end = current.end
+      }
+    } else {
+      merged.push(current)
+    }
+  }
+
+  return merged.map(interval =>
+    Interval.fromDateTimes(interval.start, interval.end)
+  )
+}
+
+export const mergeAvailabilitySlots = (
+  existingSlots: AvailabilitySlot[],
+  newSlots: AvailabilitySlot[]
+): AvailabilitySlot[] => {
+  if (!existingSlots?.length && !newSlots?.length) {
+    return []
+  }
+
+  const slotMap = new Map<
+    string,
+    {
+      weekday: number
+      date?: string
+      ranges: Array<{ start: string; end: string }>
+    }
+  >()
+
+  const addSlotsToMap = (slots: AvailabilitySlot[]) => {
+    slots.forEach(slot => {
+      const key = slot.date ? `date:${slot.date}` : `weekday:${slot.weekday}`
+      const current = slotMap.get(key)
+      const combinedRanges = [
+        ...(current?.ranges || []),
+        ...(slot.ranges || []),
+      ]
+
+      slotMap.set(key, {
+        weekday: slot.weekday,
+        date: slot.date,
+        ranges: mergeTimeRanges(
+          combinedRanges.map(range => ({
+            start: range.start,
+            end: range.end,
+          }))
+        ),
+      })
+    })
+  }
+
+  addSlotsToMap(existingSlots || [])
+  addSlotsToMap(newSlots || [])
+
+  return Array.from(slotMap.values()).map(slot => ({
+    weekday: slot.weekday,
+    date: slot.date,
+    ranges: mergeTimeRanges(
+      slot.ranges.map(range => ({
+        start: range.start,
+        end: range.end,
+      }))
+    ),
+  }))
 }
 
 export const processPollParticipantAvailabilities = (
@@ -291,10 +417,15 @@ export const createMockMeetingMembers = (
   pollData: QuickPollBySlugResponse,
   currentAccount?: Account | null,
   isHost?: boolean,
-  currentGuestEmail?: string
+  currentGuestEmail?: string,
+  existingAccounts: Account[] = []
 ): Account[] => {
-  const allParticipants = pollData.poll.participants.map(
-    convertQuickPollParticipant
+  const existingAccountMap = new Map(
+    existingAccounts.map(account => [account.address.toLowerCase(), account])
+  )
+
+  const allParticipants = pollData.poll.participants.map(participant =>
+    convertQuickPollParticipant(participant, existingAccountMap)
   )
 
   // If current user is the scheduler/host, show all participants

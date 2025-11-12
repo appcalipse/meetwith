@@ -105,6 +105,7 @@ import {
   CreateQuickPollRequest,
   PollStatus,
   PollVisibility,
+  QuickPollCalendar,
   QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
@@ -2386,13 +2387,15 @@ const getQuickPollCalendars = async (
 
   if (!data) return []
 
-  const connectedCalendars: ConnectedCalendar[] = data.map(calendar => ({
+  const connectedCalendars: ConnectedCalendar[] = (
+    data as QuickPollCalendar[]
+  ).map(calendar => ({
     id: calendar.id,
     account_address: '',
     email: calendar.email,
     provider: calendar.provider as TimeSlotSource,
     payload: calendar.payload,
-    calendars: [],
+    calendars: calendar.calendars || [],
     enabled: true,
     created: new Date(calendar.created_at) || new Date(),
   }))
@@ -6461,6 +6464,7 @@ const createQuickPoll = async (
         let timezone = 'UTC'
         let email = ''
         let availableSlots: AvailabilitySlot[] = []
+        let participantStatus = QuickPollParticipantStatus.PENDING
 
         // For account owners, fetch their timezone and availability from account preferences
         if (p.account_address) {
@@ -6470,6 +6474,7 @@ const createQuickPoll = async (
               p.account_address
             )
             timezone = participantAccount.preferences?.timezone || 'UTC'
+            participantStatus = QuickPollParticipantStatus.ACCEPTED
 
             // Get the user's default availability block
             const availabilityId = await getDefaultAvailabilityBlockId(
@@ -6501,6 +6506,7 @@ const createQuickPoll = async (
         } else if (p.guest_email) {
           // For guest participants, use the provided email directly
           email = p.guest_email
+          participantStatus = QuickPollParticipantStatus.PENDING
         }
 
         return {
@@ -6508,7 +6514,7 @@ const createQuickPoll = async (
           account_address: p.account_address,
           guest_name: p.name || '',
           guest_email: email || '',
-          status: QuickPollParticipantStatus.PENDING,
+          status: participantStatus,
           participant_type: QuickPollParticipantType.INVITEE,
           timezone,
           available_slots: availableSlots,
@@ -7348,7 +7354,8 @@ const saveQuickPollCalendar = async (
   participantId: string,
   email: string,
   provider: string,
-  payload?: Record<string, unknown>
+  payload?: Record<string, unknown>,
+  calendars?: unknown
 ) => {
   try {
     const { data: calendar, error } = await db.supabase
@@ -7359,6 +7366,7 @@ const saveQuickPollCalendar = async (
           email,
           provider,
           payload,
+          calendars: calendars || [],
         },
       ])
       .select()

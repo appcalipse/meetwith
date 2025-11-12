@@ -187,6 +187,14 @@ const InviteParticipants: FC<IProps> = ({
       setIsLoading(false)
     }
   }, [pollData, newInvitees, onInviteSuccess, onClose, showSuccessToast])
+
+  const handleSaveChangesClick = useCallback(() => {
+    if (isQuickPoll) {
+      void handleQuickPollSaveChanges()
+    } else {
+      onClose()
+    }
+  }, [isQuickPoll, handleQuickPollSaveChanges, onClose])
   const renderParticipantItem = useCallback((p: ParticipantInfo) => {
     if (p.account_address) {
       return p.name || ellipsizeAddress(p.account_address)
@@ -212,10 +220,13 @@ const InviteParticipants: FC<IProps> = ({
       >
         <ModalCloseButton />
         <ModalBody>
+          <Heading fontSize="22px" pb={2} mb={4}>
+            Meeting participants
+          </Heading>
           <AllMeetingParticipants />
           <Divider my={6} borderColor="neutral.400" />
-          <Heading fontSize="24px" pb={2} mb={4}>
-            Add more participants
+          <Heading fontSize="22px" pb={2} mb={4}>
+            Add participants from groups/contacts
           </Heading>
           {isGroupPrefetching ? (
             <VStack mb={6} w="100%" justifyContent="center">
@@ -255,18 +266,16 @@ const InviteParticipants: FC<IProps> = ({
             </>
           )}
 
-          {isQuickPoll && (
-            <Button
-              mt={6}
-              w="fit-content"
-              colorScheme="primary"
-              onClick={handleQuickPollSaveChanges}
-              isLoading={isLoading}
-              isDisabled={isLoading}
-            >
-              Save Changes
-            </Button>
-          )}
+          <Button
+            mt={6}
+            w="fit-content"
+            colorScheme="primary"
+            onClick={handleSaveChangesClick}
+            isLoading={isQuickPoll ? isLoading : false}
+            isDisabled={isQuickPoll ? isLoading : false}
+          >
+            Save Changes
+          </Button>
 
           {groupId && (
             <Box mt={6}>
