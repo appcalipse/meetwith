@@ -20,6 +20,7 @@ import {
 } from '@/types/QuickPoll'
 import { getQuickPollBySlug } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
+import { isJson } from '@/utils/generic_utils'
 
 const PollPage = () => {
   const router = useRouter()
@@ -63,7 +64,7 @@ const PollPage = () => {
         typeof errorObj?.message === 'string' ? errorObj.message.trim() : ''
 
       let parsedMessage = rawMessage
-      if (rawMessage.startsWith('{')) {
+      if (isJson(rawMessage)) {
         try {
           const parsed = JSON.parse(rawMessage)
           parsedMessage =
