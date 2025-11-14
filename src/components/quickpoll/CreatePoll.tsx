@@ -78,7 +78,11 @@ import {
 } from '@/utils/constants/schedule'
 import { createLocalDate, createLocalDateTime } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
-import { clearValidationError, deduplicateArray } from '@/utils/generic_utils'
+import {
+  clearValidationError,
+  deduplicateArray,
+  isAccountSchedulerOrOwner,
+} from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { quickPollSchema } from '@/utils/schemas'
@@ -186,10 +190,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         return false
       }
       const participantInfo = participant as ParticipantInfo
-      const isScheduler =
-        participantInfo.type === ParticipantType.Scheduler ||
-        participantInfo.type === ParticipantType.Owner
-      if (isScheduler) {
+      const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+        [participantInfo],
+        participantInfo.account_address
+      )
+      if (isSchedulerOrOwner) {
         return participantInfo.isHidden !== true
       }
       return participantInfo.isHidden === true
@@ -203,10 +208,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           return participant
         }
         const participantInfo = participant as ParticipantInfo
-        const isScheduler =
-          participantInfo.type === ParticipantType.Scheduler ||
-          participantInfo.type === ParticipantType.Owner
-        if (isScheduler) {
+        const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+          [participantInfo],
+          participantInfo.account_address
+        )
+        if (isSchedulerOrOwner) {
           return participantInfo.isHidden === true
             ? participantInfo
             : { ...participantInfo, isHidden: true }
