@@ -29,7 +29,10 @@ import {
   updatePollParticipantAvailability,
   updateQuickPoll,
 } from '@/utils/api_helper'
-import { convertSelectedSlotsToAvailabilitySlots } from '@/utils/quickpoll_helper'
+import {
+  convertSelectedSlotsToAvailabilitySlots,
+  mergeAvailabilitySlots,
+} from '@/utils/quickpoll_helper'
 import { getGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 
@@ -106,6 +109,30 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   const currentPollData =
     pollData || (fetchedPollData as QuickPollBySlugResponse)
+
+  useEffect(() => {
+    if (!currentAccount?.address || !currentPollData?.poll?.participants) {
+      return
+    }
+
+    const accountParticipant = currentPollData.poll.participants.find(
+      participant =>
+        participant.account_address?.toLowerCase() ===
+        currentAccount.address.toLowerCase()
+    )
+
+    if (
+      accountParticipant?.id &&
+      accountParticipant.id !== currentParticipantId
+    ) {
+      setCurrentParticipantId(accountParticipant.id)
+    }
+  }, [
+    currentAccount?.address,
+    currentPollData?.poll?.participants,
+    currentParticipantId,
+    setCurrentParticipantId,
+  ])
 
   const refreshAvailabilities = async () => {
     try {
@@ -232,9 +259,18 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         setIsSavingAvailability(true)
 
         try {
+          const participantRecord = currentPollData?.poll.participants.find(
+            participant => participant.id === currentParticipantId
+          )
+
+          const mergedAvailability = mergeAvailabilitySlots(
+            participantRecord?.available_slots || [],
+            availabilitySlots
+          )
+
           await updatePollParticipantAvailability(
             storedDetails.participantId,
-            availabilitySlots,
+            mergedAvailability,
             timezone
           )
 
@@ -259,7 +295,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         }
       } else {
         // First-time guest: navigate to details form
-        setGuestAvailabilitySlots(availabilitySlots)
+        setGuestAvailabilitySlots(mergeAvailabilitySlots([], availabilitySlots))
         setCurrentTimezone(timezone)
 
         if (onNavigateToGuestDetails) {
@@ -289,10 +325,14 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           }
 
           const availabilitySlots = getAvailabilitySlots()
+          const mergedAvailability = mergeAvailabilitySlots(
+            participant.available_slots || [],
+            availabilitySlots
+          )
 
           await updatePollParticipantAvailability(
             participant.id,
-            availabilitySlots,
+            mergedAvailability,
             currentAccount.preferences?.timezone || 'UTC'
           )
 
