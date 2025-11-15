@@ -165,7 +165,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     participantId,
     userInfoRes.data.email!,
     TimeSlotSource.GOOGLE,
-    key as Record<string, unknown>
+    key as Record<string, unknown>,
+    calendars
   )
 
   if (!stateObject?.participantId) {

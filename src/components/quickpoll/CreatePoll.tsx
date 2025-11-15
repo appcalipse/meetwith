@@ -78,7 +78,11 @@ import {
 } from '@/utils/constants/schedule'
 import { createLocalDate, createLocalDateTime } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
-import { clearValidationError, deduplicateArray } from '@/utils/generic_utils'
+import {
+  clearValidationError,
+  deduplicateArray,
+  isAccountSchedulerOrOwner,
+} from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { quickPollSchema } from '@/utils/schemas'
@@ -181,6 +185,46 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
 
   useEffect(() => {
+    const needsUpdate = participants.some(participant => {
+      if (isGroupParticipant(participant)) {
+        return false
+      }
+      const participantInfo = participant as ParticipantInfo
+      const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+        [participantInfo],
+        participantInfo.account_address
+      )
+      if (isSchedulerOrOwner) {
+        return participantInfo.isHidden !== true
+      }
+      return participantInfo.isHidden === true
+    })
+
+    if (!needsUpdate) return
+
+    setParticipants(prev =>
+      prev.map(participant => {
+        if (isGroupParticipant(participant)) {
+          return participant
+        }
+        const participantInfo = participant as ParticipantInfo
+        const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+          [participantInfo],
+          participantInfo.account_address
+        )
+        if (isSchedulerOrOwner) {
+          return participantInfo.isHidden === true
+            ? participantInfo
+            : { ...participantInfo, isHidden: true }
+        }
+        return participantInfo.isHidden === true
+          ? { ...participantInfo, isHidden: false }
+          : participantInfo
+      })
+    )
+  }, [participants, setParticipants])
+
+  useEffect(() => {
     if (allMergedParticipants.length > 0 && validationErrors.participants) {
       setValidationErrors(prev => {
         const { participants, ...rest } = prev
@@ -254,6 +298,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             status: mapQuickPollStatus(participant.status),
             meeting_id: '',
             type: mapQuickPollType(participant.participant_type),
+            isHidden: true,
           })) || []
 
       setParticipants(participantInfos)
@@ -515,6 +560,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
+      const normalizedParticipants = _participants.map(participant => ({
+        ...participant,
+        isHidden: false,
+      }))
+
       const currentMerged = allMergedParticipants
       const isRemoval = _participants.length < currentMerged.length
 
@@ -525,7 +575,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             const groupParticipants = prev.filter(user =>
               isGroupParticipant(user)
             )
-            return [...groupParticipants, ..._participants]
+            return [...groupParticipants, ...normalizedParticipants]
           })
         })
 
@@ -580,7 +630,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             const groupParticipants = prevUsers.filter(user =>
               isGroupParticipant(user)
             )
-            return [...groupParticipants, ..._participants]
+            return [...groupParticipants, ...normalizedParticipants]
           })
 
           if (addressesToAdd.length > 0) {

@@ -12,7 +12,7 @@ const SearchInput: FC<IProps> = ({ setValue, value, placeholder }) => {
   return (
     <Box
       w={{ base: '100%', md: 'fit-content' }}
-      minW={{ md: '300px' }}
+      minW={{ md: '370px' }}
       pos="relative"
       h="100%"
     >

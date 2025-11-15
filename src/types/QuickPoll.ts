@@ -1,5 +1,7 @@
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
+import { CalendarSyncInfo } from './CalendarConnections'
+
 // Enums
 export enum PollStatus {
   ONGOING = 'ongoing',
@@ -77,6 +79,7 @@ export interface QuickPollCalendar {
   email: string
   provider: string
   payload?: Record<string, unknown>
+  calendars: CalendarSyncInfo[]
 }
 
 // Extended interfaces for API responses
@@ -138,6 +141,7 @@ export interface AddParticipantData {
   guest_name?: string
   guest_email: string
   participant_type: QuickPollParticipantType
+  status?: QuickPollParticipantStatus
 }
 
 export interface QuickPollParticipantUpdateFields {

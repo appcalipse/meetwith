@@ -28,6 +28,7 @@ import { MeetingPermissions } from '@/utils/constants/schedule'
 import { queryClient } from '@/utils/react_query'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
+import InviteByIdModal from '../schedule/participants/InviteByIdModal'
 import InviteParticipants from '../schedule/participants/InviteParticipants'
 
 interface QuickPollParticipantsProps {
@@ -76,6 +77,7 @@ export function QuickPollParticipants({
   } = useParticipants()
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [isInviteByIdModalOpen, setIsInviteByIdModalOpen] = useState(false)
   const { setParticipants } = useParticipants()
 
   const handleParticipantAdded = useCallback(() => {
@@ -357,17 +359,29 @@ export function QuickPollParticipants({
       </VStack>
 
       {isHost && (
-        <Button
-          variant="outline"
-          colorScheme="primary"
-          w="100%"
-          px={{ base: 3, md: 4 }}
-          py={{ base: 2.5, md: 3 }}
-          fontSize={{ base: 'sm', md: 'md' }}
-          onClick={handleOpenInviteModal}
-        >
-          Add participants
-        </Button>
+        <VStack gap={3} w="100%">
+          <Button
+            colorScheme="primary"
+            w="100%"
+            px={{ base: 3, md: 4 }}
+            py={{ base: 2.5, md: 3 }}
+            fontSize={{ base: 'sm', md: 'md' }}
+            onClick={handleOpenInviteModal}
+          >
+            Add participants to poll
+          </Button>
+          <Button
+            variant="outline"
+            colorScheme="primary"
+            w="100%"
+            px={{ base: 3, md: 4 }}
+            py={{ base: 2.5, md: 3 }}
+            fontSize={{ base: 'sm', md: 'md' }}
+            onClick={() => setIsInviteByIdModalOpen(true)}
+          >
+            Invite participants to poll
+          </Button>
+        </VStack>
       )}
 
       <InviteParticipants
@@ -378,6 +392,16 @@ export function QuickPollParticipants({
         onInviteSuccess={() => {
           handleParticipantAdded()
           setIsInviteModalOpen(false)
+        }}
+      />
+
+      <InviteByIdModal
+        isOpen={isInviteByIdModalOpen}
+        onClose={() => setIsInviteByIdModalOpen(false)}
+        pollData={pollData}
+        onInviteSuccess={() => {
+          handleParticipantAdded()
+          setIsInviteByIdModalOpen(false)
         }}
       />
     </VStack>

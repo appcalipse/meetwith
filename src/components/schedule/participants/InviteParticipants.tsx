@@ -23,7 +23,10 @@ import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { QuickPollParticipantType } from '@/types/QuickPoll'
+import {
+  QuickPollParticipantStatus,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
 import { addQuickPollParticipants } from '@/utils/api_helper'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
@@ -148,46 +151,50 @@ const InviteParticipants: FC<IProps> = ({
     [setParticipants, setGroupAvailability, setGroupParticipants]
   )
 
-  const handleQuickPollSendInvite = useCallback(async () => {
+  const handleQuickPollSaveChanges = useCallback(async () => {
     if (!pollData) return
 
     setIsLoading(true)
     try {
       if (newInvitees.length === 0) {
         setIsLoading(false)
+        onClose()
         return
       }
 
-      const invitees = newInvitees.map(p => ({
+      const participants = newInvitees.map(p => ({
         account_address: p.account_address,
         guest_name: p.name,
         guest_email: p.guest_email || '',
         participant_type: QuickPollParticipantType.INVITEE,
+        status: QuickPollParticipantStatus.ACCEPTED,
       }))
 
-      await addQuickPollParticipants(pollData.poll.id, invitees)
+      await addQuickPollParticipants(pollData.poll.id, participants)
 
       showSuccessToast(
-        'Invitations sent successfully',
-        `${invitees.length} participant${invitees.length > 1 ? 's' : ''} ${
-          invitees.length === 1 ? 'has' : 'have'
-        } been invited to the poll.`
+        'Participants added successfully',
+        `${participants.length} participant${
+          participants.length > 1 ? 's' : ''
+        } ${participants.length === 1 ? 'has' : 'have'} been added to the poll.`
       )
 
       onInviteSuccess?.()
       onClose()
     } catch (error) {
-      handleApiError('Failed to send invitations', error)
+      handleApiError('Failed to add participants', error)
     } finally {
       setIsLoading(false)
     }
-  }, [
-    pollData,
-    standAloneParticipants,
-    onInviteSuccess,
-    onClose,
-    showSuccessToast,
-  ])
+  }, [pollData, newInvitees, onInviteSuccess, onClose, showSuccessToast])
+
+  const handleSaveChangesClick = useCallback(() => {
+    if (isQuickPoll) {
+      void handleQuickPollSaveChanges()
+    } else {
+      onClose()
+    }
+  }, [isQuickPoll, handleQuickPollSaveChanges, onClose])
   const renderParticipantItem = useCallback((p: ParticipantInfo) => {
     if (p.account_address) {
       return p.name || ellipsizeAddress(p.account_address)
@@ -213,10 +220,13 @@ const InviteParticipants: FC<IProps> = ({
       >
         <ModalCloseButton />
         <ModalBody>
+          <Heading fontSize="22px" pb={2} mb={4}>
+            Meeting participants
+          </Heading>
           <AllMeetingParticipants />
           <Divider my={6} borderColor="neutral.400" />
-          <Heading fontSize="24px" pb={2} mb={4}>
-            Invite more participants
+          <Heading fontSize="22px" pb={2} mb={4}>
+            Add participants from groups/contacts
           </Heading>
           {isGroupPrefetching ? (
             <VStack mb={6} w="100%" justifyContent="center">
@@ -229,40 +239,43 @@ const InviteParticipants: FC<IProps> = ({
           )}
           <Divider my={6} borderColor="neutral.400" />
           <AddFromContact />
-          <Divider my={6} borderColor="neutral.400" />
-          <FormControl w="100%" maxW="100%">
-            <FormLabel htmlFor="participants">
-              Invite participants by their ID (Cc)
-              <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
-            </FormLabel>
-            <Box w="100%" maxW="100%">
-              <ChipInput
-                currentItems={standAloneParticipants}
-                placeholder="Enter email, wallet address or ENS of user"
-                onChange={onParticipantsChange}
-                renderItem={renderParticipantItem}
-              />
-            </Box>
-            <FormHelperText mt={1}>
-              <Text fontSize="12px" color="neutral.400">
-                Separate participants by comma. You will be added automatically,
-                no need to insert yourself
-              </Text>
-            </FormHelperText>
-          </FormControl>
 
-          {isQuickPoll && (
-            <Button
-              mt={6}
-              w="fit-content"
-              colorScheme="primary"
-              onClick={handleQuickPollSendInvite}
-              isLoading={isLoading}
-              isDisabled={isLoading || newInvitees.length === 0}
-            >
-              Send Invite & Add Participant(s)
-            </Button>
+          {!isQuickPoll && (
+            <>
+              <Divider my={6} borderColor="neutral.400" />
+              <FormControl w="100%" maxW="100%">
+                <FormLabel htmlFor="participants">
+                  Invite participants by their ID (Cc)
+                  <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
+                </FormLabel>
+                <Box w="100%" maxW="100%">
+                  <ChipInput
+                    currentItems={standAloneParticipants}
+                    placeholder="Enter email, wallet address or ENS of user"
+                    onChange={onParticipantsChange}
+                    renderItem={renderParticipantItem}
+                  />
+                </Box>
+                <FormHelperText mt={1}>
+                  <Text fontSize="12px" color="neutral.400">
+                    Separate participants by comma. You will be added
+                    automatically, no need to insert yourself
+                  </Text>
+                </FormHelperText>
+              </FormControl>
+            </>
           )}
+
+          <Button
+            mt={6}
+            w="fit-content"
+            colorScheme="primary"
+            onClick={handleSaveChangesClick}
+            isLoading={isQuickPoll ? isLoading : false}
+            isDisabled={isQuickPoll ? isLoading : false}
+          >
+            Save Changes
+          </Button>
 
           {groupId && (
             <Box mt={6}>
