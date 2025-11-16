@@ -28,7 +28,7 @@ import {
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
-import { addQuickPollParticipants } from '@/utils/api_helper'
+import { updateQuickPoll } from '@/utils/api_helper'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
@@ -162,7 +162,7 @@ const InviteParticipants: FC<IProps> = ({
         return
       }
 
-      const participants = newInvitees.map(p => ({
+      const toAdd = newInvitees.map(p => ({
         account_address: p.account_address,
         guest_name: p.name,
         guest_email: p.guest_email || '',
@@ -170,13 +170,15 @@ const InviteParticipants: FC<IProps> = ({
         status: QuickPollParticipantStatus.ACCEPTED,
       }))
 
-      await addQuickPollParticipants(pollData.poll.id, participants)
+      await updateQuickPoll(pollData.poll.id, {
+        participants: { toAdd },
+      })
 
       showSuccessToast(
         'Participants added successfully',
-        `${participants.length} participant${
-          participants.length > 1 ? 's' : ''
-        } ${participants.length === 1 ? 'has' : 'have'} been added to the poll.`
+        `${toAdd.length} participant${toAdd.length > 1 ? 's' : ''} ${
+          toAdd.length === 1 ? 'has' : 'have'
+        } been added to the poll.`
       )
 
       onInviteSuccess?.()
@@ -210,13 +212,16 @@ const InviteParticipants: FC<IProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
       <ModalContent
-        maxWidth="500px"
-        width="500px"
+        maxWidth={{ base: '100%', md: '500px' }}
+        width={{ base: '100%', md: '500px' }}
         borderWidth={1}
         bg="bg-surface"
         borderColor="border-default"
         py={6}
         shadow="none"
+        height={{ base: '100vh', md: 'auto' }}
+        minH={{ base: '100vh', md: 'auto' }}
+        borderRadius={{ base: 0, md: 'md' }}
       >
         <ModalCloseButton />
         <ModalBody>

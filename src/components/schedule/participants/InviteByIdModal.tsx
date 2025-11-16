@@ -20,7 +20,7 @@ import InfoTooltip from '@/components/profile/components/Tooltip'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { QuickPollParticipantType } from '@/types/QuickPoll'
-import { addQuickPollParticipants } from '@/utils/api_helper'
+import { updateQuickPoll } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -61,19 +61,21 @@ const InviteByIdModal: FC<IProps> = ({
         return
       }
 
-      const invitees = inviteParticipants.map(p => ({
+      const toAdd = inviteParticipants.map(p => ({
         account_address: p.account_address,
         guest_name: p.name,
         guest_email: p.guest_email || '',
         participant_type: QuickPollParticipantType.INVITEE,
       }))
 
-      await addQuickPollParticipants(pollData.poll.id, invitees)
+      await updateQuickPoll(pollData.poll.id, {
+        participants: { toAdd },
+      })
 
       showSuccessToast(
         'Invitations sent successfully',
-        `${invitees.length} participant${invitees.length > 1 ? 's' : ''} ${
-          invitees.length === 1 ? 'has' : 'have'
+        `${toAdd.length} participant${toAdd.length > 1 ? 's' : ''} ${
+          toAdd.length === 1 ? 'has' : 'have'
         } been invited to the poll.`
       )
 
@@ -81,7 +83,7 @@ const InviteByIdModal: FC<IProps> = ({
       onInviteSuccess?.()
       onClose()
     } catch (error) {
-      handleApiError('Failed to send invitations', error)
+      handleApiError('Failed to send invitation', error)
     } finally {
       setIsLoading(false)
     }
@@ -108,13 +110,16 @@ const InviteByIdModal: FC<IProps> = ({
     <Modal isOpen={isOpen} onClose={handleClose} isCentered>
       <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
       <ModalContent
-        maxWidth="500px"
-        width="500px"
+        maxWidth={{ base: '100%', md: '500px' }}
+        width={{ base: '100%', md: '500px' }}
         borderWidth={1}
         bg="bg-surface"
         borderColor="border-default"
         py={6}
         shadow="none"
+        height={{ base: '100vh', md: 'auto' }}
+        minH={{ base: '100vh', md: 'auto' }}
+        borderRadius={{ base: 0, md: 'md' }}
       >
         <ModalCloseButton />
         <ModalBody>
