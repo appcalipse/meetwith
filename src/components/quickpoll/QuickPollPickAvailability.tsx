@@ -299,12 +299,19 @@ export function QuickPollPickAvailability({
   }, [currentSelectedDate.getFullYear(), timezone])
 
   const [dates, setDates] = useState<Array<Dates>>([])
+  // When editing availability, render a blank slate visually
+  const effectiveBusySlots = busySlots
+  const effectiveAvailableSlots = availableSlots
+  const effectiveMeetingMembers = isEditingAvailability ? [] : meetingMembers
+  const effectiveAvailabilityAddresses = isEditingAvailability
+    ? []
+    : availabilityAddresses
   const datesSlotsWithAvailability = useSlotsWithAvailability(
     dates,
-    busySlots,
-    availableSlots,
-    meetingMembers,
-    availabilityAddresses,
+    effectiveBusySlots,
+    effectiveAvailableSlots,
+    effectiveMeetingMembers,
+    effectiveAvailabilityAddresses,
     timezone
   )
 
@@ -1203,11 +1210,11 @@ export function QuickPollPickAvailability({
         >
           <VStack align="flex-start" gap={2} w="100%">
             <Heading fontSize="16px" fontWeight={700} color="text-primary">
-              Availabilities Provided by Participants
+              Select all the time slots that work for you
             </Heading>
             <Text fontSize="14px" color="text-primary">
-              All time slots shown below are the available times between you and
-              those who are interested in the event.
+              Click on each cell to mark when you&apos;re available, so the host
+              can easily find the best time for everyone.
             </Text>
           </VStack>
 
