@@ -7132,8 +7132,10 @@ const addQuickPollParticipant = async (
         return revivedParticipant
       }
 
-      // Already present and not deleted: just return it
-      return existingParticipant
+      // Already present and not deleted: throw a specific error
+      throw new QuickPollParticipantCreationError(
+        'This participant is already part of the poll'
+      )
     }
 
     // For account owners, fetch their weekly availability

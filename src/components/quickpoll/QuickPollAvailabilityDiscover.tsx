@@ -3,6 +3,7 @@ import {
   Heading,
   HStack,
   Icon,
+  useBreakpointValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -46,6 +47,7 @@ import {
   useAvailabilityTracker,
 } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import GuestIdentificationModal from './GuestIdentificationModal'
+import MobileQuickPollParticipantModal from './MobileQuickPollParticipant'
 import { QuickPollParticipants } from './QuickPollParticipants'
 import { QuickPollPickAvailability } from './QuickPollPickAvailability'
 import QuickPollSaveChangesModal from './QuickPollSaveChangesModal'
@@ -109,6 +111,8 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   const currentPollData =
     pollData || (fetchedPollData as QuickPollBySlugResponse)
+
+  const isDesktop = useBreakpointValue({ base: false, md: true }) ?? false
 
   useEffect(() => {
     if (!currentAccount?.address || !currentPollData?.poll?.participants) {
@@ -324,7 +328,8 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             return
           }
 
-          const availabilitySlots = getAvailabilitySlots()
+          const availabilitySlots =
+            convertSelectedSlotsToAvailabilitySlots(selectedSlots)
           const mergedAvailability = mergeAvailabilitySlots(
             participant.available_slots || [],
             availabilitySlots
@@ -539,6 +544,11 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         gap={4}
         display={{ base: 'flex', md: 'none' }}
       >
+        <MobileQuickPollParticipantModal
+          onClose={() => setIsInviteParticipantsOpen(false)}
+          isOpen={isInviteParticipantsOpen}
+          pollData={currentPollData}
+        />
         <QuickPollPickAvailability
           openParticipantModal={() => setIsInviteParticipantsOpen(true)}
           pollData={currentPollData}
@@ -552,47 +562,48 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
       </VStack>
 
       {/* Desktop Layout */}
-      <HStack
-        width="100%"
-        justifyContent={'flex-start'}
-        align={'flex-start'}
-        height={'fit-content'}
-        gap={'14px'}
-        display={{ base: 'none', md: 'flex' }}
-      >
-        <InviteParticipants
-          onClose={() => setIsInviteParticipantsOpen(false)}
-          isOpen={isInviteParticipantsOpen}
-          isQuickPoll={true}
-          pollData={currentPollData}
-          onInviteSuccess={async () => {
-            await queryClient.invalidateQueries({
-              queryKey: ['quickpoll-public'],
-            })
-            await queryClient.invalidateQueries({
-              queryKey: ['quickpoll-schedule'],
-            })
-            setIsInviteParticipantsOpen(false)
-          }}
-        />
-        <QuickPollParticipants
-          pollData={currentPollData}
-          onAddParticipants={() => setIsInviteParticipantsOpen(true)}
-          onAvailabilityToggle={refreshAvailabilities}
-          currentGuestEmail={currentGuestEmail}
-          onParticipantRemoved={onParticipantRemoved}
-        />
-        <QuickPollPickAvailability
-          openParticipantModal={() => setIsInviteParticipantsOpen(true)}
-          pollData={currentPollData}
-          onSaveAvailability={handleAvailabilityAction}
-          onSharePoll={handleSharePoll}
-          onImportCalendar={handleCalendarImport}
-          isEditingAvailability={isEditingAvailability}
-          isSavingAvailability={isSavingAvailability}
-          isRefreshingAvailabilities={isRefreshingAvailabilities}
-        />
-      </HStack>
+      {isDesktop && (
+        <HStack
+          width="100%"
+          justifyContent={'flex-start'}
+          align={'flex-start'}
+          height={'fit-content'}
+          gap={'14px'}
+        >
+          <InviteParticipants
+            onClose={() => setIsInviteParticipantsOpen(false)}
+            isOpen={isInviteParticipantsOpen}
+            isQuickPoll={true}
+            pollData={currentPollData}
+            onInviteSuccess={async () => {
+              await queryClient.invalidateQueries({
+                queryKey: ['quickpoll-public'],
+              })
+              await queryClient.invalidateQueries({
+                queryKey: ['quickpoll-schedule'],
+              })
+              setIsInviteParticipantsOpen(false)
+            }}
+          />
+          <QuickPollParticipants
+            pollData={currentPollData}
+            onAddParticipants={() => setIsInviteParticipantsOpen(true)}
+            onAvailabilityToggle={refreshAvailabilities}
+            currentGuestEmail={currentGuestEmail}
+            onParticipantRemoved={onParticipantRemoved}
+          />
+          <QuickPollPickAvailability
+            openParticipantModal={() => setIsInviteParticipantsOpen(true)}
+            pollData={currentPollData}
+            onSaveAvailability={handleAvailabilityAction}
+            onSharePoll={handleSharePoll}
+            onImportCalendar={handleCalendarImport}
+            isEditingAvailability={isEditingAvailability}
+            isSavingAvailability={isSavingAvailability}
+            isRefreshingAvailabilities={isRefreshingAvailabilities}
+          />
+        </HStack>
+      )}
 
       {/* Calendar Import Modal */}
       <ConnectCalendarModal
