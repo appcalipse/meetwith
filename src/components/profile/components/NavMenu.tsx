@@ -13,6 +13,8 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { MAX_DAILY_NOTIFICATIONS_LOOKUPS } from '@utils/constants'
+import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo } from 'react'
 import { IconType } from 'react-icons'
@@ -24,8 +26,7 @@ import {
   FaSignOutAlt,
   FaWallet,
 } from 'react-icons/fa'
-import { FaUserGroup } from 'react-icons/fa6'
-import { FaUsers } from 'react-icons/fa6'
+import { FaUserGroup, FaUsers } from 'react-icons/fa6'
 
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
@@ -37,7 +38,11 @@ import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
 import { isProduction } from '@/utils/constants'
-import { getNotificationTime, saveNotificationTime } from '@/utils/storage'
+import {
+  getNotificationTime,
+  incrementNotificationLookup,
+  saveNotificationTime,
+} from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { ThemeSwitcher } from '../../ThemeSwitcher'
@@ -196,10 +201,28 @@ export const NavMenu: React.FC<{
     if (!currentAccount) return
     void handleGroupInvites()
     const lastNotificationTime = getNotificationTime(currentAccount?.address)
-    if (lastNotificationTime === null) return
-    if (Date.now() > lastNotificationTime) {
-      void handleEmptyGroupCheck()
+
+    if (
+      lastNotificationTime === null ||
+      (lastNotificationTime.lookups === MAX_DAILY_NOTIFICATIONS_LOOKUPS &&
+        DateTime.fromMillis(lastNotificationTime.date).hasSame(
+          DateTime.now(),
+          'day'
+        ))
+    ) {
+      return
+    }
+    void handleEmptyGroupCheck()
+    if (
+      lastNotificationTime.lookups === MAX_DAILY_NOTIFICATIONS_LOOKUPS ||
+      !DateTime.fromMillis(lastNotificationTime.date).hasSame(
+        DateTime.now(),
+        'day'
+      )
+    ) {
       saveNotificationTime(currentAccount?.address)
+    } else {
+      incrementNotificationLookup(currentAccount?.address)
     }
   }, [currentAccount?.address])
 

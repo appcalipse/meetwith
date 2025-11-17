@@ -39,6 +39,7 @@ export class PriceFeedService {
         [AcceptedToken.USDT]: '0x5e37AF40A7A344ec9b03CCD34a250F3dA9a20B02',
         [AcceptedToken.CUSD]: '0xe38A27BE4E7d866327e09736F3C570F256FFd048',
         [AcceptedToken.CELO]: '0x0568fD19986748cEfF3301e55c0eb1E729E0Ab7e',
+        [AcceptedToken.CEUR]: '0x9a48d9b0AF457eF040281A9Af3867bc65522Fecd',
       },
       [SupportedChain.CELO_ALFAJORES]: {
         [AcceptedToken.USDC]: '0x8b255b1FB27d4D06bD8899f81095627464868EEE',

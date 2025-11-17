@@ -34,8 +34,6 @@ const useSlotsWithAvailability = (
           const accountSlots = availableSlots.get(account) || []
           const accountBusySlots = busySlots.get(account) || []
 
-          const isPast = slot.start < now
-
           const isBusy = accountBusySlots.some(busySlot =>
             busySlot.overlaps(slot)
           )
@@ -44,7 +42,7 @@ const useSlotsWithAvailability = (
             availableSlot.overlaps(slot)
           )
 
-          const isUserAvailable = !isPast && !isBusy && hasOverlap
+          const isUserAvailable = !isBusy && hasOverlap
 
           isSlotAvailable.push(isUserAvailable)
           userStates.push({
