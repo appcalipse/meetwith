@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import slugify from 'slugify'
 
+import { GroupMember } from '@/types/Group'
 import { MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 
@@ -225,6 +226,21 @@ export const formatCountdown = (seconds: number): string => {
   return `${seconds}s`
 }
 
+export const deduplicateMembers = (members: GroupMember[]): GroupMember[] => {
+  const seen = new Map<string, GroupMember>()
+
+  for (const member of members) {
+    if (member.address) {
+      const key = member.address.toLowerCase()
+      if (!seen.has(key)) {
+        seen.set(key, member)
+      }
+    } else {
+      seen.set(member.userId || member.displayName, member)
+    }
+  }
+  return Array.from(seen.values())
+}
 /**
  * Creates a handler function to clear a specific validation error on blur
  * @param setErrors - The setState function for validation errors
