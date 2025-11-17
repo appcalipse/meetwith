@@ -15,7 +15,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { FC, useCallback } from 'react'
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import PublicGroupLink from '@/components/group/PublicGroupLink'
@@ -29,6 +29,7 @@ import { addQuickPollParticipants } from '@/utils/api_helper'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
@@ -58,10 +59,53 @@ const InviteParticipants: FC<IProps> = ({
     setGroupParticipants,
     setStandAloneParticipants,
     standAloneParticipants,
+    participants: contextParticipants,
+    groupParticipants: contextGroupParticipants,
   } = useParticipants()
   const groupId = useRouter().query.groupId as string | undefined
   const [isLoading, setIsLoading] = React.useState(false)
   const { showSuccessToast } = useToastHelpers()
+
+  const [baselineIds, setBaselineIds] = useState<Set<string>>(new Set())
+  const toIdentifier = (p: ParticipantInfo) =>
+    (p.account_address || p.guest_email || '').toLowerCase()
+
+  const combinedSelection = useMemo(() => {
+    const merged = getMergedParticipants(
+      contextParticipants ?? [],
+      groups,
+      contextGroupParticipants ?? {},
+      undefined
+    )
+    const fromContext = merged.filter(p => !!p.account_address)
+    return [...fromContext, ...standAloneParticipants]
+  }, [
+    contextParticipants,
+    groups,
+    contextGroupParticipants,
+    standAloneParticipants,
+  ])
+
+  const newInvitees = useMemo(() => {
+    if (!baselineIds) return combinedSelection
+    return combinedSelection.filter(p => {
+      const id = toIdentifier(p)
+      return !!id && !baselineIds.has(id)
+    })
+  }, [combinedSelection, baselineIds])
+
+  useEffect(() => {
+    if (isOpen) {
+      const ids = new Set<string>()
+      combinedSelection.forEach(p => {
+        const id = toIdentifier(p)
+        if (id) ids.add(id)
+      })
+      setBaselineIds(ids)
+    } else {
+      setBaselineIds(new Set())
+    }
+  }, [isOpen])
 
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
@@ -105,25 +149,28 @@ const InviteParticipants: FC<IProps> = ({
   )
 
   const handleQuickPollSendInvite = useCallback(async () => {
-    if (!pollData || standAloneParticipants.length === 0) return
+    if (!pollData) return
 
     setIsLoading(true)
     try {
-      const participants = standAloneParticipants.map(p => ({
+      if (newInvitees.length === 0) {
+        setIsLoading(false)
+        return
+      }
+
+      const invitees = newInvitees.map(p => ({
         account_address: p.account_address,
         guest_name: p.name,
         guest_email: p.guest_email || '',
         participant_type: QuickPollParticipantType.INVITEE,
       }))
 
-      await addQuickPollParticipants(pollData.poll.id, participants)
+      await addQuickPollParticipants(pollData.poll.id, invitees)
 
       showSuccessToast(
         'Invitations sent successfully',
-        `${participants.length} participant${
-          participants.length > 1 ? 's' : ''
-        } ${
-          participants.length === 1 ? 'has' : 'have'
+        `${invitees.length} participant${invitees.length > 1 ? 's' : ''} ${
+          invitees.length === 1 ? 'has' : 'have'
         } been invited to the poll.`
       )
 
@@ -211,9 +258,9 @@ const InviteParticipants: FC<IProps> = ({
               colorScheme="primary"
               onClick={handleQuickPollSendInvite}
               isLoading={isLoading}
-              isDisabled={standAloneParticipants.length === 0}
+              isDisabled={isLoading || newInvitees.length === 0}
             >
-              Send Invite
+              Send Invite & Add Participant(s)
             </Button>
           )}
 

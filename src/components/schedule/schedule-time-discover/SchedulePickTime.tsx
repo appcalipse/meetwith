@@ -18,6 +18,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { isProduction } from '@utils/constants'
 import { Select, SingleValue } from 'chakra-react-select'
 import { DateTime, Interval } from 'luxon'
 import React, { useEffect, useMemo, useState } from 'react'
@@ -42,7 +43,6 @@ import {
   getExistingAccounts,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
-import { isProduction } from '@/utils/constants'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
@@ -336,16 +336,24 @@ export function SchedulePickTime({
       >()
       for (const memberAccount of meetingMembers) {
         if (!memberAccount.address) continue
-        const availabilities = parseMonthAvailabilitiesToDate(
-          memberAccount?.preferences?.availabilities || [],
-          monthStart,
-          monthEnd,
-          memberAccount?.preferences?.timezone || 'UTC'
-        )
-        availableSlotsMap.set(
-          memberAccount.address.toLowerCase(),
-          availabilities
-        )
+        try {
+          const availabilities = parseMonthAvailabilitiesToDate(
+            memberAccount?.preferences?.availabilities || [],
+            monthStart,
+            monthEnd,
+            memberAccount?.preferences?.timezone || 'UTC'
+          )
+          availableSlotsMap.set(
+            memberAccount.address.toLowerCase(),
+            availabilities
+          )
+        } catch (error) {
+          console.warn(
+            'Failed to parse availability for member:',
+            memberAccount.address,
+            error
+          )
+        }
       }
       const busySlotsMap: Map<string, Interval[]> = new Map()
       for (const account of accountBusySlots) {
@@ -610,27 +618,18 @@ export function SchedulePickTime({
           </HStack>
         </HStack>
 
-        <VStack
-          gap={4}
-          w="100%"
-          alignItems={{ base: 'flex-start', md: 'center' }}
-          display={{ base: 'flex', lg: 'none' }}
-        >
-          <Box maxW="350px" textAlign="center" mx="auto">
-            <Heading fontSize="20px" fontWeight={700}>
-              Select time from available slots
-            </Heading>
-            <Text fontSize="12px">
-              All time slots shown below are the available times between you and
-              the required participants.
-            </Text>
-          </Box>
-          {!isProduction && (
+        {!isProduction && (
+          <VStack
+            gap={4}
+            w="100%"
+            alignItems={{ base: 'flex-start', md: 'center' }}
+            display={{ base: 'flex', lg: 'none' }}
+          >
             <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
               Jump to Best Slot
             </Button>
-          )}
-        </VStack>
+          </VStack>
+        )}
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
           <VStack
@@ -650,13 +649,15 @@ export function SchedulePickTime({
             px={{ md: 6, base: 2 }}
           >
             <HStack w="100%" justify={'space-between'} position="relative">
-              <IconButton
-                aria-label={'left-icon'}
-                icon={<FaChevronLeft />}
-                onClick={handleScheduledTimeBack}
-                isDisabled={isBackDisabled}
-                gap={0}
-              />
+              <HStack spacing={4}>
+                <IconButton
+                  aria-label={'left-icon'}
+                  icon={<FaChevronLeft />}
+                  onClick={handleScheduledTimeBack}
+                  isDisabled={isBackDisabled}
+                  gap={0}
+                />
+              </HStack>
               {!isProduction && (
                 <Button
                   colorScheme="primary"

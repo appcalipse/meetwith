@@ -7,10 +7,12 @@ import React, {
   useState,
 } from 'react'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { SupportedChain, supportedChains } from '@/types/chains'
 import { Transaction } from '@/types/Transactions'
 import { getPaymentPreferences } from '@/utils/api_helper'
 import { supportedPaymentChains } from '@/utils/constants/meeting-types'
+import { getNetworkWithHighestBalance } from '@/utils/token.service'
 
 interface CryptoAsset {
   name: string
@@ -106,6 +108,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedCryptoCurrentPage, setSelectedCryptoCurrentPage] = useState(1)
 
+  const currentAccount = useAccountContext()
+
   // Fetch user's preferred network from payment preferences
   useEffect(() => {
     const fetchPreferredNetwork = async () => {
@@ -128,7 +132,23 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           }
         }
 
-        // If no preferred network or invalid preference, set fallback
+        // If no preferred network, check for network with highest balance
+        if (currentAccount?.address) {
+          try {
+            const highestBalanceNetwork = await getNetworkWithHighestBalance(
+              currentAccount.address
+            )
+            if (highestBalanceNetwork) {
+              setSelectedNetwork(highestBalanceNetwork)
+              setIsNetworkLoading(false)
+              return
+            }
+          } catch (error) {
+            console.warn('Failed to get network with highest balance:', error)
+          }
+        }
+
+        // Final fallback: first wallet-supported network in supportedPaymentChains
         const fallbackChain = supportedChains.find(
           chain =>
             chain.walletSupported &&
@@ -141,7 +161,26 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       } catch (error) {
         console.warn('Failed to get payment preferences:', error)
 
-        // On error, also set fallback
+        // On error, try to get network with highest balance
+        if (currentAccount?.address) {
+          try {
+            const highestBalanceNetwork = await getNetworkWithHighestBalance(
+              currentAccount.address
+            )
+            if (highestBalanceNetwork) {
+              setSelectedNetwork(highestBalanceNetwork)
+              setIsNetworkLoading(false)
+              return
+            }
+          } catch (balanceError) {
+            console.warn(
+              'Failed to get network with highest balance:',
+              balanceError
+            )
+          }
+        }
+
+        // Final fallback on error
         const fallbackChain = supportedChains.find(
           chain =>
             chain.walletSupported &&
@@ -155,7 +194,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
 
     fetchPreferredNetwork()
-  }, [])
+  }, [currentAccount?.address])
 
   const resetPagination = useCallback(() => {
     setCurrentPage(1)

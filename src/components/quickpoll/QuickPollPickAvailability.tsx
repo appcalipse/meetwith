@@ -175,6 +175,21 @@ export function QuickPollPickAvailability({
   const SLOT_LENGTH =
     useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) ?? 3
 
+  const daysUntilExpiry = useMemo(() => {
+    const expiresAt = pollData?.poll?.expires_at
+    if (!expiresAt) return null
+    try {
+      const now = DateTime.now().setZone(timezone).startOf('day')
+      const end = DateTime.fromISO(expiresAt, { zone: 'utc' })
+        .setZone(timezone)
+        .endOf('day')
+      const diff = Math.ceil(end.diff(now, 'days').days)
+      return Math.max(diff, 0)
+    } catch {
+      return null
+    }
+  }, [pollData?.poll?.expires_at, timezone])
+
   useEffect(() => {
     // Only resolve after client-side rendering
     const timer = setTimeout(() => setIsBreakpointResolved(true), 100)
@@ -712,13 +727,12 @@ export function QuickPollPickAvailability({
           alignItems={{ lg: 'flex-end' }}
           flexDir={'row'}
           flexWrap="wrap"
-          gap={4}
+          gap={6}
           zIndex={2}
           display={{ base: 'none', md: 'flex' }}
         >
           {onSaveAvailability && isEditAvailabilityIntent && (
             <Button
-              variant="outline"
               colorScheme="primary"
               onClick={onSaveAvailability}
               px="16px"
@@ -736,12 +750,7 @@ export function QuickPollPickAvailability({
                 : 'Edit availability'}
             </Button>
           )}
-          <VStack
-            gap={2}
-            alignItems={'flex-start'}
-            width="fit-content"
-            minW={'300px'}
-          >
+          <VStack gap={2} alignItems={'flex-start'} minW={'max-content'}>
             <HStack width="fit-content" gap={0}>
               <Heading fontSize="16px">Show times in</Heading>
               <InfoTooltip text="the default timezone is based on your availability settings" />
@@ -816,6 +825,20 @@ export function QuickPollPickAvailability({
             </Button>
           )}
         </Flex>
+        {typeof daysUntilExpiry === 'number' && (
+          <Box w="100%" px={{ base: 0, md: 0 }}>
+            <Text
+              fontSize={{ base: '14px', md: '16px' }}
+              fontWeight={700}
+              color="text-primary"
+            >
+              This poll expires in:{' '}
+              <Text as="span" color="primary.200" fontWeight={700}>
+                {daysUntilExpiry} {daysUntilExpiry === 1 ? 'Day' : 'Days'}
+              </Text>
+            </Text>
+          </Box>
+        )}
         <HStack
           color="primary.500"
           alignSelf="flex-start"
@@ -855,7 +878,7 @@ export function QuickPollPickAvailability({
             >
               {isEditingAvailability
                 ? 'Save availability'
-                : 'Edit/Add your availability'}
+                : 'Edit availability'}
             </Button>
           )}
           {onImportCalendar && !isSchedulingIntent && (
@@ -977,36 +1000,38 @@ export function QuickPollPickAvailability({
                   <Tooltip.Trigger asChild>
                     <InfoIcon cursor="pointer" />
                   </Tooltip.Trigger>
-                  <Tooltip.Content style={{ zIndex: 10 }}>
-                    <Box
-                      p={2}
-                      borderRadius={4}
-                      boxShadow="md"
-                      py={3}
-                      px={4}
-                      bg="bg-surface-tertiary-2"
-                      rounded={'10px'}
-                    >
-                      <VStack w="fit-content" gap={1} align={'flex-start'}>
-                        {GUIDES.map((guide, index) => {
-                          return (
-                            <HStack key={index} gap={2}>
-                              <Box
-                                w={5}
-                                h={5}
-                                bg={guide.color}
-                                borderRadius={4}
-                              />
-                              <Text fontSize="12px" color="text-primary">
-                                {guide.description}
-                              </Text>
-                            </HStack>
-                          )
-                        })}
-                      </VStack>
-                    </Box>
-                    <Tooltip.Arrow color="#323F4B" />
-                  </Tooltip.Content>
+                  <Tooltip.Portal>
+                    <Tooltip.Content style={{ zIndex: 1000 }} sideOffset={6}>
+                      <Box
+                        p={2}
+                        borderRadius={4}
+                        boxShadow="md"
+                        py={3}
+                        px={4}
+                        bg="bg-surface-tertiary-2"
+                        rounded={'10px'}
+                      >
+                        <VStack w="fit-content" gap={1} align={'flex-start'}>
+                          {GUIDES.map((guide, index) => {
+                            return (
+                              <HStack key={index} gap={2}>
+                                <Box
+                                  w={5}
+                                  h={5}
+                                  bg={guide.color}
+                                  borderRadius={4}
+                                />
+                                <Text fontSize="12px" color="text-primary">
+                                  {guide.description}
+                                </Text>
+                              </HStack>
+                            )
+                          })}
+                        </VStack>
+                      </Box>
+                      <Tooltip.Arrow color="#323F4B" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
                 </Tooltip.Root>
               </HStack>
 
@@ -1037,6 +1062,7 @@ export function QuickPollPickAvailability({
                 />
                 {onImportCalendar && !isSchedulingIntent && (
                   <Button
+                    variant="outline"
                     colorScheme="primary"
                     onClick={onImportCalendar}
                     display={{ lg: 'block', base: 'none' }}
@@ -1056,16 +1082,16 @@ export function QuickPollPickAvailability({
               </HStack>
 
               <Box
-                maxW="350px"
+                maxW="400px"
                 textAlign="center"
                 display={{ lg: 'block', base: 'none' }}
               >
                 <Heading fontSize="20px" fontWeight={700}>
-                  Select time from available slots
+                  Select all the time slots that work for you
                 </Heading>
                 <Text fontSize="12px">
-                  All time slots shown below are the available times between you
-                  and the required participants.
+                  Click on each cell to mark when you&apos;re available, so the
+                  host can easily find the best time for everyone.
                 </Text>
               </Box>
 
@@ -1099,42 +1125,44 @@ export function QuickPollPickAvailability({
                   <Tooltip.Trigger asChild>
                     <InfoIcon cursor="pointer" />
                   </Tooltip.Trigger>
-                  <Tooltip.Content style={{ zIndex: 10 }}>
-                    <Box
-                      p={2}
-                      borderRadius={4}
-                      boxShadow="md"
-                      py={3}
-                      px={4}
-                      bg="bg-surface-tertiary-2"
-                      rounded={'10px'}
-                    >
-                      <VStack w="fit-content" gap={1} align={'flex-start'}>
-                        {GUIDES.map((guide, index) => {
-                          return (
-                            <HStack key={index} gap={2}>
-                              <Box
-                                w={5}
-                                h={5}
-                                bg={guide.color}
-                                borderRadius={4}
-                              />
-                              <Text
-                                fontSize={{
-                                  base: 'small',
-                                  md: 'medium',
-                                }}
-                                color="text-primary"
-                              >
-                                {guide.description}
-                              </Text>
-                            </HStack>
-                          )
-                        })}
-                      </VStack>
-                    </Box>
-                    <Tooltip.Arrow color="#323F4B" />
-                  </Tooltip.Content>
+                  <Tooltip.Portal>
+                    <Tooltip.Content style={{ zIndex: 1000 }} sideOffset={6}>
+                      <Box
+                        p={2}
+                        borderRadius={4}
+                        boxShadow="md"
+                        py={3}
+                        px={4}
+                        bg="bg-surface-tertiary-2"
+                        rounded={'10px'}
+                      >
+                        <VStack w="fit-content" gap={1} align={'flex-start'}>
+                          {GUIDES.map((guide, index) => {
+                            return (
+                              <HStack key={index} gap={2}>
+                                <Box
+                                  w={5}
+                                  h={5}
+                                  bg={guide.color}
+                                  borderRadius={4}
+                                />
+                                <Text
+                                  fontSize={{
+                                    base: 'small',
+                                    md: 'medium',
+                                  }}
+                                  color="text-primary"
+                                >
+                                  {guide.description}
+                                </Text>
+                              </HStack>
+                            )
+                          })}
+                        </VStack>
+                      </Box>
+                      <Tooltip.Arrow color="#323F4B" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
                 </Tooltip.Root>
               </HStack>
               <IconButton

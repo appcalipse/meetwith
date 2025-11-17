@@ -58,11 +58,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const pollData: CreateQuickPollRequest = req.body
 
       // Validate required fields
-      if (
-        !pollData.title ||
-        !pollData.description ||
-        !pollData.duration_minutes
-      ) {
+      if (!pollData.title || !pollData.duration_minutes) {
         throw new QuickPollValidationError('Missing required fields')
       }
 
@@ -99,7 +95,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       const poll = await createQuickPoll(address, {
         title: pollData.title.trim(),
-        description: pollData.description.trim(),
+        description: pollData.description?.trim() || '',
         duration_minutes: pollData.duration_minutes,
         starts_at: pollData.starts_at,
         ends_at: pollData.ends_at,
