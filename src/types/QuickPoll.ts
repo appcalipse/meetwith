@@ -17,6 +17,7 @@ export enum QuickPollParticipantStatus {
   PENDING = 'pending',
   ACCEPTED = 'accepted',
   DECLINED = 'declined',
+  DELETED = 'deleted',
 }
 
 export enum QuickPollParticipantType {
@@ -28,6 +29,12 @@ export enum QuickPollParticipantType {
 export enum QuickPollIntent {
   SCHEDULE = 'schedule',
   EDIT_AVAILABILITY = 'edit_availability',
+}
+
+export interface AvailabilitySlot {
+  weekday: number
+  ranges: Array<{ start: string; end: string }>
+  date?: string
 }
 
 // Base interfaces
@@ -57,10 +64,7 @@ export interface QuickPollParticipant {
   guest_name?: string
   guest_email: string
   status: QuickPollParticipantStatus
-  available_slots: Array<{
-    weekday: number
-    ranges: Array<{ start: string; end: string }>
-  }>
+  available_slots: AvailabilitySlot[]
   timezone?: string
   participant_type: QuickPollParticipantType
 }
@@ -91,7 +95,7 @@ export interface QuickPollParticipantWithAccount extends QuickPollParticipant {
 // Request interfaces
 export interface CreateQuickPollRequest {
   title: string
-  description: string
+  description?: string
   duration_minutes: number
   starts_at: string
   ends_at: string
@@ -134,6 +138,12 @@ export interface AddParticipantData {
   guest_name?: string
   guest_email: string
   participant_type: QuickPollParticipantType
+}
+
+export interface QuickPollParticipantUpdateFields {
+  status: QuickPollParticipantStatus
+  guest_name?: string
+  participant_type?: QuickPollParticipantType
 }
 
 export interface UpdateParticipantAvailabilityRequest {
@@ -198,12 +208,13 @@ export interface QuickPollBySlugResponse {
   can_edit: boolean
 }
 
-export interface AvailabilitySlot {
-  weekday: number
-  ranges: Array<{ start: string; end: string }>
-}
-
 export interface QuickPollBusyParticipant {
   account_address?: string
   participant_id?: string
+}
+
+export interface GuestPollDetails {
+  participantId: string
+  email: string
+  name: string
 }

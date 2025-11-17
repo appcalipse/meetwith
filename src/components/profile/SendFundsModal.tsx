@@ -20,7 +20,7 @@ import {
 } from '@chakra-ui/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { erc20Abi } from 'abitype/abis'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { FiArrowLeft } from 'react-icons/fi'
 import { IoChevronDown } from 'react-icons/io5'
 import {
@@ -30,9 +30,11 @@ import {
   waitForReceipt,
 } from 'thirdweb'
 import { useActiveWallet } from 'thirdweb/react'
+import { useOnClickOutside } from 'usehooks-ts'
 import { formatUnits } from 'viem'
 
 import { useCryptoBalance } from '@/hooks/useCryptoBalance'
+import { useDebounceCallback } from '@/hooks/useDebounceCallback'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import { useWallet } from '@/providers/WalletProvider'
 import {
@@ -61,14 +63,17 @@ import {
 } from '@/utils/constants/meeting-types'
 import { TokenType } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
+import { estimateGasFee, GasEstimationParams } from '@/utils/gasEstimation'
 import { formatCurrency, parseUnits, zeroAddress } from '@/utils/generic_utils'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { CurrencyService } from '@/utils/services/currency.service'
 import { useToastHelpers } from '@/utils/toasts'
 import { getTokenDecimals, getTokenInfo } from '@/utils/token.service'
-import { thirdWebClient } from '@/utils/user_manager'
+import { ellipsizeAddress, thirdWebClient } from '@/utils/user_manager'
 
 import MagicLinkModal from './components/MagicLinkModal'
+import NetworkDropdown from './components/NetworkDropdown'
+import TokenDropdown from './components/TokenDropdown'
 import TransactionVerificationModal from './components/TransactionVerificationModal'
 import TransactionSuccessModal from './TransactionSuccessModal'
 
@@ -97,18 +102,42 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   isFromTokenView = false,
 }) => {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null)
+  const [estimatedFee, setEstimatedFee] = useState<number>(0)
+  const [isEstimatingFee, setIsEstimatingFee] = useState<boolean>(false)
+  const [feeError, setFeeError] = useState<boolean>(false)
 
-  const NETWORK_CONFIG = supportedPaymentChains.reduce((acc, chain) => {
-    acc[getNetworkDisplayName(chain)] = chain
-    return acc
-  }, {} as Record<string, SupportedChain>)
+  const [isTokenDropdownOpen, setIsTokenDropdownOpen] = useState(false)
+  const [isNetworkDropdownOpen, setIsNetworkDropdownOpen] = useState(false)
+  const tokenDropdownRef = useRef<HTMLDivElement>(null)
+  const networkDropdownRef = useRef<HTMLDivElement>(null)
+
+  useOnClickOutside(tokenDropdownRef, () => {
+    setIsTokenDropdownOpen(false)
+  })
+
+  useOnClickOutside(networkDropdownRef, () => {
+    setIsNetworkDropdownOpen(false)
+  })
+
+  const NETWORK_CONFIG = supportedChains
+    .filter(
+      chain =>
+        chain.walletSupported &&
+        supportedPaymentChains.includes(chain.chain) &&
+        chain.acceptableTokens.some(
+          token =>
+            token.walletSupported && token.contractAddress !== zeroAddress
+        )
+    )
+    .reduce((acc, chain) => {
+      acc[getNetworkDisplayName(chain.chain)] = chain.chain
+      return acc
+    }, {} as Record<string, SupportedChain>)
 
   const [sendNetwork, setSendNetwork] =
     useState<SupportedChain>(selectedNetwork)
   const [recipientAddress, setRecipientAddress] = useState('')
   const [amount, setAmount] = useState('')
-  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false)
-  const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
@@ -199,13 +228,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     setIsVerificationModalOpen(false)
     setIsNetworkSwitchModalOpen(false)
     setNetworkMismatch(null)
+    setSendNetwork(selectedNetwork)
     onMagicLinkClose()
     setIsSendingMagicLink(false)
     setNotificationEmail(null)
     onClose()
   }
 
-  // Update sendNetwork when selectedNetwork prop changes
   useEffect(() => {
     setSendNetwork(selectedNetwork)
   }, [selectedNetwork])
@@ -217,17 +246,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
   // Get available tokens dynamically from chain configuration (excluding native tokens)
   const availableTokens = chain
-    ? chain.acceptableTokens
-        .filter(token => token.contractAddress !== zeroAddress)
-        .filter(token => {
-          if (sendNetwork === SupportedChain.CELO) {
-            return (
-              token.token !== AcceptedToken.CELO &&
-              token.token !== AcceptedToken.CEUR
-            )
-          }
-          return true
-        })
+    ? chain.acceptableTokens.filter(
+        token => token.contractAddress !== zeroAddress
+      )
     : []
 
   // Validate recipient address
@@ -240,6 +261,44 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     const num = parseFloat(amount)
     return !isNaN(num) && num > 0
   }
+
+  const handleGasEstimation = async () => {
+    if (!selectedToken || !activeWallet || !recipientAddress || !amount) {
+      setEstimatedFee(0)
+      setIsEstimatingFee(false)
+      setFeeError(false)
+      return
+    }
+
+    setIsEstimatingFee(true)
+    setFeeError(false)
+
+    const params: GasEstimationParams = {
+      selectedToken,
+      recipientAddress,
+      amount,
+      sendNetwork,
+      activeWallet,
+    }
+
+    const result = await estimateGasFee(params)
+
+    if (!result.success && result.error) {
+      handleApiError('Gas Estimation Failed', new Error(result.error))
+    }
+
+    setEstimatedFee(result.estimatedFee)
+    setIsEstimatingFee(false)
+    setFeeError(!result.success)
+  }
+
+  const debouncedEstimateGasFee = useDebounceCallback(handleGasEstimation, 500)
+
+  useEffect(() => {
+    if (selectedToken && recipientAddress && amount && activeWallet) {
+      debouncedEstimateGasFee()
+    }
+  }, [selectedToken, recipientAddress, amount, sendNetwork, activeWallet])
 
   const handleTokenSelection = async (token: AcceptedTokenInfo) => {
     if (!chain) return
@@ -263,6 +322,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
       console.error('Error fetching token decimals:', error)
       handleApiError('Token Information Failed', error)
     }
+  }
+
+  const handleNetworkSelection = (chainType: SupportedChain) => {
+    setSendNetwork(chainType)
+    setSelectedToken(null)
+    setIsTokenDropdownOpen(false)
+    setIsNetworkDropdownOpen(false)
   }
 
   const checkNetworkMatch = async (): Promise<boolean> => {
@@ -671,52 +737,71 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                 >
                   Select token
                 </Text>
-                <Box
-                  bg="bg-surface-tertiary"
-                  borderRadius={{ base: '8px', md: '12px' }}
-                  px={{ base: 3, md: 4 }}
-                  py={{ base: 2, md: 3 }}
-                  display="flex"
-                  alignItems="center"
-                  gap={3}
-                  cursor="pointer"
-                  onClick={() => !isLoading && setIsTokenModalOpen(true)}
-                  _hover={{ opacity: isLoading ? 1 : 0.8 }}
-                  border="1px solid"
-                  borderColor="border-default"
-                  opacity={isLoading ? 0.6 : 1}
-                >
-                  {selectedToken ? (
-                    <>
-                      <Image
-                        src={selectedToken.icon}
-                        alt={selectedToken.symbol}
-                        w={{ base: '20px', md: '24px' }}
-                        h={{ base: '20px', md: '24px' }}
-                        borderRadius="full"
-                      />
+                <Box position="relative" ref={tokenDropdownRef}>
+                  <Box
+                    bg="transparent"
+                    borderRadius="8px"
+                    px={{ base: 3, md: 4 }}
+                    h="40px"
+                    display="flex"
+                    alignItems="center"
+                    gap={3}
+                    cursor="pointer"
+                    onClick={() =>
+                      !isLoading && setIsTokenDropdownOpen(!isTokenDropdownOpen)
+                    }
+                    _hover={{ opacity: isLoading ? 1 : 0.8 }}
+                    border="1px solid"
+                    borderColor="border-default"
+                    opacity={isLoading ? 0.6 : 1}
+                  >
+                    {selectedToken ? (
+                      <>
+                        <Image
+                          src={selectedToken.icon}
+                          alt={selectedToken.symbol}
+                          w={{ base: '20px', md: '24px' }}
+                          h={{ base: '20px', md: '24px' }}
+                          borderRadius="full"
+                        />
+                        <Text
+                          color="text-primary"
+                          fontSize={{ base: '14px', md: '16px' }}
+                          fontWeight="500"
+                        >
+                          {selectedToken.symbol}
+                        </Text>
+                      </>
+                    ) : (
                       <Text
-                        color="text-primary"
+                        color="text-muted"
                         fontSize={{ base: '14px', md: '16px' }}
-                        fontWeight="500"
                       >
-                        {selectedToken.symbol}
+                        Select a token
                       </Text>
-                    </>
-                  ) : (
-                    <Text
-                      color="text-muted"
+                    )}
+                    <Icon
+                      as={IoChevronDown}
+                      color="text-secondary"
                       fontSize={{ base: '14px', md: '16px' }}
-                    >
-                      Select a token
-                    </Text>
+                      ml="auto"
+                      transform={
+                        isTokenDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                      }
+                      transition="transform 0.2s"
+                    />
+                  </Box>
+
+                  {/* Token Dropdown */}
+                  {isTokenDropdownOpen && (
+                    <TokenDropdown
+                      availableTokens={availableTokens}
+                      chain={chain}
+                      sendNetwork={sendNetwork}
+                      onSelectToken={handleTokenSelection}
+                      onClose={() => setIsTokenDropdownOpen(false)}
+                    />
                   )}
-                  <Icon
-                    as={IoChevronDown}
-                    color="text-secondary"
-                    fontSize={{ base: '14px', md: '16px' }}
-                    ml="auto"
-                  />
                 </Box>
 
                 {/* Token balance and network info */}
@@ -754,34 +839,54 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                   >
                     Select network
                   </Text>
-                  <Box
-                    bg="bg-surface-tertiary"
-                    borderRadius={{ base: '8px', md: '12px' }}
-                    px={{ base: 3, md: 4 }}
-                    py={{ base: 2, md: 3 }}
-                    display="flex"
-                    alignItems="center"
-                    gap={3}
-                    cursor="pointer"
-                    onClick={() => !isLoading && setIsNetworkModalOpen(true)}
-                    _hover={{ opacity: isLoading ? 1 : 0.8 }}
-                    border="1px solid"
-                    borderColor="border-default"
-                    opacity={isLoading ? 0.6 : 1}
-                  >
-                    <Text
-                      color="text-primary"
-                      fontSize={{ base: '14px', md: '16px' }}
-                      fontWeight="500"
+                  <Box position="relative" ref={networkDropdownRef}>
+                    <Box
+                      bg="transparent"
+                      borderRadius="8px"
+                      px={{ base: 3, md: 4 }}
+                      h="40px"
+                      display="flex"
+                      alignItems="center"
+                      gap={3}
+                      cursor="pointer"
+                      onClick={() =>
+                        !isLoading &&
+                        setIsNetworkDropdownOpen(!isNetworkDropdownOpen)
+                      }
+                      _hover={{ opacity: isLoading ? 1 : 0.8 }}
+                      border="1px solid"
+                      borderColor="border-default"
+                      opacity={isLoading ? 0.6 : 1}
                     >
-                      {getNetworkDisplayName(sendNetwork)}
-                    </Text>
-                    <Icon
-                      as={IoChevronDown}
-                      color="text-secondary"
-                      fontSize={{ base: '14px', md: '16px' }}
-                      ml="auto"
-                    />
+                      <Text
+                        color="text-primary"
+                        fontSize={{ base: '14px', md: '16px' }}
+                        fontWeight="500"
+                      >
+                        {getNetworkDisplayName(sendNetwork)}
+                      </Text>
+                      <Icon
+                        as={IoChevronDown}
+                        color="text-secondary"
+                        fontSize={{ base: '14px', md: '16px' }}
+                        ml="auto"
+                        transform={
+                          isNetworkDropdownOpen
+                            ? 'rotate(180deg)'
+                            : 'rotate(0deg)'
+                        }
+                        transition="transform 0.2s"
+                      />
+                    </Box>
+
+                    {/* Network Dropdown */}
+                    {isNetworkDropdownOpen && (
+                      <NetworkDropdown
+                        networkConfig={NETWORK_CONFIG}
+                        onSelectNetwork={handleNetworkSelection}
+                        onClose={() => setIsNetworkDropdownOpen(false)}
+                      />
+                    )}
                   </Box>
                 </Box>
               )}
@@ -794,16 +899,16 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                   fontWeight="600"
                   mb={{ base: 2, md: 3 }}
                 >
-                  Receive (enter wallet address)
+                  Receiver (enter wallet address)
                 </Text>
                 <Input
                   placeholder="Enter the receivers wallet address"
                   value={recipientAddress}
                   onChange={e => setRecipientAddress(e.target.value)}
-                  bg="bg-surface-tertiary"
+                  bg="transparent"
                   border="1px solid"
                   borderColor="border-default"
-                  borderRadius={{ base: '8px', md: '12px' }}
+                  borderRadius="8px"
                   color="text-primary"
                   fontSize={{ base: '14px', md: '16px' }}
                   _placeholder={{ color: 'text-muted' }}
@@ -857,10 +962,10 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                   placeholder="Enter amount to send"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
-                  bg="bg-surface-tertiary"
+                  bg="transparent"
                   border="1px solid"
                   borderColor="border-default"
-                  borderRadius={{ base: '8px', md: '12px' }}
+                  borderRadius="8px"
                   color="text-primary"
                   fontSize={{ base: '14px', md: '16px' }}
                   _placeholder={{ color: 'text-muted' }}
@@ -872,15 +977,75 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                 />
               </Box>
 
+              {/* Fees Summary */}
+              {selectedToken && amount && parseFloat(amount) > 0 && (
+                <VStack spacing={3} align="stretch">
+                  <HStack justify="space-between">
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      Amount
+                    </Text>
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      ${amount} {selectedToken.symbol}
+                    </Text>
+                  </HStack>
+                  <HStack justify="space-between">
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      Transaction fee
+                    </Text>
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      {isEstimatingFee ? (
+                        <HStack spacing={1}>
+                          <Spinner size="xs" />
+                          <Text>Loading...</Text>
+                        </HStack>
+                      ) : feeError ? (
+                        "Couldn't fetch"
+                      ) : (
+                        `$${estimatedFee.toFixed(2)}`
+                      )}
+                    </Text>
+                  </HStack>
+                  <HStack justify="space-between">
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      Total to be debited
+                    </Text>
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      {isEstimatingFee ? (
+                        <HStack spacing={1}>
+                          <Spinner size="xs" />
+                          <Text>Loading...</Text>
+                        </HStack>
+                      ) : feeError ? (
+                        "Couldn't calculate"
+                      ) : (
+                        `$${(parseFloat(amount) + estimatedFee).toFixed(2)} ${
+                          selectedToken.symbol
+                        }`
+                      )}
+                    </Text>
+                  </HStack>
+                  <HStack justify="space-between">
+                    <Text color="text-primary" fontSize="16px" fontWeight="500">
+                      Recipient
+                    </Text>
+                    <Text color="text-muted" fontSize="16px" fontWeight="500">
+                      {recipientAddress
+                        ? ellipsizeAddress(recipientAddress)
+                        : 'Not specified'}
+                    </Text>
+                  </HStack>
+                </VStack>
+              )}
+
               {/* Send Button */}
               <Button
-                bg="primary.500"
-                color="text-primary"
+                colorScheme="primary"
+                width="fit-content"
                 fontSize={{ base: '14px', md: '16px' }}
                 fontWeight="600"
-                py={{ base: 3, md: 4 }}
-                borderRadius={{ base: '8px', md: '12px' }}
-                _hover={{ bg: isLoading ? 'primary.500' : 'primary.600' }}
+                py={{ base: 3, md: 5 }}
+                borderRadius="8px"
+                _hover={{ bg: isLoading ? 'primary.500' : 'primary.300' }}
                 _active={{ bg: isLoading ? 'primary.500' : 'primary.700' }}
                 onClick={handleSend}
                 isDisabled={
@@ -917,166 +1082,6 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
           chainId={successData.chainId}
         />
       )}
-
-      {/* Token Selection Modal */}
-      <Modal
-        isOpen={isTokenModalOpen}
-        onClose={() => setIsTokenModalOpen(false)}
-        size="md"
-        isCentered
-      >
-        <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
-        <ModalContent
-          bg="bg-surface-secondary"
-          borderRadius="12px"
-          border="1px solid"
-          borderColor="border-wallet-subtle"
-          shadow="none"
-        >
-          <ModalHeader
-            color="text-primary"
-            fontSize="20px"
-            fontWeight="600"
-            pb={2}
-          >
-            Select Token
-          </ModalHeader>
-          <ModalBody pb={6}>
-            <RadioGroup
-              value={selectedToken?.symbol || ''}
-              onChange={async value => {
-                const token = availableTokens.find(
-                  (t: AcceptedTokenInfo) => getTokenSymbol(t.token) === value
-                )
-
-                if (token) {
-                  await handleTokenSelection(token)
-                }
-                setIsTokenModalOpen(false)
-              }}
-            >
-              <Stack spacing={4}>
-                {availableTokens.map((token: AcceptedTokenInfo) => {
-                  const tokenName = getTokenName(token.token)
-                  const tokenSymbol = getTokenSymbol(token.token)
-
-                  return (
-                    <Radio
-                      key={tokenSymbol}
-                      value={tokenSymbol}
-                      colorScheme="orange"
-                      size="lg"
-                      variant="filled"
-                    >
-                      <HStack spacing={3}>
-                        <Image
-                          src={
-                            getTokenIcon(token.token) ||
-                            '/assets/chains/ethereum.svg'
-                          }
-                          alt={tokenSymbol}
-                          w="24px"
-                          h="24px"
-                          borderRadius="full"
-                        />
-                        <VStack align="start" spacing={0}>
-                          <Text
-                            color="text-primary"
-                            fontSize="16px"
-                            fontWeight="500"
-                          >
-                            {tokenName}
-                          </Text>
-                          <Text color="text-muted" fontSize="14px">
-                            {chain?.name || sendNetwork}
-                          </Text>
-                        </VStack>
-                      </HStack>
-                    </Radio>
-                  )
-                })}
-              </Stack>
-            </RadioGroup>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-
-      {/* Network Selection Modal */}
-      <Modal
-        isOpen={isNetworkModalOpen}
-        onClose={() => setIsNetworkModalOpen(false)}
-        size="md"
-        isCentered
-      >
-        <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
-        <ModalContent
-          bg="bg-surface-secondary"
-          borderRadius="12px"
-          border="1px solid"
-          borderColor="border-wallet-subtle"
-          shadow="none"
-        >
-          <ModalHeader
-            color="text-primary"
-            fontSize="20px"
-            fontWeight="600"
-            pb={2}
-          >
-            Select Network
-          </ModalHeader>
-          <ModalBody pb={6}>
-            <RadioGroup
-              value={sendNetwork}
-              onChange={value => {
-                setSendNetwork(value as SupportedChain)
-                setSelectedToken(null) // Reset token when network changes
-                setIsNetworkModalOpen(false)
-              }}
-            >
-              <VStack spacing={6} align="stretch">
-                {Object.entries(NETWORK_CONFIG).map(
-                  ([displayName, chainType]) => {
-                    const chainInfo = supportedChains.find(
-                      c => c.chain === chainType
-                    )
-                    return (
-                      <Radio
-                        key={chainType}
-                        value={chainType}
-                        colorScheme="orange"
-                        size="lg"
-                        variant="filled"
-                        py={1}
-                      >
-                        <HStack spacing={3}>
-                          <Image
-                            src={
-                              chainInfo?.image || '/assets/chains/ethereum.svg'
-                            }
-                            alt={displayName}
-                            w="24px"
-                            h="24px"
-                            borderRadius="full"
-                          />
-                          <VStack align="start" spacing={0}>
-                            <Text
-                              color="text-primary"
-                              fontSize="16px"
-                              fontWeight="500"
-                            >
-                              {displayName}
-                            </Text>
-                          </VStack>
-                        </HStack>
-                      </Radio>
-                    )
-                  }
-                )}
-              </VStack>
-            </RadioGroup>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
 
       {/* Transaction Verification Modal */}
       <TransactionVerificationModal

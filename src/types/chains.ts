@@ -325,7 +325,7 @@ export const supportedChains: ChainInfo[] = [
         contractAddress: '0x471EcE3750Da237f93B8E339c536989b8978a438',
         displayName: 'Celo',
         icon: '/assets/chains/Celo.svg',
-        walletSupported: false,
+        walletSupported: true,
       },
       {
         token: AcceptedToken.CUSD,
@@ -352,8 +352,8 @@ export const supportedChains: ChainInfo[] = [
         token: AcceptedToken.CEUR, // cEUR
         contractAddress: '0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73',
         displayName: 'Celo Euro',
-        icon: '/assets/chains/Celo.svg',
-        walletSupported: false,
+        icon: '/assets/tokens/CEUR.png',
+        walletSupported: true,
       },
     ],
   },

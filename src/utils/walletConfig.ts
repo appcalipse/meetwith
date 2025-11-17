@@ -66,7 +66,11 @@ export const CURRENCIES: Currency[] = [
 export const NETWORKS: Network[] = supportedChains
   .filter(
     chain =>
-      chain.walletSupported && supportedPaymentChains.includes(chain.chain)
+      chain.walletSupported &&
+      supportedPaymentChains.includes(chain.chain) &&
+      chain.acceptableTokens.some(
+        token => token.walletSupported && token.contractAddress !== zeroAddress
+      )
   )
   .map(chain => ({
     name: chain.name,
