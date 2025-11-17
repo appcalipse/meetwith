@@ -147,8 +147,12 @@ export const internalFetch = async <T>(
   body?: unknown,
   options: RequestInit = {},
   headers = {},
-  isFormData = false
-) => {
+  isFormData = false,
+  withRetry = true,
+  remainingRetries = 3
+): Promise<T> => {
+  const baseDelay = 1000
+
   try {
     const response = await fetch(`${apiUrl}${path}`, {
       method,
@@ -170,6 +174,33 @@ export const internalFetch = async <T>(
 
     throw new ApiFetchError(response.status, await response.text())
   } catch (e: unknown) {
+    // Check if error is retryable
+    const isRetryableError =
+      withRetry &&
+      remainingRetries > 0 &&
+      ((e instanceof TypeError &&
+        (e.message.includes('Failed to fetch') ||
+          e.message.includes('Network request failed') ||
+          e.message.includes('NetworkError') ||
+          e.message.includes('timeout'))) ||
+        (e instanceof ApiFetchError && e.status >= 500))
+
+    if (isRetryableError) {
+      const delay = Math.max(baseDelay / remainingRetries, 100)
+      console.warn(`API call failed, retrying...`, e)
+      await new Promise(resolve => setTimeout(resolve, delay))
+      return internalFetch<T>(
+        path,
+        method,
+        body,
+        options,
+        headers,
+        isFormData,
+        withRetry,
+        remainingRetries - 1
+      )
+    }
+
     // Exclude account not found error on sentry
     if (
       e instanceof ApiFetchError &&
@@ -2045,8 +2076,8 @@ export const addOrUpdateGuestParticipantWithAvailability = async (
   availableSlots: AvailabilitySlot[],
   timezone: string,
   guestName?: string
-) => {
-  return await internalFetch(
+): Promise<{ participant: QuickPollParticipant }> => {
+  return await internalFetch<{ participant: QuickPollParticipant }>(
     `/quickpoll/${pollSlug}/guest-participant`,
     'POST',
     {
