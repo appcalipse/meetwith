@@ -231,7 +231,7 @@ import {
   sendReceiptEmail,
   sendSessionBookingIncomeEmail,
 } from './email_helper'
-import { deduplicateArray } from './generic_utils'
+import { deduplicateArray, deduplicateMembers } from './generic_utils'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { CalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
@@ -1593,18 +1593,21 @@ const getGroupsAndMembers = async (
     throw new Error(error.message)
   }
 
-  return data.map(group => ({
-    id: group.id,
-    name: group.name,
-    slug: group.slug,
-    members:
-      group.members.filter(member => {
-        if (includeInvites) {
-          return true
-        }
-        return !member.invitePending
-      }) || [],
-  })) as GetGroupsFullResponse[]
+  return data.map(group => {
+    return {
+      id: group.id,
+      name: group.name,
+      slug: group.slug,
+      members: deduplicateMembers(
+        group.members.filter(member => {
+          if (includeInvites) {
+            return true
+          }
+          return !member.invitePending
+        }) || []
+      ),
+    }
+  }) as GetGroupsFullResponse[]
 }
 
 async function findGroupsWithSingleMember(

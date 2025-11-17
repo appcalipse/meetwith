@@ -11,7 +11,7 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useId, useState } from 'react'
+import React, { FC, useEffect, useId, useState } from 'react'
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 
 import SearchInput from '@/components/ui/SearchInput'
@@ -36,6 +36,9 @@ const GroupCard: FC<IGroupCard> = props => {
       member.address?.toLowerCase().includes(search.toLowerCase()) ||
       member.domain?.toLowerCase().includes(search.toLowerCase())
   )
+  useEffect(() => {
+    setSearch(props.globalSearch || '')
+  }, [props.globalSearch])
   return (
     <AccordionItem
       width="100%"

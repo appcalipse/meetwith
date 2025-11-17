@@ -43,6 +43,7 @@ import {
   getExistingAccounts,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { isProduction } from '@/utils/constants'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
