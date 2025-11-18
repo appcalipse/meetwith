@@ -14,9 +14,11 @@ import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
+import { MeetingPermissions } from '../constants/schedule'
 import { updateCalendarPayload } from '../database'
+import { CalendarBackendHelper } from './calendar.backend.helper'
 import { CalendarServiceHelper } from './calendar.helper'
-import { CalendarService } from './calendar.service.types'
+import { IGoogleCalendarService } from './calendar.service.types'
 import { withRetry } from './retry.service'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -59,9 +61,7 @@ const retryCondition = (error: unknown) => {
   }
   return false
 }
-export default class GoogleCalendarService
-  implements CalendarService<TimeSlotSource.GOOGLE>
-{
+export default class GoogleCalendarService implements IGoogleCalendarService {
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
   private email: string
 
@@ -197,8 +197,9 @@ export default class GoogleCalendarService
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    _calendarId?: string
-  ): Promise<NewCalendarEventType> {
+    _calendarId?: string,
+    useParticipants?: boolean
+  ): Promise<NewCalendarEventType & calendar_v3.Schema$Event> {
     return new Promise((resolve, reject) =>
       this.auth
         .getToken()
@@ -230,13 +231,8 @@ export default class GoogleCalendarService
               slot_id: '',
               meeting_id: meetingDetails.meeting_id,
             }))
-
-          const slot_id = meetingDetails.participants.find(
-            p => p.account_address === calendarOwnerAccountAddress
-          )?.slot_id
-
           const hasGuests = meetingDetails.participants.some(p => p.guest_email)
-          const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+          const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
 
           const payload: calendar_v3.Schema$Event = {
             // yes, google event ids allows only letters and numbers
@@ -270,13 +266,23 @@ export default class GoogleCalendarService
               displayName: 'Meetwith',
               email: NO_REPLY_EMAIL,
             },
-            guestsCanModify: false,
+            guestsCanModify: meetingDetails.meetingPermissions?.includes(
+              MeetingPermissions.EDIT_MEETING
+            ),
+            guestsCanInviteOthers: meetingDetails.meetingPermissions?.includes(
+              MeetingPermissions.INVITE_GUESTS
+            ),
+            guestsCanSeeOtherGuests:
+              meetingDetails.meetingPermissions?.includes(
+                MeetingPermissions.SEE_GUEST_LIST
+              ),
             location: meetingDetails.meeting_url,
             status: 'confirmed',
             extendedProperties: {
               private: {
                 updatedBy: 'meetwith',
                 lastUpdatedAt: new Date().toISOString(),
+                meetingId: meetingDetails.meeting_id,
               },
             },
           }
@@ -311,15 +317,15 @@ export default class GoogleCalendarService
             auth: myGoogleAuth,
           })
 
-          // Build deduplicated attendees list using helper
-          const attendees = CalendarServiceHelper.buildAttendeesList(
-            meetingDetails.participants,
-            calendarOwnerAccountAddress,
-            () => this.getConnectedEmail()
-          )
-
-          payload.attendees = attendees
-
+          if (useParticipants) {
+            // Build deduplicated attendees list using helper
+            const attendees = await CalendarBackendHelper.buildAttendeesList(
+              meetingDetails.participants,
+              calendarOwnerAccountAddress,
+              () => this.getConnectedEmail()
+            )
+            payload.attendees = attendees
+          }
           calendar.events.insert(
             {
               auth: myGoogleAuth,
@@ -413,6 +419,15 @@ export default class GoogleCalendarService
           timeZone: 'UTC',
         },
         attendees: [],
+        guestsCanModify: meetingDetails.meetingPermissions?.includes(
+          MeetingPermissions.EDIT_MEETING
+        ),
+        guestsCanInviteOthers: meetingDetails.meetingPermissions?.includes(
+          MeetingPermissions.INVITE_GUESTS
+        ),
+        guestsCanSeeOtherGuests: meetingDetails.meetingPermissions?.includes(
+          MeetingPermissions.SEE_GUEST_LIST
+        ),
         reminders: {
           useDefault: false,
           overrides: [{ method: 'popup', minutes: 10 }],
@@ -447,18 +462,22 @@ export default class GoogleCalendarService
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
       )
+      const attendeeLength =
+        event?.attendees?.filter(attendee => !attendee.self).length || 0
 
-      // Build deduplicated attendees list using helper
-      const attendees = CalendarServiceHelper.buildAttendeesListForUpdate(
-        meetingDetails.participants,
-        calendarOwnerAccountAddress,
-        () => this.getConnectedEmail(),
-        actorStatus || undefined,
-        guest
-      )
+      if (attendeeLength > 0) {
+        // Build deduplicated attendees list using helper
+        const attendees =
+          await CalendarBackendHelper.buildAttendeesListForUpdate(
+            meetingDetails.participants,
+            calendarOwnerAccountAddress,
+            () => this.getConnectedEmail(),
+            actorStatus || undefined,
+            guest
+          )
 
-      payload.attendees = attendees
-
+        payload.attendees = attendees
+      }
       const calendar = google.calendar({
         version: 'v3',
         auth: myGoogleAuth,
