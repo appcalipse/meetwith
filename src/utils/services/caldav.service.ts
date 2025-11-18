@@ -19,14 +19,14 @@ import {
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { Intents } from '@/types/Dashboard'
-import { MeetingChangeType, TimeSlotSource } from '@/types/Meeting'
+import { MeetingChangeType } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { generateIcs } from '../calendar_manager'
 import { appUrl } from '../constants'
 import { decryptContent, mockEncrypted } from '../cryptography'
-import { CalendarService } from './calendar.service.types'
+import { BaseCalendarService } from './calendar.service.types'
 
 // ical.js has no ts typing
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -69,9 +69,7 @@ export interface CaldavCredentials {
  * - username (usually an email)
  * - password
  */
-export default class CaldavCalendarService
-  implements CalendarService<TimeSlotSource.ICLOUD>
-{
+export default class CaldavCalendarService implements BaseCalendarService {
   private url = ''
   private credentials: Record<string, string> = {}
   private headers: Record<string, string> = {}
