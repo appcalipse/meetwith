@@ -28,13 +28,7 @@ import ScheduleParticipantsSchedulerModal from '@components/schedule/SchedulePar
 import { Select as ChakraSelect } from 'chakra-react-select'
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { FaArrowLeft, FaChevronDown } from 'react-icons/fa'
 import { IoPersonAddOutline } from 'react-icons/io5'
 import { MdOutlineEditCalendar } from 'react-icons/md'
@@ -262,19 +256,9 @@ const ScheduleBase = () => {
   const displayParticipants = useMemo(() => {
     const seenIdentifiers = new Set<string>()
 
-    return participants.reduce<Array<Participant | ParticipantInfo>>(
+    return meetingParticipants.reduce<Array<ParticipantInfo>>(
       (accumulator, participant) => {
-        if (isGroupParticipant(participant)) {
-          const groupKey = `group-${participant.id}`
-          if (seenIdentifiers.has(groupKey)) {
-            return accumulator
-          }
-          seenIdentifiers.add(groupKey)
-          accumulator.push(participant)
-          return accumulator
-        }
-
-        const participantInfo = participant as ParticipantInfo
+        const participantInfo = participant
         const identifier =
           participantInfo.account_address?.toLowerCase() ||
           participantInfo.guest_email?.toLowerCase() ||
@@ -300,7 +284,7 @@ const ScheduleBase = () => {
       },
       []
     )
-  }, [participants])
+  }, [participants, groupParticipants])
   const formattedDate = useMemo(() => {
     if (!pickedTime) {
       return 'Invalid date'
