@@ -52,7 +52,11 @@ import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
-import { isGroupParticipant, Participant } from '@/types/schedule'
+import {
+  IGroupParticipant,
+  isGroupParticipant,
+  Participant,
+} from '@/types/schedule'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
@@ -384,10 +388,6 @@ const ScheduleBase = () => {
         return identifier && !updatedIdentifiers.has(identifier)
       })
 
-      const removedGroupIds = removedItems
-        .filter(isGroupParticipant)
-        .map(group => group.id)
-
       const removedParticipantIdentifiers = new Set(
         removedItems
           .filter(participant => !isGroupParticipant(participant))
@@ -413,16 +413,9 @@ const ScheduleBase = () => {
         )
       })
 
-      if (removedGroupIds.length > 0) {
-        removedGroupIds.forEach(removeGroup)
-      }
-
       if (removedParticipantIdentifiers.size > 0) {
         setParticipants(prev =>
           prev.filter(existingParticipant => {
-            if (isGroupParticipant(existingParticipant)) {
-              return !removedGroupIds.includes(existingParticipant.id)
-            }
             const identifier = getParticipantIdentifier(existingParticipant)
             return !removedParticipantIdentifiers.has(identifier)
           })
