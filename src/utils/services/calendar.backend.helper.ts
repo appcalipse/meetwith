@@ -7,17 +7,23 @@ import {
   max,
   min,
 } from 'date-fns'
+import { calendar_v3 } from 'googleapis'
 
 import { ConditionRelation } from '@/types/common'
 import { TimeSlot, TimeSlotSource } from '@/types/Meeting'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
 import { QuickPollBusyParticipant } from '@/types/QuickPoll'
 
 import {
   getConnectedCalendars,
-  getMeetingTypeFromDB,
   getQuickPollCalendars,
   getSlotsForAccount,
 } from '../database'
+import { getCalendarPrimaryEmail } from '../sync_helper'
 import { getConnectedCalendarIntegration } from './connected_calendars.factory'
 
 export const CalendarBackendHelper = {
@@ -333,5 +339,122 @@ export const CalendarBackendHelper = {
     }
 
     return overlaps
+  },
+  buildAttendeesList: async (
+    participants: ParticipantInfo[],
+    calendarOwnerAccountAddress: string,
+    getConnectedEmail: () => string
+  ): Promise<calendar_v3.Schema$EventAttendee[]> => {
+    const addedEmails = new Set<string>()
+    const attendees: calendar_v3.Schema$EventAttendee[] = []
+
+    for (const participant of participants) {
+      const isScheduler = participant.type === ParticipantType.Scheduler
+      // If participant is scheduler and not the calendar owner this means they don't have any calendar configured for the specific meeting type, skip adding them
+      const shouldSkip =
+        isScheduler &&
+        participant.account_address !== calendarOwnerAccountAddress
+      if (shouldSkip) {
+        continue
+      }
+      const email =
+        calendarOwnerAccountAddress === participant.account_address
+          ? getConnectedEmail()
+          : participant.guest_email ||
+            (await getCalendarPrimaryEmail(participant.account_address!))
+      // Only add if we haven't already added this email
+      if (email && !addedEmails.has(email)) {
+        addedEmails.add(email)
+        const attendee: calendar_v3.Schema$EventAttendee = {
+          email,
+          displayName:
+            participant.name ||
+            participant.account_address ||
+            email.split('@')[0],
+          organizer: [
+            ParticipantType.Owner,
+            ParticipantType.Scheduler,
+          ].includes(participant.type),
+          responseStatus:
+            participant.status === ParticipationStatus.Accepted
+              ? 'accepted'
+              : participant.status === ParticipationStatus.Rejected
+              ? 'declined'
+              : 'needsAction',
+        }
+        if (
+          [ParticipantType.Owner, ParticipantType.Scheduler].includes(
+            participant.type
+          )
+        ) {
+          attendee.optional = false
+        }
+        if (participant.account_address === calendarOwnerAccountAddress) {
+          attendee.self = true
+        }
+        attendees.push(attendee)
+      }
+    }
+
+    return attendees
+  },
+
+  buildAttendeesListForUpdate: async (
+    participants: ParticipantInfo[],
+    calendarOwnerAccountAddress: string,
+    getConnectedEmail: () => string,
+    actorStatus?: string,
+    guestParticipant?: ParticipantInfo
+  ): Promise<calendar_v3.Schema$EventAttendee[]> => {
+    const addedEmails = new Set<string>()
+    const attendees: calendar_v3.Schema$EventAttendee[] = []
+
+    // Handle guest participant first if provided
+    if (guestParticipant?.guest_email) {
+      addedEmails.add(guestParticipant.guest_email)
+      attendees.push({
+        email: guestParticipant.guest_email,
+        displayName:
+          guestParticipant.name ||
+          guestParticipant.guest_email.split('@')[0] ||
+          'Guest',
+        responseStatus: 'accepted',
+      })
+    }
+
+    for (const participant of participants) {
+      const email =
+        calendarOwnerAccountAddress === participant.account_address
+          ? getConnectedEmail()
+          : participant.guest_email ||
+            (await getCalendarPrimaryEmail(participant.account_address!))
+
+      // Only add if we haven't already added this email
+      if (email && !addedEmails.has(email)) {
+        addedEmails.add(email)
+        attendees.push({
+          email,
+          displayName:
+            participant.name ||
+            participant.account_address ||
+            email.split('@')[0],
+          organizer: [
+            ParticipantType.Owner,
+            ParticipantType.Scheduler,
+          ].includes(participant.type),
+          responseStatus:
+            calendarOwnerAccountAddress === participant.account_address &&
+            actorStatus
+              ? actorStatus
+              : participant.status === ParticipationStatus.Accepted
+              ? 'accepted'
+              : participant.status === ParticipationStatus.Rejected
+              ? 'declined'
+              : 'needsAction',
+        })
+      }
+    }
+
+    return attendees
   },
 }
