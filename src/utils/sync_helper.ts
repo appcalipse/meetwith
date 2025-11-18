@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 
 import { Account } from '@/types/Account'
+import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { getConnectedCalendars, getMeetingTypeFromDB } from './database'
@@ -28,6 +29,29 @@ export const getCalendars = async (
   }
   return calendars
 }
+export const getCalendarsParticipants = async (
+  targetAccount: Account['address']
+) => {
+  const calendars = await getConnectedCalendars(targetAccount, {
+    syncOnly: true,
+    activeOnly: true,
+  })
+  return calendars
+}
+export const getCalendarPrimaryEmail = async (targetAccount: string) => {
+  try {
+    const calendars = await getCalendarsParticipants(targetAccount)
+    for (const calendar of calendars) {
+      for (const innerCalendar of calendar.calendars!) {
+        if (innerCalendar.enabled && innerCalendar.sync) {
+          return calendar.email
+        }
+      }
+    }
+  } catch (error) {
+    Sentry.captureException(error)
+  }
+}
 const syncCreatedEventWithCalendar = async (
   targetAccount: Account['address'],
   meetingDetails: MeetingCreationSyncRequest
@@ -36,7 +60,8 @@ const syncCreatedEventWithCalendar = async (
     targetAccount,
     meetingDetails.meeting_type_id
   )
-
+  let useParticipants = true
+  const promises = []
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
       calendar.account_address,
@@ -45,7 +70,6 @@ const syncCreatedEventWithCalendar = async (
       calendar.payload
     )
 
-    const promises = []
     for (const innerCalendar of calendar.calendars!) {
       if (innerCalendar.enabled && innerCalendar.sync) {
         promises.push(
@@ -54,13 +78,63 @@ const syncCreatedEventWithCalendar = async (
             meetingDetails,
             meetingDetails.created_at,
             innerCalendar.calendarId,
-            false
+            useParticipants
           )
         )
+        useParticipants = false
       }
     }
-    await Promise.all(promises)
   }
+  const addedEmails = new Set<string>()
+  const resolutions = await Promise.all(promises)
+  const atendees = resolutions
+    .filter(
+      (r): r is typeof r & { attendees: { email: string } } =>
+        'attendees' in r && r.attendees != null
+    )
+    .flatMap(r => r.attendees)
+  for (const attendee of atendees) {
+    if (attendee.email && !addedEmails.has(attendee.email)) {
+      addedEmails.add(attendee.email)
+    }
+  }
+  const participantPromises = []
+  for (const participant of meetingDetails.participants) {
+    if (
+      participant.account_address &&
+      participant.account_address !== targetAccount
+    ) {
+      const participantCalendars = await getCalendars(
+        participant.account_address,
+        meetingDetails.meeting_type_id
+      )
+      for (const pCalendar of participantCalendars) {
+        if (addedEmails.has(pCalendar.email)) {
+          continue
+        }
+        const integration = getConnectedCalendarIntegration(
+          pCalendar.account_address,
+          pCalendar.email,
+          pCalendar.provider,
+          pCalendar.payload
+        )
+        for (const innerCalendar of pCalendar.calendars!) {
+          if (innerCalendar.enabled && innerCalendar.sync) {
+            participantPromises.push(
+              integration.createEvent(
+                targetAccount,
+                meetingDetails,
+                meetingDetails.created_at,
+                innerCalendar.calendarId,
+                false
+              )
+            )
+          }
+        }
+      }
+    }
+  }
+  await Promise.all(participantPromises)
 }
 
 const syncUpdatedEventWithCalendar = async (
@@ -147,18 +221,16 @@ const syncDeletedEventWithCalendar = async (
 export const ExternalCalendarSync = {
   create: async (meetingDetails: MeetingCreationSyncRequest) => {
     const tasks = []
-    for (const participant of meetingDetails.participants) {
-      if (participant.account_address) {
-        tasks.push(
-          syncCreatedEventWithCalendar(
-            participant.account_address!,
-            meetingDetails
-          )
-        )
-      }
+    const schedulerAccount = meetingDetails.participants.find(
+      participant => participant.type === ParticipantType.Scheduler
+    )
+    if (!schedulerAccount || !schedulerAccount.account_address) {
+      throw new Error('Scheduler account not found for meeting creation sync')
     }
-
-    await Promise.all(tasks)
+    await syncCreatedEventWithCalendar(
+      schedulerAccount.account_address,
+      meetingDetails
+    )
   },
   update: async (meetingDetails: MeetingCreationSyncRequest) => {
     const tasks = []
