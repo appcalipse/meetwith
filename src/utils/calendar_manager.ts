@@ -1496,6 +1496,7 @@ const noNoReplyEmailForAccount = (account_address: string): string => {
   )
   return `no_reply_${content}@meetwith.xyz`
 }
+
 const extractAccountFromNoReplyEmail = (email: string): string | null => {
   const regex = /^no_reply_(.+)@meetwith\.xyz$/
   const match = email.match(regex)
