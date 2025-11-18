@@ -110,7 +110,6 @@ import {
   QuickPollParticipantStatus,
   QuickPollParticipantType,
   QuickPollParticipantUpdateFields,
-  QuickPollWithParticipants,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
@@ -234,7 +233,10 @@ import {
 } from './email_helper'
 import { deduplicateArray } from './generic_utils'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
-import { CalendarService } from './services/calendar.service.types'
+import {
+  BaseCalendarService,
+  IGoogleCalendarService,
+} from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
@@ -2580,7 +2582,7 @@ const checkCalendarAlreadyExistsForMeetingType = async (
 const handleWebHook = async (
   calId: string,
   connectedCalendarId: number,
-  integration: CalendarService<TimeSlotSource>
+  integration: IGoogleCalendarService
 ) => {
   try {
     if (!integration.setWebhookUrl || !integration.refreshWebhook) return
@@ -4979,16 +4981,16 @@ export const getWalletTransactions = async (
           .from('meeting_type')
           .select(
             `
-            id, 
-            title, 
-            account_owner_address, 
+            id,
+            title,
+            account_owner_address,
             description,
             meeting_sessions!inner(
-              id, 
-              guest_email, 
-              guest_name, 
-              session_number, 
-              created_at, 
+              id,
+              guest_email,
+              guest_name,
+              session_number,
+              created_at,
               updated_at
             )
           `
@@ -5628,7 +5630,7 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
     const integration = getConnectedCalendarIntegration(
       calendar.account_address,
       calendar.email,
-      calendar.provider,
+      TimeSlotSource.GOOGLE,
       calendar.payload
     )
     for (const cal of calendar.calendars.filter(c => c.enabled && c.sync)) {
@@ -5730,12 +5732,12 @@ const handleWebhookEvent = async (
   const integration = getConnectedCalendarIntegration(
     calendar.account_address,
     calendar.email,
-    calendar.provider,
+    TimeSlotSource.GOOGLE,
     calendar.payload
   )
 
   let calendar_availabilities =
-    (await integration.listEvents?.(
+    (await integration.listEvents(
       data.calendar_id,
       lower_limit,
       upper_limit
@@ -5859,7 +5861,7 @@ const handleCalendarRsvps = async (
         const integration = getConnectedCalendarIntegration(
           calendar.account_address,
           calendar.email,
-          calendar.provider,
+          TimeSlotSource.GOOGLE,
           calendar.payload
         )
 
@@ -5902,7 +5904,7 @@ const handleCalendarRsvps = async (
   const integration = getConnectedCalendarIntegration(
     calendar.account_address,
     calendar.email,
-    calendar.provider,
+    TimeSlotSource.GOOGLE,
     calendar.payload
   )
   integration.updateEventExtendedProperties &&
