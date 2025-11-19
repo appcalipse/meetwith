@@ -27,6 +27,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         request.start,
         request.end,
         request.created_at,
+        request,
         request.meeting_url,
         request.title,
         request.content,
@@ -63,6 +64,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         request.start,
         request.end,
         request.created_at,
+        request,
         request.meeting_url,
         request.title,
         request.content,
@@ -85,6 +87,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     return res.status(200).send(true)
   } else if (req.method === 'DELETE') {
+    const request = req.body as MeetingCancelSyncRequest
     const {
       participantActing,
       addressesToRemove,
@@ -96,7 +99,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       timezone,
       reason,
       title,
-    } = req.body as MeetingCancelSyncRequest
+    } = request
 
     for (const address of addressesToRemove) {
       try {
@@ -115,6 +118,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         new Date(start),
         new Date(end),
         new Date(created_at),
+        request,
         timezone,
         reason,
         title
