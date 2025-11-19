@@ -33,8 +33,7 @@ import {
   LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
-import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/Discord'
+import { DiscordAccount, DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
@@ -86,8 +85,7 @@ import {
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
-import { TelegramConnection } from '@/types/Telegram'
-import { TelegramUserInfo } from '@/types/Telegram'
+import { TelegramConnection, TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import {
@@ -2222,4 +2220,13 @@ export const getStripeSupportedCountries = async () => {
       value: country.id,
     }))
   )
+}
+export const getAccountPrimaryCalendarEmail = async (targetAccount: string) => {
+  try {
+    return await internalFetch<{ email: string }>(
+      `/accounts/calendar/primary?targetAccount=${targetAccount}`
+    ).then(account => account.email)
+  } catch (e) {
+    return undefined
+  }
 }
