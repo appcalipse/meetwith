@@ -128,7 +128,7 @@ const AddFromGroups = () => {
                       />
                     ))}
                   </Accordion>
-                  {!isExpanded && restGroups.length > 0 && (
+                  {!isExpanded && restGroups.length > 0 && !groupId && (
                     <AccordionButton
                       p={0}
                       color="primary.200"
@@ -161,7 +161,7 @@ const AddFromGroups = () => {
                       ))}
                     </Accordion>
                   </AccordionPanel>
-                  {isExpanded && (
+                  {isExpanded && !groupId && (
                     <AccordionButton
                       p={0}
                       color="primary.200"
