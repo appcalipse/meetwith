@@ -5,16 +5,14 @@ import path from 'path'
 import puppeteer from 'puppeteer'
 import { CreateEmailOptions, Resend } from 'resend'
 
-import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { Group } from '@/types/Group'
-import {
-  MeetingChangeType,
-  MeetingProvider,
-  MeetingRepeat,
-} from '@/types/Meeting'
+import { MeetingChangeType } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
-import { MeetingChange } from '@/types/Requests'
+import {
+  MeetingCancelSyncRequest,
+  MeetingCreationSyncRequest,
+} from '@/types/Requests'
 import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
 import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
 
@@ -27,6 +25,7 @@ import { appUrl } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
 import { getOwnerPublicUrlServer } from './database'
+import { generateIcsServer } from './services/calendar.backend.helper'
 import { getCalendars } from './sync_helper'
 import { getAllParticipantsDisplayName } from './user_manager'
 const FROM = process.env.FROM_MAIL!
@@ -43,11 +42,10 @@ const defaultResendOptions = {
 const generateChangeUrl = async (
   destinationAccountAddress: string | undefined,
   ownerAccountAddress: string | undefined,
-  slot_id: string,
+  meeting_id: string,
   participantType: ParticipantType,
   participants?: ParticipantInfo[],
-  meetingTypeId?: string,
-  guestInfoEncrypted?: string
+  meetingTypeId?: string
 ): Promise<string | undefined> => {
   // For guests, only scheduler gets reschedule link
   if (!destinationAccountAddress) {
@@ -56,11 +54,9 @@ const generateChangeUrl = async (
         ? `${await getOwnerPublicUrlServer(
             ownerAccountAddress,
             meetingTypeId
-          )}?slotId=${slot_id}&metadata=${encodeURIComponent(
-            guestInfoEncrypted || ''
-          )}`
+          )}?conferenceId=${meeting_id}`
         : undefined
-      : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      : `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
   }
 
   const isGuestScheduling = participants?.some(p => !p.account_address)
@@ -69,7 +65,7 @@ const generateChangeUrl = async (
     return undefined
   }
 
-  return `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+  return `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
 }
 export const newGroupInviteEmail = async (
   toEmail: string,
@@ -193,25 +189,21 @@ export const newGroupRejectEmail = async (
 export const newMeetingEmail = async (
   toEmail: string,
   participantType: ParticipantType,
-  participants: ParticipantInfo[],
-  timezone: string,
-  start: Date,
-  end: Date,
-  meeting_id: string,
   slot_id: string,
-  meetingTypeId?: string,
-  destinationAccountAddress?: string,
-  meetingUrl?: string,
-  title?: string,
-  description?: string,
-  created_at?: Date,
-  meetingProvider?: MeetingProvider,
-  meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat?: MeetingRepeat,
-  guestInfoEncrypted?: string,
-  meetingPermissions?: Array<MeetingPermissions>
+  meetingDetails: MeetingCreationSyncRequest,
+  destinationAccountAddress?: string
 ): Promise<boolean> => {
+  const participants = meetingDetails.participants
   const email = new Email()
+  const title = meetingDetails.title
+  const description = meetingDetails.content
+  const meetingUrl = meetingDetails.meeting_url
+  const start = new Date(meetingDetails.start)
+  const end = new Date(meetingDetails.end)
+  const timezone = meetingDetails.timezone
+  const meeting_id = meetingDetails.meeting_id
+  const meetingPermissions = meetingDetails.meetingPermissions
+  const meetingTypeId = meetingDetails.meeting_id
 
   const isSchedulerOrOwner = [
     ParticipantType.Scheduler,
@@ -231,11 +223,10 @@ export const newMeetingEmail = async (
   const changeUrl = await generateChangeUrl(
     destinationAccountAddress,
     ownerAccountAddress,
-    slot_id,
+    meeting_id,
     participantType,
     participants,
-    meetingTypeId,
-    guestInfoEncrypted
+    meetingTypeId
   )
 
   const locals = {
@@ -254,12 +245,8 @@ export const newMeetingEmail = async (
     // Only include reschedule link for guests
     changeUrl,
     cancelUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
-      : guestInfoEncrypted
-      ? `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
-          guestInfoEncrypted || ''
-        )}`
-      : undefined,
+      ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
+      : `${appUrl}/meeting/cancel/${meetingDetails.meeting_id}?type=conference`,
   }
   const isScheduler =
     participantType === ParticipantType.Scheduler ||
@@ -295,23 +282,8 @@ export const newMeetingEmail = async (
       })
     })
   }
-  const icsFile = generateIcs(
-    {
-      meeting_url: meetingUrl as string,
-      start: new Date(start),
-      end: new Date(end),
-      id: meeting_id as string,
-      meeting_id,
-      created_at: new Date(created_at as Date),
-      participants,
-      version: 0,
-      related_slot_ids: [],
-      title,
-      meeting_info_encrypted: mockEncrypted,
-      content: description,
-      reminders: meetingReminders,
-      recurrence: meetingRepeat,
-    },
+  const icsFile = await generateIcsServer(
+    meetingDetails,
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
     changeUrl,
@@ -362,15 +334,18 @@ export const newMeetingEmail = async (
 export const cancelledMeetingEmail = async (
   currentActorDisplayName: string,
   toEmail: string,
-  timezone: string,
-  start: Date,
-  end: Date,
-  meeting_id: string,
-  destinationAccountAddress: string | undefined,
-  title?: string,
-  created_at?: Date,
-  reason?: string
+  meetingDetails: MeetingCancelSyncRequest,
+  destinationAccountAddress: string | undefined
 ): Promise<boolean> => {
+  const start = new Date(meetingDetails.start)
+  const end = new Date(meetingDetails.end)
+  const title = meetingDetails.title
+  const reason = meetingDetails.reason
+
+  const created_at = new Date(meetingDetails.created_at)
+  const timezone = meetingDetails.timezone
+  const meeting_id = meetingDetails.meeting_id
+
   const email = new Email()
   const locals = {
     currentActorDisplayName,
@@ -382,7 +357,7 @@ export const cancelledMeetingEmail = async (
     },
   }
 
-  const icsFile = generateIcs(
+  const icsFile = await generateIcs(
     {
       meeting_id,
       meeting_url: '',
@@ -453,25 +428,22 @@ export const updateMeetingEmail = async (
   toEmail: string,
   currentActorDisplayName: string,
   participantType: ParticipantType,
-  participants: ParticipantInfo[],
-  timezone: string,
-  start: Date,
-  end: Date,
-  meeting_id: string,
   slot_id: string,
-  meetingTypeId?: string,
-  destinationAccountAddress?: string,
-  meetingUrl?: string,
-  title?: string,
-  description?: string,
-  created_at?: Date,
-  changes?: MeetingChange,
-  meetingProvider?: MeetingProvider,
-  meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat?: MeetingRepeat,
-  guestInfoEncrypted?: string,
-  meetingPermissions?: Array<MeetingPermissions>
+  meetingDetails: MeetingCreationSyncRequest,
+  destinationAccountAddress?: string
 ): Promise<boolean> => {
+  const participants = meetingDetails.participants
+  const title = meetingDetails.title
+  const description = meetingDetails.content
+  const meetingUrl = meetingDetails.meeting_url
+  const start = new Date(meetingDetails.start)
+  const end = new Date(meetingDetails.end)
+  const meeting_id = meetingDetails.meeting_id
+  const timezone = meetingDetails.timezone
+  const meetingPermissions = meetingDetails.meetingPermissions
+  const meetingTypeId = meetingDetails.meeting_id
+  const changes = meetingDetails.changes
+
   if (!changes?.dateChange) {
     return true
   }
@@ -494,11 +466,10 @@ export const updateMeetingEmail = async (
   const changeUrl = await generateChangeUrl(
     destinationAccountAddress,
     ownerAccountAddress,
-    slot_id,
+    meeting_id,
     participantType,
     participants,
-    meetingTypeId,
-    guestInfoEncrypted
+    meetingTypeId
   )
 
   const email = new Email()
@@ -527,12 +498,8 @@ export const updateMeetingEmail = async (
     // Only include reschedule link for guests
     changeUrl,
     cancelUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
-      : guestInfoEncrypted
-      ? `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
-          guestInfoEncrypted || ''
-        )}`
-      : undefined,
+      ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
+      : `${appUrl}/meeting/cancel/${meetingDetails.meeting_id}?type=conference`,
     changes: {
       oldStart:
         changes?.dateChange?.oldStart &&
@@ -576,22 +543,8 @@ export const updateMeetingEmail = async (
       })
     })
   }
-  const icsFile = generateIcs(
-    {
-      meeting_url: meetingUrl as string,
-      start: new Date(start),
-      end: new Date(end),
-      id: meeting_id,
-      meeting_id,
-      title,
-      created_at: new Date(created_at as Date),
-      participants,
-      version: 0,
-      related_slot_ids: [],
-      meeting_info_encrypted: mockEncrypted,
-      reminders: meetingReminders,
-      recurrence: meetingRepeat,
-    },
+  const icsFile = await generateIcsServer(
+    meetingDetails,
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
     changeUrl,
