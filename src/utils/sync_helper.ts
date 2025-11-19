@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 
 import { Account } from '@/types/Account'
+import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -29,18 +30,13 @@ export const getCalendars = async (
   }
   return calendars
 }
-export const getCalendarsParticipants = async (
-  targetAccount: Account['address']
+
+export const getCalendarPrimaryEmail = async (
+  targetAccount: string,
+  meeting_type_id?: string
 ) => {
-  const calendars = await getConnectedCalendars(targetAccount, {
-    syncOnly: true,
-    activeOnly: true,
-  })
-  return calendars
-}
-export const getCalendarPrimaryEmail = async (targetAccount: string) => {
   try {
-    const calendars = await getCalendarsParticipants(targetAccount)
+    const calendars = await getCalendars(targetAccount, meeting_type_id)
     for (const calendar of calendars) {
       for (const innerCalendar of calendar.calendars!) {
         if (innerCalendar.enabled && innerCalendar.sync) {
@@ -63,25 +59,82 @@ const syncCreatedEventWithCalendar = async (
   let useParticipants = true
   const promises = []
   for (const calendar of calendars) {
-    const integration = getConnectedCalendarIntegration(
-      calendar.account_address,
-      calendar.email,
-      calendar.provider,
-      calendar.payload
-    )
+    if (calendar.provider === TimeSlotSource.GOOGLE) {
+      const integration = getConnectedCalendarIntegration(
+        calendar.account_address,
+        calendar.email,
+        calendar.provider,
+        calendar.payload
+      )
 
-    for (const innerCalendar of calendar.calendars!) {
-      if (innerCalendar.enabled && innerCalendar.sync) {
-        promises.push(
-          integration.createEvent(
-            targetAccount,
-            meetingDetails,
-            meetingDetails.created_at,
-            innerCalendar.calendarId,
-            useParticipants
+      for (const innerCalendar of calendar.calendars!) {
+        if (innerCalendar.enabled && innerCalendar.sync) {
+          promises.push(
+            (async () => {
+              const event = await integration.createEvent(
+                targetAccount,
+                meetingDetails,
+                meetingDetails.created_at,
+                innerCalendar.calendarId,
+                useParticipants
+              )
+              return event.attendees?.map(attendee => attendee.email)
+            })()
           )
-        )
-        useParticipants = false
+          useParticipants = false
+        }
+      }
+    } else if (calendar.provider === TimeSlotSource.OFFICE) {
+      const integration = getConnectedCalendarIntegration(
+        calendar.account_address,
+        calendar.email,
+        calendar.provider,
+        calendar.payload
+      )
+
+      for (const innerCalendar of calendar.calendars!) {
+        if (innerCalendar.enabled && innerCalendar.sync) {
+          promises.push(
+            (async () => {
+              const event = await integration.createEvent(
+                targetAccount,
+                meetingDetails,
+                meetingDetails.created_at,
+                innerCalendar.calendarId,
+                useParticipants
+              )
+              return event.attendees?.map(
+                attendee => attendee.emailAddress.address
+              )
+            })()
+          )
+          useParticipants = false
+        }
+      }
+    } else {
+      const integration = getConnectedCalendarIntegration(
+        calendar.account_address,
+        calendar.email,
+        calendar.provider,
+        calendar.payload
+      )
+
+      for (const innerCalendar of calendar.calendars!) {
+        if (innerCalendar.enabled && innerCalendar.sync) {
+          promises.push(
+            (async () => {
+              const event = await integration.createEvent(
+                targetAccount,
+                meetingDetails,
+                meetingDetails.created_at,
+                innerCalendar.calendarId,
+                useParticipants
+              )
+              return event
+            })()
+          )
+          useParticipants = false
+        }
       }
     }
   }
@@ -89,13 +142,13 @@ const syncCreatedEventWithCalendar = async (
   const resolutions = await Promise.all(promises)
   const atendees = resolutions
     .filter(
-      (r): r is typeof r & { attendees: { email: string } } =>
-        'attendees' in r && r.attendees != null
+      (r): r is string[] =>
+        Array.isArray(r) && r.filter(email => !!email).length > 0
     )
-    .flatMap(r => r.attendees)
+    .flat()
   for (const attendee of atendees) {
-    if (attendee.email && !addedEmails.has(attendee.email)) {
-      addedEmails.add(attendee.email)
+    if (attendee && !addedEmails.has(attendee)) {
+      addedEmails.add(attendee)
     }
   }
   const participantPromises = []
