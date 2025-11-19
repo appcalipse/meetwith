@@ -17,6 +17,11 @@ import { FaArrowRight } from 'react-icons/fa6'
 import { Account } from '@/types/Account'
 import { TimeSlot } from '@/types/Meeting'
 import { generateCalendarEventUrl } from '@/utils/calendar_event_url'
+import {
+  EVENT_TITLE_ELLIPSIS_START_INDEX,
+  EVENT_TITLE_MAX_LENGTH,
+  EVENT_TITLE_TRUNCATE_LENGTH,
+} from '@/utils/constants'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { getBgColor, State } from './SchedulePickTime'
@@ -133,10 +138,15 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
       return null
     }
     const title = currentUserEvent.eventTitle
-    if (title.length <= 50) {
+    if (title.length <= EVENT_TITLE_MAX_LENGTH) {
       return title
     }
-    return title.substring(0, 47) + '...'
+    return (
+      title.substring(
+        EVENT_TITLE_ELLIPSIS_START_INDEX,
+        EVENT_TITLE_TRUNCATE_LENGTH
+      ) + '...'
+    )
   }, [currentUserEvent])
 
   // Create a mapping from displayName to account address to identify current user
