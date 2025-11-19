@@ -1,13 +1,4 @@
-import Sentry from '@sentry/nextjs'
-import {
-  format,
-  getDate,
-  getHours,
-  getMinutes,
-  getMonth,
-  getWeekOfMonth,
-  getYear,
-} from 'date-fns'
+import { format, getWeekOfMonth } from 'date-fns'
 import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
 import { Encrypted, encryptWithPublicKey } from 'eth-crypto'
 import {
@@ -17,14 +8,10 @@ import {
   EventAttributes,
   ReturnObject,
 } from 'ics'
+import { DateTime } from 'luxon'
 import { v4 as uuidv4 } from 'uuid'
 
-import {
-  Account,
-  BaseMeetingType,
-  DayAvailability,
-  MeetingType,
-} from '@/types/Account'
+import { Account, DayAvailability } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
@@ -53,7 +40,7 @@ import {
   cancelMeeting as apiCancelMeeting,
   generateMeetingUrl,
   getAccount,
-  getConferenceMeeting,
+  getAccountPrimaryCalendarEmail,
   getExistingAccounts,
   getMeeting,
   getMeetingGuest,
@@ -69,14 +56,13 @@ import {
 
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
-import { NO_MEETING_TYPE, SessionType } from './constants/meeting-types'
+import { SessionType } from './constants/meeting-types'
 import { MeetingPermissions } from './constants/schedule'
 import { getContentFromEncrypted, simpleHash } from './cryptography'
 import {
   GuestListModificationDenied,
   GuestRescheduleForbiddenError,
   InvalidURL,
-  MeetingCancelConflictError,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
   MeetingCreationError,
@@ -1132,7 +1118,7 @@ const scheduleMeeting = async (
     throw error
   }
 }
-const createAlarm = (indicator: MeetingReminders): Alarm => {
+export const createAlarm = (indicator: MeetingReminders): Alarm => {
   switch (indicator) {
     case MeetingReminders['15_MINUTES_BEFORE']:
       return {
@@ -1175,7 +1161,7 @@ const createAlarm = (indicator: MeetingReminders): Alarm => {
       }
   }
 }
-const generateIcs = (
+const generateIcs = async (
   meeting: MeetingDecrypted,
   ownerAddress: string,
   meetingStatus: MeetingChangeType,
@@ -1183,7 +1169,7 @@ const generateIcs = (
   removeAttendess?: boolean,
   destination?: { accountAddress: string; email: string },
   isPrivate?: boolean
-): ReturnObject => {
+): Promise<ReturnObject> => {
   let url = meeting.meeting_url.trim()
   if (!isValidUrl(url)) {
     url = 'https://meetwith.xyz'
@@ -1192,23 +1178,14 @@ const generateIcs = (
     meeting.participants.some(
       p => p.guest_email && p.guest_email.trim() !== ''
     ) && !!destination?.accountAddress
+  const start = DateTime.fromJSDate(new Date(meeting.start))
+  const end = DateTime.fromJSDate(new Date(meeting.end))
+  const created_at = DateTime.fromJSDate(new Date(meeting.created_at!))
   const event: EventAttributes = {
-    uid: meeting.id.replaceAll('-', ''),
-    start: [
-      getYear(meeting.start),
-      getMonth(meeting.start) + 1,
-      getDate(meeting.start),
-      getHours(meeting.start),
-      getMinutes(meeting.start),
-    ],
+    uid: meeting.meeting_id.replaceAll('-', ''),
+    start: [start.year, start.month, start.day, start.hour, start.minute],
     productId: '-//Meetwith//EN',
-    end: [
-      getYear(meeting.end),
-      getMonth(meeting.end) + 1,
-      getDate(meeting.end),
-      getHours(meeting.end),
-      getMinutes(meeting.end),
-    ],
+    end: [end.year, end.month, end.day, end.hour, end.minute],
     title: CalendarServiceHelper.getMeetingTitle(
       ownerAddress,
       meeting.participants,
@@ -1223,11 +1200,11 @@ const generateIcs = (
     url,
     location: meeting.meeting_url,
     created: [
-      getYear(meeting.created_at!),
-      getMonth(meeting.created_at!) + 1,
-      getDate(meeting.created_at!),
-      getHours(meeting.created_at!),
-      getMinutes(meeting.created_at!),
+      created_at.year,
+      created_at.month,
+      created_at.day,
+      created_at.hour,
+      created_at.minute,
     ],
     organizer: {
       name: 'Meetwith',
@@ -1261,35 +1238,42 @@ const generateIcs = (
   }
   event.attendees = []
   if (!removeAttendess) {
-    for (const participant of meeting.participants) {
-      const attendee: Attendee = {
-        name: participant.name || participant.account_address,
-        email:
+    const attendees = await Promise.all(
+      meeting.participants.map(async participant => {
+        const email =
           participant.account_address &&
           destination &&
           destination.accountAddress === participant.account_address
             ? destination.email
             : participant.guest_email ||
-              noNoReplyEmailForAccount(
-                (participant.name || participant.account_address)!
-              ),
-        rsvp: participant.status === ParticipationStatus.Accepted,
-        partstat: participantStatusToICSStatus(participant.status),
-        role: 'REQ-PARTICIPANT',
-      }
+              (await getAccountPrimaryCalendarEmail(
+                participant.account_address!
+              ))
+        if (!email && !isValidEmail(email)) return null
 
-      if (participant.account_address) {
-        attendee.dir = getCalendarRegularUrl(participant.account_address!)
-      }
+        const attendee: Attendee = {
+          name: participant.name || participant.account_address,
+          email,
+          rsvp: participant.status === ParticipationStatus.Accepted,
+          partstat: participantStatusToICSStatus(participant.status),
+          role: 'REQ-PARTICIPANT',
+        }
 
-      event.attendees.push(attendee)
-    }
+        if (participant.account_address) {
+          attendee.dir = getCalendarRegularUrl(participant.account_address!)
+        }
+        return attendee
+      })
+    )
+    event.attendees.push(
+      ...attendees.filter((attendee): attendee is Attendee => attendee !== null)
+    )
   }
 
   const icsEvent = createEvent(event)
   return icsEvent
 }
-const participantStatusToICSStatus = (status: ParticipationStatus) => {
+export const participantStatusToICSStatus = (status: ParticipationStatus) => {
   switch (status) {
     case ParticipationStatus.Accepted:
       return 'ACCEPTED'
@@ -1445,7 +1429,7 @@ const getAccountCalendarUrl = (
   return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
 }
 
-const getCalendarRegularUrl = (account_address: string) => {
+export const getCalendarRegularUrl = (account_address: string) => {
   return `${appUrl}/address/${account_address}`
 }
 
