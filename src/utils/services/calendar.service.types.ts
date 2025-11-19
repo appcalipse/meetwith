@@ -4,6 +4,7 @@ import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
+import { MicrosoftGraphEvent } from '@/types/Office365'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -34,7 +35,7 @@ export interface BaseCalendarService {
     meeting_creation_time: Date,
     calendarId: string,
     shouldGenerateLink?: boolean
-  ): Promise<NewCalendarEventType>
+  ): Promise<Partial<NewCalendarEventType>>
   /**
    * List user availability on target external calendar
    *
@@ -67,6 +68,24 @@ export interface BaseCalendarService {
    * @param slot_id the event id to delete
    */
   deleteEvent(meeting_id: string, calendarId: string): Promise<void>
+}
+export interface IOffcie365CalendarService extends BaseCalendarService {
+  /**
+   * Creates a new event on target external calendar
+   *
+   * @param owner the owner address
+   * @param meetingDetails details if the event
+   * @param meeting_creation_time the time when the event was created
+   * @param calendarId the calendar ID to create the event in
+   * @param shouldGenerateLink whether to generate a meeting link (default: false)
+   */
+  createEvent(
+    owner: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_creation_time: Date,
+    calendarId: string,
+    shouldGenerateLink?: boolean
+  ): Promise<Partial<NewCalendarEventType> & MicrosoftGraphEvent>
 }
 export interface IGoogleCalendarService extends BaseCalendarService {
   /**
