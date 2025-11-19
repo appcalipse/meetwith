@@ -140,11 +140,11 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
 
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
-  const downloadIcs = (
+  const downloadIcs = async (
     info: MeetingDecrypted,
     currentConnectedAccountAddress: string
   ) => {
-    const icsFile = generateIcs(
+    const icsFile = await generateIcs(
       info,
       currentConnectedAccountAddress,
       MeetingChangeType.CREATE,
@@ -209,6 +209,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       {
         label: 'Download. ics ',
         onClick: () => {
+          // TODO: add loading state
           downloadIcs(decryptedMeeting!, currentAccount!.address)
         },
       },
