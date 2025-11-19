@@ -38,11 +38,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         )
         await integration.refreshConnection()
       } catch (e) {
-        await removeConnectedCalendar(
-          req.session.account!.address,
-          calendar.email,
-          calendar.provider
-        )
+        console.error(e)
+        // await removeConnectedCalendar(
+        //   req.session.account!.address,
+        //   calendar.email,
+        //   calendar.provider
+        // )
       }
     }
     try {
