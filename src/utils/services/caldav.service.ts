@@ -23,9 +23,9 @@ import { MeetingChangeType } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
-import { generateIcs } from '../calendar_manager'
 import { appUrl } from '../constants'
-import { decryptContent, mockEncrypted } from '../cryptography'
+import { decryptContent } from '../cryptography'
+import { generateIcsServer } from './calendar.backend.helper'
 import { BaseCalendarService } from './calendar.service.types'
 
 // ical.js has no ts typing
@@ -152,22 +152,8 @@ export default class CaldavCalendarService implements BaseCalendarService {
       )[0].slot_id
 
       try {
-        const ics = generateIcs(
-          {
-            meeting_url: meetingDetails.meeting_url,
-            start: new Date(meetingDetails.start),
-            end: new Date(meetingDetails.end),
-            id: meetingDetails.meeting_id,
-            meeting_id: meetingDetails.meeting_id,
-            created_at: new Date(meeting_creation_time),
-            participants: participantsInfo,
-            version: 0,
-            related_slot_ids: [],
-            meeting_info_encrypted: mockEncrypted,
-            reminders: meetingDetails.meetingReminders,
-            recurrence: meetingDetails.meetingRepeat,
-            title: meetingDetails.title,
-          },
+        const ics = await generateIcsServer(
+          meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
           `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
@@ -200,19 +186,8 @@ export default class CaldavCalendarService implements BaseCalendarService {
       } catch (err) {
         Sentry.captureException(err)
         //Fastmail issue that doesn't accept attendees
-        const ics = generateIcs(
-          {
-            meeting_url: meetingDetails.meeting_url,
-            start: new Date(meetingDetails.start),
-            end: new Date(meetingDetails.end),
-            id: meetingDetails.meeting_id,
-            meeting_id: meetingDetails.meeting_id,
-            created_at: new Date(meeting_creation_time),
-            participants: participantsInfo,
-            version: 0,
-            related_slot_ids: [],
-            meeting_info_encrypted: mockEncrypted,
-          },
+        const ics = await generateIcsServer(
+          meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
           `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
@@ -277,21 +252,8 @@ export default class CaldavCalendarService implements BaseCalendarService {
         p => p.account_address === calendarOwnerAccountAddress
       )[0].slot_id
 
-      const ics = generateIcs(
-        {
-          meeting_url: meetingDetails.meeting_url,
-          start: new Date(meetingDetails.start),
-          end: new Date(meetingDetails.end),
-          id: meeting_id,
-          created_at: new Date(),
-          participants: participantsInfo,
-          version: 0,
-          related_slot_ids: [],
-          meeting_id,
-          meeting_info_encrypted: mockEncrypted,
-          reminders: meetingDetails.meetingReminders,
-          recurrence: meetingDetails.meetingRepeat,
-        },
+      const ics = await generateIcsServer(
+        meetingDetails,
         calendarOwnerAccountAddress,
         MeetingChangeType.UPDATE,
         `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
@@ -317,19 +279,8 @@ export default class CaldavCalendarService implements BaseCalendarService {
       })
 
       if (response.status === 403) {
-        const ics2 = generateIcs(
-          {
-            meeting_url: meetingDetails.meeting_url,
-            start: new Date(meetingDetails.start),
-            end: new Date(meetingDetails.end),
-            id: meeting_id,
-            created_at: new Date(),
-            participants: participantsInfo,
-            version: 0,
-            related_slot_ids: [],
-            meeting_id,
-            meeting_info_encrypted: mockEncrypted,
-          },
+        const ics2 = await generateIcsServer(
+          meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.UPDATE,
           `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
