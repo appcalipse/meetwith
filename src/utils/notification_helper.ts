@@ -1,7 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 
-import { MeetingReminders } from '@/types/common'
 import { Group } from '@/types/Group'
 
 import {
@@ -11,8 +10,6 @@ import {
 import {
   GroupNotificationType,
   MeetingChangeType,
-  MeetingProvider,
-  MeetingRepeat,
   ParticipantMappingType,
 } from '../types/Meeting'
 import {
@@ -23,7 +20,6 @@ import {
 } from '../types/ParticipantInfo'
 import {
   MeetingCancelSyncRequest,
-  MeetingChange,
   MeetingCreationSyncRequest,
   RequestParticipantMapping,
 } from '../types/Requests'
@@ -94,30 +90,20 @@ export const notifyForGroupInviteJoinOrReject = async (
 }
 const emailQueue = new EmailQueue()
 export const notifyForMeetingCancellation = async (
-  participantActing: ParticipantBaseInfo,
-  guestsToRemove: ParticipantInfo[],
-  accountsToRemove: string[],
-  meeting_id: string,
-  start: Date,
-  end: Date,
-  created_at: Date,
-  meetingDetails: MeetingCancelSyncRequest,
-  timezone: string,
-  reason?: string,
-  title?: string
+  meetingDetails: MeetingCancelSyncRequest
 ): Promise<void> => {
   const participantsInfo: ParticipantInfoForNotification[] = []
 
-  for (const guest of guestsToRemove) {
+  for (const guest of meetingDetails.guestsToRemove) {
     participantsInfo.push({
       ...guest,
-      timezone,
-      meeting_id,
+      timezone: meetingDetails.timezone,
+      meeting_id: meetingDetails.meeting_id,
       mappingType: ParticipantMappingType.REMOVE,
     })
   }
 
-  for (const address of accountsToRemove) {
+  for (const address of meetingDetails.addressesToRemove) {
     const account = await getAccountFromDB(address)
     participantsInfo.push({
       account_address: address,
@@ -125,49 +111,31 @@ export const notifyForMeetingCancellation = async (
       notifications: await getAccountNotificationSubscriptions(address),
       timezone: account.preferences.timezone || 'UTC',
       type: ParticipantType.Invitee,
-      meeting_id,
+      meeting_id: meetingDetails.meeting_id,
       status: ParticipationStatus.Rejected,
       mappingType: ParticipantMappingType.REMOVE,
     })
   }
 
   await runPromises(
-    await workNotifications(
-      participantActing,
-      participantsInfo,
-
-      { changeType: MeetingChangeType.DELETE, meetingDetails }
-    )
+    await workNotifications(participantsInfo, {
+      changeType: MeetingChangeType.DELETE,
+      meetingDetails,
+    })
   )
 }
 
 export const notifyForOrUpdateNewMeeting = async (
   meetingChangeType: MeetingChangeType.CREATE | MeetingChangeType.UPDATE,
-  participantActing: ParticipantBaseInfo,
-  participants: RequestParticipantMapping[],
-  start: Date,
-  end: Date,
-  created_at: Date,
-  meetingDetails: MeetingCreationSyncRequest,
-  meeting_url: string,
-  title?: string,
-  description?: string,
-  changes?: MeetingChange,
-  meetingProvider?: MeetingProvider,
-  meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat?: MeetingRepeat,
-  meetingPermissions?: Array<MeetingPermissions>,
-  meetingTypeId?: string
+  meetingDetails: MeetingCreationSyncRequest
 ): Promise<void> => {
-  const participantsInfo = await setupParticipants(participants)
+  const participantsInfo = await setupParticipants(meetingDetails.participants)
 
   await runPromises(
-    await workNotifications(
-      participantActing,
-      participantsInfo,
-      { changeType: meetingChangeType, meetingDetails },
-      changes
-    )
+    await workNotifications(participantsInfo, {
+      changeType: meetingChangeType,
+      meetingDetails,
+    })
   )
 }
 
@@ -196,14 +164,10 @@ const setupParticipants = async (
 }
 
 const workNotifications = async (
-  participantActing: ParticipantBaseInfo,
   participantsInfo: ParticipantInfoForNotification[],
-  request: EmailNotificationRequest,
-  changes?: MeetingChange
+  request: EmailNotificationRequest
 ): Promise<Promise<boolean>[]> => {
   const promises: Promise<boolean>[] = []
-  const start = new Date(request.meetingDetails.start)
-  const end = new Date(request.meetingDetails.end)
   try {
     for (let i = 0; i < participantsInfo.length; i++) {
       const participant = participantsInfo[i]
@@ -212,9 +176,7 @@ const workNotifications = async (
       }
       if (participant.guest_email) {
         promises.push(
-          emailQueue.add(() =>
-            getEmailNotification(participantActing, participant, request)
-          )
+          emailQueue.add(() => getEmailNotification(request, participant))
         )
       } else if (
         participant.account_address &&
@@ -233,42 +195,22 @@ const workNotifications = async (
               case NotificationChannel.EMAIL:
                 promises.push(
                   emailQueue.add(() =>
-                    getEmailNotification(
-                      participantActing,
-                      participant,
-                      request
-                    )
+                    getEmailNotification(request, participant)
                   )
                 )
                 break
               case NotificationChannel.DISCORD:
                 // Dont DM if you are the person is the one scheduling the meeting
                 if (
-                  participantActing.account_address?.toLowerCase() !==
+                  request.meetingDetails.participantActing.account_address?.toLowerCase() !==
                   participant.account_address.toLowerCase()
                 ) {
-                  promises.push(
-                    getDiscordNotification(
-                      request,
-                      participantActing,
-                      participant
-                    )
-                  )
+                  promises.push(getDiscordNotification(request, participant))
                 }
                 break
               case NotificationChannel.TELEGRAM:
                 //TODO: FIX
-                promises.push(
-                  getTelegramNotification(
-                    request.changeType,
-                    participantActing,
-                    participant,
-                    start,
-                    end,
-                    participantsInfo,
-                    changes
-                  )
-                )
+                promises.push(getTelegramNotification(request, participant))
                 break
               default:
             }
@@ -343,15 +285,15 @@ const getGroupEmailNotification = async (
   return Promise.resolve(false)
 }
 const getEmailNotification = async (
-  participantActing: ParticipantBaseInfo,
-  participant: ParticipantInfoForNotification,
-  request: EmailNotificationRequest
+  request: EmailNotificationRequest,
+  participant: ParticipantInfoForNotification
 ): Promise<boolean> => {
   const toEmail =
     participant.guest_email ||
     participant.notifications!.notification_types.filter(
       t => t.channel === NotificationChannel.EMAIL
     )[0]!.destination
+  const participantActing = request.meetingDetails.participantActing
 
   const changeType = request.changeType
   switch (changeType) {
@@ -388,11 +330,10 @@ const getEmailNotification = async (
   return Promise.resolve(false)
 }
 
-const getDiscordNotification = async (
+const getNotificationMessage = async (
   request: EmailNotificationRequest,
-  participantActing: ParticipantBaseInfo,
   participant: ParticipantInfoForNotification
-): Promise<boolean> => {
+): Promise<string> => {
   const start = new Date(request.meetingDetails.start)
   const end = new Date(request.meetingDetails.end)
   const accountForDiscord = await getAccountFromDB(participant.account_address!)
@@ -423,31 +364,25 @@ const getDiscordNotification = async (
           canSeeGuestList
         )}`
 
-        return dmAccount(
-          participant.account_address!,
-          participant.notifications!.notification_types.filter(
-            n => n.channel === NotificationChannel.DISCORD
-          )[0].destination,
-          message
-        )
+        return message
       case MeetingChangeType.DELETE:
-        actor = getParticipantActingDisplayName(participantActing, participant)
-        return dmAccount(
-          participant.account_address!,
-          participant.notifications!.notification_types.filter(
-            n => n.channel === NotificationChannel.DISCORD
-          )[0].destination,
-          `Canceled! The meeting at ${dateToHumanReadable(
-            start,
-            participant.timezone,
-            true
-          )} has been canceled by ${actor}.`
+        actor = getParticipantActingDisplayName(
+          request.meetingDetails.participantActing,
+          participant
         )
+        return `Canceled! The meeting at ${dateToHumanReadable(
+          start,
+          participant.timezone,
+          true
+        )} has been canceled by ${actor}.`
       case MeetingChangeType.UPDATE:
         if (!request.meetingDetails.changes?.dateChange) {
-          return true
+          return ''
         }
-        actor = getParticipantActingDisplayName(participantActing, participant)
+        actor = getParticipantActingDisplayName(
+          request.meetingDetails.participantActing,
+          participant
+        )
         message = `${actor} changed the meeting at ${dateToHumanReadable(
           request.meetingDetails.changes!.dateChange!.oldStart,
           participant.timezone,
@@ -484,108 +419,41 @@ const getDiscordNotification = async (
             )} instead of ${durationToHumanReadable(oldDuration)}`
           }
         }
-        return dmAccount(
-          participant.account_address!,
-          participant.notifications!.notification_types.filter(
-            n => n.channel === NotificationChannel.DISCORD
-          )[0].destination,
-          message
-        )
+        return message
       default:
+        return ''
     }
+  }
+  return ''
+}
+const getDiscordNotification = async (
+  request: EmailNotificationRequest,
+  participant: ParticipantInfoForNotification
+): Promise<boolean> => {
+  const message = await getNotificationMessage(request, participant)
+  if (message) {
+    return dmAccount(
+      participant.account_address!,
+      participant.notifications!.notification_types.filter(
+        n => n.channel === NotificationChannel.DISCORD
+      )[0].destination,
+      message
+    )
   }
   return Promise.resolve(false)
 }
 const getTelegramNotification = async (
-  _changeType: MeetingChangeType,
-  participantActing: ParticipantBaseInfo,
-  participant: ParticipantInfoForNotification,
-  start: Date,
-  end: Date,
-  participantsInfo?: ParticipantInfo[],
-  changes?: MeetingChange,
-  meetingPermissions?: Array<MeetingPermissions>
+  request: EmailNotificationRequest,
+  participant: ParticipantInfoForNotification
 ): Promise<boolean> => {
-  const changeType =
-    participant.mappingType === ParticipantMappingType.ADD
-      ? MeetingChangeType.CREATE
-      : _changeType
+  const message = await getNotificationMessage(request, participant)
   const destination = participant.notifications!.notification_types.filter(
     n => n.channel === NotificationChannel.TELEGRAM
   )[0].destination
-  const isSchedulerOrOwner = [
-    ParticipantType.Scheduler,
-    ParticipantType.Owner,
-  ].includes(participant.type)
-  const canSeeGuestList =
-    meetingPermissions === undefined ||
-    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
-    isSchedulerOrOwner
-  let message
-  const actor = getParticipantActingDisplayName(participantActing, participant)
-  switch (changeType) {
-    case MeetingChangeType.CREATE:
-      message = `New meeting scheduled. ${dateToHumanReadable(
-        start,
-        participant.timezone,
-        true
-      )} - ${getAllParticipantsDisplayName(
-        participantsInfo!,
-        participant.account_address,
-        canSeeGuestList
-      )}`
-      return sendDm(destination, message)
-    case MeetingChangeType.DELETE:
-      return sendDm(
-        destination,
-        `Canceled! The meeting at ${dateToHumanReadable(
-          changes?.dateChange?.oldStart || start,
-          participant.timezone,
-          true
-        )} has been canceled by ${actor}`
-      )
-    case MeetingChangeType.UPDATE:
-      if (!changes?.dateChange) {
-        return true
-      }
-      message = `${actor} changed the meeting at ${dateToHumanReadable(
-        changes!.dateChange!.oldStart,
-        participant.timezone,
-        true
-      )}. It`
-      let added = false
-      if (
-        new Date(changes!.dateChange!.oldStart).getTime() !== start.getTime()
-      ) {
-        message += ` will be at ${dateToHumanReadable(
-          start,
-          participant.timezone,
-          true
-        )}`
-        added = true
-      }
-
-      const newDuration = differenceInMinutes(end, start)
-      const oldDuration = changes?.dateChange
-        ? differenceInMinutes(
-            new Date(changes?.dateChange?.oldEnd),
-            new Date(changes?.dateChange?.oldStart)
-          )
-        : null
-
-      if (oldDuration && newDuration !== oldDuration) {
-        if (added) {
-          message += ` and will last ${durationToHumanReadable(newDuration)}`
-        } else {
-          message += ` will now last ${durationToHumanReadable(
-            newDuration
-          )} instead of ${durationToHumanReadable(oldDuration)}`
-        }
-      }
-      return sendDm(destination, message)
-    default:
-      return Promise.resolve(false)
+  if (message) {
+    return sendDm(destination, message)
   }
+  return Promise.resolve(false)
 }
 
 const getParticipantActingDisplayName = (
