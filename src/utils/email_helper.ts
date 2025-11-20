@@ -356,7 +356,7 @@ export const cancelledMeetingEmail = async (
       reason: reason,
     },
   }
-
+  // Generate ICS file for cancellation meeting participants aren't included in deleted events so this should be efficient
   const icsFile = await generateIcs(
     {
       meeting_id,
