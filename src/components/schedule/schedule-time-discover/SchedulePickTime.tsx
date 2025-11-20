@@ -208,7 +208,9 @@ export function SchedulePickTime({
     availableSlots,
     meetingMembers,
     availabilityAddresses,
-    timezone
+    timezone,
+    busySlotsWithDetails,
+    currentAccount?.address
   )
   const [monthValue, setMonthValue] = useState<
     SingleValue<{ label: string; value: string }>
@@ -918,7 +920,6 @@ export function SchedulePickTime({
                               duration={duration}
                               handleTimePick={handleTimeSelection}
                               timezone={timezone}
-                              busySlotsWithDetails={busySlotsWithDetails}
                               currentAccountAddress={currentAccount?.address}
                               meetingMembers={meetingMembers}
                             />
