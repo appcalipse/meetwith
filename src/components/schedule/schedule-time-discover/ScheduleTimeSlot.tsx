@@ -1,31 +1,21 @@
 import {
   Box,
   Button,
-  HStack,
-  Link,
   Text,
   useColorModeValue,
   useToast,
-  VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { formatWithOrdinal, getMeetingBoundaries } from '@utils/date_helper'
 import { DateTime, Interval } from 'luxon'
 import React, { FC, useMemo } from 'react'
-import { FaArrowRight } from 'react-icons/fa6'
 
 import { Account } from '@/types/Account'
 import { TimeSlot } from '@/types/Meeting'
-import { generateCalendarEventUrl } from '@/utils/calendar_event_url'
-import {
-  EVENT_TITLE_ELLIPSIS_START_INDEX,
-  EVENT_TITLE_MAX_LENGTH,
-  EVENT_TITLE_TRUNCATE_LENGTH,
-} from '@/utils/constants'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { getBgColor, State } from './SchedulePickTime'
-import { TimeSlotTooltipContent } from './TimeSlotTooltipContent'
+import TimeSlotTooltipBody from './TimeSlotTooltipBody'
 
 export interface ScheduleTimeSlotProps {
   slotData: {
@@ -34,6 +24,7 @@ export interface ScheduleTimeSlotProps {
     userStates: Array<{ state: boolean; displayName: string }>
     slotKey: string
     currentUserEvent?: TimeSlot | null
+    eventUrl?: string | null
   }
   pickedTime: Date | null
   handleTimePick: (time: Date) => void
@@ -76,37 +67,9 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
 
   const { isTopElement, isBottomElement } = getMeetingBoundaries(slot, duration)
 
-  // Get current user event from slotData
+  // Get current user event and URL from slotData
   const currentUserEvent = slotData.currentUserEvent
-
-  // Generate calendar URL for the event
-  const eventUrl = useMemo(() => {
-    if (!currentUserEvent) {
-      return null
-    }
-    return generateCalendarEventUrl(
-      currentUserEvent.source,
-      currentUserEvent.eventId,
-      currentUserEvent.eventWebLink
-    )
-  }, [currentUserEvent])
-
-  // Truncate event title to match design
-  const truncatedTitle = useMemo(() => {
-    if (!currentUserEvent?.eventTitle) {
-      return null
-    }
-    const title = currentUserEvent.eventTitle
-    if (title.length <= EVENT_TITLE_MAX_LENGTH) {
-      return title
-    }
-    return (
-      title.substring(
-        EVENT_TITLE_ELLIPSIS_START_INDEX,
-        EVENT_TITLE_TRUNCATE_LENGTH
-      ) + '...'
-    )
-  }, [currentUserEvent])
+  const eventUrl = slotData.eventUrl
 
   // Create a mapping from displayName to account address to identify current user
   const displayNameToAddress = useMemo(() => {
@@ -163,33 +126,13 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
             {formatWithOrdinal(slot)} ({timezone})
           </Text>
 
-          {(() => {
-            // Separate current user from other participants
-            const currentUserState = userStates?.find(userState => {
-              const accountAddress = displayNameToAddress.get(
-                userState.displayName
-              )
-              return accountAddress === currentAccountAddress?.toLowerCase()
-            })
-
-            const otherUserStates =
-              userStates?.filter(userState => {
-                const accountAddress = displayNameToAddress.get(
-                  userState.displayName
-                )
-                return accountAddress !== currentAccountAddress?.toLowerCase()
-              }) || []
-
-            return (
-              <TimeSlotTooltipContent
-                currentUserState={currentUserState}
-                currentUserEvent={currentUserEvent}
-                truncatedTitle={truncatedTitle}
-                eventUrl={eventUrl}
-                otherUserStates={otherUserStates}
-              />
-            )
-          })()}
+          <TimeSlotTooltipBody
+            userStates={userStates}
+            displayNameToAddress={displayNameToAddress}
+            currentAccountAddress={currentAccountAddress}
+            currentUserEvent={currentUserEvent}
+            eventUrl={eventUrl}
+          />
         </Box>
         <Tooltip.Arrow />
       </Tooltip.Content>
