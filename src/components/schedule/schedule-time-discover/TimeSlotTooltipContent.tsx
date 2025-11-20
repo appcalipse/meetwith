@@ -7,7 +7,6 @@ import { TimeSlotTooltipContentProps } from '@/types/schedule'
 export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
   currentUserState,
   currentUserEvent,
-  truncatedTitle,
   eventUrl,
   otherUserStates,
 }) => {
@@ -51,9 +50,17 @@ export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
               </span>
             )}
           </Text>
-          {truncatedTitle && (
-            <Text fontSize="16px" fontWeight="500" color="neutral.900" mb={2}>
-              {truncatedTitle}
+          {currentUserEvent.eventTitle && (
+            <Text
+              fontSize="16px"
+              fontWeight="500"
+              color="neutral.900"
+              mb={2}
+              noOfLines={1}
+              overflow="hidden"
+              textOverflow="ellipsis"
+            >
+              {currentUserEvent.eventTitle}
             </Text>
           )}
           {eventUrl && (
