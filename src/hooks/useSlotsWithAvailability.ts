@@ -7,6 +7,7 @@ import {
 } from '@/components/schedule/schedule-time-discover/SchedulePickTime'
 import { Account } from '@/types/Account'
 import { TimeSlot } from '@/types/Meeting'
+import { generateCalendarEventUrl } from '@/utils/calendar_event_url'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 const useSlotsWithAvailability = (
@@ -69,6 +70,7 @@ const useSlotsWithAvailability = (
 
         // Find overlapping event for current user if available
         let currentUserEvent: TimeSlot | null = null
+        let eventUrl: string | null = null
         if (currentAccountAddress && busySlotsWithDetails) {
           const userBusySlots = busySlotsWithDetails.get(
             currentAccountAddress.toLowerCase()
@@ -98,6 +100,12 @@ const useSlotsWithAvailability = (
                 overlappingEvent.eventWebLink)
             ) {
               currentUserEvent = overlappingEvent
+              // Generate calendar URL for the event
+              eventUrl = generateCalendarEventUrl(
+                overlappingEvent.source,
+                overlappingEvent.eventId,
+                overlappingEvent.eventWebLink
+              )
             }
           }
         }
@@ -108,6 +116,7 @@ const useSlotsWithAvailability = (
           userStates,
           slotKey: `${slot.start.toMillis()}-${slot.end.toMillis()}`,
           currentUserEvent,
+          eventUrl,
         }
       }),
     }))
