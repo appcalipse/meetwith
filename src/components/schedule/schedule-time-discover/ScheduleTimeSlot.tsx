@@ -25,6 +25,7 @@ import {
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { getBgColor, State } from './SchedulePickTime'
+import { TimeSlotTooltipContent } from './TimeSlotTooltipContent'
 
 export interface ScheduleTimeSlotProps {
   slotData: {
@@ -32,12 +33,12 @@ export interface ScheduleTimeSlotProps {
     state: State
     userStates: Array<{ state: boolean; displayName: string }>
     slotKey: string
+    currentUserEvent?: TimeSlot | null
   }
   pickedTime: Date | null
   handleTimePick: (time: Date) => void
   timezone: string
   duration: number
-  busySlotsWithDetails?: Map<string, TimeSlot[]>
   currentAccountAddress?: string
   meetingMembers?: Account[]
 }
@@ -48,7 +49,6 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
   handleTimePick: pickTime,
   timezone,
   duration,
-  busySlotsWithDetails,
   currentAccountAddress,
   meetingMembers,
 }) => {
@@ -76,49 +76,8 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
 
   const { isTopElement, isBottomElement } = getMeetingBoundaries(slot, duration)
 
-  // Find event details for current user if they're unavailable
-  const currentUserEvent = useMemo(() => {
-    if (!currentAccountAddress || !busySlotsWithDetails) {
-      return null
-    }
-
-    // Find overlapping event for current user
-    const userBusySlots = busySlotsWithDetails.get(
-      currentAccountAddress.toLowerCase()
-    )
-    if (!userBusySlots || userBusySlots.length === 0) {
-      return null
-    }
-
-    const overlappingEvent = userBusySlots.find(busySlot => {
-      const busyStart =
-        busySlot.start instanceof Date
-          ? busySlot.start
-          : new Date(busySlot.start)
-      const busyEnd =
-        busySlot.end instanceof Date ? busySlot.end : new Date(busySlot.end)
-      const busyInterval = Interval.fromDateTimes(
-        DateTime.fromJSDate(busyStart),
-        DateTime.fromJSDate(busyEnd)
-      )
-      return busyInterval.overlaps(slot)
-    })
-
-    if (!overlappingEvent) {
-      return null
-    }
-
-    // Only show event details if we have event information (title or eventId)
-    if (
-      overlappingEvent.eventTitle ||
-      overlappingEvent.eventId ||
-      overlappingEvent.eventWebLink
-    ) {
-      return overlappingEvent
-    }
-
-    return null
-  }, [slot, currentAccountAddress, busySlotsWithDetails])
+  // Get current user event from slotData
+  const currentUserEvent = slotData.currentUserEvent
 
   // Generate calendar URL for the event
   const eventUrl = useMemo(() => {
@@ -222,113 +181,13 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
               }) || []
 
             return (
-              <>
-                {/* Show current user first */}
-                {currentUserState && (
-                  <VStack
-                    w="fit-content"
-                    gap={1}
-                    align={'flex-start'}
-                    mb={currentUserEvent ? 3 : 2}
-                  >
-                    <HStack>
-                      <Box
-                        w={4}
-                        h={4}
-                        rounded={999}
-                        bg={currentUserState.state ? 'green.400' : 'neutral.0'}
-                      />
-                      <Text>{`${currentUserState.displayName} (You)`}</Text>
-                    </HStack>
-                  </VStack>
-                )}
-
-                {/* Show event details if current user is unavailable */}
-                {currentUserEvent && (
-                  <Box
-                    mb={3}
-                    p={3}
-                    bg="neutral.200"
-                    borderRadius={10}
-                    borderWidth={0}
-                  >
-                    <Text
-                      fontSize="12.8px"
-                      fontWeight="500"
-                      mb={1.5}
-                      color="neutral.900"
-                    >
-                      YOUR CALENDAR EVENT BLOCKING SLOT
-                      {currentUserEvent.eventEmail && (
-                        <span
-                          style={{
-                            fontSize: '12.8px',
-                            fontWeight: '700',
-                            color: 'neutral.900',
-                          }}
-                        >
-                          {' '}
-                          - {currentUserEvent.eventEmail}
-                        </span>
-                      )}
-                    </Text>
-                    {truncatedTitle && (
-                      <Text
-                        fontSize="16px"
-                        fontWeight="500"
-                        color="neutral.900"
-                        mb={2}
-                      >
-                        {truncatedTitle}
-                      </Text>
-                    )}
-                    {eventUrl && (
-                      <HStack gap={1}>
-                        <Link
-                          href={eventUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          fontSize="16px"
-                          color="primary.500"
-                          fontWeight="500"
-                          textDecoration="underline"
-                        >
-                          Open this event
-                        </Link>
-                        <FaArrowRight size={12} color="#F35826" />
-                      </HStack>
-                    )}
-                  </Box>
-                )}
-
-                {/* Show other participants */}
-                {otherUserStates.length > 0 && (
-                  <>
-                    <Text
-                      fontSize="18px"
-                      fontWeight="700"
-                      mb={2}
-                      color="#ffffff"
-                    >
-                      OTHERS AVAILABILITY
-                    </Text>
-
-                    <VStack w="fit-content" gap={1} align={'flex-start'}>
-                      {otherUserStates.map((userState, index) => (
-                        <HStack key={index}>
-                          <Box
-                            w={4}
-                            h={4}
-                            rounded={999}
-                            bg={userState.state ? 'green.400' : 'neutral.0'}
-                          />
-                          <Text>{userState.displayName}</Text>
-                        </HStack>
-                      ))}
-                    </VStack>
-                  </>
-                )}
-              </>
+              <TimeSlotTooltipContent
+                currentUserState={currentUserState}
+                currentUserEvent={currentUserEvent}
+                truncatedTitle={truncatedTitle}
+                eventUrl={eventUrl}
+                otherUserStates={otherUserStates}
+              />
             )
           })()}
         </Box>
