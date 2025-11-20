@@ -18,7 +18,6 @@ export const isGroupParticipant = (
 export interface TimeSlotTooltipContentProps {
   currentUserState?: { state: boolean; displayName: string }
   currentUserEvent?: TimeSlot | null
-  truncatedTitle?: string | null
   eventUrl?: string | null
   otherUserStates: Array<{ state: boolean; displayName: string }>
 }
