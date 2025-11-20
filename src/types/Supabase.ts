@@ -180,6 +180,7 @@ export type Database = {
           expires_at: string
           id: number
           resource_id: string
+          sync_token: string | null
         }
         Insert: {
           calendar_id: string
@@ -189,6 +190,7 @@ export type Database = {
           expires_at: string
           id?: number
           resource_id: string
+          sync_token?: string | null
         }
         Update: {
           calendar_id?: string
@@ -198,6 +200,7 @@ export type Database = {
           expires_at?: string
           id?: number
           resource_id?: string
+          sync_token?: string | null
         }
         Relationships: [
           {
@@ -396,6 +399,35 @@ export type Database = {
           plan?: string | null
         }
         Relationships: []
+      }
+      event_notifications: {
+        Row: {
+          account_address: string
+          created_at: string
+          event_id: string
+          last_notified_hash: string
+        }
+        Insert: {
+          account_address: string
+          created_at?: string
+          event_id: string
+          last_notified_hash: string
+        }
+        Update: {
+          account_address?: string
+          created_at?: string
+          event_id?: string
+          last_notified_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'event_notifications_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       gate_definition: {
         Row: {
@@ -622,6 +654,45 @@ export type Database = {
             referencedColumns: ['id']
           }
         ]
+      }
+      guest_slots: {
+        Row: {
+          created_at: string | null
+          end: string | null
+          guest_email: string | null
+          id: string
+          meeting_info_encrypted: Json | null
+          name: string | null
+          recurrence: Database['public']['Enums']['MeetingRepeat']
+          role: Database['public']['Enums']['ParticipantType'] | null
+          start: string | null
+          version: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          end?: string | null
+          guest_email?: string | null
+          id: string
+          meeting_info_encrypted?: Json | null
+          name?: string | null
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          role?: Database['public']['Enums']['ParticipantType'] | null
+          start?: string | null
+          version?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          end?: string | null
+          guest_email?: string | null
+          id?: string
+          meeting_info_encrypted?: Json | null
+          name?: string | null
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          role?: Database['public']['Enums']['ParticipantType'] | null
+          start?: string | null
+          version?: number | null
+        }
+        Relationships: []
       }
       meeting_sessions: {
         Row: {
@@ -1023,6 +1094,7 @@ export type Database = {
       }
       quick_poll_calendars: {
         Row: {
+          calendars: Json | null
           created_at: string
           email: string
           id: number
@@ -1032,6 +1104,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          calendars?: Json | null
           created_at?: string
           email: string
           id?: number
@@ -1041,6 +1114,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          calendars?: Json | null
           created_at?: string
           email?: string
           id?: number
@@ -1185,6 +1259,97 @@ export type Database = {
         }
         Relationships: []
       }
+      slot_instance: {
+        Row: {
+          account_address: string
+          created_at: string | null
+          end: string
+          id: string
+          override_meeting_info_encrypted: Json | null
+          role: Database['public']['Enums']['ParticipantType']
+          series_id: string
+          start: string
+          status: Database['public']['Enums']['RecurringStatus']
+          version: number
+        }
+        Insert: {
+          account_address: string
+          created_at?: string | null
+          end: string
+          id: string
+          override_meeting_info_encrypted?: Json | null
+          role: Database['public']['Enums']['ParticipantType']
+          series_id: string
+          start: string
+          status: Database['public']['Enums']['RecurringStatus']
+          version?: number
+        }
+        Update: {
+          account_address?: string
+          created_at?: string | null
+          end?: string
+          id?: string
+          override_meeting_info_encrypted?: Json | null
+          role?: Database['public']['Enums']['ParticipantType']
+          series_id?: string
+          start?: string
+          status?: Database['public']['Enums']['RecurringStatus']
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'temp_slots_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
+      slot_series: {
+        Row: {
+          account_address: string
+          created_at: string
+          default_meeting_info_encrypted: Json
+          id: string
+          original_end: string
+          original_start: string
+          recurrence: Database['public']['Enums']['MeetingRepeat']
+          rrule: string | null
+          slot_id: string
+        }
+        Insert: {
+          account_address: string
+          created_at?: string
+          default_meeting_info_encrypted: Json
+          id?: string
+          original_end: string
+          original_start: string
+          recurrence: Database['public']['Enums']['MeetingRepeat']
+          rrule?: string | null
+          slot_id: string
+        }
+        Update: {
+          account_address?: string
+          created_at?: string
+          default_meeting_info_encrypted?: Json
+          id?: string
+          original_end?: string
+          original_start?: string
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          rrule?: string | null
+          slot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'slot_series_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
       slots: {
         Row: {
           account_address: string | null
@@ -1292,56 +1457,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'pending_connections_account_address_fkey'
-            columns: ['account_address']
-            isOneToOne: false
-            referencedRelation: 'accounts'
-            referencedColumns: ['address']
-          }
-        ]
-      }
-      temp_slots: {
-        Row: {
-          account_address: string
-          created_at: string | null
-          end: string
-          id: string
-          meeting_info_encrypted: Json
-          recurrence: Database['public']['Enums']['MeetingRepeat']
-          role: Database['public']['Enums']['ParticipantType']
-          slot_id: string
-          start: string
-          status: Database['public']['Enums']['RecurringStatus']
-          version: number
-        }
-        Insert: {
-          account_address: string
-          created_at?: string | null
-          end: string
-          id: string
-          meeting_info_encrypted: Json
-          recurrence?: Database['public']['Enums']['MeetingRepeat']
-          role: Database['public']['Enums']['ParticipantType']
-          slot_id?: string
-          start: string
-          status: Database['public']['Enums']['RecurringStatus']
-          version?: number
-        }
-        Update: {
-          account_address?: string
-          created_at?: string | null
-          end?: string
-          id?: string
-          meeting_info_encrypted?: Json
-          recurrence?: Database['public']['Enums']['MeetingRepeat']
-          role?: Database['public']['Enums']['ParticipantType']
-          slot_id?: string
-          start?: string
-          status?: Database['public']['Enums']['RecurringStatus']
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'temp_slots_account_address_fkey'
             columns: ['account_address']
             isOneToOne: false
             referencedRelation: 'accounts'
@@ -1544,6 +1659,10 @@ export type Database = {
           role: string
         }[]
       }
+      get_meeting_primary_slot: {
+        Args: { p_account_address?: string; p_meeting_id: string }
+        Returns: Json
+      }
       get_meeting_type_plans_by_account: {
         Args: { account_address: string }
         Returns: {
@@ -1636,6 +1755,14 @@ export type Database = {
         }
         Returns: Json
       }
+      update_confirmed_slot_times: {
+        Args: {
+          p_new_end_time: string
+          p_new_start_time: string
+          p_series_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       AcceptedToken:
@@ -1678,7 +1805,7 @@ export type Database = {
         | 'accepted'
         | 'deleted'
       QuickPollParticipantType: 'scheduler' | 'invitee' | 'owner'
-      RecurringStatus: 'confirmed' | 'cancelled' | 'updated'
+      RecurringStatus: 'confirmed' | 'cancelled' | 'modified'
       SessionType: 'paid' | 'free'
       TimeSlotSource: 'mww' | 'Google' | 'iCloud' | 'Office 365' | 'Webdav'
       TokenType: 'erc20' | 'erc721' | 'stablecoin' | 'nft' | 'native'
@@ -1854,7 +1981,7 @@ export const Constants = {
         'deleted',
       ],
       QuickPollParticipantType: ['scheduler', 'invitee', 'owner'],
-      RecurringStatus: ['confirmed', 'cancelled', 'updated'],
+      RecurringStatus: ['confirmed', 'cancelled', 'modified'],
       SessionType: ['paid', 'free'],
       TimeSlotSource: ['mww', 'Google', 'iCloud', 'Office 365', 'Webdav'],
       TokenType: ['erc20', 'erc721', 'stablecoin', 'nft', 'native'],
