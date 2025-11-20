@@ -8,11 +8,9 @@ import {
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { formatWithOrdinal, getMeetingBoundaries } from '@utils/date_helper'
 import { DateTime, Interval } from 'luxon'
-import React, { FC, useMemo } from 'react'
+import React, { FC } from 'react'
 
-import { Account } from '@/types/Account'
 import { TimeSlot } from '@/types/Meeting'
-import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { getBgColor, State } from './SchedulePickTime'
 import TimeSlotTooltipBody from './TimeSlotTooltipBody'
@@ -31,7 +29,7 @@ export interface ScheduleTimeSlotProps {
   timezone: string
   duration: number
   currentAccountAddress?: string
-  meetingMembers?: Account[]
+  displayNameToAddress: Map<string, string>
 }
 
 const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
@@ -41,7 +39,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
   timezone,
   duration,
   currentAccountAddress,
-  meetingMembers,
+  displayNameToAddress,
 }) => {
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const { slot, state, userStates } = slotData
@@ -71,18 +69,6 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
   const currentUserEvent = slotData.currentUserEvent
   const eventUrl = slotData.eventUrl
 
-  // Create a mapping from displayName to account address to identify current user
-  const displayNameToAddress = useMemo(() => {
-    if (!meetingMembers) return new Map<string, string>()
-    const map = new Map<string, string>()
-    meetingMembers.forEach(member => {
-      if (member.address) {
-        const displayName = getAccountDisplayName(member)
-        map.set(displayName, member.address.toLowerCase())
-      }
-    })
-    return map
-  }, [meetingMembers])
   return (
     <Tooltip.Root key={slot.start.toISOTime()}>
       <Tooltip.Trigger asChild>
