@@ -327,6 +327,11 @@ const initAccountDBForWallet = async (
     availability_ids: [defaultBlock.id],
     calendars: [],
   }
+  try {
+    await createMeetingType(user_account.address, meetingType)
+  } catch (e) {
+    Sentry.captureException(e)
+  }
   const preferences: AccountPreferences = {
     description: '',
     availabilities: defaultAvailabilities,
