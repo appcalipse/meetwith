@@ -38,8 +38,7 @@ export interface TimeSlot extends Interval {
   source?: string
   account_address: string
 }
-
-export interface DBSlot extends TimeSlot {
+export interface BaseSlot {
   id?: string
   created_at?: Date
   version: number
@@ -47,6 +46,18 @@ export interface DBSlot extends TimeSlot {
   recurrence: MeetingRepeat
   public_decrypted_data?: MeetingDecrypted
   role?: ParticipantType
+}
+
+export type DBSlot = TimeSlot & BaseSlot
+export interface AccountSlot extends DBSlot {
+  priority: 1
+  user_type: 'account'
+}
+export interface GuestSlot extends BaseSlot, Interval {
+  priority: 2 | 3
+  user_type: 'guest'
+  guest_email: string
+  name: string
 }
 export interface ExtendedDBSlot extends DBSlot {
   conferenceData?: ConferenceMeeting
