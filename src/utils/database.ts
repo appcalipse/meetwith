@@ -81,11 +81,13 @@ import {
   UserGroups,
 } from '@/types/Group'
 import {
+  AccountSlot,
   ConferenceMeeting,
   DBSlot,
   ExtendedDBSlot,
   GroupMeetingRequest,
   GroupNotificationType,
+  GuestSlot,
   MeetingAccessType,
   MeetingInfo,
   MeetingProvider,
@@ -214,7 +216,6 @@ import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
-  noNoReplyEmailForAccount,
 } from './calendar_manager'
 import {
   extractMeetingDescription,
@@ -233,14 +234,12 @@ import {
 } from './email_helper'
 import { deduplicateArray } from './generic_utils'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
-import {
-  BaseCalendarService,
-  IGoogleCalendarService,
-} from './services/calendar.service.types'
+import { IGoogleCalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
+import { getCalendarPrimaryEmail } from './sync_helper'
 import { isConditionValid } from './token.gate.service'
 import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
@@ -337,6 +336,11 @@ const initAccountDBForWallet = async (
     timezone,
     meetingProviders: [MeetingProvider.GOOGLE_MEET],
     availaibility_id: defaultBlock.id,
+  }
+  try {
+    await createMeetingType(user_account.address, meetingType)
+  } catch (e) {
+    Sentry.captureException(e)
   }
   try {
     const responsePrefs = await db.supabase.from('account_preferences').insert({
@@ -997,7 +1001,22 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
 
   return meeting
 }
+const getSlotByMeetingIdAndAccount = async (
+  meeting_id: string,
+  account_address?: string
+): Promise<AccountSlot | GuestSlot> => {
+  const { data, error } = await db.supabase.rpc('get_meeting_primary_slot', {
+    p_meeting_id: meeting_id,
+    p_account_address: account_address?.toLowerCase(),
+  })
 
+  if (error) {
+    throw new Error(error.message)
+    // todo handle error
+  }
+
+  return Array.isArray(data) ? data[0] : data
+}
 const getConferenceMeetingFromDB = async (
   meetingId: string
 ): Promise<ConferenceMeeting> => {
@@ -1237,7 +1256,13 @@ const deleteMeetingFromDB = async (
     []
 
   const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
-
+  const { error: guestSlotsError } = await db.supabase
+    .from('guest_slots')
+    .delete()
+    .in('id', slotIds)
+  if (guestSlotsError) {
+    throw new Error(guestSlotsError.message)
+  }
   if (error) {
     throw new Error(error.message)
   }
@@ -1278,6 +1303,7 @@ const saveMeeting = async (
     throw new MeetingCreationError()
 
   const slots = []
+  const guestSlots = []
   let meetingResponse: Partial<DBSlot> = {}
   let index = 0
   let i = 0
@@ -1444,6 +1470,19 @@ const saveMeeting = async (
         }
       }
       i++
+    } else if (participant.guest_email && participant.slot_id) {
+      const dbSlot: TablesInsert<'guest_slots'> = {
+        id: participant.slot_id,
+        start: new Date(meeting.start).toISOString(),
+        end: new Date(meeting.end).toISOString(),
+        version: 0,
+        meeting_info_encrypted: participant.privateInfo,
+        recurrence: meeting.meetingRepeat,
+        role: participant.type,
+        guest_email: participant.guest_email,
+        name: participant.name || '',
+      }
+      guestSlots.push(dbSlot)
     }
   }
 
@@ -1468,12 +1507,21 @@ const saveMeeting = async (
     )
   }
   const { data, error } = await db.supabase.from('slots').insert(slots)
+  if (guestSlots.length > 0) {
+    const { error: guestSlotsError } = await db.supabase
+      .from('guest_slots')
+      .insert(guestSlots)
+    if (guestSlotsError) {
+      throw new Error(guestSlotsError.message)
+    }
+  }
 
   //TODO: handle error
   if (error) {
     throw new Error(error.message)
   }
 
+  // TODO switch this to check if scheduler is guest slot
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
@@ -2371,7 +2419,7 @@ const getQuickPollCalendars = async (
   }
 ): Promise<ConnectedCalendar[]> => {
   const { data, error } = await db.supabase
-    .from<Tables<'quick_poll_calendars'>>('quick_poll_calendars')
+    .from('quick_poll_calendars')
     .select('*')
     .eq('participant_id', participantId)
     .order('id', { ascending: true })
@@ -2926,17 +2974,6 @@ const getGateConditionsForAccount = async (
   throw new Error(error.message)
 }
 
-const getAppToken = async (tokenType: string): Promise<any | null> => {
-  const { data, error } = await db.supabase
-    .from('application_tokens')
-    .select()
-    .eq('type', tokenType)
-
-  if (!error) return data[0]
-
-  return null
-}
-
 const updateMeeting = async (
   participantActing: ParticipantBaseInfo,
   meetingUpdateRequest: MeetingUpdateRequest
@@ -2952,6 +2989,7 @@ const updateMeeting = async (
     throw new MeetingCreationError()
   }
   const slots = []
+  const guestSlots = []
   let meetingResponse = {} as DBSlot
   let index = 0
   let i = 0
@@ -3126,6 +3164,19 @@ const updateMeeting = async (
         }
       }
       i++
+    } else if (participant.guest_email && participant.slot_id) {
+      const dbSlot: TablesInsert<'guest_slots'> = {
+        id: participant.slot_id,
+        start: new Date(meetingUpdateRequest.start).toISOString(),
+        end: new Date(meetingUpdateRequest.end).toISOString(),
+        version: 0,
+        meeting_info_encrypted: participant.privateInfo,
+        recurrence: meetingUpdateRequest.meetingRepeat,
+        role: participant.type,
+        guest_email: participant.guest_email,
+        name: participant.name || '',
+      }
+      guestSlots.push(dbSlot)
     }
   }
 
@@ -3144,10 +3195,17 @@ const updateMeeting = async (
   const { data, error } = await db.supabase
     .from('slots')
     .upsert(slots, { onConflict: 'id' })
-
   //TODO: handle error
   if (error) {
     throw new Error(error.message)
+  }
+  if (guestSlots.length > 0) {
+    const { error: guestSlotsError } = await db.supabase
+      .from('guest_slots')
+      .upsert(guestSlots, { onConflict: 'id' })
+    if (guestSlotsError) {
+      throw new Error(guestSlotsError.message)
+    }
   }
 
   meetingResponse.id = data[index].id
@@ -5742,7 +5800,6 @@ const handleWebhookEvent = async (
       lower_limit,
       upper_limit
     )) || []
-  const uniqueRecurringEventId = new Set<string>()
   calendar_availabilities = calendar_availabilities
     .sort((a, b) => {
       // Group by recurringEventId first
@@ -5866,10 +5923,10 @@ const handleCalendarRsvps = async (
         )
 
         if (integration.updateEventRSVP && actor?.responseStatus) {
-          const actorEmail = noNoReplyEmailForAccount(
-            (actorAccount.preferences.name || actorAccount.address)!
+          const actorEmail = await getCalendarPrimaryEmail(
+            actorAccount.address!
           )
-
+          if (!actorEmail) continue
           for (const cal of calendar.calendars) {
             try {
               await integration.updateEventRSVP(
@@ -6822,7 +6879,7 @@ const updateQuickPoll = async (
       await updateQuickPollParticipants(pollId, updates.participants)
     }
 
-    const { participants, ...pollUpdates } = updates
+    const { participants: _, ...pollUpdates } = updates
 
     const { data: poll, error } = await db.supabase
       .from('quick_polls')
@@ -7016,10 +7073,10 @@ const expireStalePolls = async () => {
 const updateQuickPollParticipantStatus = async (
   participantId: string,
   status: QuickPollParticipantStatus,
-  availableSlots?: Record<string, any>[]
+  availableSlots?: Record<string, unknown>[]
 ) => {
   try {
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     }
@@ -7089,11 +7146,11 @@ const addQuickPollParticipant = async (
 ) => {
   try {
     // If a matching deleted participant exists, revive instead of inserting new
-    let existingParticipant: any | null = null
+    let existingParticipant: Tables<'quick_poll_participants'> | null = null
 
     if (participantData.account_address) {
       const { data, error: existingByAccountError } = await db.supabase
-        .from('quick_poll_participants')
+        .from<Tables<'quick_poll_participants'>>('quick_poll_participants')
         .select('*')
         .eq('poll_id', pollId)
         .eq('account_address', participantData.account_address)
@@ -7279,7 +7336,7 @@ const updateQuickPollParticipantAvailability = async (
   timezone?: string
 ) => {
   try {
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       available_slots: availableSlots,
       updated_at: new Date().toISOString(),
     }
@@ -7588,7 +7645,6 @@ export {
   getAccountsWithTgConnected,
   getActivePaymentAccount,
   getActivePaymentAccountDB,
-  getAppToken,
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
@@ -7633,6 +7689,7 @@ export {
   getQuickPollParticipantByIdentifier,
   getQuickPollParticipants,
   getQuickPollsForAccount,
+  getSlotByMeetingIdAndAccount,
   getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
