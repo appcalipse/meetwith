@@ -57,6 +57,7 @@ import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { suggestBestSlots } from '@/utils/slots.helper'
+import { getAccountDisplayName } from '@/utils/user_manager'
 
 import ScheduleTimeSlot from './ScheduleTimeSlot'
 interface AccountAddressRecord extends ParticipantInfo {
@@ -212,6 +213,19 @@ export function SchedulePickTime({
     busySlotsWithDetails,
     currentAccount?.address
   )
+
+  // Create a mapping from displayName to account address to identify current user
+  const displayNameToAddress = useMemo(() => {
+    if (!meetingMembers) return new Map<string, string>()
+    const map = new Map<string, string>()
+    meetingMembers.forEach(member => {
+      if (member.address) {
+        const displayName = getAccountDisplayName(member)
+        map.set(displayName, member.address.toLowerCase())
+      }
+    })
+    return map
+  }, [meetingMembers])
   const [monthValue, setMonthValue] = useState<
     SingleValue<{ label: string; value: string }>
   >({
@@ -921,7 +935,7 @@ export function SchedulePickTime({
                               handleTimePick={handleTimeSelection}
                               timezone={timezone}
                               currentAccountAddress={currentAccount?.address}
-                              meetingMembers={meetingMembers}
+                              displayNameToAddress={displayNameToAddress}
                             />
                           )
                         })}
