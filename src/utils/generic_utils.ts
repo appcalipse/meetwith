@@ -47,23 +47,24 @@ export function parseUnits(value: `${number}`, decimals: number) {
 }
 export const isAccountSchedulerOrOwner = (
   participants?: ParticipantInfo[],
-  address?: string,
+  identifier?: string,
   participantsType = [ParticipantType.Scheduler, ParticipantType.Owner]
 ) =>
   participantsType.includes(
-    participants?.find(p => p.account_address === address)?.type ||
-      ParticipantType?.Invitee
+    participants?.find(
+      p => p.account_address === identifier || p.account_address === identifier
+    )?.type || ParticipantType?.Invitee
   )
 
 export const canAccountAccessPermission = (
   permissions?: MeetingPermissions[],
   participants?: ParticipantInfo[],
-  address?: string,
+  identifier?: string,
   permission = MeetingPermissions.SEE_GUEST_LIST
 ) =>
   permissions === undefined ||
   !!permissions?.includes(permission) ||
-  isAccountSchedulerOrOwner(participants, address)
+  isAccountSchedulerOrOwner(participants, identifier)
 
 export function formatUnits(value: bigint, decimals: number) {
   let display = value.toString()
