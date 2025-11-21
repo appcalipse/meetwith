@@ -117,16 +117,34 @@ const InviteParticipants: FC<IProps> = ({
         .filter((a): a is string => !!a)
 
       setParticipants(prevUsers => {
-        const groupParticipants = prevUsers?.filter(
-          user => isGroupParticipant(user) || user.isHidden
-        )
-        return [...groupParticipants, ..._participants]
+        // Preserve both group participants AND contact participants
+        const groupAndContactParticipants = prevUsers?.filter(user => {
+          if (isGroupParticipant(user) || user.isHidden) return true
+          // Check if this participant is from contacts
+          if (user.account_address) {
+            return Object.values(contextGroupParticipants ?? {}).some(
+              addresses =>
+                addresses && addresses.includes(user.account_address!)
+            )
+          }
+          return false
+        })
+        return [...groupAndContactParticipants, ..._participants]
       })
       setStandAloneParticipants(prevUsers => {
-        const groupParticipants = prevUsers?.filter(
-          user => isGroupParticipant(user) || user.isHidden
-        )
-        return [...groupParticipants, ..._participants]
+        // Preserve both group participants AND contact participants
+        const groupAndContactParticipants = prevUsers?.filter(user => {
+          if (isGroupParticipant(user) || user.isHidden) return true
+          // Check if this participant is from contacts
+          if (user.account_address) {
+            return Object.values(contextGroupParticipants ?? {}).some(
+              addresses =>
+                addresses && addresses.includes(user.account_address!)
+            )
+          }
+          return false
+        })
+        return [...groupAndContactParticipants, ..._participants]
       })
       React.startTransition(() => {
         if (addressesToAdd.length > 0) {
@@ -148,7 +166,12 @@ const InviteParticipants: FC<IProps> = ({
         }
       })
     },
-    [setParticipants, setGroupAvailability, setGroupParticipants]
+    [
+      setParticipants,
+      setGroupAvailability,
+      setGroupParticipants,
+      contextGroupParticipants,
+    ]
   )
 
   const handleQuickPollSaveChanges = useCallback(async () => {
