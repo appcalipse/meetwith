@@ -6599,6 +6599,7 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
       .eq('poll_id', pollId)
       .neq('status', QuickPollParticipantStatus.DELETED)
       .neq('status', QuickPollParticipantStatus.PENDING)
+      .order('created_at', { ascending: true })
 
     if (participantsError) throw participantsError
 
