@@ -301,7 +301,7 @@ export const CalendarBackendHelper = {
     }, {})
 
     const slotsByAccountArray = []
-    for (const [key, value] of Object.entries(slotsByAccount)) {
+    for (const [_, value] of Object.entries(slotsByAccount)) {
       slotsByAccountArray.push(value)
     }
 
@@ -359,18 +359,18 @@ export const generateIcsServer = async (
   ownerAddress: string,
   meetingStatus: MeetingChangeType,
   changeUrl?: string,
-  removeAttendess?: boolean,
+  useParticipants?: boolean,
   destination?: { accountAddress: string; email: string },
   isPrivate?: boolean
-): Promise<ReturnObject> => {
+): Promise<
+  ReturnObject & {
+    attendees: Attendee[]
+  }
+> => {
   let url = meeting.meeting_url.trim()
   if (!isValidUrl(url)) {
     url = 'https://meetwith.xyz'
   }
-  const hasGuest =
-    meeting.participants.some(
-      p => p.guest_email && p.guest_email.trim() !== ''
-    ) && !!destination?.accountAddress
   const start = DateTime.fromJSDate(new Date(meeting.start))
   const end = DateTime.fromJSDate(new Date(meeting.end))
   const created_at = DateTime.fromJSDate(new Date(meeting.created_at!))
@@ -387,8 +387,7 @@ export const generateIcsServer = async (
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
-      changeUrl,
-      hasGuest
+      changeUrl
     ),
     url,
     location: meeting.meeting_url,
@@ -433,7 +432,7 @@ export const generateIcsServer = async (
     event.recurrenceRule = RRULE
   }
   event.attendees = []
-  if (!removeAttendess) {
+  if (useParticipants) {
     const attendees = await Promise.all(
       meeting.participants.map(async participant => {
         const email =
@@ -463,5 +462,5 @@ export const generateIcsServer = async (
   }
 
   const icsEvent = createEvent(event)
-  return icsEvent
+  return { ...icsEvent, attendees: event.attendees }
 }
