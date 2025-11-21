@@ -2303,8 +2303,25 @@ export const decodeMeetingGuest = async (
       '/meetings/meeting/decrypt',
       'POST',
       payload
-    )
+    ).then(res => ({
+      ...res,
+      start: new Date(res.start),
+      end: new Date(res.end),
+      created_at: new Date(res.created_at),
+    }))
   } catch (e) {
     return null
+  }
+}
+
+export const getGuestSlotById = async (slotId: string) => {
+  const response = await internalFetch<GuestSlot | null>(
+    `/meetings/guest/${slotId}/slot`
+  )
+  if (!response) return null
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
   }
 }
