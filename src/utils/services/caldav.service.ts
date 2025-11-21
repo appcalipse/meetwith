@@ -369,6 +369,10 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         return {
           start: event.startDate.toJSDate().toISOString(),
           end: event.endDate.toJSDate().toISOString(),
+          title: event.summary || '',
+          eventId: object.url || undefined,
+          email: this.email,
+          webLink: object.url || undefined,
         }
       })
     return Promise.resolve(events)
