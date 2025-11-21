@@ -121,6 +121,7 @@ interface QuickPollPickAvailabilityProps {
   openParticipantModal: () => void
   pollData?: QuickPollBySlugResponse
   onSaveAvailability?: () => void
+  onCancelEditing?: () => void
   onSharePoll?: () => void
   onImportCalendar?: () => void
   isEditingAvailability?: boolean
@@ -132,6 +133,7 @@ export function QuickPollPickAvailability({
   openParticipantModal,
   pollData,
   onSaveAvailability,
+  onCancelEditing,
   onSharePoll,
   onImportCalendar,
   isEditingAvailability,
@@ -1021,23 +1023,40 @@ export function QuickPollPickAvailability({
           display={{ base: 'none', md: 'flex' }}
         >
           {onSaveAvailability && isEditAvailabilityIntent && (
-            <Button
-              colorScheme="primary"
-              onClick={onSaveAvailability}
-              px="16px"
-              py="8px"
-              fontSize="16px"
-              fontWeight="700"
-              borderRadius="8px"
-              width="230px"
-              isLoading={isSavingAvailability}
-              loadingText="Saving..."
-              isDisabled={isSavingAvailability}
-            >
-              {isEditingAvailability
-                ? 'Save availability'
-                : 'Add/Edit availability'}
-            </Button>
+            <HStack spacing={3}>
+              <Button
+                colorScheme="primary"
+                onClick={onSaveAvailability}
+                px="16px"
+                py="8px"
+                fontSize="16px"
+                fontWeight="700"
+                borderRadius="8px"
+                width="230px"
+                isLoading={isSavingAvailability}
+                loadingText="Saving..."
+                isDisabled={isSavingAvailability}
+              >
+                {isEditingAvailability
+                  ? 'Save availability'
+                  : 'Add/Edit availability'}
+              </Button>
+              {isEditingAvailability && onCancelEditing && (
+                <Button
+                  variant="outline"
+                  colorScheme="primary"
+                  px="16px"
+                  py="8px"
+                  fontSize="16px"
+                  fontWeight="700"
+                  borderRadius="8px"
+                  onClick={onCancelEditing}
+                  isDisabled={isSavingAvailability}
+                >
+                  Cancel
+                </Button>
+              )}
+            </HStack>
           )}
           <VStack gap={2} alignItems={'flex-start'} minW={'max-content'}>
             <HStack width="fit-content" gap={0}>
@@ -1152,23 +1171,41 @@ export function QuickPollPickAvailability({
         {/* Mobile Action Buttons */}
         <VStack gap={3} w="100%" display={{ base: 'flex', md: 'none' }}>
           {onSaveAvailability && (
-            <Button
-              colorScheme="primary"
-              size="md"
-              w="100%"
-              py={3}
-              fontSize="16px"
-              fontWeight="600"
-              borderRadius="8px"
-              onClick={onSaveAvailability}
-              isLoading={isSavingAvailability}
-              loadingText="Saving..."
-              isDisabled={isSavingAvailability}
-            >
-              {isEditingAvailability
-                ? 'Save availability'
-                : 'Add/Edit availability'}
-            </Button>
+            <>
+              <Button
+                colorScheme="primary"
+                size="md"
+                w="100%"
+                py={3}
+                fontSize="16px"
+                fontWeight="600"
+                borderRadius="8px"
+                onClick={onSaveAvailability}
+                isLoading={isSavingAvailability}
+                loadingText="Saving..."
+                isDisabled={isSavingAvailability}
+              >
+                {isEditingAvailability
+                  ? 'Save availability'
+                  : 'Add/Edit availability'}
+              </Button>
+              {isEditingAvailability && onCancelEditing && (
+                <Button
+                  variant="outline"
+                  colorScheme="primary"
+                  size="md"
+                  w="100%"
+                  py={3}
+                  fontSize="16px"
+                  fontWeight="600"
+                  borderRadius="8px"
+                  onClick={onCancelEditing}
+                  isDisabled={isSavingAvailability}
+                >
+                  Cancel
+                </Button>
+              )}
+            </>
           )}
           {onImportCalendar && !isSchedulingIntent && (
             <Button

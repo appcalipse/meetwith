@@ -439,6 +439,11 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     }
   }
 
+  const handleCancelEditing = () => {
+    setIsEditingAvailability(false)
+    clearSlots()
+  }
+
   // Only show loading when we don't have pollData and we're fetching
   if (!pollData && isPollLoading) {
     return <CustomLoading text="Loading poll..." />
@@ -553,6 +558,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           openParticipantModal={() => setIsInviteParticipantsOpen(true)}
           pollData={currentPollData}
           onSaveAvailability={handleAvailabilityAction}
+          onCancelEditing={handleCancelEditing}
           onSharePoll={handleSharePoll}
           onImportCalendar={handleCalendarImport}
           isEditingAvailability={isEditingAvailability}
@@ -596,6 +602,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             openParticipantModal={() => setIsInviteParticipantsOpen(true)}
             pollData={currentPollData}
             onSaveAvailability={handleAvailabilityAction}
+            onCancelEditing={handleCancelEditing}
             onSharePoll={handleSharePoll}
             onImportCalendar={handleCalendarImport}
             isEditingAvailability={isEditingAvailability}
