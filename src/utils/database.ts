@@ -6650,7 +6650,7 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
   try {
     // Get the poll
     const { data: poll, error: pollError } = await db.supabase
-      .from<Tables<'quick_polls'>>('quick_polls')
+      .from('quick_polls')
       .select('*')
       .eq('id', pollId)
       .maybeSingle()
