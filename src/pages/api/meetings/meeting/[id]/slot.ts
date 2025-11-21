@@ -47,6 +47,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       undefined,
       request.meeting?.title
     )
+    return res.status(200).json({ removed: request.meeting.related_slot_ids })
   }
   return res.status(404).send('Not found')
 }
