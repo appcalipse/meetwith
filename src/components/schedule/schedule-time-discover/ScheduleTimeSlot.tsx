@@ -1,18 +1,20 @@
 import {
   Box,
   Button,
-  HStack,
   Text,
   useColorModeValue,
   useToast,
-  VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { formatWithOrdinal, getMeetingBoundaries } from '@utils/date_helper'
 import { DateTime, Interval } from 'luxon'
 import React, { FC } from 'react'
 
+import { AvailabilityBlock } from '@/types/availability'
+import { TimeSlot } from '@/types/Meeting'
+
 import { getBgColor, State } from './SchedulePickTime'
+import TimeSlotTooltipBody from './TimeSlotTooltipBody'
 
 export interface ScheduleTimeSlotProps {
   slotData: {
@@ -20,11 +22,16 @@ export interface ScheduleTimeSlotProps {
     state: State
     userStates: Array<{ state: boolean; displayName: string }>
     slotKey: string
+    currentUserEvent?: TimeSlot | null
+    eventUrl?: string | null
   }
   pickedTime: Date | null
   handleTimePick: (time: Date) => void
   timezone: string
   duration: number
+  currentAccountAddress?: string
+  displayNameToAddress: Map<string, string>
+  defaultAvailabilityBlock?: AvailabilityBlock
 }
 
 const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
@@ -33,6 +40,9 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
   handleTimePick: pickTime,
   timezone,
   duration,
+  currentAccountAddress,
+  displayNameToAddress,
+  defaultAvailabilityBlock,
 }) => {
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const { slot, state, userStates } = slotData
@@ -57,6 +67,11 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
     : false
 
   const { isTopElement, isBottomElement } = getMeetingBoundaries(slot, duration)
+
+  // Get current user event and URL from slotData
+  const currentUserEvent = slotData.currentUserEvent
+  const eventUrl = slotData.eventUrl
+
   return (
     <Tooltip.Root key={slot.start.toISOTime()}>
       <Tooltip.Trigger asChild>
@@ -91,7 +106,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
         <Box
           p={2}
           bg={itemsBgColor}
-          borderRadius={4}
+          borderRadius={10}
           boxShadow="md"
           py={3}
           px={4}
@@ -99,19 +114,15 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
           <Text mb={'7px'}>
             {formatWithOrdinal(slot)} ({timezone})
           </Text>
-          <VStack w="fit-content" gap={1} align={'flex-start'}>
-            {userStates?.map((userState, index) => (
-              <HStack key={index}>
-                <Box
-                  w={4}
-                  h={4}
-                  rounded={999}
-                  bg={userState.state ? 'green.400' : 'neutral.0'}
-                />
-                <Text>{userState.displayName}</Text>
-              </HStack>
-            ))}
-          </VStack>
+
+          <TimeSlotTooltipBody
+            userStates={userStates}
+            displayNameToAddress={displayNameToAddress}
+            currentAccountAddress={currentAccountAddress}
+            currentUserEvent={currentUserEvent}
+            eventUrl={eventUrl}
+            defaultAvailabilityBlock={defaultAvailabilityBlock}
+          />
         </Box>
         <Tooltip.Arrow />
       </Tooltip.Content>

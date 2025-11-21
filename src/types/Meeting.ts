@@ -37,6 +37,10 @@ export interface ExistingMeetingData {
 export interface TimeSlot extends Interval {
   source?: string
   account_address: string
+  eventTitle?: string
+  eventId?: string
+  eventWebLink?: string
+  eventEmail?: string
 }
 
 export interface DBSlot extends TimeSlot {
