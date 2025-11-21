@@ -10,6 +10,7 @@ import { formatWithOrdinal, getMeetingBoundaries } from '@utils/date_helper'
 import { DateTime, Interval } from 'luxon'
 import React, { FC } from 'react'
 
+import { AvailabilityBlock } from '@/types/availability'
 import { TimeSlot } from '@/types/Meeting'
 
 import { getBgColor, State } from './SchedulePickTime'
@@ -30,6 +31,7 @@ export interface ScheduleTimeSlotProps {
   duration: number
   currentAccountAddress?: string
   displayNameToAddress: Map<string, string>
+  defaultAvailabilityBlock?: AvailabilityBlock
 }
 
 const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
@@ -40,6 +42,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
   duration,
   currentAccountAddress,
   displayNameToAddress,
+  defaultAvailabilityBlock,
 }) => {
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const { slot, state, userStates } = slotData
@@ -118,6 +121,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
             currentAccountAddress={currentAccountAddress}
             currentUserEvent={currentUserEvent}
             eventUrl={eventUrl}
+            defaultAvailabilityBlock={defaultAvailabilityBlock}
           />
         </Box>
         <Tooltip.Arrow />
