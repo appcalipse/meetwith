@@ -1,4 +1,5 @@
 import { calendar_v3 } from 'googleapis'
+import { Attendee } from 'ics'
 
 import {
   CalendarSyncInfo,
@@ -57,10 +58,10 @@ export interface BaseCalendarService {
    */
   updateEvent(
     calendarOwnerAccountAddress: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
-    calendarId: string
-  ): Promise<NewCalendarEventType>
+    calendarId: string,
+    useParticipants?: boolean
+  ): Promise<Partial<NewCalendarEventType>>
 
   /**
    * Deletes an previously created event on target external calendar
@@ -85,6 +86,13 @@ export interface IOffcie365CalendarService extends BaseCalendarService {
     meeting_creation_time: Date,
     calendarId: string,
     shouldGenerateLink?: boolean
+  ): Promise<Partial<NewCalendarEventType> & MicrosoftGraphEvent>
+
+  updateEvent(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId: string,
+    useParticipants?: boolean
   ): Promise<Partial<NewCalendarEventType> & MicrosoftGraphEvent>
 }
 export interface IGoogleCalendarService extends BaseCalendarService {
@@ -190,4 +198,33 @@ export interface IGoogleCalendarService extends BaseCalendarService {
     calendarId: string,
     shouldGenerateLink?: boolean
   ): Promise<NewCalendarEventType & calendar_v3.Schema$Event>
+
+  updateEvent(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId: string
+  ): Promise<NewCalendarEventType & calendar_v3.Schema$Event>
+}
+
+export interface ICaldavCalendarService {
+  createEvent(
+    owner: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_creation_time: Date,
+    calendarId: string,
+    shouldGenerateLink?: boolean
+  ): Promise<
+    Partial<NewCalendarEventType> & {
+      attendees: Attendee[]
+    }
+  >
+  updateEvent(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId: string
+  ): Promise<
+    Partial<NewCalendarEventType> & {
+      attendees: Attendee[]
+    }
+  >
 }
