@@ -1,5 +1,6 @@
 import React from 'react'
 
+import { AvailabilityBlock } from '@/types/availability'
 import { TimeSlot } from '@/types/Meeting'
 
 import { TimeSlotTooltipContent } from './TimeSlotTooltipContent'
@@ -10,6 +11,7 @@ interface TimeSlotTooltipBodyProps {
   currentAccountAddress?: string
   currentUserEvent?: TimeSlot | null
   eventUrl?: string | null
+  defaultAvailabilityBlock?: AvailabilityBlock
 }
 
 const TimeSlotTooltipBody: React.FC<TimeSlotTooltipBodyProps> = ({
@@ -18,6 +20,7 @@ const TimeSlotTooltipBody: React.FC<TimeSlotTooltipBodyProps> = ({
   currentAccountAddress,
   currentUserEvent,
   eventUrl,
+  defaultAvailabilityBlock,
 }) => {
   // Separate current user from other participants
   const currentUserState = userStates?.find(userState => {
@@ -37,6 +40,7 @@ const TimeSlotTooltipBody: React.FC<TimeSlotTooltipBodyProps> = ({
       currentUserEvent={currentUserEvent}
       eventUrl={eventUrl}
       otherUserStates={otherUserStates}
+      defaultAvailabilityBlock={defaultAvailabilityBlock}
     />
   )
 }
