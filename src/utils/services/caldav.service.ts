@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
+import { Attendee } from 'ics'
 import {
   createAccount,
   createCalendarObject,
@@ -20,13 +21,13 @@ import {
 } from '@/types/CalendarConnections'
 import { Intents } from '@/types/Dashboard'
 import { MeetingChangeType } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { appUrl } from '../constants'
 import { decryptContent } from '../cryptography'
+import { isValidEmail } from '../validations'
 import { generateIcsServer } from './calendar.backend.helper'
-import { BaseCalendarService } from './calendar.service.types'
+import { ICaldavCalendarService } from './calendar.service.types'
 
 // ical.js has no ts typing
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -69,7 +70,7 @@ export interface CaldavCredentials {
  * - username (usually an email)
  * - password
  */
-export default class CaldavCalendarService implements BaseCalendarService {
+export default class CaldavCalendarService implements ICaldavCalendarService {
   private url = ''
   private credentials: Record<string, string> = {}
   private headers: Record<string, string> = {}
@@ -128,8 +129,13 @@ export default class CaldavCalendarService implements BaseCalendarService {
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    calendarId?: string
-  ): Promise<NewCalendarEventType> {
+    calendarId?: string,
+    useParticipants?: boolean
+  ): Promise<
+    NewCalendarEventType & {
+      attendees: Attendee[]
+    }
+  > {
     try {
       const calendars = await this.listCalendars()
 
@@ -137,27 +143,14 @@ export default class CaldavCalendarService implements BaseCalendarService {
         ? calendars.find(c => c.url === calendarId)
         : calendars[0]
 
-      const participantsInfo: ParticipantInfo[] =
-        meetingDetails.participants.map(participant => ({
-          type: participant.type,
-          name: participant.name,
-          account_address: participant.account_address,
-          status: participant.status,
-          slot_id: participant.slot_id,
-          meeting_id: meetingDetails.meeting_id,
-        }))
-
-      const slot_id = meetingDetails.participants.filter(
-        p => p.account_address === calendarOwnerAccountAddress
-      )[0].slot_id
-
+      let ics: Awaited<ReturnType<typeof generateIcsServer>>
       try {
-        const ics = await generateIcsServer(
+        ics = await generateIcsServer(
           meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
-          false,
+          `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          useParticipants,
           {
             accountAddress: calendarOwnerAccountAddress,
             email: this.getConnectedEmail(),
@@ -184,14 +177,15 @@ export default class CaldavCalendarService implements BaseCalendarService {
           )
         }
       } catch (err) {
+        console.error(err)
         Sentry.captureException(err)
         //Fastmail issue that doesn't accept attendees
-        const ics = await generateIcsServer(
+        ics = await generateIcsServer(
           meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
-          true
+          `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          false
         )
 
         if (!ics.value || ics.error)
@@ -214,14 +208,14 @@ export default class CaldavCalendarService implements BaseCalendarService {
           )
         }
       }
-
       return {
-        uid: meetingDetails.meeting_id,
+        uid: meetingDetails.meeting_id.replaceAll('-', ''),
         id: meetingDetails.meeting_id,
         type: 'Cal Dav',
         password: '',
         url: '',
         additionalInfo: {},
+        attendees: ics.attendees,
       }
     } catch (reason) {
       Sentry.captureException(reason)
@@ -231,42 +225,42 @@ export default class CaldavCalendarService implements BaseCalendarService {
 
   async updateEvent(
     calendarOwnerAccountAddress: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
     calendarId: string
-  ): Promise<NewCalendarEventType> {
+  ): Promise<
+    NewCalendarEventType & {
+      attendees: Attendee[]
+    }
+  > {
     try {
+      const { meeting_id } = meetingDetails
       const events = await this.getEventsByUID(meeting_id)
-
-      const participantsInfo: ParticipantInfo[] =
-        meetingDetails.participants.map(participant => ({
-          type: participant.type,
-          name: participant.name,
-          account_address: participant.account_address,
-          status: participant.status,
-          slot_id: participant.slot_id,
-          meeting_id,
-        }))
-
-      const slot_id = meetingDetails.participants.filter(
-        p => p.account_address === calendarOwnerAccountAddress
-      )[0].slot_id
+      const eventToUpdate = events.find(
+        event => event.uid === meeting_id.replaceAll('-', '')
+      )
+      const useParticipants =
+        eventToUpdate &&
+        eventToUpdate.attendees
+          .map((a: string[]) => a.map(val => val.replace(/^MAILTO:/i, '')))
+          .flat()
+          .filter(
+            (a: string) => isValidEmail(a) && a !== this.getConnectedEmail()
+          ).length > 0
 
       const ics = await generateIcsServer(
         meetingDetails,
         calendarOwnerAccountAddress,
         MeetingChangeType.UPDATE,
-        `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
-        false,
+        `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+        useParticipants,
         {
           accountAddress: calendarOwnerAccountAddress,
           email: this.getConnectedEmail(),
         }
       )
 
-      if (!ics.value || ics.error) throw new Error('Error creating iCalString')
-
-      const eventToUpdate = events.filter(event => event.uid === meeting_id)[0]
+      if (!ics.value || ics.error || !eventToUpdate)
+        throw new Error('Error creating iCalString')
 
       const response = await updateCalendarObject({
         calendarObject: {
@@ -283,8 +277,8 @@ export default class CaldavCalendarService implements BaseCalendarService {
           meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.UPDATE,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
-          true
+          `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          false
         )
 
         if (!ics.value || ics.error)
@@ -302,12 +296,13 @@ export default class CaldavCalendarService implements BaseCalendarService {
       }
 
       return {
-        uid: meeting_id,
+        uid: meeting_id.replaceAll('-', ''),
         id: meeting_id,
         type: 'Cal Dav',
         password: '',
         url: '',
         additionalInfo: {},
+        attendees: ics.attendees,
       }
     } catch (reason) {
       Sentry.captureException(reason)
@@ -317,9 +312,9 @@ export default class CaldavCalendarService implements BaseCalendarService {
   async deleteEvent(meeting_id: string, calendarId: string): Promise<void> {
     try {
       const events = await this.getEventsByUID(meeting_id)
-
-      const eventsToDelete = events.filter(event => event.uid === meeting_id)
-
+      const eventsToDelete = events.filter(
+        event => event.uid === meeting_id.replaceAll('-', '')
+      )
       await Promise.all(
         eventsToDelete.map(event => {
           return deleteCalendarObject({
@@ -332,6 +327,7 @@ export default class CaldavCalendarService implements BaseCalendarService {
         })
       )
     } catch (reason) {
+      console.error(reason)
       Sentry.captureException(reason)
       throw reason
     }
@@ -485,7 +481,6 @@ export default class CaldavCalendarService implements BaseCalendarService {
     const events = []
 
     const calendars = await this.listCalendars()
-
     for (const cal of calendars) {
       const calEvents = await this.getEvents(cal.url, null, null, [
         `${cal.url}${uid}.ics`,
