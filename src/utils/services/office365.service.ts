@@ -232,6 +232,10 @@ export class Office365CalendarService implements IOffcie365CalendarService {
           return response.value.map((evt: MicrosoftGraphEvent) => ({
             start: evt.start?.dateTime + 'Z',
             end: evt.end?.dateTime + 'Z',
+            title: evt.subject || '',
+            eventId: evt.id || '',
+            email: this.email,
+            webLink: evt.webLink || undefined,
           }))
         } catch (err) {
           Sentry.captureException(err)
@@ -243,6 +247,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     const result = await Promise.all(promises)
     return result.flat()
   }
+
   private createReminder(indicator: MeetingReminders) {
     switch (indicator) {
       case MeetingReminders['15_MINUTES_BEFORE']:
@@ -403,64 +408,5 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       }
     }
     return payload
-  }
-
-  async getAvailability(
-    calendarIds: string[],
-    dateFrom: string,
-    dateTo: string
-  ): Promise<EventBusyDate[]> {
-    const dateFromParsed = new Date(dateFrom)
-    const dateToParsed = new Date(dateTo)
-
-    const filter = `?startdatetime=${encodeURIComponent(
-      dateFromParsed.toISOString()
-    )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}&$top=500`
-
-    const promises: Promise<EventBusyDate[]>[] = []
-
-    calendarIds.forEach(async calendarId => {
-      promises.push(
-        new Promise(async (resolve, reject) => {
-          try {
-            const accessToken = await this.auth.getToken()
-
-            // TODO: consider proper pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
-            // not only the first 500 events
-            const eventsResponse = await fetch(
-              `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/calendarView${filter}`,
-              {
-                method: 'GET',
-                headers: {
-                  Authorization: 'Bearer ' + accessToken,
-                  'Content-Type': 'application/json',
-                },
-              }
-            )
-            const eventsJson = await handleErrorsResponse(eventsResponse)
-
-            resolve(
-              eventsJson.value.map((evt: any) => {
-                return {
-                  start: evt.start.dateTime + 'Z',
-                  end: evt.end.dateTime + 'Z',
-                  title: evt.subject || '',
-                  eventId: evt.id || '',
-                  email: this.email,
-                  webLink: evt.webLink || undefined,
-                }
-              })
-            )
-          } catch (err) {
-            Sentry.captureException(err)
-            reject()
-          }
-        })
-      )
-    })
-
-    const result = await Promise.all(promises)
-
-    return result.flat()
   }
 }
