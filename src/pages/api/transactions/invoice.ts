@@ -9,6 +9,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const payload = req.body as RequestInvoiceRequest
       const meetingType = await getMeetingTypeFromDB(payload.meeting_type_id)
+      if (!meetingType) {
+        return res.status(404).json({ error: 'Meeting type not found' })
+      }
       const amount =
         (meetingType?.plan?.price_per_slot || 0) *
         (meetingType?.plan?.no_of_slot || 0)
