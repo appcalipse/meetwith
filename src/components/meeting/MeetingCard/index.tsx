@@ -153,7 +153,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
         info,
         currentConnectedAccountAddress,
         MeetingChangeType.CREATE,
-        `${appUrl}/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
+        `${appUrl}/dashboard/schedule?conferenceId=${meeting.conferenceData?.id}&intent=${Intents.UPDATE_MEETING}`
       )
 
       const url = window.URL.createObjectURL(
@@ -197,29 +197,53 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
     () => [
       {
         label: 'Add to Google Calendar',
-        link: generateGoogleCalendarUrl(
-          decryptedMeeting?.id || '',
-          decryptedMeeting?.start,
-          decryptedMeeting?.end,
-          decryptedMeeting?.title || 'No Title',
-          decryptedMeeting?.content,
-          decryptedMeeting?.meeting_url,
-          timezone,
-          decryptedMeeting?.participants
-        ),
+        onClick: async () => {
+          showInfoToast(
+            'Opening Google Calendar',
+            'A new tab will open with your Google Calendar invite.'
+          )
+          const url = await generateGoogleCalendarUrl(
+            decryptedMeeting?.meeting_id || '',
+            currentAccount!.address,
+            decryptedMeeting?.start,
+            decryptedMeeting?.end,
+            decryptedMeeting?.title || 'No Title',
+            decryptedMeeting?.content,
+            decryptedMeeting?.meeting_url,
+            timezone,
+            decryptedMeeting?.participants
+          )
+          showSuccessToast(
+            'Opening Link',
+            'A new tab has been opened with your Google Calendar invite.'
+          )
+          window.open(url, '_blank', 'noopener noreferrer')
+        },
       },
       {
         label: 'Add to Office 365 Calendar',
-        link: generateOffice365CalendarUrl(
-          decryptedMeeting?.id || '',
-          decryptedMeeting?.start,
-          decryptedMeeting?.end,
-          decryptedMeeting?.title || 'No Title',
-          decryptedMeeting?.content,
-          decryptedMeeting?.meeting_url,
-          timezone,
-          decryptedMeeting?.participants
-        ),
+        onClick: async () => {
+          showInfoToast(
+            'Generating Link',
+            'A new tab will open with your Office 365 calendar invite.'
+          )
+          const url = await generateOffice365CalendarUrl(
+            decryptedMeeting?.meeting_id || '',
+            currentAccount!.address,
+            decryptedMeeting?.start,
+            decryptedMeeting?.end,
+            decryptedMeeting?.title || 'No Title',
+            decryptedMeeting?.content,
+            decryptedMeeting?.meeting_url,
+            timezone,
+            decryptedMeeting?.participants
+          )
+          showSuccessToast(
+            'Opening Link',
+            'A new tab has been opened with your Office 365 calendar invite.'
+          )
+          window.open(url, '_blank', 'noopener noreferrer')
+        },
       },
       {
         label: 'Download calendar invite',
@@ -441,30 +465,17 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                     <Portal>
                       <MenuList backgroundColor={menuBgColor}>
                         {menuItems.map((val, index, arr) => [
-                          val.link ? (
-                            <MenuItem
-                              as="a"
-                              href={val.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              key={`${val.label}-${meeting?.id}`}
-                              backgroundColor={menuBgColor}
-                            >
-                              {val.label}
-                            </MenuItem>
-                          ) : (
-                            <MenuItem
-                              onClick={val.onClick}
-                              backgroundColor={menuBgColor}
-                              key={`${val.label}-${meeting?.id}`}
-                              aria-busy
-                            >
-                              {val.label}
-                            </MenuItem>
-                          ),
+                          <MenuItem
+                            onClick={val.onClick}
+                            backgroundColor={menuBgColor}
+                            key={`${val.label}-${meeting?.id}`}
+                            aria-busy
+                          >
+                            {val.label}
+                          </MenuItem>,
                           index !== arr.length - 1 && (
                             <MenuDivider
-                              key="divider"
+                              key={`divider-${index}-${meeting?.id}`}
                               borderColor="neutral.600"
                             />
                           ),
