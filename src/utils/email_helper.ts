@@ -203,7 +203,7 @@ export const newMeetingEmail = async (
   const timezone = meetingDetails.timezone
   const meeting_id = meetingDetails.meeting_id
   const meetingPermissions = meetingDetails.meetingPermissions
-  const meetingTypeId = meetingDetails.meeting_id
+  const meetingTypeId = meetingDetails.meeting_type_id
 
   const isSchedulerOrOwner = [
     ParticipantType.Scheduler,
@@ -441,7 +441,7 @@ export const updateMeetingEmail = async (
   const meeting_id = meetingDetails.meeting_id
   const timezone = meetingDetails.timezone
   const meetingPermissions = meetingDetails.meetingPermissions
-  const meetingTypeId = meetingDetails.meeting_id
+  const meetingTypeId = meetingDetails.meeting_type_id
   const changes = meetingDetails.changes
 
   if (!changes?.dateChange) {
