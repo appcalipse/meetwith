@@ -155,7 +155,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
               '1 Meeting type - FREE meetings',
               'Custom account handle',
               '5 scheduling groups',
-              'Limited QuickPolls',
+              'Limited QuickPolls (max. 2 active polls per time)',
               'Basic calendar sync - 1 calendar sync only',
               'Smart notifications — Email, Discord, and Telegram let you set the cadence for each meeting type.',
               'Unlimited contact connection',
