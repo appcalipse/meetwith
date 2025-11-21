@@ -7133,7 +7133,14 @@ const addQuickPollParticipant = async (
         return revivedParticipant
       }
 
-      // Already present and not deleted: throw a specific error
+      // Already present and not deleted: throw a specific error based on status
+      if (existingParticipant.status === QuickPollParticipantStatus.PENDING) {
+        throw new QuickPollParticipantCreationError(
+          'This participant has already been invited but has not yet provided their availability. They will be able to join once they accept the invitation and add their availability.'
+        )
+      }
+
+      // Status is ACCEPTED - they're already part of the poll
       throw new QuickPollParticipantCreationError(
         'This participant is already part of the poll'
       )
