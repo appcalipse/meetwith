@@ -27,6 +27,7 @@ import { FaAnglesRight } from 'react-icons/fa6'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import { useAvailabilityBlock } from '@/hooks/availability'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useDebounceCallback } from '@/hooks/useDebounceCallback'
 import useSlotsWithAvailability from '@/hooks/useSlotsWithAvailability'
@@ -146,6 +147,10 @@ export function SchedulePickTime({
     groups,
   } = useParticipants()
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
+
+  const { block: defaultAvailabilityBlock } = useAvailabilityBlock(
+    currentAccount?.preferences?.availaibility_id
+  )
 
   const [isLoading, setIsLoading] = useState(true)
 
@@ -936,6 +941,9 @@ export function SchedulePickTime({
                               timezone={timezone}
                               currentAccountAddress={currentAccount?.address}
                               displayNameToAddress={displayNameToAddress}
+                              defaultAvailabilityBlock={
+                                defaultAvailabilityBlock
+                              }
                             />
                           )
                         })}
