@@ -52,6 +52,8 @@ const QUICKPOLL_DESCRIPTION_MAX_LENGTH = 1000
 
 const QUICKPOLL_EXPIRY_BUFFER_HOURS = 1 // Minimum hours before expiry
 
+// Event title truncation constants
+
 const DASHBOARD_ROUTE_PREFIX = '/dashboard'
 const SETTINGS_ROUTE_PREFIX = `${DASHBOARD_ROUTE_PREFIX}/details`
 const DASHBOARD_SCHEDULE_ROUTE = `${DASHBOARD_ROUTE_PREFIX}/schedule`

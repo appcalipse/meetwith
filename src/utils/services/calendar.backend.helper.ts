@@ -92,6 +92,10 @@ export const CalendarBackendHelper = {
                 end: new Date(it.end),
                 source: calendar.provider,
                 account_address,
+                eventTitle: it.title,
+                eventId: it.eventId,
+                eventWebLink: it.webLink,
+                eventEmail: it.email,
               }))
             )
           } catch (e: any) {

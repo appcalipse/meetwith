@@ -27,6 +27,7 @@ import { FaAnglesRight } from 'react-icons/fa6'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import { useAvailabilityBlock } from '@/hooks/availability'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useDebounceCallback } from '@/hooks/useDebounceCallback'
 import useSlotsWithAvailability from '@/hooks/useSlotsWithAvailability'
@@ -37,6 +38,7 @@ import {
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
+import { TimeSlot } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
   fetchBusySlotsRawForMultipleAccounts,
@@ -56,6 +58,7 @@ import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { suggestBestSlots } from '@/utils/slots.helper'
+import { getAccountDisplayName } from '@/utils/user_manager'
 
 import ScheduleTimeSlot from './ScheduleTimeSlot'
 interface AccountAddressRecord extends ParticipantInfo {
@@ -145,6 +148,10 @@ export function SchedulePickTime({
   } = useParticipants()
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
+  const { block: defaultAvailabilityBlock } = useAvailabilityBlock(
+    currentAccount?.preferences?.availaibility_id
+  )
+
   const [isLoading, setIsLoading] = useState(true)
 
   const isDisplayLoading = isLoading
@@ -154,6 +161,9 @@ export function SchedulePickTime({
   const [busySlots, setBusySlots] = useState<Map<string, Interval<true>[]>>(
     new Map()
   )
+  const [busySlotsWithDetails, setBusySlotsWithDetails] = useState<
+    Map<string, TimeSlot[]>
+  >(new Map())
   const availabilityAddresses = useMemo(() => {
     const keys = Object.keys(groupAvailability)
     const participantsSet = new Set<string>()
@@ -204,8 +214,23 @@ export function SchedulePickTime({
     availableSlots,
     meetingMembers,
     availabilityAddresses,
-    timezone
+    timezone,
+    busySlotsWithDetails,
+    currentAccount?.address
   )
+
+  // Create a mapping from displayName to account address to identify current user
+  const displayNameToAddress = useMemo(() => {
+    if (!meetingMembers) return new Map<string, string>()
+    const map = new Map<string, string>()
+    meetingMembers.forEach(member => {
+      if (member.address) {
+        const displayName = getAccountDisplayName(member)
+        map.set(displayName, member.address.toLowerCase())
+      }
+    })
+    return map
+  }, [meetingMembers])
   const [monthValue, setMonthValue] = useState<
     SingleValue<{ label: string; value: string }>
   >({
@@ -311,25 +336,44 @@ export function SchedulePickTime({
         .filter((val): val is AccountAddressRecord => !!val.account_address)
         .map(val => val.account_address)
         .concat([currentAccount?.address || ''])
-      const [busySlots, meetingMembers] = await Promise.all([
-        fetchBusySlotsRawForMultipleAccounts(
-          accounts,
-          monthStart,
-          monthEnd
-        ).then(busySlots =>
-          busySlots.map(busySlot => ({
-            account_address: busySlot.account_address,
-            interval: Interval.fromDateTimes(
-              new Date(busySlot.start),
-              new Date(busySlot.end)
-            ),
-          }))
-        ),
+      const [busySlotsRaw, meetingMembers] = await Promise.all([
+        fetchBusySlotsRawForMultipleAccounts(accounts, monthStart, monthEnd),
         getExistingAccounts(deduplicateArray(allParticipants)),
       ])
+
+      // Map raw busy slots to intervals for compatibility
+      const busySlots = busySlotsRaw.map(busySlot => ({
+        account_address: busySlot.account_address,
+        interval: Interval.fromDateTimes(
+          new Date(busySlot.start),
+          new Date(busySlot.end)
+        ),
+      }))
+
+      // Store full TimeSlot objects with event details
+      const busySlotsWithDetailsMap: Map<string, TimeSlot[]> = new Map()
       const accountBusySlots = accounts.map(account => {
         return busySlots.filter(slot => slot.account_address === account)
       })
+
+      // Store busy slots with details grouped by account
+      for (const account of accounts) {
+        const accountSlots = busySlotsRaw
+          .filter(slot => {
+            const slotAddress = slot.account_address?.toLowerCase()
+            const accountAddress = account?.toLowerCase()
+            return slotAddress === accountAddress
+          })
+          .map(slot => ({
+            ...slot,
+            start: new Date(slot.start),
+            end: new Date(slot.end),
+          }))
+        if (accountSlots.length > 0) {
+          busySlotsWithDetailsMap.set(account.toLowerCase(), accountSlots)
+        }
+      }
+
       const availableSlotsMap: Map<string, Interval[]> = new Map<
         string,
         Interval[]
@@ -366,6 +410,7 @@ export function SchedulePickTime({
         )
       }
       setBusySlots(busySlotsMap)
+      setBusySlotsWithDetails(busySlotsWithDetailsMap)
       setMeetingMembers(meetingMembers)
       setAvailableSlots(availableSlotsMap)
       setDates(getDates(duration))
@@ -894,6 +939,11 @@ export function SchedulePickTime({
                               duration={duration}
                               handleTimePick={handleTimeSelection}
                               timezone={timezone}
+                              currentAccountAddress={currentAccount?.address}
+                              displayNameToAddress={displayNameToAddress}
+                              defaultAvailabilityBlock={
+                                defaultAvailabilityBlock
+                              }
                             />
                           )
                         })}

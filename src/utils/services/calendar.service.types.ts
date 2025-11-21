@@ -8,7 +8,14 @@ import {
 import { MicrosoftGraphEvent } from '@/types/Office365'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
-export type EventBusyDate = Record<'start' | 'end', Date | string>
+export type EventBusyDate = {
+  start: Date | string
+  end: Date | string
+  title?: string
+  eventId?: string
+  webLink?: string
+  email?: string
+}
 
 /**
  * Calendar Service  Contract

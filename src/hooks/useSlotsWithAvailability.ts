@@ -6,6 +6,8 @@ import {
   State,
 } from '@/components/schedule/schedule-time-discover/SchedulePickTime'
 import { Account } from '@/types/Account'
+import { TimeSlot } from '@/types/Meeting'
+import { generateCalendarEventUrl } from '@/utils/calendar_event_url'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 const useSlotsWithAvailability = (
@@ -14,7 +16,9 @@ const useSlotsWithAvailability = (
   availableSlots: Map<string, Interval<true>[]>,
   meetingMembers: Account[],
   participantAvailabilities: string[],
-  timezone: string
+  timezone: string,
+  busySlotsWithDetails?: Map<string, TimeSlot[]>,
+  currentAccountAddress?: string
 ) => {
   return useMemo(() => {
     const now = DateTime.now().setZone(timezone)
@@ -64,11 +68,55 @@ const useSlotsWithAvailability = (
           state = State.SOME_AVAILABLE
         }
 
+        // Find overlapping event for current user if available
+        let currentUserEvent: TimeSlot | null = null
+        let eventUrl: string | null = null
+        if (currentAccountAddress && busySlotsWithDetails) {
+          const userBusySlots = busySlotsWithDetails.get(
+            currentAccountAddress.toLowerCase()
+          )
+          if (userBusySlots && userBusySlots.length > 0) {
+            const overlappingEvent = userBusySlots.find(busySlot => {
+              const busyStart =
+                busySlot.start instanceof Date
+                  ? busySlot.start
+                  : new Date(busySlot.start)
+              const busyEnd =
+                busySlot.end instanceof Date
+                  ? busySlot.end
+                  : new Date(busySlot.end)
+              const busyInterval = Interval.fromDateTimes(
+                DateTime.fromJSDate(busyStart),
+                DateTime.fromJSDate(busyEnd)
+              )
+              return busyInterval.overlaps(slot)
+            })
+
+            // Only include event if it has event information
+            if (
+              overlappingEvent &&
+              (overlappingEvent.eventTitle ||
+                overlappingEvent.eventId ||
+                overlappingEvent.eventWebLink)
+            ) {
+              currentUserEvent = overlappingEvent
+              // Generate calendar URL for the event
+              eventUrl = generateCalendarEventUrl(
+                overlappingEvent.source,
+                overlappingEvent.eventId,
+                overlappingEvent.eventWebLink
+              )
+            }
+          }
+        }
+
         return {
           slot,
           state,
           userStates,
           slotKey: `${slot.start.toMillis()}-${slot.end.toMillis()}`,
+          currentUserEvent,
+          eventUrl,
         }
       }),
     }))
@@ -79,6 +127,8 @@ const useSlotsWithAvailability = (
     meetingMembers,
     participantAvailabilities,
     timezone,
+    busySlotsWithDetails,
+    currentAccountAddress,
   ])
 }
 
