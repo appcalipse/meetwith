@@ -8,6 +8,7 @@ export default async function recurrenceSync(
 ) {
   if (req.method === 'POST') {
     try {
+      return res.status(200).send('Webhook received')
       const channelId = req.headers['x-goog-channel-id'] as string
       const resourceId = req.headers['x-goog-resource-id'] as string
       const event = await handleWebhookEvent(channelId, resourceId)
