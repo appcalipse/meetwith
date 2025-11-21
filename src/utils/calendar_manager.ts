@@ -15,6 +15,7 @@ import { Account, DayAvailability } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
+  BaseSlot,
   DBSlot,
   ExtendedDBSlot,
   GuestSlot,
@@ -40,10 +41,12 @@ import { Address } from '@/types/Transactions'
 import {
   cancelMeeting as apiCancelMeeting,
   conferenceGuestMeetingCancel,
+  decodeMeetingGuest,
   generateMeetingUrl,
   getAccount,
   getAccountPrimaryCalendarEmail,
   getExistingAccounts,
+  getGuestSlotById,
   getMeeting,
   getMeetingGuest,
   getSlotByMeetingId,
@@ -172,8 +175,10 @@ const mapRelatedSlots = async (
   currentAccountAddress?: string
 ) => {
   const accountSlot: { [account: string]: string } = {}
-  if (currentAccountAddress) {
-    accountSlot[currentAccountAddress] = meeting.id
+  if (meeting.user_type !== 'guest') {
+    if (currentAccountAddress) {
+      accountSlot[currentAccountAddress] = meeting.id
+    }
   }
   for (const slotId of meeting.related_slot_ids) {
     if (slotId !== meeting.id) {
@@ -182,6 +187,12 @@ const mapRelatedSlots = async (
         accountSlot[slot.account_address] = slotId
       } catch (e) {
         // some slots might not be found if they belong to guests and were wrongly stored
+        try {
+          const guestSlot = await getGuestSlotById(slotId)
+          if (guestSlot?.guest_email) {
+            accountSlot[guestSlot.guest_email] = slotId
+          }
+        } catch (e) {}
       }
     }
   }
@@ -624,19 +635,35 @@ const updateMeeting = async (
     throw new MeetingDetailsModificationDenied()
   }
   const currentAccount = await getAccount(currentAccountAddress)
-
-  const existingDBSlot = await getMeeting(decryptedMeeting.id)
-  const existingMeeting = await decryptMeeting(
-    existingDBSlot,
-    currentAccount,
-    signature
-  )
+  let existingMeeting: MeetingDecrypted | null = null
+  if (decryptedMeeting.user_type === 'guest') {
+    const existingDBSlot = await getSlotByMeetingId(decryptedMeeting.meeting_id)
+    if (!existingDBSlot) {
+      throw new MeetingChangeConflictError()
+    }
+    if (existingDBSlot?.user_type === 'guest') {
+      existingMeeting = await decodeMeetingGuest(existingDBSlot)
+    } else {
+      existingMeeting = await decryptMeeting(
+        existingDBSlot,
+        currentAccount,
+        signature
+      )
+    }
+  } else {
+    const existingDBSlot = await getMeeting(decryptedMeeting.id)
+    existingMeeting = await decryptMeeting(
+      existingDBSlot,
+      currentAccount,
+      signature
+    )
+  }
 
   //TODO: anyone can update a meeting, but we might need to change the participants statuses
 
   // make sure that we are trying to update the latest version of the meeting,
   // otherwise it means that somebody changes before this one
-  if (decryptedMeeting.version !== existingDBSlot.version) {
+  if (decryptedMeeting.version !== existingMeeting?.version) {
     throw new MeetingChangeConflictError()
   }
 
@@ -749,17 +776,39 @@ const updateMeeting = async (
     meetingRepeat,
     selectedPermissions
   )
-
   const payload = {
     ...meetingData,
-    slotsToRemove: toRemove.map(it => accountSlotMap[it]),
+    slotsToRemove: toRemove
+      .map(it => accountSlotMap[it])
+      .filter((it): it is string => it !== undefined),
     guestsToRemove,
     version: decryptedMeeting.version + 1,
   }
 
   // Fetch the updated data one last time
-  const slot: DBSlot = await apiUpdateMeeting(decryptedMeeting.id, payload)
-  return (await decryptMeeting(slot, currentAccount))!
+  if (decryptedMeeting.user_type === 'guest') {
+    const slot: DBSlot = await apiUpdateMeetingAsGuest(
+      decryptedMeeting?.id,
+      payload
+    )
+    return {
+      id: slot.id!,
+      meeting_id: slot.id!,
+      created_at: new Date(),
+      participants: meetingData.participants_mapping,
+      content: meetingData.content,
+      title: meetingData.title,
+      meeting_url: meetingData.meeting_url,
+      start: meetingData.start,
+      end: meetingData.end,
+      related_slot_ids: meetingData.allSlotIds || [],
+      version: slot.version,
+      meeting_info_encrypted: slot.meeting_info_encrypted,
+    }
+  } else {
+    const slot: DBSlot = await apiUpdateMeeting(decryptedMeeting.id, payload)
+    return (await decryptMeeting(slot, currentAccount))!
+  }
 }
 const updateMeetingConferenceGuest = async (
   ignoreAvailabilities: boolean,
@@ -1004,19 +1053,35 @@ const deleteMeeting = async (
   }
 
   const currentAccount = await getAccount(currentAccountAddress)
-
-  const existingDBSlot = await getMeeting(decryptedMeeting.id)
-  const existingMeeting = await decryptMeeting(
-    existingDBSlot,
-    currentAccount,
-    signature
-  )
+  let existingMeeting: MeetingDecrypted | null = null
+  if (decryptedMeeting.user_type === 'guest') {
+    const existingDBSlot = await getSlotByMeetingId(decryptedMeeting.meeting_id)
+    if (!existingDBSlot) {
+      throw new MeetingChangeConflictError()
+    }
+    if (existingDBSlot?.user_type === 'guest') {
+      existingMeeting = await decodeMeetingGuest(existingDBSlot)
+    } else {
+      existingMeeting = await decryptMeeting(
+        existingDBSlot,
+        currentAccount,
+        signature
+      )
+    }
+  } else {
+    const existingDBSlot = await getMeeting(decryptedMeeting.id)
+    existingMeeting = await decryptMeeting(
+      existingDBSlot,
+      currentAccount,
+      signature
+    )
+  }
 
   //TODO: anyone can update a meeting, but we might need to change the participants statuses
 
   // make sure that we are trying to update the latest version of the meeting,
   // otherwise it means that somebody changes before this one
-  if (decryptedMeeting.version !== existingDBSlot.version) {
+  if (decryptedMeeting.version !== existingMeeting?.version) {
     throw new MeetingChangeConflictError()
   }
 
@@ -1119,7 +1184,9 @@ const deleteMeeting = async (
   )
   const payload = {
     ...meetingData,
-    slotsToRemove: toRemove.map(it => accountSlotMap[it]),
+    slotsToRemove: toRemove
+      .map(it => accountSlotMap[it])
+      .filter((it): it is string => it !== undefined),
     guestsToRemove,
     version: decryptedMeeting.version + 1,
   }
@@ -1149,32 +1216,48 @@ const cancelMeeting = async (
 
   const ownerAccount = await getAccount(currentAccountAddress)
 
-  const existingDBSlot = await getMeeting(decryptedMeeting.id)
-  const existingMeeting = await decryptMeeting(
-    existingDBSlot,
-    ownerAccount,
-    signature
-  )
+  let existingMeeting: MeetingDecrypted | null = null
+  if (decryptedMeeting.user_type === 'guest') {
+    const existingDBSlot = await getSlotByMeetingId(decryptedMeeting.meeting_id)
+    if (!existingDBSlot) {
+      throw new MeetingChangeConflictError()
+    }
+    if (existingDBSlot?.user_type === 'guest') {
+      existingMeeting = await decodeMeetingGuest(existingDBSlot)
+    } else {
+      existingMeeting = await decryptMeeting(
+        existingDBSlot,
+        ownerAccount,
+        signature
+      )
+    }
+  } else {
+    const existingDBSlot = await getMeeting(decryptedMeeting.id)
+    existingMeeting = await decryptMeeting(
+      existingDBSlot,
+      ownerAccount,
+      signature
+    )
+  }
 
   // Only the owner or scheduler of the meeting can cancel it
-  const meetingOwners = existingMeeting!.participants.filter(
-    user => user.type === ParticipantType.Owner
+  const isMeetingOwners = existingMeeting!.participants.find(
+    user =>
+      user.type === ParticipantType.Owner &&
+      user.slot_id === decryptedMeeting.id
   )
-  const meetingScheduler = existingMeeting!.participants.find(
-    user => user.type === ParticipantType.Scheduler
+  const isMeetingScheduler = existingMeeting!.participants.find(
+    user =>
+      user.type === ParticipantType.Scheduler &&
+      user.slot_id === decryptedMeeting.id
   )
-  if (
-    meetingOwners?.every(
-      account => account.account_address !== currentAccountAddress
-    ) &&
-    meetingScheduler?.account_address !== currentAccountAddress
-  ) {
+  if (!isMeetingOwners && !isMeetingScheduler) {
     throw new MeetingCancelForbiddenError()
   }
 
   // make sure that we are trying to update the latest version of the meeting,
   // otherwise it means that somebody changes before this one
-  if (decryptedMeeting.version !== existingDBSlot.version) {
+  if (decryptedMeeting.version !== existingMeeting?.version) {
     throw new MeetingChangeConflictError()
   }
   // Fetch the updated data one last time
@@ -1200,7 +1283,7 @@ const cancelMeetingGuest = async (
   if (!existingDBSlot) {
     throw new MeetingChangeConflictError()
   }
-  const existingMeeting = await decryptMeetingGuest(existingDBSlot)
+  const existingMeeting = await decodeMeetingGuest(existingDBSlot)
 
   // Only the owner or scheduler of the meeting can cancel it
   const meetingOwners = existingMeeting!.participants.filter(
@@ -1434,10 +1517,6 @@ const generateIcs = async (
   if (!isValidUrl(url)) {
     url = 'https://meetwith.xyz'
   }
-  const hasGuest =
-    meeting.participants.some(
-      p => p.guest_email && p.guest_email.trim() !== ''
-    ) && !!destination?.accountAddress
   const start = DateTime.fromJSDate(new Date(meeting.start))
   const end = DateTime.fromJSDate(new Date(meeting.end))
   const created_at = DateTime.fromJSDate(new Date(meeting.created_at!))
@@ -1454,8 +1533,7 @@ const generateIcs = async (
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
-      changeUrl,
-      hasGuest
+      changeUrl
     ),
     url,
     location: meeting.meeting_url,
@@ -1595,7 +1673,7 @@ const decryptMeeting = async (
   }
 }
 const decryptMeetingGuest = async (
-  meeting: GuestSlot
+  meeting: BaseSlot
 ): Promise<MeetingDecrypted | null> => {
   const content = await getContentFromEncryptedGuest(
     meeting?.meeting_info_encrypted
@@ -1794,8 +1872,9 @@ const googleUrlParsedDate = (date: Date) =>
 
 const outLookUrlParsedDate = (date: Date) =>
   formatInTimeZone(date, 'UTC', "yyyy-MM-dd:HH:mm:SS'Z'")
-const generateGoogleCalendarUrl = (
-  slot_id: string,
+const generateGoogleCalendarUrl = async (
+  meeting_id: string,
+  account_owner_address: string,
   start?: Date | number,
   end?: Date | number,
   title?: string,
@@ -1804,7 +1883,6 @@ const generateGoogleCalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
-  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl = 'https://calendar.google.com/calendar/r/eventedit?sf=true'
   if (start && end) {
     baseUrl += `&dates=${googleUrlParsedDate(
@@ -1815,27 +1893,33 @@ const generateGoogleCalendarUrl = (
     baseUrl += `&text=${title}`
   }
   if (content || meeting_url) {
-    const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+    const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
     baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      changeUrl,
-      hasGuests
+      changeUrl
     )}`
   }
   if (timezone) {
     baseUrl += `&ctz=${timezone}`
   }
   if (participants) {
-    baseUrl += `&add=${participants
-      ?.map(val => val.guest_email)
-      ?.filter(val => !!val)
-      ?.join(',')}`
+    const attendees = await Promise.all(
+      participants.map(async participant => {
+        if (participant.account_address === account_owner_address) return null
+        const email =
+          participant.guest_email ||
+          (await getAccountPrimaryCalendarEmail(participant.account_address!))
+        return email
+      })
+    )
+    baseUrl += `&to=${attendees.filter(val => !!val).join(',')}`
   }
   return baseUrl
 }
-const generateOffice365CalendarUrl = (
-  slot_id: string,
+const generateOffice365CalendarUrl = async (
+  meeting_id: string,
+  account_owner_address: string,
   start?: Date | number,
   end?: Date | number,
   title?: string,
@@ -1844,7 +1928,6 @@ const generateOffice365CalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
-  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl =
     'https://outlook.office.com/calendar/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&online=true'
   if (start) {
@@ -1857,19 +1940,24 @@ const generateOffice365CalendarUrl = (
     baseUrl += `&subject=${title}`
   }
   if (content || meeting_url) {
-    const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+    const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
     baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      changeUrl,
-      hasGuests
+      changeUrl
     )}`
   }
   if (participants) {
-    baseUrl += `&to=${participants
-      ?.map(val => val.guest_email)
-      ?.filter(val => !!val)
-      ?.join(',')}`
+    const attendees = await Promise.all(
+      participants.map(async participant => {
+        if (participant.account_address === account_owner_address) return null
+        const email =
+          participant.guest_email ||
+          (await getAccountPrimaryCalendarEmail(participant.account_address!))
+        return email
+      })
+    )
+    baseUrl += `&to=${attendees.filter(val => !!val).join(',')}`
   }
   return baseUrl
 }
