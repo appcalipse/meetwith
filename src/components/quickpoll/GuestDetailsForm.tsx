@@ -29,7 +29,7 @@ import { isValidEmail } from '@/utils/validations'
 
 interface GuestDetailsFormProps {
   pollData: QuickPollBySlugResponse
-  onSuccess: () => void
+  onSuccess: (isProfileUpdateOnly?: boolean) => void
   pollTitle?: string
   onNavigateBack?: () => void
 }
@@ -98,13 +98,32 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
 
     try {
       let participantId = currentParticipantId
+      let isProfileUpdateOnly = false
 
-      if (currentParticipantId && calendarConnected) {
+      // Check if this is a profile-only update
+      if (
+        currentParticipantId &&
+        guestAvailabilitySlots.length === 0 &&
+        !calendarConnected
+      ) {
+        // Profile update only
         await updateGuestParticipantDetails(
           currentParticipantId,
           fullName.trim(),
           email.trim().toLowerCase()
         )
+        isProfileUpdateOnly = true
+        showSuccessToast(
+          'Profile updated!',
+          'Your name and email have been updated successfully.'
+        )
+      } else if (currentParticipantId && calendarConnected) {
+        await updateGuestParticipantDetails(
+          currentParticipantId,
+          fullName.trim(),
+          email.trim().toLowerCase()
+        )
+        isProfileUpdateOnly = true
         showSuccessToast(
           'Details saved!',
           'Your calendar is connected and your details have been saved.'
@@ -136,7 +155,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
 
       setIsEditingAvailability(false)
 
-      onSuccess()
+      onSuccess(isProfileUpdateOnly)
     } catch (error) {
       showErrorToast(
         'Failed to save details',
