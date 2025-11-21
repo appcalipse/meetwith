@@ -81,11 +81,13 @@ import {
   UserGroups,
 } from '@/types/Group'
 import {
+  AccountSlot,
   ConferenceMeeting,
   DBSlot,
   ExtendedDBSlot,
   GroupMeetingRequest,
   GroupNotificationType,
+  GuestSlot,
   MeetingAccessType,
   MeetingInfo,
   MeetingProvider,
@@ -110,7 +112,6 @@ import {
   QuickPollParticipantStatus,
   QuickPollParticipantType,
   QuickPollParticipantUpdateFields,
-  QuickPollWithParticipants,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
@@ -215,7 +216,6 @@ import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
-  noNoReplyEmailForAccount,
 } from './calendar_manager'
 import {
   extractMeetingDescription,
@@ -234,11 +234,12 @@ import {
 } from './email_helper'
 import { deduplicateArray } from './generic_utils'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
-import { CalendarService } from './services/calendar.service.types'
+import { IGoogleCalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
+import { getCalendarPrimaryEmail } from './sync_helper'
 import { isConditionValid } from './token.gate.service'
 import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
@@ -335,6 +336,11 @@ const initAccountDBForWallet = async (
     timezone,
     meetingProviders: [MeetingProvider.GOOGLE_MEET],
     availaibility_id: defaultBlock.id,
+  }
+  try {
+    await createMeetingType(user_account.address, meetingType)
+  } catch (e) {
+    Sentry.captureException(e)
   }
   try {
     const responsePrefs = await db.supabase.from('account_preferences').insert({
@@ -574,7 +580,7 @@ const getAccountAvatarUrl = async (address: string): Promise<string | null> => {
     .from('account_preferences')
     .select('avatar_url')
     .eq('owner_account_address', address.toLowerCase())
-    .single()
+    .maybeSingle()
   if (error) {
     Sentry.captureException(error)
     return null
@@ -619,7 +625,7 @@ export const getAccountPreferences = async (
       `
         )
         .eq('owner_account_address', owner_account_address.toLowerCase())
-        .single()
+        .maybeSingle()
     if (account_preferences_error || !account_preferences) {
       console.error(account_preferences_error)
       throw new Error("Couldn't get account's preferences")
@@ -920,6 +926,9 @@ const isSlotAvailable = async (
 ): Promise<boolean> => {
   if (meetingTypeId !== NO_MEETING_TYPE) {
     const meetingType = await getMeetingTypeFromDB(meetingTypeId)
+    if (!meetingType) {
+      throw new MeetingTypeNotFound()
+    }
     const minTime = meetingType.min_notice_minutes
     if (meetingType?.plan) {
       if (meeting_id) {
@@ -995,7 +1004,22 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
 
   return meeting
 }
+const getSlotByMeetingIdAndAccount = async (
+  meeting_id: string,
+  account_address?: string
+): Promise<AccountSlot | GuestSlot> => {
+  const { data, error } = await db.supabase.rpc('get_meeting_primary_slot', {
+    p_meeting_id: meeting_id,
+    p_account_address: account_address?.toLowerCase(),
+  })
 
+  if (error) {
+    throw new Error(error.message)
+    // todo handle error
+  }
+
+  return Array.isArray(data) ? data[0] : data
+}
 const getConferenceMeetingFromDB = async (
   meetingId: string
 ): Promise<ConferenceMeeting> => {
@@ -1050,6 +1074,20 @@ const getConferenceDataBySlotId = async (
   }
 
   return data[0]
+}
+const getGuestSlotById = async (slotId: string): Promise<GuestSlot> => {
+  const { data, error } = await db.supabase
+    .from<GuestSlot>('guest_slots')
+    .select('*')
+    .eq('id', slotId)
+    .maybeSingle()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new MeetingNotFoundError(slotId)
+  }
+  return data
 }
 const handleGuestCancel = async (
   metadata: string,
@@ -1235,7 +1273,13 @@ const deleteMeetingFromDB = async (
     []
 
   const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
-
+  const { error: guestSlotsError } = await db.supabase
+    .from('guest_slots')
+    .delete()
+    .in('id', slotIds)
+  if (guestSlotsError) {
+    throw new Error(guestSlotsError.message)
+  }
   if (error) {
     throw new Error(error.message)
   }
@@ -1276,6 +1320,7 @@ const saveMeeting = async (
     throw new MeetingCreationError()
 
   const slots = []
+  const guestSlots = []
   let meetingResponse: Partial<DBSlot> = {}
   let index = 0
   let i = 0
@@ -1442,6 +1487,19 @@ const saveMeeting = async (
         }
       }
       i++
+    } else if (participant.guest_email && participant.slot_id) {
+      const dbSlot: TablesInsert<'guest_slots'> = {
+        id: participant.slot_id,
+        start: new Date(meeting.start).toISOString(),
+        end: new Date(meeting.end).toISOString(),
+        version: 0,
+        meeting_info_encrypted: participant.privateInfo,
+        recurrence: meeting.meetingRepeat,
+        role: participant.type,
+        guest_email: participant.guest_email,
+        name: participant.name || '',
+      }
+      guestSlots.push(dbSlot)
     }
   }
 
@@ -1466,12 +1524,21 @@ const saveMeeting = async (
     )
   }
   const { data, error } = await db.supabase.from('slots').insert(slots)
+  if (guestSlots.length > 0) {
+    const { error: guestSlotsError } = await db.supabase
+      .from('guest_slots')
+      .insert(guestSlots)
+    if (guestSlotsError) {
+      throw new Error(guestSlotsError.message)
+    }
+  }
 
   //TODO: handle error
   if (error) {
     throw new Error(error.message)
   }
 
+  // TODO switch this to check if scheduler is guest slot
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
@@ -2369,7 +2436,7 @@ const getQuickPollCalendars = async (
   }
 ): Promise<ConnectedCalendar[]> => {
   const { data, error } = await db.supabase
-    .from<Tables<'quick_poll_calendars'>>('quick_poll_calendars')
+    .from('quick_poll_calendars')
     .select('*')
     .eq('participant_id', participantId)
     .order('id', { ascending: true })
@@ -2580,7 +2647,7 @@ const checkCalendarAlreadyExistsForMeetingType = async (
 const handleWebHook = async (
   calId: string,
   connectedCalendarId: number,
-  integration: CalendarService<TimeSlotSource>
+  integration: IGoogleCalendarService
 ) => {
   try {
     if (!integration.setWebhookUrl || !integration.refreshWebhook) return
@@ -2924,17 +2991,6 @@ const getGateConditionsForAccount = async (
   throw new Error(error.message)
 }
 
-const getAppToken = async (tokenType: string): Promise<any | null> => {
-  const { data, error } = await db.supabase
-    .from('application_tokens')
-    .select()
-    .eq('type', tokenType)
-
-  if (!error) return data[0]
-
-  return null
-}
-
 const updateMeeting = async (
   participantActing: ParticipantBaseInfo,
   meetingUpdateRequest: MeetingUpdateRequest
@@ -2950,6 +3006,7 @@ const updateMeeting = async (
     throw new MeetingCreationError()
   }
   const slots = []
+  const guestSlots = []
   let meetingResponse = {} as DBSlot
   let index = 0
   let i = 0
@@ -3124,6 +3181,19 @@ const updateMeeting = async (
         }
       }
       i++
+    } else if (participant.guest_email && participant.slot_id) {
+      const dbSlot: TablesInsert<'guest_slots'> = {
+        id: participant.slot_id,
+        start: new Date(meetingUpdateRequest.start).toISOString(),
+        end: new Date(meetingUpdateRequest.end).toISOString(),
+        version: meetingUpdateRequest.version,
+        meeting_info_encrypted: participant.privateInfo,
+        recurrence: meetingUpdateRequest.meetingRepeat,
+        role: participant.type,
+        guest_email: participant.guest_email,
+        name: participant.name || '',
+      }
+      guestSlots.push(dbSlot)
     }
   }
 
@@ -3142,10 +3212,17 @@ const updateMeeting = async (
   const { data, error } = await db.supabase
     .from('slots')
     .upsert(slots, { onConflict: 'id' })
-
   //TODO: handle error
   if (error) {
     throw new Error(error.message)
+  }
+  if (guestSlots.length > 0) {
+    const { error: guestSlotsError } = await db.supabase
+      .from('guest_slots')
+      .upsert(guestSlots, { onConflict: 'id' })
+    if (guestSlotsError) {
+      throw new Error(guestSlotsError.message)
+    }
   }
 
   meetingResponse.id = data[index].id
@@ -3271,12 +3348,15 @@ const getOfficeEventMappingId = async (
     .from('office_event_mapping')
     .select()
     .eq('mww_id', mww_id)
+    .maybeSingle()
 
   if (error) {
     throw new Error(error.message)
   }
-
-  return data[0].office_id
+  if (!data) {
+    return null
+  }
+  return data.office_id
 }
 
 export const getDiscordAccount = async (
@@ -3356,7 +3436,7 @@ export async function isUserAdminOfGroup(
     .eq('group_id', groupId)
     .eq('member_id', userAddress)
     .eq('role', 'admin')
-    .single()
+    .maybeSingle()
 
   if (error) {
     console.error('Error checking admin status:', error)
@@ -3829,7 +3909,7 @@ const _getContactByAddress = async (
     .eq('account_owner_address', owner_address)
     .eq('contact_address', address)
     .eq('status', ContactStatus.ACTIVE)
-    .single()
+    .maybeSingle()
   if (error) {
     throw new Error(error.message)
   }
@@ -4100,7 +4180,7 @@ const getDefaultAvailabilityBlockId = async (
     .from('account_preferences')
     .select('availaibility_id')
     .eq('owner_account_address', account_address)
-    .single()
+    .maybeSingle()
 
   return accountPrefs?.availaibility_id || null
 }
@@ -4122,7 +4202,7 @@ const checkTitleExists = async (
     query = query.neq('id', excludeBlockId)
   }
 
-  const { data: existingBlock, error: checkError } = await query.single()
+  const { data: existingBlock, error: checkError } = await query.maybeSingle()
 
   if (checkError && checkError.code !== 'PGRST116') {
     throw checkError
@@ -4165,7 +4245,7 @@ export const createAvailabilityBlock = async (
       },
     ])
     .select()
-    .single()
+    .maybeSingle()
 
   if (blockError) throw blockError
 
@@ -4195,7 +4275,7 @@ export const getAvailabilityBlock = async (
     .select('*')
     .eq('id', id)
     .eq('account_owner_address', account_address)
-    .single()
+    .maybeSingle()
 
   if (error) {
     if (error.code === 'PGRST116') {
@@ -4256,7 +4336,7 @@ export const updateAvailabilityBlock = async (
     .eq('id', id)
     .eq('account_owner_address', account_address)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) throw error
   return data
@@ -4321,7 +4401,7 @@ export const duplicateAvailabilityBlock = async (
       },
     ])
     .select()
-    .single()
+    .maybeSingle()
 
   if (blockError) {
     throw new InvalidAvailabilityBlockError('Failed to create duplicate block')
@@ -4474,7 +4554,7 @@ const getMeetingTypesForAvailabilityBlock = async (
     .select('id')
     .eq('id', availability_block_id)
     .eq('account_owner_address', account_address)
-    .single()
+    .maybeSingle()
 
   if (blockError || !block) {
     throw new AvailabilityBlockNotFoundError()
@@ -4818,7 +4898,7 @@ const updateAvailabilityBlockMeetingTypes = async (
     .select('id')
     .eq('id', availability_block_id)
     .eq('account_owner_address', account_address)
-    .single()
+    .maybeSingle()
 
   if (blockError || !block) {
     throw new AvailabilityBlockNotFoundError()
@@ -4848,7 +4928,7 @@ const getTypeMeetingAvailabilityTypeFromDB = async (
     )
     .eq('id', id)
     .is('deleted_at', null)
-    .single()
+    .maybeSingle()
   if (error) {
     throw new Error(error.message)
   }
@@ -4860,7 +4940,11 @@ const getTypeMeetingAvailabilityTypeFromDB = async (
       availability.availabilities
   )
 }
-const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
+const getMeetingTypeFromDB = async (
+  id: string
+): Promise<MeetingType | null> => {
+  if (id === NO_MEETING_TYPE) return null
+
   const { data, error } = await db.supabase
     .from('meeting_type')
     .select(
@@ -4874,12 +4958,12 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
     )
     .eq('id', id)
     .is('deleted_at', null)
-    .single()
+    .maybeSingle()
   if (error) {
     throw new Error(error.message)
   }
   if (!data) {
-    throw new MeetingTypeNotFound()
+    return null
   }
   data.plan = data.plan?.[0] || null
   data.calendars = data?.connected_calendars?.map(
@@ -4903,7 +4987,7 @@ const getMeetingTypeFromDBLean = async (id: string) => {
     )
     .eq('id', id)
     .is('deleted_at', null)
-    .single()
+    .maybeSingle()
   if (error) {
     throw new Error(error.message)
   }
@@ -4979,16 +5063,16 @@ export const getWalletTransactions = async (
           .from('meeting_type')
           .select(
             `
-            id, 
-            title, 
-            account_owner_address, 
+            id,
+            title,
+            account_owner_address,
             description,
             meeting_sessions!inner(
-              id, 
-              guest_email, 
-              guest_name, 
-              session_number, 
-              created_at, 
+              id,
+              guest_email,
+              guest_name,
+              session_number,
+              created_at,
               updated_at
             )
           `
@@ -5005,7 +5089,7 @@ export const getWalletTransactions = async (
         }
 
         const { data: meetingTypeData, error: typeError } =
-          await meetingQuery.single()
+          await meetingQuery.maybeSingle()
 
         if (typeError) {
           console.error('Error fetching meeting type:', typeError)
@@ -5018,7 +5102,7 @@ export const getWalletTransactions = async (
             .from('account_preferences')
             .select('name')
             .eq('owner_account_address', ownerAddr)
-            .single()
+            .maybeSingle()
           meeting_host_name = hostPrefs?.name || null
           if (!meeting_host_name && ownerAddr) {
             meeting_host_name = `${ownerAddr.slice(0, 3)}***${ownerAddr.slice(
@@ -5250,6 +5334,9 @@ const confirmFiatTransaction = async (
   metadata: Record<string, unknown>
 ) => {
   const meetingType = await getMeetingTypeFromDB(payload.meeting_type_id)
+  if (!meetingType) {
+    throw new MeetingTypeNotFound()
+  }
   const { data, error } = await db.supabase
     .from<Tables<'transactions'>>('transactions')
     .update({
@@ -5628,7 +5715,7 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
     const integration = getConnectedCalendarIntegration(
       calendar.account_address,
       calendar.email,
-      calendar.provider,
+      TimeSlotSource.GOOGLE,
       calendar.payload
     )
     for (const cal of calendar.calendars.filter(c => c.enabled && c.sync)) {
@@ -5710,7 +5797,7 @@ const handleWebhookEvent = async (
     )
     .eq('channel_id', channelId)
     .eq('resource_id', resourceId)
-    .single()
+    .maybeSingle()
   if (!data) {
     throw new Error(
       `No webhook found for channel: ${channelId}, resource: ${resourceId}`
@@ -5730,17 +5817,16 @@ const handleWebhookEvent = async (
   const integration = getConnectedCalendarIntegration(
     calendar.account_address,
     calendar.email,
-    calendar.provider,
+    TimeSlotSource.GOOGLE,
     calendar.payload
   )
 
   let calendar_availabilities =
-    (await integration.listEvents?.(
+    (await integration.listEvents(
       data.calendar_id,
       lower_limit,
       upper_limit
     )) || []
-  const uniqueRecurringEventId = new Set<string>()
   calendar_availabilities = calendar_availabilities
     .sort((a, b) => {
       // Group by recurringEventId first
@@ -5859,15 +5945,15 @@ const handleCalendarRsvps = async (
         const integration = getConnectedCalendarIntegration(
           calendar.account_address,
           calendar.email,
-          calendar.provider,
+          TimeSlotSource.GOOGLE,
           calendar.payload
         )
 
         if (integration.updateEventRSVP && actor?.responseStatus) {
-          const actorEmail = noNoReplyEmailForAccount(
-            (actorAccount.preferences.name || actorAccount.address)!
+          const actorEmail = await getCalendarPrimaryEmail(
+            actorAccount.address!
           )
-
+          if (!actorEmail) continue
           for (const cal of calendar.calendars) {
             try {
               await integration.updateEventRSVP(
@@ -5902,7 +5988,7 @@ const handleCalendarRsvps = async (
   const integration = getConnectedCalendarIntegration(
     calendar.account_address,
     calendar.email,
-    calendar.provider,
+    TimeSlotSource.GOOGLE,
     calendar.payload
   )
   integration.updateEventExtendedProperties &&
@@ -6093,7 +6179,7 @@ const createPaymentPreferences = async (
         { onConflict: 'owner_account_address' }
       )
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Database error in createPaymentPreferences:', error)
@@ -6143,7 +6229,7 @@ const updatePaymentPreferences = async (
       .update(updateData)
       .eq('owner_account_address', owner_account_address.toLowerCase())
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Database error in updatePaymentPreferences:', error)
@@ -6189,7 +6275,7 @@ const verifyUserPin = async (
       .from('payment_preferences')
       .select('pin_hash')
       .eq('owner_account_address', owner_account_address.toLowerCase())
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Error fetching PIN for verification:', error)
@@ -6368,9 +6454,9 @@ const checkPollSlugExists = async (slug: string): Promise<boolean> => {
       .from('quick_polls')
       .select('id')
       .eq('slug', slug)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       throw error
     }
 
@@ -6407,7 +6493,7 @@ const createQuickPoll = async (
         },
       ])
       .select()
-      .single()
+      .maybeSingle()
 
     if (pollError) throw pollError
 
@@ -6426,7 +6512,7 @@ const createQuickPoll = async (
           .from('availabilities')
           .select('weekly_availability')
           .eq('id', availabilityId)
-          .single()
+          .maybeSingle()
 
         if (availability?.weekly_availability) {
           ownerAvailableSlots = availability.weekly_availability.map(
@@ -6478,7 +6564,7 @@ const createQuickPoll = async (
                 .from('availabilities')
                 .select('weekly_availability')
                 .eq('id', availabilityId)
-                .single()
+                .maybeSingle()
 
               if (availability?.weekly_availability) {
                 // Convert weekly availability to poll format
@@ -6567,7 +6653,7 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
       .from('quick_polls')
       .select('*')
       .eq('id', pollId)
-      .single()
+      .maybeSingle()
 
     if (pollError) throw pollError
     if (!poll) {
@@ -6656,7 +6742,7 @@ const getQuickPollBySlug = async (slug: string, requestingAddress?: string) => {
       .from('quick_polls')
       .select('*')
       .eq('slug', slug)
-      .single()
+      .maybeSingle()
 
     if (pollError) throw pollError
     if (!poll) {
@@ -6809,7 +6895,7 @@ const updateQuickPoll = async (
       .eq('poll_id', pollId)
       .eq('account_address', ownerAddress)
       .in('participant_type', ['scheduler', 'owner'])
-      .single()
+      .maybeSingle()
 
     if (participantError || !participant) {
       throw new QuickPollUnauthorizedError('You cannot edit this poll')
@@ -6820,14 +6906,14 @@ const updateQuickPoll = async (
       await updateQuickPollParticipants(pollId, updates.participants)
     }
 
-    const { participants, ...pollUpdates } = updates
+    const { participants: _, ...pollUpdates } = updates
 
     const { data: poll, error } = await db.supabase
       .from('quick_polls')
       .update({ ...pollUpdates, updated_at: new Date().toISOString() })
       .eq('id', pollId)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) throw error
 
@@ -6855,7 +6941,7 @@ const updateQuickPollParticipants = async (
       .from('quick_polls')
       .select('title, slug')
       .eq('id', pollId)
-      .single()
+      .maybeSingle()
 
     if (pollError) throw pollError
 
@@ -6865,7 +6951,7 @@ const updateQuickPollParticipants = async (
       .select('account_address, guest_name')
       .eq('poll_id', pollId)
       .eq('participant_type', QuickPollParticipantType.SCHEDULER)
-      .single()
+      .maybeSingle()
 
     if (ownerError || !ownerParticipant) {
       throw new QuickPollUpdateError('Poll owner not found')
@@ -6949,7 +7035,7 @@ const deleteQuickPoll = async (pollId: string, ownerAddress: string) => {
       .eq('poll_id', pollId)
       .eq('account_address', ownerAddress)
       .in('participant_type', ['scheduler', 'owner'])
-      .single()
+      .maybeSingle()
 
     if (participantError || !participant) {
       throw new QuickPollUnauthorizedError('You cannot delete this poll')
@@ -7014,10 +7100,10 @@ const expireStalePolls = async () => {
 const updateQuickPollParticipantStatus = async (
   participantId: string,
   status: QuickPollParticipantStatus,
-  availableSlots?: Record<string, any>[]
+  availableSlots?: Record<string, unknown>[]
 ) => {
   try {
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     }
@@ -7031,7 +7117,7 @@ const updateQuickPollParticipantStatus = async (
       .update(updates)
       .eq('id', participantId)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) throw error
     if (!participant) {
@@ -7087,11 +7173,11 @@ const addQuickPollParticipant = async (
 ) => {
   try {
     // If a matching deleted participant exists, revive instead of inserting new
-    let existingParticipant: any | null = null
+    let existingParticipant: Tables<'quick_poll_participants'> | null = null
 
     if (participantData.account_address) {
       const { data, error: existingByAccountError } = await db.supabase
-        .from('quick_poll_participants')
+        .from<Tables<'quick_poll_participants'>>('quick_poll_participants')
         .select('*')
         .eq('poll_id', pollId)
         .eq('account_address', participantData.account_address)
@@ -7126,7 +7212,7 @@ const addQuickPollParticipant = async (
             .update(updates)
             .eq('id', existingParticipant.id)
             .select()
-            .single()
+            .maybeSingle()
 
         if (reviveParticipantError) throw reviveParticipantError
         return revivedParticipant
@@ -7158,7 +7244,7 @@ const addQuickPollParticipant = async (
             .from('availabilities')
             .select('weekly_availability')
             .eq('id', availabilityId)
-            .single()
+            .maybeSingle()
 
           if (availability?.weekly_availability) {
             // Convert weekly availability to poll format
@@ -7193,7 +7279,7 @@ const addQuickPollParticipant = async (
         },
       ])
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) throw error
 
@@ -7211,7 +7297,7 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
       .from('quick_polls')
       .select('id, status')
       .eq('id', pollId)
-      .single()
+      .maybeSingle()
 
     if (pollError) throw pollError
     if (!poll) {
@@ -7233,7 +7319,7 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
       .eq('poll_id', pollId)
       .eq('account_address', ownerAddress)
       .eq('participant_type', QuickPollParticipantType.SCHEDULER)
-      .single()
+      .maybeSingle()
 
     if (participantError || !participant) {
       throw new QuickPollUnauthorizedError(
@@ -7251,7 +7337,7 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
       })
       .eq('id', pollId)
       .select()
-      .single()
+      .maybeSingle()
 
     if (updateError) throw updateError
 
@@ -7277,7 +7363,7 @@ const updateQuickPollParticipantAvailability = async (
   timezone?: string
 ) => {
   try {
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       available_slots: availableSlots,
       updated_at: new Date().toISOString(),
     }
@@ -7291,7 +7377,7 @@ const updateQuickPollParticipantAvailability = async (
       .update(updates)
       .eq('id', participantId)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) throw error
     if (!participant) {
@@ -7327,7 +7413,7 @@ const updateQuickPollGuestDetails = async (
       .update(updates)
       .eq('id', participantId)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) throw error
     if (!participant) {
@@ -7365,7 +7451,7 @@ const saveQuickPollCalendar = async (
         },
       ])
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) throw error
     return calendar
@@ -7382,7 +7468,7 @@ const getQuickPollParticipantById = async (participantId: string) => {
       .from('quick_poll_participants')
       .select('*')
       .eq('id', participantId)
-      .single()
+      .maybeSingle()
 
     if (error) throw error
     if (!participant) {
@@ -7410,7 +7496,7 @@ const getQuickPollParticipantByIdentifier = async (
       .select('*')
       .eq('poll_id', pollId)
       .or(`account_address.eq.${identifier},guest_email.eq.${identifier}`)
-      .single()
+      .maybeSingle()
 
     if (error) throw error
     if (!participant) {
@@ -7586,7 +7672,6 @@ export {
   getAccountsWithTgConnected,
   getActivePaymentAccount,
   getActivePaymentAccountDB,
-  getAppToken,
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
@@ -7610,6 +7695,7 @@ export {
   getGroupsEmpty,
   getGroupUsers,
   getGroupUsersInternal,
+  getGuestSlotById,
   getMeetingFromDB,
   getMeetingSessionsByTxHash,
   getMeetingTypeFromDB,
@@ -7631,6 +7717,7 @@ export {
   getQuickPollParticipantByIdentifier,
   getQuickPollParticipants,
   getQuickPollsForAccount,
+  getSlotByMeetingIdAndAccount,
   getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
