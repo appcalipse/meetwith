@@ -5,6 +5,7 @@ import { TimeSlotSource } from '@/types/Meeting'
 import CaldavCalendarService, { CaldavCredentials } from './caldav.service'
 import {
   BaseCalendarService,
+  ICaldavCalendarService,
   IGoogleCalendarService,
   IOffcie365CalendarService,
 } from './calendar.service.types'
@@ -34,7 +35,7 @@ function getConnectedCalendarIntegration(
   email: string,
   provider: TimeSlotSource.ICLOUD | TimeSlotSource.WEBDAV,
   credentials: CaldavCredentials
-): BaseCalendarService
+): ICaldavCalendarService
 
 function getConnectedCalendarIntegration(
   address: string,
@@ -57,7 +58,11 @@ function getConnectedCalendarIntegration(
     | Auth.Credentials
     | O365AuthCredentials
     | CaldavCredentials
-): BaseCalendarService | IGoogleCalendarService | IOffcie365CalendarService {
+):
+  | BaseCalendarService
+  | ICaldavCalendarService
+  | IGoogleCalendarService
+  | IOffcie365CalendarService {
   switch (provider) {
     case TimeSlotSource.GOOGLE:
       return new GoogleCalendarService(
