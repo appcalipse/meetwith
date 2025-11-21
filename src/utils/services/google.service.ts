@@ -18,8 +18,9 @@ import {
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
+import { NO_MEETING_TYPE } from '../constants/meeting-types'
 import { MeetingPermissions } from '../constants/schedule'
-import { updateCalendarPayload } from '../database'
+import { getOwnerPublicUrlServer, updateCalendarPayload } from '../database'
 import { getCalendarPrimaryEmail } from '../sync_helper'
 import { CalendarServiceHelper } from './calendar.helper'
 import { IGoogleCalendarService } from './calendar.service.types'
@@ -235,8 +236,20 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
               slot_id: '',
               meeting_id: meetingDetails.meeting_id,
             }))
-          const hasGuests = meetingDetails.participants.some(p => p.guest_email)
-          const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+          const ownerParticipant = participantsInfo.find(
+            p => p.type === ParticipantType.Owner
+          )
+          const ownerAccountAddress = ownerParticipant?.account_address
+
+          const changeUrl =
+            meetingDetails.meeting_type_id &&
+            ownerAccountAddress &&
+            meetingDetails.meeting_type_id !== NO_MEETING_TYPE
+              ? `${await getOwnerPublicUrlServer(
+                  ownerAccountAddress,
+                  meetingDetails.meeting_type_id
+                )}?conferenceId=${meetingDetails.meeting_id}`
+              : `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
 
           const payload: calendar_v3.Schema$Event = {
             // yes, google event ids allows only letters and numbers
@@ -249,8 +262,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             description: CalendarServiceHelper.getMeetingSummary(
               meetingDetails.content,
               meetingDetails.meeting_url,
-              changeUrl,
-              hasGuests
+              changeUrl
             ),
             start: {
               dateTime: new Date(meetingDetails.start).toISOString(),
@@ -369,7 +381,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
 
   async _updateEvent(
     calendarOwnerAccountAddress: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
     _calendarId: string
   ): Promise<NewCalendarEventType> {
@@ -377,7 +388,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const auth = this.auth
       const myGoogleAuth = await auth.getToken()
       const calendarId = parseCalendarId(_calendarId)
-
+      const meeting_id = meetingDetails.meeting_id
       const participantsInfo: ParticipantInfo[] =
         meetingDetails.participants.map(participant => ({
           type: participant.type,
@@ -391,14 +402,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
-      const slot_id = meetingDetails.participants.find(
-        p => p.account_address === calendarOwnerAccountAddress
-      )?.slot_id
 
-      // Determine the correct URL format based on whether participants are guests
-      const hasGuests = meetingDetails.participants.some(p => p.guest_email)
-
-      const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
 
       const payload: calendar_v3.Schema$Event = {
         id: meeting_id.replaceAll('-', ''), // required to edit events later
@@ -410,8 +415,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         description: CalendarServiceHelper.getMeetingSummary(
           meetingDetails.content,
           meetingDetails.meeting_url,
-          changeUrl,
-          hasGuests
+          changeUrl
         ),
         start: {
           dateTime: new Date(meetingDetails.start).toISOString(),
@@ -519,7 +523,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
 
   async updateEvent(
     calendarOwnerAccountAddress: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
     _calendarId: string
   ): Promise<NewCalendarEventType> {
@@ -527,7 +530,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       async () =>
         this._updateEvent(
           calendarOwnerAccountAddress,
-          meeting_id,
           meetingDetails,
           _calendarId
         ),
@@ -968,14 +970,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
     const attendees: calendar_v3.Schema$EventAttendee[] = []
 
     for (const participant of participants) {
-      const isScheduler = participant.type === ParticipantType.Scheduler
-      // If participant is scheduler and not the calendar owner this means they don't have any calendar configured for the specific meeting type, skip adding them
-      const shouldSkip =
-        isScheduler &&
-        participant.account_address !== calendarOwnerAccountAddress
-      if (shouldSkip) {
-        continue
-      }
       const email =
         calendarOwnerAccountAddress === participant.account_address
           ? this.getConnectedEmail()
