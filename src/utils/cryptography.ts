@@ -26,6 +26,19 @@ const getContentFromEncrypted = async (
     return ''
   }
 }
+const getContentFromEncryptedGuest = async (
+  encrypted: Encrypted
+): Promise<string> => {
+  try {
+    return await decryptWithPrivateKey(
+      process.env.NEXT_SERVER_PVT_KEY!,
+      encrypted
+    )
+  } catch (error) {
+    console.error(error)
+    return ''
+  }
+}
 
 const encryptContent = (signature: string, data: string): string => {
   const ciphertext = CryptoJS.AES.encrypt(data, signature).toString()
@@ -73,4 +86,5 @@ export {
   decryptContent,
   encryptContent,
   getContentFromEncrypted,
+  getContentFromEncryptedGuest,
 }
