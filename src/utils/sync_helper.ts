@@ -5,6 +5,7 @@ import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
+import { NO_MEETING_TYPE } from './constants/meeting-types'
 import { getConnectedCalendars, getMeetingTypeFromDB } from './database'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 export const getCalendars = async (
@@ -15,9 +16,10 @@ export const getCalendars = async (
     syncOnly: true,
     activeOnly: true,
   })
-  if (meeting_type_id) {
+  if (meeting_type_id && meeting_type_id !== NO_MEETING_TYPE) {
     const meetingType = await getMeetingTypeFromDB(meeting_type_id)
     if (
+      meetingType &&
       meetingType.calendars &&
       meetingType.account_owner_address === targetAccount
     ) {
@@ -111,7 +113,10 @@ const syncCreatedEventWithCalendar = async (
           useParticipants = false
         }
       }
-    } else {
+    } else if (
+      calendar.provider === TimeSlotSource.ICLOUD ||
+      calendar.provider === TimeSlotSource.WEBDAV
+    ) {
       const integration = getConnectedCalendarIntegration(
         calendar.account_address,
         calendar.email,
@@ -130,7 +135,7 @@ const syncCreatedEventWithCalendar = async (
                 innerCalendar.calendarId,
                 useParticipants
               )
-              return event
+              return event.attendees?.map(attendee => attendee.email)
             })()
           )
           useParticipants = false
@@ -192,43 +197,142 @@ const syncCreatedEventWithCalendar = async (
 
 const syncUpdatedEventWithCalendar = async (
   targetAccount: Account['address'],
-  meetingDetails: MeetingCreationSyncRequest,
-  meeting_id: string
+  meetingDetails: MeetingCreationSyncRequest
 ) => {
   const calendars = await getCalendars(
     targetAccount,
     meetingDetails.meeting_type_id
   )
-
+  const promises = []
   for (const calendar of calendars) {
-    const integration = getConnectedCalendarIntegration(
-      calendar.account_address,
-      calendar.email,
-      calendar.provider,
-      calendar.payload
-    )
-    const promises = []
-    for (const innerCalendar of calendar.calendars!) {
-      if (innerCalendar.enabled && innerCalendar.sync) {
-        promises.push(
-          new Promise<void>(async resolve => {
-            try {
-              await integration.updateEvent(
+    if (calendar.provider === TimeSlotSource.GOOGLE) {
+      const integration = getConnectedCalendarIntegration(
+        calendar.account_address,
+        calendar.email,
+        calendar.provider,
+        calendar.payload
+      )
+
+      for (const innerCalendar of calendar.calendars!) {
+        if (innerCalendar.enabled && innerCalendar.sync) {
+          promises.push(
+            (async () => {
+              const event = await integration.updateEvent(
                 targetAccount,
-                meeting_id,
                 meetingDetails,
                 innerCalendar.calendarId
               )
-            } catch (error) {
-              Sentry.captureException(error)
-            }
-            resolve()
-          })
-        )
+              return event.attendees?.map(attendee => attendee.email)
+            })()
+          )
+        }
+      }
+    } else if (calendar.provider === TimeSlotSource.OFFICE) {
+      const integration = getConnectedCalendarIntegration(
+        calendar.account_address,
+        calendar.email,
+        calendar.provider,
+        calendar.payload
+      )
+
+      for (const innerCalendar of calendar.calendars!) {
+        if (innerCalendar.enabled && innerCalendar.sync) {
+          promises.push(
+            (async () => {
+              const event = await integration.updateEvent(
+                targetAccount,
+                meetingDetails,
+                innerCalendar.calendarId
+              )
+              return event.attendees?.map(
+                attendee => attendee.emailAddress.address
+              )
+            })()
+          )
+        }
+      }
+    } else if (
+      calendar.provider === TimeSlotSource.ICLOUD ||
+      calendar.provider === TimeSlotSource.WEBDAV
+    ) {
+      const integration = getConnectedCalendarIntegration(
+        calendar.account_address,
+        calendar.email,
+        calendar.provider,
+        calendar.payload
+      )
+
+      for (const innerCalendar of calendar.calendars!) {
+        if (innerCalendar.enabled && innerCalendar.sync) {
+          promises.push(
+            (async () => {
+              const event = await integration.updateEvent(
+                targetAccount,
+                meetingDetails,
+                innerCalendar.calendarId
+              )
+              return event.attendees?.map(attendee => attendee.email)
+            })()
+          )
+        }
       }
     }
-    await Promise.all(promises)
   }
+  const addedEmails = new Set<string>()
+  const resolutions = await Promise.all(promises)
+  const atendees = resolutions
+    .filter(
+      (r): r is string[] =>
+        Array.isArray(r) && r.filter(email => !!email).length > 0
+    )
+    .flat()
+  for (const attendee of atendees) {
+    if (attendee && !addedEmails.has(attendee)) {
+      addedEmails.add(attendee)
+    }
+  }
+  const participantPromises = []
+  for (const participant of meetingDetails.participants) {
+    if (
+      participant.account_address &&
+      participant.account_address !== targetAccount
+    ) {
+      const participantCalendars = await getCalendars(
+        participant.account_address,
+        meetingDetails.meeting_type_id
+      )
+      for (const pCalendar of participantCalendars) {
+        if (addedEmails.has(pCalendar.email)) {
+          continue
+        }
+        const integration = getConnectedCalendarIntegration(
+          pCalendar.account_address,
+          pCalendar.email,
+          pCalendar.provider,
+          pCalendar.payload
+        )
+        for (const innerCalendar of pCalendar.calendars!) {
+          if (innerCalendar.enabled && innerCalendar.sync) {
+            participantPromises.push(
+              new Promise<void>(async resolve => {
+                try {
+                  integration.updateEvent(
+                    targetAccount,
+                    meetingDetails,
+                    innerCalendar.calendarId
+                  )
+                } catch (error) {
+                  Sentry.captureException(error)
+                }
+                resolve()
+              })
+            )
+          }
+        }
+      }
+    }
+  }
+  await Promise.all(participantPromises)
 }
 
 const syncDeletedEventWithCalendar = async (
@@ -260,6 +364,7 @@ const syncDeletedEventWithCalendar = async (
                 innerCalendar.calendarId
               )
             } catch (error) {
+              console.error(error)
               Sentry.captureException(error)
             }
             resolve()
@@ -270,36 +375,58 @@ const syncDeletedEventWithCalendar = async (
     await Promise.all(promises)
   }
 }
+const getCalendarOrganizer = async (
+  meetingDetails: MeetingCreationSyncRequest
+) => {
+  let calendarOrganizer = meetingDetails.participants.find(
+    participant => participant.type === ParticipantType.Scheduler
+  )
+  let primaryEmail: string | undefined = undefined
+  if (calendarOrganizer && calendarOrganizer.account_address) {
+    primaryEmail = await getCalendarPrimaryEmail(
+      calendarOrganizer.account_address,
+      meetingDetails.meeting_type_id
+    )
+  }
+  if (!calendarOrganizer?.account_address || !primaryEmail) {
+    for (const current of meetingDetails.participants.filter(
+      participant => participant.type === ParticipantType.Owner
+    )) {
+      if (!current.account_address) {
+        continue
+      }
+      const primaryEmail = await getCalendarPrimaryEmail(
+        current.account_address
+      )
+      if (primaryEmail) {
+        calendarOrganizer = current
+        break
+      }
+    }
+  }
 
+  return calendarOrganizer
+}
 export const ExternalCalendarSync = {
   create: async (meetingDetails: MeetingCreationSyncRequest) => {
-    const tasks = []
-    const schedulerAccount = meetingDetails.participants.find(
-      participant => participant.type === ParticipantType.Scheduler
-    )
-    if (!schedulerAccount || !schedulerAccount.account_address) {
-      throw new Error('Scheduler account not found for meeting creation sync')
+    const calendarOrganizer = await getCalendarOrganizer(meetingDetails)
+    if (!calendarOrganizer || !calendarOrganizer.account_address) {
+      throw new Error('Organizer Account not found for meeting calendar sync')
     }
     await syncCreatedEventWithCalendar(
-      schedulerAccount.account_address,
+      calendarOrganizer.account_address,
       meetingDetails
     )
   },
   update: async (meetingDetails: MeetingCreationSyncRequest) => {
-    const tasks = []
-    for (const participant of meetingDetails.participants) {
-      if (participant.account_address) {
-        tasks.push(
-          syncUpdatedEventWithCalendar(
-            participant.account_address!,
-            meetingDetails,
-            participant.meeting_id!
-          )
-        )
-      }
+    const calendarOrganizer = await getCalendarOrganizer(meetingDetails)
+    if (!calendarOrganizer || !calendarOrganizer.account_address) {
+      throw new Error('Organizer Account not found for meeting calendar sync')
     }
-
-    await Promise.all(tasks)
+    await syncUpdatedEventWithCalendar(
+      calendarOrganizer.account_address!,
+      meetingDetails
+    )
   },
   delete: async (targetAccount: Account['address'], eventIds: string[]) => {
     const tasks = []
