@@ -267,7 +267,7 @@ const ScheduleMain: FC<IInitialProps> = ({
   }
 
   const handleFetchMeetingInformation = async () => {
-    if (!meetingId || !conferenceId) return
+    if (!meetingId && !conferenceId) return
     try {
       let decryptedMeeting: MeetingDecrypted | null = null
       let actor = ''
@@ -338,7 +338,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         decryptedMeeting?.participants,
         currentAccount?.address
       )
-      if (isSchedulerOrOwner && participants.length === 2) {
+      if (participants.length === 2) {
         setCanCancel(true)
       } else if (isCurrentUserScheduler) {
         setCanCancel(true)
@@ -778,7 +778,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         setIsScheduling(false)
         return
       }
-      if (meetingId && intent === Intents.UPDATE_MEETING) {
+      if ((meetingId || conferenceId) && intent === Intents.UPDATE_MEETING) {
         await updateMeeting(
           true,
           currentAccount!.address,
