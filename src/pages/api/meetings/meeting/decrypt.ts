@@ -5,7 +5,7 @@ import { GuestSlot } from '@/types/Meeting'
 import { decryptMeetingGuest } from '@/utils/calendar_manager'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  if (req.method === 'GET') {
+  if (req.method === 'POST') {
     if (!req.body) {
       return res.status(404).send('meeting info required')
     }
