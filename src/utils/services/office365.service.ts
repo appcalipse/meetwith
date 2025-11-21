@@ -92,6 +92,16 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     }))
   }
 
+  async getEvent(
+    eventId: string,
+    calendarId: string
+  ): Promise<MicrosoftGraphEvent> {
+    const event: MicrosoftGraphEvent = await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${eventId}`)
+      .get()
+    return event
+  }
+
   /**
    * Creates an event into the owner 365 calendar
    *
@@ -135,24 +145,37 @@ export class Office365CalendarService implements IOffcie365CalendarService {
 
   async updateEvent(
     owner: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
     calendarId: string
-  ): Promise<NewCalendarEventType> {
+  ): Promise<MicrosoftGraphEvent> {
     try {
+      const meeting_id = meetingDetails.meeting_id
       const officeId = await getOfficeEventMappingId(meeting_id)
+      const originalEvent = await this.getEvent(officeId!, calendarId)
 
       if (!officeId) {
         Sentry.captureException("Can't find office event mapping")
         throw new Error("Can't find office event mapping")
       }
+      const useParticipants =
+        originalEvent.attendees &&
+        originalEvent.attendees.filter(
+          attendee =>
+            attendee?.emailAddress.address !== this.getConnectedEmail()
+        ).length > 0
 
       const body = {
-        ...this.translateEvent(owner, meetingDetails, meeting_id, new Date()),
+        ...this.translateEvent(
+          owner,
+          meetingDetails,
+          meeting_id,
+          new Date(),
+          useParticipants
+        ),
         id: officeId,
       }
 
-      const event = await this.graphClient
+      const event: MicrosoftGraphEvent = await this.graphClient
         .api(`/me/calendars/${calendarId}/events/${officeId}`)
         .header(
           'Prefer',
@@ -255,7 +278,6 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       })
     )
 
-    const hasGuests = details.participants.some(p => p.guest_email)
     const payload: MicrosoftGraphEvent = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
@@ -267,8 +289,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
           details.meeting_url,
-          `${appUrl}/dashboard/schedule?conferenceId=${details.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
-          hasGuests
+          `${appUrl}/dashboard/schedule?conferenceId=${details.meeting_id}&intent=${Intents.UPDATE_MEETING}`
         ),
       },
       start: {
@@ -299,7 +320,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       allowNewTimeProposals: false,
       transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
     }
-    if (details.meetingReminders) {
+    if (details.meetingReminders && details.meetingReminders.length > 0) {
       payload.isReminderOn = true
       const lowestReminder = details.meetingReminders.reduce((prev, current) =>
         prev < current ? prev : current
