@@ -109,7 +109,6 @@ import {
   QuickPollParticipantStatus,
   QuickPollParticipantType,
   QuickPollParticipantUpdateFields,
-  QuickPollWithParticipants,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
@@ -3140,7 +3139,7 @@ const updateMeeting = async (
   if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
     throw new MeetingChangeConflictError()
 
-  // there is no support from suppabase to really use optimistic locking,
+  // there is no support from supspabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts
 
@@ -3153,8 +3152,8 @@ const updateMeeting = async (
     throw new Error(error.message)
   }
 
-  meetingResponse.id = data[index].id
-  meetingResponse.created_at = data[index].created_at
+  meetingResponse.id = data[index]?.id
+  meetingResponse.created_at = data[index]?.created_at
 
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
@@ -4984,16 +4983,16 @@ export const getWalletTransactions = async (
           .from('meeting_type')
           .select(
             `
-            id, 
-            title, 
-            account_owner_address, 
+            id,
+            title,
+            account_owner_address,
             description,
             meeting_sessions!inner(
-              id, 
-              guest_email, 
-              guest_name, 
-              session_number, 
-              created_at, 
+              id,
+              guest_email,
+              guest_name,
+              session_number,
+              created_at,
               updated_at
             )
           `
