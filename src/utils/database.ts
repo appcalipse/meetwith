@@ -3225,8 +3225,8 @@ const updateMeeting = async (
     }
   }
 
-  meetingResponse.id = data[index].id
-  meetingResponse.created_at = data[index].created_at
+  meetingResponse.id = data[index]?.id
+  meetingResponse.created_at = data[index]?.created_at
 
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
