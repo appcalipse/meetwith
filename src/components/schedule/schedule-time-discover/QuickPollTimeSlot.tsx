@@ -114,6 +114,27 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
       }
     }
 
+    if (isQuickPoll && isEditingAvailability && !isSelected) {
+      return {
+        bg: 'white',
+        color: 'text-primary',
+        cursor: isInteractive ? 'pointer' : 'default',
+        _active: isInteractive
+          ? {
+              cursor: 'pointer',
+              color: 'white',
+              bgColor: 'primary.400',
+              borderColor: 'primary.500',
+            }
+          : {},
+        _hover: isInteractive
+          ? {
+              border: '2px solid #F35826',
+            }
+          : {},
+      }
+    }
+
     return {
       bg: getBgColor(state),
       cursor: isInteractive ? 'pointer' : 'default',
