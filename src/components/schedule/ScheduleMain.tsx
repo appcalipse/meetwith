@@ -338,9 +338,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         decryptedMeeting?.participants,
         currentAccount?.address
       )
-      if (participants.length === 2) {
-        setCanCancel(true)
-      } else if (isCurrentUserScheduler) {
+      if (isSchedulerOrOwner) {
         setCanCancel(true)
       } else {
         setCanCancel(false)
