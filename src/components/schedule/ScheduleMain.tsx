@@ -318,8 +318,6 @@ const ScheduleMain: FC<IInitialProps> = ({
       )
       if (isSchedulerOrOwner) {
         setCanCancel(true)
-      } else if (isCurrentUserScheduler) {
-        setCanCancel(true)
       } else {
         setCanCancel(false)
       }
