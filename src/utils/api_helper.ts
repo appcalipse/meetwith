@@ -2162,6 +2162,15 @@ export const savePollParticipantCalendar = async (
   )
 }
 
+export const getPollParticipantCalendars = async (
+  participantId: string
+): Promise<ConnectedCalendar[]> => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/calendar`,
+    'GET'
+  )
+}
+
 export const getPollParticipantByIdentifier = async (
   slug: string,
   identifier: string

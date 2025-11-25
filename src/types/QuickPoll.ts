@@ -37,6 +37,10 @@ export interface AvailabilitySlot {
   weekday: number
   ranges: Array<{ start: string; end: string }>
   date?: string
+  overrides?: {
+    additions?: Array<{ start: string; end: string }>
+    removals?: Array<{ start: string; end: string }>
+  }
 }
 
 // Base interfaces

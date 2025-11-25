@@ -5,14 +5,17 @@ import {
   Heading,
   HStack,
   Icon,
+  Link,
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
 import React, { useCallback, useContext, useMemo, useState } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import {
   ParticipantInfo,
@@ -26,6 +29,7 @@ import {
 } from '@/types/QuickPoll'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { queryClient } from '@/utils/react_query'
+import { getGuestPollDetails } from '@/utils/storage'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import InviteByIdModal from '../schedule/participants/InviteByIdModal'
@@ -69,12 +73,14 @@ export function QuickPollParticipants({
   onParticipantRemoved,
 }: QuickPollParticipantsProps) {
   const { currentAccount } = useContext(AccountContext)
+  const router = useRouter()
   const {
     groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
     groupParticipants,
   } = useParticipants()
+  const { setCurrentParticipantId } = useQuickPollAvailability()
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isInviteByIdModalOpen, setIsInviteByIdModalOpen] = useState(false)
@@ -240,6 +246,25 @@ export function QuickPollParticipants({
     })
   }
 
+  const handleEditProfile = useCallback(() => {
+    if (!pollData?.poll?.id) return
+
+    // Get participant ID from localStorage for this poll
+    const guestDetails = getGuestPollDetails(pollData.poll.id)
+
+    if (guestDetails?.participantId) {
+      setCurrentParticipantId(guestDetails.participantId)
+      router.push({
+        pathname: router.pathname,
+        query: {
+          ...router.query,
+          tab: 'guest-details',
+          participantId: guestDetails.participantId,
+        },
+      })
+    }
+  }, [pollData?.poll?.id, router, setCurrentParticipantId])
+
   return (
     <VStack
       py={{ base: 6, md: 7 }}
@@ -340,6 +365,23 @@ export function QuickPollParticipants({
                       Organizer
                     </Text>
                   )}
+                  {/* Show Edit profile link for guests viewing their own profile */}
+                  {!participant.account_address &&
+                    participant.guest_email &&
+                    currentGuestEmail &&
+                    participant.guest_email.toLowerCase() ===
+                      currentGuestEmail.toLowerCase() && (
+                      <Link
+                        fontSize={{ base: 'xs', md: 'sm' }}
+                        color="primary.200"
+                        textDecoration="underline"
+                        cursor="pointer"
+                        onClick={handleEditProfile}
+                        _hover={{ color: 'primary.300' }}
+                      >
+                        Edit profile
+                      </Link>
+                    )}
                 </VStack>
               </HStack>
               {isHost && (
