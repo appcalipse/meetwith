@@ -23,7 +23,7 @@ import {
   getPollParticipantById,
   updateGuestParticipantDetails,
 } from '@/utils/api_helper'
-import { getGuestPollDetails, saveGuestPollDetails } from '@/utils/storage'
+import { saveGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
 
@@ -100,13 +100,15 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
       let participantId = currentParticipantId
       let isProfileUpdateOnly = false
 
-      // Check if this is a profile-only update
+      // Determine if calendar was just connected in this session
+      const isCalendarJustConnected =
+        calendarConnected === 'true' ||
+        (Array.isArray(calendarConnected) && calendarConnected.includes('true'))
       if (
         currentParticipantId &&
         guestAvailabilitySlots.length === 0 &&
-        !calendarConnected
+        !isCalendarJustConnected
       ) {
-        // Profile update only
         await updateGuestParticipantDetails(
           currentParticipantId,
           fullName.trim(),
@@ -117,18 +119,8 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
           'Profile updated!',
           'Your name and email have been updated successfully.'
         )
-      } else if (currentParticipantId && calendarConnected) {
-        await updateGuestParticipantDetails(
-          currentParticipantId,
-          fullName.trim(),
-          email.trim().toLowerCase()
-        )
-        isProfileUpdateOnly = true
-        showSuccessToast(
-          'Details saved!',
-          'Your calendar is connected and your details have been saved.'
-        )
       } else {
+        // Save availability
         const response = await addOrUpdateGuestParticipantWithAvailability(
           pollData.poll.slug,
           email.trim().toLowerCase(),
