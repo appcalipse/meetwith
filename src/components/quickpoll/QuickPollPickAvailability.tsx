@@ -18,6 +18,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { Select, SingleValue } from 'chakra-react-select'
 import { addDays, isSameMonth } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
@@ -55,6 +56,7 @@ import {
 import {
   fetchBusySlotsRawForQuickPollParticipants,
   getExistingAccounts,
+  getPollParticipantCalendars,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
@@ -63,14 +65,25 @@ import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import {
+  clipIntervalsToBounds,
+  computeBaseAvailability,
+  convertAvailabilityToSelectedSlots,
   createMockMeetingMembers,
+  extractOverrideIntervals,
+  generateFullDayBlocks,
   generateQuickPollBestSlots,
   mergeLuxonIntervals,
   processPollParticipantAvailabilities,
+  subtractBusyTimesFromBlocks,
+  subtractRemovalIntervals,
 } from '@/utils/quickpoll_helper'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { suggestBestSlots } from '@/utils/slots.helper'
 
+import {
+  SelectedTimeSlot,
+  useAvailabilityTracker,
+} from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
 
 export enum State {
@@ -155,7 +168,8 @@ export function QuickPollPickAvailability({
   const { canEditMeetingDetails, isUpdatingMeeting } =
     useParticipantPermissions()
   const currentAccount = useAccountContext()
-  const { currentGuestEmail } = useQuickPollAvailability()
+  const { currentGuestEmail, currentParticipantId } = useQuickPollAvailability()
+  const { loadSlots } = useAvailabilityTracker()
 
   const isHost = useMemo(() => {
     if (!pollData || !currentAccount) return false
@@ -167,6 +181,64 @@ export function QuickPollPickAvailability({
     )
   }, [pollData, currentAccount])
 
+  // Get current participant
+  const currentParticipant = useMemo(() => {
+    if (!pollData) return null
+    if (currentAccount) {
+      return pollData.poll.participants.find(
+        p =>
+          p.account_address?.toLowerCase() ===
+          currentAccount.address.toLowerCase()
+      )
+    }
+    if (currentGuestEmail) {
+      return pollData.poll.participants.find(
+        p =>
+          p.guest_email?.toLowerCase() === currentGuestEmail.toLowerCase() ||
+          p.id === currentParticipantId
+      )
+    }
+    if (currentParticipantId) {
+      return pollData.poll.participants.find(p => p.id === currentParticipantId)
+    }
+    return null
+  }, [pollData, currentAccount, currentGuestEmail, currentParticipantId])
+
+  // Check if participant has calendar imported
+  const { data: participantCalendars } = useQuery({
+    queryKey: ['poll-participant-calendars', currentParticipant?.id],
+    queryFn: () =>
+      currentParticipant?.id
+        ? getPollParticipantCalendars(currentParticipant.id)
+        : Promise.resolve([]),
+    enabled: !!currentParticipant?.id,
+  })
+
+  // Check if user has any availability
+  const hasAvailability = useMemo(() => {
+    if (!currentParticipant) return false
+
+    // Check if they have manual availability slots
+    const hasManualAvailability =
+      currentParticipant.available_slots &&
+      currentParticipant.available_slots.length > 0
+
+    // Check if they have calendar imported
+    const hasCalendar = participantCalendars && participantCalendars.length > 0
+
+    // Check if account owner has default availability blocks
+    const hasDefaultAvailability =
+      currentAccount &&
+      currentAccount.preferences?.availabilities &&
+      currentAccount.preferences.availabilities.length > 0
+
+    return hasManualAvailability || hasCalendar || hasDefaultAvailability
+  }, [
+    currentParticipant,
+    participantCalendars,
+    currentAccount?.preferences?.availabilities,
+  ])
+
   const { currentIntent } = useQuickPollAvailability()
   const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
   const isEditAvailabilityIntent =
@@ -176,6 +248,7 @@ export function QuickPollPickAvailability({
   const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
   const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
+  const [hasLoadedInitialSlots, setHasLoadedInitialSlots] = useState(false)
   const SLOT_LENGTH =
     useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) ?? 3
 
@@ -301,13 +374,53 @@ export function QuickPollPickAvailability({
   }, [currentSelectedDate.getFullYear(), timezone])
 
   const [dates, setDates] = useState<Array<Dates>>([])
-  // When editing availability, render a blank slate visually
+
+  // Get current user identifier
+  const currentUserIdentifier = useMemo(() => {
+    if (currentAccount) {
+      return currentAccount.address.toLowerCase()
+    }
+    if (currentGuestEmail) {
+      return currentGuestEmail.toLowerCase()
+    }
+    if (currentParticipant) {
+      return (
+        currentParticipant.account_address?.toLowerCase() ||
+        currentParticipant.guest_email?.toLowerCase() ||
+        ''
+      )
+    }
+    return ''
+  }, [currentAccount, currentGuestEmail, currentParticipant])
+
+  // When editing availability, show only current user's slots
   const effectiveBusySlots = busySlots
-  const effectiveAvailableSlots = availableSlots
+  const effectiveAvailableSlots = useMemo(() => {
+    if (!isEditingAvailability || !currentUserIdentifier) {
+      return availableSlots
+    }
+    // Filter to show only current user's availability
+    const userSlots = availableSlots.get(currentUserIdentifier)
+    const filteredMap = new Map<string, Interval<true>[]>()
+    if (userSlots && userSlots.length > 0) {
+      filteredMap.set(currentUserIdentifier, userSlots)
+    }
+    return filteredMap
+  }, [isEditingAvailability, availableSlots, currentUserIdentifier])
   const effectiveMeetingMembers = isEditingAvailability ? [] : meetingMembers
-  const effectiveAvailabilityAddresses = isEditingAvailability
-    ? []
-    : availabilityAddresses
+  const effectiveAvailabilityAddresses = useMemo(() => {
+    if (!isEditingAvailability) {
+      return availabilityAddresses
+    }
+    // When editing, only show current user's availability
+    if (
+      currentUserIdentifier &&
+      availabilityAddresses.includes(currentUserIdentifier)
+    ) {
+      return [currentUserIdentifier]
+    }
+    return []
+  }, [isEditingAvailability, availabilityAddresses, currentUserIdentifier])
   const datesSlotsWithAvailability = useSlotsWithAvailability(
     dates,
     effectiveBusySlots,
@@ -357,6 +470,19 @@ export function QuickPollPickAvailability({
       })),
     []
   )
+
+  const selectChakraStyles = {
+    container: (provided: any) => ({
+      ...provided,
+      borderColor: 'input-border',
+      bg: 'select-bg',
+    }),
+  }
+
+  const getAvailabilityButtonText = () => {
+    if (isEditingAvailability) return 'Save availability'
+    return hasAvailability ? 'Edit availability' : 'Add Availability'
+  }
 
   const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
     tzOptions.filter(val => val.value === timezone)[0] || tzOptions[0]
@@ -528,105 +654,6 @@ export function QuickPollPickAvailability({
           }
         })
 
-        const subtractBusyTimesFromBlocks = (
-          blocks: Interval[],
-          busyTimes: Interval[]
-        ): Interval[] => {
-          if (!blocks.length) return []
-
-          const freeSlots: Interval[] = []
-
-          for (const block of blocks) {
-            let remainingIntervals = [block]
-
-            for (const busyTime of busyTimes) {
-              const newRemaining: Interval[] = []
-              for (const remaining of remainingIntervals) {
-                if (!remaining.overlaps(busyTime)) {
-                  newRemaining.push(remaining)
-                  continue
-                }
-
-                if (
-                  remaining.start &&
-                  busyTime.start &&
-                  remaining.start < busyTime.start
-                ) {
-                  const beforeBusy = Interval.fromDateTimes(
-                    remaining.start,
-                    busyTime.start
-                  )
-                  if (beforeBusy.isValid && beforeBusy.length('minutes') > 0) {
-                    newRemaining.push(beforeBusy)
-                  }
-                }
-                if (
-                  remaining.end &&
-                  busyTime.end &&
-                  remaining.end > busyTime.end
-                ) {
-                  const afterBusy = Interval.fromDateTimes(
-                    busyTime.end,
-                    remaining.end
-                  )
-                  if (afterBusy.isValid && afterBusy.length('minutes') > 0) {
-                    newRemaining.push(afterBusy)
-                  }
-                }
-              }
-              remainingIntervals = newRemaining
-            }
-
-            freeSlots.push(...remainingIntervals)
-          }
-
-          return freeSlots
-        }
-
-        const generateFullDayBlocks = (): Interval[] => {
-          const defaultBlocks: Interval[] = []
-          const startDT = DateTime.fromJSDate(monthStart).setZone(timezone)
-          const endDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
-
-          let currentDay = startDT.startOf('day')
-          while (currentDay <= endDT.endOf('day')) {
-            const dayStart = currentDay.set({ hour: 0, minute: 0 })
-            const dayEnd = currentDay.set({ hour: 23, minute: 59 })
-
-            const interval = Interval.fromDateTimes(dayStart, dayEnd)
-            if (interval.isValid) {
-              defaultBlocks.push(interval)
-            }
-
-            currentDay = currentDay.plus({ days: 1 })
-          }
-
-          return defaultBlocks
-        }
-
-        const clipIntervalsToBounds = (
-          intervals: Interval[],
-          bounds: Interval[]
-        ): Interval[] => {
-          if (!bounds.length || !intervals.length) return intervals
-
-          const clipped: Interval[] = []
-          for (const bound of bounds) {
-            for (const interval of intervals) {
-              const intersection = interval.intersection(bound)
-              if (
-                intersection &&
-                intersection.isValid &&
-                intersection.length('minutes') > 0
-              ) {
-                clipped.push(intersection)
-              }
-            }
-          }
-
-          return mergeLuxonIntervals(clipped)
-        }
-
         const allIdentifiers = new Set<string>()
         manualAvailabilityMap.forEach((_, identifier) =>
           allIdentifiers.add(identifier)
@@ -653,6 +680,21 @@ export function QuickPollPickAvailability({
             participantMeta.get(identifier)?.hasAccount ??
             defaultAvailability.length > 0
 
+          // Extract overrides from participant's available_slots
+          const participant = pollData.poll.participants.find(
+            p =>
+              p.account_address?.toLowerCase() === identifier ||
+              p.guest_email?.toLowerCase() === identifier
+          )
+          const overrides = participant
+            ? extractOverrideIntervals(
+                participant,
+                monthStart,
+                monthEnd,
+                timezone
+              )
+            : { additions: [], removals: [] }
+
           let manualToInclude = manualAvailability
           if (hasAccount && defaultAvailability.length > 0) {
             manualToInclude = clipIntervalsToBounds(
@@ -669,10 +711,18 @@ export function QuickPollPickAvailability({
               } else if (manualAvailability.length > 0) {
                 calendarBase = manualAvailability
               } else {
-                calendarBase = generateFullDayBlocks()
+                calendarBase = generateFullDayBlocks(
+                  monthStart,
+                  monthEnd,
+                  timezone
+                )
               }
             } else {
-              calendarBase = generateFullDayBlocks()
+              calendarBase = generateFullDayBlocks(
+                monthStart,
+                monthEnd,
+                timezone
+              )
             }
           } else if (hasAccount && defaultAvailability.length > 0) {
             calendarBase = defaultAvailability
@@ -696,10 +746,44 @@ export function QuickPollPickAvailability({
             calendarFree = defaultAvailability
           }
 
-          const combined = mergeLuxonIntervals([
-            ...manualToInclude,
-            ...calendarFree,
-          ])
+          // Use computeBaseAvailability to get base (excludes existing removals)
+          const baseAvailability = participant
+            ? computeBaseAvailability(
+                participant,
+                manualAvailability,
+                defaultAvailability,
+                busyTimes,
+                monthStart,
+                monthEnd,
+                timezone
+              )
+            : mergeLuxonIntervals([...manualToInclude, ...calendarFree])
+
+          // Start with base availability
+          let combined = baseAvailability
+
+          // Apply overrides: add additions (even if busy), remove removals (even if free)
+          if (overrides.additions.length > 0) {
+            combined = mergeLuxonIntervals([
+              ...combined,
+              ...overrides.additions,
+            ])
+
+            const currentBusySlots = busySlotsMap.get(identifier) || []
+            if (currentBusySlots.length > 0) {
+              const updatedBusySlots = subtractRemovalIntervals(
+                currentBusySlots,
+                overrides.additions
+              )
+              busySlotsMap.set(identifier, updatedBusySlots)
+            }
+          }
+
+          if (overrides.removals.length > 0) {
+            combined = mergeLuxonIntervals(
+              subtractRemovalIntervals(combined, overrides.removals)
+            )
+          }
 
           finalAvailabilityMap.set(identifier, combined)
         })
@@ -862,6 +946,54 @@ export function QuickPollPickAvailability({
     setDates(getDates())
   }, [currentSelectedDate, timezone, SLOT_LENGTH])
 
+  // This ensures that when editing starts again, slots are reloaded from the latest availability
+  useEffect(() => {
+    if (!isEditingAvailability) {
+      setHasLoadedInitialSlots(false)
+    }
+  }, [isEditingAvailability])
+
+  // Pre-select existing slots when editing starts
+  useEffect(() => {
+    if (
+      !isEditingAvailability ||
+      !currentUserIdentifier ||
+      hasLoadedInitialSlots ||
+      !loadSlots ||
+      dates.length === 0
+    ) {
+      return
+    }
+
+    // Get user's existing availability slots
+    const userSlots = effectiveAvailableSlots.get(currentUserIdentifier)
+    if (!userSlots || userSlots.length === 0) {
+      setHasLoadedInitialSlots(true)
+      return
+    }
+
+    // Convert availability intervals to duration-sized slots that match rendered slots
+    const allRenderedSlots = dates.flatMap(dateData => dateData.slots)
+    const uniqueSlots = convertAvailabilityToSelectedSlots(
+      userSlots,
+      allRenderedSlots
+    )
+
+    // Load slots into the tracker
+    if (uniqueSlots.length > 0 && typeof loadSlots === 'function') {
+      loadSlots(uniqueSlots)
+    }
+    setHasLoadedInitialSlots(true)
+  }, [
+    isEditingAvailability,
+    currentUserIdentifier,
+    effectiveAvailableSlots,
+    loadSlots,
+    hasLoadedInitialSlots,
+    dates,
+    duration,
+  ])
+
   const handleScheduledTimeBack = () => {
     const currentDate = DateTime.fromJSDate(currentSelectedDate)
       .setZone(timezone)
@@ -944,13 +1076,7 @@ export function QuickPollPickAvailability({
     }
     const bestSlot = suggestedTimes[0]
     setPickedTime(bestSlot.start.toJSDate())
-
-    if (pollData) {
-      setPickedTime(bestSlot.start.toJSDate())
-      handlePageSwitch(Page.SCHEDULE_DETAILS)
-    } else {
-      handlePageSwitch(Page.SCHEDULE_DETAILS)
-    }
+    handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
 
   const handleTimeSelection = (time: Date) => {
@@ -982,13 +1108,7 @@ export function QuickPollPickAvailability({
               className="noLeftBorder timezone-select"
               options={tzOptions}
               components={customSelectComponents}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  borderColor: 'input-border',
-                  bg: 'select-bg',
-                }),
-              }}
+              chakraStyles={selectChakraStyles}
             />
           </VStack>
 
@@ -1001,13 +1121,7 @@ export function QuickPollPickAvailability({
               className="noLeftBorder timezone-select"
               options={months}
               components={customSelectComponents}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  borderColor: 'input-border',
-                  bg: 'select-bg',
-                }),
-              }}
+              chakraStyles={selectChakraStyles}
             />
           </VStack>
         </VStack>
@@ -1037,9 +1151,7 @@ export function QuickPollPickAvailability({
                 loadingText="Saving..."
                 isDisabled={isSavingAvailability}
               >
-                {isEditingAvailability
-                  ? 'Save availability'
-                  : 'Add/Edit availability'}
+                {getAvailabilityButtonText()}
               </Button>
               {isEditingAvailability && onCancelEditing && (
                 <Button
@@ -1070,13 +1182,7 @@ export function QuickPollPickAvailability({
               className="noLeftBorder timezone-select"
               options={tzOptions}
               components={customSelectComponents}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  borderColor: 'input-border',
-                  bg: 'select-bg',
-                }),
-              }}
+              chakraStyles={selectChakraStyles}
             />
           </VStack>
           <VStack
@@ -1094,13 +1200,7 @@ export function QuickPollPickAvailability({
               className="noLeftBorder timezone-select"
               options={months}
               components={customSelectComponents}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  borderColor: 'input-border',
-                  bg: 'select-bg',
-                }),
-              }}
+              chakraStyles={selectChakraStyles}
             />
           </VStack>
 
@@ -1185,9 +1285,7 @@ export function QuickPollPickAvailability({
                 loadingText="Saving..."
                 isDisabled={isSavingAvailability}
               >
-                {isEditingAvailability
-                  ? 'Save availability'
-                  : 'Add/Edit availability'}
+                {getAvailabilityButtonText()}
               </Button>
               {isEditingAvailability && onCancelEditing && (
                 <Button

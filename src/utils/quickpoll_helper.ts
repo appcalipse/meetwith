@@ -136,6 +136,458 @@ export const convertSelectedSlotsToAvailabilitySlots = (
   return availabilitySlots
 }
 
+/**
+ * Computes base availability for a participant (without overrides).
+ * Base = calendar free slots + default availability blocks + manual slots (excluding existing overrides)
+ */
+export const computeBaseAvailability = (
+  participant: { available_slots?: AvailabilitySlot[]; timezone?: string },
+  manualIntervals: Interval[],
+  defaultIntervals: Interval[],
+  busyIntervals: Interval[],
+  monthStart: Date,
+  monthEnd: Date,
+  timezone: string
+): Interval[] => {
+  // Get manual ranges from available_slots (excluding overrides)
+  const manualFromSlots: Interval[] = []
+  if (participant.available_slots) {
+    for (const slot of participant.available_slots) {
+      const intervals = convertAvailabilitySlotRangesToIntervals(
+        slot,
+        monthStart,
+        monthEnd,
+        timezone,
+        participant.timezone
+      )
+      manualFromSlots.push(...intervals)
+    }
+  }
+
+  // Combine manual intervals
+  const allManual = mergeLuxonIntervals([
+    ...manualIntervals,
+    ...manualFromSlots,
+  ])
+
+  // Determine calendar base
+  let calendarBase: Interval[] = []
+  if (defaultIntervals.length > 0) {
+    calendarBase = defaultIntervals
+  } else if (allManual.length > 0) {
+    calendarBase = allManual
+  } else {
+    // Generate full day blocks
+    const startDT = DateTime.fromJSDate(monthStart).setZone(timezone)
+    const endDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
+    let currentDay = startDT.startOf('day')
+    while (currentDay <= endDT.endOf('day')) {
+      const dayStart = currentDay.set({ hour: 0, minute: 0 })
+      const dayEnd = currentDay.set({ hour: 23, minute: 59 })
+      const interval = Interval.fromDateTimes(dayStart, dayEnd)
+      if (interval.isValid) {
+        calendarBase.push(interval)
+      }
+      currentDay = currentDay.plus({ days: 1 })
+    }
+  }
+
+  // Compute calendar free (base minus busy times)
+  let calendarFree: Interval[] = calendarBase
+  if (busyIntervals.length > 0 && calendarBase.length > 0) {
+    // Subtract busy times from calendar base
+    const freeSlots: Interval[] = []
+    for (const block of calendarBase) {
+      let remainingIntervals = [block]
+      for (const busyTime of busyIntervals) {
+        const newRemaining: Interval[] = []
+        for (const remaining of remainingIntervals) {
+          if (!remaining.overlaps(busyTime)) {
+            newRemaining.push(remaining)
+            continue
+          }
+          if (
+            remaining.start &&
+            busyTime.start &&
+            remaining.start < busyTime.start
+          ) {
+            const beforeBusy = Interval.fromDateTimes(
+              remaining.start,
+              busyTime.start
+            )
+            if (beforeBusy.isValid && beforeBusy.length('minutes') > 0) {
+              newRemaining.push(beforeBusy)
+            }
+          }
+          if (remaining.end && busyTime.end && remaining.end > busyTime.end) {
+            const afterBusy = Interval.fromDateTimes(
+              busyTime.end,
+              remaining.end
+            )
+            if (afterBusy.isValid && afterBusy.length('minutes') > 0) {
+              newRemaining.push(afterBusy)
+            }
+          }
+        }
+        remainingIntervals = newRemaining
+      }
+      freeSlots.push(...remainingIntervals)
+    }
+    calendarFree = freeSlots
+  }
+
+  // Base availability = manual + calendar free
+  let baseAvailability = mergeLuxonIntervals([...allManual, ...calendarFree])
+
+  // Subtract existing removals from base availability
+  // This ensures that when a user re-selects a previously removed slot,
+  // it will be detected as an addition (not in base) rather than just being in ranges
+  if (participant.available_slots) {
+    const existingRemovals: Interval[] = []
+    for (const slot of participant.available_slots) {
+      if (slot.overrides?.removals?.length) {
+        for (const removal of slot.overrides.removals) {
+          const [startHour, startMinute] = removal.start.split(':').map(Number)
+          const [endHour, endMinute] = removal.end.split(':').map(Number)
+
+          if (slot.date) {
+            const specificDate = DateTime.fromISO(slot.date, {
+              zone: participant.timezone || timezone,
+            }).setZone(timezone)
+            const monthStartDT =
+              DateTime.fromJSDate(monthStart).setZone(timezone)
+            const monthEndDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
+
+            if (
+              specificDate >= monthStartDT.startOf('day') &&
+              specificDate <= monthEndDT.endOf('day')
+            ) {
+              const slotStart = specificDate.set({
+                hour: startHour,
+                minute: startMinute,
+              })
+              const slotEnd = specificDate.set({
+                hour: endHour,
+                minute: endMinute,
+              })
+              const interval = Interval.fromDateTimes(slotStart, slotEnd)
+              if (interval.isValid) {
+                existingRemovals.push(interval)
+              }
+            }
+          } else {
+            // Recurring weekday removal
+            const startOfMonth =
+              DateTime.fromJSDate(monthStart).setZone(timezone)
+            const endOfMonth = DateTime.fromJSDate(monthEnd).setZone(timezone)
+            let currentDay = startOfMonth.startOf('month')
+            while (currentDay <= endOfMonth.endOf('month')) {
+              const luxonWeekday = slot.weekday === 0 ? 7 : slot.weekday
+              if (currentDay.weekday === luxonWeekday) {
+                const slotStart = currentDay.set({
+                  hour: startHour,
+                  minute: startMinute,
+                })
+                const slotEnd = currentDay.set({
+                  hour: endHour,
+                  minute: endMinute,
+                })
+                const interval = Interval.fromDateTimes(slotStart, slotEnd)
+                if (interval.isValid) {
+                  existingRemovals.push(interval)
+                }
+              }
+              currentDay = currentDay.plus({ days: 1 })
+            }
+          }
+        }
+      }
+    }
+
+    // Subtract removals from base availability
+    if (existingRemovals.length > 0) {
+      const mergedRemovals = mergeLuxonIntervals(existingRemovals)
+      const afterRemovals: Interval[] = []
+      for (const availInterval of baseAvailability) {
+        let remaining = [availInterval]
+        for (const removalInterval of mergedRemovals) {
+          const newRemaining: Interval[] = []
+          for (const remainingInterval of remaining) {
+            if (!remainingInterval.overlaps(removalInterval)) {
+              newRemaining.push(remainingInterval)
+              continue
+            }
+            // Split interval around removal
+            if (
+              remainingInterval.start &&
+              removalInterval.start &&
+              remainingInterval.start < removalInterval.start
+            ) {
+              const before = Interval.fromDateTimes(
+                remainingInterval.start,
+                removalInterval.start
+              )
+              if (before.isValid && before.length('minutes') > 0) {
+                newRemaining.push(before)
+              }
+            }
+            if (
+              remainingInterval.end &&
+              removalInterval.end &&
+              remainingInterval.end > removalInterval.end
+            ) {
+              const after = Interval.fromDateTimes(
+                removalInterval.end,
+                remainingInterval.end
+              )
+              if (after.isValid && after.length('minutes') > 0) {
+                newRemaining.push(after)
+              }
+            }
+          }
+          remaining = newRemaining
+        }
+        afterRemovals.push(...remaining)
+      }
+      baseAvailability = mergeLuxonIntervals(afterRemovals)
+    }
+  }
+
+  return baseAvailability
+}
+
+/**
+ * Computes overrides by comparing selected slots with base availability.
+ * Base availability = calendar free slots + default availability blocks + manual slots (before overrides)
+ */
+export const computeAvailabilityWithOverrides = (
+  selectedSlots: Array<{ start: DateTime; end: DateTime; date: string }>,
+  baseAvailability: Interval[],
+  monthStart: Date,
+  monthEnd: Date,
+  timezone: string
+): AvailabilitySlot[] => {
+  // Convert selected slots to intervals
+  const selectedIntervals = selectedSlots
+    .map(slot => Interval.fromDateTimes(slot.start, slot.end))
+    .filter(interval => interval.isValid)
+
+  // Merge base availability intervals
+  const mergedBase = mergeLuxonIntervals(baseAvailability)
+
+  // Determine additions: selected slots that are NOT in base (making busy slots available)
+  const additions: Interval[] = []
+  for (const selectedInterval of selectedIntervals) {
+    const isInBase = mergedBase.some(baseInterval => {
+      if (!selectedInterval.isValid || !baseInterval.isValid) return false
+      return (
+        baseInterval.overlaps(selectedInterval) ||
+        (baseInterval.start &&
+          baseInterval.end &&
+          selectedInterval.start &&
+          selectedInterval.end &&
+          baseInterval.start <= selectedInterval.start &&
+          baseInterval.end >= selectedInterval.end)
+      )
+    })
+    if (!isInBase) {
+      additions.push(selectedInterval)
+    }
+  }
+
+  // Determine removals: base availability slots that are NOT selected (making free slots busy)
+  const removals: Interval[] = []
+  for (const baseInterval of mergedBase) {
+    if (!baseInterval.isValid || !baseInterval.start || !baseInterval.end)
+      continue
+
+    // Find all selected intervals that overlap with this base interval
+    const overlappingSelected = selectedIntervals.filter(selectedInterval => {
+      if (
+        !selectedInterval.isValid ||
+        !selectedInterval.start ||
+        !selectedInterval.end
+      )
+        return false
+      return selectedInterval.overlaps(baseInterval)
+    })
+
+    if (overlappingSelected.length === 0) {
+      // No overlap at all
+      removals.push(baseInterval)
+    } else {
+      // Sort overlapping intervals by start time
+      const sorted = overlappingSelected.sort((a, b) => {
+        if (!a.start || !b.start) return 0
+        return a.start.toMillis() - b.start.toMillis()
+      })
+
+      // Check if there are gaps in coverage
+      let currentCoverageStart = baseInterval.start
+      for (const selected of sorted) {
+        if (!selected.start || !selected.end) continue
+        // If there's a gap before this selected interval
+        if (currentCoverageStart && selected.start > currentCoverageStart) {
+          // There's a gap - add the uncovered portion to removals
+          const gap = Interval.fromDateTimes(
+            currentCoverageStart,
+            selected.start
+          )
+          if (gap.isValid && gap.length('minutes') > 0) {
+            removals.push(gap)
+          }
+        }
+        // Update coverage start to the end of this selected interval
+        if (
+          selected.end &&
+          (!currentCoverageStart || selected.end > currentCoverageStart)
+        ) {
+          currentCoverageStart = selected.end
+        }
+      }
+      // Check if there's a gap at the end
+      if (
+        currentCoverageStart &&
+        baseInterval.end &&
+        currentCoverageStart < baseInterval.end
+      ) {
+        const gap = Interval.fromDateTimes(
+          currentCoverageStart,
+          baseInterval.end
+        )
+        if (gap.isValid && gap.length('minutes') > 0) {
+          removals.push(gap)
+        }
+      }
+    }
+  }
+
+  // Determine manual ranges: selected slots that ARE in base and NOT in removals
+  const manualRanges: Interval[] = []
+  for (const selectedInterval of selectedIntervals) {
+    if (!selectedInterval.isValid) continue
+
+    // Check if this selected interval overlaps with any removal
+    const isInRemoval = removals.some(removalInterval => {
+      if (!removalInterval.isValid) return false
+      return removalInterval.overlaps(selectedInterval)
+    })
+
+    // If it's in a removal, don't add it to manual ranges (it will be removed via override)
+    if (isInRemoval) continue
+
+    // Check if this selected interval is in base availability
+    const isInBase = mergedBase.some(baseInterval => {
+      if (!baseInterval.isValid) return false
+      return baseInterval.overlaps(selectedInterval)
+    })
+
+    // Only add to manual ranges if it's in base and not being removed
+    if (isInBase) {
+      manualRanges.push(selectedInterval)
+    }
+  }
+
+  // Group by date and build AvailabilitySlot array
+  const slotMap = new Map<
+    string,
+    {
+      weekday: number
+      date?: string
+      ranges: Array<{ start: string; end: string }>
+      overrides?: {
+        additions?: Array<{ start: string; end: string }>
+        removals?: Array<{ start: string; end: string }>
+      }
+    }
+  >()
+
+  // Helper to add intervals to slot map
+  const addIntervalsToMap = (
+    intervals: Interval[],
+    type: 'ranges' | 'additions' | 'removals'
+  ) => {
+    for (const interval of intervals) {
+      if (!interval.isValid || !interval.start || !interval.end) {
+        continue
+      }
+      const date = interval.start.toFormat('yyyy-MM-dd')
+      const weekday = interval.start.weekday === 7 ? 0 : interval.start.weekday
+      const key = `date:${date}`
+
+      let slot = slotMap.get(key)
+      if (!slot) {
+        slot = { weekday, date, ranges: [] }
+        slotMap.set(key, slot)
+      }
+
+      const timeRange = {
+        start: interval.start.toFormat('HH:mm'),
+        end: interval.end.toFormat('HH:mm'),
+      }
+
+      if (type === 'ranges') {
+        slot.ranges.push(timeRange)
+      } else {
+        if (!slot.overrides) {
+          slot.overrides = {}
+        }
+        if (type === 'additions') {
+          if (!slot.overrides.additions) {
+            slot.overrides.additions = []
+          }
+          slot.overrides.additions.push(timeRange)
+        } else if (type === 'removals') {
+          if (!slot.overrides.removals) {
+            slot.overrides.removals = []
+          }
+          slot.overrides.removals.push(timeRange)
+        }
+      }
+    }
+  }
+
+  // Add manual ranges, additions, and removals
+  addIntervalsToMap(removals, 'removals')
+  addIntervalsToMap(additions, 'additions')
+  addIntervalsToMap(manualRanges, 'ranges')
+
+  // Build final result
+  const result: AvailabilitySlot[] = []
+  for (const slot of slotMap.values()) {
+    const finalSlot: AvailabilitySlot = {
+      weekday: slot.weekday,
+      date: slot.date,
+      ranges: mergeTimeRanges(slot.ranges),
+    }
+
+    if (slot.overrides) {
+      const mergedAdditions =
+        slot.overrides.additions && slot.overrides.additions.length > 0
+          ? mergeTimeRanges(slot.overrides.additions)
+          : []
+      const mergedRemovals =
+        slot.overrides.removals && slot.overrides.removals.length > 0
+          ? mergeTimeRanges(slot.overrides.removals)
+          : []
+
+      if (mergedAdditions.length > 0 || mergedRemovals.length > 0) {
+        finalSlot.overrides = {}
+        if (mergedAdditions.length > 0) {
+          finalSlot.overrides.additions = mergedAdditions
+        }
+        if (mergedRemovals.length > 0) {
+          finalSlot.overrides.removals = mergedRemovals
+        }
+      }
+    }
+
+    result.push(finalSlot)
+  }
+
+  return result
+}
+
 export const generateQuickPollBestSlots = (
   startDate: Date,
   endDate: Date,
@@ -162,6 +614,305 @@ export const generateQuickPollBestSlots = (
       )
     })
     .slice(0, 10)
+}
+
+/**
+ * Subtracts busy time intervals from availability blocks.
+ * Splits blocks around busy times to return only free periods.
+ */
+export const subtractBusyTimesFromBlocks = (
+  blocks: Interval[],
+  busyTimes: Interval[]
+): Interval[] => {
+  if (!blocks.length) return []
+
+  const freeSlots: Interval[] = []
+
+  for (const block of blocks) {
+    let remainingIntervals = [block]
+
+    for (const busyTime of busyTimes) {
+      const newRemaining: Interval[] = []
+      for (const remaining of remainingIntervals) {
+        if (!remaining.overlaps(busyTime)) {
+          newRemaining.push(remaining)
+          continue
+        }
+
+        // Add interval before busy time
+        if (
+          remaining.start &&
+          busyTime.start &&
+          remaining.start < busyTime.start
+        ) {
+          const beforeBusy = Interval.fromDateTimes(
+            remaining.start,
+            busyTime.start
+          )
+          if (beforeBusy.isValid && beforeBusy.length('minutes') > 0) {
+            newRemaining.push(beforeBusy)
+          }
+        }
+        // Add interval after busy time
+        if (remaining.end && busyTime.end && remaining.end > busyTime.end) {
+          const afterBusy = Interval.fromDateTimes(busyTime.end, remaining.end)
+          if (afterBusy.isValid && afterBusy.length('minutes') > 0) {
+            newRemaining.push(afterBusy)
+          }
+        }
+      }
+      remainingIntervals = newRemaining
+    }
+
+    freeSlots.push(...remainingIntervals)
+  }
+
+  return freeSlots
+}
+
+/**
+ * Subtracts removal intervals from availability intervals.
+ * Similar to subtractBusyTimesFromBlocks but specifically for override removals.
+ */
+export const subtractRemovalIntervals = (
+  availabilityIntervals: Interval[],
+  removalIntervals: Interval[]
+): Interval[] => {
+  if (!removalIntervals.length) return availabilityIntervals
+
+  const afterRemovals: Interval[] = []
+  for (const availInterval of availabilityIntervals) {
+    let remaining = [availInterval]
+    for (const removalInterval of removalIntervals) {
+      const newRemaining: Interval[] = []
+      for (const remainingInterval of remaining) {
+        if (!remainingInterval.overlaps(removalInterval)) {
+          newRemaining.push(remainingInterval)
+          continue
+        }
+        // Split interval around removal
+        if (
+          remainingInterval.start &&
+          removalInterval.start &&
+          remainingInterval.start < removalInterval.start
+        ) {
+          const before = Interval.fromDateTimes(
+            remainingInterval.start,
+            removalInterval.start
+          )
+          if (before.isValid && before.length('minutes') > 0) {
+            newRemaining.push(before)
+          }
+        }
+        if (
+          remainingInterval.end &&
+          removalInterval.end &&
+          remainingInterval.end > removalInterval.end
+        ) {
+          const after = Interval.fromDateTimes(
+            removalInterval.end,
+            remainingInterval.end
+          )
+          if (after.isValid && after.length('minutes') > 0) {
+            newRemaining.push(after)
+          }
+        }
+      }
+      remaining = newRemaining
+    }
+    afterRemovals.push(...remaining)
+  }
+
+  return afterRemovals
+}
+
+/**
+ * Generates full day blocks (00:00-23:59) for each day in the given month range.
+ */
+export const generateFullDayBlocks = (
+  monthStart: Date,
+  monthEnd: Date,
+  timezone: string
+): Interval[] => {
+  const defaultBlocks: Interval[] = []
+  const startDT = DateTime.fromJSDate(monthStart).setZone(timezone)
+  const endDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
+
+  let currentDay = startDT.startOf('day')
+  while (currentDay <= endDT.endOf('day')) {
+    const dayStart = currentDay.set({ hour: 0, minute: 0 })
+    const dayEnd = currentDay.set({ hour: 23, minute: 59 })
+
+    const interval = Interval.fromDateTimes(dayStart, dayEnd)
+    if (interval.isValid) {
+      defaultBlocks.push(interval)
+    }
+
+    currentDay = currentDay.plus({ days: 1 })
+  }
+
+  return defaultBlocks
+}
+
+/**
+ * Clips intervals to only include portions within the given bounds.
+ */
+export const clipIntervalsToBounds = (
+  intervals: Interval[],
+  bounds: Interval[]
+): Interval[] => {
+  if (!bounds.length || !intervals.length) return intervals
+
+  const clipped: Interval[] = []
+  for (const bound of bounds) {
+    for (const interval of intervals) {
+      const intersection = interval.intersection(bound)
+      if (
+        intersection &&
+        intersection.isValid &&
+        intersection.length('minutes') > 0
+      ) {
+        clipped.push(intersection)
+      }
+    }
+  }
+
+  return mergeLuxonIntervals(clipped)
+}
+
+/**
+ * Computes month start and end dates for availability calculations.
+ */
+export const getMonthRange = (
+  currentSelectedDate: Date,
+  timezone: string
+): { monthStart: Date; monthEnd: Date } => {
+  const monthStart = DateTime.fromJSDate(currentSelectedDate)
+    .setZone(timezone)
+    .startOf('month')
+    .toJSDate()
+  const monthEnd = DateTime.fromJSDate(currentSelectedDate)
+    .setZone(timezone)
+    .endOf('month')
+    .toJSDate()
+  return { monthStart, monthEnd }
+}
+
+/**
+ * Converts raw busy slot data from API to Interval objects.
+ */
+export const convertBusySlotsToIntervals = (
+  busySlotsRaw: Array<{ start: unknown; end: unknown }>
+): Interval[] => {
+  return busySlotsRaw
+    .map(slot => {
+      const startDate =
+        slot.start instanceof Date
+          ? slot.start
+          : new Date(slot.start as string | number)
+      const endDate =
+        slot.end instanceof Date
+          ? slot.end
+          : new Date(slot.end as string | number)
+
+      return Interval.fromDateTimes(
+        DateTime.fromJSDate(startDate),
+        DateTime.fromJSDate(endDate)
+      )
+    })
+    .filter(interval => interval.isValid)
+}
+
+/**
+ * Computes availability slots with overrides from selected slots.
+ */
+export const computeAvailabilitySlotsWithOverrides = (
+  selectedSlots: Array<{ start: DateTime; end: DateTime; date: string }>,
+  baseAvailability: Interval[],
+  monthStart: Date,
+  monthEnd: Date,
+  timezone: string
+): AvailabilitySlot[] => {
+  try {
+    return computeAvailabilityWithOverrides(
+      selectedSlots,
+      baseAvailability,
+      monthStart,
+      monthEnd,
+      timezone
+    )
+  } catch (error) {
+    // Fallback
+    return convertSelectedSlotsToAvailabilitySlots(selectedSlots)
+  }
+}
+
+/**
+ * Checks if two time slot intervals overlap or one contains the other.
+ */
+export const doSlotsOverlapOrContain = (
+  slot1: { start: DateTime; end: DateTime },
+  slot2: { start: DateTime; end: DateTime }
+): boolean => {
+  const interval1 = Interval.fromDateTimes(slot1.start, slot1.end)
+  const interval2 = Interval.fromDateTimes(slot2.start, slot2.end)
+
+  // Return false if either interval is invalid (they don't overlap)
+  if (!interval1.isValid || !interval2.isValid) {
+    return false
+  }
+
+  return interval1.overlaps(interval2)
+}
+
+/**
+ * Converts availability intervals to selected time slots that match rendered slots.
+ * Used for pre-selecting existing availability when editing starts.
+ */
+export const convertAvailabilityToSelectedSlots = (
+  availabilityIntervals: Interval[],
+  renderedSlots: Interval[]
+): Array<{ start: DateTime; end: DateTime; date: string }> => {
+  const selectedTimeSlots: Array<{
+    start: DateTime
+    end: DateTime
+    date: string
+  }> = []
+
+  renderedSlots.forEach(renderedSlot => {
+    if (!renderedSlot.isValid || !renderedSlot.start || !renderedSlot.end) {
+      return
+    }
+
+    availabilityIntervals.forEach(availabilityInterval => {
+      if (
+        !availabilityInterval.isValid ||
+        !availabilityInterval.start ||
+        !availabilityInterval.end
+      ) {
+        return
+      }
+
+      if (
+        renderedSlot.overlaps(availabilityInterval) &&
+        renderedSlot.start &&
+        renderedSlot.end
+      ) {
+        selectedTimeSlots.push({
+          start: renderedSlot.start,
+          end: renderedSlot.end,
+          date: renderedSlot.start.toFormat('yyyy-MM-dd'),
+        })
+      }
+    })
+  })
+
+  // Remove duplicates
+  return selectedTimeSlots.filter(
+    (slot, index, self) =>
+      index ===
+      self.findIndex(s => s.start.equals(slot.start) && s.end.equals(slot.end))
+  )
 }
 
 export const mergeLuxonIntervals = (intervals: Interval[]): Interval[] => {
@@ -214,50 +965,282 @@ export const mergeAvailabilitySlots = (
     return []
   }
 
-  const slotMap = new Map<
-    string,
-    {
-      weekday: number
-      date?: string
-      ranges: Array<{ start: string; end: string }>
+  const slotMap = new Map<string, AvailabilitySlot>()
+
+  const normalizeSlot = (
+    slot: AvailabilitySlot | undefined
+  ): AvailabilitySlot | undefined => {
+    if (!slot) return undefined
+
+    const normalized: AvailabilitySlot = {
+      weekday: slot.weekday,
+      date: slot.date,
+      ranges: mergeTimeRanges(slot.ranges || []),
     }
-  >()
 
-  const addSlotsToMap = (slots: AvailabilitySlot[]) => {
-    slots.forEach(slot => {
-      const key = slot.date ? `date:${slot.date}` : `weekday:${slot.weekday}`
-      const current = slotMap.get(key)
-      const combinedRanges = [
-        ...(current?.ranges || []),
-        ...(slot.ranges || []),
-      ]
+    if (slot.overrides) {
+      const additions = slot.overrides.additions
+        ? mergeTimeRanges(slot.overrides.additions)
+        : []
+      const removals = slot.overrides.removals
+        ? mergeTimeRanges(slot.overrides.removals)
+        : []
 
-      slotMap.set(key, {
-        weekday: slot.weekday,
-        date: slot.date,
-        ranges: mergeTimeRanges(
-          combinedRanges.map(range => ({
-            start: range.start,
-            end: range.end,
-          }))
-        ),
-      })
-    })
+      if (additions.length > 0 || removals.length > 0) {
+        normalized.overrides = {}
+        if (additions.length > 0) {
+          normalized.overrides.additions = additions
+        }
+        if (removals.length > 0) {
+          normalized.overrides.removals = removals
+        }
+      }
+    }
+
+    return normalized
   }
 
-  addSlotsToMap(existingSlots || [])
-  addSlotsToMap(newSlots || [])
+  // Seed map with existing slots
+  existingSlots?.forEach(slot => {
+    const key = slot.date ? `date:${slot.date}` : `weekday:${slot.weekday}`
+    const normalized = normalizeSlot(slot)
+    if (normalized) {
+      slotMap.set(key, normalized)
+    }
+  })
 
-  return Array.from(slotMap.values()).map(slot => ({
-    weekday: slot.weekday,
-    date: slot.date,
-    ranges: mergeTimeRanges(
-      slot.ranges.map(range => ({
-        start: range.start,
-        end: range.end,
-      }))
-    ),
-  }))
+  // New slots are authoritative for their keys - overwrite existing entries
+  newSlots?.forEach(slot => {
+    const key = slot.date ? `date:${slot.date}` : `weekday:${slot.weekday}`
+    const normalized = normalizeSlot(slot)
+    if (normalized) {
+      slotMap.set(key, normalized)
+    }
+  })
+
+  return Array.from(slotMap.values())
+}
+
+/**
+ * Converts availability slot ranges to intervals
+ */
+export const convertAvailabilitySlotRangesToIntervals = (
+  daySlot: AvailabilitySlot,
+  monthStart: Date,
+  monthEnd: Date,
+  timezone: string,
+  participantTimezone?: string
+): Interval[] => {
+  const intervals: Interval[] = []
+
+  if (!daySlot.ranges?.length) return intervals
+
+  for (const range of daySlot.ranges) {
+    const [startHour, startMinute] = range.start.split(':').map(Number)
+    const [endHour, endMinute] = range.end.split(':').map(Number)
+
+    // If a specific date is provided, only create interval for that date
+    if (daySlot.date) {
+      const specificDate = DateTime.fromISO(daySlot.date, {
+        zone: participantTimezone || timezone,
+      })
+
+      const monthStartDT = DateTime.fromJSDate(monthStart).setZone(timezone)
+      const monthEndDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
+
+      if (
+        specificDate >= monthStartDT.startOf('day') &&
+        specificDate <= monthEndDT.endOf('day')
+      ) {
+        const slotStart = specificDate.set({
+          hour: startHour,
+          minute: startMinute,
+        })
+        const slotEnd = specificDate.set({
+          hour: endHour,
+          minute: endMinute,
+        })
+
+        const interval = Interval.fromDateTimes(slotStart, slotEnd)
+        if (interval.isValid) {
+          intervals.push(interval)
+        }
+      }
+    } else {
+      // If no specific date, treat as recurring weekly availability
+      const startOfMonth = DateTime.fromJSDate(monthStart).setZone(timezone)
+      const endOfMonth = DateTime.fromJSDate(monthEnd).setZone(timezone)
+
+      let currentDay = startOfMonth.startOf('month')
+      while (currentDay <= endOfMonth.endOf('month')) {
+        // Convert weekday (0=Sunday) to Luxon weekday (1=Monday, 7=Sunday)
+        const luxonWeekday = daySlot.weekday === 0 ? 7 : daySlot.weekday
+
+        if (currentDay.weekday === luxonWeekday) {
+          const slotStart = currentDay.set({
+            hour: startHour,
+            minute: startMinute,
+          })
+          const slotEnd = currentDay.set({
+            hour: endHour,
+            minute: endMinute,
+          })
+
+          const interval = Interval.fromDateTimes(slotStart, slotEnd)
+          if (interval.isValid) {
+            intervals.push(interval)
+          }
+        }
+        currentDay = currentDay.plus({ days: 1 })
+      }
+    }
+  }
+
+  return intervals
+}
+
+/**
+ * Extracts override intervals from availability slots
+ */
+export const extractOverrideIntervals = (
+  participant: { available_slots?: AvailabilitySlot[]; timezone?: string },
+  monthStart: Date,
+  monthEnd: Date,
+  timezone: string
+): {
+  additions: Interval[]
+  removals: Interval[]
+} => {
+  const additions: Interval[] = []
+  const removals: Interval[] = []
+
+  if (!participant.available_slots?.length) {
+    return { additions, removals }
+  }
+
+  for (const daySlot of participant.available_slots) {
+    if (!daySlot.overrides) continue
+
+    // Process additions
+    if (daySlot.overrides.additions?.length) {
+      for (const range of daySlot.overrides.additions) {
+        const [startHour, startMinute] = range.start.split(':').map(Number)
+        const [endHour, endMinute] = range.end.split(':').map(Number)
+
+        if (daySlot.date) {
+          // Parse the date in the participant's timezone, then convert to display timezone
+          const specificDateInParticipantTz = DateTime.fromISO(daySlot.date, {
+            zone: participant.timezone || timezone,
+          })
+          // Convert to the display timezone for consistent comparison
+          const specificDate = specificDateInParticipantTz.setZone(timezone)
+          const monthStartDT = DateTime.fromJSDate(monthStart).setZone(timezone)
+          const monthEndDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
+
+          if (
+            specificDate >= monthStartDT.startOf('day') &&
+            specificDate <= monthEndDT.endOf('day')
+          ) {
+            const slotStart = specificDate.set({
+              hour: startHour,
+              minute: startMinute,
+            })
+            const slotEnd = specificDate.set({
+              hour: endHour,
+              minute: endMinute,
+            })
+            const interval = Interval.fromDateTimes(slotStart, slotEnd)
+            if (interval.isValid) {
+              additions.push(interval)
+            }
+          }
+        } else {
+          const startOfMonth = DateTime.fromJSDate(monthStart).setZone(timezone)
+          const endOfMonth = DateTime.fromJSDate(monthEnd).setZone(timezone)
+          let currentDay = startOfMonth.startOf('month')
+          while (currentDay <= endOfMonth.endOf('month')) {
+            const luxonWeekday = daySlot.weekday === 0 ? 7 : daySlot.weekday
+            if (currentDay.weekday === luxonWeekday) {
+              const slotStart = currentDay.set({
+                hour: startHour,
+                minute: startMinute,
+              })
+              const slotEnd = currentDay.set({
+                hour: endHour,
+                minute: endMinute,
+              })
+              const interval = Interval.fromDateTimes(slotStart, slotEnd)
+              if (interval.isValid) {
+                additions.push(interval)
+              }
+            }
+            currentDay = currentDay.plus({ days: 1 })
+          }
+        }
+      }
+    }
+
+    // Process removals
+    if (daySlot.overrides.removals?.length) {
+      for (const range of daySlot.overrides.removals) {
+        const [startHour, startMinute] = range.start.split(':').map(Number)
+        const [endHour, endMinute] = range.end.split(':').map(Number)
+
+        if (daySlot.date) {
+          // Parse the date in the participant's timezone, then convert to display timezone
+          const specificDateInParticipantTz = DateTime.fromISO(daySlot.date, {
+            zone: participant.timezone || timezone,
+          })
+          // Convert to the display timezone for consistent comparison
+          const specificDate = specificDateInParticipantTz.setZone(timezone)
+          const monthStartDT = DateTime.fromJSDate(monthStart).setZone(timezone)
+          const monthEndDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
+
+          if (
+            specificDate >= monthStartDT.startOf('day') &&
+            specificDate <= monthEndDT.endOf('day')
+          ) {
+            const slotStart = specificDate.set({
+              hour: startHour,
+              minute: startMinute,
+            })
+            const slotEnd = specificDate.set({
+              hour: endHour,
+              minute: endMinute,
+            })
+            const interval = Interval.fromDateTimes(slotStart, slotEnd)
+            if (interval.isValid) {
+              removals.push(interval)
+            }
+          }
+        } else {
+          const startOfMonth = DateTime.fromJSDate(monthStart).setZone(timezone)
+          const endOfMonth = DateTime.fromJSDate(monthEnd).setZone(timezone)
+          let currentDay = startOfMonth.startOf('month')
+          while (currentDay <= endOfMonth.endOf('month')) {
+            const luxonWeekday = daySlot.weekday === 0 ? 7 : daySlot.weekday
+            if (currentDay.weekday === luxonWeekday) {
+              const slotStart = currentDay.set({
+                hour: startHour,
+                minute: startMinute,
+              })
+              const slotEnd = currentDay.set({
+                hour: endHour,
+                minute: endMinute,
+              })
+              const interval = Interval.fromDateTimes(slotStart, slotEnd)
+              if (interval.isValid) {
+                removals.push(interval)
+              }
+            }
+            currentDay = currentDay.plus({ days: 1 })
+          }
+        }
+      }
+    }
+  }
+
+  return { additions, removals }
 }
 
 export const processPollParticipantAvailabilities = (
@@ -302,70 +1285,16 @@ export const processPollParticipantAvailabilities = (
 
     const participantAvailabilities: Interval[] = []
 
-    // Convert available_slots to Interval objects
+    // Convert available_slots to Interval objects (only manual ranges, not overrides)
     for (const daySlot of participant.available_slots) {
-      if (!daySlot.ranges?.length) continue
-
-      for (const range of daySlot.ranges) {
-        const [startHour, startMinute] = range.start.split(':').map(Number)
-        const [endHour, endMinute] = range.end.split(':').map(Number)
-
-        // If a specific date is provided, only create interval for that date
-        if (daySlot.date) {
-          const specificDate = DateTime.fromISO(daySlot.date, {
-            zone: participant.timezone || timezone,
-          })
-
-          const monthStartDT = DateTime.fromJSDate(monthStart).setZone(timezone)
-          const monthEndDT = DateTime.fromJSDate(monthEnd).setZone(timezone)
-
-          if (
-            specificDate >= monthStartDT.startOf('day') &&
-            specificDate <= monthEndDT.endOf('day')
-          ) {
-            const slotStart = specificDate.set({
-              hour: startHour,
-              minute: startMinute,
-            })
-            const slotEnd = specificDate.set({
-              hour: endHour,
-              minute: endMinute,
-            })
-
-            const interval = Interval.fromDateTimes(slotStart, slotEnd)
-            if (interval.isValid) {
-              participantAvailabilities.push(interval)
-            }
-          }
-        } else {
-          // If no specific date, treat as recurring weekly availability
-          const startOfMonth = DateTime.fromJSDate(monthStart).setZone(timezone)
-          const endOfMonth = DateTime.fromJSDate(monthEnd).setZone(timezone)
-
-          let currentDay = startOfMonth.startOf('month')
-          while (currentDay <= endOfMonth.endOf('month')) {
-            // Convert weekday (0=Sunday) to Luxon weekday (1=Monday, 7=Sunday)
-            const luxonWeekday = daySlot.weekday === 0 ? 7 : daySlot.weekday
-
-            if (currentDay.weekday === luxonWeekday) {
-              const slotStart = currentDay.set({
-                hour: startHour,
-                minute: startMinute,
-              })
-              const slotEnd = currentDay.set({
-                hour: endHour,
-                minute: endMinute,
-              })
-
-              const interval = Interval.fromDateTimes(slotStart, slotEnd)
-              if (interval.isValid) {
-                participantAvailabilities.push(interval)
-              }
-            }
-            currentDay = currentDay.plus({ days: 1 })
-          }
-        }
-      }
+      const intervals = convertAvailabilitySlotRangesToIntervals(
+        daySlot,
+        monthStart,
+        monthEnd,
+        timezone,
+        participant.timezone
+      )
+      participantAvailabilities.push(...intervals)
     }
 
     availableSlotsMap.set(participantIdentifier, participantAvailabilities)
