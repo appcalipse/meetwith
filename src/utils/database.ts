@@ -6539,7 +6539,7 @@ const createQuickPoll = async (
     }
 
     const invitees = await Promise.all(
-      pollData.participants.map(async p => {
+      (pollData.participants || []).map(async p => {
         let timezone = 'UTC'
         let email = ''
         let availableSlots: AvailabilitySlot[] = []

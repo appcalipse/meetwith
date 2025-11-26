@@ -185,6 +185,13 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
           py={3}
           px={4}
         >
+          {isEditingAvailability && (
+            <Text mb="7px">
+              {isSelected
+                ? 'Click to make unavailable'
+                : 'Click to make available'}
+            </Text>
+          )}
           <Text mb="7px">
             {formatWithOrdinal(slot)} ({timezone})
           </Text>
