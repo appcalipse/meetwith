@@ -379,6 +379,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
               eventId: object.url || undefined,
               email: this.email,
               webLink: object.url || undefined,
+              recurrenceId: event.recurrenceId
+                ? event.recurrenceId.toString()
+                : undefined,
             }
           })
       } catch (error) {
@@ -422,14 +425,21 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     const allEventsArrays = await Promise.all(allEventsPromises)
     const allEvents = allEventsArrays.flat()
 
-    // Deduplicate events by eventId (URL) since events spanning chunk boundaries
-    // might appear in multiple chunks, especially recurring events
+    // Deduplicate events using a composite key that includes recurrenceId for recurring events.
+    // This prevents filtering out recurring meeting instances, which share the same eventId (UID)
     const uniqueEventsMap = new Map<string, EventBusyDate>()
     for (const event of allEvents) {
-      const eventKey =
-        event.eventId || `${event.start}-${event.end}-${event.title}`
+      const eventWithRecurrence = event as EventBusyDate & {
+        recurrenceId?: string
+      }
+      const eventKey = eventWithRecurrence.recurrenceId
+        ? `${event.eventId || 'unknown'}_${eventWithRecurrence.recurrenceId}`
+        : `${event.eventId || 'unknown'}_${new Date(event.start).getTime()}`
+
       if (!uniqueEventsMap.has(eventKey)) {
-        uniqueEventsMap.set(eventKey, event)
+        const { recurrenceId, ...eventWithoutRecurrenceId } =
+          eventWithRecurrence
+        uniqueEventsMap.set(eventKey, eventWithoutRecurrenceId)
       }
     }
 
