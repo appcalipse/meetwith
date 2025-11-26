@@ -599,25 +599,36 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           // Use events.list to get full event details including title and ID
           const eventsPromises = calendarIds.map(async calendarId => {
             try {
-              const eventsResponse = await calendar.events.list({
-                calendarId,
-                timeMin: dateFrom,
-                timeMax: dateTo,
-                singleEvents: true,
-                orderBy: 'startTime',
-                maxResults: 2500,
-              })
+              const allEvents: any[] = []
+              let pageToken: string | undefined
 
-              return (
-                eventsResponse.data.items?.map(event => ({
-                  start: event.start?.dateTime || event.start?.date || '',
-                  end: event.end?.dateTime || event.end?.date || '',
-                  title: event.summary || '',
-                  eventId: event.id || '',
-                  email: this.email,
-                  webLink: event.htmlLink || undefined,
-                })) || []
-              )
+              // Paginate through all events using nextPageToken
+              do {
+                const eventsResponse = await calendar.events.list({
+                  calendarId,
+                  timeMin: dateFrom,
+                  timeMax: dateTo,
+                  singleEvents: true,
+                  orderBy: 'startTime',
+                  maxResults: 2500,
+                  pageToken,
+                })
+
+                const pageEvents =
+                  eventsResponse.data.items?.map(event => ({
+                    start: event.start?.dateTime || event.start?.date || '',
+                    end: event.end?.dateTime || event.end?.date || '',
+                    title: event.summary || '',
+                    eventId: event.id || '',
+                    email: this.email,
+                    webLink: event.htmlLink || undefined,
+                  })) || []
+
+                allEvents.push(...pageEvents)
+                pageToken = eventsResponse.data.nextPageToken || undefined
+              } while (pageToken)
+
+              return allEvents
             } catch (error) {
               // Fallback to freebusy if events.list fails
               console.warn(
