@@ -16,9 +16,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       const meetingType = await getMeetingTypeFromDB(id)
+      if (!meetingType) {
+        throw new MeetingTypeNotFound()
+      }
 
       // Verify the meeting type belongs to the current account
-      if (meetingType.account_owner_address !== account_id) {
+      if (meetingType?.account_owner_address !== account_id) {
         return res.status(403).json({ error: 'Access denied' })
       }
 

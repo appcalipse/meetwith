@@ -3,21 +3,39 @@ import {
   areIntervalsOverlapping,
   compareAsc,
   differenceInSeconds,
+  getWeekOfMonth,
   Interval,
   max,
   min,
 } from 'date-fns'
+import format from 'date-fns/format'
+import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
+import { DateTime } from 'luxon'
 
 import { ConditionRelation } from '@/types/common'
-import { TimeSlot, TimeSlotSource } from '@/types/Meeting'
+import {
+  MeetingChangeType,
+  MeetingRepeat,
+  TimeSlot,
+  TimeSlotSource,
+} from '@/types/Meeting'
+import { ParticipationStatus } from '@/types/ParticipantInfo'
 import { QuickPollBusyParticipant } from '@/types/QuickPoll'
+import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import {
+  createAlarm,
+  getCalendarRegularUrl,
+  participantStatusToICSStatus,
+} from '../calendar_manager'
+import {
   getConnectedCalendars,
-  getMeetingTypeFromDB,
   getQuickPollCalendars,
   getSlotsForAccount,
 } from '../database'
+import { getCalendarPrimaryEmail } from '../sync_helper'
+import { isValidEmail, isValidUrl } from '../validations'
+import { CalendarServiceHelper } from './calendar.helper'
 import { getConnectedCalendarIntegration } from './connected_calendars.factory'
 
 export const CalendarBackendHelper = {
@@ -287,7 +305,7 @@ export const CalendarBackendHelper = {
     }, {})
 
     const slotsByAccountArray = []
-    for (const [key, value] of Object.entries(slotsByAccount)) {
+    for (const [_, value] of Object.entries(slotsByAccount)) {
       slotsByAccountArray.push(value)
     }
 
@@ -338,4 +356,115 @@ export const CalendarBackendHelper = {
 
     return overlaps
   },
+}
+
+export const generateIcsServer = async (
+  meeting: MeetingCreationSyncRequest,
+  ownerAddress: string,
+  meetingStatus: MeetingChangeType,
+  changeUrl?: string,
+  useParticipants?: boolean,
+  destination?: { accountAddress: string; email: string },
+  isPrivate?: boolean
+): Promise<
+  ReturnObject & {
+    attendees: Attendee[]
+  }
+> => {
+  let url = meeting.meeting_url.trim()
+  if (!isValidUrl(url)) {
+    url = 'https://meetwith.xyz'
+  }
+  const start = DateTime.fromJSDate(new Date(meeting.start))
+  const end = DateTime.fromJSDate(new Date(meeting.end))
+  const created_at = DateTime.fromJSDate(new Date(meeting.created_at!))
+  const event: EventAttributes = {
+    uid: meeting.meeting_id.replaceAll('-', ''),
+    start: [start.year, start.month, start.day, start.hour, start.minute],
+    productId: '-//Meetwith//EN',
+    end: [end.year, end.month, end.day, end.hour, end.minute],
+    title: CalendarServiceHelper.getMeetingTitle(
+      ownerAddress,
+      meeting.participants,
+      meeting.title
+    ),
+    description: CalendarServiceHelper.getMeetingSummary(
+      meeting.content,
+      meeting.meeting_url,
+      changeUrl
+    ),
+    url,
+    location: meeting.meeting_url,
+    created: [
+      created_at.year,
+      created_at.month,
+      created_at.day,
+      created_at.hour,
+      created_at.minute,
+    ],
+    organizer: {
+      name: destination?.accountAddress,
+      email: destination?.email,
+    },
+    status:
+      meetingStatus === MeetingChangeType.DELETE ? 'CANCELLED' : 'CONFIRMED',
+  }
+  if (!isPrivate) {
+    event.method = 'REQUEST'
+    event.transp = 'OPAQUE'
+    event.classification = 'PUBLIC'
+  }
+  if (meeting.meetingReminders) {
+    event.alarms = meeting.meetingReminders.map(createAlarm)
+  }
+  if (
+    meeting.meetingRepeat &&
+    meeting?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+  ) {
+    let RRULE = `FREQ=${meeting.meetingRepeat?.toUpperCase()};INTERVAL=1`
+    const dayOfWeek = format(meeting.start, 'eeeeee').toUpperCase()
+    const weekOfMonth = getWeekOfMonth(meeting.start)
+
+    switch (meeting.meetingRepeat) {
+      case MeetingRepeat.WEEKLY:
+        RRULE += `;BYDAY=${dayOfWeek}`
+        break
+      case MeetingRepeat.MONTHLY:
+        RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+        break
+    }
+    event.recurrenceRule = RRULE
+  }
+  event.attendees = []
+  if (useParticipants) {
+    const attendees = await Promise.all(
+      meeting.participants.map(async participant => {
+        const email =
+          destination &&
+          destination.accountAddress === participant.account_address
+            ? destination.email
+            : participant.guest_email ||
+              (await getCalendarPrimaryEmail(participant.account_address!))
+        if (!email && !isValidEmail(email)) return null
+        const attendee: Attendee = {
+          name: participant.name || participant.account_address,
+          email,
+          rsvp: participant.status === ParticipationStatus.Accepted,
+          partstat: participantStatusToICSStatus(participant.status),
+          role: 'REQ-PARTICIPANT',
+        }
+
+        if (participant.account_address) {
+          attendee.dir = getCalendarRegularUrl(participant.account_address!)
+        }
+        return attendee
+      })
+    )
+    event.attendees.push(
+      ...attendees.filter((attendee): attendee is Attendee => attendee !== null)
+    )
+  }
+
+  const icsEvent = createEvent(event)
+  return { ...icsEvent, attendees: event.attendees }
 }
