@@ -427,7 +427,10 @@ export function QuickPollPickAvailability({
     effectiveAvailableSlots,
     effectiveMeetingMembers,
     effectiveAvailabilityAddresses,
-    timezone
+    timezone,
+    undefined,
+    undefined,
+    true
   )
 
   const [monthValue, setMonthValue] = useState<
@@ -770,13 +773,11 @@ export function QuickPollPickAvailability({
             ])
 
             const currentBusySlots = busySlotsMap.get(identifier) || []
-            if (currentBusySlots.length > 0) {
-              const updatedBusySlots = subtractRemovalIntervals(
-                currentBusySlots,
-                overrides.additions
-              )
-              busySlotsMap.set(identifier, updatedBusySlots)
-            }
+            const updatedBusySlots = subtractRemovalIntervals(
+              currentBusySlots,
+              overrides.additions
+            )
+            busySlotsMap.set(identifier, updatedBusySlots)
           }
 
           if (overrides.removals.length > 0) {
