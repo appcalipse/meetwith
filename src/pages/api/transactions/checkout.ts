@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import { MeetingCheckoutRequest } from '@/types/Requests'
+import { ICheckoutMetadata } from '@/types/Transactions'
 import {
   createCheckOutTransaction,
   getAccountAvatarUrl,
@@ -39,6 +40,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         guest_name: payload?.guest_name || '',
         meeting_type_id: payload?.meeting_type_id || '',
         transaction_id: transaction.id,
+        environment: process.env.NEXT_PUBLIC_ENV_CONFIG || '',
       }
       const session = await stripe.checkout.sessions.create(
         {
