@@ -35,9 +35,11 @@ import {
 import Sentry from '@sentry/nextjs'
 import { logEvent } from '@utils/analytics'
 import {
+  decodeMeetingGuest,
   getBusySlots,
   getMeetingGuest,
   getNotificationSubscriptions,
+  getSlotByMeetingId,
   listConnectedCalendars,
 } from '@utils/api_helper'
 import {
@@ -47,7 +49,7 @@ import {
   PublicSchedulingSteps,
   SessionType,
 } from '@utils/constants/meeting-types'
-import { Option, TimeZoneOption } from '@utils/constants/select'
+import { TimeZoneOption } from '@utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@utils/date_helper'
 import {
   AllMeetingSlotsUsedError,
@@ -64,7 +66,7 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@utils/errors'
-import { saveMeetingsScheduled } from '@utils/storage'
+import { getSignature, saveMeetingsScheduled } from '@utils/storage'
 import { getAccountDisplayName } from '@utils/user_manager'
 import { addMinutes } from 'date-fns'
 import { DateTime, Interval } from 'luxon'
@@ -76,10 +78,13 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
 import { Address, Transaction } from '@/types/Transactions'
 import {
+  decodeMeeting,
   getAccountDomainUrl,
   scheduleMeeting,
   selectDefaultProvider,
+  updateMeeting,
   updateMeetingAsGuest,
+  updateMeetingConferenceGuest,
 } from '@/utils/calendar_manager'
 import {
   MeetingNotificationOptions,
@@ -103,9 +108,10 @@ interface IProps {
   account: PublicAccount
   url: string
 }
-export type RescheduleConferenceData = ConferenceMeeting & {
+type ConferenceMeetingData = ConferenceMeeting & {
   participants?: Array<ParticipantInfoForNotification>
 }
+export type RescheduleConferenceData = MeetingDecrypted | ConferenceMeetingData
 interface IContext {
   account: PublicAccount
   selectedType: MeetingType | null
@@ -341,7 +347,7 @@ const PublicPage: FC<IProps> = props => {
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState<
     MeetingDecrypted | undefined
   >(undefined)
-  const { slotId, metadata, slot } = query
+  const { slotId, metadata, slot, conferenceId } = query
   const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
   const [meetingSlotId, setMeetingSlotId] = useState<string | undefined>(
     undefined
@@ -359,6 +365,10 @@ const PublicPage: FC<IProps> = props => {
   }, [query.address, props.account, isReady])
   const [token, setToken] = useState<AcceptedToken | undefined>(undefined)
   const [chain, setChain] = useState<SupportedChain | undefined>(undefined)
+  const [conferenceActor, setConferenceActor] = useState<
+    'account' | 'guest' | undefined
+  >(undefined)
+
   const [paymentType, setPaymentType] = useState<PaymentType | undefined>(
     undefined
   )
@@ -434,7 +444,7 @@ const PublicPage: FC<IProps> = props => {
   } | null>(null)
   const toast = useToast()
   const [rescheduleSlot, setRescheduleSlot] = useState<
-    ConferenceMeeting | undefined
+    RescheduleConferenceData | undefined
   >(undefined)
   const [rescheduleSlotLoading, setRescheduleSlotLoading] =
     useState<boolean>(false)
@@ -497,12 +507,12 @@ const PublicPage: FC<IProps> = props => {
   }
 
   const getSlotInfo = async () => {
-    const baseId = slot || slotId
-    const rescheduleSlotId = Array.isArray(baseId) ? baseId[0] : baseId
-    if (rescheduleSlotId) {
-      setRescheduleSlotLoading(true)
-      try {
-        const meeting: RescheduleConferenceData = await getMeetingGuest(
+    setRescheduleSlotLoading(true)
+    try {
+      const baseId = slot || slotId
+      const rescheduleSlotId = Array.isArray(baseId) ? baseId[0] : baseId
+      if (rescheduleSlotId) {
+        const meeting: ConferenceMeetingData = await getMeetingGuest(
           rescheduleSlotId
         )
         if (!meeting) {
@@ -542,18 +552,43 @@ const PublicPage: FC<IProps> = props => {
             )
           }
         }
+
         setMeetingSlotId(rescheduleSlotId)
         setRescheduleSlot(meeting)
-      } catch (error) {
-        toast({
-          title: 'Unable to load meeting details',
-          status: 'error',
-          description:
-            'The meeting information could not be retrieved. Please try again.',
-        })
-
-        setRescheduleSlot(undefined)
+      } else if (conferenceId) {
+        let decryptedMeeting: MeetingDecrypted | null = null
+        const slot = await getSlotByMeetingId(
+          Array.isArray(conferenceId) ? conferenceId[0] : conferenceId
+        )
+        if (slot?.user_type === 'account') {
+          decryptedMeeting = await decodeMeeting(slot, currentAccount!)
+          setConferenceActor('account')
+        } else if (slot?.user_type === 'guest') {
+          decryptedMeeting = await decodeMeetingGuest(slot)
+          setConferenceActor('guest')
+        }
+        if (!decryptedMeeting) {
+          toast({
+            title: 'Unable to load meeting details',
+            status: 'error',
+            description:
+              'The meeting information could not be retrieved. Please try again.',
+          })
+          return
+        } else {
+          setRescheduleSlot(decryptedMeeting || undefined)
+          setMeetingSlotId(slot?.id)
+        }
       }
+    } catch (error) {
+      toast({
+        title: 'Unable to load meeting details',
+        status: 'error',
+        description:
+          'The meeting information could not be retrieved. Please try again.',
+      })
+      setRescheduleSlot(undefined)
+    } finally {
       setRescheduleSlotLoading(false)
     }
   }
@@ -1053,7 +1088,7 @@ const PublicPage: FC<IProps> = props => {
         if (meetingSlotId) {
           meeting = await updateMeetingAsGuest(
             meetingSlotId,
-            selectedType?.id,
+            selectedType.id,
             start,
             end,
             participants,
@@ -1064,6 +1099,42 @@ const PublicPage: FC<IProps> = props => {
             meetingReminders,
             meetingRepeat
           )
+        } else if (conferenceId) {
+          if (conferenceActor === 'account') {
+            meeting = await updateMeeting(
+              true,
+              currentAccount!.address,
+              selectedType?.id,
+              start,
+              end,
+              rescheduleSlot as MeetingDecrypted,
+              getSignature(currentAccount!.address) || '',
+              participants,
+              content || '',
+              meetingUrl || '',
+              meetingProvider || MeetingProvider.GOOGLE_MEET,
+              title,
+              meetingNotification.map(mn => mn.value),
+              meetingRepeat
+            )
+          } else {
+            meeting = await updateMeetingConferenceGuest(
+              true,
+              selectedType.id,
+              start,
+              end,
+              rescheduleSlot as MeetingDecrypted,
+              conferenceId as string,
+              rescheduleSlot?.id || '',
+              participants,
+              content || '',
+              meetingUrl || '',
+              meetingProvider || MeetingProvider.GOOGLE_MEET,
+              title,
+              meetingNotification.map(mn => mn.value),
+              meetingRepeat
+            )
+          }
         } else {
           meeting = await scheduleMeeting(
             false,
@@ -1072,7 +1143,7 @@ const PublicPage: FC<IProps> = props => {
             start,
             end,
             participants,
-            meetingProvider || MeetingProvider.HUDDLE,
+            meetingProvider || MeetingProvider.GOOGLE_MEET,
             currentAccount,
             content,
             meetingUrl,

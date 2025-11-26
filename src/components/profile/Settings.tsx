@@ -25,7 +25,6 @@ import WalletAndPayment from '@/components/profile/WalletAndPayment'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
 import { EditMode } from '@/types/Dashboard'
-import { isProduction } from '@/utils/constants'
 
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
@@ -209,8 +208,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
           hash: calendarResult ? 'connected-calendars' : 'connected-accounts',
           query,
         },
-        undefined,
-        { shallow: true }
+        undefined
       )
     }
   }, [calendarResult, stripeResult])

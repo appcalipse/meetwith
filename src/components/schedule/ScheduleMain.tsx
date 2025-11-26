@@ -8,9 +8,8 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { addMinutes, differenceInMinutes } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
 import { useRouter } from 'next/router'
-import React, { FC, useContext, useEffect, useState } from 'react'
+import { FC, useContext, useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
 import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
@@ -31,7 +30,12 @@ import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode, Intents } from '@/types/Dashboard'
-import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
+import {
+  MeetingDecrypted,
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+} from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -46,11 +50,13 @@ import {
 import { isGroupParticipant } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
+  decodeMeetingGuest,
   getContactById,
   getGroup,
   getGroupsMembers,
   getMeeting,
   getQuickPollById,
+  getSlotByMeetingId,
   updateQuickPoll,
 } from '@/utils/api_helper'
 import {
@@ -89,7 +95,6 @@ import {
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
-import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 export enum Page {
   SCHEDULE_TIME,
@@ -97,10 +102,11 @@ export enum Page {
   COMPLETED,
 }
 interface IInitialProps {
-  groupId: string
-  intent: Intents
-  meetingId: string
-  contactId: string
+  groupId?: string
+  intent?: Intents
+  meetingId?: string
+  conferenceId?: string
+  contactId?: string
   pollId?: string
 }
 
@@ -109,6 +115,7 @@ const ScheduleMain: FC<IInitialProps> = ({
   intent,
   meetingId,
   contactId,
+  conferenceId,
   pollId,
 }) => {
   const { currentAccount } = useContext(AccountContext)
@@ -118,7 +125,6 @@ const ScheduleMain: FC<IInitialProps> = ({
     content,
     duration,
     pickedTime,
-    timezone,
     meetingProvider,
     meetingUrl,
     meetingNotification,
@@ -261,14 +267,28 @@ const ScheduleMain: FC<IInitialProps> = ({
   }
 
   const handleFetchMeetingInformation = async () => {
-    if (!meetingId) return
+    if (!meetingId && !conferenceId) return
     try {
-      const meeting = await getMeeting(meetingId)
-      const decryptedMeeting = await decodeMeeting(meeting, currentAccount!)
+      let decryptedMeeting: MeetingDecrypted | null = null
+      let actor = ''
+      if (meetingId) {
+        const slot = await getMeeting(meetingId)
+        decryptedMeeting = await decodeMeeting(slot, currentAccount!)
+        actor = slot.account_address
+      } else if (conferenceId) {
+        const slot = await getSlotByMeetingId(conferenceId)
+        if (slot?.user_type === 'account') {
+          decryptedMeeting = await decodeMeeting(slot, currentAccount!)
+          actor = slot.account_address
+        } else if (slot?.user_type === 'guest') {
+          decryptedMeeting = await decodeMeetingGuest(slot)
+          actor = slot.guest_email || ''
+        }
+      }
       if (!decryptedMeeting) {
         toast({
           title: 'Meeting Access Denied',
-          description: `You don't have permission to view this meeting. Please log in with account ${meeting?.account_address} or ask the meeting organizer to grant you access.`,
+          description: `You don't have permission to view this meeting. Please log in with account ${actor} or ask the meeting organizer to grant you access.`,
           status: 'error',
           duration: 15000,
           position: 'top',
@@ -297,15 +317,16 @@ const ScheduleMain: FC<IInitialProps> = ({
       setGroupAvailability({
         [NO_GROUP_KEY]: allAddresses,
       })
-      const start = utcToZonedTime(meeting.start, timezone)
-      const end = utcToZonedTime(meeting.end, timezone)
-      const diffInMinutes = differenceInMinutes(end, start)
+      const diffInMinutes = differenceInMinutes(
+        decryptedMeeting.end,
+        decryptedMeeting.start
+      )
       setParticipants(participants)
 
       setTitle(decryptedMeeting.title || '')
       setContent(decryptedMeeting.content || '')
       setDuration(diffInMinutes)
-      setPickedTime(start)
+      setPickedTime(decryptedMeeting.start)
       setMeetingProvider(
         decryptedMeeting.provider ||
           selectDefaultProvider(currentAccount?.preferences.meetingProviders)
@@ -317,9 +338,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         decryptedMeeting?.participants,
         currentAccount?.address
       )
-      if (isSchedulerOrOwner && participants.length === 2) {
-        setCanCancel(true)
-      } else if (isCurrentUserScheduler) {
+      if (isSchedulerOrOwner) {
         setCanCancel(true)
       } else {
         setCanCancel(false)
@@ -397,6 +416,9 @@ const ScheduleMain: FC<IInitialProps> = ({
               label: 'Does not repeat',
             }
       )
+      if (intent === Intents.CANCEL_MEETING) {
+        onOpen()
+      }
       handlePageSwitch(Page.SCHEDULE_DETAILS)
     } catch (error: unknown) {
       handleApiError('Error fetching meeting information.', error)
@@ -414,7 +436,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     if (pollId) {
       promises.push(handlePollPrefetch())
     }
-    if (intent === Intents.UPDATE_MEETING && meetingId) {
+    if (meetingId || conferenceId) {
       promises.push(handleFetchMeetingInformation())
     }
     if (promises.length === 0) {
@@ -432,7 +454,14 @@ const ScheduleMain: FC<IInitialProps> = ({
   }
   useEffect(() => {
     void handlePrefetch()
-  }, [groupId, contactId, intent, meetingId, currentAccount?.address])
+  }, [
+    groupId,
+    contactId,
+    intent,
+    meetingId,
+    conferenceId,
+    currentAccount?.address,
+  ])
 
   useEffect(() => {
     const selectedTimeParam = query.selectedTime as string
@@ -747,7 +776,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         setIsScheduling(false)
         return
       }
-      if (meetingId && intent === Intents.UPDATE_MEETING) {
+      if ((meetingId || conferenceId) && intent === Intents.UPDATE_MEETING) {
         await updateMeeting(
           true,
           currentAccount!.address,

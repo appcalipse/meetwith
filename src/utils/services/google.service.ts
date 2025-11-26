@@ -10,13 +10,20 @@ import {
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
-import { updateCalendarPayload } from '../database'
+import { NO_MEETING_TYPE } from '../constants/meeting-types'
+import { MeetingPermissions } from '../constants/schedule'
+import { getOwnerPublicUrlServer, updateCalendarPayload } from '../database'
+import { getCalendarPrimaryEmail } from '../sync_helper'
 import { CalendarServiceHelper } from './calendar.helper'
-import { CalendarService } from './calendar.service.types'
+import { IGoogleCalendarService } from './calendar.service.types'
 import { withRetry } from './retry.service'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -59,9 +66,7 @@ const retryCondition = (error: unknown) => {
   }
   return false
 }
-export default class GoogleCalendarService
-  implements CalendarService<TimeSlotSource.GOOGLE>
-{
+export default class GoogleCalendarService implements IGoogleCalendarService {
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
   private email: string
 
@@ -124,7 +129,7 @@ export default class GoogleCalendarService
     meeting_id: string,
     _calendarId?: string
   ): Promise<calendar_v3.Schema$Event | undefined> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve, _reject) => {
       const auth = this.auth
       const myGoogleAuth = await auth.getToken()
       const calendar = google.calendar({
@@ -197,8 +202,9 @@ export default class GoogleCalendarService
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    _calendarId?: string
-  ): Promise<NewCalendarEventType> {
+    _calendarId?: string,
+    useParticipants?: boolean
+  ): Promise<NewCalendarEventType & calendar_v3.Schema$Event> {
     return new Promise((resolve, reject) =>
       this.auth
         .getToken()
@@ -230,13 +236,20 @@ export default class GoogleCalendarService
               slot_id: '',
               meeting_id: meetingDetails.meeting_id,
             }))
+          const ownerParticipant = participantsInfo.find(
+            p => p.type === ParticipantType.Owner
+          )
+          const ownerAccountAddress = ownerParticipant?.account_address
 
-          const slot_id = meetingDetails.participants.find(
-            p => p.account_address === calendarOwnerAccountAddress
-          )?.slot_id
-
-          const hasGuests = meetingDetails.participants.some(p => p.guest_email)
-          const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+          const changeUrl =
+            meetingDetails.meeting_type_id &&
+            ownerAccountAddress &&
+            meetingDetails.meeting_type_id !== NO_MEETING_TYPE
+              ? `${await getOwnerPublicUrlServer(
+                  ownerAccountAddress,
+                  meetingDetails.meeting_type_id
+                )}?conferenceId=${meetingDetails.meeting_id}`
+              : `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
 
           const payload: calendar_v3.Schema$Event = {
             // yes, google event ids allows only letters and numbers
@@ -249,8 +262,7 @@ export default class GoogleCalendarService
             description: CalendarServiceHelper.getMeetingSummary(
               meetingDetails.content,
               meetingDetails.meeting_url,
-              changeUrl,
-              hasGuests
+              changeUrl
             ),
             start: {
               dateTime: new Date(meetingDetails.start).toISOString(),
@@ -270,13 +282,23 @@ export default class GoogleCalendarService
               displayName: 'Meetwith',
               email: NO_REPLY_EMAIL,
             },
-            guestsCanModify: false,
+            guestsCanModify: meetingDetails.meetingPermissions?.includes(
+              MeetingPermissions.EDIT_MEETING
+            ),
+            guestsCanInviteOthers: meetingDetails.meetingPermissions?.includes(
+              MeetingPermissions.INVITE_GUESTS
+            ),
+            guestsCanSeeOtherGuests:
+              meetingDetails.meetingPermissions?.includes(
+                MeetingPermissions.SEE_GUEST_LIST
+              ),
             location: meetingDetails.meeting_url,
             status: 'confirmed',
             extendedProperties: {
               private: {
                 updatedBy: 'meetwith',
                 lastUpdatedAt: new Date().toISOString(),
+                meetingId: meetingDetails.meeting_id,
               },
             },
           }
@@ -311,15 +333,14 @@ export default class GoogleCalendarService
             auth: myGoogleAuth,
           })
 
-          // Build deduplicated attendees list using helper
-          const attendees = CalendarServiceHelper.buildAttendeesList(
-            meetingDetails.participants,
-            calendarOwnerAccountAddress,
-            () => this.getConnectedEmail()
-          )
-
-          payload.attendees = attendees
-
+          if (useParticipants) {
+            // Build deduplicated attendees list using helper
+            const attendees = await this.buildAttendeesList(
+              meetingDetails.participants,
+              calendarOwnerAccountAddress
+            )
+            payload.attendees = attendees
+          }
           calendar.events.insert(
             {
               auth: myGoogleAuth,
@@ -360,7 +381,6 @@ export default class GoogleCalendarService
 
   async _updateEvent(
     calendarOwnerAccountAddress: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
     _calendarId: string
   ): Promise<NewCalendarEventType> {
@@ -368,7 +388,7 @@ export default class GoogleCalendarService
       const auth = this.auth
       const myGoogleAuth = await auth.getToken()
       const calendarId = parseCalendarId(_calendarId)
-
+      const meeting_id = meetingDetails.meeting_id
       const participantsInfo: ParticipantInfo[] =
         meetingDetails.participants.map(participant => ({
           type: participant.type,
@@ -382,14 +402,8 @@ export default class GoogleCalendarService
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
-      const slot_id = meetingDetails.participants.find(
-        p => p.account_address === calendarOwnerAccountAddress
-      )?.slot_id
 
-      // Determine the correct URL format based on whether participants are guests
-      const hasGuests = meetingDetails.participants.some(p => p.guest_email)
-
-      const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
 
       const payload: calendar_v3.Schema$Event = {
         id: meeting_id.replaceAll('-', ''), // required to edit events later
@@ -401,8 +415,7 @@ export default class GoogleCalendarService
         description: CalendarServiceHelper.getMeetingSummary(
           meetingDetails.content,
           meetingDetails.meeting_url,
-          changeUrl,
-          hasGuests
+          changeUrl
         ),
         start: {
           dateTime: new Date(meetingDetails.start).toISOString(),
@@ -413,6 +426,15 @@ export default class GoogleCalendarService
           timeZone: 'UTC',
         },
         attendees: [],
+        guestsCanModify: meetingDetails.meetingPermissions?.includes(
+          MeetingPermissions.EDIT_MEETING
+        ),
+        guestsCanInviteOthers: meetingDetails.meetingPermissions?.includes(
+          MeetingPermissions.INVITE_GUESTS
+        ),
+        guestsCanSeeOtherGuests: meetingDetails.meetingPermissions?.includes(
+          MeetingPermissions.SEE_GUEST_LIST
+        ),
         reminders: {
           useDefault: false,
           overrides: [{ method: 'popup', minutes: 10 }],
@@ -447,18 +469,20 @@ export default class GoogleCalendarService
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
       )
+      const attendeeLength =
+        event?.attendees?.filter(attendee => !attendee.self).length || 0
 
-      // Build deduplicated attendees list using helper
-      const attendees = CalendarServiceHelper.buildAttendeesListForUpdate(
-        meetingDetails.participants,
-        calendarOwnerAccountAddress,
-        () => this.getConnectedEmail(),
-        actorStatus || undefined,
-        guest
-      )
+      if (attendeeLength > 0) {
+        // Build deduplicated attendees list using helper
+        const attendees = await this.buildAttendeesListForUpdate(
+          meetingDetails.participants,
+          calendarOwnerAccountAddress,
+          actorStatus || undefined,
+          guest
+        )
 
-      payload.attendees = attendees
-
+        payload.attendees = attendees
+      }
       const calendar = google.calendar({
         version: 'v3',
         auth: myGoogleAuth,
@@ -499,7 +523,6 @@ export default class GoogleCalendarService
 
   async updateEvent(
     calendarOwnerAccountAddress: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
     _calendarId: string
   ): Promise<NewCalendarEventType> {
@@ -507,7 +530,6 @@ export default class GoogleCalendarService
       async () =>
         this._updateEvent(
           calendarOwnerAccountAddress,
-          meeting_id,
           meetingDetails,
           _calendarId
         ),
@@ -539,8 +561,8 @@ export default class GoogleCalendarService
           sendNotifications: true,
           sendUpdates: 'all',
         },
-        function (err: any, event: any) {
-          if (err) {
+        function (err, _event) {
+          if (err instanceof GaxiosError) {
             /**
              *  410 is when an event is already deleted on the Google cal before on cal.com
              *  404 is when the event is on a different calendar
@@ -552,8 +574,10 @@ export default class GoogleCalendarService
             )
             if (err.code === 404) return resolve()
             return reject(err)
+          } else if (err instanceof Error) {
+            return reject(err)
           }
-          return resolve(event?.data)
+          return resolve()
         }
       )
     })
@@ -1021,6 +1045,113 @@ export default class GoogleCalendarService
       default:
         return { minutes: 10, method: 'popup' }
     }
+  }
+  private async buildAttendeesList(
+    participants: ParticipantInfo[],
+    calendarOwnerAccountAddress: string
+  ): Promise<calendar_v3.Schema$EventAttendee[]> {
+    const addedEmails = new Set<string>()
+    const attendees: calendar_v3.Schema$EventAttendee[] = []
+
+    for (const participant of participants) {
+      const email =
+        calendarOwnerAccountAddress === participant.account_address
+          ? this.getConnectedEmail()
+          : participant.guest_email ||
+            (await getCalendarPrimaryEmail(participant.account_address!))
+      // Only add if we haven't already added this email
+      if (email && !addedEmails.has(email)) {
+        addedEmails.add(email)
+        const attendee: calendar_v3.Schema$EventAttendee = {
+          email,
+          displayName:
+            participant.name ||
+            participant.account_address ||
+            email.split('@')[0],
+          organizer: [
+            ParticipantType.Owner,
+            ParticipantType.Scheduler,
+          ].includes(participant.type),
+          responseStatus:
+            participant.status === ParticipationStatus.Accepted
+              ? 'accepted'
+              : participant.status === ParticipationStatus.Rejected
+              ? 'declined'
+              : 'needsAction',
+        }
+        if (
+          [ParticipantType.Owner, ParticipantType.Scheduler].includes(
+            participant.type
+          )
+        ) {
+          attendee.optional = false
+        }
+        if (participant.account_address === calendarOwnerAccountAddress) {
+          attendee.self = true
+        }
+        attendees.push(attendee)
+      }
+    }
+
+    return attendees
+  }
+
+  private async buildAttendeesListForUpdate(
+    participants: ParticipantInfo[],
+    calendarOwnerAccountAddress: string,
+    actorStatus?: string,
+    guestParticipant?: ParticipantInfo
+  ): Promise<calendar_v3.Schema$EventAttendee[]> {
+    const addedEmails = new Set<string>()
+    const attendees: calendar_v3.Schema$EventAttendee[] = []
+
+    // Handle guest participant first if provided
+    if (guestParticipant?.guest_email) {
+      addedEmails.add(guestParticipant.guest_email)
+      attendees.push({
+        email: guestParticipant.guest_email,
+        displayName:
+          guestParticipant.name ||
+          guestParticipant.guest_email.split('@')[0] ||
+          'Guest',
+        responseStatus: 'accepted',
+      })
+    }
+
+    for (const participant of participants) {
+      const email =
+        calendarOwnerAccountAddress === participant.account_address
+          ? this.getConnectedEmail()
+          : participant.guest_email ||
+            (await getCalendarPrimaryEmail(participant.account_address!))
+
+      // Only add if we haven't already added this email
+      if (email && !addedEmails.has(email)) {
+        addedEmails.add(email)
+        attendees.push({
+          email,
+          displayName:
+            participant.name ||
+            participant.account_address ||
+            email.split('@')[0],
+          organizer: [
+            ParticipantType.Owner,
+            ParticipantType.Scheduler,
+          ].includes(participant.type),
+          responseStatus:
+            calendarOwnerAccountAddress === participant.account_address &&
+            actorStatus
+              ? actorStatus
+              : participant.status === ParticipationStatus.Accepted
+              ? 'accepted'
+              : participant.status === ParticipationStatus.Rejected
+              ? 'declined'
+              : 'needsAction',
+        })
+      }
+    }
+
+    return attendees
   }
 }
 

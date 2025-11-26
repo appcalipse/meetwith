@@ -335,5 +335,6 @@ export {
   extractMeetingDescription,
   extractSlotIdFromDescription,
   getBaseEventId,
+  handleParticipants,
   updateMeetingServer,
 }

@@ -33,8 +33,7 @@ import {
   LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
-import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/Discord'
+import { DiscordAccount, DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
@@ -45,11 +44,13 @@ import {
 } from '@/types/Group'
 import { UserLocale } from '@/types/Locale'
 import {
+  AccountSlot,
   ConferenceMeeting,
   DBSlot,
   ExtendedDBSlot,
   GroupMeetingRequest,
   GuestMeetingCancel,
+  GuestSlot,
   MeetingDecrypted,
   MeetingInfo,
   TimeSlot,
@@ -75,6 +76,7 @@ import {
   CreateAvailabilityBlockRequest,
   CreateMeetingTypeRequest,
   DuplicateAvailabilityBlockRequest,
+  GuestMeetingCancelRequest,
   MeetingCancelRequest,
   MeetingCheckoutRequest,
   MeetingCreationRequest,
@@ -86,8 +88,7 @@ import {
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
-import { TelegramConnection } from '@/types/Telegram'
-import { TelegramUserInfo } from '@/types/Telegram'
+import { TelegramConnection, TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import {
@@ -476,6 +477,30 @@ export const updateMeeting = async (
 }
 
 export const cancelMeeting = async (
+  meeting: MeetingDecrypted,
+  currentTimezone: string
+): Promise<{ removed: string[] }> => {
+  const body: MeetingCancelRequest = {
+    meeting,
+    currentTimezone,
+  }
+  try {
+    return (await internalFetch(
+      `/secure/meetings/${meeting.id}`,
+      'DELETE',
+      body
+    )) as { removed: string[] }
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    }
+    throw e
+  }
+}
+
+export const cancelMeetingGuest = async (
   meeting: MeetingDecrypted,
   currentTimezone: string
 ): Promise<{ removed: string[] }> => {
@@ -948,6 +973,29 @@ export const guestMeetingCancel = async (
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
         throw new MeetingNotFoundError(slot_id)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      } else {
+        throw e
+      }
+    }
+  }
+}
+
+export const conferenceGuestMeetingCancel = async (
+  meeting_id: string,
+  payload: GuestMeetingCancelRequest
+) => {
+  try {
+    return await internalFetch<{ removed: string[] }>(
+      `/meetings/meeting/${meeting_id}/slot`,
+      'DELETE',
+      payload
+    )
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        throw new MeetingNotFoundError(meeting_id)
       } else if (e.status === 401) {
         throw new UnauthorizedError()
       } else {
@@ -2231,4 +2279,58 @@ export const getStripeSupportedCountries = async () => {
       value: country.id,
     }))
   )
+}
+export const getAccountPrimaryCalendarEmail = async (targetAccount: string) => {
+  try {
+    return await internalFetch<{ email: string }>(
+      `/accounts/calendar/primary?targetAccount=${targetAccount}`
+    ).then(account => account.email)
+  } catch (e) {
+    return undefined
+  }
+}
+
+export const getSlotByMeetingId = async (meetingId: string) => {
+  try {
+    const slot = await internalFetch<AccountSlot | GuestSlot>(
+      `/meetings/meeting/${meetingId}/slot`
+    )
+    return slot
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
+}
+
+export const decodeMeetingGuest = async (
+  payload: GuestSlot
+): Promise<MeetingDecrypted | null> => {
+  try {
+    return await internalFetch<MeetingDecrypted>(
+      '/meetings/meeting/decrypt',
+      'POST',
+      payload
+    ).then(res => ({
+      ...res,
+      start: new Date(res.start),
+      end: new Date(res.end),
+      created_at: new Date(res.created_at),
+    }))
+  } catch (e) {
+    return null
+  }
+}
+
+export const getGuestSlotById = async (slotId: string) => {
+  const response = await internalFetch<GuestSlot | null>(
+    `/meetings/guest/${slotId}/slot`
+  )
+  if (!response) return null
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
+  }
 }

@@ -51,7 +51,9 @@ export const useLogin = () => {
       if (forceRedirect) {
         // redirect new accounts to onboarding
         if (account.signedUp) {
-          const stateObj: any = { signedUp: true }
+          const stateObj: Record<string, string | boolean | undefined> = {
+            signedUp: true,
+          }
           stateObj.jti = account?.jti
           if (wallet.id === 'inApp') {
             // needed due bug in the SDK that returns the last email even if a new EOA signs in

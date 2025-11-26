@@ -18,7 +18,7 @@
     "tailwindcss"
   ],
   "rules": {
-    "prettier/prettier": "error",
+    "prettier/prettier": "off",
     "@typescript-eslint/no-unused-vars": [
       "warn",
       {

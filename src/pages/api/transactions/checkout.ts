@@ -18,6 +18,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const meetingType = await getMeetingTypeFromDBLean(
         payload.meeting_type_id
       )
+      if (!meetingType) {
+        return res.status(404).json({ error: 'Meeting type not found' })
+      }
       const paymentAccount = await getActivePaymentAccount(
         meetingType.account_owner_address
       )
@@ -30,6 +33,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           .json({ error: 'Payment account is not properly connected' })
       }
       const transaction = await createCheckOutTransaction(payload)
+      if (!transaction) {
+        return res.status(500).json({ error: 'Could not create transaction' })
+      }
       const avatarUrl = await getAccountAvatarUrl(
         meetingType.account_owner_address
       )
@@ -38,7 +44,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         guest_email: payload?.guest_email || '',
         guest_name: payload?.guest_name || '',
         meeting_type_id: payload?.meeting_type_id || '',
-        transaction_id: transaction.id,
+        transaction_id: transaction?.id,
       }
       const session = await stripe.checkout.sessions.create(
         {
@@ -64,7 +70,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           },
           success_url:
             payload.redirectUrl +
-            `&transaction_id=${transaction.id}&checkoutState=success`,
+            `&transaction_id=${transaction?.id}&checkoutState=success`,
           cancel_url: payload.redirectUrl + `&checkoutState=cancelled`,
         },
         {
