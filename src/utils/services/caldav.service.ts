@@ -342,9 +342,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
 
     // CalDAV does not support pagination like Google Calendar (nextPageToken) or Office 365 (@odata.nextLink).
     // Instead, we implement time-range filtering in chunks to ensure all events are retrieved.
-    // This is necessary because some CalDAV servers may not return all events in a single request
-    // when the time range is very large or contains many events.
-    const CHUNK_SIZE_MS = 3 * 30 * 24 * 60 * 60 * 1000 // 3 months in milliseconds
+    const CHUNK_SIZE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
 
     const dateFromMs = new Date(dateFrom).getTime()
     const dateToMs = new Date(dateTo).getTime()
@@ -393,20 +391,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       }
     }
 
-    // If the time range is small enough, use a single request
-    if (totalRangeMs <= CHUNK_SIZE_MS) {
-      const calendarObjectsFromEveryCalendar = (
-        await Promise.all(
-          calendars
-            .filter(cal => calendarIds.includes(cal.url!))
-            .map(calendar => fetchEventsForCalendar(calendar, dateFrom, dateTo))
-        )
-      ).flat()
-
-      return calendarObjectsFromEveryCalendar
-    }
-
-    // Split the time range into chunks and fetch events for each chunk
+    // Split the time range into 7-day chunks and fetch events for each chunk
     const chunks: Array<{ start: Date; end: Date }> = []
     let currentStart = dateFromMs
 
