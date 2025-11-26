@@ -485,12 +485,15 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           formData.expiryTime
         ),
         permissions: selectedPermissions as MeetingPermissions[],
-        participants: allMergedParticipants.map(p => ({
-          account_address: p.account_address,
-          name: p.name,
-          guest_email: p.guest_email,
-          participant_type: QuickPollParticipantType.INVITEE,
-        })),
+        participants:
+          allMergedParticipants.length > 0
+            ? allMergedParticipants.map(p => ({
+                account_address: p.account_address,
+                name: p.name,
+                guest_email: p.guest_email,
+                participant_type: QuickPollParticipantType.INVITEE,
+              }))
+            : [],
       }
 
       createPollMutation.mutate(pollData)
@@ -895,10 +898,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           {/* Add Guest from Groups */}
           <FormControl w="100%" maxW="100%">
             <FormLabel htmlFor="participants">
-              Add Participants to the meeting
-              <Text color="red.500" display="inline">
-                *
-              </Text>{' '}
+              Add Participants to the meeting{' '}
               <InfoTooltip text="Add participants from groups, contacts, or enter manually" />
             </FormLabel>
             <Box w="100%" maxW="100%">
