@@ -658,15 +658,37 @@ export function SchedulePickTime({
                   gap={0}
                 />
               </HStack>
-              {!isProduction && (
-                <Button
-                  colorScheme="primary"
-                  onClick={handleJumpToBestSlot}
-                  display={{ lg: 'block', base: 'none' }}
-                >
-                  Jump to Best Slot
-                </Button>
-              )}
+
+              <Button
+                colorScheme="primary"
+                onClick={handleJumpToBestSlot}
+                display={{ lg: 'block', base: 'none' }}
+                bg={'transparent'}
+                color={'transparent'}
+                cursor={isProduction ? 'default' : 'pointer'}
+                isDisabled={isProduction}
+                _disabled={
+                  isProduction
+                    ? {
+                        cursor: 'default',
+                        bg: 'transparent',
+                        color: 'transparent',
+                      }
+                    : undefined
+                }
+                _hover={
+                  isProduction
+                    ? {
+                        cursor: 'default',
+                        bg: 'transparent',
+                        color: 'transparent',
+                      }
+                    : undefined
+                }
+              >
+                Jump to Best Slot
+              </Button>
+
               <Box
                 maxW="350px"
                 textAlign="center"
