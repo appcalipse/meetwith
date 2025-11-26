@@ -218,9 +218,11 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     const promises: Promise<EventBusyDate[]>[] = calendarIds.map(
       async calendarId => {
         try {
-          // TODO: consider proper pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
-          // not only the first 500 events
-          const response = await this.graphClient
+          const allEvents: EventBusyDate[] = []
+          let nextLink: string | undefined
+
+          // Initial request
+          let response = await this.graphClient
             .api(`/me/calendars/${calendarId}/calendarView`)
             .query({
               startdatetime: dateFromParsed.toISOString(),
@@ -229,14 +231,42 @@ export class Office365CalendarService implements IOffcie365CalendarService {
             })
             .get()
 
-          return response.value.map((evt: MicrosoftGraphEvent) => ({
-            start: evt.start?.dateTime + 'Z',
-            end: evt.end?.dateTime + 'Z',
-            title: evt.subject || '',
-            eventId: evt.id || '',
-            email: this.email,
-            webLink: evt.webLink || undefined,
-          }))
+          // Process first page
+          allEvents.push(
+            ...response.value.map((evt: MicrosoftGraphEvent) => ({
+              start: evt.start?.dateTime + 'Z',
+              end: evt.end?.dateTime + 'Z',
+              title: evt.subject || '',
+              eventId: evt.id || '',
+              email: this.email,
+              webLink: evt.webLink || undefined,
+            }))
+          )
+
+          // Follow @odata.nextLink to get subsequent pages
+          nextLink = response['@odata.nextLink']
+          while (nextLink) {
+            // Extract the path and query string from the full URL
+            const url = new URL(nextLink)
+            const path = url.pathname + url.search
+
+            response = await this.graphClient.api(path).get()
+
+            allEvents.push(
+              ...response.value.map((evt: MicrosoftGraphEvent) => ({
+                start: evt.start?.dateTime + 'Z',
+                end: evt.end?.dateTime + 'Z',
+                title: evt.subject || '',
+                eventId: evt.id || '',
+                email: this.email,
+                webLink: evt.webLink || undefined,
+              }))
+            )
+
+            nextLink = response['@odata.nextLink']
+          }
+
+          return allEvents
         } catch (err) {
           Sentry.captureException(err)
           return []
