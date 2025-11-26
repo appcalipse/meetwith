@@ -340,42 +340,110 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
   ): Promise<EventBusyDate[]> {
     const calendars = await this.listCalendars()
 
-    const calendarObjectsFromEveryCalendar = (
-      await Promise.all(
-        calendars
-          .filter(cal => calendarIds.includes(cal.url!))
-          .map(calendar =>
-            fetchCalendarObjects({
-              calendar,
-              headers: this.headers,
-              expand: true,
-              timeRange: {
-                start: new Date(dateFrom).toISOString(),
-                end: new Date(dateTo).toISOString(),
-              },
-            })
-          )
-      )
-    ).flat()
+    // CalDAV does not support pagination like Google Calendar (nextPageToken) or Office 365 (@odata.nextLink).
+    // Instead, we implement time-range filtering in chunks to ensure all events are retrieved.
+    const CHUNK_SIZE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
 
-    const events = calendarObjectsFromEveryCalendar
-      .filter(e => !!e.data)
-      .map(object => {
-        const jcalData = ICAL.parse(object.data)
-        const vcalendar = new ICAL.Component(jcalData)
-        const vevent = vcalendar.getFirstSubcomponent('vevent')
-        const event = new ICAL.Event(vevent)
+    const dateFromMs = new Date(dateFrom).getTime()
+    const dateToMs = new Date(dateTo).getTime()
+    const totalRangeMs = dateToMs - dateFromMs
 
-        return {
-          start: event.startDate.toJSDate().toISOString(),
-          end: event.endDate.toJSDate().toISOString(),
-          title: event.summary || '',
-          eventId: object.url || undefined,
-          email: this.email,
-          webLink: object.url || undefined,
-        }
+    const fetchEventsForCalendar = async (
+      calendar: DAVCalendar,
+      start: string,
+      end: string
+    ) => {
+      try {
+        const objects = await fetchCalendarObjects({
+          calendar,
+          headers: this.headers,
+          expand: true,
+          timeRange: {
+            start: new Date(start).toISOString(),
+            end: new Date(end).toISOString(),
+          },
+        })
+
+        return objects
+          .filter(e => !!e.data)
+          .map(object => {
+            const jcalData = ICAL.parse(object.data)
+            const vcalendar = new ICAL.Component(jcalData)
+            const vevent = vcalendar.getFirstSubcomponent('vevent')
+            const event = new ICAL.Event(vevent)
+
+            return {
+              start: event.startDate.toJSDate().toISOString(),
+              end: event.endDate.toJSDate().toISOString(),
+              title: event.summary || '',
+              eventId: object.url || undefined,
+              email: this.email,
+              webLink: object.url || undefined,
+              recurrenceId: event.recurrenceId
+                ? event.recurrenceId.toString()
+                : undefined,
+            }
+          })
+      } catch (error) {
+        console.warn(
+          `Failed to fetch events for calendar ${calendar.url} in range ${start} to ${end}`,
+          error
+        )
+        Sentry.captureException(error)
+        return []
+      }
+    }
+
+    // Split the time range into 7-day chunks and fetch events for each chunk
+    const chunks: Array<{ start: Date; end: Date }> = []
+    let currentStart = dateFromMs
+
+    while (currentStart < dateToMs) {
+      const chunkEnd = Math.min(currentStart + CHUNK_SIZE_MS, dateToMs)
+      chunks.push({
+        start: new Date(currentStart),
+        end: new Date(chunkEnd),
       })
-    return Promise.resolve(events)
+      currentStart = chunkEnd
+    }
+
+    // Fetch events for each calendar and chunk in parallel
+    const allEventsPromises = calendars
+      .filter(cal => calendarIds.includes(cal.url!))
+      .map(async calendar => {
+        const chunkPromises = chunks.map(chunk =>
+          fetchEventsForCalendar(
+            calendar,
+            chunk.start.toISOString(),
+            chunk.end.toISOString()
+          )
+        )
+        const chunkResults = await Promise.all(chunkPromises)
+        return chunkResults.flat()
+      })
+
+    const allEventsArrays = await Promise.all(allEventsPromises)
+    const allEvents = allEventsArrays.flat()
+
+    // Deduplicate events using a composite key that includes recurrenceId for recurring events.
+    // This prevents filtering out recurring meeting instances, which share the same eventId (UID)
+    const uniqueEventsMap = new Map<string, EventBusyDate>()
+    for (const event of allEvents) {
+      const eventWithRecurrence = event as EventBusyDate & {
+        recurrenceId?: string
+      }
+      const eventKey = eventWithRecurrence.recurrenceId
+        ? `${event.eventId || 'unknown'}_${eventWithRecurrence.recurrenceId}`
+        : `${event.eventId || 'unknown'}_${new Date(event.start).getTime()}`
+
+      if (!uniqueEventsMap.has(eventKey)) {
+        const { recurrenceId, ...eventWithoutRecurrenceId } =
+          eventWithRecurrence
+        uniqueEventsMap.set(eventKey, eventWithoutRecurrenceId)
+      }
+    }
+
+    return Array.from(uniqueEventsMap.values())
   }
 
   async listCalendars() {
