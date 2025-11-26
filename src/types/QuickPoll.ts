@@ -108,7 +108,7 @@ export interface CreateQuickPollRequest {
   ends_at: string
   expires_at: string
   permissions: MeetingPermissions[]
-  participants: {
+  participants?: {
     account_address?: string
     name?: string
     guest_email?: string

@@ -241,9 +241,7 @@ export const quickPollSchema = z
     endDate: z.date(),
     expiryDate: z.date(),
     expiryTime: z.date(),
-    participants: z
-      .array(z.any())
-      .min(1, 'At least one participant is required'),
+    participants: z.array(z.any()),
   })
   .refine(data => data.startDate < data.endDate, {
     message: 'Start date must be before end date',
