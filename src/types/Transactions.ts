@@ -144,6 +144,7 @@ export interface IPurchaseData {
   guest_email?: string
   guest_name: string
   guest_address?: string
+  environment?: string
   [key: string]: unknown
 }
 export interface ICheckoutMetadata {
