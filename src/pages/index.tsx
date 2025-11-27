@@ -11,6 +11,7 @@ import redirectTo from '@/utils/redirect'
 import Faq from '../components/landing/FAQ'
 import { Features } from '../components/landing/Features'
 import Hero from '../components/landing/Hero'
+import { Pricing } from '../components/landing/Pricing'
 import Why from '../components/landing/Why'
 const ProAccessPopUp = dynamic(
   () => import('@/components/landing/ProAccessPopUp'),
@@ -36,6 +37,7 @@ const Home: NextPage = () => {
           <Hero />
           <Why />
           <Features />
+          <Pricing />
           <Faq />
           <ProAccessPopUp />
         </Box>
