@@ -195,19 +195,21 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
           <Text mb="7px">
             {formatWithOrdinal(slot)} ({timezone})
           </Text>
-          <VStack w="fit-content" gap={1} align="flex-start">
-            {userStates?.map((userState, index) => (
-              <HStack key={index}>
-                <Box
-                  w={4}
-                  h={4}
-                  rounded={999}
-                  bg={userState.state ? 'green.400' : 'neutral.0'}
-                />
-                <Text>{userState.displayName}</Text>
-              </HStack>
-            ))}
-          </VStack>
+          {!isEditingAvailability && (
+            <VStack w="fit-content" gap={1} align="flex-start">
+              {userStates?.map((userState, index) => (
+                <HStack key={index}>
+                  <Box
+                    w={4}
+                    h={4}
+                    rounded={999}
+                    bg={userState.state ? 'green.400' : 'neutral.0'}
+                  />
+                  <Text>{userState.displayName}</Text>
+                </HStack>
+              ))}
+            </VStack>
+          )}
         </Box>
         <Tooltip.Arrow />
       </Tooltip.Content>
