@@ -138,10 +138,10 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
             onClick={() => setIsDialogOpen(true)}
             active={currentPlan === Plan.PRO}
             benefits={[
-              'Everything in Free plus:',
+              'Everything in Free plus (+)',
               'Unlimited scheduling groups',
               'Payments & Invoicing',
-              'Connect multiple calendars - Outlook, iCloud, Google Calendar',
+              'Unlimited integrations (Google calendar, iCloud, Office 365 and WebDAV)',
               'Unlimited QuickPolls',
               'Unlimited meeting types - Free & Paid',
               '24/7 priority support',
