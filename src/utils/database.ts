@@ -28,7 +28,7 @@ import { writeFileSync } from 'fs'
 import { GaxiosError } from 'gaxios'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
-import { v4, validate } from 'uuid'
+import { validate } from 'uuid'
 
 import { ResourceState } from '@/pages/api/server/webhook/calendar/sync'
 import {
@@ -131,13 +131,6 @@ import {
 import { Subscription } from '@/types/Subscription'
 import { Database, Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
 import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
-import {
-  Database,
-  GroupMembersRow,
-  Row,
-  Tables,
-  TablesInsert,
-} from '@/types/Supabase'
 import {
   GateConditionObject,
   GateUsage,
@@ -1505,21 +1498,7 @@ const deleteMeetingFromDB = async (
     throw new Error(guestSlotsError.message)
   }
 
-  let query
-  if (isRecurring) {
-    query = db.supabase.from('temp_slots').upsert(
-      oldSlots.map(slot => ({
-        ...slot,
-        id: v4(),
-        slot_id: slot.id,
-        status: RecurringStatus.CANCELLED,
-      }))
-    )
-  } else {
-    query = db.supabase.from('slots').delete().in('id', slotIds)
-  }
-
-  const { error } = await query
+  const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
   if (error) {
     throw new Error(error.message)
   }
@@ -3601,13 +3580,13 @@ const parseParticipantSlots = async (
       guestSlots.push(dbSlot)
     }
   }
-  return { slots, index, meetingResponse, changingTime, timezone }
+  return { slots, guestSlots, index, meetingResponse, changingTime, timezone }
 }
 const updateMeeting = async (
   participantActing: ParticipantBaseInfo,
   meetingUpdateRequest: MeetingUpdateRequest
 ): Promise<DBSlot> => {
-  const { meetingResponse, slots, index, changingTime, timezone } =
+  const { meetingResponse, slots, index, changingTime, timezone, guestSlots } =
     await parseParticipantSlots(participantActing, meetingUpdateRequest)
 
   // one last check to make sure that the version did not change
@@ -8480,8 +8459,8 @@ export {
   getQuickPollParticipantByIdentifier,
   getQuickPollParticipants,
   getQuickPollsForAccount,
-  getSlotByMeetingIdAndAccount,
   getSlotById,
+  getSlotByMeetingIdAndAccount,
   getSlotsByIds,
   getSlotSeries,
   getSlotSeriesId,

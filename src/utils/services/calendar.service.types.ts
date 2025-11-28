@@ -114,7 +114,7 @@ export interface IGoogleCalendarService extends BaseCalendarService {
     syncToken: string | null,
     dateFrom: Date,
     dateTo: Date
-  ): Promise<calendar_v3.Schema$Event[]>
+  ): Promise<EventList>
 
   /**
    * Updates the RSVP status of an attendee for a specific event
@@ -141,6 +141,12 @@ export interface IGoogleCalendarService extends BaseCalendarService {
     meeting_id: string,
     _calendarId?: string
   ): Promise<NewCalendarEventType>
+
+  initialSync(
+    calendarId: string,
+    dateFrom: string,
+    dateTo: string
+  ): Promise<string | null | undefined>
 
   /**
    * Sets up a webhook URL for calendar change notifications

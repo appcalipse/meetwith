@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/nextjs'
-import { writeFileSync } from 'fs'
 import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
 import { DateTime } from 'luxon'
@@ -8,15 +7,19 @@ import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
-import { MeetingReminders, RecurringStatus } from '@/types/common'
+import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
-import { DBSlot, MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 import { Tables } from '@/types/Supabase'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
-import { getTempSlotsBySlotId, NO_MEETING_TYPE } from '../constants/meeting-types'
+import { NO_MEETING_TYPE } from '../constants/meeting-types'
 import { MeetingPermissions } from '../constants/schedule'
 import { getOwnerPublicUrlServer, updateCalendarPayload } from '../database'
 import { getCalendarPrimaryEmail } from '../sync_helper'

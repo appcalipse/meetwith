@@ -808,9 +808,9 @@ export {
   extractSlotIdFromDescription,
   getBaseEventId,
   handleCancelOrDeleteForRecurringInstance,
+  handleParticipants,
   handleSendEventNotification,
   handleUpdateParseMeetingInfo,
   handleUpdateSingleRecurringInstance,
-  handleParticipants,
   updateMeetingServer,
 }
