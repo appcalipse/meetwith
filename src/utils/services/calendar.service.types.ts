@@ -220,7 +220,7 @@ export interface IGoogleCalendarService extends BaseCalendarService {
   ): Promise<NewCalendarEventType & calendar_v3.Schema$Event>
 }
 
-export interface ICaldavCalendarService {
+export interface ICaldavCalendarService extends BaseCalendarService {
   createEvent(
     owner: string,
     meetingDetails: MeetingCreationSyncRequest,
@@ -241,18 +241,6 @@ export interface ICaldavCalendarService {
       attendees: Attendee[]
     }
   >
-  refreshWebhook(
-    oldChannelId: string,
-    oldResourceId: string,
-    webhookUrl: string,
-    calendarId?: string
-  ): Promise<{
-    channelId: string | null | undefined
-    resourceId: string | null | undefined
-    expiration: string | null | undefined
-    calendarId: string
-    webhookUrl: string
-  }>
 }
 
 export type EventList = {

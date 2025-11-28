@@ -31,28 +31,17 @@ function getConnectedCalendarIntegration(
     | Auth.Credentials
     | O365AuthCredentials
     | CaldavCredentials
-): BaseCalendarService
+): IOffcie365CalendarService
 function getConnectedCalendarIntegration(
   address: string,
   email: string,
-  provider: TimeSlotSource.WEBDAV,
+  provider: TimeSlotSource.WEBDAV | TimeSlotSource.ICLOUD,
   credentials:
     | string
     | Auth.Credentials
     | O365AuthCredentials
     | CaldavCredentials
-): BaseCalendarService
-function getConnectedCalendarIntegration(
-  address: string,
-  email: string,
-  provider: TimeSlotSource,
-  credentials:
-    | string
-    | Auth.Credentials
-    | O365AuthCredentials
-    | CaldavCredentials
-): BaseCalendarService
-
+): ICaldavCalendarService
 function getConnectedCalendarIntegration(
   address: string,
   email: string,
@@ -62,8 +51,11 @@ function getConnectedCalendarIntegration(
     | Auth.Credentials
     | O365AuthCredentials
     | CaldavCredentials
-): BaseCalendarService
-
+):
+  | BaseCalendarService
+  | ICaldavCalendarService
+  | IGoogleCalendarService
+  | IOffcie365CalendarService
 // Implementation signature
 function getConnectedCalendarIntegration(
   address: string,
