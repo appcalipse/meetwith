@@ -294,6 +294,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
                 updatedBy: 'meetwith',
                 lastUpdatedAt: new Date().toISOString(),
                 meetingId: meetingDetails.meeting_id,
+                meetingTypeId: meetingDetails.meeting_type_id || '',
+                includesParticipants: useParticipants ? 'true' : 'false',
               },
             },
           }
@@ -443,7 +445,9 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         extendedProperties: {
           private: {
             updatedBy: 'meetwith',
+            meetingId: meetingDetails.meeting_id,
             lastUpdatedAt: new Date().toISOString(),
+            meetingTypeId: meetingDetails.meeting_type_id || '',
           },
         },
       }
