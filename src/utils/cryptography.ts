@@ -26,7 +26,7 @@ const getContentFromEncrypted = async (
     return ''
   }
 }
-const getContentFromEncryptedGuest = async (
+const getContentFromEncryptedPublic = async (
   encrypted: Encrypted
 ): Promise<string> => {
   try {
@@ -86,5 +86,5 @@ export {
   decryptContent,
   encryptContent,
   getContentFromEncrypted,
-  getContentFromEncryptedGuest,
+  getContentFromEncryptedPublic,
 }
