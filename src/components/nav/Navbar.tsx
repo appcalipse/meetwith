@@ -509,6 +509,10 @@ const NAV_ITEMS: Array<NavItem> = [
     href: '/#features',
   },
   {
+    label: 'Pricing',
+    href: '/#pricing',
+  },
+  {
     label: 'Discord bot',
     href: '/features/discord',
   },
