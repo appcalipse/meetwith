@@ -655,45 +655,6 @@ export type Database = {
           }
         ]
       }
-      guest_slots: {
-        Row: {
-          created_at: string | null
-          end: string | null
-          guest_email: string | null
-          id: string
-          meeting_info_encrypted: Json | null
-          name: string | null
-          recurrence: Database['public']['Enums']['MeetingRepeat']
-          role: Database['public']['Enums']['ParticipantType'] | null
-          start: string | null
-          version: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          end?: string | null
-          guest_email?: string | null
-          id: string
-          meeting_info_encrypted?: Json | null
-          name?: string | null
-          recurrence?: Database['public']['Enums']['MeetingRepeat']
-          role?: Database['public']['Enums']['ParticipantType'] | null
-          start?: string | null
-          version?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          end?: string | null
-          guest_email?: string | null
-          id?: string
-          meeting_info_encrypted?: Json | null
-          name?: string | null
-          recurrence?: Database['public']['Enums']['MeetingRepeat']
-          role?: Database['public']['Enums']['ParticipantType'] | null
-          start?: string | null
-          version?: number | null
-        }
-        Relationships: []
-      }
       meeting_sessions: {
         Row: {
           created_at: string
@@ -962,6 +923,7 @@ export type Database = {
         Row: {
           access_type: string | null
           created_at: string | null
+          encrypted_metadata: Json | null
           end: string | null
           id: string
           meeting_url: string | null
@@ -979,6 +941,7 @@ export type Database = {
         Insert: {
           access_type?: string | null
           created_at?: string | null
+          encrypted_metadata?: Json | null
           end?: string | null
           id: string
           meeting_url?: string | null
@@ -996,6 +959,7 @@ export type Database = {
         Update: {
           access_type?: string | null
           created_at?: string | null
+          encrypted_metadata?: Json | null
           end?: string | null
           id?: string
           meeting_url?: string | null
@@ -1269,9 +1233,10 @@ export type Database = {
       }
       slot_instance: {
         Row: {
-          account_address: string
+          account_address: string | null
           created_at: string | null
           end: string
+          guest_email: string | null
           id: string
           override_meeting_info_encrypted: Json | null
           role: Database['public']['Enums']['ParticipantType']
@@ -1281,9 +1246,10 @@ export type Database = {
           version: number
         }
         Insert: {
-          account_address: string
+          account_address?: string | null
           created_at?: string | null
           end: string
+          guest_email?: string | null
           id: string
           override_meeting_info_encrypted?: Json | null
           role: Database['public']['Enums']['ParticipantType']
@@ -1293,9 +1259,10 @@ export type Database = {
           version?: number
         }
         Update: {
-          account_address?: string
+          account_address?: string | null
           created_at?: string | null
           end?: string
+          guest_email?: string | null
           id?: string
           override_meeting_info_encrypted?: Json | null
           role?: Database['public']['Enums']['ParticipantType']
@@ -1316,9 +1283,10 @@ export type Database = {
       }
       slot_series: {
         Row: {
-          account_address: string
+          account_address: string | null
           created_at: string
           default_meeting_info_encrypted: Json
+          guest_email: string | null
           id: string
           original_end: string
           original_start: string
@@ -1327,9 +1295,10 @@ export type Database = {
           slot_id: string
         }
         Insert: {
-          account_address: string
+          account_address?: string | null
           created_at?: string
           default_meeting_info_encrypted: Json
+          guest_email?: string | null
           id?: string
           original_end: string
           original_start: string
@@ -1338,9 +1307,10 @@ export type Database = {
           slot_id: string
         }
         Update: {
-          account_address?: string
+          account_address?: string | null
           created_at?: string
           default_meeting_info_encrypted?: Json
+          guest_email?: string | null
           id?: string
           original_end?: string
           original_start?: string
@@ -1362,35 +1332,38 @@ export type Database = {
         Row: {
           account_address: string | null
           created_at: string | null
-          end: string | null
+          end: string
+          guest_email: string | null
           id: string
-          meeting_info_encrypted: Json | null
+          meeting_info_encrypted: Json
           recurrence: Database['public']['Enums']['MeetingRepeat']
           role: Database['public']['Enums']['ParticipantType'] | null
-          start: string | null
-          version: number | null
+          start: string
+          version: number
         }
         Insert: {
           account_address?: string | null
           created_at?: string | null
-          end?: string | null
+          end: string
+          guest_email?: string | null
           id: string
-          meeting_info_encrypted?: Json | null
+          meeting_info_encrypted: Json
           recurrence?: Database['public']['Enums']['MeetingRepeat']
           role?: Database['public']['Enums']['ParticipantType'] | null
-          start?: string | null
-          version?: number | null
+          start: string
+          version?: number
         }
         Update: {
           account_address?: string | null
           created_at?: string | null
-          end?: string | null
+          end?: string
+          guest_email?: string | null
           id?: string
-          meeting_info_encrypted?: Json | null
+          meeting_info_encrypted?: Json
           recurrence?: Database['public']['Enums']['MeetingRepeat']
           role?: Database['public']['Enums']['ParticipantType'] | null
-          start?: string | null
-          version?: number | null
+          start?: string
+          version?: number
         }
         Relationships: [
           {
@@ -1796,7 +1769,7 @@ export type Database = {
         | 'jitsi-meet'
         | 'custom'
       MeetingRepeat: 'no-repeat' | 'daily' | 'weekly' | 'monthly'
-      MeetingVersion: 'V1' | 'V2'
+      MeetingVersion: 'V1' | 'V2' | 'V3'
       ParticipantType: 'scheduler' | 'owner' | 'invitee'
       PaymentAccountStatus: 'pending' | 'connected' | 'disconnected' | 'failed'
       PaymentChannel: 'account_address' | 'custom_address'
@@ -1971,7 +1944,7 @@ export const Constants = {
         'custom',
       ],
       MeetingRepeat: ['no-repeat', 'daily', 'weekly', 'monthly'],
-      MeetingVersion: ['V1', 'V2'],
+      MeetingVersion: ['V1', 'V2', 'V3'],
       ParticipantType: ['scheduler', 'owner', 'invitee'],
       PaymentAccountStatus: ['pending', 'connected', 'disconnected', 'failed'],
       PaymentChannel: ['account_address', 'custom_address'],
