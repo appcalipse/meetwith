@@ -40,10 +40,12 @@ export interface TimeSlot extends Interval {
   eventId?: string
   eventWebLink?: string
   eventEmail?: string
+  account_address: string
 }
 export interface DBSlot extends Interval {
   id?: string
   created_at?: Date
+  source?: string
   version: number
   meeting_info_encrypted: Encrypted
   recurrence: MeetingRepeat
