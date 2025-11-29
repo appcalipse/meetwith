@@ -402,7 +402,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
-
+      const attendeeLength =
+        event?.attendees?.filter(attendee => !attendee.self).length || 0
       const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
 
       const payload: calendar_v3.Schema$Event = {
@@ -448,6 +449,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             meetingId: meetingDetails.meeting_id,
             lastUpdatedAt: new Date().toISOString(),
             meetingTypeId: meetingDetails.meeting_type_id || '',
+            includesParticipants: attendeeLength > 0 ? 'true' : 'false',
           },
         },
       }
@@ -501,8 +503,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
       )
-      const attendeeLength =
-        event?.attendees?.filter(attendee => !attendee.self).length || 0
 
       if (attendeeLength > 0) {
         // Build deduplicated attendees list using helper
