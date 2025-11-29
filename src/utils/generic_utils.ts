@@ -114,7 +114,7 @@ export const getSlugFromText = (text: string) =>
     strict: true,
   })
 
-export const useDebounce = (value: any, delay: number) => {
+export const useDebounce = (value: unknown, delay: number) => {
   // State and setters for debounced value
   const [debouncedValue, setDebouncedValue] = useState(value)
   useEffect(
@@ -228,7 +228,7 @@ export const formatCountdown = (seconds: number): string => {
   return `${seconds}s`
 }
 
-export const groupByFields = <T>(
+export const groupByFields = <T extends object>(
   items: T[],
   fieldsToCompare: (keyof T | 'end.dateTime' | 'start.dateTime')[]
 ): T[][] => {
@@ -237,14 +237,26 @@ export const groupByFields = <T>(
     // Create a unique key from the specified fields
     const key = fieldsToCompare
       .map(field => {
-        const value =
+        let value: unknown
+        if (
           typeof field === 'string' &&
           field.includes('.') &&
           ['start.dateTime', 'end.dateTime'].includes(field)
-            ? DateTime.fromISO(
-                field.split('.').reduce((acc: any, curr) => acc?.[curr], item)
-              ).toFormat('HH:mm')
-            : item[field as keyof T]
+        ) {
+          const rawValue = field.split('.').reduce<unknown>((acc, curr) => {
+            if (acc && typeof acc === 'object') {
+              return (acc as Record<string, unknown>)[curr]
+            }
+            return undefined
+          }, item)
+          value =
+            typeof rawValue === 'string'
+              ? DateTime.fromISO(rawValue).toFormat('HH:mm')
+              : undefined
+        } else {
+          value = item[field as keyof T]
+        }
+
         return value !== undefined ? JSON.stringify(value) : 'undefined'
       })
       .join('|')
@@ -272,7 +284,7 @@ export const groupByFields = <T>(
  * />
  * ```
  */
-export const clearValidationError = <T extends Record<string, any>>(
+export const clearValidationError = <T extends Record<string, unknown>>(
   setErrors: React.Dispatch<React.SetStateAction<T>>,
   fieldName: keyof T
 ) => {
