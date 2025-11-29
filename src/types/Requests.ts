@@ -11,8 +11,7 @@ import { AcceptedToken, SupportedChain } from '@/types/chains'
 import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
-import { TimeRange } from './Account'
-import { Account } from './Account'
+import { Account, TimeRange } from './Account'
 import { MeetingReminders } from './common'
 import { MemberType } from './Group'
 import {
@@ -57,6 +56,7 @@ export interface MeetingCreationRequest {
   meetingPermissions?: Array<MeetingPermissions>
   ignoreOwnerAvailability?: boolean
   txHash?: Address | null
+  encrypted_metadata?: Encrypted
 }
 
 export interface UrlCreationRequest {
