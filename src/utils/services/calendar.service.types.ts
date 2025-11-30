@@ -218,6 +218,12 @@ export interface IGoogleCalendarService extends BaseCalendarService {
     meetingDetails: MeetingCreationSyncRequest,
     calendarId: string
   ): Promise<NewCalendarEventType & calendar_v3.Schema$Event>
+
+  syncRecurringEvent(
+    meetingDetails: MeetingCreationSyncRequest,
+    actorAddress: string,
+    calendarId: string
+  ): Promise<void>
 }
 
 export interface ICaldavCalendarService extends BaseCalendarService {
