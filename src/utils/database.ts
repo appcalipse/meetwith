@@ -251,6 +251,7 @@ import { getConnectedCalendarIntegration } from './services/connected_calendars.
 import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
+import { ExternalCalendarSync } from './sync_helper'
 import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
 import { EmailQueue } from './workers/email.queue'
@@ -6538,7 +6539,41 @@ const handleSyncRecurringEvents = async (
             await deleteRecurringSlotInstances(
               slots.map(s => s.id!).concat(eventInstance.payload.slotsToRemove)
             )
+
             saveRecurringMeetings(slots, slots[0]?.recurrence as MeetingRepeat)
+
+            for (const slot of slots) {
+              if (slot.account_address) {
+                await ExternalCalendarSync.delete(slot.account_address, [
+                  eventInstance.payload.meeting_id,
+                ])
+              }
+            }
+            await ExternalCalendarSync.create({
+              participantActing: eventInstance.participantActing,
+              meeting_id: eventInstance.payload.meeting_id,
+              start: eventInstance.payload.start,
+              end: eventInstance.payload.end,
+              created_at: new Date(eventInstance.existingMeeting.created_at!),
+              timezone:
+                eventInstance.payload.participants_mapping.find(
+                  p =>
+                    p.account_address ===
+                    eventInstance.participantActing.account_address
+                )?.timeZone || 'UTC',
+              meeting_url: eventInstance.payload.meeting_url,
+              participants: eventInstance.payload.participants_mapping,
+              title: eventInstance.payload.title,
+              content: eventInstance.payload.content,
+              meetingProvider: eventInstance.payload.meetingProvider,
+              meetingReminders: eventInstance.payload.meetingReminders,
+              meetingRepeat: eventInstance.payload.meetingRepeat,
+              meetingPermissions: eventInstance.payload.meetingPermissions,
+              meeting_type_id:
+                eventInstance.payload.meetingTypeId === NO_MEETING_TYPE
+                  ? undefined
+                  : eventInstance.payload.meetingTypeId,
+            })
           }
         }
       } catch (e) {
