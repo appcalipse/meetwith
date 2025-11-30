@@ -1488,7 +1488,7 @@ const saveMeeting = async (
       }
       i++
     } else if (participant.guest_email && participant.slot_id) {
-      const dbSlot: TablesInsert<'guest_slots'> = {
+      const dbSlot: TablesInsert<'slots'> = {
         id: participant.slot_id,
         start: new Date(meeting.start).toISOString(),
         end: new Date(meeting.end).toISOString(),
@@ -1497,9 +1497,8 @@ const saveMeeting = async (
         recurrence: meeting.meetingRepeat,
         role: participant.type,
         guest_email: participant.guest_email,
-        name: participant.name || '',
       }
-      guestSlots.push(dbSlot)
+      slots.push(dbSlot)
     }
   }
 
@@ -1524,14 +1523,6 @@ const saveMeeting = async (
     )
   }
   const { data, error } = await db.supabase.from('slots').insert(slots)
-  if (guestSlots.length > 0) {
-    const { error: guestSlotsError } = await db.supabase
-      .from('guest_slots')
-      .insert(guestSlots)
-    if (guestSlotsError) {
-      throw new Error(guestSlotsError.message)
-    }
-  }
 
   //TODO: handle error
   if (error) {
@@ -3006,7 +2997,6 @@ const updateMeeting = async (
     throw new MeetingCreationError()
   }
   const slots = []
-  const guestSlots = []
   let meetingResponse = {} as DBSlot
   let index = 0
   let i = 0
@@ -3182,7 +3172,7 @@ const updateMeeting = async (
       }
       i++
     } else if (participant.guest_email && participant.slot_id) {
-      const dbSlot: TablesInsert<'guest_slots'> = {
+      const dbSlot: TablesInsert<'slots'> = {
         id: participant.slot_id,
         start: new Date(meetingUpdateRequest.start).toISOString(),
         end: new Date(meetingUpdateRequest.end).toISOString(),
@@ -3191,9 +3181,8 @@ const updateMeeting = async (
         recurrence: meetingUpdateRequest.meetingRepeat,
         role: participant.type,
         guest_email: participant.guest_email,
-        name: participant.name || '',
       }
-      guestSlots.push(dbSlot)
+      slots.push(dbSlot)
     }
   }
 
@@ -3215,14 +3204,6 @@ const updateMeeting = async (
   //TODO: handle error
   if (error) {
     throw new Error(error.message)
-  }
-  if (guestSlots.length > 0) {
-    const { error: guestSlotsError } = await db.supabase
-      .from('guest_slots')
-      .upsert(guestSlots, { onConflict: 'id' })
-    if (guestSlotsError) {
-      throw new Error(guestSlotsError.message)
-    }
   }
 
   meetingResponse.id = data[index]?.id
