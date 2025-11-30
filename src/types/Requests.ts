@@ -11,8 +11,7 @@ import { AcceptedToken, SupportedChain } from '@/types/chains'
 import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
-import { TimeRange } from './Account'
-import { Account } from './Account'
+import { Account, TimeRange } from './Account'
 import { MeetingReminders } from './common'
 import { MemberType } from './Group'
 import {
@@ -36,6 +35,7 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   slotsToRemove: string[]
   guestsToRemove: ParticipantInfo[]
   version: number
+  eventId?: string
 }
 
 export interface MeetingCreationRequest {
@@ -56,6 +56,7 @@ export interface MeetingCreationRequest {
   meetingPermissions?: Array<MeetingPermissions>
   ignoreOwnerAvailability?: boolean
   txHash?: Address | null
+  encrypted_metadata?: Encrypted
 }
 
 export interface UrlCreationRequest {
@@ -115,6 +116,8 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meetingReminders?: Array<MeetingReminders>
   meetingRepeat?: MeetingRepeat
   meetingPermissions?: Array<MeetingPermissions>
+  eventId?: string
+  notification_hash?: string
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
@@ -126,6 +129,7 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   guestsToRemove: ParticipantInfo[]
   reason?: string
   title?: string
+  eventId?: string
 }
 
 export interface DiscordAccountInfoRequest {

@@ -27,3 +27,9 @@ export enum MeetingReminders {
   '1_DAY_BEFORE',
   '1_WEEK_BEFORE',
 }
+
+export enum RecurringStatus {
+  CONFIRMED = 'confirmed', // status for original events in series
+  MODIFIED = 'modified', // status for modified events in the series
+  CANCELLED = 'cancelled', // status for cancelled events in the series
+}

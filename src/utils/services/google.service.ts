@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
-import { format, getWeekOfMonth } from 'date-fns'
 import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
+import { DateTime } from 'luxon'
 
 import {
   CalendarSyncInfo,
@@ -16,6 +16,7 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
+import { Tables } from '@/types/Supabase'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { NO_MEETING_TYPE } from '../constants/meeting-types'
@@ -23,7 +24,7 @@ import { MeetingPermissions } from '../constants/schedule'
 import { getOwnerPublicUrlServer, updateCalendarPayload } from '../database'
 import { getCalendarPrimaryEmail } from '../sync_helper'
 import { CalendarServiceHelper } from './calendar.helper'
-import { IGoogleCalendarService } from './calendar.service.types'
+import { EventList, IGoogleCalendarService } from './calendar.service.types'
 import { withRetry } from './retry.service'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -161,41 +162,37 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
 
   async listEvents(
     calendarId: string,
+    syncToken: string | undefined | null,
     dateFrom: Date,
     dateTo: Date
-  ): Promise<calendar_v3.Schema$Event[]> {
-    return new Promise((resolve, reject) =>
-      this.auth.getToken().then(myGoogleAuth => {
-        const calendar = google.calendar({
-          version: 'v3',
-          auth: myGoogleAuth,
-        })
-
-        calendar.events.list(
-          {
-            calendarId,
-            timeMin: dateFrom.toISOString(),
-            timeMax: dateTo.toISOString(),
-            singleEvents: true,
-            orderBy: 'updated',
-            q: 'meetingId',
-            showDeleted: true,
-            updatedMin: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
-          },
-          (err, res) => {
-            if (err) {
-              console.error(
-                'There was an error contacting google calendar service: ',
-                err
-              )
-              return reject(err)
-            }
-            const events = res?.data.items || []
-            return resolve(events)
-          }
-        )
+  ): Promise<EventList> {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    const aggregatedEvents: calendar_v3.Schema$Event[] = []
+    let nextSyncToken: string | undefined
+    let token: string | undefined
+    do {
+      const response = await calendar.events.list({
+        calendarId,
+        syncToken: syncToken ?? undefined,
+        singleEvents: true,
+        showDeleted: true,
+        pageToken: token,
+        timeMin: dateFrom.toISOString(),
+        timeMax: dateTo.toISOString(),
       })
-    )
+      aggregatedEvents.push(...(response.data.items || []))
+      token = response.data.nextPageToken || undefined
+      const storedSyncToken = response.data.nextSyncToken
+      if (storedSyncToken) nextSyncToken = storedSyncToken
+    } while (token)
+    return {
+      events: aggregatedEvents,
+      nextSyncToken,
+    }
   }
 
   async createEvent(
@@ -299,6 +296,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
                 updatedBy: 'meetwith',
                 lastUpdatedAt: new Date().toISOString(),
                 meetingId: meetingDetails.meeting_id,
+                meetingTypeId: meetingDetails.meeting_type_id || '',
+                includesParticipants: useParticipants ? 'true' : 'false',
               },
             },
           }
@@ -312,11 +311,14 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
           ) {
             let RRULE = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()};INTERVAL=1`
-            const dayOfWeek = format(
-              meetingDetails.start,
-              'eeeeee'
-            ).toUpperCase()
-            const weekOfMonth = getWeekOfMonth(meetingDetails.start)
+            const startDateTime = DateTime.fromJSDate(
+              new Date(meetingDetails.start)
+            )
+            const dayOfWeek = startDateTime
+              .toFormat('EEE')
+              .toUpperCase()
+              .substring(0, 2)
+            const weekOfMonth = Math.ceil(startDateTime.day / 7)
 
             switch (meetingDetails.meetingRepeat) {
               case MeetingRepeat.WEEKLY:
@@ -398,15 +400,19 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           slot_id: '',
           meeting_id,
         }))
-      const event = await this.getEventById(meeting_id, _calendarId)
+      const event = await this.getEventById(
+        meetingDetails.eventId || meeting_id,
+        _calendarId
+      )
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
-
+      const attendeeLength =
+        event?.attendees?.filter(attendee => !attendee.self).length || 0
       const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
 
       const payload: calendar_v3.Schema$Event = {
-        id: meeting_id.replaceAll('-', ''), // required to edit events later
+        id: meetingDetails.eventId || meeting_id.replaceAll('-', ''), // required to edit events later
         summary: CalendarServiceHelper.getMeetingTitle(
           calendarOwnerAccountAddress,
           participantsInfo,
@@ -445,7 +451,12 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         extendedProperties: {
           private: {
             updatedBy: 'meetwith',
+            meetingId: meetingDetails.meeting_id,
             lastUpdatedAt: new Date().toISOString(),
+            meetingTypeId: meetingDetails.meeting_type_id || '',
+            includesParticipants:
+              event?.extendedProperties?.private?.includesParticipants ||
+              'false',
           },
         },
       }
@@ -462,17 +473,45 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         meetingDetails.meetingRepeat &&
         meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
       ) {
-        payload.recurrence = [
-          `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`,
-        ]
+        let rrule = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`
+
+        // Add INTERVAL
+        rrule += `;INTERVAL=1`
+
+        // Add day rules for weekly/monthly (like in createEvent)
+        const startDateTime = DateTime.fromJSDate(
+          new Date(meetingDetails.start)
+        )
+        const dayOfWeek = startDateTime
+          .toFormat('EEE')
+          .toUpperCase()
+          .substring(0, 2)
+        const weekOfMonth = Math.ceil(startDateTime.day / 7)
+
+        switch (meetingDetails.meetingRepeat) {
+          case MeetingRepeat.WEEKLY:
+            rrule += `;BYDAY=${dayOfWeek}`
+            break
+          case MeetingRepeat.MONTHLY:
+            rrule += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+            break
+        }
+        const excludedDates: Array<Tables<'slot_instance'>> = []
+        // Add exclusion dates if provided
+        if (excludedDates && excludedDates.length > 0) {
+          const exdates = excludedDates
+            .map(slot => DateTime.fromISO(slot.start).toFormat('yyyyMMdd'))
+            .join(',')
+          rrule += `\nEXDATE:${exdates}`
+        }
+
+        payload.recurrence = [rrule]
       }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
       )
-      const attendeeLength =
-        event?.attendees?.filter(attendee => !attendee.self).length || 0
 
-      if (attendeeLength > 0) {
+      if (event?.extendedProperties?.private?.includesParticipants === 'true') {
         // Build deduplicated attendees list using helper
         const attendees = await this.buildAttendeesListForUpdate(
           meetingDetails.participants,
@@ -491,7 +530,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         {
           auth: myGoogleAuth,
           calendarId,
-          eventId: meeting_id.replaceAll('-', ''),
+          eventId: meetingDetails.eventId || meeting_id.replaceAll('-', ''),
           sendNotifications: true,
           sendUpdates: 'all',
           requestBody: payload,
@@ -987,7 +1026,31 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       }
     })
   }
-
+  async initialSync(calendarId: string, dateFrom: string, dateTo: string) {
+    try {
+      const myGoogleAuth = await this.auth.getToken()
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+      let token: string | undefined
+      do {
+        const response = await calendar.events.list({
+          calendarId: calendarId,
+          pageToken: token,
+          timeMin: dateFrom,
+          timeMax: dateTo,
+          singleEvents: true,
+          showDeleted: true,
+        })
+        token = response.data.nextPageToken!
+        const storedSyncToken = response.data.nextSyncToken
+        if (storedSyncToken) return storedSyncToken
+      } while (token)
+    } catch (error) {
+      console.error('Initial sync error:', error)
+    }
+  }
   private googleAuth = (
     address: string,
     email: string,

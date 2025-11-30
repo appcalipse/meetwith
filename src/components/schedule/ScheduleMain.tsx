@@ -274,12 +274,12 @@ const ScheduleMain: FC<IInitialProps> = ({
       if (meetingId) {
         const slot = await getMeeting(meetingId)
         decryptedMeeting = await decodeMeeting(slot, currentAccount!)
-        actor = slot.account_address
+        actor = slot.account_address!
       } else if (conferenceId) {
         const slot = await getSlotByMeetingId(conferenceId)
         if (slot?.user_type === 'account') {
           decryptedMeeting = await decodeMeeting(slot, currentAccount!)
-          actor = slot.account_address
+          actor = slot.account_address!
         } else if (slot?.user_type === 'guest') {
           decryptedMeeting = await decodeMeetingGuest(slot)
           actor = slot.guest_email || ''

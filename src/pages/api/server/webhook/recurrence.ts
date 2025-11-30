@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { updateAllRecurringSlots } from '@/utils/database'
+import { syncAllSeries, updateAllRecurringSlots } from '@/utils/database'
 
 export default async function recurrenceSync(
   req: NextApiRequest,
@@ -8,7 +8,7 @@ export default async function recurrenceSync(
 ) {
   if (req.method === 'POST') {
     try {
-      await updateAllRecurringSlots()
+      await Promise.all([updateAllRecurringSlots(), syncAllSeries()])
       return res.status(200).json({
         success: true,
         message: 'recurring slot added successfully',

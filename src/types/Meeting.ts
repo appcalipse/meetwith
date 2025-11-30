@@ -36,32 +36,32 @@ export interface ExistingMeetingData {
 }
 export interface TimeSlot extends Interval {
   source?: string
-  account_address: string
   eventTitle?: string
   eventId?: string
   eventWebLink?: string
   eventEmail?: string
+  account_address: string
 }
-export interface BaseSlot extends Interval {
+export interface DBSlot extends Interval {
   id?: string
   created_at?: Date
+  source?: string
   version: number
   meeting_info_encrypted: Encrypted
   recurrence: MeetingRepeat
   public_decrypted_data?: MeetingDecrypted
   role?: ParticipantType
+  guest_email?: string | null
+  account_address?: string | null
 }
 
-export type DBSlot = TimeSlot & BaseSlot
 export interface AccountSlot extends DBSlot {
   priority: 1
   user_type: 'account'
 }
-export interface GuestSlot extends BaseSlot {
+export interface GuestSlot extends DBSlot {
   priority: 2 | 3
   user_type: 'guest'
-  guest_email: string
-  name: string
 }
 export interface ExtendedDBSlot extends DBSlot {
   conferenceData?: ConferenceMeeting
@@ -108,6 +108,7 @@ export enum MeetingAccessType {
 export enum MeetingVersion {
   V1 = 'V1',
   V2 = 'V2',
+  V3 = 'V3',
 }
 export interface ConferenceMeeting {
   id: string
@@ -123,6 +124,7 @@ export interface ConferenceMeeting {
   slots: Array<string>
   version: MeetingVersion
   permissions?: Array<MeetingPermissions>
+  encrypted_metadata?: Encrypted
 }
 
 export interface MeetingInfo {

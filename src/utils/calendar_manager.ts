@@ -15,7 +15,7 @@ import { Account, DayAvailability } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
-  BaseSlot,
+  ConferenceMeeting,
   DBSlot,
   ExtendedDBSlot,
   GuestSlot,
@@ -66,7 +66,7 @@ import { SessionType } from './constants/meeting-types'
 import { MeetingPermissions } from './constants/schedule'
 import {
   getContentFromEncrypted,
-  getContentFromEncryptedGuest,
+  getContentFromEncryptedPublic,
   simpleHash,
 } from './cryptography'
 import {
@@ -184,7 +184,7 @@ const mapRelatedSlots = async (
     if (slotId !== meeting.id) {
       try {
         const slot = await getMeeting(slotId)
-        accountSlot[slot.account_address] = slotId
+        accountSlot[(slot?.account_address || slot?.guest_email)!] = slotId
       } catch (e) {
         // some slots might not be found if they belong to guests and were wrongly stored
         try {
@@ -216,7 +216,9 @@ const loadMeetingAccountAddresses = async (
     }
   }
   const slotsAccounts = [
-    ...otherSlots.map(it => it.account_address.toLowerCase()),
+    ...otherSlots
+      .filter(it => it.account_address)
+      .map(it => it.account_address!.toLowerCase()),
   ]
   if (currentAccountAddress) {
     slotsAccounts.unshift(currentAccountAddress.toLowerCase())
@@ -369,6 +371,17 @@ const buildMeetingData = async (
 
     participantsMappings.push(participantMapping)
   }
+  const conferenceEncodingKey = process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
+  const basePrivateInfoComplete = JSON.stringify({
+    ...privateInfo,
+    // we need to store the other related slots in other to update the meeting later
+    // for the base info, we store all slots
+    related_slot_ids: allSlotIds,
+  })
+  const encrypted: Encrypted = await encryptWithPublicKey(
+    conferenceEncodingKey,
+    basePrivateInfoComplete
+  )
 
   return {
     type: schedulingType,
@@ -385,6 +398,7 @@ const buildMeetingData = async (
     meetingRepeat,
     allSlotIds,
     meetingPermissions: selectedPermissions,
+    encrypted_metadata: encrypted,
     ignoreOwnerAvailability:
       participantsMappings.filter(
         mapping => mapping.type === ParticipantType.Owner
@@ -570,7 +584,7 @@ const updateMeetingAsGuest = async (
  * @param signature
  * @param participants
  * @param content
- * @param meetingUrl
+ * @param ocess.e
  * @param meetingProvider
  * @param meetingTitle
  * @param meetingReminders
@@ -1637,7 +1651,7 @@ const decryptMeeting = async (
   const meetingInfo = JSON.parse(content) as MeetingInfo
   if (
     meeting?.conferenceData &&
-    meeting?.conferenceData.version === MeetingVersion.V2
+    meeting?.conferenceData.version !== MeetingVersion.V1
   ) {
     if (
       meeting.conferenceData.slots.length !== meetingInfo.participants.length
@@ -1672,10 +1686,11 @@ const decryptMeeting = async (
     permissions: meetingInfo?.permissions,
   }
 }
+// This functions runtime is for the server side only
 const decryptMeetingGuest = async (
-  meeting: BaseSlot
+  meeting: DBSlot
 ): Promise<MeetingDecrypted | null> => {
-  const content = await getContentFromEncryptedGuest(
+  const content = await getContentFromEncryptedPublic(
     meeting?.meeting_info_encrypted
   )
   if (!content) return null
@@ -1699,6 +1714,37 @@ const decryptMeetingGuest = async (
     provider: meetingInfo?.provider,
     recurrence: meetingInfo?.recurrence,
     permissions: meetingInfo?.permissions,
+  }
+}
+// This functions runtime is for the server side only
+const decryptConferenceMeeting = async (
+  meeting: ConferenceMeeting
+): Promise<MeetingDecrypted | null> => {
+  if (!meeting?.encrypted_metadata) return null
+  const content = await getContentFromEncryptedPublic(
+    meeting?.encrypted_metadata
+  )
+  if (!content) return null
+
+  const meetingInfo = JSON.parse(content) as MeetingInfo
+
+  return {
+    id: meeting.id!,
+    meeting_info_encrypted: meeting.encrypted_metadata,
+    meeting_id: meetingInfo.meeting_id,
+    created_at: meeting.created_at!,
+    participants: meetingInfo.participants,
+    content: meetingInfo.content,
+    title: meetingInfo.title,
+    meeting_url: meetingInfo.meeting_url,
+    related_slot_ids: meetingInfo.related_slot_ids,
+    start: new Date(meeting.start),
+    end: new Date(meeting.end),
+    reminders: meetingInfo.reminders,
+    provider: meetingInfo?.provider,
+    recurrence: meetingInfo?.recurrence,
+    permissions: meetingInfo?.permissions,
+    version: -1, // Conference meetings do not have versioning
   }
 }
 
@@ -1984,6 +2030,7 @@ export {
   dateToHumanReadable,
   dateToLocalizedRange,
   decodeMeeting,
+  decryptConferenceMeeting,
   decryptMeeting,
   decryptMeetingGuest,
   defaultTimeRange,
@@ -1998,6 +2045,9 @@ export {
   getAccountCalendarUrl,
   getAccountDomainUrl,
   googleUrlParsedDate,
+  handleParticipants,
+  loadMeetingAccountAddresses,
+  mapRelatedSlots,
   noNoReplyEmailForAccount,
   outLookUrlParsedDate,
   scheduleMeeting,

@@ -111,9 +111,10 @@ export interface IGoogleCalendarService extends BaseCalendarService {
    */
   listEvents(
     calendarId: string,
+    syncToken: string | null,
     dateFrom: Date,
     dateTo: Date
-  ): Promise<calendar_v3.Schema$Event[]>
+  ): Promise<EventList>
 
   /**
    * Updates the RSVP status of an attendee for a specific event
@@ -140,6 +141,12 @@ export interface IGoogleCalendarService extends BaseCalendarService {
     meeting_id: string,
     _calendarId?: string
   ): Promise<NewCalendarEventType>
+
+  initialSync(
+    calendarId: string,
+    dateFrom: string,
+    dateTo: string
+  ): Promise<string | null | undefined>
 
   /**
    * Sets up a webhook URL for calendar change notifications
@@ -213,7 +220,7 @@ export interface IGoogleCalendarService extends BaseCalendarService {
   ): Promise<NewCalendarEventType & calendar_v3.Schema$Event>
 }
 
-export interface ICaldavCalendarService {
+export interface ICaldavCalendarService extends BaseCalendarService {
   createEvent(
     owner: string,
     meetingDetails: MeetingCreationSyncRequest,
@@ -234,4 +241,9 @@ export interface ICaldavCalendarService {
       attendees: Attendee[]
     }
   >
+}
+
+export type EventList = {
+  events: calendar_v3.Schema$Event[]
+  nextSyncToken: string | null | undefined
 }
