@@ -181,6 +181,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         singleEvents: true,
         showDeleted: true,
         pageToken: token,
+        timeMin: dateFrom.toISOString(),
+        timeMax: dateTo.toISOString(),
       })
       aggregatedEvents.push(...(response.data.items || []))
       token = response.data.nextPageToken || undefined
@@ -398,7 +400,10 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           slot_id: '',
           meeting_id,
         }))
-      const event = await this.getEventById(meeting_id, _calendarId)
+      const event = await this.getEventById(
+        meetingDetails.eventId || meeting_id,
+        _calendarId
+      )
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
@@ -449,7 +454,9 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             meetingId: meetingDetails.meeting_id,
             lastUpdatedAt: new Date().toISOString(),
             meetingTypeId: meetingDetails.meeting_type_id || '',
-            includesParticipants: attendeeLength > 0 ? 'true' : 'false',
+            includesParticipants:
+              event?.extendedProperties?.private?.includesParticipants ||
+              'false',
           },
         },
       }
@@ -504,7 +511,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         participant => participant.guest_email
       )
 
-      if (attendeeLength > 0) {
+      if (event?.extendedProperties?.private?.includesParticipants === 'true') {
         // Build deduplicated attendees list using helper
         const attendees = await this.buildAttendeesListForUpdate(
           meetingDetails.participants,
