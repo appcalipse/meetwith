@@ -17233,6 +17233,7 @@ __metadata:
     react-intersection-observer: "npm:^9.4.1"
     react-timezone-select: "npm:^3.2.8"
     resend: "npm:^4.5.1"
+    rrule: "npm:^2.8.1"
     sanitize-html: "npm:2.12.1"
     sharp: "npm:^0.34.1"
     slugify: "npm:^1.6.5"
@@ -20755,6 +20756,15 @@ __metadata:
     luxon:
       optional: true
   checksum: 10c0/0f19a2b26fad9316c243fd8f8b8e3e172dae870ce31d52a438ec86de0c84095c0718cbb023cf088f51ffb89a52faa41ed1cd421cc795dff31ee29020348b5ad9
+  languageName: node
+  linkType: hard
+
+"rrule@npm:^2.8.1":
+  version: 2.8.1
+  resolution: "rrule@npm:2.8.1"
+  dependencies:
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/c9350620bbd57d0cdf99320b576121a2d7ed579fda4ae50891e2779c7dfd6dc7b174b558b6598adefb1f0e053549dc977740e1a265f77dcf0827aaeea60b45e7
   languageName: node
   linkType: hard
 
