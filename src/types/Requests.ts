@@ -35,7 +35,7 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   slotsToRemove: string[]
   guestsToRemove: ParticipantInfo[]
   version: number
-  eventId?: string
+  eventId?: string | null
 }
 
 export interface MeetingCreationRequest {
@@ -57,6 +57,7 @@ export interface MeetingCreationRequest {
   ignoreOwnerAvailability?: boolean
   txHash?: Address | null
   encrypted_metadata?: Encrypted
+  rrule: Array<string>
 }
 
 export interface UrlCreationRequest {
@@ -116,8 +117,10 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meetingReminders?: Array<MeetingReminders>
   meetingRepeat?: MeetingRepeat
   meetingPermissions?: Array<MeetingPermissions>
-  eventId?: string
+  eventId?: string | null
   notification_hash?: string
+  rrule?: Array<string>
+  skipCalendarSync?: boolean
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
@@ -129,7 +132,7 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   guestsToRemove: ParticipantInfo[]
   reason?: string
   title?: string
-  eventId?: string
+  eventId?: string | null
 }
 
 export interface DiscordAccountInfoRequest {
