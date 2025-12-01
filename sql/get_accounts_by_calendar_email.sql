@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION search_contact_invites(
+CREATE OR REPLACE FUNCTION get_accounts_by_calendar_email(
     p_email TEXT,
     p_address TEXT,
     p_limit INTEGER DEFAULT 1000,
