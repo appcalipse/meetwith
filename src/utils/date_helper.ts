@@ -1,16 +1,10 @@
 import * as ct from 'countries-and-timezones'
 import {
-  add,
   addDays,
-  differenceInMinutes,
-  endOfMonth,
   endOfWeek,
-  getWeekOfMonth,
-  isBefore,
   setDay,
   setHours,
   setMinutes,
-  startOfMonth,
   startOfWeek,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
@@ -416,4 +410,9 @@ export const checkHasSameScheduleTime = (date: Date, date2: Date): boolean => {
   return (
     instance.hasSame(instance2, 'hour') && instance.hasSame(instance2, 'minute')
   )
+}
+export const checkIsSameDay = (date: Date, date2: Date): boolean => {
+  const instance = DateTime.fromJSDate(date)
+  const instance2 = DateTime.fromJSDate(date2)
+  return instance.hasSame(instance2, 'day')
 }
