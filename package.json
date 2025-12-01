@@ -113,6 +113,7 @@
     "react-intersection-observer": "^9.4.1",
     "react-timezone-select": "^3.2.8",
     "resend": "^4.5.1",
+    "rrule": "^2.8.1",
     "sanitize-html": "2.12.1",
     "sharp": "^0.34.1",
     "slugify": "^1.6.5",
