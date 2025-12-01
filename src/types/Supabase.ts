@@ -1291,7 +1291,7 @@ export type Database = {
           original_end: string
           original_start: string
           recurrence: Database['public']['Enums']['MeetingRepeat']
-          rrule: string | null
+          rrule: string[] | null
           slot_id: string
         }
         Insert: {
@@ -1303,7 +1303,7 @@ export type Database = {
           original_end: string
           original_start: string
           recurrence: Database['public']['Enums']['MeetingRepeat']
-          rrule?: string | null
+          rrule?: string[] | null
           slot_id: string
         }
         Update: {
@@ -1315,7 +1315,7 @@ export type Database = {
           original_end?: string
           original_start?: string
           recurrence?: Database['public']['Enums']['MeetingRepeat']
-          rrule?: string | null
+          rrule?: string[] | null
           slot_id?: string
         }
         Relationships: [
@@ -1600,6 +1600,10 @@ export type Database = {
           p_limit?: number
           p_offset?: number
         }
+        Returns: Json
+      }
+      get_accounts_by_calendar_emails: {
+        Args: { p_emails: string[]; p_limit?: number; p_offset?: number }
         Returns: Json
       }
       get_availability_types_for_account_preferences: {
