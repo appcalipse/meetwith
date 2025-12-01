@@ -27,6 +27,7 @@ import EthCrypto, {
 import { writeFileSync } from 'fs'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
+import { rrulestr } from 'rrule'
 import { validate } from 'uuid'
 
 import { ResourceState } from '@/pages/api/server/webhook/calendar/sync'
@@ -212,7 +213,10 @@ import {
   UnauthorizedError,
   UploadError,
 } from '@/utils/errors'
-import { ParticipantInfoForNotification } from '@/utils/notification_helper'
+import {
+  emailQueue,
+  ParticipantInfoForNotification,
+} from '@/utils/notification_helper'
 import { generatePollSlug } from '@/utils/quickpoll_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
@@ -220,6 +224,9 @@ import {
   decryptConferenceMeeting,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
+  getMeetingRepeatFromRule,
+  handleRRULEForMeeting,
+  isDiffRRULE,
 } from './calendar_manager'
 import {
   extractMeetingDescription,
@@ -229,21 +236,19 @@ import {
   handleParseParticipants,
   handleUpdateMeeting,
   handleUpdateMeetingRsvps,
-  handleUpdateParseMeetingInfo,
-  handleUpdateRSVPParseMeetingInfo,
   handleUpdateSingleRecurringInstance,
 } from './calendar_sync_helpers'
 import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
-import { addRecurrence, checkHasSameScheduleTime } from './date_helper'
+import { addRecurrence, checkIsSameDay } from './date_helper'
 import {
   sendCryptoDebitEmail,
   sendPollInviteEmail,
   sendReceiptEmail,
   sendSessionBookingIncomeEmail,
 } from './email_helper'
-import { deduplicateArray, groupByFields } from './generic_utils'
+import { deduplicateArray } from './generic_utils'
 import PostHogClient from './posthog'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { IGoogleCalendarService } from './services/calendar.service.types'
@@ -251,10 +256,8 @@ import { getConnectedCalendarIntegration } from './services/connected_calendars.
 import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
-import { ExternalCalendarSync } from './sync_helper'
 import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
-import { EmailQueue } from './workers/email.queue'
 
 const PIN_SALT = process.env.PIN_SALT
 const posthogClient = PostHogClient()
@@ -277,8 +280,6 @@ const initDB = () => {
 }
 
 initDB()
-
-const emailQueue = new EmailQueue()
 
 const initAccountDBForWallet = async (
   address: string,
@@ -526,6 +527,20 @@ const findAccountByEmail = async (
   }
   return data
 }
+const findAccountsByEmails = async (emails: Array<string>) => {
+  const { data, error } = await db.supabase.rpc<{
+    [email: string]: Array<LeanAccountInfo>
+  }>('get_accounts_by_calendar_emails', {
+    p_emails: emails.map(email => email.trim().toLowerCase()),
+    p_limit: 100,
+    p_offset: 0,
+  })
+  if (error) {
+    Sentry.captureException(error)
+    return null
+  }
+  return Array.isArray(data) ? data[0] : data
+}
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
   const preferences = { ...account.preferences! }
   preferences.name = preferences.name?.trim()
@@ -539,8 +554,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     .from('account_preferences')
     .update({
       description: preferences.description,
-      timezone: preferences.timezone,
-      availabilities: preferences.availabilities,
       name: preferences.name,
       socialLinks: preferences.socialLinks,
       meetingProviders: preferences.meetingProviders,
@@ -552,7 +565,9 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     throw new Error("Account preferences couldn't be updated")
   }
 
-  account.preferences = responsePrefsUpdate.data?.[0] as AccountPreferences
+  account.preferences = await getAccountPreferences(
+    account.address.toLowerCase()
+  )
 
   account.subscriptions = await getSubscriptionFromDBForAccount(account.address)
 
@@ -916,26 +931,20 @@ const updateRecurringSlots = async (identifier: string) => {
 }
 const updateAllRecurringSlots = async () => {
   const now = new Date()
-  const { data: allSlots, error } = await db.supabase
-    .from('slots')
+  const { data: allSlotSeries, error } = await db.supabase
+    .from<Tables<'slot_series'>>('slot_series')
     .select()
-    .lte('end', now.toISOString())
     .neq('recurrence', MeetingRepeat.NO_REPEAT)
-  if (error || !allSlots?.length) return
-  if (allSlots) {
+  if (error || !allSlotSeries?.length) return
+  if (allSlotSeries) {
     const toUpdate = []
-    for (const slot of allSlots) {
-      const { data: slotSeries, error } = await db.supabase
-        .from<Tables<'slot_series'>>('slot_series')
+    for (const slotSeries of allSlotSeries) {
+      const { data: slot, error } = await db.supabase
+        .from<Tables<'slots'>>('slots')
         .select()
-        .eq('slot_id', slot.id)
+        .eq('id', slotSeries.slot_id)
         .maybeSingle()
-      if (
-        error ||
-        !slotSeries ||
-        !slotSeries?.original_start ||
-        !slotSeries?.original_end
-      ) {
+      if (error || (slot && new Date(slot.start) > now)) {
         continue
       }
 
@@ -947,7 +956,7 @@ const updateAllRecurringSlots = async () => {
       const { data: slotInstance, error: slotInstanceError } = await db.supabase
         .from<Tables<'slot_instance'>>('slot_instance')
         .select()
-        .eq('id', `${slot.id}_${interval.start.getTime()}`)
+        .eq('id', `${slotSeries.slot_id}_${interval.start.getTime()}`)
         .maybeSingle()
       if (slotInstanceError) {
         continue
@@ -957,15 +966,17 @@ const updateAllRecurringSlots = async () => {
           continue
         }
         const newSlot: TablesInsert<'slots'> = {
-          id: slot.id!,
-          account_address: slot.account_address,
+          id: slotSeries.slot_id!,
+          account_address: slotSeries.account_address,
           meeting_info_encrypted:
             slotInstance.override_meeting_info_encrypted ||
-            slot.meeting_info_encrypted,
+            slotSeries.default_meeting_info_encrypted,
           start: slotInstance.start,
           end: slotInstance.end,
-          recurrence: slot.recurrence,
-          created_at: new Date(slot.created_at || new Date()).toISOString(),
+          recurrence: slotSeries.recurrence,
+          created_at: new Date(
+            slotSeries.created_at || new Date()
+          ).toISOString(),
           role: slotInstance.role,
           version: slotInstance.version,
         }
@@ -986,7 +997,7 @@ const syncAllSeries = async () => {
     .lte('end', now.toISOString())
     .neq('recurrence', MeetingRepeat.NO_REPEAT)
   const seriesToAddPromises = []
-  const instancesToInsert = []
+  const instancesToInsert: Array<TablesInsert<'slot_instance'>> = []
 
   for (const slot of allSlots || []) {
     const { data: slotSeries, error } = await db.supabase
@@ -1010,6 +1021,13 @@ const syncAllSeries = async () => {
       // TODO: handle error for the slim chance this happens
       continue
     }
+    if (!slotSeries.rrule || slotSeries.rrule.length === 0) {
+      continue
+    }
+    const rule = rrulestr(slotSeries.rrule[0], {
+      dtstart: new Date(slot[0].start), // The original start time of the series
+    })
+
     const differenceToAMonth = DateTime.fromJSDate(now).diff(
       DateTime.fromISO(lastInstance.end),
       'months'
@@ -1031,37 +1049,34 @@ const syncAllSeries = async () => {
       const lastInstanceDate = new Date(parseInt(timeStamp))
       const start = DateTime.fromJSDate(lastInstanceDate)
       const maxLimit = start.plus({ months: 6 })
-
-      let currentStart = start
-      while (maxLimit > currentStart) {
-        const interval = addRecurrence(
-          new Date(slot.start),
-          new Date(slot.end),
-          slot.recurrence as MeetingRepeat,
-          currentStart.toJSDate()
-        )
-        const idInterval = addRecurrence(
-          new Date(slot.start),
-          new Date(slot.end),
-          slot.recurrence as MeetingRepeat,
-          currentStart.toJSDate()
-        )
-        currentStart = DateTime.fromJSDate(idInterval.start)
-
-        const newSlotInstance: TablesInsert<'slot_instance'> = {
-          account_address: slot.account_address,
+      const ghostStartTimes = rule.between(
+        start.toJSDate(),
+        maxLimit.toJSDate(),
+        true
+      )
+      const duration_minutes = start.diff(
+        DateTime.fromJSDate(new Date(slot.end)),
+        'minutes'
+      ).minutes
+      const toInsert = ghostStartTimes.map(ghostStart => {
+        const start = DateTime.fromJSDate(ghostStart)
+        const end = start.plus({ minutes: Math.abs(duration_minutes) })
+        const newSlot: TablesInsert<'slot_instance'> = {
+          account_address: slot.account_address || null,
           override_meeting_info_encrypted: null,
           role: slot.role!,
-          id: `${slot.id}_${idInterval.start.getTime()}`,
+          id: `${slot.id}_${ghostStart.getTime()}`,
           created_at: new Date().toISOString(),
           version: slot.version!,
-          start: interval.start.toISOString(),
-          end: interval.end.toISOString(),
+          start: ghostStart.toISOString(),
+          end: end.toJSDate().toISOString(),
           status: RecurringStatus.CONFIRMED,
           series_id: slotSeries.id,
+          guest_email: slot.guest_email || null,
         }
-        instancesToInsert.push(newSlotInstance)
-      }
+        return newSlot
+      })
+      instancesToInsert.push(...toInsert)
     }
   }
 
@@ -1284,7 +1299,7 @@ const getConferenceDataBySlotId = async (
 }
 const getGuestSlotById = async (slotId: string): Promise<GuestSlot> => {
   const { data, error } = await db.supabase
-    .from<GuestSlot>('guest_slots')
+    .from<GuestSlot>('slots')
     .select('*')
     .eq('id', slotId)
     .maybeSingle()
@@ -1491,6 +1506,110 @@ const deleteRecurringSlotInstances = async (slotIds: string[]) => {
     await db.supabase.from('slot_instance').delete().in('series_id', seriesIds)
   }
 }
+const upsertRecurringInstances = async (
+  slots: Array<TablesInsert<'slots'>>,
+  recurrence: MeetingRepeat,
+  newStartDate: string,
+  rrule: Array<string> = []
+) => {
+  if (recurrence === MeetingRepeat.NO_REPEAT) return
+  const { data } = await db.supabase
+    .from<Tables<'slot_series'>>('slot_series')
+    .select()
+    .in(
+      'slot_id',
+      slots.map(s => s.id!)
+    )
+  const rule = rrulestr(rrule[0], {
+    dtstart: new Date(slots[0].start), // The original start time of the series
+  })
+
+  if (data) {
+    const seriesIds = data.map(d => d.id)
+    await db.supabase
+      .from<Tables<'slot_instance'>>('slot_instance')
+      .update({
+        status: RecurringStatus.MODIFIED,
+      })
+      .in('series_id', seriesIds)
+      .lt('start', newStartDate)
+    await db.supabase
+      .from<Tables<'slot_instance'>>('slot_instance')
+      .delete()
+      .in('series_id', seriesIds)
+      .gte('start', newStartDate)
+  }
+  const toInsertPromise = slots.map(async (slot: TablesInsert<'slots'>) => {
+    const id = data?.find(d => d.slot_id === slot.id)?.id
+    if (id) {
+      const { data, error } = await db.supabase
+        .from<Tables<'slot_series'>>('slot_series')
+        .upsert([
+          {
+            id,
+            account_address: slot.account_address || null,
+            default_meeting_info_encrypted: slot.meeting_info_encrypted,
+            recurrence:
+              rrule.length > 0 ? getMeetingRepeatFromRule(rule) : recurrence,
+            original_end: slot.end,
+            original_start: slot.start,
+            slot_id: slot.id!,
+            created_at: new Date().toISOString(),
+            guest_email: slot.guest_email || null,
+            rrule:
+              rrule.length > 0
+                ? rrule
+                : handleRRULEForMeeting(recurrence, new Date(slot.start)),
+          },
+        ])
+      if (error) console.error(error)
+      const slotSeries = data?.[0]
+      if (!slotSeries) return
+
+      const start = DateTime.fromJSDate(new Date(slot.start))
+      const maxLimit = start.plus({ months: 6 })
+      const ghostStartTimes = rule.between(
+        start.toJSDate(),
+        maxLimit.toJSDate(),
+        true
+      )
+      const duration_minutes = start.diff(
+        DateTime.fromJSDate(new Date(slot.end)),
+        'minutes'
+      ).minutes
+      const toInsert = ghostStartTimes.map(ghostStart => {
+        const start = DateTime.fromJSDate(ghostStart)
+        const end = start.plus({ minutes: Math.abs(duration_minutes) })
+        const newSlot: TablesInsert<'slot_instance'> = {
+          account_address: slot.account_address || null,
+          override_meeting_info_encrypted: null,
+          role: slot.role!,
+          id: `${slot.id}_${ghostStart.getTime()}`,
+          created_at: new Date().toISOString(),
+          version: slot.version!,
+          start: ghostStart.toISOString(),
+          end: end.toJSDate().toISOString(),
+          status: RecurringStatus.CONFIRMED,
+          series_id: slotSeries.id,
+          guest_email: slot.guest_email || null,
+        }
+        return newSlot
+      })
+      return toInsert
+    }
+    return []
+  })
+  const toInsertResolved = await Promise.all(toInsertPromise)
+  const toInsert = toInsertResolved
+    .flat()
+    .filter((val): val is TablesInsert<'slot_instance'> => val !== undefined)
+  await db.supabase
+    .from('slot_instance')
+    .insert(toInsert)
+    .then(({ error }) => {
+      if (error) console.error(error)
+    })
+}
 const deleteMeetingFromDB = async (
   participantActing: ParticipantBaseInfo,
   slotIds: string[],
@@ -1499,7 +1618,8 @@ const deleteMeetingFromDB = async (
   timezone: string,
   reason?: string,
   title?: string,
-  eventId?: string
+  eventId?: string | null,
+  skipRecurrenceUpdate = false
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
@@ -1507,19 +1627,13 @@ const deleteMeetingFromDB = async (
     (await db.supabase.from<DBSlot>('slots').select().in('id', slotIds)).data ||
     []
 
-  const { error: guestSlotsError } = await db.supabase
-    .from('guest_slots')
-    .delete()
-    .in('id', slotIds)
-  if (guestSlotsError) {
-    throw new Error(guestSlotsError.message)
-  }
-
   const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
   if (error) {
     throw new Error(error.message)
   }
-  await deleteRecurringSlotInstances(slotIds)
+  if (!skipRecurrenceUpdate) {
+    await deleteRecurringSlotInstances(slotIds)
+  }
 
   const body: MeetingCancelSyncRequest = {
     participantActing,
@@ -1528,9 +1642,9 @@ const deleteMeetingFromDB = async (
       .filter((s): s is string => !!s),
     guestsToRemove,
     meeting_id,
-    start: new Date(oldSlots[0].start),
-    end: new Date(oldSlots[0].end),
-    created_at: new Date(oldSlots[0].created_at!),
+    start: new Date(oldSlots?.[0]?.start),
+    end: new Date(oldSlots?.[0]?.end),
+    created_at: new Date(oldSlots?.[0]?.created_at || new Date()),
     title,
     timezone,
     reason,
@@ -1751,7 +1865,7 @@ const saveMeeting = async (
     throw new Error(error.message)
   }
   if (meeting.meetingRepeat) {
-    await saveRecurringMeetings(slots, meeting.meetingRepeat)
+    await saveRecurringMeetings(slots, meeting.meetingRepeat, meeting.rrule)
   }
 
   // TODO switch this to check if scheduler is guest slot
@@ -1805,71 +1919,67 @@ const saveMeeting = async (
 }
 const saveRecurringMeetings = async (
   slots: Array<TablesInsert<'slots'>>,
-  recurrence: MeetingRepeat
+  recurrence: MeetingRepeat,
+  rrule: Array<string> = []
 ) => {
   if (recurrence === MeetingRepeat.NO_REPEAT) return
+  const rule = rrulestr(rrule[0], {
+    dtstart: new Date(slots[0].start), // The original start time of the series
+  })
+
   const toInsertPromise = slots.map(async (slot: TablesInsert<'slots'>) => {
-    const toInsert: Array<TablesInsert<'slot_instance'>> = []
     const { data, error } = await db.supabase
       .from<Tables<'slot_series'>>('slot_series')
       .insert([
         {
           account_address: slot.account_address || null,
           default_meeting_info_encrypted: slot.meeting_info_encrypted,
-          recurrence: recurrence,
+          recurrence:
+            rrule.length > 0 ? getMeetingRepeatFromRule(rule) : recurrence,
           original_end: slot.end,
           original_start: slot.start,
           slot_id: slot.id!,
           created_at: new Date().toISOString(),
           guest_email: slot.guest_email || null,
+          rrule:
+            rrule.length > 0
+              ? rrule
+              : handleRRULEForMeeting(recurrence, new Date(slot.start)),
         },
       ])
     if (error) console.error(error)
     const slotSeries = data?.[0]
     if (!slotSeries) return
+
     const start = DateTime.fromJSDate(new Date(slot.start))
     const maxLimit = start.plus({ months: 6 })
-    let currentStart = start
+    const ghostStartTimes = rule.between(
+      start.toJSDate(),
+      maxLimit.toJSDate(),
+      true
+    )
     const duration_minutes = start.diff(
       DateTime.fromJSDate(new Date(slot.end)),
       'minutes'
     ).minutes
-    toInsert.push({
-      account_address: slot.account_address || null,
-      override_meeting_info_encrypted: null,
-      role: slot.role!,
-      id: `${slot.id}_${new Date(slot.start).getTime()}`,
-      created_at: new Date().toISOString(),
-      version: slot.version!,
-      start: new Date(slot.start).toISOString(),
-      end: new Date(slot.end).toISOString(),
-      status: RecurringStatus.CONFIRMED,
-      series_id: slotSeries.id,
-      guest_email: slot.guest_email || null,
-    })
-    while (maxLimit > currentStart) {
-      const interval = addRecurrence(
-        currentStart.toJSDate(),
-        currentStart.plus({ minutes: duration_minutes }).toJSDate(),
-        recurrence,
-        currentStart.toJSDate()
-      )
-      currentStart = DateTime.fromJSDate(interval.start)
+    const toInsert = ghostStartTimes.map(ghostStart => {
+      const start = DateTime.fromJSDate(ghostStart)
+      const end = start.plus({ minutes: Math.abs(duration_minutes) })
       const newSlot: TablesInsert<'slot_instance'> = {
         account_address: slot.account_address || null,
         override_meeting_info_encrypted: null,
         role: slot.role!,
-        id: `${slot.id}_${interval.start.getTime()}`,
+        id: `${slot.id}_${ghostStart.getTime()}`,
         created_at: new Date().toISOString(),
         version: slot.version!,
-        start: interval.start.toISOString(),
-        end: interval.end.toISOString(),
+        start: ghostStart.toISOString(),
+        end: end.toJSDate().toISOString(),
         status: RecurringStatus.CONFIRMED,
         series_id: slotSeries.id,
         guest_email: slot.guest_email || null,
       }
-      toInsert.push(newSlot)
-    }
+      return newSlot
+    })
     return toInsert
   })
   const toInsertResolved = await Promise.all(toInsertPromise)
@@ -3297,8 +3407,13 @@ const getGateConditionsForAccount = async (
 }
 
 const updateRecurringSlotInstances = async (
-  slots: Array<TablesInsert<'slots'>>
+  slots: Array<TablesInsert<'slots'>>,
+  rrule: Array<string>
 ) => {
+  const rule = rrulestr(rrule[0], {
+    dtstart: new Date(slots[0].start), // The original start time of the series
+  })
+
   const updatePromises = slots.map(async (slot: TablesInsert<'slots'>) => {
     if (!slot.id) return
     const { data, error } = await db.supabase
@@ -3307,9 +3422,10 @@ const updateRecurringSlotInstances = async (
         [
           {
             account_address: slot.account_address,
-            recurrence: slot.recurrence,
+            recurrence: getMeetingRepeatFromRule(rule),
             slot_id: slot.id,
             default_meeting_info_encrypted: slot.meeting_info_encrypted,
+            rrule,
           },
         ],
         { onConflict: 'slot_id' }
@@ -3329,42 +3445,11 @@ const updateRecurringSlotInstances = async (
     }
     const slotSeries = data ? data[0] : null
     if (!slotSeries) return
-    if (
-      !checkHasSameScheduleTime(
-        new Date(slot.start),
-        new Date(slotSeries.original_start)
-      ) ||
-      !checkHasSameScheduleTime(
-        new Date(slot.end),
-        new Date(slotSeries.original_end)
-      )
-    ) {
-      const { data } = await db.supabase
-        .from<Tables<'slot_instance'>>('slot_instance')
-        .select()
-        .eq('status', RecurringStatus.CONFIRMED)
-        .eq('series_id', slotSeries.id)
-      if (data && data.length > 0) {
-        const instancesToUpdate = data.map(instance => {
-          const newStart = DateTime.fromISO(instance.start).set({
-            hour: DateTime.fromJSDate(new Date(slot.start)).hour,
-            minute: DateTime.fromJSDate(new Date(slot.start)).minute,
-          })
-          const newEnd = DateTime.fromISO(instance.end).set({
-            hour: DateTime.fromJSDate(new Date(slot.end)).hour,
-            minute: DateTime.fromJSDate(new Date(slot.end)).minute,
-          })
-          return {
-            ...instance,
-            start: newStart.toISO(),
-            end: newEnd.toISO(),
-          }
-        })
-        await db.supabase
-          .from('slot_instance')
-          .upsert(instancesToUpdate, { onConflict: 'id' })
-      }
-    }
+    await bulkUpdateSlotSeriesConfirmedSlots(
+      slotSeries!.id,
+      new Date(slot.start),
+      new Date(slot.end)
+    )
   })
   await Promise.all(updatePromises)
 }
@@ -3577,33 +3662,44 @@ const parseParticipantSlots = async (
 }
 const updateMeeting = async (
   participantActing: ParticipantBaseInfo,
-  meetingUpdateRequest: MeetingUpdateRequest
+  meetingUpdateRequest: MeetingUpdateRequest,
+  options: {
+    force?: boolean
+    skipRecurrenceUpdate?: boolean
+    preserveHistory?: boolean
+  } = {}
 ): Promise<DBSlot> => {
   const { meetingResponse, slots, index, changingTime, timezone } =
     await parseParticipantSlots(participantActing, meetingUpdateRequest)
 
   // one last check to make sure that the version did not change
-  const everySlotId = meetingUpdateRequest.participants_mapping
-    .filter(it => it.slot_id)
-    .map(it => it.slot_id) as string[]
-  const everySlot = await getMeetingsFromDB(everySlotId)
-  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
-    throw new MeetingChangeConflictError()
+  if (!options.force) {
+    const everySlotId = meetingUpdateRequest.participants_mapping
+      .filter(it => it.slot_id)
+      .map(it => it.slot_id) as string[]
+    const everySlot = await getMeetingsFromDB(everySlotId)
+    if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
+      throw new MeetingChangeConflictError()
+  }
 
   // there is no support from supabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts
-  const query = await db.supabase
-    .from('slots')
-    .upsert(slots, { onConflict: 'id' })
-  //TODO: handle error
-  const { data, error } = query
-  if (error) {
-    throw new Error(error.message)
+  if (
+    !options.preserveHistory ||
+    checkIsSameDay(new Date(slots[0]?.start), new Date())
+  ) {
+    const query = await db.supabase
+      .from('slots')
+      .upsert(slots, { onConflict: 'id' })
+    //TODO: handle error
+    const { data, error } = query
+    if (error) {
+      throw new Error(error.message)
+    }
+    meetingResponse.id = data?.[index]?.id
+    meetingResponse.created_at = data?.[index]?.created_at
   }
-
-  meetingResponse.id = data?.[index]?.id
-  meetingResponse.created_at = data?.[index]?.created_at
 
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
@@ -3621,47 +3717,83 @@ const updateMeeting = async (
     slotId => !existingSlots.includes(slotId)
   )
   const updatedSlots = [...existingSlots, ...uniqueNewSlots]
-
-  // now that everything happened without error, it is safe to update the root meeting data
-  const dbMeeting = await getConferenceMeetingFromDB(
-    meetingUpdateRequest.meeting_id
-  )
-  const createdRootMeeting = await saveConferenceMeetingToDB({
-    id: meetingUpdateRequest.meeting_id,
-    start: meetingUpdateRequest.start,
-    end: meetingUpdateRequest.end,
-    meeting_url: meetingUpdateRequest.meeting_url,
-    access_type: MeetingAccessType.OPEN_MEETING,
-    provider: meetingUpdateRequest.meetingProvider,
-    recurrence: meetingUpdateRequest.meetingRepeat,
-    reminders: meetingUpdateRequest.meetingReminders,
-    version: MeetingVersion.V3,
-    title: meetingUpdateRequest.title,
-    slots: updatedSlots,
-    permissions: meetingUpdateRequest.meetingPermissions,
-    encrypted_metadata: meetingUpdateRequest.encrypted_metadata,
-  })
-  if (!createdRootMeeting)
-    throw new Error(
-      'Could not update your meeting right now, get in touch with us if the problem persists'
+  if (!options.skipRecurrenceUpdate) {
+    // now that everything happened without error, it is safe to update the root meeting data
+    const dbMeeting = await getConferenceMeetingFromDB(
+      meetingUpdateRequest.meeting_id
     )
-  if (
-    dbMeeting.recurrence &&
-    dbMeeting.recurrence !== MeetingRepeat.NO_REPEAT
-  ) {
-    if (dbMeeting.recurrence !== meetingUpdateRequest.meetingRepeat) {
-      // recurring meeting changed to a different recurrence or to no recurrence
-      await deleteRecurringSlotInstances(slots.map(s => s.id!))
-      await saveRecurringMeetings(slots, meetingUpdateRequest.meetingRepeat)
+    const createdRootMeeting = await saveConferenceMeetingToDB({
+      id: meetingUpdateRequest.meeting_id,
+      start: meetingUpdateRequest.start,
+      end: meetingUpdateRequest.end,
+      meeting_url: meetingUpdateRequest.meeting_url,
+      access_type: MeetingAccessType.OPEN_MEETING,
+      provider: meetingUpdateRequest.meetingProvider,
+      recurrence: meetingUpdateRequest.meetingRepeat,
+      reminders: meetingUpdateRequest.meetingReminders,
+      version: MeetingVersion.V3,
+      title: meetingUpdateRequest.title,
+      slots: updatedSlots,
+      permissions: meetingUpdateRequest.meetingPermissions,
+      encrypted_metadata: meetingUpdateRequest.encrypted_metadata,
+    })
+    if (!createdRootMeeting)
+      throw new Error(
+        'Could not update your meeting right now, get in touch with us if the problem persists'
+      )
+    if (options.preserveHistory) {
+      await upsertRecurringInstances(
+        slots,
+        meetingUpdateRequest.meetingRepeat,
+        new Date(meetingUpdateRequest.start).toISOString(),
+        meetingUpdateRequest.rrule || []
+      )
+      if (meetingUpdateRequest.eventId)
+        await insertGoogleEventMapping(
+          meetingUpdateRequest.eventId,
+          meetingUpdateRequest.meeting_id
+        )
     } else {
-      await updateRecurringSlotInstances(slots)
+      if (
+        dbMeeting.recurrence &&
+        dbMeeting.recurrence !== MeetingRepeat.NO_REPEAT
+      ) {
+        const slotSeries = await getSlotSeries(slots[0].id!)
+
+        const recurrenceChanged = isDiffRRULE(
+          meetingUpdateRequest.rrule || [],
+          slotSeries?.rrule || []
+        )
+        if (
+          dbMeeting.recurrence !== meetingUpdateRequest.meetingRepeat ||
+          recurrenceChanged
+        ) {
+          // recurring meeting changed to a different recurrence or to no recurrence
+          await deleteRecurringSlotInstances(slots.map(s => s.id!))
+          await saveRecurringMeetings(
+            slots,
+            meetingUpdateRequest.meetingRepeat,
+            meetingUpdateRequest.rrule || []
+          )
+        } else {
+          await updateRecurringSlotInstances(
+            slots,
+            meetingUpdateRequest.rrule || []
+          )
+        }
+      } else if (
+        (meetingUpdateRequest.meetingRepeat &&
+          meetingUpdateRequest.meetingRepeat !== MeetingRepeat.NO_REPEAT) ||
+        meetingUpdateRequest.rrule?.length > 0
+      ) {
+        // wasn't a recurring meeting but now it is
+        await saveRecurringMeetings(
+          slots,
+          meetingUpdateRequest.meetingRepeat,
+          meetingUpdateRequest.rrule || []
+        )
+      }
     }
-  } else if (
-    meetingUpdateRequest.meetingRepeat &&
-    meetingUpdateRequest.meetingRepeat !== MeetingRepeat.NO_REPEAT
-  ) {
-    // wasn't a recurring meeting but now it is
-    await saveRecurringMeetings(slots, meetingUpdateRequest.meetingRepeat)
   }
 
   const body: MeetingCreationSyncRequest = {
@@ -3680,10 +3812,13 @@ const updateMeeting = async (
     meetingReminders: meetingUpdateRequest.meetingReminders,
     meetingRepeat: meetingUpdateRequest.meetingRepeat,
     meetingPermissions: meetingUpdateRequest.meetingPermissions,
+    eventId: meetingUpdateRequest.eventId,
     meeting_type_id:
       meetingUpdateRequest.meetingTypeId === NO_MEETING_TYPE
         ? undefined
         : meetingUpdateRequest.meetingTypeId,
+    skipCalendarSync: options.skipRecurrenceUpdate || false,
+    rrule: meetingUpdateRequest.rrule,
   }
 
   // Doing notifications and syncs asynchronously
@@ -3708,7 +3843,8 @@ const updateMeeting = async (
       timezone || 'UTC',
       undefined,
       meetingUpdateRequest.title,
-      meetingUpdateRequest.eventId
+      meetingUpdateRequest.eventId,
+      options.skipRecurrenceUpdate
     )
 
   return {
@@ -3749,6 +3885,18 @@ const insertOfficeEventMapping = async (
     throw new Error(error.message)
   }
 }
+const insertGoogleEventMapping = async (
+  event_id: string,
+  mww_id: string
+): Promise<void> => {
+  const { error } = await db.supabase
+    .from('google_events_mapping')
+    .insert({ event_id, mww_id })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
 
 const getOfficeEventMappingId = async (
   mww_id: string
@@ -3766,6 +3914,23 @@ const getOfficeEventMappingId = async (
     return null
   }
   return data.office_id
+}
+const getGoogleEventMappingId = async (
+  mww_id: string
+): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('google_events_mapping')
+    .select()
+    .eq('mww_id', mww_id)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    return null
+  }
+  return data.event_id
 }
 
 export const getDiscordAccount = async (
@@ -6264,17 +6429,15 @@ const handleWebhookEvent = async (
     return true
   }
   let allEvents: calendar_v3.Schema$Event[] = []
-
   try {
     const { events, nextSyncToken } = await integration.listEvents(
       data.calendar_id,
-      data.sync_token,
-      start.toJSDate(),
-      end.toJSDate()
+      data.sync_token
     )
+
+    allEvents = events
     if (nextSyncToken)
       await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
-    allEvents = events
   } catch (error) {
     console.error(`Failed to sync  range:`, error)
   }
@@ -6285,20 +6448,13 @@ const handleWebhookEvent = async (
       const eventLastUpdatedAt = new Date(
         event.extendedProperties?.private?.lastUpdatedAt
       )
-      if (
-        eventLastUpdatedAt >
+      return (
         sub(now, {
           seconds: MODIFIED_BY_APP_TIMEOUT,
-        })
-      ) {
-        return false
-      }
+        }) >= eventLastUpdatedAt
+      )
     }
-    const recordChangeDate = event.updated || event.created
-    if (!recordChangeDate) return
-    const eventDate = new Date(recordChangeDate)
-
-    return eventDate > add(now, { minutes: -10 })
+    return false
   })
   const recurringIdSet = new Set<string>()
   if (recentlyUpdated.length === 0) {
@@ -6319,17 +6475,19 @@ const handleWebhookEvent = async (
   )
   const isRecurringInstance = (meeting: calendar_v3.Schema$Event): boolean => {
     if (meeting.recurringEventId) return true
+    if (meeting.recurrence) return true
 
     if (meeting.id) {
       for (const recId of recurringIdSet) {
         // filter out deleted recurring instances converted to ordinary meetings with deleted recurring instances namespaces
         if (meeting.id.startsWith(recId)) return true
       }
+      if (meeting.id?.includes('_')) return true // Google Calendar recurring instances have '_' in their IDs
     }
     return false
   }
   const recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
-    meeting => !!meeting.recurringEventId // only consider events with recurringEventId
+    meeting => !!meeting.recurringEventId || !!meeting.recurrence // only consider events with recurringEventId
   )
   const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
     meeting => !isRecurringInstance(meeting)
@@ -6393,256 +6551,110 @@ const handleSyncRecurringEvents = async (
   events: calendar_v3.Schema$Event[],
   calendar: ConnectedCalendar
 ) => {
-  const groupedRecurringEvents = groupByFields<calendar_v3.Schema$Event>(
-    events,
-    ['recurringEventId']
-  ).map(event =>
-    groupByFields<calendar_v3.Schema$Event>(event, [
-      'start.dateTime',
-      'end.dateTime',
-      'attendees',
-      'description',
-      'summary',
-      'reminders',
-      'location',
-      'status',
-    ])
+  const masterEvents = events.filter(e => e.recurrence && !e.recurringEventId)
+  const exceptions = events.filter(e => e.recurringEventId)
+  const slotInstanceUpdates: Array<TablesUpdate<'slot_instance'>> = []
+  writeFileSync(
+    `groupedRecurringEvents_${Date.now()}.json`,
+    JSON.stringify({ exceptions, masterEvents }, null, 2)
   )
+  writeFileSync(`events_${Date.now()}.json`, JSON.stringify(events, null, 2))
 
-  const slotSeriesUpdates: Array<TablesUpdate<'slot_series'>> = []
-  const slotIntanceUpdates: Array<TablesUpdate<'slot_instance'>> = []
-  for (const groupedRecurringEvent of groupedRecurringEvents) {
-    // remove the last element of the series which would be the one with most elements updated, The update on this should go to the master series as it covers all bulk changes
-    if (groupedRecurringEvent.length > 0) {
-      writeFileSync(
-        `groupedRecurringEvents_${Date.now()}.json`,
-        JSON.stringify(groupedRecurringEvents, null, 2)
-      )
-      writeFileSync(
-        `events_${Date.now()}.json`,
-        JSON.stringify(events, null, 2)
-      )
+  for (const masterEvent of masterEvents) {
+    const meetingId = masterEvent?.extendedProperties?.private?.meetingId
+    const meetingTypeId =
+      masterEvent?.extendedProperties?.private?.meetingTypeId
+    const startTime = masterEvent?.start?.dateTime
+    const endTime = masterEvent?.end?.dateTime
+    if (!meetingId || !startTime || !endTime) {
+      continue
     }
-    const lastEventBatch = groupedRecurringEvent.pop()
-    const singleInstanceEvent = lastEventBatch?.sort((a, b) => {
-      const aDate = new Date(a.updated || a.created || 0).getTime()
-      const bDate = new Date(b.updated || b.created || 0).getTime()
-      return aDate - bDate
-    })[0]
-    const startTime = singleInstanceEvent?.start?.dateTime
-    const endTime = singleInstanceEvent?.end?.dateTime
-    if (lastEventBatch && singleInstanceEvent?.id && startTime && endTime) {
-      try {
-        const meetingId =
-          singleInstanceEvent?.extendedProperties?.private?.meetingId
-        const meetingTypeId =
-          singleInstanceEvent?.extendedProperties?.private?.meetingTypeId
-        const includesParticipants =
-          singleInstanceEvent?.extendedProperties?.private
-            ?.includesParticipants === 'true'
-        if (!meetingId) {
-          console.warn(
-            `Skipping event ${singleInstanceEvent.id} due to missing  meetingId`
-          )
-          return
-        }
-        if (includesParticipants) {
-          console.warn(
-            `Skipping event ${singleInstanceEvent.id} due to only scheduler attendee`
-          )
-          return
-        }
-        const conferenceMeeting = await getConferenceMeetingFromDB(meetingId)
-        if (
-          !conferenceMeeting ||
-          conferenceMeeting.version !== MeetingVersion.V3
+    const { meetingInfo, conferenceMeeting } =
+      await getConferenceDecryptedMeeting(meetingId)
+    if (!meetingInfo || !masterEvent.recurrence) continue
+    if (masterEvent.status === 'cancelled') {
+      await handleCancelOrDelete(
+        calendar.account_address,
+        meetingInfo,
+        meetingTypeId,
+        masterEvent.id
+      )
+      continue
+    }
+    const parsedParticipants = await handleParseParticipants(
+      meetingId,
+      masterEvent.attendees || [],
+      meetingInfo.participants,
+      calendar.account_address
+    )
+    try {
+      const rule = rrulestr(masterEvent.recurrence[0], {
+        dtstart: new Date(startTime), // The original start time of the series
+      })
+
+      await handleUpdateMeeting(
+        true,
+        calendar.account_address,
+        meetingTypeId,
+        new Date(startTime),
+        new Date(endTime),
+        meetingInfo,
+        parsedParticipants,
+        extractMeetingDescription(masterEvent.description || '') || '',
+        masterEvent.location || '',
+        conferenceMeeting.provider,
+        masterEvent.summary || '',
+        conferenceMeeting.reminders,
+        getMeetingRepeatFromRule(rule),
+        conferenceMeeting.permissions,
+        masterEvent.recurrence,
+        masterEvent.id
+      )
+    } catch (e) {
+      if (e instanceof MeetingDetailsModificationDenied) {
+        // update only the rsvp on other calendars
+        const actor = masterEvent.attendees?.find(attendee => attendee.self)
+        await handleUpdateMeetingRsvps(
+          calendar.account_address,
+          meetingTypeId,
+          meetingInfo,
+          getParticipationStatus(actor?.responseStatus || '')
         )
-          return
-        const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
-        if (!meetingInfo) return
-        const { data } = await db.supabase
-          .from<Tables<'slots'>>('slots')
-          .select('version')
-          .in('id', conferenceMeeting.slots)
-          .limit(1)
-        meetingInfo.version = data?.[0]?.version || 0
-        if (!meetingInfo) return
-        const parsedParticipants = await handleParseParticipants(
-          meetingId,
-          singleInstanceEvent.attendees || [],
-          meetingInfo.participants,
-          calendar.account_address
-        )
-        let eventInstance
-        try {
-          eventInstance = await handleUpdateParseMeetingInfo(
-            true,
-            calendar.account_address,
-            meetingTypeId,
-            new Date(singleInstanceEvent.start!.dateTime!),
-            new Date(singleInstanceEvent.end!.dateTime!),
-            meetingInfo,
-            parsedParticipants,
-            extractMeetingDescription(singleInstanceEvent.description || ''),
-            singleInstanceEvent.location || '',
-            conferenceMeeting.provider,
-            singleInstanceEvent.summary || '',
-            conferenceMeeting.reminders,
-            conferenceMeeting.recurrence,
-            conferenceMeeting.permissions
-          )
-        } catch (e) {
-          console.error(e)
-          if (e instanceof MeetingDetailsModificationDenied) {
-            const actor = singleInstanceEvent.attendees?.find(p => p.self)
-
-            // update only the rsvp on other calendars
-            eventInstance = await handleUpdateRSVPParseMeetingInfo(
-              calendar.account_address,
-              meetingTypeId,
-              meetingInfo,
-              getParticipationStatus(actor?.responseStatus || '')
-            )
-          }
-        }
-
-        if (eventInstance) {
-          const { slots } = await parseParticipantSlots(
-            eventInstance.participantActing,
-            eventInstance.payload
-          )
-          if (groupedRecurringEvent.length > 0) {
-            await deleteRecurringSlotInstances(
-              eventInstance.payload.slotsToRemove
-            )
-            const toUpdate = await Promise.all(
-              slots.map(async (slot): Promise<TablesUpdate<'slot_series'>> => {
-                const slotSeries = await getSlotSeries(slot.id!)
-
-                await bulkUpdateSlotSeriesConfirmedSlots(
-                  slotSeries!.id,
-                  new Date(slot.start),
-                  new Date(slot.end)
-                )
-                return {
-                  ...slotSeries,
-                  slot_id: slot.id,
-                  account_address: slot.account_address,
-                  default_meeting_info_encrypted: slot.meeting_info_encrypted,
-                  recurrence: slot.recurrence,
-                }
-              })
-            )
-            slotSeriesUpdates.push(...toUpdate)
-          } else {
-            // If an update to all slots in the series was made, we delete the existing instances and recreate them with the new ids and data, this accounts for all modified and cancelled instances
-            await deleteRecurringSlotInstances(
-              slots.map(s => s.id!).concat(eventInstance.payload.slotsToRemove)
-            )
-
-            saveRecurringMeetings(slots, slots[0]?.recurrence as MeetingRepeat)
-
-            for (const slot of slots) {
-              if (slot.account_address) {
-                await ExternalCalendarSync.delete(slot.account_address, [
-                  eventInstance.payload.meeting_id,
-                ])
-              }
-            }
-            await ExternalCalendarSync.create({
-              participantActing: eventInstance.participantActing,
-              meeting_id: eventInstance.payload.meeting_id,
-              start: eventInstance.payload.start,
-              end: eventInstance.payload.end,
-              created_at: new Date(eventInstance.existingMeeting.created_at!),
-              timezone:
-                eventInstance.payload.participants_mapping.find(
-                  p =>
-                    p.account_address ===
-                    eventInstance.participantActing.account_address
-                )?.timeZone || 'UTC',
-              meeting_url: eventInstance.payload.meeting_url,
-              participants: eventInstance.payload.participants_mapping,
-              title: eventInstance.payload.title,
-              content: eventInstance.payload.content,
-              meetingProvider: eventInstance.payload.meetingProvider,
-              meetingReminders: eventInstance.payload.meetingReminders,
-              meetingRepeat: eventInstance.payload.meetingRepeat,
-              meetingPermissions: eventInstance.payload.meetingPermissions,
-              meeting_type_id:
-                eventInstance.payload.meetingTypeId === NO_MEETING_TYPE
-                  ? undefined
-                  : eventInstance.payload.meetingTypeId,
-            })
-          }
-        }
-      } catch (e) {
-        console.error(e)
-
-        return undefined
       }
+      console.error(e)
+      continue
     }
-
-    // for the other events in the series, we just need to update their single instances
-    const otherSlotsPromise = groupedRecurringEvent.map(async events => {
-      return await Promise.all(
-        events.map(
-          async (
-            event
-          ): Promise<Array<TablesUpdate<'slot_instance'>> | undefined> => {
-            try {
-              const handler =
-                event.status?.toLowerCase() === 'cancelled'
-                  ? handleCancelOrDeleteForRecurringInstance
-                  : handleUpdateSingleRecurringInstance
-
-              return await handler(event, calendar.account_address)
-            } catch (e) {
-              console.error(e)
-              return undefined
-            }
-          }
-        )
-      )
-    })
-    const resolvedOtherSlots = await Promise.all(otherSlotsPromise)
-    const otherSlots = resolvedOtherSlots
-      .flat(2)
-      .filter((val): val is TablesUpdate<'slot_instance'> => Boolean(val))
-    slotIntanceUpdates.push(...otherSlots)
-
-    if (slotSeriesUpdates.length > 0) {
-      await db.supabase
-        .from('slot_series')
-        .upsert(slotSeriesUpdates, {
-          onConflict: 'slot_id',
-        })
-        .then(({ error }) => {
-          if (error) {
-            console.error('Error updating slot_series:', error)
-          }
-          console.debug(
-            'Updated slot_series records:',
-            JSON.stringify(slotSeriesUpdates, null, 2)
-          )
-        })
+  }
+  const otherSlotsPromise = exceptions.map(async exceptionEvent => {
+    try {
+      const handler =
+        exceptionEvent.status?.toLowerCase() === 'cancelled'
+          ? handleCancelOrDeleteForRecurringInstance
+          : handleUpdateSingleRecurringInstance
+      return handler(exceptionEvent, calendar.account_address)
+    } catch (e) {
+      console.error(e)
+      return undefined
     }
-    if (slotIntanceUpdates.length > 0) {
-      await db.supabase
-        .from('slot_instance')
-        .upsert(slotIntanceUpdates, {
-          onConflict: 'id',
-        })
-        .then(({ error, data }) => {
-          if (error) {
-            console.error('Error updating slot_instance:', error)
-          }
-          console.debug(
-            'Updated slot_instance records:',
-            JSON.stringify(data, null, 2)
-          )
-        })
-    }
+  })
+
+  const resolvedOtherSlots = await Promise.all(otherSlotsPromise)
+  const otherSlots = resolvedOtherSlots
+    .flat(2)
+    .filter((val): val is TablesUpdate<'slot_instance'> => Boolean(val))
+  slotInstanceUpdates.push(...otherSlots)
+
+  if (slotInstanceUpdates.length > 0) {
+    await db.supabase
+      .from('slot_instance')
+      .upsert(slotInstanceUpdates, {
+        onConflict: 'id',
+      })
+      .then(({ error }) => {
+        if (error) {
+          console.error('Error updating slot_instance:', error)
+        }
+      })
   }
 }
 const getSlotSeriesId = async (slot_id: string) => {
@@ -6661,6 +6673,27 @@ const getSlotSeries = async (slot_id: string) => {
     .maybeSingle()
   return data
 }
+const getConferenceDecryptedMeeting = async (meetingId: string) => {
+  const conferenceMeeting = await getConferenceMeetingFromDB(meetingId)
+  if (!conferenceMeeting || conferenceMeeting.version !== MeetingVersion.V3)
+    return {
+      meetingInfo: null,
+      conferenceMeeting,
+    }
+  const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
+  if (!meetingInfo)
+    return {
+      meetingInfo: null,
+      conferenceMeeting,
+    }
+  const { data } = await db.supabase
+    .from<Tables<'slots'>>('slots')
+    .select('version')
+    .in('id', conferenceMeeting.slots)
+    .limit(1)
+  meetingInfo.version = data?.[0]?.version || 0
+  return { meetingInfo, conferenceMeeting }
+}
 const handleSyncEvent = async (
   event: calendar_v3.Schema$Event,
   calendar: ConnectedCalendar
@@ -6678,18 +6711,9 @@ const handleSyncEvent = async (
     console.warn(`Skipping event ${event.id} due to only scheduler attendee`)
     return
   }
-  const conferenceMeeting = await getConferenceMeetingFromDB(meetingId)
-  if (!conferenceMeeting || conferenceMeeting.version !== MeetingVersion.V3)
-    return
-  const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
+  const { meetingInfo, conferenceMeeting } =
+    await getConferenceDecryptedMeeting(meetingId)
   if (!meetingInfo) return
-  const { data } = await db.supabase
-    .from<Tables<'slots'>>('slots')
-    .select('version')
-    .in('id', conferenceMeeting.slots)
-    .limit(1)
-  if (!event.id) return
-  meetingInfo.version = data?.[0]?.version || 0
   if (!event.start?.dateTime || !event.end?.dateTime) return
   try {
     // eslint-disable-next-line no-restricted-syntax
@@ -6721,7 +6745,9 @@ const handleSyncEvent = async (
         event.summary || '',
         conferenceMeeting.reminders,
         conferenceMeeting.recurrence,
-        conferenceMeeting.permissions
+        conferenceMeeting.permissions,
+        undefined,
+        event.id
       )
     }
     return meeting
@@ -8418,6 +8444,7 @@ export {
   expireStalePolls,
   findAccountByEmail,
   findAccountByIdentifier,
+  findAccountsByEmails,
   findAccountsByText,
   getAccountAvatarUrl,
   getAccountFromDB,
@@ -8443,6 +8470,7 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
+  getGoogleEventMappingId,
   getGroup,
   getGroupInternal,
   getGroupInvites,
