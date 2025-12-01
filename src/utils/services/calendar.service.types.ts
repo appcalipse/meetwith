@@ -109,12 +109,7 @@ export interface IGoogleCalendarService extends BaseCalendarService {
    * @param dateFrom the start date to list events from
    * @param dateTo the end date to list events from
    */
-  listEvents(
-    calendarId: string,
-    syncToken: string | null,
-    dateFrom: Date,
-    dateTo: Date
-  ): Promise<EventList>
+  listEvents(calendarId: string, syncToken: string | null): Promise<EventList>
 
   /**
    * Updates the RSVP status of an attendee for a specific event
