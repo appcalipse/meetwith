@@ -1,7 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
-import { DateTime } from 'luxon'
 
 import {
   CalendarSyncInfo,
@@ -16,12 +15,16 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
-import { Tables } from '@/types/Supabase'
 
+import { handleRRULEForMeeting } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { NO_MEETING_TYPE } from '../constants/meeting-types'
 import { MeetingPermissions } from '../constants/schedule'
-import { getOwnerPublicUrlServer, updateCalendarPayload } from '../database'
+import {
+  getGoogleEventMappingId,
+  getOwnerPublicUrlServer,
+  updateCalendarPayload,
+} from '../database'
 import { getCalendarPrimaryEmail } from '../sync_helper'
 import { CalendarServiceHelper } from './calendar.helper'
 import { EventList, IGoogleCalendarService } from './calendar.service.types'
@@ -162,9 +165,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
 
   async listEvents(
     calendarId: string,
-    syncToken: string | undefined | null,
-    dateFrom: Date,
-    dateTo: Date
+    syncToken: string | undefined | null
   ): Promise<EventList> {
     const myGoogleAuth = await this.auth.getToken()
     const calendar = google.calendar({
@@ -178,11 +179,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const response = await calendar.events.list({
         calendarId,
         syncToken: syncToken ?? undefined,
-        singleEvents: true,
         showDeleted: true,
         pageToken: token,
-        timeMin: dateFrom.toISOString(),
-        timeMax: dateTo.toISOString(),
       })
       aggregatedEvents.push(...(response.data.items || []))
       token = response.data.nextPageToken || undefined
@@ -310,25 +308,12 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             meetingDetails.meetingRepeat &&
             meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
           ) {
-            let RRULE = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()};INTERVAL=1`
-            const startDateTime = DateTime.fromJSDate(
-              new Date(meetingDetails.start)
-            )
-            const dayOfWeek = startDateTime
-              .toFormat('EEE')
-              .toUpperCase()
-              .substring(0, 2)
-            const weekOfMonth = Math.ceil(startDateTime.day / 7)
-
-            switch (meetingDetails.meetingRepeat) {
-              case MeetingRepeat.WEEKLY:
-                RRULE += `;BYDAY=${dayOfWeek}`
-                break
-              case MeetingRepeat.MONTHLY:
-                RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
-                break
-            }
-            payload.recurrence = [RRULE]
+            payload.recurrence =
+              meetingDetails.rrule ||
+              handleRRULEForMeeting(
+                meetingDetails.meetingRepeat,
+                new Date(meetingDetails.start)
+              )
           }
           const calendar = google.calendar({
             version: 'v3',
@@ -407,12 +392,13 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
-      const attendeeLength =
-        event?.attendees?.filter(attendee => !attendee.self).length || 0
       const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
-
+      const eventId =
+        meetingDetails.eventId ||
+        (await getGoogleEventMappingId(meeting_id)) ||
+        meeting_id.replaceAll('-', '')
       const payload: calendar_v3.Schema$Event = {
-        id: meetingDetails.eventId || meeting_id.replaceAll('-', ''), // required to edit events later
+        id: eventId,
         summary: CalendarServiceHelper.getMeetingTitle(
           calendarOwnerAccountAddress,
           participantsInfo,
@@ -471,41 +457,15 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       }
       if (
         meetingDetails.meetingRepeat &&
-        meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+        meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT &&
+        !meetingDetails.eventId
       ) {
-        let rrule = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`
-
-        // Add INTERVAL
-        rrule += `;INTERVAL=1`
-
-        // Add day rules for weekly/monthly (like in createEvent)
-        const startDateTime = DateTime.fromJSDate(
-          new Date(meetingDetails.start)
-        )
-        const dayOfWeek = startDateTime
-          .toFormat('EEE')
-          .toUpperCase()
-          .substring(0, 2)
-        const weekOfMonth = Math.ceil(startDateTime.day / 7)
-
-        switch (meetingDetails.meetingRepeat) {
-          case MeetingRepeat.WEEKLY:
-            rrule += `;BYDAY=${dayOfWeek}`
-            break
-          case MeetingRepeat.MONTHLY:
-            rrule += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
-            break
-        }
-        const excludedDates: Array<Tables<'slot_instance'>> = []
-        // Add exclusion dates if provided
-        if (excludedDates && excludedDates.length > 0) {
-          const exdates = excludedDates
-            .map(slot => DateTime.fromISO(slot.start).toFormat('yyyyMMdd'))
-            .join(',')
-          rrule += `\nEXDATE:${exdates}`
-        }
-
-        payload.recurrence = [rrule]
+        payload.recurrence =
+          meetingDetails.rrule ||
+          handleRRULEForMeeting(
+            meetingDetails.meetingRepeat,
+            new Date(meetingDetails.start)
+          )
       }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
@@ -530,7 +490,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         {
           auth: myGoogleAuth,
           calendarId,
-          eventId: meetingDetails.eventId || meeting_id.replaceAll('-', ''),
+          eventId,
           sendNotifications: true,
           sendUpdates: 'all',
           requestBody: payload,
@@ -589,14 +549,16 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         version: 'v3',
         auth: myGoogleAuth,
       })
-
+      const eventId =
+        (await getGoogleEventMappingId(meeting_id)) ||
+        meeting_id.replaceAll('-', '')
       const calendarId = parseCalendarId(_calendarId)
 
       calendar.events.delete(
         {
           auth: myGoogleAuth,
           calendarId,
-          eventId: meeting_id.replaceAll('-', ''),
+          eventId,
           sendNotifications: true,
           sendUpdates: 'all',
         },
