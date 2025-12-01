@@ -9,6 +9,7 @@ import {
   ReturnObject,
 } from 'ics'
 import { DateTime } from 'luxon'
+import { RRule } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability } from '@/types/Account'
@@ -404,6 +405,7 @@ const buildMeetingData = async (
         mapping => mapping.type === ParticipantType.Owner
       ).length > 1,
     txHash,
+    rrule: handleRRULEForMeeting(meetingRepeat, startTime),
   }
 }
 
@@ -797,6 +799,7 @@ const updateMeeting = async (
       .filter((it): it is string => it !== undefined),
     guestsToRemove,
     version: decryptedMeeting.version + 1,
+    ignoreOwnerAvailability: true,
   }
 
   // Fetch the updated data one last time
@@ -2022,6 +2025,49 @@ const selectDefaultProvider = (providers?: Array<MeetingProvider>) => {
   }
 }
 
+const handleRRULEForMeeting = (recurrence: MeetingRepeat, start: Date) => {
+  if (recurrence !== MeetingRepeat.NO_REPEAT) {
+    let RRULE = `RRULE:FREQ=${recurrence.toUpperCase()};INTERVAL=1`
+    const startDateTime = DateTime.fromJSDate(start)
+    const dayOfWeek = startDateTime
+      .toFormat('EEE')
+      .toUpperCase()
+      .substring(0, 2)
+    const weekOfMonth = Math.ceil(startDateTime.day / 7)
+
+    switch (recurrence) {
+      case MeetingRepeat.WEEKLY:
+        RRULE += `;BYDAY=${dayOfWeek}`
+        break
+      case MeetingRepeat.MONTHLY:
+        RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+        break
+    }
+    return [RRULE]
+  }
+  return []
+}
+const isDiffRRULE = (oldRRULE: string[], newRRULE: string[]) => {
+  return (
+    oldRRULE.length !== newRRULE.length ||
+    oldRRULE.some((rule, index) => rule.trim() !== newRRULE[index].trim())
+  )
+}
+
+const getMeetingRepeatFromRule = (rule: RRule): MeetingRepeat => {
+  if (!rule || !rule.options) return MeetingRepeat.NO_REPEAT
+
+  switch (rule.options.freq) {
+    case RRule.DAILY:
+      return MeetingRepeat.DAILY
+    case RRule.WEEKLY:
+      return MeetingRepeat.WEEKLY
+    case RRule.MONTHLY:
+      return MeetingRepeat.MONTHLY
+    default:
+      return MeetingRepeat.NO_REPEAT
+  }
+}
 export {
   allSlots,
   buildMeetingData,
@@ -2044,8 +2090,11 @@ export {
   generateOffice365CalendarUrl,
   getAccountCalendarUrl,
   getAccountDomainUrl,
+  getMeetingRepeatFromRule,
   googleUrlParsedDate,
   handleParticipants,
+  handleRRULEForMeeting,
+  isDiffRRULE,
   loadMeetingAccountAddresses,
   mapRelatedSlots,
   noNoReplyEmailForAccount,
