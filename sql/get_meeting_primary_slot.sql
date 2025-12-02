@@ -5,9 +5,15 @@ CREATE OR REPLACE FUNCTION public.get_meeting_primary_slot (
 DECLARE
     v_result jsonb;
 BEGIN
-    SELECT to_jsonb(s.*) INTO v_result
+    SELECT to_jsonb(s.*) || jsonb_build_object(
+            'user_type',
+            CASE
+                WHEN s.account_address IS NOT NULL THEN 'account'
+                ELSE 'guest'
+            END
+        ) INTO v_result
     FROM public.meetings m
-    JOIN public.slots s ON s.id = ANY(m.slots)
+    JOIN public.slots s ON s.id::text = ANY(m.slots)
     WHERE m.id = p_meeting_id
       AND (
         -- WHITELIST: Only look at rows that are...
