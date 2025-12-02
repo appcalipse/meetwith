@@ -1077,7 +1077,7 @@ const getConferenceDataBySlotId = async (
 }
 const getGuestSlotById = async (slotId: string): Promise<GuestSlot> => {
   const { data, error } = await db.supabase
-    .from<GuestSlot>('guest_slots')
+    .from<GuestSlot>('slots')
     .select('*')
     .eq('id', slotId)
     .maybeSingle()
@@ -1273,13 +1273,7 @@ const deleteMeetingFromDB = async (
     []
 
   const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
-  const { error: guestSlotsError } = await db.supabase
-    .from('guest_slots')
-    .delete()
-    .in('id', slotIds)
-  if (guestSlotsError) {
-    throw new Error(guestSlotsError.message)
-  }
+
   if (error) {
     throw new Error(error.message)
   }
