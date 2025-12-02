@@ -85,6 +85,7 @@ import {
   useAvailabilityTracker,
 } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
+import { QuickPollParticipationInstructions } from './QuickPollParticipationInstructions'
 
 export enum State {
   ALL_AVAILABLE,
@@ -1391,6 +1392,8 @@ export function QuickPollPickAvailability({
             </Button>
           )}
         </VStack>
+
+        <QuickPollParticipationInstructions />
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
           <VStack
