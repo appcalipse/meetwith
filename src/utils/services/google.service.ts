@@ -395,7 +395,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
       const eventId =
         meetingDetails.eventId ||
-        (await getGoogleEventMappingId(meeting_id)) ||
+        (await getGoogleEventMappingId(meeting_id, _calendarId)) ||
         meeting_id.replaceAll('-', '')
       const payload: calendar_v3.Schema$Event = {
         id: eventId,
@@ -550,7 +550,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         auth: myGoogleAuth,
       })
       const eventId =
-        (await getGoogleEventMappingId(meeting_id)) ||
+        (await getGoogleEventMappingId(meeting_id, _calendarId)) ||
         meeting_id.replaceAll('-', '')
       const calendarId = parseCalendarId(_calendarId)
 
