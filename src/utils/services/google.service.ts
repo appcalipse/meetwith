@@ -394,8 +394,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       )?.responseStatus
       const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
       const eventId =
-        meetingDetails.eventId ||
         (await getGoogleEventMappingId(meeting_id, _calendarId)) ||
+        meetingDetails.eventId ||
         meeting_id.replaceAll('-', '')
       const payload: calendar_v3.Schema$Event = {
         id: eventId,
@@ -486,37 +486,48 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         version: 'v3',
         auth: myGoogleAuth,
       })
-      calendar.events.update(
-        {
-          auth: myGoogleAuth,
-          calendarId,
-          eventId,
-          sendNotifications: true,
-          sendUpdates: 'all',
-          requestBody: payload,
-        },
-        function (err, event) {
-          if (err) {
-            console.error(
-              'There was an error contacting google calendar service: ',
-              err
-            )
-
-            return reject(err)
-          }
-          return resolve({
-            uid: meeting_id,
-            ...event?.data,
-            id: meeting_id,
-            additionalInfo: {
-              hangoutLink: event?.data.hangoutLink || '',
-            },
-            type: 'google_calendar',
-            password: '',
-            url: '',
+      try {
+        let event
+        if (eventId.includes('_')) {
+          event = await calendar.events.patch({
+            auth: myGoogleAuth,
+            calendarId,
+            eventId,
+            sendNotifications: true,
+            sendUpdates: 'all',
+            requestBody: payload,
+          })
+        } else {
+          event = await calendar.events.update({
+            auth: myGoogleAuth,
+            calendarId,
+            eventId,
+            sendNotifications: true,
+            sendUpdates: 'all',
+            requestBody: payload,
           })
         }
-      )
+
+        return resolve({
+          uid: meeting_id,
+          ...event?.data,
+          id: meeting_id,
+          additionalInfo: {
+            hangoutLink: event?.data.hangoutLink || '',
+          },
+          type: 'google_calendar',
+          password: '',
+          url: '',
+        })
+      } catch (err) {
+        if (err) {
+          console.error(
+            'There was an error contacting google calendar service: ',
+            err
+          )
+          return reject(err)
+        }
+      }
     })
   }
 
@@ -553,7 +564,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         (await getGoogleEventMappingId(meeting_id, _calendarId)) ||
         meeting_id.replaceAll('-', '')
       const calendarId = parseCalendarId(_calendarId)
-
       calendar.events.delete(
         {
           auth: myGoogleAuth,
