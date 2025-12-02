@@ -3748,11 +3748,6 @@ const updateMeeting = async (
         new Date(meetingUpdateRequest.start).toISOString(),
         meetingUpdateRequest.rrule || []
       )
-      if (meetingUpdateRequest.eventId)
-        await insertGoogleEventMapping(
-          meetingUpdateRequest.eventId,
-          meetingUpdateRequest.meeting_id
-        )
     } else {
       if (
         dbMeeting.recurrence &&
@@ -3887,11 +3882,12 @@ const insertOfficeEventMapping = async (
 }
 const insertGoogleEventMapping = async (
   event_id: string,
-  mww_id: string
+  mww_id: string,
+  calendar_id: string
 ): Promise<void> => {
   const { error } = await db.supabase
     .from('google_events_mapping')
-    .insert({ event_id, mww_id })
+    .insert({ event_id, mww_id, calendar_id })
 
   if (error) {
     throw new Error(error.message)
@@ -3916,12 +3912,14 @@ const getOfficeEventMappingId = async (
   return data.office_id
 }
 const getGoogleEventMappingId = async (
-  mww_id: string
+  mww_id: string,
+  calendar_id: string
 ): Promise<string | null> => {
   const { data, error } = await db.supabase
     .from('google_events_mapping')
     .select()
     .eq('mww_id', mww_id)
+    .eq('calendar_id', calendar_id)
     .maybeSingle()
 
   if (error) {
@@ -6500,7 +6498,11 @@ const handleWebhookEvent = async (
     recentlyUpdatedNonRecurringMeetings
       .map(event => handleSyncEvent(event, calendar))
       .concat(
-        handleSyncRecurringEvents(recentlyUpdatedRecurringMeetings, calendar)
+        handleSyncRecurringEvents(
+          recentlyUpdatedRecurringMeetings,
+          calendar,
+          data.calendar_id
+        )
       )
   )
   return actions.length > 0
@@ -6549,7 +6551,8 @@ const bulkUpdateSlotSeriesConfirmedSlots = async (
 }
 const handleSyncRecurringEvents = async (
   events: calendar_v3.Schema$Event[],
-  calendar: ConnectedCalendar
+  calendar: ConnectedCalendar,
+  calendar_id: string
 ) => {
   const masterEvents = events.filter(e => e.recurrence && !e.recurringEventId)
   const exceptions = events.filter(e => e.recurringEventId)
@@ -6591,7 +6594,16 @@ const handleSyncRecurringEvents = async (
       const rule = rrulestr(masterEvent.recurrence[0], {
         dtstart: new Date(startTime), // The original start time of the series
       })
-
+      const isGoogleIdTakeover = !masterEvent.id?.includes(
+        meetingInfo.meeting_id.replace(/-/g, '')
+      )
+      if (isGoogleIdTakeover) {
+        insertGoogleEventMapping(
+          masterEvent.id!,
+          meetingInfo.meeting_id,
+          calendar_id
+        )
+      }
       await handleUpdateMeeting(
         true,
         calendar.account_address,
