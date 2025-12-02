@@ -973,7 +973,8 @@ const handleUpdateMeeting = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[],
   rrule?: Array<string> | null,
-  eventId?: string | null
+  eventId?: string | null,
+  isGoogleIdTakeover = false
 ): Promise<DBSlot> => {
   const { payload, participantActing } = await handleUpdateParseMeetingInfo(
     ignoreAvailabilities,
@@ -992,9 +993,6 @@ const handleUpdateMeeting = async (
     selectedPermissions,
     rrule,
     eventId
-  )
-  const isGoogleIdTakeover = !eventId?.includes(
-    decryptedMeeting.meeting_id.replace(/-/g, '')
   )
 
   const meetingResult: DBSlot = await updateMeeting(
