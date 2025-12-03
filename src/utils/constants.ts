@@ -20,7 +20,7 @@ const discordRedirectUrl = `${baseURL}/dashboard/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwith.xyz'
 const MODIFIED_BY_APP_TIMEOUT = 8 // in seconds
-const WEBHOOK_URL = `https://7bfc21a81152.ngrok-free.app/api/server/webhook/calendar/sync`
+const WEBHOOK_URL = `${apiUrl}/server/webhook/calendar/sync`
 
 const EMAIL_CHANGE_TOKEN_EXPIRY = '5m'
 const PIN_ENABLE_TOKEN_EXPIRY = '5m'
