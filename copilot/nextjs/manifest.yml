@@ -14,7 +14,7 @@ image:
     dockerfile: Dockerfile
     args:
       DOPPLER_TOKEN: ${DOPPLER_TOKEN}
-      PORT: 3000
+      PORT: '3000'
   # Port exposed through your container to route traffic to it.
   port: 3000
 
