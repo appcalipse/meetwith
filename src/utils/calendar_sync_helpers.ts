@@ -974,7 +974,7 @@ const handleUpdateMeeting = async (
   selectedPermissions?: MeetingPermissions[],
   rrule?: Array<string> | null,
   eventId?: string | null,
-  isGoogleIdTakeover = false
+  calendar_id?: string | null
 ): Promise<DBSlot> => {
   const { payload, participantActing } = await handleUpdateParseMeetingInfo(
     ignoreAvailabilities,
@@ -997,10 +997,9 @@ const handleUpdateMeeting = async (
 
   const meetingResult: DBSlot = await updateMeeting(
     participantActing,
-    payload,
+    { ...payload, calendar_id },
     {
       force: true,
-      preserveHistory: isGoogleIdTakeover,
     }
   )
   return meetingResult
@@ -1009,7 +1008,8 @@ const handleUpdateMeetingRsvps = async (
   currentAccountAddress: string,
   meetingTypeId = NO_MEETING_TYPE,
   decryptedMeeting: MeetingDecrypted,
-  actorStatus: ParticipationStatus
+  actorStatus: ParticipationStatus,
+  skipNoitfiation?: boolean
 ): Promise<DBSlot> => {
   const { payload, participantActing } = await handleUpdateRSVPParseMeetingInfo(
     currentAccountAddress,
@@ -1023,6 +1023,7 @@ const handleUpdateMeetingRsvps = async (
     payload,
     {
       force: true,
+      skipNoitfiation,
     }
   )
   return meetingResult
