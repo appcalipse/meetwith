@@ -36,6 +36,7 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   guestsToRemove: ParticipantInfo[]
   version: number
   eventId?: string | null
+  calendar_id?: string | null
 }
 
 export interface MeetingCreationRequest {
