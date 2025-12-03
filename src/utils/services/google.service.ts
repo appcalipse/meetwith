@@ -289,6 +289,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
               ),
             location: meetingDetails.meeting_url,
             status: 'confirmed',
+
             extendedProperties: {
               private: {
                 updatedBy: 'meetwith',
@@ -457,8 +458,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       }
       if (
         meetingDetails.meetingRepeat &&
-        meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT &&
-        !meetingDetails.eventId
+        meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
       ) {
         payload.recurrence =
           meetingDetails.rrule ||
@@ -507,7 +507,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             requestBody: payload,
           })
         }
-
         return resolve({
           uid: meeting_id,
           ...event?.data,
