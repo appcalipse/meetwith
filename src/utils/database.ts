@@ -241,7 +241,7 @@ import {
 import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
-import { addRecurrence, checkIsSameDay } from './date_helper'
+import { addRecurrence } from './date_helper'
 import {
   sendCryptoDebitEmail,
   sendPollInviteEmail,
@@ -3666,7 +3666,7 @@ const updateMeeting = async (
   options: {
     force?: boolean
     skipRecurrenceUpdate?: boolean
-    preserveHistory?: boolean
+    skipNoitfiation?: boolean
   } = {}
 ): Promise<DBSlot> => {
   const { meetingResponse, slots, index, changingTime, timezone } =
@@ -3685,21 +3685,17 @@ const updateMeeting = async (
   // there is no support from supabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts
-  if (
-    !options.preserveHistory ||
-    checkIsSameDay(new Date(slots[0]?.start), new Date())
-  ) {
-    const query = await db.supabase
-      .from('slots')
-      .upsert(slots, { onConflict: 'id' })
-    //TODO: handle error
-    const { data, error } = query
-    if (error) {
-      throw new Error(error.message)
-    }
-    meetingResponse.id = data?.[index]?.id
-    meetingResponse.created_at = data?.[index]?.created_at
+
+  const query = await db.supabase
+    .from('slots')
+    .upsert(slots, { onConflict: 'id' })
+  //TODO: handle error
+  const { data, error } = query
+  if (error) {
+    throw new Error(error.message)
   }
+  meetingResponse.id = data?.[index]?.id
+  meetingResponse.created_at = data?.[index]?.created_at
 
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
@@ -3741,53 +3737,51 @@ const updateMeeting = async (
       throw new Error(
         'Could not update your meeting right now, get in touch with us if the problem persists'
       )
-    if (options.preserveHistory) {
-      await upsertRecurringInstances(
-        slots,
-        meetingUpdateRequest.meetingRepeat,
-        new Date(meetingUpdateRequest.start).toISOString(),
-        meetingUpdateRequest.rrule || []
-      )
-    } else {
-      if (
-        dbMeeting.recurrence &&
-        dbMeeting.recurrence !== MeetingRepeat.NO_REPEAT
-      ) {
-        const slotSeries = await getSlotSeries(slots[0].id!)
+    if (
+      dbMeeting.recurrence &&
+      dbMeeting.recurrence !== MeetingRepeat.NO_REPEAT
+    ) {
+      const slotSeries = await getSlotSeries(slots[0].id!)
 
-        const recurrenceChanged = isDiffRRULE(
-          meetingUpdateRequest.rrule || [],
-          slotSeries?.rrule || []
-        )
-        if (
-          dbMeeting.recurrence !== meetingUpdateRequest.meetingRepeat ||
-          recurrenceChanged
-        ) {
-          // recurring meeting changed to a different recurrence or to no recurrence
-          await deleteRecurringSlotInstances(slots.map(s => s.id!))
-          await saveRecurringMeetings(
-            slots,
-            meetingUpdateRequest.meetingRepeat,
-            meetingUpdateRequest.rrule || []
-          )
-        } else {
-          await updateRecurringSlotInstances(
-            slots,
-            meetingUpdateRequest.rrule || []
+      const recurrenceChanged = isDiffRRULE(
+        meetingUpdateRequest.rrule || [],
+        slotSeries?.rrule || []
+      )
+      if (
+        dbMeeting.recurrence !== meetingUpdateRequest.meetingRepeat ||
+        recurrenceChanged
+      ) {
+        // recurring meeting changed to a different recurrence or to no recurrence
+        if (meetingUpdateRequest.eventId) {
+          await insertGoogleEventMapping(
+            meetingUpdateRequest.eventId,
+            meetingUpdateRequest.meeting_id,
+            meetingUpdateRequest.calendar_id!
           )
         }
-      } else if (
-        (meetingUpdateRequest.meetingRepeat &&
-          meetingUpdateRequest.meetingRepeat !== MeetingRepeat.NO_REPEAT) ||
-        meetingUpdateRequest.rrule?.length > 0
-      ) {
-        // wasn't a recurring meeting but now it is
+        await deleteRecurringSlotInstances(slots.map(s => s.id!))
         await saveRecurringMeetings(
           slots,
           meetingUpdateRequest.meetingRepeat,
           meetingUpdateRequest.rrule || []
         )
+      } else {
+        await updateRecurringSlotInstances(
+          slots,
+          meetingUpdateRequest.rrule || []
+        )
       }
+    } else if (
+      (meetingUpdateRequest.meetingRepeat &&
+        meetingUpdateRequest.meetingRepeat !== MeetingRepeat.NO_REPEAT) ||
+      meetingUpdateRequest.rrule?.length > 0
+    ) {
+      // wasn't a recurring meeting but now it is
+      await saveRecurringMeetings(
+        slots,
+        meetingUpdateRequest.meetingRepeat,
+        meetingUpdateRequest.rrule || []
+      )
     }
   }
 
@@ -3803,7 +3797,10 @@ const updateMeeting = async (
     participants: meetingUpdateRequest.participants_mapping,
     title: meetingUpdateRequest.title,
     content: meetingUpdateRequest.content,
-    changes: changingTime ? { dateChange: changingTime } : undefined,
+    changes:
+      !options.skipNoitfiation && changingTime
+        ? { dateChange: changingTime }
+        : undefined,
     meetingReminders: meetingUpdateRequest.meetingReminders,
     meetingRepeat: meetingUpdateRequest.meetingRepeat,
     meetingPermissions: meetingUpdateRequest.meetingPermissions,
@@ -3885,9 +3882,14 @@ const insertGoogleEventMapping = async (
   mww_id: string,
   calendar_id: string
 ): Promise<void> => {
-  const { error } = await db.supabase
+  await db.supabase
     .from('google_events_mapping')
-    .insert({ event_id, mww_id, calendar_id })
+    .delete()
+    .eq('mww_id', mww_id)
+    .eq('calendar_id', calendar_id)
+  const { error, body } = await db.supabase
+    .from('google_events_mapping')
+    .upsert({ event_id, mww_id, calendar_id })
 
   if (error) {
     throw new Error(error.message)
@@ -6562,7 +6564,7 @@ const handleSyncRecurringEvents = async (
     JSON.stringify({ exceptions, masterEvents }, null, 2)
   )
   writeFileSync(`events_${Date.now()}.json`, JSON.stringify(events, null, 2))
-
+  const processed = new Set<string>()
   for (const masterEvent of masterEvents) {
     const meetingId = masterEvent?.extendedProperties?.private?.meetingId
     const meetingTypeId =
@@ -6575,6 +6577,28 @@ const handleSyncRecurringEvents = async (
     const { meetingInfo, conferenceMeeting } =
       await getConferenceDecryptedMeeting(meetingId)
     if (!meetingInfo || !masterEvent.recurrence) continue
+
+    const peerEvents = masterEvents.filter(
+      peerEvent =>
+        peerEvent.id !== masterEvent.id &&
+        peerEvent?.extendedProperties?.private?.meetingId ===
+          masterEvent?.extendedProperties?.private?.meetingId &&
+        peerEvent.status !== 'cancelled'
+    )
+    if (peerEvents.length > 0) {
+      if (processed.has(meetingId)) continue
+      const actor = masterEvent.attendees?.find(attendee => attendee.self)
+      // REVERT MEETING TO PREVIOUS VERSION IF PEER WITH ID TAKEOVER EXISTS
+      await handleUpdateMeetingRsvps(
+        calendar.account_address,
+        meetingTypeId,
+        meetingInfo,
+        getParticipationStatus(actor?.responseStatus || ''),
+        true
+      )
+      processed.add(meetingId)
+      continue
+    }
     if (masterEvent.status === 'cancelled') {
       await handleCancelOrDelete(
         calendar.account_address,
@@ -6594,16 +6618,7 @@ const handleSyncRecurringEvents = async (
       const rule = rrulestr(masterEvent.recurrence[0], {
         dtstart: new Date(startTime), // The original start time of the series
       })
-      const isGoogleIdTakeover = !masterEvent.id?.includes(
-        meetingInfo.meeting_id.replace(/-/g, '')
-      )
-      if (isGoogleIdTakeover) {
-        insertGoogleEventMapping(
-          masterEvent.id!,
-          meetingInfo.meeting_id,
-          calendar_id
-        )
-      }
+
       await handleUpdateMeeting(
         true,
         calendar.account_address,
@@ -6620,7 +6635,8 @@ const handleSyncRecurringEvents = async (
         getMeetingRepeatFromRule(rule),
         conferenceMeeting.permissions,
         masterEvent.recurrence,
-        masterEvent.id
+        masterEvent.id,
+        calendar_id
       )
     } catch (e) {
       if (e instanceof MeetingDetailsModificationDenied) {
