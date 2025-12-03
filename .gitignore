@@ -51,6 +51,4 @@ package-lock.json
 # Zoom
 zoom-token.json
 .qodo
-test.http
 .nvmrc
-.zed/tasks.json
