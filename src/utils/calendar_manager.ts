@@ -1508,7 +1508,8 @@ const generateIcs = async (
   meeting: MeetingDecrypted,
   ownerAddress: string,
   meetingStatus: MeetingChangeType,
-  changeUrl?: string,
+  rescheduleUrl?: string,
+  cancelUrl?: string,
   removeAttendess?: boolean,
   destination?: { accountAddress: string; email: string },
   isPrivate?: boolean
@@ -1533,7 +1534,8 @@ const generateIcs = async (
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
-      changeUrl
+      rescheduleUrl,
+      cancelUrl
     ),
     url,
     location: meeting.meeting_url,
@@ -1894,10 +1896,12 @@ const generateGoogleCalendarUrl = async (
   }
   if (content || meeting_url) {
     const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    const cancelUrl = `${appUrl}/dashboard/meetings?conferenceId=${meeting_id}&intent=${Intents.CANCEL_MEETING}`
     baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      changeUrl
+      changeUrl,
+      cancelUrl
     )}`
   }
   if (timezone) {
@@ -1941,10 +1945,12 @@ const generateOffice365CalendarUrl = async (
   }
   if (content || meeting_url) {
     const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    const cancelUrl = `${appUrl}/dashboard/meetings?conferenceId=${meeting_id}&intent=${Intents.CANCEL_MEETING}`
     baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      changeUrl
+      changeUrl,
+      cancelUrl
     )}`
   }
   if (participants) {

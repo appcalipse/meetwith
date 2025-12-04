@@ -362,7 +362,8 @@ export const generateIcsServer = async (
   meeting: MeetingCreationSyncRequest,
   ownerAddress: string,
   meetingStatus: MeetingChangeType,
-  changeUrl?: string,
+  rescheduleUrl?: string,
+  cancelUrl?: string,
   useParticipants?: boolean,
   destination?: { accountAddress: string; email: string },
   isPrivate?: boolean
@@ -391,7 +392,8 @@ export const generateIcsServer = async (
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
-      changeUrl
+      rescheduleUrl,
+      cancelUrl
     ),
     url,
     location: meeting.meeting_url,
