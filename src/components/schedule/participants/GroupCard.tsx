@@ -61,22 +61,21 @@ const GroupCard: FC<IGroupCard> = props => {
             px={isExpanded ? 6 : 4}
             gap={2}
           >
-            <HStack gap={1}>
-              <Text
-                fontSize={isExpanded ? 'lg' : 'base'}
-                fontWeight={isExpanded ? 700 : 500}
-                lineHeight={'120%'}
-                transition="all 0.2s"
-                textAlign="left"
-                transitionTimingFunction={'isExpanded ? ease-in : ease-out'}
-              >
-                {props.name}
-              </Text>
+            <Text
+              fontSize={isExpanded ? 'lg' : 'base'}
+              fontWeight={isExpanded ? 700 : 500}
+              lineHeight={'120%'}
+              transition="all 0.2s"
+              textAlign="left"
+              transitionTimingFunction={'isExpanded ? ease-in : ease-out'}
+            >
+              {props.name}
+            </Text>
+            <HStack gap={2}>
               {props.currentGroupId === props.id && (
                 <Badge
                   color="white"
                   bg="border-default"
-                  ml={2}
                   px={1.5}
                   rounded="8px"
                   fontSize={'10px'}
@@ -85,25 +84,25 @@ const GroupCard: FC<IGroupCard> = props => {
                   Current Group
                 </Badge>
               )}
+              <IconButton
+                width="fit-content"
+                m={0}
+                aria-label="Expand Group"
+                p={0}
+                bg={'transparent'}
+                _hover={{
+                  bg: 'transparent',
+                }}
+                minW={'auto'}
+                icon={
+                  isExpanded ? (
+                    <FaChevronUp size={20} />
+                  ) : (
+                    <FaChevronDown size={20} />
+                  )
+                }
+              />
             </HStack>
-            <IconButton
-              width="fit-content"
-              m={0}
-              aria-label="Expand Group"
-              p={0}
-              bg={'transparent'}
-              _hover={{
-                bg: 'transparent',
-              }}
-              minW={'auto'}
-              icon={
-                isExpanded ? (
-                  <FaChevronUp size={20} />
-                ) : (
-                  <FaChevronDown size={20} />
-                )
-              }
-            />
           </AccordionButton>
 
           <AccordionPanel

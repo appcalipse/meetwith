@@ -18,7 +18,8 @@ const useSlotsWithAvailability = (
   participantAvailabilities: string[],
   timezone: string,
   busySlotsWithDetails?: Map<string, TimeSlot[]>,
-  currentAccountAddress?: string
+  currentAccountAddress?: string,
+  ignoreBusyOverlaps = false
 ) => {
   return useMemo(() => {
     const now = DateTime.now().setZone(timezone)
@@ -46,7 +47,9 @@ const useSlotsWithAvailability = (
             availableSlot.overlaps(slot)
           )
 
-          const isUserAvailable = !isBusy && hasOverlap
+          const isUserAvailable = ignoreBusyOverlaps
+            ? hasOverlap
+            : !isBusy && hasOverlap
 
           isSlotAvailable.push(isUserAvailable)
           userStates.push({
@@ -129,6 +132,7 @@ const useSlotsWithAvailability = (
     timezone,
     busySlotsWithDetails,
     currentAccountAddress,
+    ignoreBusyOverlaps,
   ])
 }
 
