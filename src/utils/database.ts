@@ -2996,7 +2996,9 @@ const updateMeeting = async (
   let i = 0
 
   const existingAccounts = await getExistingAccountsFromDB(
-    meetingUpdateRequest.participants_mapping.map(p => p.account_address!)
+    meetingUpdateRequest.participants_mapping
+      .filter(p => p.account_address)
+      .map(p => p.account_address!)
   )
   const ownerParticipants =
     meetingUpdateRequest.participants_mapping.filter(
@@ -3016,6 +3018,10 @@ const updateMeeting = async (
     meetingUpdateRequest.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
+
+  if (meetingUpdateRequest.participants_mapping.length === 0) {
+    throw new MeetingCreationError()
+  }
 
   const timezone = meetingUpdateRequest.participants_mapping[0].timeZone
   let changingTime = null
@@ -3138,15 +3144,16 @@ const updateMeeting = async (
       }
 
       // Not adding source here given on our database the source is always MWW
-      const dbSlot: DBSlot = {
-        id: participant.slot_id,
-        start: new Date(meetingUpdateRequest.start),
-        end: new Date(meetingUpdateRequest.end),
+      const dbSlot: TablesInsert<'slots'> = {
+        id: participant.slot_id!,
+        start: new Date(meetingUpdateRequest.start).toISOString(),
+        end: new Date(meetingUpdateRequest.end).toISOString(),
         account_address: account.address,
         version: meetingUpdateRequest.version,
         meeting_info_encrypted: participant.privateInfo,
         recurrence: meetingUpdateRequest.meetingRepeat,
         role: participant.type,
+        guest_email: null, // Ensure all slots have the same keys
       }
 
       slots.push(dbSlot)
@@ -3160,9 +3167,15 @@ const updateMeeting = async (
       ) {
         index = i
         meetingResponse = {
-          ...dbSlot,
+          id: participant.slot_id!,
+          start: new Date(meetingUpdateRequest.start),
+          end: new Date(meetingUpdateRequest.end),
+          account_address: account.address,
+          version: meetingUpdateRequest.version,
           meeting_info_encrypted: participant.privateInfo,
-        }
+          recurrence: meetingUpdateRequest.meetingRepeat,
+          role: participant.type,
+        } as DBSlot
       }
       i++
     } else if (participant.guest_email && participant.slot_id) {
@@ -3175,6 +3188,7 @@ const updateMeeting = async (
         recurrence: meetingUpdateRequest.meetingRepeat,
         role: participant.type,
         guest_email: participant.guest_email,
+        account_address: null, // Ensure all slots have the same keys
       }
       slots.push(dbSlot)
     }

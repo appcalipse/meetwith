@@ -78,7 +78,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       } else if (e instanceof MeetingSessionNotFoundError) {
         return res.status(404).send(e.message)
       }
-      return res.status(500).send(e)
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      return res.status(500).json({ error: errorMessage, details: String(e) })
     }
   } else if (req.method === 'DELETE') {
     const { metadata, currentTimezone, reason } = req.body as GuestMeetingCancel
