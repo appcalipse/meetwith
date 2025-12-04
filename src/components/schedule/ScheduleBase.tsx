@@ -1023,6 +1023,7 @@ const ScheduleBase = () => {
                   variant="outline"
                   flex={1}
                   flexBasis="40%"
+                  isDisabled={true}
                   _hover={{
                     bg: 'red.500',
                     color: 'white',

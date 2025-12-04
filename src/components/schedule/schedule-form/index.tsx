@@ -763,7 +763,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           <Button
             width="full"
             flex={1}
-            isDisabled={isCancelling}
+            isDisabled={isCancelling || !!conferenceId}
             isLoading={isCancelling}
             onClick={onOpen}
             bg={'orangeButton.800'}
