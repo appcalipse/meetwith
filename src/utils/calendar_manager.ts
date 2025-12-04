@@ -878,18 +878,12 @@ const updateMeetingConferenceGuest = async (
   if (!existingDBSlot) {
     throw new MeetingChangeConflictError()
   }
-  const existingMeeting = await decryptMeetingGuest(existingDBSlot)
-  if (!existingMeeting) {
+
+  if (decryptedMeeting.version !== existingDBSlot.version) {
     throw new MeetingChangeConflictError()
   }
 
-  //TODO: anyone can update a meeting, but we might need to change the participants statuses
-
-  // make sure that we are trying to update the latest version of the meeting,
-  // otherwise it means that somebody changes before this one
-  if (decryptedMeeting.version !== existingMeeting.version) {
-    throw new MeetingChangeConflictError()
-  }
+  const existingMeeting = decryptedMeeting
 
   const existingMeetingAccounts = await loadMeetingAccountAddresses(
     existingMeeting!
