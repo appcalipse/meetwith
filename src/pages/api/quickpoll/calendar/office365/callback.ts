@@ -177,7 +177,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     participantId,
     userData.mail || userData.userPrincipalName,
     TimeSlotSource.OFFICE,
-    tokenData
+    tokenData,
+    calendars
   )
 
   if (!stateObject?.participantId) {
