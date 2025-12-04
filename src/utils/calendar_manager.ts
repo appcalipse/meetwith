@@ -216,7 +216,9 @@ const loadMeetingAccountAddresses = async (
     }
   }
   const slotsAccounts = [
-    ...otherSlots.map(it => it.account_address.toLowerCase()),
+    ...otherSlots
+      .filter(it => it.account_address)
+      .map(it => it.account_address!.toLowerCase()),
   ]
   if (currentAccountAddress) {
     slotsAccounts.unshift(currentAccountAddress.toLowerCase())
@@ -877,12 +879,15 @@ const updateMeetingConferenceGuest = async (
     throw new MeetingChangeConflictError()
   }
   const existingMeeting = await decryptMeetingGuest(existingDBSlot)
+  if (!existingMeeting) {
+    throw new MeetingChangeConflictError()
+  }
 
   //TODO: anyone can update a meeting, but we might need to change the participants statuses
 
   // make sure that we are trying to update the latest version of the meeting,
   // otherwise it means that somebody changes before this one
-  if (decryptedMeeting.version !== existingDBSlot.version) {
+  if (decryptedMeeting.version !== existingMeeting.version) {
     throw new MeetingChangeConflictError()
   }
 
@@ -1284,12 +1289,15 @@ const cancelMeetingGuest = async (
     throw new MeetingChangeConflictError()
   }
   const existingMeeting = await decodeMeetingGuest(existingDBSlot)
+  if (!existingMeeting) {
+    throw new MeetingChangeConflictError()
+  }
 
   // Only the owner or scheduler of the meeting can cancel it
-  const meetingOwners = existingMeeting!.participants.filter(
+  const meetingOwners = existingMeeting.participants.filter(
     user => user.type === ParticipantType.Owner
   )
-  const meetingScheduler = existingMeeting!.participants.find(
+  const meetingScheduler = existingMeeting.participants.find(
     user => user.type === ParticipantType.Scheduler
   )
   if (
