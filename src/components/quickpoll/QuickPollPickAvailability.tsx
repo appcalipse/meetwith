@@ -85,6 +85,7 @@ import {
   useAvailabilityTracker,
 } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
+import { QuickPollParticipationInstructions } from './QuickPollParticipationInstructions'
 
 export enum State {
   ALL_AVAILABLE,
@@ -399,6 +400,10 @@ export function QuickPollPickAvailability({
     if (!isEditingAvailability || !currentUserIdentifier) {
       return availableSlots
     }
+
+    if (!hasAvailability) {
+      return availableSlots
+    }
     // Filter to show only current user's availability
     const userSlots = availableSlots.get(currentUserIdentifier)
     const filteredMap = new Map<string, Interval<true>[]>()
@@ -406,10 +411,24 @@ export function QuickPollPickAvailability({
       filteredMap.set(currentUserIdentifier, userSlots)
     }
     return filteredMap
-  }, [isEditingAvailability, availableSlots, currentUserIdentifier])
-  const effectiveMeetingMembers = isEditingAvailability ? [] : meetingMembers
+  }, [
+    isEditingAvailability,
+    availableSlots,
+    currentUserIdentifier,
+    hasAvailability,
+  ])
+  const effectiveMeetingMembers = useMemo(() => {
+    if (!isEditingAvailability || !hasAvailability) {
+      return meetingMembers
+    }
+    return []
+  }, [isEditingAvailability, meetingMembers, hasAvailability])
   const effectiveAvailabilityAddresses = useMemo(() => {
     if (!isEditingAvailability) {
+      return availabilityAddresses
+    }
+
+    if (!hasAvailability) {
       return availabilityAddresses
     }
     // When editing, only show current user's availability
@@ -420,7 +439,12 @@ export function QuickPollPickAvailability({
       return [currentUserIdentifier]
     }
     return []
-  }, [isEditingAvailability, availabilityAddresses, currentUserIdentifier])
+  }, [
+    isEditingAvailability,
+    availabilityAddresses,
+    currentUserIdentifier,
+    hasAvailability,
+  ])
   const datesSlotsWithAvailability = useSlotsWithAvailability(
     dates,
     effectiveBusySlots,
@@ -1368,6 +1392,8 @@ export function QuickPollPickAvailability({
             </Button>
           )}
         </VStack>
+
+        <QuickPollParticipationInstructions />
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
           <VStack
