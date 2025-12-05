@@ -27,9 +27,9 @@ image:
 #     timeout: 5s
 
 # Number of CPU units for the task.
-cpu: 1024
+# cpu: 1024
 # Amount of memory in MiB used by the task.
-memory: 2048
+# memory: 2048
 # # Connect your App Runner service to your environment's VPC.
 # network:
 #   vpc:
@@ -45,21 +45,21 @@ variables:
   DOPPLER_TOKEN: ${DOPPLER_TOKEN}
 environments:
   preview:
+    variables:
+      NEXT_PUBLIC_ENV: preview
     cpu: 256
     memory: 1024
 
-    variables:
-      NEXT_PUBLIC_ENV: preview
-
   pre-prod:
+    variables:
+      NEXT_PUBLIC_ENV: production
     cpu: 256
     memory: 1024
     count:
       range: 1-1
 
-    variables:
-      NEXT_PUBLIC_ENV: production
-
   production:
     variables:
       NEXT_PUBLIC_ENV: production
+    cpu: 1024
+    memory: 2048
