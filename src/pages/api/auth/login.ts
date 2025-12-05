@@ -22,7 +22,7 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
       if (identifier?.toLowerCase() !== recovered.toLowerCase()) {
         return res.status(401).send('Not authorized')
       }
-      if (!account.internal_pub_key) {
+      if (account && !account.internal_pub_key) {
         // The account is a migrated one and does not have an internal pub key yet
         const db = initDB()
         const newIdentity = EthCrypto.createIdentity()
