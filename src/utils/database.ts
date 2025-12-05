@@ -510,8 +510,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     .from('account_preferences')
     .update({
       description: preferences.description,
-      timezone: preferences.timezone,
-      availabilities: preferences.availabilities,
       name: preferences.name,
       socialLinks: preferences.socialLinks,
       meetingProviders: preferences.meetingProviders,
@@ -523,7 +521,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     throw new Error("Account preferences couldn't be updated")
   }
 
-  account.preferences = responsePrefsUpdate.data?.[0] as AccountPreferences
+  account.preferences = await getAccountPreferences(account.address)
 
   account.subscriptions = await getSubscriptionFromDBForAccount(account.address)
 
