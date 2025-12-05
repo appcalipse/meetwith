@@ -114,6 +114,32 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
       }
     }
 
+    if (
+      isQuickPoll &&
+      isEditingAvailability &&
+      !isSelected &&
+      userStates.length === 0
+    ) {
+      return {
+        bg: 'white',
+        color: 'text-primary',
+        cursor: isInteractive ? 'pointer' : 'default',
+        _active: isInteractive
+          ? {
+              cursor: 'pointer',
+              color: 'white',
+              bgColor: 'primary.400',
+              borderColor: 'primary.500',
+            }
+          : {},
+        _hover: isInteractive
+          ? {
+              border: '2px solid #F35826',
+            }
+          : {},
+      }
+    }
+
     return {
       bg: getBgColor(state),
       cursor: isInteractive ? 'pointer' : 'default',
@@ -164,22 +190,31 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
           py={3}
           px={4}
         >
+          {isEditingAvailability && (
+            <Text mb="7px">
+              {isSelected
+                ? 'Click to make unavailable'
+                : 'Click to make available'}
+            </Text>
+          )}
           <Text mb="7px">
             {formatWithOrdinal(slot)} ({timezone})
           </Text>
-          <VStack w="fit-content" gap={1} align="flex-start">
-            {userStates?.map((userState, index) => (
-              <HStack key={index}>
-                <Box
-                  w={4}
-                  h={4}
-                  rounded={999}
-                  bg={userState.state ? 'green.400' : 'neutral.0'}
-                />
-                <Text>{userState.displayName}</Text>
-              </HStack>
-            ))}
-          </VStack>
+          {!isEditingAvailability && (
+            <VStack w="fit-content" gap={1} align="flex-start">
+              {userStates?.map((userState, index) => (
+                <HStack key={index}>
+                  <Box
+                    w={4}
+                    h={4}
+                    rounded={999}
+                    bg={userState.state ? 'green.400' : 'neutral.0'}
+                  />
+                  <Text>{userState.displayName}</Text>
+                </HStack>
+              ))}
+            </VStack>
+          )}
         </Box>
         <Tooltip.Arrow />
       </Tooltip.Content>

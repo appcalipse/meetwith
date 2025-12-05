@@ -65,6 +65,7 @@ import {
   QuickPollBusyParticipant,
   QuickPollListResponse,
   QuickPollParticipant,
+  QuickPollParticipantStatus,
   QuickPollParticipantType,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
@@ -2016,6 +2017,7 @@ export interface BulkAddParticipantsRequest {
     guest_name?: string
     guest_email: string
     participant_type: QuickPollParticipantType
+    status?: QuickPollParticipantStatus
   }>
 }
 
@@ -2109,6 +2111,15 @@ export const savePollParticipantCalendar = async (
       provider,
       payload,
     }
+  )
+}
+
+export const getPollParticipantCalendars = async (
+  participantId: string
+): Promise<ConnectedCalendar[]> => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/calendar`,
+    'GET'
   )
 }
 
