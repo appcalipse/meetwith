@@ -9,7 +9,6 @@ const getDefaultSignature = async (
 ) => {
   if (req.method === 'GET') {
     const { address } = req.query
-
     try {
       const account = await getAccountFromDB((address as string).toLowerCase())
       res
