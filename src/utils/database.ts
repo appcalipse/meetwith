@@ -510,8 +510,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     .from('account_preferences')
     .update({
       description: preferences.description,
-      timezone: preferences.timezone,
-      availabilities: preferences.availabilities,
       name: preferences.name,
       socialLinks: preferences.socialLinks,
       meetingProviders: preferences.meetingProviders,
