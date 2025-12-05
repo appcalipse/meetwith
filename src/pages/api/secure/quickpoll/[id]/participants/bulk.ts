@@ -33,6 +33,7 @@ export default async function handler(
       guest_name: p.guest_name,
       guest_email: p.guest_email,
       participant_type: p.participant_type,
+      status: p.status,
     }))
 
     await updateQuickPollParticipants(id, {
