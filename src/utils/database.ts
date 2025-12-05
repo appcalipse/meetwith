@@ -329,30 +329,33 @@ const initAccountDBForWallet = async (
   try {
     await createMeetingType(user_account.address, meetingType)
   } catch (e) {
+    console.error(e)
     Sentry.captureException(e)
   }
-  const preferences: AccountPreferences = {
+  const preferences: TablesInsert<'account_preferences'> = {
     description: '',
-    availabilities: defaultAvailabilities,
     socialLinks: [],
-    timezone,
     meetingProviders: [MeetingProvider.GOOGLE_MEET],
     availaibility_id: defaultBlock.id,
+    owner_account_address: user_account.address,
   }
   try {
-    const responsePrefs = await db.supabase.from('account_preferences').insert({
-      ...preferences,
-      owner_account_address: user_account.address,
-    })
+    const responsePrefs = await db.supabase
+      .from('account_preferences')
+      .insert(preferences)
+
     if (responsePrefs.error) {
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
-    user_account.preferences = preferences
+    user_account.preferences = await getAccountPreferences(
+      user_account.address.toLowerCase()
+    )
     user_account.is_invited = is_invited || false
 
     return user_account
   } catch (error) {
+    console.error(error)
     Sentry.captureException(error)
     throw new Error("Account couldn't be created")
   }
@@ -5690,9 +5693,7 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
         if (updateError) {
           console.error(updateError)
         }
-      } catch (e) {
-        console.error('Error refreshing webhook:', e)
-      }
+      } catch (e) {}
     }
   }
 }
