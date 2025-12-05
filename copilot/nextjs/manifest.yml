@@ -14,7 +14,7 @@ image:
     dockerfile: Dockerfile
     args:
       DOPPLER_TOKEN: ${DOPPLER_TOKEN}
-      PORT: 3000
+      PORT: '3000'
   # Port exposed through your container to route traffic to it.
   port: 3000
 
@@ -41,17 +41,25 @@ memory: 2048
 
 # Optional fields for more advanced use-cases.
 
-
 variables:
   DOPPLER_TOKEN: ${DOPPLER_TOKEN}
-# You can override any of the values defined above by environment.
 environments:
   preview:
+    cpu: 256
+    memory: 1024
+
     variables:
       NEXT_PUBLIC_ENV: preview
-  production:
+
+  pre-prod:
+    cpu: 256
+    memory: 1024
+    count:
+      range: 1-1
+
     variables:
       NEXT_PUBLIC_ENV: production
-  pre-prod:
+
+  production:
     variables:
       NEXT_PUBLIC_ENV: production
