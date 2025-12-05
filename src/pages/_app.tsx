@@ -97,21 +97,29 @@ function MyApp({
 }
 
 MyApp.getInitialProps = async (appContext: AppContext) => {
-  const appProps: AppInitialProps = await App.getInitialProps(appContext)
+  try {
+    const appProps: AppInitialProps = await App.getInitialProps(appContext)
 
-  const consentCookie =
-    appContext.ctx.req && appContext.ctx.req.headers!.cookie
-      ? cookie.parse(appContext.ctx.req.headers!.cookie).mww_consent
-      : false
+    const consentCookie =
+      appContext.ctx.req && appContext.ctx.req.headers!.cookie
+        ? cookie.parse(appContext.ctx.req.headers!.cookie).mww_consent
+        : false
 
-  // we will only have web3 defined when on the client side, if we don't have
-  // then it means that we should force reload metamask connection on the client side
-  const currentAccount = await validateAuthenticationApp(appContext)
+    // we will only have web3 defined when on the client side, if we don't have
+    // then it means that we should force reload metamask connection on the client side
+    const currentAccount = await validateAuthenticationApp(appContext)
 
-  // only force check on the client side if we have an account and we came from the backend
-  const checkAuthOnClient = !!currentAccount && !!appContext.ctx.req
+    // only force check on the client side if we have an account and we came from the backend
+    const checkAuthOnClient = !!currentAccount && !!appContext.ctx.req
 
-  return { ...appProps, consentCookie, currentAccount, checkAuthOnClient }
+    return { ...appProps, consentCookie, currentAccount, checkAuthOnClient }
+  } catch (e) {
+    if (appContext.ctx.res) {
+      appContext.ctx.res.writeHead(302, { Location: '/error' })
+      appContext.ctx.res.end()
+    }
+    return {}
+  }
 }
 
 export default MyApp
