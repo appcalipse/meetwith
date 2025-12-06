@@ -1,13 +1,16 @@
-import { Grid, GridItem, Text } from '@chakra-ui/layout'
+import { Grid, GridItem, Text } from '@chakra-ui/react'
 import * as ct from 'countries-and-timezones'
-import { DateTime } from 'luxon'
 import * as React from 'react'
 
+import { useCalendarContext } from '@/providers/calendar/CalendarContext'
+
 const CalendarHeader: React.FC = ({}) => {
+  const { currrentDate } = useCalendarContext()
+  const startOfWeek = currrentDate.startOf('week')
   const days = Array.from({
     length: 7,
   }).map((_, index) => {
-    return DateTime.now().plus({ days: index })
+    return startOfWeek.plus({ days: index })
   })
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const utcOffset = ct.getTimezone(timezone)?.utcOffset
@@ -41,9 +44,10 @@ const CalendarHeader: React.FC = ({}) => {
       >
         <Text>UTC{getOffsetString(utcOffset)}</Text>
       </GridItem>
+
       {days.map((day, index) => (
         <GridItem
-          key={index}
+          key={`${day.toMillis()}-${index}`}
           w="100%"
           borderColor="neutral.700"
           borderWidth={1}
