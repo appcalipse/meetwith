@@ -95,8 +95,8 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
                 cancelMeeting(currentAccount!.address, decryptedMeeting!)
                   .then(({ removed }) => {
                     setCancelling(false)
-                    afterCancel && afterCancel(removed)
                     onClose()
+                    afterCancel && afterCancel(removed)
                   })
                   .catch(error => {
                     setCancelling(false)

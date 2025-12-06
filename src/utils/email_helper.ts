@@ -59,12 +59,7 @@ const generateChangeUrl = async (
       : `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
   }
 
-  const isGuestScheduling = participants?.some(p => !p.account_address)
-
-  if (isGuestScheduling && participantType === ParticipantType.Owner) {
-    return undefined
-  }
-
+  // Always return reschedule URL for hosts (account owners)
   return `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
 }
 export const newGroupInviteEmail = async (
@@ -229,6 +224,10 @@ export const newMeetingEmail = async (
     meetingTypeId
   )
 
+  const cancelUrl = destinationAccountAddress
+    ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
+    : `${appUrl}/meeting/cancel/${meetingDetails.meeting_id}?type=conference`
+
   const locals = {
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
@@ -242,11 +241,8 @@ export const newMeetingEmail = async (
       title,
       description,
     },
-    // Only include reschedule link for guests
     changeUrl,
-    cancelUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
-      : `${appUrl}/meeting/cancel/${meetingDetails.meeting_id}?type=conference`,
+    cancelUrl,
   }
   const isScheduler =
     participantType === ParticipantType.Scheduler ||
@@ -287,6 +283,7 @@ export const newMeetingEmail = async (
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
     changeUrl,
+    cancelUrl,
     false,
     destinationAccountAddress
       ? {
@@ -373,7 +370,8 @@ export const cancelledMeetingEmail = async (
     },
     destinationAccountAddress || '',
     MeetingChangeType.DELETE,
-    '',
+    undefined,
+    undefined,
     false,
     destinationAccountAddress
       ? {
@@ -472,6 +470,10 @@ export const updateMeetingEmail = async (
     meetingTypeId
   )
 
+  const cancelUrl = destinationAccountAddress
+    ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
+    : `${appUrl}/meeting/cancel/${meetingDetails.meeting_id}?type=conference`
+
   const email = new Email()
   const newDuration = differenceInMinutes(end, start)
   const oldDuration = changes?.dateChange
@@ -495,11 +497,8 @@ export const updateMeetingEmail = async (
       title,
       description,
     },
-    // Only include reschedule link for guests
     changeUrl,
-    cancelUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
-      : `${appUrl}/meeting/cancel/${meetingDetails.meeting_id}?type=conference`,
+    cancelUrl,
     changes: {
       oldStart:
         changes?.dateChange?.oldStart &&
@@ -548,6 +547,7 @@ export const updateMeetingEmail = async (
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
     changeUrl,
+    cancelUrl,
     false,
     destinationAccountAddress
       ? {

@@ -309,7 +309,6 @@ const ScheduleBase = () => {
     }
     return DateTime.fromJSDate(pickedTime).setZone(timezone).toJSDate()
   }, [pickedTime, timezone])
-  const isUpdateMeetingIntent = query.intent === Intents.UPDATE_MEETING
   const canModifyDateTime = useMemo(
     () => canEditMeetingDetails && !isScheduling,
     [canEditMeetingDetails, isScheduling]
@@ -622,12 +621,8 @@ const ScheduleBase = () => {
                         renderParticipantChipLabel(participant as Participant)
                       }
                       placeholder="Add participants"
-                      addDisabled={
-                        !canManageParticipants || isUpdateMeetingIntent
-                      }
-                      isReadOnly={
-                        !canManageParticipants || isUpdateMeetingIntent
-                      }
+                      addDisabled={!canManageParticipants}
+                      isReadOnly={!canManageParticipants}
                     />
                   </Box>
                 ) : (
@@ -654,7 +649,7 @@ const ScheduleBase = () => {
                   aria-label="Add participants"
                   icon={<IoPersonAddOutline size={20} />}
                   onClick={handleParticipantsClick}
-                  isDisabled={!canManageParticipants || isUpdateMeetingIntent}
+                  isDisabled={!canManageParticipants}
                   bg="primary.200"
                   color="neutral.900"
                   borderRadius="6px"
@@ -723,11 +718,7 @@ const ScheduleBase = () => {
             <Flex width="100%" gap={4}>
               <FormControl
                 isInvalid={!isTitleValid}
-                isDisabled={
-                  !canEditMeetingDetails ||
-                  isScheduling ||
-                  isUpdateMeetingIntent
-                }
+                isDisabled={!canEditMeetingDetails || isScheduling}
               >
                 <FormLabel
                   _invalid={{
@@ -762,22 +753,14 @@ const ScheduleBase = () => {
                 )}
               </FormControl>
             </Flex>
-            <FormControl
-              isDisabled={
-                !canEditMeetingDetails || isScheduling || isUpdateMeetingIntent
-              }
-            >
+            <FormControl isDisabled={!canEditMeetingDetails || isScheduling}>
               <FormLabel htmlFor="info">Description (optional)</FormLabel>
               <RichTextEditor
                 id="info"
                 value={content}
                 onValueChange={setContent}
                 placeholder="Any information you want to share prior to the meeting?"
-                isDisabled={
-                  !canEditMeetingDetails ||
-                  isScheduling ||
-                  isUpdateMeetingIntent
-                }
+                isDisabled={!canEditMeetingDetails || isScheduling}
               />
             </FormControl>
 
@@ -789,11 +772,7 @@ const ScheduleBase = () => {
                 onChange={(val: MeetingProvider) => setMeetingProvider(val)}
                 value={meetingProvider}
                 w={'100%'}
-                isDisabled={
-                  !canEditMeetingDetails ||
-                  isScheduling ||
-                  isUpdateMeetingIntent
-                }
+                isDisabled={!canEditMeetingDetails || isScheduling}
               >
                 <VStack w={'100%'} gap={4}>
                   {meetingProviders.map(provider => (
@@ -820,7 +799,7 @@ const ScheduleBase = () => {
                 <Input
                   type="text"
                   placeholder="insert a custom meeting url"
-                  isDisabled={isScheduling || isUpdateMeetingIntent}
+                  isDisabled={isScheduling}
                   my={4}
                   value={meetingUrl}
                   onChange={e => setMeetingUrl(e.target.value)}
@@ -831,9 +810,7 @@ const ScheduleBase = () => {
             <FormControl
               w="100%"
               maxW="100%"
-              isDisabled={
-                !canEditMeetingDetails || isScheduling || isUpdateMeetingIntent
-              }
+              isDisabled={!canEditMeetingDetails || isScheduling}
             >
               <FormLabel>Meeting Reminders</FormLabel>
               <ChakraSelect
@@ -857,11 +834,6 @@ const ScheduleBase = () => {
                   }
                   setMeetingNotification(meetingNotification)
                 }}
-                isDisabled={
-                  !canEditMeetingDetails ||
-                  isScheduling ||
-                  isUpdateMeetingIntent
-                }
                 className="noLeftBorder timezone-select"
                 placeholder="Select Notification Alerts"
                 isMulti
@@ -892,9 +864,7 @@ const ScheduleBase = () => {
             <FormControl
               w="100%"
               maxW="100%"
-              isDisabled={
-                !canEditMeetingDetails || isScheduling || isUpdateMeetingIntent
-              }
+              isDisabled={!canEditMeetingDetails || isScheduling}
             >
               <FormLabel>Meeting Repeat</FormLabel>
               <ChakraSelect
@@ -907,11 +877,6 @@ const ScheduleBase = () => {
                       label: string
                     }
                   )
-                }
-                isDisabled={
-                  !canEditMeetingDetails ||
-                  isScheduling ||
-                  isUpdateMeetingIntent
                 }
                 // eslint-disable-next-line tailwindcss/no-custom-classname
                 className="noLeftBorder timezone-select"
@@ -961,7 +926,6 @@ const ScheduleBase = () => {
                     size={'lg'}
                     p={0}
                     marginInlineStart={0}
-                    isDisabled={isUpdateMeetingIntent}
                     onChange={e => {
                       const { checked } = e.target
                       setSelectedPermissions(prev =>
@@ -992,7 +956,7 @@ const ScheduleBase = () => {
                     onClick={onOpen}
                     borderColor="inherit"
                     borderWidth={1}
-                    cursor={isUpdateMeetingIntent ? 'not-allowed' : 'pointer'}
+                    cursor="pointer"
                     color={meetingOwners.length > 0 ? 'white' : 'neutral.400'}
                     justifyContent="space-between"
                     borderRadius="0.375rem"
@@ -1004,7 +968,6 @@ const ScheduleBase = () => {
                     variant="link"
                     textDecor="none"
                     fontWeight="400"
-                    isDisabled={isUpdateMeetingIntent}
                     _hover={{
                       textDecoration: 'none',
                     }}
@@ -1060,6 +1023,7 @@ const ScheduleBase = () => {
                   variant="outline"
                   flex={1}
                   flexBasis="40%"
+                  isDisabled={true}
                   _hover={{
                     bg: 'red.500',
                     color: 'white',

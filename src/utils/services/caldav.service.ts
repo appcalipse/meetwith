@@ -144,12 +144,15 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         : calendars[0]
 
       let ics: Awaited<ReturnType<typeof generateIcsServer>>
+      const rescheduleUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+      const cancelUrl = `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
       try {
         ics = await generateIcsServer(
           meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          rescheduleUrl,
+          cancelUrl,
           useParticipants,
           {
             accountAddress: calendarOwnerAccountAddress,
@@ -184,7 +187,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
           meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          rescheduleUrl,
+          cancelUrl,
           false
         )
 
@@ -247,11 +251,14 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
             (a: string) => isValidEmail(a) && a !== this.getConnectedEmail()
           ).length > 0
 
+      const rescheduleUrl = `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
+      const cancelUrl = `${appUrl}/dashboard/meetings?conferenceId=${meeting_id}&intent=${Intents.CANCEL_MEETING}`
       const ics = await generateIcsServer(
         meetingDetails,
         calendarOwnerAccountAddress,
         MeetingChangeType.UPDATE,
-        `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+        rescheduleUrl,
+        cancelUrl,
         useParticipants,
         {
           accountAddress: calendarOwnerAccountAddress,
@@ -277,7 +284,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
           meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.UPDATE,
-          `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          rescheduleUrl,
+          cancelUrl,
           false
         )
 
