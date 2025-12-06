@@ -1881,7 +1881,8 @@ const generateGoogleCalendarUrl = async (
   content?: string,
   meeting_url?: string,
   timezone?: string,
-  participants?: MeetingDecrypted['participants']
+  participants?: MeetingDecrypted['participants'],
+  recurrence = MeetingRepeat.NO_REPEAT
 ) => {
   let baseUrl = 'https://calendar.google.com/calendar/r/eventedit?sf=true'
   if (start && end) {
@@ -1914,6 +1915,21 @@ const generateGoogleCalendarUrl = async (
       })
     )
     baseUrl += `&to=${attendees.filter(val => !!val).join(',')}`
+  }
+  if (recurrence != MeetingRepeat.NO_REPEAT) {
+    let rrule = `RRULE:FREQ=${recurrence.toUpperCase()};INTERVAL=1`
+    const dayOfWeek = format(new Date(start!), 'eeeeee').toUpperCase()
+    const weekOfMonth = getWeekOfMonth(new Date(start!))
+
+    switch (recurrence) {
+      case MeetingRepeat.WEEKLY:
+        rrule += `;BYDAY=${dayOfWeek}`
+        break
+      case MeetingRepeat.MONTHLY:
+        rrule += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+        break
+    }
+    baseUrl += `&recur=${rrule}`
   }
   return baseUrl
 }

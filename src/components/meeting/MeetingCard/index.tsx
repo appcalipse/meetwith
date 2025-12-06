@@ -211,7 +211,8 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
             decryptedMeeting?.content,
             decryptedMeeting?.meeting_url,
             timezone,
-            decryptedMeeting?.participants
+            decryptedMeeting?.participants,
+            meeting.recurrence
           )
           showSuccessToast(
             'Opening Link',
