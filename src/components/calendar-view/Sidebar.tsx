@@ -2,11 +2,9 @@ import { VStack } from '@chakra-ui/layout'
 import * as React from 'react'
 
 import CalendarPicker from './CalendarPicker'
+import ConnectedCalendar from './ConnectedCalendar'
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface SidebarProps {}
-
-const Sidebar: React.FC<SidebarProps> = ({}) => {
+const Sidebar: React.FC = () => {
   return (
     <VStack
       minW={'300px'}
@@ -16,6 +14,7 @@ const Sidebar: React.FC<SidebarProps> = ({}) => {
       justifyContent="flex-start"
     >
       <CalendarPicker />
+      <ConnectedCalendar />
     </VStack>
   )
 }

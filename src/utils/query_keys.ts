@@ -5,8 +5,8 @@ export default class QueryKeys {
     return ['existingAccounts', addresses.sort(), fullInformation]
   }
 
-  static connectedCalendars(syncOnly = false) {
-    return ['connectedCalendars', syncOnly] as const
+  static connectedCalendars(syncOnly = false): readonly unknown[] {
+    return ['connectedCalendars', syncOnly]
   }
 
   static meetingsByAccount(account?: string) {

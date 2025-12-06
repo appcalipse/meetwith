@@ -2,7 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { DateTime } from 'luxon'
 import * as React from 'react'
 
-import { ConnectedCalendarCore } from '@/types/CalendarConnections'
+import {
+  CalendarSyncInfo,
+  ConnectedCalendarCore,
+} from '@/types/CalendarConnections'
 import { listConnectedCalendars } from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
 
@@ -33,10 +36,17 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     DateTime.now()
   )
   const { data: calendars } = useQuery({
-    queryKey: QueryKeys.connectedCalendars() as any,
+    queryKey: QueryKeys.connectedCalendars(),
     queryFn: listConnectedCalendars,
   })
-
+  const selectedCalendars = React.useMemo(() => {
+    if (calendars) {
+      return calendars.reduce((acc, calendar) => {
+        return acc.concat(calendar.calendars)
+      }, [] as CalendarSyncInfo[])
+    }
+    return []
+  }, [calendars])
   return (
     <CalendarContext.Provider
       value={{ calendars, currrentDate, setCurrentDate }}
