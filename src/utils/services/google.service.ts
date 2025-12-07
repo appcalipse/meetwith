@@ -565,44 +565,128 @@ export default class GoogleCalendarService
     dateTo: string
   ): Promise<EventBusyDate[]> {
     return new Promise((resolve, reject) =>
-      this.auth.getToken().then(myGoogleAuth => {
+      this.auth.getToken().then(async myGoogleAuth => {
         const calendar = google.calendar({
           version: 'v3',
           auth: myGoogleAuth,
         })
 
-        calendar.freebusy.query(
-          {
-            requestBody: {
-              timeMin: dateFrom,
-              timeMax: dateTo,
-              items: calendarIds.map(id => {
-                return {
-                  id,
-                }
-              }),
-            },
-          },
-          (err, apires) => {
-            if (err) {
-              reject(err)
-            }
-            let result: any = []
+        try {
+          // Use events.list to get full event details including title and ID
+          const eventsPromises = calendarIds.map(async calendarId => {
+            try {
+              const eventsResponse = await calendar.events.list({
+                calendarId,
+                timeMin: dateFrom,
+                timeMax: dateTo,
+                singleEvents: true,
+                orderBy: 'startTime',
+                maxResults: 2500,
+              })
 
-            if (apires?.data.calendars) {
-              result = Object.values(apires.data.calendars).reduce((c, i) => {
-                i.busy?.forEach(busyTime => {
-                  c.push({
-                    start: busyTime.start || '',
-                    end: busyTime.end || '',
-                  })
-                })
-                return c
-              }, [] as typeof result)
+              return (
+                eventsResponse.data.items?.map(event => ({
+                  start: event.start?.dateTime || event.start?.date || '',
+                  end: event.end?.dateTime || event.end?.date || '',
+                  title: event.summary || '',
+                  eventId: event.id || '',
+                  email: this.email,
+                  webLink: event.htmlLink || undefined,
+                })) || []
+              )
+            } catch (error) {
+              // Fallback to freebusy if events.list fails
+              console.warn(
+                `Failed to get event details for calendar ${calendarId}, falling back to freebusy`,
+                error
+              )
+              return []
             }
+          })
+
+          const eventsResults = await Promise.all(eventsPromises)
+          const result = eventsResults.flat()
+
+          // If we got no results from events.list, fallback to freebusy.query
+          if (result.length === 0) {
+            calendar.freebusy.query(
+              {
+                requestBody: {
+                  timeMin: dateFrom,
+                  timeMax: dateTo,
+                  items: calendarIds.map(id => {
+                    return {
+                      id,
+                    }
+                  }),
+                },
+              },
+              (err, apires) => {
+                if (err) {
+                  reject(err)
+                  return
+                }
+                let fallbackResult: any = []
+
+                if (apires?.data.calendars) {
+                  fallbackResult = Object.values(apires.data.calendars).reduce(
+                    (c, i) => {
+                      i.busy?.forEach(busyTime => {
+                        c.push({
+                          start: busyTime.start || '',
+                          end: busyTime.end || '',
+                        })
+                      })
+                      return c
+                    },
+                    [] as typeof fallbackResult
+                  )
+                }
+                resolve(fallbackResult)
+              }
+            )
+          } else {
             resolve(result)
           }
-        )
+        } catch (error) {
+          // Final fallback to freebusy.query if everything fails
+          calendar.freebusy.query(
+            {
+              requestBody: {
+                timeMin: dateFrom,
+                timeMax: dateTo,
+                items: calendarIds.map(id => {
+                  return {
+                    id,
+                  }
+                }),
+              },
+            },
+            (err, apires) => {
+              if (err) {
+                reject(err)
+                return
+              }
+              let fallbackResult: any = []
+
+              if (apires?.data.calendars) {
+                fallbackResult = Object.values(apires.data.calendars).reduce(
+                  (c, i) => {
+                    i.busy?.forEach(busyTime => {
+                      c.push({
+                        start: busyTime.start || '',
+                        end: busyTime.end || '',
+                      })
+                    })
+                    return c
+                  },
+                  [] as typeof fallbackResult
+                )
+              }
+              resolve(fallbackResult)
+            }
+          )
+        }
       })
     )
   }

@@ -97,6 +97,7 @@ const AllMeetingParticipants = () => {
         placeholder="Enter email, wallet address or ENS of user"
         onChange={onParticipantsChange}
         renderItem={renderParticipantItem}
+        isReadOnly
         addDisabled
       />
     </VStack>

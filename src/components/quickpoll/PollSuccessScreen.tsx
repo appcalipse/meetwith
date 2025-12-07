@@ -16,12 +16,14 @@ interface PollSuccessScreenProps {
   isOpen: boolean
   onClose: () => void
   pollTitle?: string
+  isProfileUpdateOnly?: boolean
 }
 
 const PollSuccessScreen: React.FC<PollSuccessScreenProps> = ({
   isOpen,
   onClose,
   pollTitle,
+  isProfileUpdateOnly = false,
 }) => {
   return (
     <Modal
@@ -58,7 +60,9 @@ const PollSuccessScreen: React.FC<PollSuccessScreenProps> = ({
                 color="text-primary"
                 textAlign="center"
               >
-                Availability Saved!
+                {isProfileUpdateOnly
+                  ? 'Profile Updated!'
+                  : 'Availability Saved!'}
               </Heading>
 
               <Text
@@ -67,26 +71,40 @@ const PollSuccessScreen: React.FC<PollSuccessScreenProps> = ({
                 textAlign="left"
                 lineHeight="1.5"
               >
-                Your availability for{' '}
-                <Text as="span" color="text-primary" fontWeight="600">
-                  {pollTitle || 'this poll'}
-                </Text>{' '}
-                has been saved successfully.
+                {isProfileUpdateOnly ? (
+                  <>
+                    Your profile details for{' '}
+                    <Text as="span" color="text-primary" fontWeight="600">
+                      {pollTitle || 'this poll'}
+                    </Text>{' '}
+                    have been updated successfully.
+                  </>
+                ) : (
+                  <>
+                    Your availability for{' '}
+                    <Text as="span" color="text-primary" fontWeight="600">
+                      {pollTitle || 'this poll'}
+                    </Text>{' '}
+                    has been saved successfully.
+                  </>
+                )}
               </Text>
             </VStack>
 
-            <Box bg="bg-surface" borderRadius="8px" w="full">
-              <Text
-                fontSize="16px"
-                color="text-secondary"
-                textAlign="left"
-                lineHeight="1.5"
-              >
-                The host will review everyone&apos;s availability and schedule
-                the meeting. You&apos;ll receive an email notification with the
-                final meeting details.
-              </Text>
-            </Box>
+            {!isProfileUpdateOnly && (
+              <Box bg="bg-surface" borderRadius="8px" w="full">
+                <Text
+                  fontSize="16px"
+                  color="text-secondary"
+                  textAlign="left"
+                  lineHeight="1.5"
+                >
+                  The host will review everyone&apos;s availability and schedule
+                  the meeting. You&apos;ll receive an email notification with
+                  the final meeting details.
+                </Text>
+              </Box>
+            )}
 
             <Button
               onClick={onClose}

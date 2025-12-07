@@ -441,6 +441,10 @@ export default class Office365CalendarService
                 return {
                   start: evt.start.dateTime + 'Z',
                   end: evt.end.dateTime + 'Z',
+                  title: evt.subject || '',
+                  eventId: evt.id || '',
+                  email: this.email,
+                  webLink: evt.webLink || undefined,
                 }
               })
             )
