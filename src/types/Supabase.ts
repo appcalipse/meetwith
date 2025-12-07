@@ -1377,34 +1377,46 @@ export type Database = {
       }
       subscriptions: {
         Row: {
-          chain: string
+          billing_plan_id: string | null
+          chain: string | null
           config_ipfs_hash: string | null
-          domain: string
+          domain: string | null
           expiry_time: string
           id: string
           owner_account: string
-          plan_id: number
+          plan_id: number | null
           registered_at: string
+          status: Database['public']['Enums']['SubscriptionStatus']
+          transaction_id: string | null
+          updated_at: string | null
         }
         Insert: {
-          chain: string
+          billing_plan_id?: string | null
+          chain?: string | null
           config_ipfs_hash?: string | null
-          domain: string
+          domain?: string | null
           expiry_time: string
           id?: string
           owner_account: string
-          plan_id: number
+          plan_id?: number | null
           registered_at: string
+          status: Database['public']['Enums']['SubscriptionStatus']
+          transaction_id?: string | null
+          updated_at?: string | null
         }
         Update: {
-          chain?: string
+          billing_plan_id?: string | null
+          chain?: string | null
           config_ipfs_hash?: string | null
-          domain?: string
+          domain?: string | null
           expiry_time?: string
           id?: string
           owner_account?: string
-          plan_id?: number
+          plan_id?: number | null
           registered_at?: string
+          status?: Database['public']['Enums']['SubscriptionStatus']
+          transaction_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -1413,6 +1425,163 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
+          },
+          {
+            foreignKeyName: 'subscriptions_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_transaction_id_fkey'
+            columns: ['transaction_id']
+            isOneToOne: false
+            referencedRelation: 'transactions'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      billing_plans: {
+        Row: {
+          billing_cycle: Database['public']['Enums']['BillingCycle']
+          created_at: string
+          id: string
+          name: string
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          billing_cycle: Database['public']['Enums']['BillingCycle']
+          created_at?: string
+          id: string
+          name: string
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          billing_cycle?: Database['public']['Enums']['BillingCycle']
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      billing_plan_providers: {
+        Row: {
+          billing_plan_id: string
+          created_at: string
+          id: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_product_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          billing_plan_id: string
+          created_at?: string
+          id?: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_product_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          billing_plan_id?: string
+          created_at?: string
+          id?: string
+          provider?: Database['public']['Enums']['PaymentProvider']
+          provider_product_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_plan_providers_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      stripe_subscriptions: {
+        Row: {
+          account_address: string
+          billing_plan_id: string
+          created_at: string
+          id: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_address: string
+          billing_plan_id: string
+          created_at?: string
+          id?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_address?: string
+          billing_plan_id?: string
+          created_at?: string
+          id?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_subscriptions_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          },
+          {
+            foreignKeyName: 'stripe_subscriptions_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      stripe_subscription_transactions: {
+        Row: {
+          created_at: string
+          id: string
+          stripe_subscription_id: string
+          transaction_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stripe_subscription_id: string
+          transaction_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stripe_subscription_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_subscription_transactions_stripe_subscription_id_fkey'
+            columns: ['stripe_subscription_id']
+            isOneToOne: false
+            referencedRelation: 'stripe_subscriptions'
+            referencedColumns: ['stripe_subscription_id']
+          },
+          {
+            foreignKeyName: 'stripe_subscription_transactions_transaction_id_fkey'
+            columns: ['transaction_id']
+            isOneToOne: true
+            referencedRelation: 'transactions'
+            referencedColumns: ['id']
           }
         ]
       }
@@ -1460,6 +1629,7 @@ export type Database = {
           meeting_type_id: string | null
           metadata: Json
           method: Database['public']['Enums']['PaymentType']
+          provider: Database['public']['Enums']['PaymentProvider'] | null
           provider_reference_id: string | null
           status: Database['public']['Enums']['PaymentStatus']
           token_address: string | null
@@ -1482,6 +1652,7 @@ export type Database = {
           meeting_type_id?: string | null
           metadata: Json
           method: Database['public']['Enums']['PaymentType']
+          provider?: Database['public']['Enums']['PaymentProvider'] | null
           provider_reference_id?: string | null
           status: Database['public']['Enums']['PaymentStatus']
           token_address?: string | null
@@ -1504,6 +1675,7 @@ export type Database = {
           meeting_type_id?: string | null
           metadata?: Json
           method?: Database['public']['Enums']['PaymentType']
+          provider?: Database['public']['Enums']['PaymentProvider'] | null
           provider_reference_id?: string | null
           status?: Database['public']['Enums']['PaymentStatus']
           token_address?: string | null
@@ -1776,6 +1948,8 @@ export type Database = {
       PaymentDirection: 'debit' | 'credit'
       PaymentProvider: 'stripe'
       PaymentStatus: 'cancelled' | 'pending' | 'completed' | 'failed'
+      BillingCycle: 'monthly' | 'yearly'
+      SubscriptionStatus: 'active' | 'cancelled' | 'expired'
       PaymentType: 'fiat' | 'crypto'
       PlanType: 'one_off' | 'sessions'
       PollStatus: 'ongoing' | 'completed' | 'cancelled' | 'expired'
@@ -1951,6 +2125,8 @@ export const Constants = {
       PaymentDirection: ['debit', 'credit'],
       PaymentProvider: ['stripe'],
       PaymentStatus: ['cancelled', 'pending', 'completed', 'failed'],
+      BillingCycle: ['monthly', 'yearly'],
+      SubscriptionStatus: ['active', 'cancelled', 'expired'],
       PaymentType: ['fiat', 'crypto'],
       PlanType: ['one_off', 'sessions'],
       PollStatus: ['ongoing', 'completed', 'cancelled', 'expired'],
