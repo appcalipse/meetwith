@@ -20,7 +20,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         payload.meeting_type_id
       )
       const paymentAccount = await getActivePaymentAccount(
-        meetingType.account_owner_address
+        meetingType.account_owner_address || ''
       )
       if (
         !paymentAccount.provider_account_id ||
@@ -32,7 +32,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       const transaction = await createCheckOutTransaction(payload)
       const avatarUrl = await getAccountAvatarUrl(
-        meetingType.account_owner_address
+        meetingType.account_owner_address || ''
       )
       const metadata = {
         guest_address: payload?.guest_address || '',
