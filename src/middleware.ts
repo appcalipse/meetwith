@@ -38,7 +38,9 @@ export function middleware(request: NextRequest) {
 export const notAuthorized = () => {
   return NextResponse.redirect(new URL('/401', apiUrl))
 }
-
+export const logout = () => {
+  return NextResponse.redirect(new URL('/logout', apiUrl))
+}
 // Supports both a single string value or an array of matchers
 export const config = {
   matcher: ['/api/secure/:path*', '/api/server/:path*'],
@@ -62,8 +64,7 @@ const handleSecureRoute = async (req: NextRequest) => {
       'Content-Type': 'application/json',
     },
   })
-
-  if (response.status !== 200) return notAuthorized()
+  if (response.status !== 200) return logout()
 }
 
 const handleServerRoute = async (req: NextRequest) => {

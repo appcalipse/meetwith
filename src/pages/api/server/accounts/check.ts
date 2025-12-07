@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { notAuthorized } from '@/middleware'
 import { checkSignature } from '@/utils/cryptography'
 import { getAccountNonce } from '@/utils/database'
 import { AccountNotFoundError } from '@/utils/errors'
@@ -11,9 +10,10 @@ const checkAccount = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const nonce = await getAccountNonce(address)
       const recovered = checkSignature(signature, nonce)
-
       if (address.toLowerCase() !== recovered.toLowerCase()) {
-        return notAuthorized()
+        return res.status(401).json({
+          error: 'Unauthorized: Signature does not match address',
+        })
       }
 
       return res.send('Authorized')
