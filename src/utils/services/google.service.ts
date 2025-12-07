@@ -717,14 +717,6 @@ export default class GoogleCalendarService
 
       const response = await calendar.events.watch(watchRequest)
 
-      console.trace('Google Calendar webhook registered:', {
-        channelId,
-        calendarId,
-        webhookUrl,
-        expiration: response.data.expiration,
-        resourceId: response.data.resourceId,
-      })
-
       return {
         channelId: response.data.id,
         resourceId: response.data.resourceId,
@@ -733,7 +725,6 @@ export default class GoogleCalendarService
         webhookUrl,
       }
     } catch (error) {
-      console.error('Failed to register Google Calendar webhook:', error)
       throw error
     }
   }
@@ -750,7 +741,6 @@ export default class GoogleCalendarService
         },
       })
     } catch (error) {
-      console.error('Failed to stop Google Calendar webhook:', error)
       throw error
     }
   }
@@ -767,7 +757,6 @@ export default class GoogleCalendarService
       // Create a new webhook
       return await this.setWebhookUrl(webhookUrl, calendarId)
     } catch (error) {
-      console.error('Failed to refresh Google Calendar webhook:', error)
       throw error
     }
   }

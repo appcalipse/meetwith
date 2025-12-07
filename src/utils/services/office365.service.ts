@@ -9,7 +9,7 @@ import {
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
@@ -389,9 +389,11 @@ export default class Office365CalendarService
           address:
             calendarOwnerAccountAddress === participant.account_address
               ? this.getConnectedEmail()
-              : participant.guest_email ||
-                noNoReplyEmailForAccount(
-                  (participant.name || participant.account_address)!
+              : CalendarServiceHelper.sanitizeEmail(
+                  participant.guest_email ||
+                    noNoReplyEmailForAccount(
+                      (participant.name || participant.account_address)!
+                    )
                 ),
         },
       })

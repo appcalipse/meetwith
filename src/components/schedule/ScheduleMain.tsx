@@ -10,7 +10,7 @@ import {
 import { addMinutes, differenceInMinutes } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import { useRouter } from 'next/router'
-import React, { FC, useContext, useEffect, useState } from 'react'
+import { FC, useContext, useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
 import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
@@ -89,7 +89,6 @@ import {
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
-import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 export enum Page {
   SCHEDULE_TIME,
@@ -317,9 +316,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         decryptedMeeting?.participants,
         currentAccount?.address
       )
-      if (isSchedulerOrOwner && participants.length === 2) {
-        setCanCancel(true)
-      } else if (isCurrentUserScheduler) {
+      if (isSchedulerOrOwner) {
         setCanCancel(true)
       } else {
         setCanCancel(false)
