@@ -122,10 +122,33 @@ CREATE INDEX idx_stripe_sub_trans_transaction ON stripe_subscription_transaction
 
 ```sql
 -- Add new columns to existing subscriptions table (all nullable for backward compatibility)
-ALTER TABLE subscriptions ADD COLUMN billing_plan_id VARCHAR REFERENCES billing_plans(id);
+ALTER TABLE subscriptions ADD COLUMN billing_plan_id VARCHAR;
 ALTER TABLE subscriptions ADD COLUMN status subscription_status NOT NULL DEFAULT 'active';
-ALTER TABLE subscriptions ADD COLUMN transaction_id UUID NOT NULL REFERENCES transactions(id);
+ALTER TABLE subscriptions ADD COLUMN transaction_id UUID; -- Nullable: legacy subscriptions don't have transactions
 ALTER TABLE subscriptions ADD COLUMN updated_at TIMESTAMP;
+
+-- Add foreign key constraints (after columns exist)
+ALTER TABLE subscriptions
+  ADD CONSTRAINT subscriptions_billing_plan_id_fkey
+  FOREIGN KEY (billing_plan_id)
+  REFERENCES billing_plans(id)
+  ON UPDATE NO ACTION
+  ON DELETE RESTRICT;
+
+ALTER TABLE subscriptions
+  ADD CONSTRAINT subscriptions_transaction_id_fkey
+  FOREIGN KEY (transaction_id)
+  REFERENCES transactions(id)
+  ON UPDATE NO ACTION
+  ON DELETE RESTRICT;
+
+-- Add CHECK constraint: billing subscriptions must have transaction_id
+ALTER TABLE subscriptions
+  ADD CONSTRAINT subscriptions_billing_requires_transaction
+  CHECK (
+    (billing_plan_id IS NULL) OR  -- Legacy subscription (no billing_plan_id)
+    (transaction_id IS NOT NULL)  -- Billing subscription (must have transaction_id)
+  );
 
 -- Make legacy fields nullable for new billing subscriptions
 ALTER TABLE subscriptions ALTER COLUMN plan_id DROP NOT NULL;
@@ -252,11 +275,25 @@ ALTER TABLE transactions ADD COLUMN provider payment_provider;
 
 #### 2.1 Stripe Products and Prices Setup
 
-- [ ] Create Stripe products for Monthly and Yearly plans in Stripe Dashboard
-- [ ] Create Stripe prices for each plan (monthly and yearly)
-- [ ] Store Stripe product IDs in `billing_plan_providers` table (not price IDs)
-- [ ] Document Stripe product IDs for reference
-- [ ] Note: Query Stripe API for prices when needed using `stripe.prices.list({ product: 'prod_xxx' })`
+**See `STRIPE_PRODUCTS_SETUP_GUIDE.md` for detailed step-by-step instructions.**
+
+- [ ] Follow the guide to create Monthly Pro Plan ($8/month) in Stripe Dashboard
+- [ ] Follow the guide to create Yearly Pro Plan ($80/year) in Stripe Dashboard
+- [ ] Copy and document Monthly Product ID (`prod_xxx`)
+- [ ] Copy and document Yearly Product ID (`prod_xxx`)
+- [ ] Copy Price IDs for reference (optional, but useful for testing)
+- [ ] Insert Product IDs into `billing_plan_providers` table using SQL:
+
+  ```sql
+  INSERT INTO billing_plan_providers (provider, billing_plan_id, provider_product_id)
+  VALUES ('stripe', 'monthly', 'prod_XXXXXXXXXX');
+
+  INSERT INTO billing_plan_providers (provider, billing_plan_id, provider_product_id)
+  VALUES ('stripe', 'yearly', 'prod_YYYYYYYYYY');
+  ```
+
+- [ ] Verify products are created correctly in Stripe Dashboard
+- [ ] Note: We store `product_id` and query Stripe API for prices when needed using `stripe.prices.list({ product: 'prod_xxx' })`
 
 #### 2.2 Stripe Subscription Creation API
 
