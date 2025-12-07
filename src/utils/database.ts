@@ -6927,7 +6927,6 @@ const getPaymentPreferences = async (
     .maybeSingle()
 
   if (error) {
-    console.error('Database error in getPaymentPreferences:', error)
     if (error.code === 'PGRST116') {
       // No rows returned
       return null
