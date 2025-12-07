@@ -43,6 +43,7 @@ image:
 
 variables:
   DOPPLER_TOKEN: ${DOPPLER_TOKEN}
+
 environments:
   preview:
     variables:
