@@ -5,14 +5,17 @@ import {
   Heading,
   HStack,
   Icon,
+  Link,
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
 import React, { useCallback, useContext, useMemo, useState } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import {
   ParticipantInfo,
@@ -26,8 +29,10 @@ import {
 } from '@/types/QuickPoll'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { queryClient } from '@/utils/react_query'
+import { getGuestPollDetails } from '@/utils/storage'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
+import InviteByIdModal from '../schedule/participants/InviteByIdModal'
 import InviteParticipants from '../schedule/participants/InviteParticipants'
 
 interface QuickPollParticipantsProps {
@@ -68,14 +73,17 @@ export function QuickPollParticipants({
   onParticipantRemoved,
 }: QuickPollParticipantsProps) {
   const { currentAccount } = useContext(AccountContext)
+  const router = useRouter()
   const {
     groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
     groupParticipants,
   } = useParticipants()
+  const { setCurrentParticipantId } = useQuickPollAvailability()
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [isInviteByIdModalOpen, setIsInviteByIdModalOpen] = useState(false)
   const { setParticipants } = useParticipants()
 
   const handleParticipantAdded = useCallback(() => {
@@ -238,6 +246,25 @@ export function QuickPollParticipants({
     })
   }
 
+  const handleEditProfile = useCallback(() => {
+    if (!pollData?.poll?.id) return
+
+    // Get participant ID from localStorage for this poll
+    const guestDetails = getGuestPollDetails(pollData.poll.id)
+
+    if (guestDetails?.participantId) {
+      setCurrentParticipantId(guestDetails.participantId)
+      router.push({
+        pathname: router.pathname,
+        query: {
+          ...router.query,
+          tab: 'guest-details',
+          participantId: guestDetails.participantId,
+        },
+      })
+    }
+  }, [pollData?.poll?.id, router, setCurrentParticipantId])
+
   return (
     <VStack
       py={{ base: 6, md: 7 }}
@@ -338,6 +365,23 @@ export function QuickPollParticipants({
                       Organizer
                     </Text>
                   )}
+                  {/* Show Edit profile link for guests viewing their own profile */}
+                  {!participant.account_address &&
+                    participant.guest_email &&
+                    currentGuestEmail &&
+                    participant.guest_email.toLowerCase() ===
+                      currentGuestEmail.toLowerCase() && (
+                      <Link
+                        fontSize={{ base: 'xs', md: 'sm' }}
+                        color="primary.200"
+                        textDecoration="underline"
+                        cursor="pointer"
+                        onClick={handleEditProfile}
+                        _hover={{ color: 'primary.300' }}
+                      >
+                        Edit profile
+                      </Link>
+                    )}
                 </VStack>
               </HStack>
               {isHost && (
@@ -357,17 +401,29 @@ export function QuickPollParticipants({
       </VStack>
 
       {isHost && (
-        <Button
-          variant="outline"
-          colorScheme="primary"
-          w="100%"
-          px={{ base: 3, md: 4 }}
-          py={{ base: 2.5, md: 3 }}
-          fontSize={{ base: 'sm', md: 'md' }}
-          onClick={handleOpenInviteModal}
-        >
-          Add participants
-        </Button>
+        <VStack gap={3} w="100%">
+          <Button
+            colorScheme="primary"
+            w="100%"
+            px={{ base: 3, md: 4 }}
+            py={{ base: 2.5, md: 3 }}
+            fontSize={{ base: 'sm', md: 'md' }}
+            onClick={handleOpenInviteModal}
+          >
+            Add participants to poll
+          </Button>
+          <Button
+            variant="outline"
+            colorScheme="primary"
+            w="100%"
+            px={{ base: 3, md: 4 }}
+            py={{ base: 2.5, md: 3 }}
+            fontSize={{ base: 'sm', md: 'md' }}
+            onClick={() => setIsInviteByIdModalOpen(true)}
+          >
+            Invite participants to poll
+          </Button>
+        </VStack>
       )}
 
       <InviteParticipants
@@ -378,6 +434,16 @@ export function QuickPollParticipants({
         onInviteSuccess={() => {
           handleParticipantAdded()
           setIsInviteModalOpen(false)
+        }}
+      />
+
+      <InviteByIdModal
+        isOpen={isInviteByIdModalOpen}
+        onClose={() => setIsInviteByIdModalOpen(false)}
+        pollData={pollData}
+        onInviteSuccess={() => {
+          handleParticipantAdded()
+          setIsInviteByIdModalOpen(false)
         }}
       />
     </VStack>
