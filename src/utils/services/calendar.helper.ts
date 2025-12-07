@@ -76,7 +76,9 @@ export const CalendarServiceHelper = {
 
     return message
   },
-
+  sanitizeEmail(email: string): string {
+    return email.replace(/\+[^@]*@/, '@')
+  },
   buildAttendeesList: (
     participants: ParticipantInfo[],
     calendarOwnerAccountAddress: string,
@@ -89,9 +91,11 @@ export const CalendarServiceHelper = {
       const email =
         calendarOwnerAccountAddress === participant.account_address
           ? getConnectedEmail()
-          : participant.guest_email ||
-            noNoReplyEmailForAccount(
-              (participant.name || participant.account_address)!
+          : CalendarServiceHelper.sanitizeEmail(
+              participant.guest_email ||
+                noNoReplyEmailForAccount(
+                  (participant.name || participant.account_address)!
+                )
             )
 
       // Only add if we haven't already added this email

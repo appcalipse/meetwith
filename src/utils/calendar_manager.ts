@@ -1,4 +1,3 @@
-import Sentry from '@sentry/nextjs'
 import {
   format,
   getDate,
@@ -19,12 +18,7 @@ import {
 } from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
-import {
-  Account,
-  BaseMeetingType,
-  DayAvailability,
-  MeetingType,
-} from '@/types/Account'
+import { Account, DayAvailability } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
@@ -53,7 +47,6 @@ import {
   cancelMeeting as apiCancelMeeting,
   generateMeetingUrl,
   getAccount,
-  getConferenceMeeting,
   getExistingAccounts,
   getMeeting,
   getMeetingGuest,
@@ -69,14 +62,13 @@ import {
 
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
-import { NO_MEETING_TYPE, SessionType } from './constants/meeting-types'
+import { SessionType } from './constants/meeting-types'
 import { MeetingPermissions } from './constants/schedule'
 import { getContentFromEncrypted, simpleHash } from './cryptography'
 import {
   GuestListModificationDenied,
   GuestRescheduleForbiddenError,
   InvalidURL,
-  MeetingCancelConflictError,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
   MeetingCreationError,
@@ -1269,9 +1261,11 @@ const generateIcs = (
           destination &&
           destination.accountAddress === participant.account_address
             ? destination.email
-            : participant.guest_email ||
-              noNoReplyEmailForAccount(
-                (participant.name || participant.account_address)!
+            : CalendarServiceHelper.sanitizeEmail(
+                participant.guest_email ||
+                  noNoReplyEmailForAccount(
+                    (participant.name || participant.account_address)!
+                  )
               ),
         rsvp: participant.status === ParticipationStatus.Accepted,
         partstat: participantStatusToICSStatus(participant.status),
