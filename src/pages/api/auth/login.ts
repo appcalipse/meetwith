@@ -1,11 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
+import EthCrypto from 'eth-crypto'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { Account } from '@/types/Account'
 import { MeetingProvider } from '@/types/Meeting'
 
-import { checkSignature } from '../../../utils/cryptography'
-import { getAccountFromDB } from '../../../utils/database'
+import { checkSignature, encryptContent } from '../../../utils/cryptography'
+import { getAccountFromDB, initDB } from '../../../utils/database'
 
 const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -20,7 +22,28 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
       if (identifier?.toLowerCase() !== recovered.toLowerCase()) {
         return res.status(401).send('Not authorized')
       }
+      if (account && !account.internal_pub_key) {
+        // The account is a migrated one and does not have an internal pub key yet
+        const db = initDB()
+        const newIdentity = EthCrypto.createIdentity()
 
+        const encryptedPvtKey = encryptContent(
+          signature,
+          newIdentity.privateKey
+        )
+        await db.supabase.from<Account>('accounts').upsert(
+          [
+            {
+              address: account.address.toLowerCase(),
+              internal_pub_key: newIdentity.publicKey,
+              encoded_signature: encryptedPvtKey,
+              nonce: account.nonce,
+              is_invited: false,
+            },
+          ],
+          { onConflict: 'address' }
+        )
+      }
       // set the account in the session in order to use it on other requests
       req.session.account = {
         ...account,
