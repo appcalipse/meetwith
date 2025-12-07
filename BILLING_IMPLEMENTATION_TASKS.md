@@ -11,55 +11,27 @@
 
 ## Phase 1: Foundation - Types & Enums (Start Here)
 
-### Task 1.1: Create Billing Types File
+### Task 1.1: Create Billing Types File ✅
 
 **File**: `src/types/Billing.ts`
 
-- [ ] Create `BillingCycle` enum: `'monthly' | 'yearly'`
-- [ ] Create `SubscriptionStatus` enum: `'active' | 'cancelled' | 'expired'`
-- [ ] Create `PaymentProvider` enum: `'stripe'` (for now)
-- [ ] Create `BillingPlan` interface:
-  ```typescript
-  {
-    id: string
-    name: string
-    price: number
-    billing_cycle: BillingCycle
-    created_at: string
-    updated_at: string | null
-  }
-  ```
-- [ ] Create `BillingPlanProvider` interface:
-  ```typescript
-  {
-    id: string
-    provider: PaymentProvider
-    billing_plan_id: string
-    provider_product_id: string
-    created_at: string
-    updated_at: string | null
-  }
-  ```
-- [ ] Create `StripeSubscription` interface:
-  ```typescript
-  {
-    id: string
-    account_address: string
-    stripe_subscription_id: string
-    stripe_customer_id: string
-    billing_plan_id: string
-    created_at: string
-    updated_at: string | null
-  }
-  ```
-- [ ] Create `StripeSubscriptionTransaction` interface
-- [ ] Create `SubscriptionPeriod` interface (for subscription periods)
-- [ ] Create API request/response types:
+- [x] Create `BillingCycle` enum: `'monthly' | 'yearly'`
+- [x] Create `SubscriptionStatus` enum: `'active' | 'cancelled' | 'expired'`
+- [x] Create `PaymentProvider` enum: `'stripe'` (for now)
+- [x] Create `BillingPlan` interface
+- [x] Create `BillingPlanProvider` interface
+- [x] Create `StripeSubscription` interface
+- [x] Create `StripeSubscriptionTransaction` interface
+- [x] Create `SubscriptionPeriod` interface (for subscription periods)
+- [x] Create API request/response types:
   - `SubscribeRequest`, `SubscribeResponse`
   - `CancelSubscriptionRequest`, `CancelSubscriptionResponse`
   - `GetSubscriptionResponse`, `GetPlansResponse`
+  - `GetSubscriptionHistoryResponse` (bonus)
+- [x] Added helper types: `BillingPlanWithProvider`, `ActiveSubscription`, webhook types
 
-**Estimated Time**: 30-45 minutes
+**Estimated Time**: 30-45 minutes  
+**Status**: ✅ Completed
 
 ---
 
