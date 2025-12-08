@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '12.2.2 (db9da0b)'
+    PostgrestVersion: '10.2.0 (e07807d)'
   }
   public: {
     Tables: {
@@ -32,7 +32,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'account_notifications_account_address_fkey'
+            foreignKeyName: 'public_account_notifications_account_address_fkey'
             columns: ['account_address']
             isOneToOne: true
             referencedRelation: 'accounts'
@@ -42,7 +42,7 @@ export type Database = {
       }
       account_preferences: {
         Row: {
-          availableTypes: Json[]
+          availableTypes: Json[] | null
           availaibility_id: string | null
           avatar_url: string | null
           description: string | null
@@ -52,10 +52,10 @@ export type Database = {
             | null
           name: string | null
           owner_account_address: string
-          socialLinks: Json[] | null
+          socialLinks: Json[]
         }
         Insert: {
-          availableTypes?: Json[]
+          availableTypes?: Json[] | null
           availaibility_id?: string | null
           avatar_url?: string | null
           description?: string | null
@@ -65,10 +65,10 @@ export type Database = {
             | null
           name?: string | null
           owner_account_address: string
-          socialLinks?: Json[] | null
+          socialLinks: Json[]
         }
         Update: {
-          availableTypes?: Json[]
+          availableTypes?: Json[] | null
           availaibility_id?: string | null
           avatar_url?: string | null
           description?: string | null
@@ -78,7 +78,7 @@ export type Database = {
             | null
           name?: string | null
           owner_account_address?: string
-          socialLinks?: Json[] | null
+          socialLinks?: Json[]
         }
         Relationships: [
           {
@@ -89,7 +89,7 @@ export type Database = {
             referencedColumns: ['id']
           },
           {
-            foreignKeyName: 'account_preferences_owner_account_address_fkey'
+            foreignKeyName: 'public_account_preferences_owner_account_address_fkey'
             columns: ['owner_account_address']
             isOneToOne: true
             referencedRelation: 'accounts'
@@ -105,7 +105,7 @@ export type Database = {
           id: string
           internal_pub_key: string | null
           is_invited: boolean | null
-          nonce: number
+          nonce: string | null
         }
         Insert: {
           address: string
@@ -114,7 +114,7 @@ export type Database = {
           id?: string
           internal_pub_key?: string | null
           is_invited?: boolean | null
-          nonce: number
+          nonce?: string | null
         }
         Update: {
           address?: string
@@ -123,7 +123,7 @@ export type Database = {
           id?: string
           internal_pub_key?: string | null
           is_invited?: boolean | null
-          nonce?: number
+          nonce?: string | null
         }
         Relationships: []
       }
@@ -164,6 +164,68 @@ export type Database = {
             referencedColumns: ['address']
           }
         ]
+      }
+      billing_plan_providers: {
+        Row: {
+          billing_plan_id: string
+          created_at: string
+          id: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_product_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          billing_plan_id: string
+          created_at?: string
+          id?: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_product_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          billing_plan_id?: string
+          created_at?: string
+          id?: string
+          provider?: Database['public']['Enums']['PaymentProvider']
+          provider_product_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_plan_providers_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      billing_plans: {
+        Row: {
+          billing_cycle: Database['public']['Enums']['BillingCycle']
+          created_at: string
+          id: string
+          name: string
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          billing_cycle: Database['public']['Enums']['BillingCycle']
+          created_at?: string
+          id: string
+          name: string
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          billing_cycle?: Database['public']['Enums']['BillingCycle']
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       calendar_webhooks: {
         Row: {
@@ -214,7 +276,7 @@ export type Database = {
           email: string
           id: number
           payload: string
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           sync: boolean
           updated: string | null
         }
@@ -225,7 +287,7 @@ export type Database = {
           email: string
           id?: number
           payload: string
-          provider: string
+          provider: Database['public']['Enums']['TimeSlotSource']
           sync?: boolean
           updated?: string | null
         }
@@ -236,13 +298,13 @@ export type Database = {
           email?: string
           id?: number
           payload?: string
-          provider?: string
+          provider?: Database['public']['Enums']['TimeSlotSource']
           sync?: boolean
           updated?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: 'connected_calendars_account_address_fkey'
+            foreignKeyName: 'public_connected_calendars_account_address_fkey'
             columns: ['account_address']
             isOneToOne: false
             referencedRelation: 'accounts'
@@ -363,22 +425,33 @@ export type Database = {
           discord_id?: string
           id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_discord_accounts_address_fkey'
+            columns: ['address']
+            isOneToOne: true
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       emails: {
         Row: {
           created_at: string | null
-          email: string
+          email: string | null
+          id: number
           plan: string | null
         }
         Insert: {
           created_at?: string | null
-          email: string
+          email?: string | null
+          id?: number
           plan?: string | null
         }
         Update: {
           created_at?: string | null
-          email?: string
+          email?: string | null
+          id?: number
           plan?: string | null
         }
         Relationships: []
@@ -431,26 +504,52 @@ export type Database = {
           owner?: string
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_gate_definition_owner_fkey'
+            columns: ['owner']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       gate_usage: {
         Row: {
           gate_id: string
           gated_entity_id: string
-          id: string
+          id: number
           type: string
         }
         Insert: {
           gate_id: string
           gated_entity_id: string
-          id?: string
+          id?: number
           type: string
         }
         Update: {
           gate_id?: string
           gated_entity_id?: string
-          id?: string
+          id?: number
           type?: string
+        }
+        Relationships: []
+      }
+      google_events_mapping: {
+        Row: {
+          calendar_id: string
+          event_id: string
+          mww_id: string
+        }
+        Insert: {
+          calendar_id: string
+          event_id: string
+          mww_id: string
+        }
+        Update: {
+          calendar_id?: string
+          event_id?: string
+          mww_id?: string
         }
         Relationships: []
       }
@@ -484,14 +583,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'group_invites_group_id_fkey'
+            foreignKeyName: 'public_group_invites_group_id_fkey'
             columns: ['group_id']
             isOneToOne: false
             referencedRelation: 'groups'
             referencedColumns: ['id']
           },
           {
-            foreignKeyName: 'group_invites_user_id_fkey'
+            foreignKeyName: 'public_group_invites_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
             referencedRelation: 'accounts'
@@ -527,7 +626,15 @@ export type Database = {
           team_structure?: Json | null
           title?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_group_meeting_request_owner_fkey'
+            columns: ['owner']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       group_members: {
         Row: {
@@ -553,14 +660,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'group_members_group_id_fkey'
+            foreignKeyName: 'public_group_members_group_id_fkey'
             columns: ['group_id']
             isOneToOne: false
             referencedRelation: 'groups'
             referencedColumns: ['id']
           },
           {
-            foreignKeyName: 'group_members_member_id_fkey'
+            foreignKeyName: 'public_group_members_member_id_fkey'
             columns: ['member_id']
             isOneToOne: false
             referencedRelation: 'accounts'
@@ -592,23 +699,35 @@ export type Database = {
         }
         Relationships: []
       }
-      guests: {
+      groups_to_meetings: {
         Row: {
-          created_at: string
-          id: string
-          meeting_info_encrypted: Json | null
+          group_id: string
+          meeting_id: string
         }
         Insert: {
-          created_at: string
-          id: string
-          meeting_info_encrypted?: Json | null
+          group_id: string
+          meeting_id: string
         }
         Update: {
-          created_at?: string
-          id?: string
-          meeting_info_encrypted?: Json | null
+          group_id?: string
+          meeting_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_groups_to_meetings_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'public_groups_to_meetings_meeting_id_fkey'
+            columns: ['meeting_id']
+            isOneToOne: false
+            referencedRelation: 'group_meeting_request'
+            referencedColumns: ['id']
+          }
+        ]
       }
       meeting_sessions: {
         Row: {
@@ -686,7 +805,7 @@ export type Database = {
       }
       meeting_type: {
         Row: {
-          account_owner_address: string | null
+          account_owner_address: string
           created_at: string
           custom_link: string | null
           deleted_at: string | null
@@ -698,13 +817,13 @@ export type Database = {
             | Database['public']['Enums']['MeetingProvider'][]
             | null
           min_notice_minutes: number | null
-          slug: string
+          slug: string | null
           title: string | null
           type: Database['public']['Enums']['SessionType']
           updated_at: string
         }
         Insert: {
-          account_owner_address?: string | null
+          account_owner_address: string
           created_at?: string
           custom_link?: string | null
           deleted_at?: string | null
@@ -716,13 +835,13 @@ export type Database = {
             | Database['public']['Enums']['MeetingProvider'][]
             | null
           min_notice_minutes?: number | null
-          slug: string
+          slug?: string | null
           title?: string | null
           type?: Database['public']['Enums']['SessionType']
           updated_at?: string
         }
         Update: {
-          account_owner_address?: string | null
+          account_owner_address?: string
           created_at?: string
           custom_link?: string | null
           deleted_at?: string | null
@@ -734,7 +853,7 @@ export type Database = {
             | Database['public']['Enums']['MeetingProvider'][]
             | null
           min_notice_minutes?: number | null
-          slug?: string
+          slug?: string | null
           title?: string | null
           type?: Database['public']['Enums']['SessionType']
           updated_at?: string
@@ -787,22 +906,22 @@ export type Database = {
       }
       meeting_type_calendars: {
         Row: {
-          calendar_id: number | null
+          calendar_id: number
           created_at: string
           id: string
-          meeting_type_id: string | null
+          meeting_type_id: string
         }
         Insert: {
-          calendar_id?: number | null
+          calendar_id: number
           created_at?: string
           id?: string
-          meeting_type_id?: string | null
+          meeting_type_id: string
         }
         Update: {
-          calendar_id?: number | null
+          calendar_id?: number
           created_at?: string
           id?: string
-          meeting_type_id?: string | null
+          meeting_type_id?: string
         }
         Relationships: [
           {
@@ -885,11 +1004,11 @@ export type Database = {
           permissions:
             | Database['public']['Enums']['MeetingPermissions'][]
             | null
-          provider: string
+          provider: string | null
           recurrence: Database['public']['Enums']['MeetingRepeat']
           reminders: Json[] | null
           slots: string[]
-          start: string
+          start: string | null
           title: string | null
           version: Database['public']['Enums']['MeetingVersion'] | null
         }
@@ -903,11 +1022,11 @@ export type Database = {
           permissions?:
             | Database['public']['Enums']['MeetingPermissions'][]
             | null
-          provider: string
+          provider?: string | null
           recurrence?: Database['public']['Enums']['MeetingRepeat']
           reminders?: Json[] | null
           slots: string[]
-          start: string
+          start?: string | null
           title?: string | null
           version?: Database['public']['Enums']['MeetingVersion'] | null
         }
@@ -921,11 +1040,11 @@ export type Database = {
           permissions?:
             | Database['public']['Enums']['MeetingPermissions'][]
             | null
-          provider?: string
+          provider?: string | null
           recurrence?: Database['public']['Enums']['MeetingRepeat']
           reminders?: Json[] | null
           slots?: string[]
-          start?: string
+          start?: string | null
           title?: string | null
           version?: Database['public']['Enums']['MeetingVersion'] | null
         }
@@ -1174,6 +1293,18 @@ export type Database = {
         }
         Relationships: []
       }
+      result: {
+        Row: {
+          jsonb_agg: Json | null
+        }
+        Insert: {
+          jsonb_agg?: Json | null
+        }
+        Update: {
+          jsonb_agg?: Json | null
+        }
+        Relationships: []
+      }
       slot_instance: {
         Row: {
           account_address: string | null
@@ -1234,7 +1365,7 @@ export type Database = {
           original_end: string
           original_start: string
           recurrence: Database['public']['Enums']['MeetingRepeat']
-          rrule: string | null
+          rrule: string[] | null
           slot_id: string
         }
         Insert: {
@@ -1246,7 +1377,7 @@ export type Database = {
           original_end: string
           original_start: string
           recurrence: Database['public']['Enums']['MeetingRepeat']
-          rrule?: string | null
+          rrule?: string[] | null
           slot_id: string
         }
         Update: {
@@ -1258,7 +1389,7 @@ export type Database = {
           original_end?: string
           original_start?: string
           recurrence?: Database['public']['Enums']['MeetingRepeat']
-          rrule?: string | null
+          rrule?: string[] | null
           slot_id?: string
         }
         Relationships: [
@@ -1308,46 +1439,161 @@ export type Database = {
           start?: string
           version?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_slots_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
-      subscriptions: {
+      stripe_subscription_transactions: {
         Row: {
-          chain: string
-          config_ipfs_hash: string | null
-          domain: string
-          expiry_time: string
+          created_at: string
           id: string
-          owner_account: string
-          plan_id: number
-          registered_at: string
+          stripe_subscription_id: string
+          transaction_id: string
         }
         Insert: {
-          chain: string
-          config_ipfs_hash?: string | null
-          domain: string
-          expiry_time: string
+          created_at?: string
           id?: string
-          owner_account: string
-          plan_id: number
-          registered_at: string
+          stripe_subscription_id: string
+          transaction_id: string
         }
         Update: {
-          chain?: string
-          config_ipfs_hash?: string | null
-          domain?: string
-          expiry_time?: string
+          created_at?: string
           id?: string
-          owner_account?: string
-          plan_id?: number
-          registered_at?: string
+          stripe_subscription_id?: string
+          transaction_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'subscriptions_owner_account_fkey'
+            foreignKeyName: 'stripe_subscription_transactions_stripe_subscription_id_fkey'
+            columns: ['stripe_subscription_id']
+            isOneToOne: false
+            referencedRelation: 'stripe_subscriptions'
+            referencedColumns: ['stripe_subscription_id']
+          },
+          {
+            foreignKeyName: 'stripe_subscription_transactions_transaction_id_fkey'
+            columns: ['transaction_id']
+            isOneToOne: false
+            referencedRelation: 'transactions'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      stripe_subscriptions: {
+        Row: {
+          account_address: string
+          billing_plan_id: string
+          created_at: string
+          id: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_address: string
+          billing_plan_id: string
+          created_at?: string
+          id?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_address?: string
+          billing_plan_id?: string
+          created_at?: string
+          id?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_subscriptions_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          },
+          {
+            foreignKeyName: 'stripe_subscriptions_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      subscriptions: {
+        Row: {
+          billing_plan_id: string | null
+          chain: string | null
+          config_ipfs_hash: string | null
+          domain: string | null
+          expiry_time: string
+          id: string
+          owner_account: string
+          plan_id: number | null
+          registered_at: string
+          status: Database['public']['Enums']['SubscriptionStatus']
+          transaction_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          billing_plan_id?: string | null
+          chain?: string | null
+          config_ipfs_hash?: string | null
+          domain?: string | null
+          expiry_time: string
+          id?: string
+          owner_account: string
+          plan_id?: number | null
+          registered_at: string
+          status?: Database['public']['Enums']['SubscriptionStatus']
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          billing_plan_id?: string | null
+          chain?: string | null
+          config_ipfs_hash?: string | null
+          domain?: string | null
+          expiry_time?: string
+          id?: string
+          owner_account?: string
+          plan_id?: number | null
+          registered_at?: string
+          status?: Database['public']['Enums']['SubscriptionStatus']
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'public_subscriptions_owner_account_fkey'
             columns: ['owner_account']
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
+          },
+          {
+            foreignKeyName: 'subscriptions_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_transaction_id_fkey'
+            columns: ['transaction_id']
+            isOneToOne: false
+            referencedRelation: 'transactions'
+            referencedColumns: ['id']
           }
         ]
       }
@@ -1392,9 +1638,10 @@ export type Database = {
           fiat_equivalent: number | null
           id: string
           initiator_address: string | null
-          meeting_type_id: string
+          meeting_type_id: string | null
           metadata: Json
           method: Database['public']['Enums']['PaymentType']
+          provider: Database['public']['Enums']['PaymentProvider'] | null
           provider_reference_id: string | null
           status: Database['public']['Enums']['PaymentStatus']
           token_address: string | null
@@ -1409,14 +1656,15 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           currency?: string | null
-          direction: Database['public']['Enums']['PaymentDirection']
+          direction?: Database['public']['Enums']['PaymentDirection']
           fee_breakdown?: Json | null
           fiat_equivalent?: number | null
           id?: string
           initiator_address?: string | null
-          meeting_type_id: string
+          meeting_type_id?: string | null
           metadata: Json
           method: Database['public']['Enums']['PaymentType']
+          provider?: Database['public']['Enums']['PaymentProvider'] | null
           provider_reference_id?: string | null
           status: Database['public']['Enums']['PaymentStatus']
           token_address?: string | null
@@ -1436,9 +1684,10 @@ export type Database = {
           fiat_equivalent?: number | null
           id?: string
           initiator_address?: string | null
-          meeting_type_id?: string
+          meeting_type_id?: string | null
           metadata?: Json
           method?: Database['public']['Enums']['PaymentType']
+          provider?: Database['public']['Enums']['PaymentProvider'] | null
           provider_reference_id?: string | null
           status?: Database['public']['Enums']['PaymentStatus']
           token_address?: string | null
@@ -1492,21 +1741,65 @@ export type Database = {
           }
         ]
       }
+      video_meeting: {
+        Row: {
+          id: string
+          isGuest: boolean
+          slot_id: string | null
+          videoMeeting: Json | null
+        }
+        Insert: {
+          id?: string
+          isGuest: boolean
+          slot_id?: string | null
+          videoMeeting?: Json | null
+        }
+        Update: {
+          id?: string
+          isGuest?: boolean
+          slot_id?: string | null
+          videoMeeting?: Json | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      check_calendars_exist: {
-        Args: { account_address: string }
-        Returns: boolean
-      }
       check_contact_existence: {
         Args: { current_account: string; user_address: string }
         Returns: boolean
       }
       fetch_account: { Args: { identifier: string }; Returns: Json }
       find_account: { Args: { identifier: string }; Returns: Json }
+      get_accounts: {
+        Args: { address: string; max: number; search: string; skip: number }
+        Returns: Record<string, unknown>
+      }
+      get_accounts_by_calendar_email: {
+        Args: {
+          p_address: string
+          p_email: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+      get_accounts_by_calendar_emails: {
+        Args: { p_emails: string[]; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      get_availability_types_for_account_preferences: {
+        Args: { address: string }
+        Returns: {
+          duration: unknown
+          id: number
+          min_advance_time: unknown
+          title: string
+          url: string
+        }[]
+      }
       get_discord_notifications: {
         Args: never
         Returns: {
@@ -1603,26 +1896,16 @@ export type Database = {
           total_count: number
         }[]
       }
-      search_contact_invites:
-        | {
-            Args: {
-              current_account: string
-              max_results: number
-              search: string
-              skip: number
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              current_account: string
-              current_account_email: string
-              max_results?: number
-              search: string
-              skip?: number
-            }
-            Returns: Json
-          }
+      search_contact_invites: {
+        Args: {
+          current_account?: string
+          current_account_email?: string
+          max_results?: number
+          search?: string
+          skip?: number
+        }
+        Returns: Json
+      }
       search_contacts: {
         Args: {
           current_account: string
@@ -1663,6 +1946,7 @@ export type Database = {
         | 'METIS'
         | 'MATIC'
       AccountPreferenceNotification: 'send-tokens' | 'receive-tokens'
+      BillingCycle: 'monthly' | 'yearly'
       ChannelType: 'discord' | 'email' | 'account' | 'telegram'
       ContactStatus: 'active' | 'inactive'
       GroupRole: 'admin' | 'member'
@@ -1683,7 +1967,7 @@ export type Database = {
       PaymentStatus: 'cancelled' | 'pending' | 'completed' | 'failed'
       PaymentType: 'fiat' | 'crypto'
       PlanType: 'one_off' | 'sessions'
-      PollStatus: 'ongoing' | 'completed' | 'cancelled'
+      PollStatus: 'ongoing' | 'completed' | 'cancelled' | 'expired'
       PollVisibility: 'public' | 'private'
       QuickPollParticipantStatus:
         | 'pending'
@@ -1693,9 +1977,11 @@ export type Database = {
       QuickPollParticipantType: 'scheduler' | 'invitee' | 'owner'
       RecurringStatus: 'confirmed' | 'cancelled' | 'modified'
       SessionType: 'paid' | 'free'
+      SubscriptionStatus: 'active' | 'cancelled' | 'expired'
       TimeSlotSource: 'mww' | 'Google' | 'iCloud' | 'Office 365' | 'Webdav'
       TokenType: 'erc20' | 'erc721' | 'stablecoin' | 'nft' | 'native'
       VerificationChannel: 'transaction-pin' | 'reset-email'
+      VideoMeeting: 'None' | 'GoogleMeet'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1836,6 +2122,7 @@ export const Constants = {
         'MATIC',
       ],
       AccountPreferenceNotification: ['send-tokens', 'receive-tokens'],
+      BillingCycle: ['monthly', 'yearly'],
       ChannelType: ['discord', 'email', 'account', 'telegram'],
       ContactStatus: ['active', 'inactive'],
       GroupRole: ['admin', 'member'],
@@ -1857,7 +2144,7 @@ export const Constants = {
       PaymentStatus: ['cancelled', 'pending', 'completed', 'failed'],
       PaymentType: ['fiat', 'crypto'],
       PlanType: ['one_off', 'sessions'],
-      PollStatus: ['ongoing', 'completed', 'cancelled'],
+      PollStatus: ['ongoing', 'completed', 'cancelled', 'expired'],
       PollVisibility: ['public', 'private'],
       QuickPollParticipantStatus: [
         'pending',
@@ -1868,9 +2155,11 @@ export const Constants = {
       QuickPollParticipantType: ['scheduler', 'invitee', 'owner'],
       RecurringStatus: ['confirmed', 'cancelled', 'modified'],
       SessionType: ['paid', 'free'],
+      SubscriptionStatus: ['active', 'cancelled', 'expired'],
       TimeSlotSource: ['mww', 'Google', 'iCloud', 'Office 365', 'Webdav'],
       TokenType: ['erc20', 'erc721', 'stablecoin', 'nft', 'native'],
       VerificationChannel: ['transaction-pin', 'reset-email'],
+      VideoMeeting: ['None', 'GoogleMeet'],
     },
   },
 } as const
