@@ -42,7 +42,6 @@ export type Database = {
       }
       account_preferences: {
         Row: {
-          availableTypes: Json[] | null
           availaibility_id: string | null
           avatar_url: string | null
           description: string | null
@@ -55,7 +54,6 @@ export type Database = {
           socialLinks: Json[]
         }
         Insert: {
-          availableTypes?: Json[] | null
           availaibility_id?: string | null
           avatar_url?: string | null
           description?: string | null
@@ -68,7 +66,6 @@ export type Database = {
           socialLinks: Json[]
         }
         Update: {
-          availableTypes?: Json[] | null
           availaibility_id?: string | null
           avatar_url?: string | null
           description?: string | null
