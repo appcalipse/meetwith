@@ -4,39 +4,31 @@ import {
   AccordionPanel,
   Checkbox,
   HStack,
-  Image,
   Text,
+  VStack,
 } from '@chakra-ui/react'
 import * as React from 'react'
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa6'
 
+import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
-import { TimeSlotSource } from '@/types/Meeting'
 
 interface ConnectedCalendarItemProps {
   calendar: ConnectedCalendarCore
-}
-const getIcon = (provider: TimeSlotSource) => {
-  switch (provider) {
-    case TimeSlotSource.GOOGLE:
-      return (
-        <Image src="/google.svg" alt="Google Calendar" width={16} height={16} />
-      )
-  }
 }
 
 const ConnectedCalendarItem: React.FC<ConnectedCalendarItemProps> = ({
   calendar,
 }) => {
+  const { selectedCalendars, setSelectedCalendars } = useCalendarContext()
   return (
-    <AccordionItem>
+    <AccordionItem p={0} m={0} width="100%" border="none">
       {({ isExpanded }) => (
         <>
-          <AccordionButton color="white">
-            <HStack justifyContent="space-between" w="full">
-              <HStack gap={2}>
-                {getIcon(calendar.provider)}
-                <Text>{calendar.email}</Text>
+          <AccordionButton color="white" p={0} w="100%">
+            <HStack justifyContent="space-between" w="100%">
+              <HStack gap={1}>
+                <Text fontWeight={700}>{calendar.email}</Text>
               </HStack>
               {isExpanded ? (
                 <FaChevronUp size={15} />
@@ -45,15 +37,43 @@ const ConnectedCalendarItem: React.FC<ConnectedCalendarItemProps> = ({
               )}
             </HStack>
           </AccordionButton>
-          <AccordionPanel pb={4}>
-            {calendar.calendars.map(cal => (
-              <HStack key={`${cal.calendarId}-${calendar.id}`}>
-                <Checkbox />
-                <Text fontSize="14" mb={2}>
-                  {cal.name}
-                </Text>
-              </HStack>
-            ))}
+          <AccordionPanel pb={4} px={0}>
+            <VStack gap={3} align="flex-start">
+              {calendar.calendars.map(cal => (
+                <HStack
+                  key={`${cal.calendarId}-${calendar.id}`}
+                  alignItems="center"
+                  gap={1}
+                >
+                  <Checkbox
+                    width={6}
+                    height={6}
+                    borderColor={cal.color || 'primary.500'}
+                    isChecked={selectedCalendars.some(
+                      selCal =>
+                        selCal.calendarId === cal.calendarId &&
+                        selCal.name === cal.name
+                    )}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedCalendars([...selectedCalendars, cal])
+                      } else {
+                        setSelectedCalendars(
+                          selectedCalendars.filter(
+                            selCal =>
+                              !(
+                                selCal.calendarId === cal.calendarId &&
+                                selCal.name === cal.name
+                              )
+                          )
+                        )
+                      }
+                    }}
+                  />
+                  <Text fontSize="14">{cal.name}</Text>
+                </HStack>
+              ))}
+            </VStack>
           </AccordionPanel>
         </>
       )}

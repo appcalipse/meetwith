@@ -41,7 +41,7 @@ const CalendarPicker: React.FC = () => {
             {day.toFormat('EEE')}
           </GridItem>
         ))}
-        {monthDays.map((day, index) => (
+        {monthDays.map(day => (
           <GridItem
             key={day.toMillis()}
             color={day.month === currrentDate.month ? 'inherit' : 'neutral.500'}

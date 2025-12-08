@@ -8,13 +8,8 @@ interface CalendarItemProps {
 }
 
 const CalendarItem: React.FC<CalendarItemProps> = ({ timeSlot, dayIndex }) => {
-  const days = Array.from({
-    length: 7,
-  }).map((_, index) => {
-    return DateTime.now().plus({ days: index })
-  })
   const TIME_SLOTS = Array.from({ length: 24 }, (_, i) =>
-    DateTime.fromObject({ hour: i, minute: 0 })
+    timeSlot.set({ hour: i, minute: 0 })
   )
   return (
     <Grid templateRows="repeat(1fr)">
