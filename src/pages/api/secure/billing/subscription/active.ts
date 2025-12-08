@@ -1,0 +1,39 @@
+import * as Sentry from '@sentry/nextjs'
+import { NextApiRequest, NextApiResponse } from 'next'
+
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { getActiveSubscriptionPeriod } from '@/utils/database'
+
+const handle = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  try {
+    // Authentication is handled by withSessionRoute middleware
+    if (!req.session.account?.address) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+
+    const accountAddress = req.session.account.address.toLowerCase()
+
+    // Get active subscription period
+    const subscriptionPeriod = await getActiveSubscriptionPeriod(accountAddress)
+
+    // Check if subscription is actually active
+    const hasActive =
+      subscriptionPeriod !== null &&
+      subscriptionPeriod.status === 'active' &&
+      new Date(subscriptionPeriod.expiry_time) > new Date()
+
+    return res.status(200).json({ hasActive })
+  } catch (error) {
+    console.error('Error checking active subscription:', error)
+    Sentry.captureException(error)
+    return res
+      .status(500)
+      .json({ error: 'Failed to check subscription status' })
+  }
+}
+
+export default withSessionRoute(handle)

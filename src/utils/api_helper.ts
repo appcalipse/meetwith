@@ -1155,7 +1155,7 @@ export const hasActiveBillingSubscription = async (
 ): Promise<boolean> => {
   try {
     const response = await internalFetch<{ hasActive: boolean }>(
-      `/secure/billing/subscription/active?account_address=${accountAddress}`
+      `/secure/billing/subscription/active`
     )
     return response.hasActive
   } catch (e) {
@@ -1170,9 +1170,7 @@ export const getActiveSubscription = async (
   accountAddress: string
 ): Promise<Subscription | null> => {
   try {
-    return (await internalFetch(
-      `/secure/billing/subscription?account_address=${accountAddress}`
-    )) as Subscription
+    return (await internalFetch(`/secure/billing/subscription`)) as Subscription
   } catch (e) {
     if (e instanceof ApiFetchError && e.status === 404) {
       return null
