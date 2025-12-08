@@ -7870,6 +7870,7 @@ const createSubscriptionPeriod = async (
 }
 
 // Get active subscription period for an account
+// Returns the subscription with the farthest expiry_time among all active subscriptions
 const getActiveSubscriptionPeriod = async (
   accountAddress: string
 ): Promise<Tables<'subscriptions'> | null> => {
@@ -7879,7 +7880,7 @@ const getActiveSubscriptionPeriod = async (
     .eq('owner_account', accountAddress.toLowerCase())
     .eq('status', 'active')
     .gt('expiry_time', new Date().toISOString())
-    .order('registered_at', { ascending: false })
+    .order('expiry_time', { ascending: false })
     .limit(1)
     .maybeSingle()
 
