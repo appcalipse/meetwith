@@ -48,6 +48,12 @@ import {
 } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
+  BillingPlan,
+  BillingPlanProvider,
+  BillingPlanWithProvider,
+  PaymentProvider as BillingPaymentProvider,
+} from '@/types/Billing'
+import {
   CalendarSyncInfo,
   ConnectedCalendar,
   ConnectedCalendarCore,
@@ -7612,6 +7618,97 @@ const updatePaymentAccount = async (
     : updatedPaymentAccount
 }
 
+// Get all billing plans from the database
+const getBillingPlans = async (): Promise<BillingPlan[]> => {
+  const { data, error } = await db.supabase
+    .from('billing_plans')
+    .select('*')
+    .order('billing_cycle', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to fetch billing plans: ${error.message}`)
+  }
+
+  return (data || []) as BillingPlan[]
+}
+
+// Get a single billing plan by ID
+const getBillingPlanById = async (
+  planId: string
+): Promise<BillingPlan | null> => {
+  const { data, error } = await db.supabase
+    .from('billing_plans')
+    .select('*')
+    .eq('id', planId)
+    .single()
+
+  if (error) {
+    // If no rows found, return null instead of throwing
+    if (error.code === 'PGRST116') {
+      return null
+    }
+    Sentry.captureException(error)
+    throw new Error(`Failed to fetch billing plan: ${error.message}`)
+  }
+
+  return data as BillingPlan | null
+}
+
+// Get all billing plan providers, optionally filtered by provider
+// Returns providers with plan details (joined with billing_plans)
+const getBillingPlanProviders = async (
+  provider?: BillingPaymentProvider
+): Promise<BillingPlanWithProvider[]> => {
+  let query = db.supabase.from('billing_plan_providers').select(
+    `
+      *,
+      billing_plan: billing_plans(*)
+    `
+  )
+
+  if (provider) {
+    query = query.eq('provider', provider)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to fetch billing plan providers: ${error.message}`)
+  }
+
+  // Transform the data to match BillingPlanWithProvider interface
+  return (data || []).map((item: any) => ({
+    ...(item.billing_plan as BillingPlan),
+    provider_product_id: item.provider_product_id,
+  })) as BillingPlanWithProvider[]
+}
+
+// Get provider mapping for a specific plan
+const getBillingPlanProvider = async (
+  planId: string,
+  provider: BillingPaymentProvider
+): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('billing_plan_providers')
+    .select('provider_product_id')
+    .eq('billing_plan_id', planId)
+    .eq('provider', provider)
+    .single()
+
+  if (error) {
+    // If no rows found, return null instead of throwing
+    if (error.code === 'PGRST116') {
+      return null
+    }
+    Sentry.captureException(error)
+    throw new Error(`Failed to fetch billing plan provider: ${error.message}`)
+  }
+
+  return data?.provider_product_id || null
+}
+
 export {
   acceptContactInvite,
   addContactInvite,
@@ -7655,6 +7752,10 @@ export {
   getAccountsWithTgConnected,
   getActivePaymentAccount,
   getActivePaymentAccountDB,
+  getBillingPlanById,
+  getBillingPlanProvider,
+  getBillingPlanProviders,
+  getBillingPlans,
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
