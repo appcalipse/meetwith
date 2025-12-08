@@ -10,7 +10,7 @@ interface CalendarProps {
 
 const Calendar: React.FC<CalendarProps> = () => {
   return (
-    <Box width="100%" roundedRight={'md'}>
+    <Box width="100%" roundedRight={'md'} height="100%" minH={'100vh'}>
       <CalendarHeader />
       <CalendarItems />
     </Box>
