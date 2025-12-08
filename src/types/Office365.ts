@@ -285,6 +285,11 @@ export interface MicrosoftGraphEvent {
 
   /** The URL to open the event in Outlook on the web. */
   webLink?: string
+
+  singleValueExtendedProperties: Array<{
+    id: string
+    value: string
+  }>
 }
 
 /**
