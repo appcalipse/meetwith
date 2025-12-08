@@ -6,6 +6,7 @@ import {
   Transaction,
 } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
+import { DateTime } from 'luxon'
 import { DAVCalendar } from 'tsdav'
 
 import {
@@ -18,6 +19,7 @@ import {
 } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
+import { CalendarEvents } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -2333,4 +2335,14 @@ export const getGuestSlotById = async (slotId: string) => {
     start: new Date(response.start),
     end: new Date(response.end),
   }
+}
+
+export const getEvents = async (
+  referenceDate: DateTime
+): Promise<CalendarEvents> => {
+  return await internalFetch<CalendarEvents>(
+    `/secure/calendar_events?startDate=${referenceDate
+      .startOf('month')
+      .toISO()}&endDate=${referenceDate.endOf('month').toISO()}`
+  )
 }
