@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/nextjs'
 import format from 'date-fns/format'
 import { DateTime } from 'luxon'
 
+import { UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -33,6 +34,7 @@ import { getCalendarPrimaryEmail } from '../sync_helper'
 import { isValidEmail } from '../validations'
 import { CalendarServiceHelper } from './calendar.helper'
 import { IOffcie365CalendarService } from './calendar.service.types'
+import { Office365EventMapper } from './office.mapper'
 import {
   O365AuthCredentials,
   RefreshTokenCredential,
@@ -278,6 +280,61 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     return result.flat()
   }
 
+  async getEventsCalendarId(
+    calendarId: string,
+    dateFrom: string,
+    dateTo: string
+  ): Promise<UnifiedEvent[]> {
+    const dateFromParsed = new Date(dateFrom)
+    const dateToParsed = new Date(dateTo)
+
+    const events: MicrosoftGraphEvent[] = []
+    let nextLink: string | undefined
+
+    let response = await this.graphClient
+      .api(`/me/calendars/${calendarId}/calendarView`)
+      .query({
+        startdatetime: dateFromParsed.toISOString(),
+        enddatetime: dateToParsed.toISOString(),
+        $top: '500',
+      })
+      .get()
+
+    events.push(...response.value)
+
+    nextLink = response['@odata.nextLink']
+    while (nextLink) {
+      const url = new URL(nextLink)
+      const path = url.pathname + url.search
+      response = await this.graphClient.api(path).get()
+
+      events.push(...response.value)
+
+      nextLink = response['@odata.nextLink']
+    }
+    return Promise.all(
+      events.map(
+        async event =>
+          await Office365EventMapper.toUnified(
+            event,
+            calendarId,
+            this.getConnectedEmail()
+          )
+      )
+    )
+  }
+  async getEvents(
+    calendarIds: string[],
+    dateFrom: string,
+    dateTo: string
+  ): Promise<UnifiedEvent[]> {
+    const events = await Promise.all(
+      calendarIds.map(calId =>
+        this.getEventsCalendarId(calId, dateFrom, dateTo)
+      )
+    )
+    return events.flat()
+  }
   private createReminder(indicator: MeetingReminders) {
     switch (indicator) {
       case MeetingReminders['15_MINUTES_BEFORE']:
@@ -352,6 +409,12 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         },
       },
       attendees: [],
+      singleValueExtendedProperties: [
+        {
+          id: `meeting_id`,
+          value: meeting_id,
+        },
+      ],
       allowNewTimeProposals: false,
       transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
     }

@@ -1,6 +1,7 @@
 import { calendar_v3 } from 'googleapis'
 import { Attendee } from 'ics'
 
+import { UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -15,8 +16,8 @@ export type EventBusyDate = {
   eventId?: string
   webLink?: string
   email?: string
+  recurrenceId?: string
 }
-
 /**
  * Calendar Service  Contract
  */
@@ -76,6 +77,12 @@ export interface BaseCalendarService {
    * @param slot_id the event id to delete
    */
   deleteEvent(meeting_id: string, calendarId: string): Promise<void>
+
+  getEvents(
+    calendarIds: string[],
+    dateFrom: string,
+    dateTo: string
+  ): Promise<UnifiedEvent[]>
 }
 export interface IOffcie365CalendarService extends BaseCalendarService {
   /**
