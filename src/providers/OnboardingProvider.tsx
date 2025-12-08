@@ -65,7 +65,7 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
         block.weekly_availability?.some(day => day.ranges?.length > 0)
       )
 
-      return hasAvailabilityBlocks && !!currentAccount?.preferences?.timezone
+      return hasAvailabilityBlocks
     } catch (error) {
       console.error('Error checking availability blocks:', error)
       return false
