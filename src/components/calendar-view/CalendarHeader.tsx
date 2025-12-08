@@ -2,17 +2,21 @@ import { Grid, GridItem, Text } from '@chakra-ui/react'
 import * as ct from 'countries-and-timezones'
 import * as React from 'react'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 
 const CalendarHeader: React.FC = ({}) => {
   const { currrentDate } = useCalendarContext()
+  const currentAccount = useAccountContext()
   const startOfWeek = currrentDate.startOf('week')
   const days = Array.from({
     length: 7,
   }).map((_, index) => {
     return startOfWeek.plus({ days: index })
   })
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const timezone =
+    currentAccount?.preferences.timezone ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone
   const utcOffset = ct.getTimezone(timezone)?.utcOffset
   const getOffsetString = (offset: number | undefined) => {
     if (offset === undefined) return ''

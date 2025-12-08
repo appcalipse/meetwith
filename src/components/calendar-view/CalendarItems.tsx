@@ -9,10 +9,10 @@ const CalendarItems: React.FC = () => {
   const days = Array.from({
     length: 7,
   }).map((_, index) => {
-    return DateTime.now().plus({ days: index })
+    return DateTime.now().plus({ days: index }).startOf('day')
   })
   return (
-    <Grid templateColumns="minmax(45px, 70px) repeat(7, 1fr)">
+    <Grid templateColumns="minmax(45px, 70px) repeat(7, 1fr)" h="100%">
       <Grid templateRows="repeat(1fr)">
         {TIME_SLOTS.map((timeSlot, index) => (
           <GridItem

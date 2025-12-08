@@ -38,8 +38,8 @@ const ConnectedCalendar: React.FC = () => {
                 )}
               </HStack>
             </AccordionButton>
-            <AccordionPanel pb={4}>
-              <Accordion allowMultiple allowToggle>
+            <AccordionPanel pb={4} pt={2.5} px={0} w="100%">
+              <Accordion allowMultiple w="100%">
                 {calendars?.map(calendar => (
                   <ConnectedCalendarItem
                     key={calendar.id}
