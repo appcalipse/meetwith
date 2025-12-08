@@ -1150,6 +1150,37 @@ export const getSubscriptionByDomain = async (
   return (await internalFetch(`/subscriptions/check/${domain}`)) as Subscription
 }
 
+export const hasActiveBillingSubscription = async (
+  accountAddress: string
+): Promise<boolean> => {
+  try {
+    const response = await internalFetch<{ hasActive: boolean }>(
+      `/secure/billing/subscription/active?account_address=${accountAddress}`
+    )
+    return response.hasActive
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return false
+    }
+    throw e
+  }
+}
+
+export const getActiveSubscription = async (
+  accountAddress: string
+): Promise<Subscription | null> => {
+  try {
+    return (await internalFetch(
+      `/secure/billing/subscription?account_address=${accountAddress}`
+    )) as Subscription
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
+}
+
 export const validateWebdav = async (
   url: string,
   username: string,

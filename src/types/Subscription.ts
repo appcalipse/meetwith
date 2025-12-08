@@ -25,13 +25,16 @@ export const getPlanInfo = (plan: Plan): PlanInfo | undefined => {
 }
 
 export interface Subscription {
-  plan_id: number
-  chain: SupportedChain
+  plan_id: number | null
+  chain: SupportedChain | null
   owner_account: string
   expiry_time: Date
-  domain: string
-  config_ipfs_hash: string
+  domain: string | null
+  config_ipfs_hash: string | null
   registered_at: Date
+  billing_plan_id?: string | null
+  status?: 'active' | 'cancelled' | 'expired'
+  transaction_id?: string | null
 }
 
 export interface BlockchainSubscription {
