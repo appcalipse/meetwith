@@ -24,7 +24,6 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
-import { writeFileSync } from 'fs'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
 import { rrulestr } from 'rrule'
@@ -811,8 +810,8 @@ const getSlotsForAccount = async (
   account_address: string,
   start?: Date,
   end?: Date,
-  limit?: number,
-  offset?: number
+  limit = 1000,
+  offset = 0
 ): Promise<DBSlot[]> => {
   const account = await getAccountFromDB(account_address)
 
@@ -825,7 +824,7 @@ const getSlotsForAccount = async (
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 1000))
+    .range(offset, offset + limit - 1)
     .order('start')
 
   if (error) {
@@ -3913,6 +3912,23 @@ const getOfficeEventMappingId = async (
   }
   return data.office_id
 }
+const getOfficeMeetingIdMappingId = async (
+  office_id: string
+): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('office_event_mapping')
+    .select()
+    .eq('office_id', office_id)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    return null
+  }
+  return data.mww_id
+}
 const getGoogleEventMappingId = async (
   mww_id: string,
   calendar_id: string
@@ -6469,10 +6485,6 @@ const handleWebhookEvent = async (
       recurringIdSet.add(meeting.recurringEventId)
     }
   })
-  writeFileSync(
-    `all_event_${Date.now()}.json`,
-    JSON.stringify(recentlyUpdated, null, 2)
-  )
   const isRecurringInstance = (meeting: calendar_v3.Schema$Event): boolean => {
     if (meeting.recurringEventId) return true
     if (meeting.recurrence) return true
@@ -6492,10 +6504,7 @@ const handleWebhookEvent = async (
   const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
     meeting => !isRecurringInstance(meeting)
   )
-  writeFileSync(
-    `all_non_rec_event_${Date.now()}.json`,
-    JSON.stringify(recentlyUpdatedNonRecurringMeetings, null, 2)
-  )
+
   const actions = await Promise.all(
     recentlyUpdatedNonRecurringMeetings
       .map(event => handleSyncEvent(event, calendar))
@@ -6559,11 +6568,7 @@ const handleSyncRecurringEvents = async (
   const masterEvents = events.filter(e => e.recurrence && !e.recurringEventId)
   const exceptions = events.filter(e => e.recurringEventId)
   const slotInstanceUpdates: Array<TablesUpdate<'slot_instance'>> = []
-  writeFileSync(
-    `groupedRecurringEvents_${Date.now()}.json`,
-    JSON.stringify({ exceptions, masterEvents }, null, 2)
-  )
-  writeFileSync(`events_${Date.now()}.json`, JSON.stringify(events, null, 2))
+
   const processed = new Set<string>()
   for (const masterEvent of masterEvents) {
     const meetingId = masterEvent?.extendedProperties?.private?.meetingId
@@ -8517,6 +8522,7 @@ export {
   getMeetingTypesForAvailabilityBlock,
   getNewestCoupon,
   getOfficeEventMappingId,
+  getOfficeMeetingIdMappingId,
   getOrCreateContactInvite,
   getOrCreatePaymentAccount,
   getOwnerPublicUrlServer,
