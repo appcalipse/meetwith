@@ -12,6 +12,7 @@ import format from 'date-fns/format'
 import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
 import { DateTime } from 'luxon'
 
+import { UnifiedEvent } from '@/types/Calendar'
 import { ConditionRelation } from '@/types/common'
 import {
   MeetingChangeType,
@@ -296,15 +297,18 @@ export const CalendarBackendHelper = {
 
   mergeSlotsIntersection: (slots: TimeSlot[]): Interval[] => {
     slots.sort((a, b) => compareAsc(a.start, b.start))
-    const slotsByAccount = slots.reduce((memo: any, x) => {
-      if (!memo[x.account_address]) {
-        memo[x.account_address] = []
-      }
-      memo[x.account_address].push(x)
-      return memo
-    }, {})
+    const slotsByAccount = slots.reduce(
+      (memo: Record<string, TimeSlot[]>, x) => {
+        if (!memo[x.account_address]) {
+          memo[x.account_address] = []
+        }
+        memo[x.account_address].push(x)
+        return memo
+      },
+      {} as Record<string, TimeSlot[]>
+    )
 
-    const slotsByAccountArray = []
+    const slotsByAccountArray: Array<Array<TimeSlot>> = []
     for (const [_, value] of Object.entries(slotsByAccount)) {
       slotsByAccountArray.push(value)
     }
@@ -313,7 +317,7 @@ export const CalendarBackendHelper = {
       return []
     }
 
-    slotsByAccountArray.sort((a: any, b: any) => a.length - b.length)
+    slotsByAccountArray.sort((a, b) => a.length - b.length)
 
     const findOverlappingSlots = (
       slots1: Interval[],
@@ -355,6 +359,33 @@ export const CalendarBackendHelper = {
     }
 
     return overlaps
+  },
+  getCalendarEventsForAccount: async (
+    account_address: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<UnifiedEvent[]> => {
+    const calendars = await getConnectedCalendars(account_address, {
+      activeOnly: true,
+    })
+    const events = await Promise.all(
+      calendars.map(async calendar => {
+        const integration = getConnectedCalendarIntegration(
+          calendar.account_address,
+          calendar.email,
+          calendar.provider,
+          calendar.payload
+        )
+
+        const externalSlots = await integration.getEvents(
+          calendar.calendars!.filter(c => c.enabled).map(c => c.calendarId),
+          startDate.toISOString(),
+          endDate.toISOString()
+        )
+        return externalSlots
+      })
+    )
+    return events.flat()
   },
 }
 
