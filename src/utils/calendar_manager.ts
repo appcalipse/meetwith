@@ -1583,10 +1583,13 @@ const generateIcs = async (
           destination &&
           destination.accountAddress === participant.account_address
             ? destination.email
-            : participant.guest_email ||
-              (await getAccountPrimaryCalendarEmail(
-                participant.account_address!
-              ))
+            : CalendarServiceHelper.sanitizeEmail(
+                participant.guest_email ||
+                  (await getAccountPrimaryCalendarEmail(
+                    participant.account_address!
+                  )) ||
+                  ''
+              )
         if (!email && !isValidEmail(email)) return null
 
         const attendee: Attendee = {
