@@ -7832,6 +7832,116 @@ const linkTransactionToStripeSubscription = async (
   return data
 }
 
+// Subscription Period Helpers
+
+// Create a new subscription period
+const createSubscriptionPeriod = async (
+  ownerAccount: string,
+  billingPlanId: string,
+  status: 'active' | 'cancelled' | 'expired',
+  expiryTime: string,
+  transactionId: string
+): Promise<Tables<'subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .insert([
+      {
+        owner_account: ownerAccount.toLowerCase(),
+        billing_plan_id: billingPlanId,
+        status,
+        expiry_time: expiryTime,
+        transaction_id: transactionId,
+        registered_at: new Date().toISOString(),
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to create subscription period: ${error.message}`)
+  }
+
+  if (!data) {
+    throw new Error('Failed to create subscription period: no data returned')
+  }
+
+  return data
+}
+
+// Get active subscription period for an account
+const getActiveSubscriptionPeriod = async (
+  accountAddress: string
+): Promise<Tables<'subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .eq('status', 'active')
+    .gt('expiry_time', new Date().toISOString())
+    .order('registered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to fetch active subscription period: ${error.message}`
+    )
+  }
+
+  return data
+}
+
+// Get all subscription periods for an account (history)
+const getSubscriptionPeriodsByAccount = async (
+  accountAddress: string
+): Promise<Tables<'subscriptions'>[]> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .order('registered_at', { ascending: false })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to fetch subscription periods: ${error.message}`)
+  }
+
+  return data || []
+}
+
+// Update subscription period status
+const updateSubscriptionPeriodStatus = async (
+  subscriptionId: string,
+  status: 'active' | 'cancelled' | 'expired'
+): Promise<Tables<'subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subscriptionId)
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to update subscription period status: ${error.message}`
+    )
+  }
+
+  if (!data) {
+    throw new Error(
+      'Failed to update subscription period status: no data returned'
+    )
+  }
+
+  return data
+}
+
 export {
   acceptContactInvite,
   addContactInvite,
@@ -7852,6 +7962,7 @@ export {
   createPinHash,
   createQuickPoll,
   createStripeSubscription,
+  createSubscriptionPeriod,
   createTgConnection,
   createVerification,
   deleteAllTgConnections,
@@ -7876,6 +7987,7 @@ export {
   getAccountsWithTgConnected,
   getActivePaymentAccount,
   getActivePaymentAccountDB,
+  getActiveSubscriptionPeriod,
   getBillingPlanById,
   getBillingPlanProvider,
   getBillingPlanProviders,
@@ -7932,6 +8044,7 @@ export {
   getSlotsForDashboard,
   getStripeSubscriptionByAccount,
   getStripeSubscriptionById,
+  getSubscriptionPeriodsByAccount,
   getTgConnection,
   getTgConnectionByTgId,
   getTransactionsById,
@@ -7984,6 +8097,7 @@ export {
   updateQuickPollParticipantStatus,
   updateRecurringSlots,
   updateStripeSubscription,
+  updateSubscriptionPeriodStatus,
   upsertGateCondition,
   verifyUserPin,
   verifyVerificationCode,
