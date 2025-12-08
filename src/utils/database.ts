@@ -47,12 +47,7 @@ import {
   VerificationChannel,
 } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
-import {
-  BillingPlan,
-  BillingPlanProvider,
-  BillingPlanWithProvider,
-  PaymentProvider as BillingPaymentProvider,
-} from '@/types/Billing'
+import { PaymentProvider as BillingPaymentProvider } from '@/types/Billing'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -7619,7 +7614,7 @@ const updatePaymentAccount = async (
 }
 
 // Get all billing plans from the database
-const getBillingPlans = async (): Promise<BillingPlan[]> => {
+const getBillingPlans = async (): Promise<Tables<'billing_plans'>[]> => {
   const { data, error } = await db.supabase
     .from('billing_plans')
     .select('*')
@@ -7630,36 +7625,38 @@ const getBillingPlans = async (): Promise<BillingPlan[]> => {
     throw new Error(`Failed to fetch billing plans: ${error.message}`)
   }
 
-  return (data || []) as BillingPlan[]
+  return data || []
 }
 
 // Get a single billing plan by ID
 const getBillingPlanById = async (
   planId: string
-): Promise<BillingPlan | null> => {
+): Promise<Tables<'billing_plans'> | null> => {
   const { data, error } = await db.supabase
     .from('billing_plans')
     .select('*')
     .eq('id', planId)
-    .single()
+    .maybeSingle()
 
   if (error) {
-    // If no rows found, return null instead of throwing
-    if (error.code === 'PGRST116') {
-      return null
-    }
     Sentry.captureException(error)
     throw new Error(`Failed to fetch billing plan: ${error.message}`)
   }
 
-  return data as BillingPlan | null
+  return data
 }
 
 // Get all billing plan providers, optionally filtered by provider
 // Returns providers with plan details (joined with billing_plans)
 const getBillingPlanProviders = async (
   provider?: BillingPaymentProvider
-): Promise<BillingPlanWithProvider[]> => {
+): Promise<
+  Array<
+    Tables<'billing_plan_providers'> & {
+      billing_plan: Tables<'billing_plans'>
+    }
+  >
+> => {
   let query = db.supabase.from('billing_plan_providers').select(
     `
       *,
@@ -7678,11 +7675,7 @@ const getBillingPlanProviders = async (
     throw new Error(`Failed to fetch billing plan providers: ${error.message}`)
   }
 
-  // Transform the data to match BillingPlanWithProvider interface
-  return (data || []).map((item: any) => ({
-    ...(item.billing_plan as BillingPlan),
-    provider_product_id: item.provider_product_id,
-  })) as BillingPlanWithProvider[]
+  return data || []
 }
 
 // Get provider mapping for a specific plan
@@ -7695,18 +7688,148 @@ const getBillingPlanProvider = async (
     .select('provider_product_id')
     .eq('billing_plan_id', planId)
     .eq('provider', provider)
-    .single()
+    .maybeSingle()
 
   if (error) {
-    // If no rows found, return null instead of throwing
-    if (error.code === 'PGRST116') {
-      return null
-    }
     Sentry.captureException(error)
     throw new Error(`Failed to fetch billing plan provider: ${error.message}`)
   }
 
   return data?.provider_product_id || null
+}
+
+// Stripe Subscription Helpers
+
+// Create a new Stripe subscription record
+const createStripeSubscription = async (
+  accountAddress: string,
+  stripeSubscriptionId: string,
+  stripeCustomerId: string,
+  billingPlanId: string
+): Promise<Tables<'stripe_subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscriptions')
+    .insert([
+      {
+        account_address: accountAddress.toLowerCase(),
+        stripe_subscription_id: stripeSubscriptionId,
+        stripe_customer_id: stripeCustomerId,
+        billing_plan_id: billingPlanId,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to create Stripe subscription: ${error.message}`)
+  }
+
+  if (!data) {
+    throw new Error('Failed to create Stripe subscription: no data returned')
+  }
+
+  return data
+}
+
+// Get Stripe subscription by account address
+const getStripeSubscriptionByAccount = async (
+  accountAddress: string
+): Promise<Tables<'stripe_subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscriptions')
+    .select('*')
+    .eq('account_address', accountAddress.toLowerCase())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to fetch Stripe subscription: ${error.message}`)
+  }
+
+  return data
+}
+
+// Get Stripe subscription by Stripe subscription ID
+const getStripeSubscriptionById = async (
+  stripeSubscriptionId: string
+): Promise<Tables<'stripe_subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscriptions')
+    .select('*')
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to fetch Stripe subscription: ${error.message}`)
+  }
+
+  return data
+}
+
+// Update Stripe subscription record
+const updateStripeSubscription = async (
+  stripeSubscriptionId: string,
+  updates: {
+    billing_plan_id?: string
+    stripe_customer_id?: string
+  }
+): Promise<Tables<'stripe_subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscriptions')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to update Stripe subscription: ${error.message}`)
+  }
+
+  if (!data) {
+    throw new Error('Failed to update Stripe subscription: no data returned')
+  }
+
+  return data
+}
+
+// Link a transaction to a Stripe subscription
+const linkTransactionToStripeSubscription = async (
+  stripeSubscriptionId: string,
+  transactionId: string
+): Promise<Tables<'stripe_subscription_transactions'>> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscription_transactions')
+    .insert([
+      {
+        stripe_subscription_id: stripeSubscriptionId,
+        transaction_id: transactionId,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to link transaction to Stripe subscription: ${error.message}`
+    )
+  }
+
+  if (!data) {
+    throw new Error(
+      'Failed to link transaction to Stripe subscription: no data returned'
+    )
+  }
+
+  return data
 }
 
 export {
@@ -7728,6 +7851,7 @@ export {
   createPaymentPreferences,
   createPinHash,
   createQuickPoll,
+  createStripeSubscription,
   createTgConnection,
   createVerification,
   deleteAllTgConnections,
@@ -7806,6 +7930,8 @@ export {
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
+  getStripeSubscriptionByAccount,
+  getStripeSubscriptionById,
   getTgConnection,
   getTgConnectionByTgId,
   getTransactionsById,
@@ -7822,6 +7948,7 @@ export {
   isSlotAvailable as isSlotFree,
   isUserContact,
   leaveGroup,
+  linkTransactionToStripeSubscription,
   manageGroupInvite,
   publicGroupJoin,
   recordOffRampTransaction,
@@ -7856,6 +7983,7 @@ export {
   updateQuickPollParticipants,
   updateQuickPollParticipantStatus,
   updateRecurringSlots,
+  updateStripeSubscription,
   upsertGateCondition,
   verifyUserPin,
   verifyVerificationCode,
