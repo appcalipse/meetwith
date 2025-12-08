@@ -32,7 +32,6 @@ import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardin
 import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
-import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
@@ -264,7 +263,7 @@ export const NavMenu: React.FC<{
         >
           <VStack width="100%" gap={6} px={5} py={8} flexShrink={0}>
             <HStack width="100%" textAlign="center">
-              <Box width="64px" height="64px">
+              <Box width="64px" height="64px" display="block">
                 <Avatar
                   address={currentAccount.address}
                   avatar_url={currentAccount.preferences?.avatar_url || ''}
