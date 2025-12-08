@@ -1181,6 +1181,13 @@ export const getActiveSubscription = async (
   }
 }
 
+export const getManageSubscriptionUrl = async (): Promise<string> => {
+  const response = await internalFetch<{ url: string }>(
+    `/secure/billing/manage`
+  )
+  return response.url
+}
+
 export const validateWebdav = async (
   url: string,
   username: string,
