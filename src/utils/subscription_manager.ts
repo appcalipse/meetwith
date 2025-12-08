@@ -21,14 +21,49 @@ import {
   Plan,
   Subscription,
 } from '../types/Subscription'
-import { getSubscriptionByDomain } from './api_helper'
+import {
+  getActiveSubscription,
+  getSubscriptionByDomain,
+  hasActiveBillingSubscription,
+  syncSubscriptions,
+} from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
 import { parseUnits, zeroAddress } from './generic_utils'
 import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
 import { thirdWebClient } from './user_manager'
 
 export const isProAccount = (account?: Account | null): boolean => {
-  return Boolean(getActiveProSubscription(account))
+  // Check domain subscriptions
+  const domainSubscription = getActiveProSubscription(account)
+  if (domainSubscription) {
+    return true
+  }
+  // This sync version only checks domain subscriptions for backward compatibility
+  return false
+}
+
+// Async version - checks both domain and billing subscriptions
+export const isProAccountAsync = async (
+  accountAddress: string
+): Promise<boolean> => {
+  try {
+    // Check billing subscription periods
+    const hasBilling = await hasActiveBillingSubscription(accountAddress)
+    if (hasBilling) {
+      return true
+    }
+
+    // Check domain subscriptions
+    const subscriptions = await syncSubscriptions()
+    const hasDomain = subscriptions.some(
+      sub => new Date(sub.expiry_time) > new Date()
+    )
+
+    return hasDomain
+  } catch (error) {
+    Sentry.captureException(error)
+    return false
+  }
 }
 
 export const getActiveProSubscription = (
@@ -37,6 +72,20 @@ export const getActiveProSubscription = (
   return account?.subscriptions?.find(
     sub => new Date(sub.expiry_time) > new Date()
   )
+}
+
+// checks both domain and billing subscriptions
+export const getActiveProSubscriptionAsync = async (
+  accountAddress: string
+): Promise<Subscription | null> => {
+  try {
+    // Get active subscription (billing or domain) via API
+    const subscription = await getActiveSubscription(accountAddress)
+    return subscription
+  } catch (error) {
+    Sentry.captureException(error)
+    return null
+  }
 }
 
 export const checkAllowance = async (
