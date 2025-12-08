@@ -3,6 +3,7 @@ import * as React from 'react'
 
 import CalendarPicker from './CalendarPicker'
 import ConnectedCalendar from './ConnectedCalendar'
+import UpComingEvents from './UpcomingEvents'
 
 const Sidebar: React.FC = () => {
   return (
@@ -15,6 +16,7 @@ const Sidebar: React.FC = () => {
     >
       <CalendarPicker />
       <ConnectedCalendar />
+      <UpComingEvents />
     </VStack>
   )
 }
