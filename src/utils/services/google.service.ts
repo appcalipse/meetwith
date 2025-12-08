@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
 
+import { UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -28,6 +29,7 @@ import {
 import { getCalendarPrimaryEmail } from '../sync_helper'
 import { CalendarServiceHelper } from './calendar.helper'
 import { EventList, IGoogleCalendarService } from './calendar.service.types'
+import { GoogleEventMapper } from './google.mapper'
 import { withRetry } from './retry.service'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -609,7 +611,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           // Use events.list to get full event details including title and ID
           const eventsPromises = calendarIds.map(async calendarId => {
             try {
-              const allEvents: any[] = []
+              const allEvents = []
               let pageToken: string | undefined
 
               // Paginate through all events using nextPageToken
@@ -671,7 +673,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
                   reject(err)
                   return
                 }
-                let fallbackResult: any = []
+                let fallbackResult: Array<EventBusyDate> = []
 
                 if (apires?.data.calendars) {
                   fallbackResult = Object.values(apires.data.calendars).reduce(
@@ -712,7 +714,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
                 reject(err)
                 return
               }
-              let fallbackResult: any = []
+              let fallbackResult: Array<EventBusyDate> = []
 
               if (apires?.data.calendars) {
                 fallbackResult = Object.values(apires.data.calendars).reduce(
@@ -1197,6 +1199,47 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
     }
 
     return attendees
+  }
+  private async getEventsCalendarId(
+    calendarId: string,
+    dateFrom: string,
+    dateTo: string
+  ): Promise<UnifiedEvent[]> {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    const aggregatedEvents: calendar_v3.Schema$Event[] = []
+    let token: string | undefined
+    do {
+      const response = await calendar.events.list({
+        calendarId,
+        timeMin: dateFrom,
+        timeMax: dateTo,
+        singleEvents: true,
+        orderBy: 'startTime',
+        showDeleted: true,
+        pageToken: token,
+      })
+      aggregatedEvents.push(...(response.data.items || []))
+      token = response.data.nextPageToken || undefined
+    } while (token)
+    return aggregatedEvents.map(event =>
+      GoogleEventMapper.toUnified(event, calendarId, this.email)
+    )
+  }
+  async getEvents(
+    calendarIds: string[],
+    dateFrom: string,
+    dateTo: string
+  ): Promise<UnifiedEvent[]> {
+    const events = await Promise.all(
+      calendarIds.map(calId =>
+        this.getEventsCalendarId(calId, dateFrom, dateTo)
+      )
+    )
+    return events.flat()
   }
 }
 
