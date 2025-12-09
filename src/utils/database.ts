@@ -2476,6 +2476,48 @@ const countCalendarIntegrations = async (
   return count || 0
 }
 
+// Count calendars with sync enabled for an account
+// Optionally exclude a specific integration (when updating that integration)
+const countCalendarSyncs = async (
+  account_address: string,
+  excludeProvider?: TimeSlotSource,
+  excludeEmail?: string
+): Promise<number> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .select('calendars, provider, email')
+    .eq('account_address', account_address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count calendar syncs: ${error.message}`)
+  }
+
+  if (!data) return 0
+
+  // Count calendars with sync: true across all integrations
+  // Exclude the specified integration if provided (when updating)
+  let syncCount = 0
+  for (const integration of data) {
+    // Skip excluded integration
+    if (
+      excludeProvider &&
+      excludeEmail &&
+      integration.provider === excludeProvider &&
+      integration.email?.toLowerCase() === excludeEmail.toLowerCase()
+    ) {
+      continue
+    }
+
+    const calendars = integration.calendars as CalendarSyncInfo[]
+    if (Array.isArray(calendars)) {
+      syncCount += calendars.filter(cal => cal.sync === true).length
+    }
+  }
+
+  return syncCount
+}
+
 const connectedCalendarExists = async (
   address: string,
   email: string,
@@ -8098,6 +8140,7 @@ export {
   contactInviteByEmailExists,
   countActiveQuickPolls,
   countCalendarIntegrations,
+  countCalendarSyncs,
   countGroups,
   countMeetingTypes,
   createCheckOutTransaction,

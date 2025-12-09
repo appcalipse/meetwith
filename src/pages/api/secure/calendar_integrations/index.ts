@@ -7,10 +7,13 @@ import { officeScopes } from '@/pages/api/secure/calendar_integrations/office365
 import { TimeSlotSource } from '@/types/Meeting'
 import {
   addOrUpdateConnectedCalendar,
+  countCalendarSyncs,
   getConnectedCalendars,
   removeConnectedCalendar,
 } from '@/utils/database'
+import { CalendarSyncLimitExceededError } from '@/utils/errors'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
+import { isProAccountAsync } from '@/utils/subscription_manager'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -90,19 +93,58 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       Sentry.captureException(e)
       return res.status(500).json({ message: 'An unexpected error occurred.' })
     }
+  } else if (req.method === 'PUT') {
+    try {
+      const { email, provider, calendars } = req.body
+      const accountAddress = req.session.account!.address
+
+      // Check subscription status for feature limits
+      const isPro = await isProAccountAsync(accountAddress)
+
+      if (!isPro) {
+        // Count sync calendars in other integrations (excluding current one being updated)
+        const existingSyncCount = await countCalendarSyncs(
+          accountAddress,
+          provider,
+          email
+        )
+
+        // Count sync calendars in the new calendars array
+        const newSyncCount = calendars.filter(
+          (cal: { sync: boolean }) => cal.sync === true
+        ).length
+
+        // Free tier restriction: Maximum 1 calendar sync total
+        if (existingSyncCount + newSyncCount > 1) {
+          throw new CalendarSyncLimitExceededError()
+        }
+      }
+
+      const result = await addOrUpdateConnectedCalendar(
+        accountAddress,
+        email,
+        provider,
+        calendars
+      )
+      return res.status(200).json(result)
+    } catch (error) {
+      Sentry.captureException(error)
+
+      if (error instanceof CalendarSyncLimitExceededError) {
+        return res.status(403).json({ error: error.message })
+      }
+
+      return res.status(500).json({
+        error:
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred',
+      })
+    }
   } else if (req.method === 'DELETE') {
     const { email, provider } = req.body
     await removeConnectedCalendar(req.session.account!.address, email, provider)
     return res.status(200).json({})
-  } else if (req.method === 'PUT') {
-    const { email, provider, calendars } = req.body
-    const result = await addOrUpdateConnectedCalendar(
-      req.session.account!.address,
-      email,
-      provider,
-      calendars
-    )
-    return res.status(200).json(result)
   }
 }
 
