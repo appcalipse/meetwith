@@ -61,8 +61,8 @@ export class WebDAVEventMapper {
       id: this.generateInternalId(webdavEvent),
       title: webdavEvent.summary || '(No title)',
       description: webdavEvent.description || null,
-      startDate: webdavEvent.startDate,
-      endDate: webdavEvent.endDate,
+      start: webdavEvent.startDate,
+      end: webdavEvent.endDate,
       isAllDay: this.isAllDayEvent(webdavEvent.startDate, webdavEvent.endDate),
 
       source: TimeSlotSource.WEBDAV,
@@ -70,7 +70,7 @@ export class WebDAVEventMapper {
       calendarId,
       accountEmail,
 
-      location: webdavEvent.location || null,
+      meeting_url: webdavEvent.location || null,
       webLink: webdavEvent.url,
       attendees: this.mapAttendees(webdavEvent.attendees || []),
       recurrence: this.mapRecurrence(webdavEvent),
@@ -103,9 +103,9 @@ export class WebDAVEventMapper {
       uid: unifiedEvent.sourceEventId,
       summary: unifiedEvent.title,
       description: unifiedEvent.description || undefined,
-      startDate: unifiedEvent.startDate,
-      endDate: unifiedEvent.endDate,
-      location: unifiedEvent.location || undefined,
+      startDate: unifiedEvent.start,
+      endDate: unifiedEvent.end,
+      location: unifiedEvent.meeting_url || undefined,
 
       // WebDAV-specific fields
       etag: unifiedEvent.etag || undefined,

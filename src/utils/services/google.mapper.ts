@@ -27,8 +27,8 @@ export class GoogleEventMapper {
       id: this.generateInternalId(googleEvent),
       title: googleEvent.summary || '(No title)',
       description: googleEvent.description,
-      startDate: this.parseDateTime(googleEvent.start!),
-      endDate: this.parseDateTime(googleEvent.end!),
+      start: this.parseDateTime(googleEvent.start!),
+      end: this.parseDateTime(googleEvent.end!),
       isAllDay: !googleEvent.start?.dateTime, // If no dateTime, it's all-day
 
       source: TimeSlotSource.GOOGLE,
@@ -36,7 +36,7 @@ export class GoogleEventMapper {
       calendarId,
       accountEmail,
 
-      location: googleEvent.location,
+      meeting_url: googleEvent.location,
       webLink: googleEvent.htmlLink,
       attendees: this.mapAttendees(googleEvent.attendees || []),
       recurrence: this.mapRecurrence(googleEvent.recurrence),
@@ -85,10 +85,10 @@ export class GoogleEventMapper {
       id: unifiedEvent.sourceEventId,
       summary: unifiedEvent.title,
       description: unifiedEvent.description,
-      start: this.createDateTime(unifiedEvent.startDate, unifiedEvent.isAllDay),
-      end: this.createDateTime(unifiedEvent.endDate, unifiedEvent.isAllDay),
+      start: this.createDateTime(unifiedEvent.start, unifiedEvent.isAllDay),
+      end: this.createDateTime(unifiedEvent.end, unifiedEvent.isAllDay),
 
-      location: unifiedEvent.location,
+      location: unifiedEvent.meeting_url,
       attendees: this.createGoogleAttendees(unifiedEvent.attendees || []),
       recurrence: this.createGoogleRecurrence(unifiedEvent.recurrence),
       status: this.mapUnifiedStatusToGoogle(unifiedEvent.status),

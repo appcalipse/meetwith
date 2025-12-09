@@ -35,8 +35,8 @@ export class Office365EventMapper {
       id: await this.generateInternalId(o365Event),
       title: o365Event.subject || '(No title)',
       description: this.extractDescription(o365Event.body),
-      startDate: this.parseDateTime(o365Event.start!),
-      endDate: this.parseDateTime(o365Event.end!),
+      start: this.parseDateTime(o365Event.start!),
+      end: this.parseDateTime(o365Event.end!),
       isAllDay: o365Event.isAllDay || false,
 
       source: TimeSlotSource.OFFICE,
@@ -44,7 +44,7 @@ export class Office365EventMapper {
       calendarId,
       accountEmail,
 
-      location: this.mapLocation(o365Event.location),
+      meeting_url: this.mapLocation(o365Event.location),
       webLink: o365Event.webLink,
       attendees: this.mapAttendees(o365Event.attendees || []),
       recurrence: this.mapRecurrence(o365Event.recurrence),
@@ -87,11 +87,11 @@ export class Office365EventMapper {
       id: unifiedEvent.sourceEventId,
       subject: unifiedEvent.title,
       body: this.createItemBody(unifiedEvent.description || ''),
-      start: this.createDateTime(unifiedEvent.startDate),
-      end: this.createDateTime(unifiedEvent.endDate),
+      start: this.createDateTime(unifiedEvent.start),
+      end: this.createDateTime(unifiedEvent.end),
       isAllDay: unifiedEvent.isAllDay,
 
-      location: this.createO365Location(unifiedEvent.location || ''),
+      location: this.createO365Location(unifiedEvent.meeting_url || ''),
       attendees: this.createO365Attendees(unifiedEvent.attendees || []),
       recurrence: this.createO365Recurrence(unifiedEvent.recurrence),
 
