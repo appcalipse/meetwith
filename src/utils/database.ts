@@ -4480,6 +4480,22 @@ const getMeetingTypesLean = async (
   }
   return data
 }
+// Count meeting types for an account (excluding deleted)
+const countMeetingTypes = async (account_address: string): Promise<number> => {
+  const { count, error } = await db.supabase
+    .from('meeting_type')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count meeting types: ${error.message}`)
+  }
+
+  return count || 0
+}
+
 const getMeetingTypes = async (
   account_address: string,
   limit = 10,
@@ -7698,6 +7714,28 @@ const getBillingPlanProvider = async (
   return data?.provider_product_id || null
 }
 
+// Get billing plan ID from Stripe product ID
+const getBillingPlanIdFromStripeProduct = async (
+  stripeProductId: string,
+  provider: BillingPaymentProvider = BillingPaymentProvider.STRIPE
+): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('billing_plan_providers')
+    .select('billing_plan_id')
+    .eq('provider_product_id', stripeProductId)
+    .eq('provider', provider)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to fetch billing plan from Stripe product: ${error.message}`
+    )
+  }
+
+  return data?.billing_plan_id || null
+}
+
 // Stripe Subscription Helpers
 
 // Create a new Stripe subscription record
@@ -7832,6 +7870,32 @@ const linkTransactionToStripeSubscription = async (
   return data
 }
 
+// Create a subscription transaction (for billing subscriptions)
+const createSubscriptionTransaction = async (
+  payload: TablesInsert<'transactions'>
+): Promise<Tables<'transactions'>> => {
+  const { data, error } = await db.supabase
+    .from('transactions')
+    .insert([payload])
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to create subscription transaction: ${error.message}`
+    )
+  }
+
+  if (!data) {
+    throw new Error(
+      'Failed to create subscription transaction: no data returned'
+    )
+  }
+
+  return data
+}
+
 // Subscription Period Helpers
 
 // Create a new subscription period
@@ -7871,6 +7935,8 @@ const createSubscriptionPeriod = async (
 
 // Get active subscription period for an account
 // Returns the subscription with the farthest expiry_time among all active subscriptions
+// Note: Includes both 'active' and 'cancelled' statuses, as cancelled subscriptions
+// should still grant Pro access until expiry_time passes
 const getActiveSubscriptionPeriod = async (
   accountAddress: string
 ): Promise<Tables<'subscriptions'> | null> => {
@@ -7878,7 +7944,7 @@ const getActiveSubscriptionPeriod = async (
     .from('subscriptions')
     .select('*')
     .eq('owner_account', accountAddress.toLowerCase())
-    .eq('status', 'active')
+    .in('status', ['active', 'cancelled'])
     .gt('expiry_time', new Date().toISOString())
     .order('expiry_time', { ascending: false })
     .limit(1)
@@ -7956,6 +8022,7 @@ export {
   confirmFiatTransaction,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  countMeetingTypes,
   createCheckOutTransaction,
   createCryptoTransaction,
   createMeetingType,
@@ -7964,6 +8031,7 @@ export {
   createQuickPoll,
   createStripeSubscription,
   createSubscriptionPeriod,
+  createSubscriptionTransaction,
   createTgConnection,
   createVerification,
   deleteAllTgConnections,
@@ -7990,6 +8058,7 @@ export {
   getActivePaymentAccountDB,
   getActiveSubscriptionPeriod,
   getBillingPlanById,
+  getBillingPlanIdFromStripeProduct,
   getBillingPlanProvider,
   getBillingPlanProviders,
   getBillingPlans,
