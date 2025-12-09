@@ -13,12 +13,18 @@ import {
   QUICKPOLL_MAX_DURATION_MINUTES,
   QUICKPOLL_MIN_DURATION_MINUTES,
 } from '@/utils/constants'
-import { createQuickPoll, getQuickPollsForAccount } from '@/utils/database'
+import {
+  countActiveQuickPolls,
+  createQuickPoll,
+  getQuickPollsForAccount,
+} from '@/utils/database'
 import {
   QuickPollCreationError,
+  QuickPollLimitExceededError,
   QuickPollValidationError,
   UnauthorizedError,
 } from '@/utils/errors'
+import { isProAccountAsync } from '@/utils/subscription_manager'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req
@@ -93,6 +99,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         )
       }
 
+      // Check subscription status for feature limits
+      const isPro = await isProAccountAsync(address)
+
+      if (!isPro) {
+        // Free tier restriction: Maximum 2 active polls
+        const activePollCount = await countActiveQuickPolls(address)
+        if (activePollCount >= 2) {
+          throw new QuickPollLimitExceededError()
+        }
+      }
+
       const poll = await createQuickPoll(address, {
         title: pollData.title.trim(),
         description: pollData.description?.trim() || '',
@@ -111,6 +128,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     if (error instanceof QuickPollValidationError) {
       return res.status(400).json({ error: error.message })
+    }
+
+    if (error instanceof QuickPollLimitExceededError) {
+      return res.status(403).json({ error: error.message })
     }
 
     if (error instanceof QuickPollCreationError) {

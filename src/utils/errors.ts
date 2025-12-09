@@ -385,6 +385,15 @@ export class CalendarIntegrationLimitExceededError extends Error {
   }
 }
 
+export class QuickPollLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 2 active polls. Upgrade to Pro for unlimited active polls.`
+    )
+    this.name = 'QuickPollLimitExceededError'
+  }
+}
+
 export class TransactionCouldBeNotFoundError extends Error {
   constructor(txHash: `0x${string}`) {
     super(`Transaction or receipt not found for hash: ${txHash}`)

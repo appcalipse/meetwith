@@ -6492,6 +6492,48 @@ const checkPollSlugExists = async (slug: string): Promise<boolean> => {
   }
 }
 
+// Count active QuickPolls for an account (polls where user is scheduler/owner)
+const countActiveQuickPolls = async (
+  account_address: string
+): Promise<number> => {
+  const now = new Date().toISOString()
+
+  // First, get all poll IDs where the account is a scheduler (owner)
+  const { data: participations, error: participationError } = await db.supabase
+    .from('quick_poll_participants')
+    .select('poll_id')
+    .eq('account_address', account_address.toLowerCase())
+    .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+
+  if (participationError) {
+    Sentry.captureException(participationError)
+    throw new Error(
+      `Failed to count active QuickPolls: ${participationError.message}`
+    )
+  }
+
+  if (!participations || participations.length === 0) {
+    return 0
+  }
+
+  const pollIds = participations.map(p => p.poll_id)
+
+  // Count active polls (ONGOING status and not expired)
+  const { count, error } = await db.supabase
+    .from('quick_polls')
+    .select('*', { count: 'exact', head: true })
+    .in('id', pollIds)
+    .eq('status', PollStatus.ONGOING)
+    .gt('expires_at', now)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count active QuickPolls: ${error.message}`)
+  }
+
+  return count || 0
+}
+
 const createQuickPoll = async (
   owner_address: string,
   pollData: CreateQuickPollRequest
@@ -8054,6 +8096,7 @@ export {
   confirmFiatTransaction,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  countActiveQuickPolls,
   countCalendarIntegrations,
   countGroups,
   countMeetingTypes,
