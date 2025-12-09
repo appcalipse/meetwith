@@ -2341,8 +2341,10 @@ export const getEvents = async (
   referenceDate: DateTime
 ): Promise<CalendarEvents> => {
   return await internalFetch<CalendarEvents>(
-    `/secure/calendar_events?startDate=${referenceDate
-      .startOf('month')
-      .toISO()}&endDate=${referenceDate.endOf('month').toISO()}`
+    `/secure/calendar_events?startDate=${encodeURIComponent(
+      referenceDate.startOf('month').startOf('week').toISO() || ''
+    )}&endDate=${encodeURIComponent(
+      referenceDate.endOf('month').endOf('week').toISO() || ''
+    )}`
   )
 }
