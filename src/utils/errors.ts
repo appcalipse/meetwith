@@ -376,6 +376,15 @@ export class SchedulingGroupLimitExceededError extends Error {
   }
 }
 
+export class CalendarIntegrationLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.`
+    )
+    this.name = 'CalendarIntegrationLimitExceededError'
+  }
+}
+
 export class TransactionCouldBeNotFoundError extends Error {
   constructor(txHash: `0x${string}`) {
     super(`Transaction or receipt not found for hash: ${txHash}`)

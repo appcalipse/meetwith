@@ -2459,6 +2459,23 @@ const getQuickPollCalendars = async (
   return connectedCalendars
 }
 
+// Count calendar integrations for an account
+const countCalendarIntegrations = async (
+  account_address: string
+): Promise<number> => {
+  const { count, error } = await db.supabase
+    .from('connected_calendars')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_address', account_address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count calendar integrations: ${error.message}`)
+  }
+
+  return count || 0
+}
+
 const connectedCalendarExists = async (
   address: string,
   email: string,
@@ -8037,6 +8054,7 @@ export {
   confirmFiatTransaction,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  countCalendarIntegrations,
   countGroups,
   countMeetingTypes,
   createCheckOutTransaction,
