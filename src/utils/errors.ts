@@ -349,6 +349,24 @@ export class LastMeetingTypeError extends Error {
   }
 }
 
+export class MeetingTypeLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 1 meeting type. Upgrade to Pro for unlimited meeting types.`
+    )
+    this.name = 'MeetingTypeLimitExceededError'
+  }
+}
+
+export class PaidMeetingTypeNotAllowedError extends Error {
+  constructor() {
+    super(
+      `Free tier only allows FREE meeting types. Upgrade to Pro to create paid meeting types.`
+    )
+    this.name = 'PaidMeetingTypeNotAllowedError'
+  }
+}
+
 export class TransactionCouldBeNotFoundError extends Error {
   constructor(txHash: `0x${string}`) {
     super(`Transaction or receipt not found for hash: ${txHash}`)
