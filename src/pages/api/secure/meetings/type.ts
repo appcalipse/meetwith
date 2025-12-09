@@ -3,12 +3,20 @@ import {
   DeleteMeetingTypeRequest,
   UpdateMeetingTypeRequest,
 } from '@meta/Requests'
-import { LastMeetingTypeError, MeetingSlugAlreadyExists } from '@utils/errors'
+import { SessionType } from '@utils/constants/meeting-types'
+import {
+  LastMeetingTypeError,
+  MeetingSlugAlreadyExists,
+  MeetingTypeLimitExceededError,
+  PaidMeetingTypeNotAllowedError,
+} from '@utils/errors'
 import { extractQuery } from '@utils/generic_utils'
+import { isProAccountAsync } from '@utils/subscription_manager'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
+  countMeetingTypes,
   createMeetingType,
   deleteMeetingType,
   getMeetingTypes,
@@ -30,6 +38,24 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     if (req.method === 'POST') {
       const meetingTypePayload = req.body as CreateMeetingTypeRequest
+
+      // Check subscription status
+      const isPro = await isProAccountAsync(account_id)
+
+      if (!isPro) {
+        // Free tier restrictions:
+        // 1. Only FREE meeting types allowed (no paid meetings)
+        if (meetingTypePayload.type === SessionType.PAID) {
+          throw new PaidMeetingTypeNotAllowedError()
+        }
+
+        // 2. Maximum 1 meeting type
+        const meetingTypeCount = await countMeetingTypes(account_id)
+        if (meetingTypeCount >= 1) {
+          throw new MeetingTypeLimitExceededError()
+        }
+      }
+
       const meetingType = await createMeetingType(
         account_id,
         meetingTypePayload
@@ -58,6 +84,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(400).send(e.message)
     } else if (e instanceof LastMeetingTypeError) {
       return res.status(409).send(e.message)
+    } else if (e instanceof MeetingTypeLimitExceededError) {
+      return res.status(403).send(e.message)
+    } else if (e instanceof PaidMeetingTypeNotAllowedError) {
+      return res.status(403).send(e.message)
     } else if (e instanceof Error) {
       console.error('Error in meetings/type API:', e.message)
       return res
