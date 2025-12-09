@@ -394,6 +394,15 @@ export class QuickPollLimitExceededError extends Error {
   }
 }
 
+export class CalendarSyncLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 1 calendar sync. Upgrade to Pro for unlimited calendar syncs.`
+    )
+    this.name = 'CalendarSyncLimitExceededError'
+  }
+}
+
 export class TransactionCouldBeNotFoundError extends Error {
   constructor(txHash: `0x${string}`) {
     super(`Transaction or receipt not found for hash: ${txHash}`)
