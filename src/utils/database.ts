@@ -3422,6 +3422,21 @@ export async function isUserAdminOfGroup(
   return data?.role === MemberType.ADMIN
 }
 
+// Count groups for an account
+const countGroups = async (account_address: string): Promise<number> => {
+  const { count, error } = await db.supabase
+    .from('group_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('member_id', account_address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count groups: ${error.message}`)
+  }
+
+  return count || 0
+}
+
 export async function createGroupInDB(
   name: string,
   account_address: string,
@@ -8022,6 +8037,7 @@ export {
   confirmFiatTransaction,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  countGroups,
   countMeetingTypes,
   createCheckOutTransaction,
   createCryptoTransaction,

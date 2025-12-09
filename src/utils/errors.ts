@@ -367,6 +367,15 @@ export class PaidMeetingTypeNotAllowedError extends Error {
   }
 }
 
+export class SchedulingGroupLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 5 scheduling groups. Upgrade to Pro for unlimited scheduling groups.`
+    )
+    this.name = 'SchedulingGroupLimitExceededError'
+  }
+}
+
 export class TransactionCouldBeNotFoundError extends Error {
   constructor(txHash: `0x${string}`) {
     super(`Transaction or receipt not found for hash: ${txHash}`)
