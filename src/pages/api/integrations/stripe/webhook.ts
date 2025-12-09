@@ -1,5 +1,14 @@
 import * as Sentry from '@sentry/nextjs'
-import { getRawBody, handleAccountUpdate } from '@utils/services/stripe.helper'
+import {
+  getRawBody,
+  handleAccountUpdate,
+  handleInvoicePaymentFailed,
+  handleInvoicePaymentSucceeded,
+  handleSubscriptionCreated,
+  handleSubscriptionDeleted,
+  handleSubscriptionTrialWillEnd,
+  handleSubscriptionUpdated,
+} from '@utils/services/stripe.helper'
 import { StripeService } from '@utils/services/stripe.service'
 import { NextApiRequest, NextApiResponse } from 'next'
 import Stripe from 'stripe'
@@ -30,6 +39,24 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       switch (event.type) {
         case 'account.updated':
           await handleAccountUpdate(event)
+          break
+        case 'customer.subscription.created':
+          await handleSubscriptionCreated(event)
+          break
+        case 'customer.subscription.updated':
+          await handleSubscriptionUpdated(event)
+          break
+        case 'customer.subscription.deleted':
+          await handleSubscriptionDeleted(event)
+          break
+        case 'invoice.payment_succeeded':
+          await handleInvoicePaymentSucceeded(event)
+          break
+        case 'invoice.payment_failed':
+          await handleInvoicePaymentFailed(event)
+          break
+        case 'customer.subscription.trial_will_end':
+          await handleSubscriptionTrialWillEnd(event)
           break
         default:
           // eslint-disable-next-line no-restricted-syntax
