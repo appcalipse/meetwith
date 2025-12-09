@@ -142,10 +142,10 @@ export interface MeetingInfo {
   permissions?: Array<MeetingPermissions>
 }
 
-export interface MeetingDecrypted extends MeetingInfo {
+export interface MeetingDecrypted<T = Date> extends MeetingInfo {
   id: string
-  start: Date
-  end: Date
+  start: T
+  end: T
   version: DBSlot['version']
   meeting_info_encrypted: Encrypted
   user_type?: 'account' | 'guest'
