@@ -24,12 +24,12 @@ export type Nullable<T> = {
   [K in keyof T]: T[K] | null | undefined
 }
 
-export interface UnifiedEvent {
+export interface UnifiedEvent<T = Date> {
   id: string
   title: string
   description: Optional<string>
-  startDate: Date
-  endDate: Date
+  start: T
+  end: T
   isAllDay: boolean
 
   source: TimeSlotSource
@@ -37,7 +37,7 @@ export interface UnifiedEvent {
   calendarId: string
   accountEmail: string
 
-  location?: Optional<string>
+  meeting_url?: Optional<string>
   webLink?: Optional<string>
   attendees?: UnifiedAttendee[]
   recurrence?: UnifiedRecurrence | null
