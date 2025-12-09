@@ -13,6 +13,8 @@ const Sidebar: React.FC = () => {
       p={3}
       alignItems="start"
       justifyContent="flex-start"
+      borderRightWidth={1}
+      borderColor="neutral.700"
     >
       <CalendarPicker />
       <ConnectedCalendar />

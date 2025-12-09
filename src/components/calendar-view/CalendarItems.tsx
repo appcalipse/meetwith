@@ -2,14 +2,21 @@ import { Grid, GridItem, Text } from '@chakra-ui/layout'
 import { DateTime } from 'luxon'
 import * as React from 'react'
 
+import { useCalendarContext } from '@/providers/calendar/CalendarContext'
+
+import CalendarItem from './CalendarItem'
+
 const CalendarItems: React.FC = () => {
+  const { currrentDate } = useCalendarContext()
+  const startOfWeek = currrentDate.startOf('week')
+
   const TIME_SLOTS = Array.from({ length: 24 }, (_, i) =>
     DateTime.fromObject({ hour: i, minute: 0 })
   )
   const days = Array.from({
     length: 7,
   }).map((_, index) => {
-    return DateTime.now().plus({ days: index }).startOf('day')
+    return startOfWeek.plus({ days: index }).startOf('day')
   })
   return (
     <Grid templateColumns="minmax(45px, 70px) repeat(7, 1fr)" h="100%">
@@ -36,24 +43,11 @@ const CalendarItems: React.FC = () => {
         ))}
       </Grid>
       {days.map((day, dayIndex) => (
-        <Grid key={dayIndex} templateRows="repeat(1fr)">
-          {TIME_SLOTS.map((_, timeIndex) => (
-            <GridItem
-              key={`${dayIndex}-${timeIndex}`}
-              border="1px solid"
-              borderColor="neutral.700"
-              bg={dayIndex % 2 === 0 ? 'neutral.825' : 'neutral.950'}
-              minH="36px"
-              cursor="pointer"
-              _hover={{
-                borderColor: 'primary.600',
-                borderWidth: '2px',
-              }}
-            >
-              {/* Placeholder for events */}
-            </GridItem>
-          ))}
-        </Grid>
+        <CalendarItem
+          key={`${dayIndex}-${day.toMillis()}`}
+          dayIndex={dayIndex}
+          timeSlot={day}
+        />
       ))}
     </Grid>
   )
