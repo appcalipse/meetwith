@@ -1,13 +1,14 @@
 import { DateTime } from 'luxon'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { getSlotsForAccount } from '@/utils/database'
 import { extractQuery } from '@/utils/generic_utils'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    if (req.method === 'POST') {
+    if (req.method === 'GET') {
       const account_address = req.session.account?.address
       if (!account_address) {
         return res.status(401).send('Unauthorized')
@@ -37,9 +38,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       })
     }
   } catch (error) {
+    console.error(error)
     return res.status(500).send(error)
   }
   return res.status(404).send('Not found')
 }
 
-export default handler
+export default withSessionRoute(handler)
