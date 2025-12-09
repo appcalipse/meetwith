@@ -49,6 +49,16 @@ const ConnectedCalendarItem: React.FC<ConnectedCalendarItemProps> = ({
                     width={6}
                     height={6}
                     borderColor={cal.color || 'primary.500'}
+                    sx={{
+                      '& .chakra-checkbox__control': {
+                        _checked: {
+                          bg: `${cal.color || 'primary.500'} !important`,
+                          borderColor: `${
+                            cal.color || 'primary.500'
+                          } !important`,
+                        },
+                      },
+                    }}
                     isChecked={selectedCalendars.some(
                       selCal =>
                         selCal.calendarId === cal.calendarId &&
