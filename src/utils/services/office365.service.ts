@@ -297,6 +297,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         startdatetime: dateFromParsed.toISOString(),
         enddatetime: dateToParsed.toISOString(),
         $top: '500',
+        $filter: "type ne 'occurrence'",
       })
       .get()
 
@@ -312,6 +313,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
 
       nextLink = response['@odata.nextLink']
     }
+
     return Promise.all(
       events.map(
         async event =>
