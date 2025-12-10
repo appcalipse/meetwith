@@ -13,10 +13,11 @@ interface CalendarViewProps {
 const CalendarView: React.FC<CalendarViewProps> = ({}) => {
   return (
     <CalendarProvider>
-      <HStack align="start" gap={0}>
+      <HStack align="start" gap={0} w="100%" overflowX="hidden">
         <Sidebar />
         <Calendar />
       </HStack>
+      {/*<ActiveEvent />*/}
     </CalendarProvider>
   )
 }
