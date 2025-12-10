@@ -44,17 +44,23 @@ export interface TimeSlot extends Interval {
 }
 export interface DBSlot extends Interval {
   id?: string
+  account_address?: string | null
   created_at?: Date
+  guest_email?: string | null
+  role?: ParticipantType
   source?: string
   version: number
   meeting_info_encrypted: Encrypted
   recurrence: MeetingRepeat
   public_decrypted_data?: MeetingDecrypted
-  role?: ParticipantType
-  guest_email?: string | null
-  account_address?: string | null
 }
-
+export interface SlotInstance extends DBSlot {
+  series_id: string
+}
+export interface SlotSeries extends Omit<DBSlot, 'id'> {
+  rrule: string[]
+  slot_id: string
+}
 export interface AccountSlot extends DBSlot {
   priority: 1
   user_type: 'account'
@@ -66,6 +72,13 @@ export interface GuestSlot extends DBSlot {
 export interface ExtendedDBSlot extends DBSlot {
   conferenceData?: ConferenceMeeting
 }
+export interface ExtendedSlotInstance extends SlotInstance {
+  conferenceData?: ConferenceMeeting
+}
+export interface ExtendedSlotSeries extends SlotInstance {
+  conferenceData?: ConferenceMeeting
+}
+
 /**
  * Meetings providers list
  */
