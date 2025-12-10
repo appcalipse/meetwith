@@ -3,7 +3,7 @@ import { DateTime, Interval } from 'luxon'
 import * as React from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { UnifiedEvent } from '@/types/Calendar'
+import { UnifiedEvent, WithInterval } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   ConnectedCalendarCore,
@@ -11,29 +11,30 @@ import {
 import { MeetingDecrypted } from '@/types/Meeting'
 import { getEvents, listConnectedCalendars } from '@/utils/api_helper'
 import { decodeMeeting } from '@/utils/calendar_manager'
-export type WithInterval<T> = T & {
-  interval: Interval
-}
 
 interface ICalendarContext {
   calendars: undefined | ConnectedCalendarCore[]
   currrentDate: DateTime
   setCurrentDate: (date: DateTime) => void
   selectedCalendars: CalendarSyncInfo[]
+  selectedSlot: WithInterval<
+    UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>
+  > | null
+  setSelectedSlot: React.Dispatch<
+    React.SetStateAction<WithInterval<
+      UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>
+    > | null>
+  >
   setSelectedCalendars: React.Dispatch<React.SetStateAction<CalendarSyncInfo[]>>
   calendarEvents: Array<
     WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
   >
   calculateSlotForInterval: (
     interval: Interval
-  ) => WithInterval<
-    UnifiedEvent<DateTime<boolean>> | MeetingDecrypted<DateTime<boolean>>
-  >[]
+  ) => WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>[]
   getAllDayEvents: (
     interval: Interval
-  ) => WithInterval<
-    UnifiedEvent<DateTime<boolean>> | MeetingDecrypted<DateTime<boolean>>
-  >[]
+  ) => WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>[]
   getSlotBgColor: (calId: string) => string
 }
 
@@ -47,6 +48,8 @@ export const CalendarContext = React.createContext<ICalendarContext>({
   calculateSlotForInterval: () => [],
   getAllDayEvents: () => [],
   getSlotBgColor: () => '',
+  selectedSlot: null,
+  setSelectedSlot: () => {},
 })
 
 export const useCalendarContext = () => {
@@ -66,6 +69,9 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   const [selectedCalendars, setSelectedCalendars] = React.useState<
     CalendarSyncInfo[]
   >([])
+  const [selectedSlot, setSelectedSlot] = React.useState<WithInterval<
+    UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>
+  > | null>(null)
   const { data: calendars } = useQuery({
     queryKey: ['connected-calendars'],
     queryFn: () => listConnectedCalendars(false),
@@ -89,6 +95,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
         ...res,
         mwwEvents: await Promise.all(
           res.mwwEvents.map(async meeting => {
+            // TODO: Pass all events through a preprocessor first before mapping this prepropcesssor shopuld get all the meeting sereis and check if all single instance of that meeting is already included in the events, if yes it returns all the events and discard the mastyer event otherwise it takes the availaible events and adds the master events to it.
             try {
               const decodedMeeting = await decodeMeeting(
                 meeting,
@@ -144,6 +151,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   > = React.useMemo(() => {
     if (!events) return []
     const mwwEvents = events.mwwEvents || []
+
     const externalEvents = (events.calendarEvents || []).filter(event => {
       const isMeetwithEvent = mwwEvents.some(
         mwwEvent =>
@@ -203,6 +211,8 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     calculateSlotForInterval,
     getSlotBgColor,
     getAllDayEvents,
+    selectedSlot,
+    setSelectedSlot,
   }
   return (
     <CalendarContext.Provider value={context}>
