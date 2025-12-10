@@ -1217,8 +1217,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         calendarId,
         timeMin: dateFrom,
         timeMax: dateTo,
-        singleEvents: true,
-        orderBy: 'startTime',
         pageToken: token,
       })
       aggregatedEvents.push(...(response.data.items || []))
