@@ -88,6 +88,8 @@ import {
   ConferenceMeeting,
   DBSlot,
   ExtendedDBSlot,
+  ExtendedSlotInstance,
+  ExtendedSlotSeries,
   GroupMeetingRequest,
   GroupNotificationType,
   GuestSlot,
@@ -834,6 +836,66 @@ const getSlotsForAccount = async (
 
   return data || []
 }
+const getSlotsForAccountWithConference = async (
+  account_address: string,
+  start?: Date,
+  end?: Date,
+  limit = 1000,
+  offset = 0
+): Promise<
+  Array<ExtendedDBSlot | ExtendedSlotInstance | ExtendedSlotSeries>
+> => {
+  const account = await getAccountFromDB(account_address)
+
+  const _start = start ? start.toISOString() : '1970-01-01'
+  const _end = end ? end.toISOString() : '2500-01-01'
+  const [
+    { data: slots, error: slotError },
+    { data: slotInstances, error: slotErrors },
+    { data: slotSeries, error: slotErrorsError },
+  ] = await Promise.all([
+    db.supabase
+      .from<ExtendedDBSlot>('slots')
+      .select()
+      .eq('account_address', account.address)
+      .eq('recurrence', MeetingRepeat.NO_REPEAT)
+      .or(
+        `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
+      )
+      .range(offset, offset + limit - 1)
+      .order('start'),
+    db.supabase.rpc<ExtendedSlotInstance>(
+      'get_slot_instances_with_meeting_info',
+      {
+        p_account_address: account.address,
+        p_time_min: _start,
+        p_time_max: _end,
+      }
+    ),
+    db.supabase.rpc<ExtendedSlotSeries>(
+      'get_meeting_series_without_instances',
+      {
+        p_account_address: account.address,
+        p_time_min: _start,
+        p_time_max: _end,
+      }
+    ),
+  ])
+
+  if (slotError) {
+    throw new Error(slotError.message)
+    // //TODO: handle error
+  }
+  const conferenceDataMap = await getMultipleConferenceDataBySlotId(
+    slots?.map(slot => slot.id).filter(id => id) as string[]
+  )
+  for (const slot of slots) {
+    if (!slot.id) continue
+    const conferenceMeeting = conferenceDataMap.get(slot.id)
+    slot.conferenceData = conferenceMeeting
+  }
+  return slots.concat(slotInstances || []).concat(slotSeries || [])
+}
 
 const getSlotsForAccountMinimal = async (
   account_address: string,
@@ -1107,9 +1169,12 @@ const getSlotsForDashboard = async (
     throw new Error(error.message)
     // //TODO: handle error
   }
+  const conferenceDataMap = await getMultipleConferenceDataBySlotId(
+    data?.map(slot => slot.id).filter(id => id) as string[]
+  )
   for (const slot of data) {
     if (!slot.id) continue
-    const conferenceMeeting = await getConferenceDataBySlotId(slot.id)
+    const conferenceMeeting = conferenceDataMap.get(slot.id)
     slot.conferenceData = conferenceMeeting
   }
   return data || []
@@ -1295,6 +1360,36 @@ const getConferenceDataBySlotId = async (
   }
 
   return data[0]
+}
+const getMultipleConferenceDataBySlotId = async (
+  slotIds: string[]
+): Promise<Map<string, ConferenceMeeting>> => {
+  if (slotIds.length === 0) {
+    return new Map()
+  }
+  const { data, error } = await db.supabase.rpc<ConferenceMeeting>(
+    'get_meetings_by_slot_ids',
+    {
+      slot_ids: slotIds, // This should be a proper JavaScript array
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const slotToMeetingMap = new Map<string, ConferenceMeeting>()
+
+  data?.forEach(meeting => {
+    if (meeting.slots && Array.isArray(meeting.slots)) {
+      meeting.slots.forEach(slotId => {
+        if (slotIds.includes(slotId)) {
+          slotToMeetingMap.set(slotId, meeting)
+        }
+      })
+    }
+  })
+
+  return slotToMeetingMap
 }
 const getGuestSlotById = async (slotId: string): Promise<GuestSlot> => {
   const { data, error } = await db.supabase
@@ -3922,7 +4017,8 @@ const getOfficeMeetingIdMappingId = async (
     .maybeSingle()
 
   if (error) {
-    throw new Error(error.message)
+    console.error(error)
+    return null
   }
   if (!data) {
     return null
@@ -8543,6 +8639,7 @@ export {
   getSlotSeriesId,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
+  getSlotsForAccountWithConference,
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
