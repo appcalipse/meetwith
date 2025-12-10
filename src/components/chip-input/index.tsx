@@ -20,7 +20,7 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
-import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
+import { isGroupParticipant } from '@/types/schedule'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import { BadgeChip } from './chip'
@@ -30,7 +30,7 @@ const DEFAULT_STOP_KEYS = ['Tab', 'Space', 'Enter', 'Escape', 'Comma']
 interface ChipInputProps {
   onChange: (data: ParticipantInfo[]) => void
   isReadOnly?: boolean
-  currentItems: Array<ParticipantInfo | IGroupParticipant>
+  currentItems: Array<ParticipantInfo>
   renderItem: (item: ParticipantInfo) => string
   placeholder?: string
   // chakra props that we want to propagate
