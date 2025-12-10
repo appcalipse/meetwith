@@ -6,13 +6,21 @@ import {
   PopoverCloseButton,
   PopoverContent,
   PopoverTrigger,
+  useDisclosure,
 } from '@chakra-ui/react'
 import { DateTime } from 'luxon'
 import * as React from 'react'
+import { FaExpand } from 'react-icons/fa6'
 
-import { WithInterval } from '@/providers/calendar/CalendarContext'
-import { UnifiedEvent } from '@/types/Calendar'
+import useAccountContext from '@/hooks/useAccountContext'
+import {
+  AttendeeStatus,
+  isCalendarEvent,
+  UnifiedEvent,
+  WithInterval,
+} from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
+import { ParticipationStatus } from '@/types/ParticipantInfo'
 import {
   generateBorderColor,
   getDesignSystemTextColor,
@@ -36,7 +44,9 @@ const Event: React.FC<EventProps> = ({
   timeSlot,
 }) => {
   const duration = slot.interval.toDuration('minutes').toObject().minutes || 0
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const height = (duration / 60) * 36
+  const currentAccount = useAccountContext()
   const top =
     ((slot.start.diff(timeSlot, 'minutes').toObject().minutes || 0) / 60) * 36
   const isStartInsideOtherEvent = React.useMemo(() => {
@@ -46,8 +56,39 @@ const Event: React.FC<EventProps> = ({
     })
   }, [allSlotsForDay, slot])
   const margin = isStartInsideOtherEvent.length * 3
+  const actor = React.useMemo(() => {
+    if (isCalendarEvent(slot)) {
+      return slot.attendees?.find(
+        attendee => attendee.email === slot.accountEmail
+      )
+    } else {
+      return slot.participants.find(
+        participant => participant.account_address === currentAccount?.address
+      )
+    }
+  }, [])
+  const isDeclined =
+    actor?.status &&
+    [ParticipationStatus.Rejected, AttendeeStatus.DECLINED].includes(
+      actor?.status
+    )
+  const isPendingAction =
+    actor?.status &&
+    [
+      ParticipationStatus.Pending,
+      AttendeeStatus.TENTATIVE,
+      AttendeeStatus.NEEDS_ACTION,
+      AttendeeStatus.DELEGATED,
+    ].includes(actor?.status)
+  const isAccepted =
+    actor?.status &&
+    [
+      ParticipationStatus.Accepted,
+      AttendeeStatus.ACCEPTED,
+      AttendeeStatus.COMPLETED,
+    ].includes(actor?.status)
   return (
-    <Popover>
+    <Popover isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
       <PopoverTrigger>
         <GridItem
           bg={bg}
@@ -59,7 +100,7 @@ const Event: React.FC<EventProps> = ({
           color={getDesignSystemTextColor(bg)}
           w="100%"
           minW={0}
-          height={height}
+          height={`${Math.max(height, 18)}px`}
           marginTop={margin}
           marginLeft={margin}
           top={top}
@@ -85,9 +126,17 @@ const Event: React.FC<EventProps> = ({
           </VStack>
         </GridItem>
       </PopoverTrigger>
-      <PopoverContent zIndex={10} width="400px">
+      <PopoverContent zIndex={10} width="600px">
         <PopoverArrow />
-        <PopoverCloseButton />
+        <PopoverCloseButton
+          onClick={() => {
+            onClose()
+          }}
+          as={FaExpand}
+          size={'24'}
+          top={4}
+          right={4}
+        />
 
         <PopoverBody>
           <EventDetailsPopOver slot={slot} />
