@@ -115,15 +115,13 @@ export class Office365EventMapper {
   private static async generateInternalId(
     o365: MicrosoftGraphEvent
   ): Promise<string> {
+    if (!o365.body?.content.includes('Your meeting will happen at'))
+      return o365.id!
     const extendedProperties = o365.singleValueExtendedProperties
     const internalIdProp = extendedProperties?.find(
       prop => prop.id === 'meeting_id'
     )
-    return (
-      internalIdProp?.value ||
-      (await getOfficeMeetingIdMappingId(o365.id!)) ||
-      o365.id!
-    )
+    return internalIdProp?.value || o365.id!
   }
 
   private static extractDescription(body?: ItemBody): string | undefined {
