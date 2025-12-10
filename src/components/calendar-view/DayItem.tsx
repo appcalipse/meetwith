@@ -2,11 +2,8 @@ import { Grid } from '@chakra-ui/layout'
 import { DateTime, Interval } from 'luxon'
 import * as React from 'react'
 
-import {
-  useCalendarContext,
-  WithInterval,
-} from '@/providers/calendar/CalendarContext'
-import { UnifiedEvent } from '@/types/Calendar'
+import { useCalendarContext } from '@/providers/calendar/CalendarContext'
+import { UnifiedEvent, WithInterval } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
 
 import Event from './Event'
