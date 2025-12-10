@@ -26,7 +26,11 @@ import {
   MeetingDecrypted,
 } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { getMeeting, getMeetingsForDashboard } from '@/utils/api_helper'
+import {
+  getMeeting,
+  getMeetingsForDashboard,
+  getSlotByMeetingId,
+} from '@/utils/api_helper'
 import { decodeMeeting, deleteMeeting } from '@/utils/calendar_manager'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
@@ -55,8 +59,9 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
   const { push, query } = useRouter()
-  const { slotId, intent } = query as {
+  const { slotId, conferenceId, intent } = query as {
     slotId: string
+    conferenceId: string
     intent: Intents
   }
 
@@ -345,8 +350,48 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const { CancelDialog, openCancelDialog } = useCancelDialog()
   const fillMeeting = async () => {
     try {
-      const meeting = await getMeeting(slotId as string)
-      const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
+      let meeting: ExtendedDBSlot
+      let decodedMeeting: MeetingDecrypted | null = null
+
+      if (conferenceId) {
+        // For dashboard, getSlotByMeetingId should return the account slot for the current user
+        const slot = await getSlotByMeetingId(conferenceId as string)
+        if (!slot) {
+          toast({
+            title: 'Meeting not found',
+            status: 'error',
+            description: 'The meeting you are trying to access was not found.',
+            duration: 5000,
+            isClosable: true,
+          })
+          return
+        }
+        // For dashboard meetings, we expect account slots
+        // Single calendar events: both host and guest share the same meeting_id (conferenceId)
+        // but each has their own slot. getSlotByMeetingId should return the slot for the current account
+        if (slot.user_type === 'account') {
+          meeting = slot as ExtendedDBSlot
+          decodedMeeting = await decodeMeeting(meeting, currentAccount!)
+        } else {
+          // If it's a guest slot, we might need to get the account slot instead
+          // For now, show an error as dashboard should only handle account slots
+          toast({
+            title: 'Invalid meeting',
+            status: 'error',
+            description:
+              'This meeting cannot be managed from the dashboard. Please use the guest cancel link.',
+            duration: 5000,
+            isClosable: true,
+          })
+          return
+        }
+      } else if (slotId) {
+        meeting = await getMeeting(slotId as string)
+        decodedMeeting = await decodeMeeting(meeting, currentAccount!)
+      } else {
+        return
+      }
+
       if (intent === Intents.CANCEL_MEETING) {
         openCancelDialog(
           meeting,
@@ -357,17 +402,26 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
       } else {
         openMeetingDialog(
           meeting,
-          decodedMeeting,
+          decodedMeeting ?? undefined,
           Intl.DateTimeFormat().resolvedOptions().timeZone,
           afterClose
         )
       }
-    } catch (e) {}
+    } catch (e) {
+      toast({
+        title: 'Error loading meeting',
+        status: 'error',
+        description: 'Unable to load meeting details. Please try again.',
+        duration: 5000,
+        isClosable: true,
+      })
+    }
   }
   useEffect(() => {
-    if (!slotId) return
+    if (!slotId && !conferenceId) return
+    if (!intent) return
     fillMeeting()
-  }, [slotId])
+  }, [slotId, conferenceId, intent])
 
   return (
     <ActionsContext.Provider value={context}>

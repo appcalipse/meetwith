@@ -313,6 +313,8 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       })
     )
 
+    const rescheduleUrl = `${appUrl}/dashboard/schedule?conferenceId=${details.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    const cancelUrl = `${appUrl}/dashboard/meetings?conferenceId=${details.meeting_id}&intent=${Intents.CANCEL_MEETING}`
     const payload: MicrosoftGraphEvent = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
@@ -324,7 +326,8 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
           details.meeting_url,
-          `${appUrl}/dashboard/schedule?conferenceId=${details.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+          rescheduleUrl,
+          cancelUrl
         ),
       },
       start: {
