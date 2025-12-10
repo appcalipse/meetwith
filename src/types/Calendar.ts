@@ -1,3 +1,5 @@
+import { DateTime, Interval } from 'luxon'
+
 import {
   WebDAVAttendeeExtensions,
   WebDAVEventExtensions,
@@ -7,7 +9,14 @@ import {
   GoogleEventExtensions,
 } from '@/utils/services/google.mapper'
 
-import { DBSlot, MeetingRepeat, TimeSlotSource } from './Meeting'
+import {
+  ExtendedDBSlot,
+  ExtendedSlotInstance,
+  ExtendedSlotSeries,
+  MeetingDecrypted,
+  MeetingRepeat,
+  TimeSlotSource,
+} from './Meeting'
 import {
   Attendee as Office365Attendee,
   EventImportance,
@@ -19,6 +28,7 @@ import {
   RecurrencePattern,
   RecurrenceRange,
 } from './Office365'
+import { ParticipationStatus } from './ParticipantInfo'
 export type Optional<T> = T | undefined | null
 export type Nullable<T> = {
   [K in keyof T]: T[K] | null | undefined
@@ -136,6 +146,58 @@ export enum EventStatus {
 }
 
 export interface CalendarEvents {
-  mwwEvents: Array<DBSlot>
+  mwwEvents: Array<ExtendedDBSlot | ExtendedSlotInstance | ExtendedSlotSeries>
   calendarEvents: Array<UnifiedEvent>
+}
+export type WithInterval<T> = T & {
+  interval: Interval
+}
+
+export const isCalendarEvent = (
+  slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
+): slot is WithInterval<UnifiedEvent<DateTime>> => {
+  return 'calendarId' in slot
+}
+
+const DECLINED_STATUSES = [
+  ParticipationStatus.Rejected,
+  AttendeeStatus.DECLINED,
+] as const
+
+const PENDING_ACTION_STATUSES = [
+  ParticipationStatus.Pending,
+  AttendeeStatus.TENTATIVE,
+  AttendeeStatus.NEEDS_ACTION,
+  AttendeeStatus.DELEGATED,
+] as const
+
+const ACCEPTED_STATUSES = [
+  ParticipationStatus.Accepted,
+  AttendeeStatus.ACCEPTED,
+  AttendeeStatus.COMPLETED,
+] as const
+
+type AttendeeStatusType =
+  | ParticipationStatus
+  | AttendeeStatus
+  | null
+  | undefined
+
+const includesStatus = (
+  statuses: readonly (ParticipationStatus | AttendeeStatus)[],
+  status: AttendeeStatusType
+): boolean => {
+  return status != null && statuses.includes(status as any)
+}
+
+export const isDeclined = (status: AttendeeStatusType): boolean => {
+  return includesStatus(DECLINED_STATUSES, status)
+}
+
+export const isPendingAction = (status: AttendeeStatusType): boolean => {
+  return includesStatus(PENDING_ACTION_STATUSES, status)
+}
+
+export const isAccepted = (status: AttendeeStatusType): boolean => {
+  return includesStatus(ACCEPTED_STATUSES, status)
 }
