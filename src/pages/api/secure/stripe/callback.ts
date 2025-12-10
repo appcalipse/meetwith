@@ -21,9 +21,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const accountId = provider.provider_account_id
 
       if (!accountId) {
-        return res.redirect(
-          '/dashboard/details?stripeResult=error#connected-accounts'
-        )
+        return res.redirect('/dashboard/connected-accounts?stripeResult=error')
       }
       const account = await stripe.accounts.retrieve(accountId)
       if (account.details_submitted) {
@@ -31,22 +29,20 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           status: PaymentAccountStatus.CONNECTED,
         })
         return res.redirect(
-          '/dashboard/details?stripeResult=success#connected-accounts'
+          '/dashboard/connected-accounts?stripeResult=success'
         )
       } else if (account) {
         await updatePaymentAccount(provider.id, account_address, {
           status: PaymentAccountStatus.PENDING,
         })
         return res.redirect(
-          '/dashboard/details?stripeResult=pending#connected-accounts'
+          '/dashboard/connected-accounts?stripeResult=pending'
         )
       } else {
         await updatePaymentAccount(provider.id, account_address, {
           status: PaymentAccountStatus.FAILED,
         })
-        return res.redirect(
-          '/dashboard/details?stripeResult=error#connected-accounts'
-        )
+        return res.redirect('/dashboard/connected-accounts?stripeResult=error')
       }
     } catch (e) {
       console.error(e)

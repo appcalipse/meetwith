@@ -37,14 +37,14 @@ async function handler(
   try {
     if (typeof code !== 'string') {
       res.redirect(
-        `/dashboard/details?calendarResult=error&error=NO_CODE#connected-calendars`
+        `/dashboard/connected-calendars?calendarResult=error&error=NO_CODE`
       )
       return
     }
 
     if (!req.session.account) {
       res.redirect(
-        `/dashboard/details?calendarResult=error&error=NOT_LOGGED_IN#connected-calendars`
+        `/dashboard/connected-calendars?calendarResult=error&error=NOT_LOGGED_IN`
       )
       return
     }
@@ -78,9 +78,9 @@ async function handler(
 
     if (!response.ok) {
       res.redirect(
-        `/dashboard/details?calendarResult=error&error=
-          ${JSON.stringify(responseBody)}
-      #connected-calendars`
+        `/dashboard/connected-calendars?calendarResult=error&error=${encodeURIComponent(
+          JSON.stringify(responseBody)
+        )}`
       )
       return
     }
@@ -126,9 +126,9 @@ async function handler(
         const integrationCount = await countCalendarIntegrations(accountAddress)
         if (integrationCount >= 1) {
           res.redirect(
-            `/dashboard/details?calendarResult=error&error=${encodeURIComponent(
+            `/dashboard/connected-calendars?calendarResult=error&error=${encodeURIComponent(
               'Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.'
-            )}#connected-calendars`
+            )}`
           )
           return
         }
@@ -183,9 +183,9 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/details?calendarResult=success${
+      `/dashboard/connected-calendars?calendarResult=success${
         newState64 ? `&state=${newState64}` : ''
-      }#connected-calendars`
+      }`
     )
   } catch (e) {
     console.error(e)
@@ -210,9 +210,9 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/details?calendarResult=success${
+      `/dashboard/connected-calendars?calendarResult=success${
         newState64 ? `&state=${newState64}` : ''
-      }#connected-calendars`
+      }`
     )
   }
 }

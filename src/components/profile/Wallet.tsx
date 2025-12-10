@@ -222,7 +222,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const handleShowWithdrawWidget = () => onOpen()
 
   const handleSettingsClick = () => {
-    router.push('/dashboard/details#wallet-payment')
+    router.push('/dashboard/wallet-payment')
   }
 
   const handleCurrencyChange = (value: string) => {

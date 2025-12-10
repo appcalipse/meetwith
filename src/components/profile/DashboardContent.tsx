@@ -22,13 +22,36 @@ import MeetingSettings from './MeetingSettings'
 import Settings from './Settings'
 import Wallet from './Wallet'
 
-const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
-  currentSection,
-}) => {
+const DashboardContent: React.FC<{
+  currentSection?: EditMode | string
+}> = ({ currentSection }) => {
   const { currentAccount } = useContext(AccountContext)
-  const isSettings = currentSection === EditMode.DETAILS
+  const settingsSections = new Set<string>([
+    EditMode.DETAILS,
+    'connected-calendars',
+    'connected-accounts',
+    'notifications',
+    'subscriptions',
+    'wallet-payment',
+  ])
+  const isSettings = currentSection
+    ? settingsSections.has(currentSection as string)
+    : false
+
+  // NavMenu only accepts EditMode; when in settings we hide NavMenu, so safe to pass undefined
+  const navSection: EditMode | undefined = !isSettings
+    ? (currentSection as EditMode | undefined)
+    : undefined
 
   const renderSelected = () => {
+    if (currentSection && settingsSections.has(currentSection as string)) {
+      return (
+        <Settings
+          currentAccount={currentAccount!}
+          initialSectionSlug={currentSection as string}
+        />
+      )
+    }
     switch (currentSection) {
       case EditMode.MEETINGS:
         return <Meetings currentAccount={currentAccount!} />
@@ -38,8 +61,6 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         return <Contact currentAccount={currentAccount!} />
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig currentAccount={currentAccount!} />
-      case EditMode.DETAILS:
-        return <Settings currentAccount={currentAccount!} />
       case EditMode.MEETING_SETTINGS:
         return <MeetingSettings currentAccount={currentAccount!} />
       case EditMode.CALENDARS:
@@ -80,7 +101,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
             top={0}
             zIndex={10}
           >
-            <NavMenu currentSection={currentSection} />
+            <NavMenu currentSection={navSection} />
           </Box>
         )}
         <Box

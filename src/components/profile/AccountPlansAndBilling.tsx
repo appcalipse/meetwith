@@ -72,7 +72,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     } else if (intent === Intents.SUBSCRIBE_PRO) {
       subsRef.current?.scrollIntoView({ behavior: 'smooth' })
       setIsDialogOpen(true)
-      void push(`/dashboard/${EditMode.DETAILS}#subscriptions`, undefined, {
+      void push(`/dashboard/subscriptions`, undefined, {
         shallow: true,
       })
     }

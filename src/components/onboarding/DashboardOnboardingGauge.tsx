@@ -70,7 +70,7 @@ const DashboardOnboardingGauge: FC = () => {
     {
       enabled: calendarsConnected,
       label: 'Connect a calendar',
-      link: '/dashboard/details#connected-calendars',
+      link: '/dashboard/connected-calendars',
     },
     {
       enabled: availabilitiesSet,

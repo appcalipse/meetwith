@@ -1406,7 +1406,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                     A fiat payment channel is not connected.{' '}
                     {/* TODO make the connection from this section */}
                     <Link
-                      href="/dashboard/details#connected-accounts"
+                      href="/dashboard/connected-accounts"
                       color="primary.200"
                       textDecor="underline"
                     >
