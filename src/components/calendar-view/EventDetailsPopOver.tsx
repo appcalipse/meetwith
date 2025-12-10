@@ -1,7 +1,17 @@
-import { Flex, Heading, HStack, Link, Text, VStack } from '@chakra-ui/layout'
+import {
+  Divider,
+  Flex,
+  Heading,
+  HStack,
+  Link,
+  Text,
+  VStack,
+} from '@chakra-ui/layout'
 import {
   Button,
   IconButton,
+  Tag,
+  TagLabel,
   Tooltip,
   useColorModeValue,
 } from '@chakra-ui/react'
@@ -10,17 +20,19 @@ import * as React from 'react'
 import { FaEdit } from 'react-icons/fa'
 import { FaRegCopy } from 'react-icons/fa6'
 import { MdCancel } from 'react-icons/md'
-import sanitizeHtml from 'sanitize-html'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { WithInterval } from '@/providers/calendar/CalendarContext'
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, UnifiedEvent, WithInterval } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
+import { ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
+import { dateToLocalizedRange } from '@/utils/calendar_manager'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { canAccountAccessPermission } from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
+
+import { TruncatedText } from './TruncatedText'
 
 interface EventDetailsPopOverProps {
   slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
@@ -35,7 +47,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
   const [copyFeedbackOpen, setCopyFeedbackOpen] = React.useState(false)
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
-  const getNamesDisplay = React.useCallback(() => {
+  const participants = React.useMemo(() => {
     if (isCalendarEvent(slot)) {
       const result: string[] = []
       for (const attendee of slot.attendees || []) {
@@ -66,6 +78,17 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
       )
     }
   }, [currentAccount])
+  const actor = React.useMemo(() => {
+    if (isCalendarEvent(slot)) {
+      return slot.attendees?.find(
+        attendee => attendee.email === slot.accountEmail
+      )
+    } else {
+      return slot.participants.find(
+        participant => participant.account_address === currentAccount?.address
+      )
+    }
+  }, [])
   const handleCopy = async () => {
     try {
       if ('clipboard' in navigator) {
@@ -82,94 +105,98 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
       setCopyFeedbackOpen(false)
     }, 2000)
   }
-  const participants = getNamesDisplay()
-  return (
-    <VStack width="100%" align="start">
-      <Heading>{slot.title}</Heading>
 
-      {participants.length > 0 && (
-        <Text display="inline" width="100%" whiteSpace="balance">
-          <strong>Participants: </strong>
-          {participants}
+  return (
+    <VStack width="100%" align="start" gap={6} p={4}>
+      <VStack width="100%" align="start" gap={4}>
+        <Heading fontWeight={500} fontSize={'24px'}>
+          {slot.title}
+        </Heading>
+        <Text fontWeight={700} fontSize={'16px'}>
+          {dateToLocalizedRange(
+            slot.start.toJSDate(),
+            slot.end.toJSDate(),
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
+            true
+          )}
         </Text>
-      )}
-      {(isCalendarEvent(slot) ? slot.description : slot.content) && (
-        <HStack alignItems="flex-start" flexWrap="wrap">
-          <Text>
-            <strong>Description:</strong>
+      </VStack>
+      <Divider />
+      <VStack width="100%" align="start" gap={4}>
+        {participants.length > 0 && (
+          <Text display="inline" width="100%" whiteSpace="balance">
+            Participants:
+            <strong>{participants}</strong>
           </Text>
-          <Text
-            w="350px"
-            whiteSpace="nowrap"
-            overflow="hidden"
-            textOverflow="ellipsis"
-            fontSize="xs"
-            suppressHydrationWarning
-            dangerouslySetInnerHTML={{
-              __html: sanitizeHtml(
-                (isCalendarEvent(slot) ? slot.description : slot.content) || '',
-                {
-                  allowedAttributes: false,
-                  allowVulnerableTags: false,
-                }
-              ),
-            }}
-          />
-        </HStack>
-      )}
-      <HStack
-        alignItems="flex-start"
-        maxWidth="100%"
-        flexWrap="wrap"
-        gap={2}
-        width="100%"
-      >
-        <Text whiteSpace="nowrap" fontWeight={700}>
-          Meeting link:
-        </Text>
-        <Flex flex={1} overflow="hidden">
-          <Link
-            whiteSpace="nowrap"
-            textOverflow="ellipsis"
-            overflow="hidden"
-            href={addUTMParams(slot.meeting_url || '')}
-            isExternal
-            onClick={() => logEvent('Clicked to start meeting')}
-          >
-            {slot.meeting_url}
-          </Link>
-          <Tooltip
-            label="Link copied"
-            placement="top"
-            isOpen={copyFeedbackOpen}
-          >
-            <Button
-              w={4}
-              colorScheme="primary"
-              variant="link"
-              onClick={handleCopy}
-              leftIcon={<FaRegCopy />}
+        )}
+        {(isCalendarEvent(slot) ? slot.description : slot.content) && (
+          <HStack alignItems="center" flexWrap="wrap">
+            <Text>Description:</Text>
+            <TruncatedText
+              content={
+                (isCalendarEvent(slot) ? slot.description : slot.content) || ''
+              }
+              maxHeight={'100px'}
             />
-          </Tooltip>
-        </Flex>
-      </HStack>
+          </HStack>
+        )}
+        {slot.meeting_url && (
+          <HStack
+            alignItems="flex-start"
+            maxWidth="100%"
+            flexWrap="wrap"
+            gap={2}
+            width="100%"
+          >
+            <Text whiteSpace="nowrap">Meeting link:</Text>
+            <Flex flex={1} overflow="hidden">
+              <Link
+                whiteSpace="nowrap"
+                textOverflow="ellipsis"
+                overflow="hidden"
+                href={addUTMParams(slot.meeting_url || '')}
+                isExternal
+                onClick={() => logEvent('Clicked to start meeting')}
+                fontWeight={700}
+              >
+                {slot.meeting_url}
+              </Link>
+              <Tooltip
+                label="Link copied"
+                placement="top"
+                isOpen={copyFeedbackOpen}
+              >
+                <Button
+                  w={4}
+                  colorScheme="white"
+                  variant="link"
+                  onClick={handleCopy}
+                  leftIcon={<FaRegCopy />}
+                />
+              </Tooltip>
+            </Flex>
+          </HStack>
+        )}
+      </VStack>
       <HStack>
-        <Link
-          href={addUTMParams(slot?.meeting_url || '')}
-          isExternal
-          onClick={() => logEvent('Joined a meeting')}
-          whiteSpace="nowrap"
-          overflow="hidden"
-          textOverflow="ellipsis"
-          maxWidth="100%"
-          textDecoration="none"
-          flex={1}
-          _hover={{
-            textDecoration: 'none',
-          }}
-        >
-          <Button colorScheme="primary">Join meeting</Button>
-        </Link>
+        {slot.meeting_url && (
+          <Link
+            href={addUTMParams(slot?.meeting_url || '')}
+            isExternal
+            onClick={() => logEvent('Joined a meeting')}
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            maxWidth="100%"
+            textDecoration="none"
+            flex={1}
+            _hover={{
+              textDecoration: 'none',
+            }}
+          >
+            <Button colorScheme="primary">Join meeting</Button>
+          </Link>
+        )}
         <Tooltip label="Edit meeting" placement="top">
           <IconButton
             color={iconColor}
@@ -178,7 +205,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
             // onClick={handleEditMeeting}
           />
         </Tooltip>
-        <Tooltip label="Cancel meeting for everyone" placement="top">
+        <Tooltip label="Cancel meeting" placement="top">
           <IconButton
             color={iconColor}
             aria-label="remove"
@@ -187,6 +214,115 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
           />
         </Tooltip>
       </HStack>
+      {actor && (
+        <HStack alignItems="center" gap={3.5}>
+          <Text fontWeight={700}>RSVP:</Text>
+          <HStack alignItems="center" gap={2}>
+            <Tag
+              bg={
+                [
+                  ParticipationStatus.Accepted,
+                  AttendeeStatus.ACCEPTED,
+                  AttendeeStatus.COMPLETED,
+                ].includes(actor?.status)
+                  ? 'green.500'
+                  : 'transparent'
+              }
+              borderWidth={1}
+              borderColor={'green.500'}
+              rounded="full"
+              px={3}
+              fontSize={{
+                lg: '16px',
+                md: '14px',
+                base: '12px',
+              }}
+            >
+              <TagLabel
+                color={
+                  [
+                    ParticipationStatus.Accepted,
+                    AttendeeStatus.ACCEPTED,
+                    AttendeeStatus.COMPLETED,
+                  ].includes(actor?.status)
+                    ? 'white'
+                    : 'green.500'
+                }
+              >
+                Yes
+              </TagLabel>
+            </Tag>
+            <Tag
+              bg={
+                [
+                  ParticipationStatus.Rejected,
+                  AttendeeStatus.DECLINED,
+                ].includes(actor?.status)
+                  ? 'red.250'
+                  : 'transparent'
+              }
+              borderWidth={1}
+              borderColor={'red.250'}
+              rounded="full"
+              px={3}
+              fontSize={{
+                lg: '16px',
+                md: '14px',
+                base: '12px',
+              }}
+            >
+              <TagLabel
+                color={
+                  [
+                    ParticipationStatus.Rejected,
+                    AttendeeStatus.DECLINED,
+                  ].includes(actor?.status)
+                    ? 'white'
+                    : 'red.250'
+                }
+              >
+                No
+              </TagLabel>
+            </Tag>
+            <Tag
+              bg={
+                [
+                  ParticipationStatus.Pending,
+                  AttendeeStatus.TENTATIVE,
+                  AttendeeStatus.NEEDS_ACTION,
+                  AttendeeStatus.DELEGATED,
+                ].includes(actor?.status)
+                  ? 'primary.300'
+                  : 'transparent'
+              }
+              borderWidth={1}
+              borderColor={'primary.300'}
+              rounded="full"
+              px={3}
+              fontSize={{
+                lg: '16px',
+                md: '14px',
+                base: '12px',
+              }}
+            >
+              <TagLabel
+                color={
+                  [
+                    ParticipationStatus.Pending,
+                    AttendeeStatus.TENTATIVE,
+                    AttendeeStatus.NEEDS_ACTION,
+                    AttendeeStatus.DELEGATED,
+                  ].includes(actor?.status)
+                    ? 'white'
+                    : 'primary.300'
+                }
+              >
+                Maybe
+              </TagLabel>
+            </Tag>
+          </HStack>
+        </HStack>
+      )}
     </VStack>
   )
 }
