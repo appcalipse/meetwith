@@ -113,8 +113,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       // Create Stripe Checkout Session
-      const successUrl = `${appUrl}/dashboard/details?checkout=success&session_id={CHECKOUT_SESSION_ID}#subscriptions`
-      const cancelUrl = `${appUrl}/dashboard/details?checkout=cancel#subscriptions`
+      const successUrl = `${appUrl}/dashboard/subscriptions?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+      const cancelUrl = `${appUrl}/dashboard/subscriptions?checkout=cancel`
 
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',

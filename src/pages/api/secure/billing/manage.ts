@@ -37,7 +37,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const stripe = new StripeService()
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: stripeSubscription.stripe_customer_id,
-        return_url: `${appUrl}/dashboard/details?portal_success=true#subscriptions`,
+        return_url: `${appUrl}/dashboard/subscriptions?portal_success=true`,
       })
 
       return res.status(200).json({ url: portalSession.url })

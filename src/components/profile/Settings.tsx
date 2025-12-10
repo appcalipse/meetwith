@@ -46,9 +46,10 @@ interface SettingsNavItem {
   section: SettingsSection
 }
 
-const Settings: React.FC<{ currentAccount: Account }> = ({
-  currentAccount,
-}) => {
+const Settings: React.FC<{
+  currentAccount: Account
+  initialSectionSlug?: string
+}> = ({ currentAccount, initialSectionSlug }) => {
   const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
   const settingsNavItems: SettingsNavItem[] = useMemo(() => {
     const tabs = [
@@ -127,16 +128,15 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
   const handleSectionNavigation = (section: SettingsSection) => {
     setActiveSection(section)
 
-    const sectionHash = {
-      [SettingsSection.ACCOUNT_DETAILS]: '',
-      [SettingsSection.CONNECTED_CALENDARS]: 'connected-calendars',
-      [SettingsSection.CONNECTED_ACCOUNTS]: 'connected-accounts',
-      [SettingsSection.NOTIFICATIONS]: 'notifications',
-      [SettingsSection.ACCOUNT_PLANS_BILLING]: 'subscriptions',
-      [SettingsSection.WALLET_PAYMENT]: 'wallet-payment',
+    const sectionPath: Record<SettingsSection, string> = {
+      [SettingsSection.ACCOUNT_DETAILS]: '/dashboard/details',
+      [SettingsSection.CONNECTED_CALENDARS]: '/dashboard/connected-calendars',
+      [SettingsSection.CONNECTED_ACCOUNTS]: '/dashboard/connected-accounts',
+      [SettingsSection.NOTIFICATIONS]: '/dashboard/notifications',
+      [SettingsSection.ACCOUNT_PLANS_BILLING]: '/dashboard/subscriptions',
+      [SettingsSection.WALLET_PAYMENT]: '/dashboard/wallet-payment',
     }
 
-    const hash = sectionHash[section]
     const { section: _omit, ...restQuery } = router.query ?? {}
 
     const query: Record<string, string> = {}
@@ -147,14 +147,38 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
 
     router.replace(
       {
-        pathname: '/dashboard/details',
-        hash,
+        pathname: sectionPath[section],
         query,
       },
       undefined,
       { shallow: true }
     )
   }
+  useEffect(() => {
+    // If an initial slug is provided (from route), set the section immediately
+    if (initialSectionSlug) {
+      switch (initialSectionSlug) {
+        case 'subscriptions':
+          setActiveSection(SettingsSection.ACCOUNT_PLANS_BILLING)
+          return
+        case 'connected-accounts':
+          setActiveSection(SettingsSection.CONNECTED_ACCOUNTS)
+          return
+        case 'connected-calendars':
+          setActiveSection(SettingsSection.CONNECTED_CALENDARS)
+          return
+        case 'notifications':
+          setActiveSection(SettingsSection.NOTIFICATIONS)
+          return
+        case 'wallet-payment':
+          setActiveSection(SettingsSection.WALLET_PAYMENT)
+          return
+        default:
+          setActiveSection(SettingsSection.ACCOUNT_DETAILS)
+      }
+    }
+  }, [initialSectionSlug])
+
   useEffect(() => {
     if (calendarResult || stripeResult) {
       if (calendarResult === 'error') {
@@ -204,8 +228,9 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
 
       void router.replace(
         {
-          pathname: '/dashboard/details',
-          hash: calendarResult ? 'connected-calendars' : 'connected-accounts',
+          pathname: calendarResult
+            ? '/dashboard/connected-calendars'
+            : '/dashboard/connected-accounts',
           query,
         },
         undefined
@@ -214,22 +239,31 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
   }, [calendarResult, stripeResult])
   useEffect(() => {
     if (!router.isReady) return
-    const hash = router.asPath.split('#')[1] || ''
+    const path = router.asPath.split('?')[0]
+    const sectionSlug = path.replace('/dashboard/', '')
 
-    if (hash === 'subscriptions') {
-      setActiveSection(SettingsSection.ACCOUNT_PLANS_BILLING)
-    } else if (hash === 'connected-accounts') {
-      setActiveSection(SettingsSection.CONNECTED_ACCOUNTS)
-    } else if (hash === 'connected-calendars') {
-      setActiveSection(SettingsSection.CONNECTED_CALENDARS)
-    } else if (hash === 'notifications') {
-      setActiveSection(SettingsSection.NOTIFICATIONS)
-    } else if (hash === 'wallet-payment') {
-      setActiveSection(SettingsSection.WALLET_PAYMENT)
-    } else {
-      setActiveSection(SettingsSection.ACCOUNT_DETAILS)
+    switch (sectionSlug) {
+      case 'subscriptions':
+        setActiveSection(SettingsSection.ACCOUNT_PLANS_BILLING)
+        break
+      case 'connected-accounts':
+        setActiveSection(SettingsSection.CONNECTED_ACCOUNTS)
+        break
+      case 'connected-calendars':
+        setActiveSection(SettingsSection.CONNECTED_CALENDARS)
+        break
+      case 'notifications':
+        setActiveSection(SettingsSection.NOTIFICATIONS)
+        break
+      case 'wallet-payment':
+        setActiveSection(SettingsSection.WALLET_PAYMENT)
+        break
+      case 'details':
+      default:
+        setActiveSection(SettingsSection.ACCOUNT_DETAILS)
+        break
     }
-  }, [router.asPath])
+  }, [router.asPath, router.isReady])
   useEffect(() => {
     if (router.query.code) {
       handleSectionNavigation(SettingsSection.CONNECTED_ACCOUNTS)
