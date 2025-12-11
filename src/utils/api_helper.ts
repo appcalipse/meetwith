@@ -19,6 +19,11 @@ import {
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
+  GetPlansResponse,
+  SubscribeRequest,
+  SubscribeResponse,
+} from '@/types/Billing'
+import {
   CalendarSyncInfo,
   ConnectedCalendar,
   ConnectedCalendarCore,
@@ -1184,6 +1189,24 @@ export const getManageSubscriptionUrl = async (): Promise<string> => {
     `/secure/billing/manage`
   )
   return response.url
+}
+
+export const getBillingPlans = async (): Promise<GetPlansResponse['plans']> => {
+  const response = await internalFetch<GetPlansResponse>(
+    '/secure/billing/plans',
+    'GET'
+  )
+  return response.plans
+}
+
+export const subscribeToBillingPlan = async (
+  request: SubscribeRequest
+): Promise<SubscribeResponse> => {
+  return await internalFetch<SubscribeResponse>(
+    '/secure/billing/subscribe',
+    'POST',
+    request
+  )
 }
 
 export const validateWebdav = async (
