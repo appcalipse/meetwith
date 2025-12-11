@@ -91,14 +91,24 @@ CREATE TABLE stripe_subscriptions (
   account_address VARCHAR NOT NULL REFERENCES accounts(address),
   stripe_subscription_id VARCHAR NOT NULL UNIQUE, -- Long-lived Stripe subscription ID (sub_xxx)
   stripe_customer_id VARCHAR NOT NULL,
-  billing_plan_id VARCHAR NOT NULL REFERENCES billing_plans(id),
+  billing_plan_id VARCHAR NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP
 );
 
+-- Add explicit foreign key constraint (allows updates to billing_plan_id)
+ALTER TABLE stripe_subscriptions
+  ADD CONSTRAINT stripe_subscriptions_billing_plan_id_fkey
+  FOREIGN KEY (billing_plan_id)
+  REFERENCES billing_plans(id)
+  ON UPDATE NO ACTION  -- Prevents updating billing_plans.id if referenced
+  ON DELETE RESTRICT;  -- Prevents deleting billing_plans.id if referenced
+
 CREATE INDEX idx_stripe_subscriptions_account ON stripe_subscriptions(account_address);
 CREATE INDEX idx_stripe_subscriptions_stripe_id ON stripe_subscriptions(stripe_subscription_id);
 ```
+
+**Note:** The foreign key constraint allows updating `billing_plan_id` to a different valid plan ID (e.g., when users switch plans via Stripe Customer Portal). `ON UPDATE NO ACTION` only prevents updating the referenced `billing_plans.id` column itself, not updates to `stripe_subscriptions.billing_plan_id`.
 
 **Note:** This table maps the account to the long-lived Stripe subscription object. One record per active Stripe subscription. Emphasis on account, not subscription period.
 
