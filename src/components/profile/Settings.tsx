@@ -24,22 +24,13 @@ import AccountPlansAndBilling from '@/components/profile/AccountPlansAndBilling'
 import WalletAndPayment from '@/components/profile/WalletAndPayment'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
-import { EditMode } from '@/types/Dashboard'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
 
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
 import Block from './components/Block'
 import ConnectCalendar from './ConnectCalendar'
 import ConnectedAccounts from './ConnectedAccounts'
-
-enum SettingsSection {
-  ACCOUNT_DETAILS = 'account-details',
-  CONNECTED_CALENDARS = 'connected-calendars',
-  CONNECTED_ACCOUNTS = 'connected-accounts',
-  NOTIFICATIONS = 'notifications',
-  ACCOUNT_PLANS_BILLING = 'account-plans-billing',
-  WALLET_PAYMENT = 'wallet-payment',
-}
 
 interface SettingsNavItem {
   name: string
@@ -53,7 +44,7 @@ const Settings: React.FC<{
   const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
   const settingsNavItems: SettingsNavItem[] = useMemo(() => {
     const tabs = [
-      { name: 'Account details', section: SettingsSection.ACCOUNT_DETAILS },
+      { name: 'Account details', section: SettingsSection.DETAILS },
       {
         name: 'Connected calendars',
         section: SettingsSection.CONNECTED_CALENDARS,
@@ -65,7 +56,7 @@ const Settings: React.FC<{
       { name: 'Notifications', section: SettingsSection.NOTIFICATIONS },
       {
         name: 'Account plans & Billing',
-        section: SettingsSection.ACCOUNT_PLANS_BILLING,
+        section: SettingsSection.SUBSCRIPTIONS,
       },
       {
         name: 'Wallet & Payments',
@@ -85,7 +76,7 @@ const Settings: React.FC<{
 
   const renderContent = () => {
     switch (activeSection) {
-      case SettingsSection.ACCOUNT_DETAILS:
+      case SettingsSection.DETAILS:
         return <AccountDetails currentAccount={currentAccount} />
       case SettingsSection.CONNECTED_CALENDARS:
         return <ConnectCalendar currentAccount={currentAccount} />
@@ -99,7 +90,7 @@ const Settings: React.FC<{
         )
       case SettingsSection.NOTIFICATIONS:
         return <NotificationsConfig currentAccount={currentAccount} />
-      case SettingsSection.ACCOUNT_PLANS_BILLING:
+      case SettingsSection.SUBSCRIPTIONS:
         return <AccountPlansAndBilling currentAccount={currentAccount} />
       case SettingsSection.WALLET_PAYMENT:
         return <WalletAndPayment currentAccount={currentAccount} />
@@ -129,11 +120,11 @@ const Settings: React.FC<{
     setActiveSection(section)
 
     const sectionPath: Record<SettingsSection, string> = {
-      [SettingsSection.ACCOUNT_DETAILS]: '/dashboard/details',
+      [SettingsSection.DETAILS]: '/dashboard/details',
       [SettingsSection.CONNECTED_CALENDARS]: '/dashboard/connected-calendars',
       [SettingsSection.CONNECTED_ACCOUNTS]: '/dashboard/connected-accounts',
       [SettingsSection.NOTIFICATIONS]: '/dashboard/notifications',
-      [SettingsSection.ACCOUNT_PLANS_BILLING]: '/dashboard/subscriptions',
+      [SettingsSection.SUBSCRIPTIONS]: '/dashboard/subscriptions',
       [SettingsSection.WALLET_PAYMENT]: '/dashboard/wallet-payment',
     }
 
@@ -158,23 +149,24 @@ const Settings: React.FC<{
     // If an initial slug is provided (from route), set the section immediately
     if (initialSectionSlug) {
       switch (initialSectionSlug) {
-        case 'subscriptions':
-          setActiveSection(SettingsSection.ACCOUNT_PLANS_BILLING)
+        case SettingsSection.SUBSCRIPTIONS:
+          setActiveSection(SettingsSection.SUBSCRIPTIONS)
           return
-        case 'connected-accounts':
+        case SettingsSection.CONNECTED_ACCOUNTS:
           setActiveSection(SettingsSection.CONNECTED_ACCOUNTS)
           return
-        case 'connected-calendars':
+        case SettingsSection.CONNECTED_CALENDARS:
           setActiveSection(SettingsSection.CONNECTED_CALENDARS)
           return
-        case 'notifications':
+        case SettingsSection.NOTIFICATIONS:
           setActiveSection(SettingsSection.NOTIFICATIONS)
           return
-        case 'wallet-payment':
+        case SettingsSection.WALLET_PAYMENT:
           setActiveSection(SettingsSection.WALLET_PAYMENT)
           return
+        case SettingsSection.DETAILS:
         default:
-          setActiveSection(SettingsSection.ACCOUNT_DETAILS)
+          setActiveSection(SettingsSection.DETAILS)
       }
     }
   }, [initialSectionSlug])
@@ -243,24 +235,24 @@ const Settings: React.FC<{
     const sectionSlug = path.replace('/dashboard/', '')
 
     switch (sectionSlug) {
-      case 'subscriptions':
-        setActiveSection(SettingsSection.ACCOUNT_PLANS_BILLING)
+      case SettingsSection.SUBSCRIPTIONS:
+        setActiveSection(SettingsSection.SUBSCRIPTIONS)
         break
-      case 'connected-accounts':
+      case SettingsSection.CONNECTED_ACCOUNTS:
         setActiveSection(SettingsSection.CONNECTED_ACCOUNTS)
         break
-      case 'connected-calendars':
+      case SettingsSection.CONNECTED_CALENDARS:
         setActiveSection(SettingsSection.CONNECTED_CALENDARS)
         break
-      case 'notifications':
+      case SettingsSection.NOTIFICATIONS:
         setActiveSection(SettingsSection.NOTIFICATIONS)
         break
-      case 'wallet-payment':
+      case SettingsSection.WALLET_PAYMENT:
         setActiveSection(SettingsSection.WALLET_PAYMENT)
         break
-      case 'details':
+      case SettingsSection.DETAILS:
       default:
-        setActiveSection(SettingsSection.ACCOUNT_DETAILS)
+        setActiveSection(SettingsSection.DETAILS)
         break
     }
   }, [router.asPath, router.isReady])

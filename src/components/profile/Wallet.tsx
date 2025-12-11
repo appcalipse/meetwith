@@ -36,6 +36,7 @@ import { useWalletTransactions } from '@/hooks/useWalletTransactions'
 import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
 import { getChainId, SupportedChain, supportedChains } from '@/types/chains'
+import { SettingsSection } from '@/types/Dashboard'
 import { getPaymentPreferences } from '@/utils/api_helper'
 import { sendEnablePinLink } from '@/utils/api_helper'
 import { getNotificationSubscriptions } from '@/utils/api_helper'
@@ -222,7 +223,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const handleShowWithdrawWidget = () => onOpen()
 
   const handleSettingsClick = () => {
-    router.push('/dashboard/wallet-payment')
+    router.push(`/dashboard/${SettingsSection.WALLET_PAYMENT}`)
   }
 
   const handleCurrencyChange = (value: string) => {

@@ -23,7 +23,7 @@ import { useActiveWallet } from 'thirdweb/react'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
-import { EditMode, Intents } from '@/types/Dashboard'
+import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
 import { syncSubscriptions } from '@/utils/api_helper'
@@ -71,10 +71,14 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       }
     } else if (intent === Intents.SUBSCRIBE_PRO) {
       subsRef.current?.scrollIntoView({ behavior: 'smooth' })
-      setIsDialogOpen(true)
-      void push(`/dashboard/subscriptions`, undefined, {
-        shallow: true,
-      })
+      setIsDialogOpen(false)
+      void push(
+        `/dashboard/${SettingsSection.SUBSCRIPTIONS}/billing`,
+        undefined,
+        {
+          shallow: true,
+        }
+      )
     }
   }
 
@@ -141,7 +145,9 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
               sub => new Date(sub.expiry_time) > new Date()
             )}
             planInfo={getPlanInfo(Plan.PRO)}
-            onClick={() => setIsDialogOpen(true)}
+            onClick={() =>
+              void push(`/dashboard/${SettingsSection.SUBSCRIPTIONS}/billing`)
+            }
             active={currentPlan === Plan.PRO}
             benefits={[
               'Everything in Free plus (+)',

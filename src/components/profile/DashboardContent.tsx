@@ -1,5 +1,5 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
-import { EditMode } from '@meta/Dashboard'
+import { EditMode, SettingsSection } from '@meta/Dashboard'
 import React, { useContext } from 'react'
 
 import NotFound from '@/pages/404'
@@ -28,11 +28,11 @@ const DashboardContent: React.FC<{
   const { currentAccount } = useContext(AccountContext)
   const settingsSections = new Set<string>([
     EditMode.DETAILS,
-    'connected-calendars',
-    'connected-accounts',
-    'notifications',
-    'subscriptions',
-    'wallet-payment',
+    SettingsSection.CONNECTED_CALENDARS,
+    SettingsSection.CONNECTED_ACCOUNTS,
+    SettingsSection.NOTIFICATIONS,
+    SettingsSection.SUBSCRIPTIONS,
+    SettingsSection.WALLET_PAYMENT,
   ])
   const isSettings = currentSection
     ? settingsSections.has(currentSection as string)
