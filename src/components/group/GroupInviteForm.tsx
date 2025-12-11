@@ -122,7 +122,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       | React.MouseEvent<HTMLButtonElement>
   ) => {
     event.preventDefault()
-    const sanitizedIdentifier = sanitizedIdentifier
+    const sanitizedIdentifier = enteredIdentifier.trim()
     if (!sanitizedIdentifier) return
     setIsLoading(true)
     const isValidInput =
