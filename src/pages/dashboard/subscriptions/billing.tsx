@@ -13,6 +13,7 @@ import {
 import ChainLogo from '@components/icons/ChainLogo'
 import FiatLogo from '@components/icons/FiatLogo'
 import PaymentMethod from '@components/public-meeting/PaymentMethod'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { PaymentStep, PaymentType } from '@utils/constants/meeting-types'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
@@ -21,14 +22,81 @@ import { FaArrowLeft } from 'react-icons/fa'
 
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
+import { SubscribeRequest } from '@/types/Billing'
+import { getBillingPlans, subscribeToBillingPlan } from '@/utils/api_helper'
+import { handleApiError } from '@/utils/error_helper'
 
 const BillingCheckout = () => {
   const router = useRouter()
   const [isYearly, setIsYearly] = useState(false)
+  const { mode, plan } = router.query
 
   const monthlyPrice = 8
   const yearlyPrice = 80
   const subtotal = isYearly ? yearlyPrice : monthlyPrice
+
+  const planName =
+    typeof plan === 'string' && plan.length > 0 ? plan : 'Meetwith PRO'
+  const heading =
+    mode === 'extend'
+      ? `Extend my ${planName}`
+      : 'Subscribe to Meetwith Premium'
+
+  // Fetch billing plans
+  const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
+    queryKey: ['billingPlans'],
+    queryFn: getBillingPlans,
+    staleTime: 300000,
+    refetchOnMount: true,
+    onError: (err: unknown) => {
+      handleApiError('Failed to load billing plans', err)
+    },
+  })
+
+  // Subscribe mutation
+  const subscribeMutation = useMutation({
+    mutationFn: (request: SubscribeRequest) => subscribeToBillingPlan(request),
+    onSuccess: response => {
+      if (response.checkout_url) {
+        window.open(response.checkout_url, '_blank', 'noopener,noreferrer')
+      } else {
+        handleApiError(
+          'Failed to create checkout session',
+          new Error('No checkout URL received')
+        )
+      }
+    },
+    onError: (err: unknown) => {
+      handleApiError('Failed to create checkout session', err)
+    },
+  })
+
+  const handlePayWithCard = async () => {
+    // Find the billing plan ID based on isYearly
+    const selectedPlan = plans.find(
+      plan => plan.billing_cycle === (isYearly ? 'yearly' : 'monthly')
+    )
+
+    if (!selectedPlan) {
+      handleApiError(
+        'Failed to create checkout session',
+        new Error('Billing plan not found')
+      )
+      return
+    }
+
+    // Trigger the mutation
+    const request: SubscribeRequest = {
+      billing_plan_id: selectedPlan.id,
+      payment_method: 'stripe',
+    }
+
+    try {
+      await subscribeMutation.mutateAsync(request)
+    } catch (error) {
+      throw error
+    }
+  }
 
   return (
     <Container maxW="622px" px={{ base: 4, md: 6 }} py={{ base: 10, md: 14 }}>
@@ -45,7 +113,7 @@ const BillingCheckout = () => {
         </Button>
         <VStack align="flex-start" spacing={1}>
           <Text fontSize="20px" color="text-primary" fontWeight="700">
-            Subscribe to Meetwith Premium
+            {heading}
           </Text>
           <HStack spacing={2} align="baseline">
             <Text fontSize="4xl" fontWeight="bold" color="text-primary">
@@ -74,7 +142,7 @@ const BillingCheckout = () => {
             </Box>
             <VStack spacing={0} align="flex-start">
               <Text fontSize="20px" fontWeight="700" color="text-primary">
-                Meetwith PRO
+                {planName}
               </Text>
               <Text fontSize="16px" color="text-secondary">
                 Billed {isYearly ? 'Yearly' : 'Monthly'}
@@ -159,9 +227,8 @@ const BillingCheckout = () => {
               step={PaymentStep.SELECT_PAYMENT_METHOD}
               icon={FiatLogo}
               type={PaymentType.FIAT}
-              onClick={async () => {
-                // TODO: integrate billing checkout session
-              }}
+              disabled={isLoadingPlans || subscribeMutation.isLoading}
+              onClick={handlePayWithCard}
             />
             <PaymentMethod
               id="crypto"
