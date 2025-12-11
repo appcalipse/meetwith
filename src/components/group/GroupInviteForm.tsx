@@ -254,7 +254,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
                 borderColor="neutral.400"
                 disabled={isLoading}
                 value={enteredIdentifier}
-                onChange={e => setEnteredIdentifier(e.target.value.trim())}
+                onChange={e => setEnteredIdentifier(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
                     addUserToList(e)
