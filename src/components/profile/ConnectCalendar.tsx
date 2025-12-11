@@ -21,6 +21,7 @@ import {
   ConnectedCalendarCore,
   ConnectedCalendarIcons,
 } from '@/types/CalendarConnections'
+import { SettingsSection } from '@/types/Dashboard'
 import {
   deleteConnectedCalendar,
   listConnectedCalendars,
@@ -31,7 +32,7 @@ const GoProCTA = () => (
   <VStack>
     <Text py="6">
       <Link
-        href="/dashboard/subscriptions"
+        href={`/dashboard/${SettingsSection.SUBSCRIPTIONS}`}
         colorScheme="primary"
         fontWeight="bold"
       >

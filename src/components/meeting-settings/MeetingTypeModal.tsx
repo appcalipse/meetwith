@@ -77,7 +77,7 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import { AcceptedToken, getSupportedChainFromId } from '@/types/chains'
-import { EditMode } from '@/types/Dashboard'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
 import { MeetingProvider } from '@/types/Meeting'
 import { PaymentAccountStatus } from '@/types/PaymentAccount'
 
