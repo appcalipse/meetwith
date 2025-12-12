@@ -125,10 +125,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             quantity: 1,
           },
         ],
-        metadata: {
-          account_address: accountAddress,
-          billing_plan_id: billing_plan_id,
-          calculated_expiry_time: calculatedExpiryTime.toISOString(),
+        subscription_data: {
+          metadata: {
+            account_address: accountAddress,
+            billing_plan_id: billing_plan_id,
+            calculated_expiry_time: calculatedExpiryTime.toISOString(),
+          },
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
