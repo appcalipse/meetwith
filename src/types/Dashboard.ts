@@ -22,6 +22,7 @@ export enum Intents {
   CANCEL_MEETING = 'cancel-meeting',
   ACCEPT_CONTACT = 'accept-contact',
   DECLINE_CONTACT = 'decline-contact',
+  SUBSCRIBE_PRO = 'subscribe-pro',
 }
 
 export enum InviteType {

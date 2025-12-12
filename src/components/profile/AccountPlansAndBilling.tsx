@@ -69,6 +69,12 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         void push(`/dashboard/${EditMode.DETAILS}`)
         onOpen()
       }
+    } else if (intent === Intents.SUBSCRIBE_PRO) {
+      subsRef.current?.scrollIntoView({ behavior: 'smooth' })
+      setIsDialogOpen(true)
+      void push(`/dashboard/${EditMode.DETAILS}#subscriptions`, undefined, {
+        shallow: true,
+      })
     }
   }
 
@@ -138,23 +144,28 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
             onClick={() => setIsDialogOpen(true)}
             active={currentPlan === Plan.PRO}
             benefits={[
-              'Customizable booking link',
-              'External calendar connections (Google and iCloud)',
-              'Unlimited meeting configurations',
-              'Email and Discord Notifications (optional)',
-              'Schedule meetings with multiple participants',
-              'Request payment for meeting scheduling (coming soon)',
+              'Everything in Free plus (+)',
+              'Unlimited scheduling groups',
+              'Payments & Invoicing',
+              'Unlimited integrations (Google calendar, iCloud, Office 365 and WebDAV)',
+              'Unlimited QuickPolls',
+              'Unlimited meeting types - Free & Paid',
+              '24/7 priority support',
             ]}
           />
           <SubscriptionCard
             onClick={() => setIsDialogOpen(true)}
             active={currentPlan === undefined}
             benefits={[
-              'Public page for scheduling meetings',
-              'Configurable availability',
-              'Web3 powered meeting room',
-              'Single meeting configuration',
-              'Only 1:1 meetings',
+              'Personal scheduling page',
+              '1 Meeting type - FREE meetings',
+              'Custom account handle',
+              '5 scheduling groups',
+              'Limited QuickPolls (max. 2 active polls per time)',
+              'Basic calendar sync - 1 calendar sync only',
+              'Smart notifications — Email, Discord, and Telegram let you set the cadence for each meeting type.',
+              'Unlimited contact connection',
+              'Email support',
             ]}
           />
         </Flex>
@@ -203,7 +214,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       borderWidth={2}
       p={4}
       minWidth="240px"
-      maxWidth="320px"
+      maxWidth="350px"
       alignItems={'flex-start'}
       justifyContent={'flex-start'}
       borderColor={active ? '#F35826' : 'transparent'}
@@ -214,7 +225,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
         </Box>
         <Text width="100%" textAlign="left" fontWeight={500}>
           {planInfo
-            ? `${planInfo.name} - $${planInfo.usdPrice} / year`
+            ? `${planInfo.name} - $${planInfo.usdPrice} / month`
             : 'Free - $0 / forever'}
         </Text>
       </HStack>
