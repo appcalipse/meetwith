@@ -70,12 +70,30 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         updated_at: subscriptionPeriod.updated_at,
       }
 
+      // Get Stripe subscription if this is a billing subscription
+      let stripeSubscription: StripeSubscription | null = null
+      if (subscriptionPeriod.billing_plan_id) {
+        const stripeSub = await getStripeSubscriptionByAccount(accountAddress)
+        if (stripeSub) {
+          stripeSubscription = {
+            id: stripeSub.id,
+            account_address: stripeSub.account_address,
+            stripe_subscription_id: stripeSub.stripe_subscription_id,
+            stripe_customer_id: stripeSub.stripe_customer_id,
+            billing_plan_id: stripeSub.billing_plan_id,
+            created_at: stripeSub.created_at,
+            updated_at: stripeSub.updated_at,
+          }
+        }
+      }
+
       // Get billing plan if this is a billing subscription
       let billingPlan: BillingPlan | null = null
-      if (subscriptionPeriod.billing_plan_id) {
-        const plan = await getBillingPlanById(
-          subscriptionPeriod.billing_plan_id
-        )
+      const billingPlanIdToUse =
+        stripeSubscription?.billing_plan_id ||
+        subscriptionPeriod.billing_plan_id
+      if (billingPlanIdToUse) {
+        const plan = await getBillingPlanById(billingPlanIdToUse)
         if (plan) {
           // Map billing_cycle string to BillingCycle enum
           const billingCycleMap: Record<string, BillingCycle> = {
@@ -92,23 +110,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             billing_cycle: billingCycle,
             created_at: plan.created_at,
             updated_at: plan.updated_at,
-          }
-        }
-      }
-
-      // Get Stripe subscription if this is a billing subscription
-      let stripeSubscription: StripeSubscription | null = null
-      if (subscriptionPeriod.billing_plan_id) {
-        const stripeSub = await getStripeSubscriptionByAccount(accountAddress)
-        if (stripeSub) {
-          stripeSubscription = {
-            id: stripeSub.id,
-            account_address: stripeSub.account_address,
-            stripe_subscription_id: stripeSub.stripe_subscription_id,
-            stripe_customer_id: stripeSub.stripe_customer_id,
-            billing_plan_id: stripeSub.billing_plan_id,
-            created_at: stripeSub.created_at,
-            updated_at: stripeSub.updated_at,
           }
         }
       }
