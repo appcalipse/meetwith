@@ -24,31 +24,27 @@ import {
   UnorderedList,
   useColorModeValue,
   useDisclosure,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
-import { useActiveWallet } from 'thirdweb/react'
 
 import CustomLoading from '@/components/CustomLoading'
-import { AccountContext } from '@/providers/AccountProvider'
-import { OnboardingContext } from '@/providers/OnboardingProvider'
+import Pagination from '@/components/profile/Pagination'
 import { Account } from '@/types/Account'
-import { SupportedChain } from '@/types/chains'
+import { PaymentProvider, SubscriptionHistoryItem } from '@/types/Billing'
 import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
-import { logEvent } from '@/utils/analytics'
 import {
   getActiveSubscription,
   getManageSubscriptionUrl,
+  getSubscriptionHistory,
   syncSubscriptions,
 } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
-import { isProAccount } from '@/utils/subscription_manager'
 import { useToastHelpers } from '@/utils/toasts'
 
 import Block from './components/Block'
@@ -59,28 +55,20 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
 }) => {
   // Constants
   const DEFAULT_COUPON_DURATION_MONTHS = 3
-  const PURCHASE_SUCCESS_TIMEOUT_MS = 10000
 
-  const { login } = useContext(AccountContext)
-  const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
-  const toast = useToast()
   const { showSuccessToast, showInfoToast } = useToastHelpers()
   const { query, push, replace } = useRouter()
-  const { intent, coupon, checkout, session_id, portal_success } = query
-  const activeWallet = useActiveWallet()
+  const { intent, coupon, checkout, portal_success } = query
 
   const subsRef = useRef<any>(null)
-
-  const [loading, setLoading] = useState(false)
   const [manageSubscriptionLoading, setManageSubscriptionLoading] =
     useState(false)
-  const [purchased, setPurchased] = useState<Subscription | undefined>(
-    undefined
-  )
   const [currentPlan, setCurrentPlan] = useState<Plan | undefined>(undefined)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [couponCode, setCouponCode] = useState('')
   const [couponDuration, setCouponDuration] = useState(0)
+  const [historyPage, setHistoryPage] = useState(1)
+  const HISTORY_PER_PAGE = 10
 
   // Fetch billing subscription using React Query
   const {
@@ -221,28 +209,21 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     }
   }
 
-  const subsPurchased = (sub: Subscription) => {
-    setPurchased(sub)
-    setCurrentPlan(Plan.PRO)
-    void syncCurrentSubscriptions()
-    setTimeout(() => setPurchased(undefined), PURCHASE_SUCCESS_TIMEOUT_MS)
-  }
-
-  // Dummy subscription periods data for UI preview
-  const dummySubscriptionHistory = [
-    {
-      plan: 'Meetwith PRO (Monthly)',
-      date: '21/8/2025',
-      paymentMethod: 'Fiat',
-      amount: '$8',
-    },
-    {
-      plan: 'Meetwith PRO (Monthly)',
-      date: '21/7/2025',
-      paymentMethod: 'Fiat',
-      amount: '$8',
-    },
-  ]
+  // Fetch subscription history with pagination
+  const {
+    data: subscriptionHistory,
+    isLoading: historyLoading,
+    error: historyError,
+  } = useQuery({
+    queryKey: ['subscriptionHistory', currentAccount?.address, historyPage],
+    queryFn: () =>
+      getSubscriptionHistory(
+        HISTORY_PER_PAGE,
+        (historyPage - 1) * HISTORY_PER_PAGE
+      ),
+    enabled: !!currentAccount?.address,
+    staleTime: 60000, // 1 minute
+  })
 
   const goToBilling = (mode?: 'extend' | 'subscribe', planName?: string) => {
     const queryParams = new URLSearchParams()
@@ -260,11 +241,9 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     setManageSubscriptionLoading(true)
     try {
       const url = await getManageSubscriptionUrl()
-      window.open(url, '_blank', 'noopener,noreferrer')
+      window.location.href = url
     } catch (e) {
       handleApiError('Failed to open Stripe portal', e)
-      setManageSubscriptionLoading(false)
-    } finally {
       setManageSubscriptionLoading(false)
     }
   }
@@ -301,16 +280,6 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         <Heading ref={subsRef} fontSize="2xl" id="subscriptions" mb={8}>
           Subscription
         </Heading>
-
-        {purchased && !isOpen && (
-          <Alert status="success">
-            <AlertIcon />
-            Subscription successful. Enjoy your {
-              getPlanInfo(Plan.PRO)?.name
-            }{' '}
-            Plan
-          </Alert>
-        )}
 
         {hasBillingError && (
           <Alert status="error" mb={4}>
@@ -378,13 +347,15 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
               }
               secondaryCtaLabel={
                 hasActiveSubscription &&
-                billingSubscriptionResponse?.payment_provider === 'stripe'
+                billingSubscriptionResponse?.payment_provider ===
+                  PaymentProvider.STRIPE
                   ? 'Manage Subscription'
                   : undefined
               }
               onSecondaryCta={
                 hasActiveSubscription &&
-                billingSubscriptionResponse?.payment_provider === 'stripe'
+                billingSubscriptionResponse?.payment_provider ===
+                  PaymentProvider.STRIPE
                   ? () => void handleManageSubscription()
                   : undefined
               }
@@ -417,73 +388,122 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
           onDialogClose={onClose}
         />
 
-        {/* Payment History (dummy data for now) */}
-        <Accordion allowToggle mt={10} borderColor="neutral.700">
-          <AccordionItem
-            border="1px solid"
-            borderColor="neutral.700"
-            borderRadius="md"
-            overflow="hidden"
-          >
-            <h2>
-              <AccordionButton
-                px={4}
-                py={4}
-                bg="transparent"
-                _expanded={{ bg: 'transparent' }}
+        {/* Payment History - Only show if user has subscription history */}
+        {!billingLoading &&
+          (historyLoading ||
+            historyError ||
+            (subscriptionHistory && subscriptionHistory.total > 0)) && (
+            <Accordion allowToggle mt={10} borderColor="neutral.700">
+              <AccordionItem
+                border="1px solid"
+                borderColor="neutral.700"
+                borderRadius="md"
+                overflow="hidden"
               >
-                <Box flex="1" textAlign="left">
-                  <Heading
-                    fontSize="22px"
-                    fontWeight="700"
-                    color="text-primary"
+                <h2>
+                  <AccordionButton
+                    px={4}
+                    py={4}
+                    bg="transparent"
+                    _expanded={{ bg: 'transparent' }}
                   >
-                    Payment History
-                  </Heading>
-                </Box>
-                <AccordionIcon />
-              </AccordionButton>
-            </h2>
-            <AccordionPanel p={0}>
-              <Table variant="simple" size="md">
-                <Thead bg="transparent">
-                  <Tr borderBottom="1px solid" borderColor="neutral.700">
-                    <Th fontSize="16px" color="text-primary">
-                      Plan
-                    </Th>
-                    <Th fontSize="16px" color="text-primary">
-                      Date
-                    </Th>
-                    <Th fontSize="16px" color="text-primary">
-                      Payment method
-                    </Th>
-                    <Th fontSize="16px" color="text-primary" isNumeric>
-                      Amount
-                    </Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {dummySubscriptionHistory.map((row, idx) => (
-                    <Tr
-                      key={`${row.plan}-${idx}`}
-                      borderColor="neutral.700"
-                      _last={{ td: { borderBottom: 'none' } }}
-                    >
-                      <Td color="text-primary" fontWeight="600">
-                        {row.plan}
-                      </Td>
-                      <Td color="text-primary">{row.date}</Td>
-                      <Td color="text-primary">{row.paymentMethod}</Td>
-                      <Td color="text-primary" isNumeric>
-                        {row.amount}
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </AccordionPanel>
-          </AccordionItem>
-        </Accordion>
+                    <Box flex="1" textAlign="left">
+                      <Heading
+                        fontSize="22px"
+                        fontWeight="700"
+                        color="text-primary"
+                      >
+                        Payment History
+                      </Heading>
+                    </Box>
+                    <AccordionIcon />
+                  </AccordionButton>
+                </h2>
+                <AccordionPanel p={0}>
+                  <Table variant="simple" size="md">
+                    <Thead bg="transparent">
+                      <Tr borderBottom="1px solid" borderColor="neutral.700">
+                        <Th fontSize="16px" color="text-primary">
+                          Plan
+                        </Th>
+                        <Th fontSize="16px" color="text-primary">
+                          Date
+                        </Th>
+                        <Th fontSize="16px" color="text-primary">
+                          Payment method
+                        </Th>
+                        <Th fontSize="16px" color="text-primary" isNumeric>
+                          Amount
+                        </Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {historyLoading ? (
+                        <Tr>
+                          <Td colSpan={4} textAlign="center" py={8}>
+                            <CustomLoading text="Loading payment history..." />
+                          </Td>
+                        </Tr>
+                      ) : historyError ? (
+                        <Tr>
+                          <Td
+                            colSpan={4}
+                            textAlign="center"
+                            py={8}
+                            color="red.500"
+                          >
+                            Failed to load payment history
+                          </Td>
+                        </Tr>
+                      ) : subscriptionHistory?.items &&
+                        subscriptionHistory.items.length > 0 ? (
+                        subscriptionHistory.items.map(
+                          (row: SubscriptionHistoryItem, idx: number) => (
+                            <Tr
+                              key={`${row.plan}-${row.date}-${idx}`}
+                              borderColor="neutral.700"
+                              _last={{ td: { borderBottom: 'none' } }}
+                            >
+                              <Td color="text-primary" fontWeight="600">
+                                {row.plan}
+                              </Td>
+                              <Td color="text-primary">{row.date}</Td>
+                              <Td color="text-primary">{row.paymentMethod}</Td>
+                              <Td color="text-primary" isNumeric>
+                                {row.amount}
+                              </Td>
+                            </Tr>
+                          )
+                        )
+                      ) : (
+                        <Tr>
+                          <Td
+                            colSpan={4}
+                            textAlign="center"
+                            py={8}
+                            color="text-secondary"
+                          >
+                            No payment history found
+                          </Td>
+                        </Tr>
+                      )}
+                    </Tbody>
+                  </Table>
+                  {subscriptionHistory &&
+                    subscriptionHistory.totalPages > 1 && (
+                      <Box p={4}>
+                        <Pagination
+                          currentPage={subscriptionHistory.page}
+                          totalPages={subscriptionHistory.totalPages}
+                          onPageChange={setHistoryPage}
+                          isLoading={historyLoading}
+                        />
+                      </Box>
+                    )}
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
+          )}
       </Block>
     </VStack>
   )
