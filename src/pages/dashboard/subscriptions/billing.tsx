@@ -58,7 +58,7 @@ const BillingCheckout = () => {
     mutationFn: (request: SubscribeRequest) => subscribeToBillingPlan(request),
     onSuccess: response => {
       if (response.checkout_url) {
-        window.open(response.checkout_url, '_blank', 'noopener,noreferrer')
+        window.location.href = response.checkout_url
       } else {
         handleApiError(
           'Failed to create checkout session',

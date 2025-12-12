@@ -195,11 +195,11 @@ export const handleSubscriptionCreated = async (
 
   const transactionPayload: TablesInsert<'transactions'> = {
     method: PaymentType.FIAT,
-    status: PaymentStatus.PENDING,
+    status: PaymentStatus.COMPLETED,
     meeting_type_id: null,
     amount: unitAmount ? unitAmount / 100 : null,
     fiat_equivalent: unitAmount ? unitAmount / 100 : null,
-    currency: currency ?? null,
+    currency: currency ? currency.toUpperCase() : null,
     direction: PaymentDirection.CREDIT,
     initiator_address: accountAddress,
     metadata: {
@@ -211,6 +211,8 @@ export const handleSubscriptionCreated = async (
     provider: BillingPaymentProvider.STRIPE,
     provider_reference_id: stripeSubscriptionId,
     transaction_hash: null,
+    total_fee: unitAmount ? unitAmount / 100 : 0,
+    confirmed_at: new Date().toISOString(),
   }
 
   let transactionId: string
@@ -562,9 +564,9 @@ export const handleInvoicePaymentSucceeded = async (
     return
   }
 
-  // Create transaction record for the invoice payment
+  // Create transaction record for the invoice payment (renewal)
   const amountPaid = invoice.amount_paid / 100 // Convert from cents
-  const currency = invoice.currency
+  const currency = invoice.currency ? invoice.currency.toUpperCase() : null
 
   const transactionPayload: TablesInsert<'transactions'> = {
     method: PaymentType.FIAT,
@@ -585,6 +587,7 @@ export const handleInvoicePaymentSucceeded = async (
     provider: BillingPaymentProvider.STRIPE,
     provider_reference_id: invoice.id,
     transaction_hash: null,
+    total_fee: amountPaid,
     confirmed_at: new Date().toISOString(),
   }
 

@@ -20,6 +20,7 @@ import { AccountNotifications } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
   GetPlansResponse,
+  GetSubscriptionResponse,
   SubscribeRequest,
   SubscribeResponse,
 } from '@/types/Billing'
@@ -1173,9 +1174,11 @@ export const hasActiveBillingSubscription = async (
 
 export const getActiveSubscription = async (
   accountAddress: string
-): Promise<Subscription | null> => {
+): Promise<GetSubscriptionResponse | null> => {
   try {
-    return (await internalFetch(`/secure/billing/subscription`)) as Subscription
+    return (await internalFetch(
+      `/secure/billing/subscription`
+    )) as GetSubscriptionResponse
   } catch (e) {
     if (e instanceof ApiFetchError && e.status === 404) {
       return null

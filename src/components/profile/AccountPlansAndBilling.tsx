@@ -38,6 +38,7 @@ import CustomLoading from '@/components/CustomLoading'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
+import { SupportedChain } from '@/types/chains'
 import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
@@ -48,6 +49,7 @@ import {
 } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { isProAccount } from '@/utils/subscription_manager'
+import { useToastHelpers } from '@/utils/toasts'
 
 import Block from './components/Block'
 import CouponUsedModal from './components/CouponUsedModal'
@@ -62,8 +64,9 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   const { login } = useContext(AccountContext)
   const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
   const toast = useToast()
-  const { query, push } = useRouter()
-  const { intent, coupon } = query
+  const { showSuccessToast, showInfoToast } = useToastHelpers()
+  const { query, push, replace } = useRouter()
+  const { intent, coupon, checkout, session_id, portal_success } = query
   const activeWallet = useActiveWallet()
 
   const subsRef = useRef<any>(null)
@@ -81,7 +84,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
 
   // Fetch billing subscription using React Query
   const {
-    data: billingSubscription,
+    data: billingSubscriptionResponse,
     isLoading: billingLoading,
     error: billingError,
     refetch: refetchBilling,
@@ -96,17 +99,21 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     },
   })
 
+  // Extract subscription data from response
+  const billingSubscription = billingSubscriptionResponse?.subscription ?? null
+  const billingPlan = billingSubscriptionResponse?.billing_plan ?? null
+
   // Derive billing plan label, status, and expiry from subscription data
-  const billingPlanLabel = billingSubscription?.billing_plan_id
-    ? billingSubscription.billing_plan_id.toLowerCase().includes('year')
+  const billingPlanLabel = billingPlan
+    ? billingPlan.billing_cycle === 'yearly'
       ? 'Pro – $80/year'
       : 'Pro – $8/month'
     : 'Meetwith PRO'
 
   const billingStatus = billingSubscription?.status ?? null
 
-  const billingExpiry = billingSubscription?.expiry_time
-    ? format(new Date(billingSubscription.expiry_time), 'PPP')
+  const billingExpiry = billingSubscriptionResponse?.expires_at
+    ? format(new Date(billingSubscriptionResponse.expires_at), 'PPP')
     : null
 
   // Check if there's an error
@@ -140,6 +147,70 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   useEffect(() => {
     syncCurrentSubscriptions()
   }, [currentAccount])
+
+  // Handle Stripe Checkout redirects
+  useEffect(() => {
+    if (checkout === 'success') {
+      showSuccessToast('Subscription successful!', 'Welcome to Pro!')
+      // Refetch subscription data
+      void refetchBilling()
+      // Clean up query parameters
+      const {
+        checkout: _checkout,
+        session_id: _session_id,
+        ...restQuery
+      } = query
+      void replace(
+        {
+          pathname: `/dashboard/${SettingsSection.SUBSCRIPTIONS}`,
+          query: restQuery,
+        },
+        undefined,
+        { shallow: true }
+      )
+    } else if (checkout === 'cancel') {
+      showInfoToast('Payment cancelled', 'You can try again anytime.')
+      // Clean up query parameters
+      const { checkout: _checkout, ...restQuery } = query
+      void replace(
+        {
+          pathname: `/dashboard/${SettingsSection.SUBSCRIPTIONS}`,
+          query: restQuery,
+        },
+        undefined,
+        { shallow: true }
+      )
+    }
+  }, [
+    checkout,
+    query,
+    replace,
+    refetchBilling,
+    showSuccessToast,
+    showInfoToast,
+  ])
+
+  // Handle Stripe Customer Portal return redirect
+  useEffect(() => {
+    if (portal_success === 'true') {
+      showSuccessToast(
+        'Subscription updated successfully',
+        'Your subscription changes have been saved.'
+      )
+      // Refetch subscription data
+      void refetchBilling()
+      // Clean up query parameter
+      const { portal_success: _portal_success, ...restQuery } = query
+      void replace(
+        {
+          pathname: `/dashboard/${SettingsSection.SUBSCRIPTIONS}`,
+          query: restQuery,
+        },
+        undefined,
+        { shallow: true }
+      )
+    }
+  }, [portal_success, query, replace, refetchBilling, showSuccessToast])
 
   const syncCurrentSubscriptions = async () => {
     const subs = await syncSubscriptions()
@@ -189,22 +260,28 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     setManageSubscriptionLoading(true)
     try {
       const url = await getManageSubscriptionUrl()
-      window.location.href = url
+      window.open(url, '_blank', 'noopener,noreferrer')
     } catch (e) {
       handleApiError('Failed to open Stripe portal', e)
+      setManageSubscriptionLoading(false)
+    } finally {
       setManageSubscriptionLoading(false)
     }
   }
 
   // Check if user has an active subscription
   const hasActiveSubscription =
-    billingSubscription &&
-    (billingStatus === 'active' || billingStatus === 'cancelled') &&
-    billingSubscription.expiry_time &&
-    new Date(billingSubscription.expiry_time) > new Date()
+    billingSubscriptionResponse?.is_active === true ||
+    (billingSubscription &&
+      (billingStatus === 'active' || billingStatus === 'cancelled') &&
+      billingSubscription.expiry_time &&
+      new Date(billingSubscription.expiry_time) > new Date())
+
+  const isProCardActive = hasActiveSubscription || currentPlan === Plan.PRO
 
   const activeBadge =
-    billingStatus === 'active' || billingStatus === 'cancelled'
+    hasActiveSubscription &&
+    (billingStatus === 'active' || billingStatus === 'cancelled')
       ? 'Active'
       : undefined
 
@@ -256,25 +333,35 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
           </Alert>
         )}
 
-        <Flex
-          width="100%"
-          flexDirection={{ base: 'column', md: 'row' }}
-          gridGap={2}
-        >
-          {billingLoading ? (
-            <Box flex={1} minWidth="240px" maxWidth="350px">
-              <CustomLoading text="Loading subscription..." />
-            </Box>
-          ) : (
+        {billingLoading ? (
+          <Box width="100%">
+            <CustomLoading text="Loading subscription..." />
+          </Box>
+        ) : (
+          <Flex
+            width="100%"
+            flexDirection={{ base: 'column', md: 'row' }}
+            gridGap={2}
+          >
             <SubscriptionCard
-              subscription={currentAccount?.subscriptions?.find(
-                sub => new Date(sub.expiry_time) > new Date()
-              )}
+              subscription={
+                // Use blockchain subscription if no billing subscription exists
+                !billingSubscription
+                  ? currentAccount?.subscriptions?.find(
+                      sub => new Date(sub.expiry_time) > new Date()
+                    )
+                  : undefined
+              }
               planInfo={getPlanInfo(Plan.PRO)}
               onClick={() =>
-                goToBilling('extend', getPlanInfo(Plan.PRO)?.name ?? 'Plan')
+                hasActiveSubscription
+                  ? goToBilling('extend', billingPlanLabel)
+                  : goToBilling(
+                      'subscribe',
+                      getPlanInfo(Plan.PRO)?.name ?? 'Plan'
+                    )
               }
-              active={currentPlan === Plan.PRO}
+              active={isProCardActive}
               benefits={[
                 'Everything in Free plus (+)',
                 'Unlimited scheduling groups',
@@ -290,34 +377,38 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
                 hasActiveSubscription ? 'Extend Plan' : 'Subscribe'
               }
               secondaryCtaLabel={
-                hasActiveSubscription ? 'Manage Subscription' : undefined
+                hasActiveSubscription &&
+                billingSubscriptionResponse?.payment_provider === 'stripe'
+                  ? 'Manage Subscription'
+                  : undefined
               }
               onSecondaryCta={
-                hasActiveSubscription
+                hasActiveSubscription &&
+                billingSubscriptionResponse?.payment_provider === 'stripe'
                   ? () => void handleManageSubscription()
                   : undefined
               }
               secondaryCtaLoading={manageSubscriptionLoading}
             />
-          )}
-          <SubscriptionCard
-            onClick={() =>
-              goToBilling('subscribe', getPlanInfo(Plan.PRO)?.name ?? 'Plan')
-            }
-            active={currentPlan === undefined}
-            benefits={[
-              'Personal scheduling page',
-              '1 Meeting type - FREE meetings',
-              'Custom account handle',
-              '5 scheduling groups',
-              'Limited QuickPolls (max. 2 active polls per time)',
-              'Basic calendar sync - 1 calendar sync only',
-              'Smart notifications — Email, Discord, and Telegram let you set the cadence for each meeting type.',
-              'Unlimited contact connection',
-              'Email support',
-            ]}
-          />
-        </Flex>
+            <SubscriptionCard
+              onClick={() =>
+                goToBilling('subscribe', getPlanInfo(Plan.PRO)?.name ?? 'Plan')
+              }
+              active={!isProCardActive}
+              benefits={[
+                'Personal scheduling page',
+                '1 Meeting type - FREE meetings',
+                'Custom account handle',
+                '5 scheduling groups',
+                'Limited QuickPolls (max. 2 active polls per time)',
+                'Basic calendar sync - 1 calendar sync only',
+                'Smart notifications — Email, Discord, and Telegram let you set the cadence for each meeting type.',
+                'Unlimited contact connection',
+                'Email support',
+              ]}
+            />
+          </Flex>
+        )}
 
         <CouponUsedModal
           couponCode={couponCode}
@@ -436,6 +527,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       p={4}
       minWidth="240px"
       maxWidth="350px"
+      minHeight="500px"
       alignItems={'flex-start'}
       justifyContent={'space-between'}
       borderColor={active ? '#F35826' : 'transparent'}
@@ -453,11 +545,11 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
         </HStack>
         {badge && (
           <Badge
-            bg="#00CE5D"
-            color="white"
-            px={2}
-            py={1}
-            borderRadius="4px"
+            bg="green.200"
+            color="green.600"
+            px={3}
+            py={1.5}
+            borderRadius="10px"
             fontSize="xs"
             fontWeight="500"
             textTransform="none"
@@ -474,13 +566,12 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
         </UnorderedList>
       </Box>
 
-      {expiryText && (
-        <Text fontSize="sm" fontWeight={500} color="text-primary">
-          {expiryText}
-        </Text>
-      )}
-
       <Box width="100%" mt="auto">
+        {expiryText && (
+          <Text fontSize="sm" fontWeight={500} color="text-primary" mb={3}>
+            {expiryText}
+          </Text>
+        )}
         {planInfo && primaryCtaLabel && (
           <VStack spacing={2} width="100%">
             <Button width="full" colorScheme="primary" onClick={onClick}>
