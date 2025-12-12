@@ -241,7 +241,8 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     setManageSubscriptionLoading(true)
     try {
       const url = await getManageSubscriptionUrl()
-      window.location.href = url
+      window.open(url, '_blank', 'noopener,noreferrer')
+      setManageSubscriptionLoading(false)
     } catch (e) {
       handleApiError('Failed to open Stripe portal', e)
       setManageSubscriptionLoading(false)
@@ -390,9 +391,8 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
 
         {/* Payment History - Only show if user has subscription history */}
         {!billingLoading &&
-          (historyLoading ||
-            historyError ||
-            (subscriptionHistory && subscriptionHistory.total > 0)) && (
+          ((hasActiveSubscription && (historyLoading || historyError)) ||
+            (subscriptionHistory?.total ?? 0) > 0) && (
             <Accordion allowToggle mt={10} borderColor="neutral.700">
               <AccordionItem
                 border="1px solid"
