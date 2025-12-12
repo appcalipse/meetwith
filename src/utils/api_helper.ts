@@ -20,6 +20,7 @@ import { AccountNotifications } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
   GetPlansResponse,
+  GetSubscriptionHistoryResponse,
   GetSubscriptionResponse,
   SubscribeRequest,
   SubscribeResponse,
@@ -1192,6 +1193,16 @@ export const getManageSubscriptionUrl = async (): Promise<string> => {
     `/secure/billing/manage`
   )
   return response.url
+}
+
+export const getSubscriptionHistory = async (
+  limit = 10,
+  offset = 0
+): Promise<GetSubscriptionHistoryResponse> => {
+  const response = await internalFetch<GetSubscriptionHistoryResponse>(
+    `/secure/billing/subscription/history?limit=${limit}&offset=${offset}`
+  )
+  return response
 }
 
 export const getBillingPlans = async (): Promise<GetPlansResponse['plans']> => {

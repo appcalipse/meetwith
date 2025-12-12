@@ -168,9 +168,19 @@ export interface GetPlansResponse {
 /**
  * Response for getting subscription history
  */
+export interface SubscriptionHistoryItem {
+  plan: string
+  date: string
+  paymentMethod: string
+  amount: string
+}
+
 export interface GetSubscriptionHistoryResponse {
   periods: SubscriptionPeriod[]
   total: number
+  items: SubscriptionHistoryItem[]
+  page: number
+  totalPages: number
 }
 
 // =====================================================

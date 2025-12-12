@@ -8094,6 +8094,47 @@ const getSubscriptionPeriodsByAccount = async (
   return data || []
 }
 
+// Get subscription history with pagination (for payment history)
+// Returns subscription periods with transaction and billing plan data
+const getSubscriptionHistory = async (
+  accountAddress: string,
+  limit = 10,
+  offset = 0
+): Promise<{ periods: Tables<'subscriptions'>[]; total: number }> => {
+  // First, get total count of billing subscriptions
+  const { count, error: countError } = await db.supabase
+    .from('subscriptions')
+    .select('*', { count: 'exact', head: true })
+    .eq('owner_account', accountAddress.toLowerCase())
+    .not('billing_plan_id', 'is', null) // Only billing subscriptions
+
+  if (countError) {
+    Sentry.captureException(countError)
+    throw new Error(
+      `Failed to count subscription periods: ${countError.message}`
+    )
+  }
+
+  // Get paginated subscription periods
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .not('billing_plan_id', 'is', null) // Only billing subscriptions
+    .order('registered_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to fetch subscription history: ${error.message}`)
+  }
+
+  return {
+    periods: data || [],
+    total: count || 0,
+  }
+}
+
 // Update subscription period status
 const updateSubscriptionPeriodStatus = async (
   subscriptionId: string,
@@ -8234,6 +8275,7 @@ export {
   getSlotsForDashboard,
   getStripeSubscriptionByAccount,
   getStripeSubscriptionById,
+  getSubscriptionHistory,
   getSubscriptionPeriodsByAccount,
   getTgConnection,
   getTgConnectionByTgId,

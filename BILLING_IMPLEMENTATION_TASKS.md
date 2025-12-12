@@ -642,101 +642,113 @@
 
 **File**: `src/components/profile/AccountPlansAndBilling.tsx` (update existing component)
 
-- [ ] Integrate new billing subscription API:
+- [x] Integrate new billing subscription API:
   - Fetch current subscription using `/api/secure/billing/subscription`
   - Display billing subscription status alongside existing domain subscriptions
   - Show billing plan details (monthly/yearly) if billing subscription exists
-- [ ] Update subscription card display:
+- [x] Update subscription card display:
   - Show "Active" badge for active billing subscriptions (like screenshot)
   - Display expiry date: "Your current plan is valid until [DATE] ([PLAN] Plan)"
   - Show plan name (e.g., "Pro – $8/month" or "Pro – $80/year")
-- [ ] Add "Extend Plan" button (if active subscription):
-  - Opens subscription selection dialog
+- [x] Add "Extend Plan" button (if active subscription):
+  - Redirects to billing page with extend mode
   - Allows extending current subscription
-- [ ] Update "Cancel Subscription" button:
+- [x] Update "Cancel Subscription" button:
   - Change to "Manage Subscription" button (if Stripe subscription)
   - Calls `/api/secure/billing/manage` to get Stripe Customer Portal URL
   - Redirects user to Stripe Customer Portal
-- [ ] Add "Subscribe" button (if no active subscription):
-  - Opens subscription selection dialog
-- [ ] Display subscription history (optional, for future):
+- [x] Add "Subscribe" button (if no active subscription):
+  - Redirects to billing page
+- [x] Display subscription history (dummy data placeholder for now):
   - Table/list of all subscription periods
-- [ ] Handle loading and error states
-- [ ] Update component to work with both billing and domain subscriptions
+- [x] Handle loading and error states
+- [x] Update component to work with both billing and domain subscriptions
 
 **Note**: We're updating the existing `AccountPlansAndBilling` component, not creating a new page. The component already exists at `/dashboard/details#subscriptions`.
 
-**Estimated Time**: 90-120 minutes
+**Estimated Time**: 90-120 minutes  
+**Status**: ✅ Completed
 
 ---
 
-### Task 6.2: Subscription Selection Component
+### Task 6.2: Subscription Selection Component ✅
 
-**File**: `src/components/billing/SubscriptionSelection.tsx` or similar
+**File**: `src/pages/dashboard/subscriptions/billing.tsx` (billing checkout page)
 
-- [ ] Create subscription selection component
-- [ ] Fetch available plans (use `/api/secure/billing/plans`)
-- [ ] Display monthly ($8/month) and yearly ($80/year) options
-- [ ] Add plan toggle/selection
-- [ ] Add payment method selection (Stripe Card / Crypto)
-- [ ] Show payment summary
-- [ ] Handle plan selection
-- [ ] Redirect to Stripe Checkout on "Subscribe" click
+- [x] Create subscription selection component (billing checkout page already exists)
+- [x] Fetch available plans using React Query (`getBillingPlans` from `api_helper.ts`)
+- [x] Display monthly ($8/month) and yearly ($80/year) options (via toggle switch)
+- [x] Add plan toggle/selection (yearly/monthly switch)
+- [x] Add payment method selection (Stripe Card / Crypto) - using existing `PaymentMethod` component
+- [x] Show payment summary (subtotal, total due, yearly toggle)
+- [x] Handle plan selection (based on `isYearly` state)
+- [x] Redirect to Stripe Checkout on "Pay with Card" click (using `useMutation` with `subscribeToBillingPlan`, opens in new tab)
 
-**Estimated Time**: 90-120 minutes
+**Note**: The billing page already existed with the design. We integrated:
+
+- React Query for fetching plans (`useQuery`)
+- React Query mutation for subscription checkout (`useMutation`)
+- Stripe Checkout redirect opens in new tab
+- Proper loading states and error handling
+
+**Estimated Time**: 90-120 minutes  
+**Status**: ✅ Completed
 
 ---
 
-### Task 6.3: Handle Stripe Checkout Redirects (No New Pages)
+### Task 6.3: Handle Stripe Checkout Redirects (No New Pages) ✅
 
 **File**: `src/components/profile/AccountPlansAndBilling.tsx` (update existing component)
 
-- [ ] Handle Stripe Checkout redirects in existing component:
+- [x] Handle Stripe Checkout redirects in existing component:
   - Check for `checkout=success` query parameter in `useEffect`
   - Check for `checkout=cancel` query parameter
   - Extract `session_id` from query if present (for future verification if needed)
-- [ ] Show success toast when `checkout=success`:
+- [x] Show success toast when `checkout=success`:
   - Message: "Subscription successful! Welcome to Pro!"
-  - Auto-dismiss after 5-10 seconds
+  - Auto-dismiss after 8 seconds
   - Refetch subscription status after showing toast
-- [ ] Show cancel toast when `checkout=cancel`:
+- [x] Show cancel toast when `checkout=cancel`:
   - Message: "Payment cancelled. You can try again anytime."
   - Auto-dismiss after 5 seconds
-- [ ] Refetch subscription data:
-  - Call subscription API endpoint after successful checkout
-  - Update subscription card state to reflect new subscription
-  - Update "Active" badge and expiry date display
-- [ ] Clean up query parameters:
-  - Remove `checkout` and `session_id` from URL after handling
-  - Keep hash fragment `#subscriptions` to stay on subscriptions section
+- [x] Refetch subscription data:
+  - Call `refetchBilling()` after successful checkout (React Query automatically updates UI)
+  - Subscription card state updates automatically via React Query
+  - "Active" badge and expiry date display update automatically
+- [x] Clean up query parameters:
+  - Remove `checkout` and `session_id` from URL after handling using `router.replace`
+  - Use route-based navigation (no hash fragments)
 
-**Note**: No new pages needed. We use the existing `/dashboard/details#subscriptions` page with query parameters for status. The hash fragment navigates to the subscriptions section, and toasts provide user feedback.
+**Note**: Uses existing `/dashboard/subscriptions` page with query parameters for status. Toasts provide user feedback. React Query automatically updates the subscription card when data is refetched.
 
-**Estimated Time**: 30-45 minutes
+**Estimated Time**: 30-45 minutes  
+**Status**: ✅ Completed
 
 ---
 
-### Task 6.4: Customer Portal Return Handler
+### Task 6.4: Customer Portal Return Handler ✅
 
 **File**: `src/components/profile/AccountPlansAndBilling.tsx` (update existing component)
 
-- [ ] Handle Customer Portal return redirect:
+- [x] Handle Customer Portal return redirect:
   - Check for `?portal_success=true` query parameter in URL
   - Show success toast: "Subscription updated successfully"
   - Refresh subscription data to reflect changes made in Stripe Portal
-  - Clear query parameter from URL (keep `#subscriptions` hash)
-- [ ] Handle different portal actions (via query params if Stripe provides them):
-  - Subscription cancelled: Show appropriate message
-  - Payment method updated: Show confirmation
-  - Subscription reactivated: Show confirmation
-- [ ] Update subscription card state after portal return:
-  - Refetch subscription status
-  - Update "Active" badge if subscription was cancelled/reactivated
-  - Update expiry date if subscription was extended
+  - Clear query parameter from URL using route-based navigation
+- [x] Handle different portal actions:
+  - Note: Stripe Customer Portal doesn't pass specific action parameters in the return URL
+  - Webhooks handle state changes (cancellation, reactivation, payment method updates)
+  - Refetching subscription data automatically reflects all changes made in the portal
+- [x] Update subscription card state after portal return:
+  - Refetch subscription status using `refetchBilling()` (React Query)
+  - "Active" badge updates automatically based on subscription status
+  - Expiry date updates automatically if subscription was extended
+  - All UI updates happen automatically via React Query data refetch
 
-**Note**: Customer Portal redirects back to the return_url we configure. We'll use `/dashboard/details?portal_success=true#subscriptions` as the return URL.
+**Note**: Customer Portal redirects back to the return_url we configure (`/dashboard/subscriptions?portal_success=true`). Webhooks handle the actual state changes (cancellation, reactivation, etc.), so we just need to refresh the data when the user returns. The subscription card updates automatically via React Query.
 
-**Estimated Time**: 30-45 minutes
+**Estimated Time**: 30-45 minutes  
+**Status**: ✅ Completed
 
 ---
 
@@ -760,6 +772,53 @@
 - [ ] Test subscription creation (yearly plan)
 - [ ] Verify Stripe Checkout redirects correctly
 - [ ] Test webhook events (use Stripe CLI or test mode)
+  - **Using Stripe CLI (Recommended for Local Development):**
+
+    **Setup (One-time, do this BEFORE testing):**
+
+    1. Install Stripe CLI: `brew install stripe/stripe-cli/stripe` (macOS) or download from https://stripe.com/docs/stripe-cli
+    2. Login: `stripe login` (authenticates with your Stripe account)
+    3. Forward webhooks to localhost: `stripe listen --forward-to localhost:3000/api/integrations/stripe/webhook`
+    4. Copy the webhook signing secret (starts with `whsec_`) displayed in the terminal and add it to `.env.local` as `STRIPE_WEBHOOK_SECRET`
+    5. Restart your Next.js dev server to load the new webhook secret
+
+    **Testing Flow (After setup):**
+
+    1. With `stripe listen` running in one terminal, complete a subscription in your app
+    2. Use test card details:
+       - **Card Number:** `4242 4242 4242 4242`
+       - **Expiry:** Any future date (e.g., `12/34`)
+       - **CVC:** Any 3 digits (e.g., `123`)
+       - **Name:** Any name (e.g., `Test User`)
+       - **Email:** Any email (e.g., `test@example.com`)
+    3. Complete the payment on Stripe Checkout
+    4. **Webhooks fire automatically:** After payment succeeds, Stripe sends webhooks:
+       - `customer.subscription.created` → Creates subscription in your database
+       - `invoice.payment_succeeded` → Creates transaction and extends subscription
+    5. Watch the `stripe listen` terminal - you'll see webhook events being forwarded in real-time
+    6. Check your app - you should be redirected back with `?checkout=success` and subscription should be active
+
+    **Manual Event Triggering (Alternative - for testing specific scenarios):**
+
+    - In another terminal (while `stripe listen` is running), trigger test events:
+      - `stripe trigger customer.subscription.created`
+      - `stripe trigger invoice.payment_succeeded`
+      - `stripe trigger customer.subscription.updated`
+      - `stripe trigger customer.subscription.deleted`
+      - `stripe trigger invoice.payment_failed`
+
+  - **Using Stripe Dashboard (Test Mode):**
+    1. Go to Stripe Dashboard → Developers → Webhooks
+    2. Add endpoint: `https://your-domain.com/api/integrations/stripe/webhook` (or use ngrok for local: `ngrok http 3000`)
+    3. Select events to listen for:
+       - `customer.subscription.created`
+       - `customer.subscription.updated`
+       - `customer.subscription.deleted`
+       - `invoice.payment_succeeded`
+       - `invoice.payment_failed`
+       - `customer.subscription.trial_will_end`
+    4. Copy webhook signing secret and add to environment variables
+    5. Test by creating/updating subscriptions in test mode - webhooks will fire automatically
 - [ ] Verify database records are created correctly
 - [ ] Test Stripe Customer Portal:
   - Verify "Manage Subscription" button creates portal session
