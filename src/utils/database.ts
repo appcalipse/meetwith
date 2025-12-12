@@ -8020,7 +8020,7 @@ const createSubscriptionPeriod = async (
   billingPlanId: string,
   status: 'active' | 'cancelled' | 'expired',
   expiryTime: string,
-  transactionId: string
+  transactionId: string | null
 ): Promise<Tables<'subscriptions'>> => {
   const { data, error } = await db.supabase
     .from('subscriptions')
@@ -8166,6 +8166,85 @@ const updateSubscriptionPeriodStatus = async (
   return data
 }
 
+// Update subscription period transaction_id
+const updateSubscriptionPeriodTransaction = async (
+  subscriptionId: string,
+  transactionId: string
+): Promise<Tables<'subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .update({
+      transaction_id: transactionId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subscriptionId)
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to update subscription period transaction: ${error.message}`
+    )
+  }
+
+  if (!data) {
+    throw new Error(
+      'Failed to update subscription period transaction: no data returned'
+    )
+  }
+
+  return data
+}
+
+const findSubscriptionPeriodByPlanAndExpiry = async (
+  accountAddress: string,
+  billingPlanId: string,
+  expiryTime: string
+): Promise<Tables<'subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .eq('billing_plan_id', billingPlanId)
+    .is('transaction_id', null)
+    .order('registered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to find subscription period: ${error.message}`)
+  }
+
+  return data
+}
+
+const findRecentSubscriptionPeriodByPlan = async (
+  accountAddress: string,
+  billingPlanId: string,
+  createdAfter: string
+): Promise<Tables<'subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .eq('billing_plan_id', billingPlanId)
+    .gte('registered_at', createdAfter)
+    .order('registered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to find recent subscription period: ${error.message}`
+    )
+  }
+
+  return data
+}
+
 export {
   acceptContactInvite,
   addContactInvite,
@@ -8207,6 +8286,8 @@ export {
   expireStalePolls,
   findAccountByIdentifier,
   findAccountsByText,
+  findRecentSubscriptionPeriodByPlan,
+  findSubscriptionPeriodByPlanAndExpiry,
   getAccountAvatarUrl,
   getAccountFromDB,
   getAccountFromDBPublic,
@@ -8330,6 +8411,7 @@ export {
   updateRecurringSlots,
   updateStripeSubscription,
   updateSubscriptionPeriodStatus,
+  updateSubscriptionPeriodTransaction,
   upsertGateCondition,
   verifyUserPin,
   verifyVerificationCode,
