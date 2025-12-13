@@ -1,5 +1,5 @@
 import { calendar_v3 } from 'googleapis'
-import { Frequency, RRuleSet, rrulestr } from 'rrule'
+import { Frequency, RRule, RRuleSet, rrulestr } from 'rrule'
 
 import {
   AttendeeStatus,
@@ -13,6 +13,7 @@ import {
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 
 import { getBaseEventId } from '../calendar_sync_helpers'
+import { isJson } from '../generic_utils'
 
 export class GoogleEventMapper {
   /**
@@ -90,7 +91,7 @@ export class GoogleEventMapper {
 
       location: unifiedEvent.meeting_url,
       attendees: this.createGoogleAttendees(unifiedEvent.attendees || []),
-      recurrence: this.createGoogleRecurrence(unifiedEvent.recurrence),
+      recurrence: unifiedEvent.recurrence?.providerRecurrence?.google?.rrule,
       status: this.mapUnifiedStatusToGoogle(unifiedEvent.status),
 
       colorId: googleData.colorId,
@@ -203,7 +204,7 @@ export class GoogleEventMapper {
     const ruleset = new RRuleSet()
     ruleset.rrule(rrule)
     return {
-      frequency: this.mapGoogleFrequency(rrule.options.freq),
+      frequency: rrule.options.freq,
       interval: rrule.options.interval || 1,
       daysOfWeek: rrule.options.byweekday,
       dayOfMonth: Array.isArray(rrule.options.bymonthday)
@@ -394,61 +395,18 @@ export class GoogleEventMapper {
   ): string[] | undefined {
     if (!recurrence) return undefined
 
-    let rrule = `RRULE:FREQ=${recurrence.frequency.toUpperCase()}`
+    const rrule = new RRule({
+      freq: recurrence.frequency,
+      interval: recurrence.interval || 1,
+      byweekday: recurrence.daysOfWeek,
+      bymonthday: recurrence.dayOfMonth ? [recurrence.dayOfMonth] : undefined,
+      bysetpos: recurrence.weekOfMonth ? [recurrence.weekOfMonth] : undefined,
+      until: recurrence.endDate || undefined,
+      count: recurrence.occurrenceCount || undefined,
+    })
 
-    if (recurrence.interval > 1) {
-      rrule += `;INTERVAL=${recurrence.interval}`
-    }
-
-    if (recurrence.daysOfWeek?.length) {
-      const days = recurrence.daysOfWeek.map(this.mapDayToGoogle).join(',')
-
-      if (
-        recurrence.weekOfMonth &&
-        recurrence.frequency === MeetingRepeat.MONTHLY
-      ) {
-        // For monthly patterns with specific week (e.g., "2nd Monday")
-        const weekPrefix =
-          recurrence.weekOfMonth === -1
-            ? '-1'
-            : recurrence.weekOfMonth.toString()
-        const prefixedDays = recurrence.daysOfWeek
-          .map(day => `${weekPrefix}${this.mapDayToGoogle(day)}`)
-          .join(',')
-        rrule += `;BYDAY=${prefixedDays}`
-      } else {
-        rrule += `;BYDAY=${days}`
-      }
-    }
-
-    if (recurrence.dayOfMonth) {
-      rrule += `;BYMONTHDAY=${recurrence.dayOfMonth}`
-    }
-
-    if (recurrence.weekOfMonth && !recurrence.daysOfWeek?.length) {
-      rrule += `;BYSETPOS=${recurrence.weekOfMonth}`
-    }
-
-    if (recurrence.endDate) {
-      const until = this.formatGoogleUntilDate(recurrence.endDate)
-      rrule += `;UNTIL=${until}`
-    }
-
-    if (recurrence.occurrenceCount) {
-      rrule += `;COUNT=${recurrence.occurrenceCount}`
-    }
-
-    const rules = [rrule]
-
-    // Add EXDATE rules for excluded dates
-    if (recurrence.excludeDates?.length) {
-      const exdates = recurrence.excludeDates
-        .map(this.formatGoogleUntilDate)
-        .join(',')
-      rules.push(`EXDATE:${exdates}`)
-    }
-
-    return rules
+    const ruleset = rrule.toString()
+    return isJson(ruleset) ? JSON.parse(ruleset) : ruleset
   }
 
   private static mapDayToGoogle(day: DayOfWeek): string {
