@@ -15,8 +15,8 @@ const ActiveEvent: React.FC = ({}) => {
       placement="right"
       onClose={() => setSelectedSlot(null)}
     >
-      <DrawerContent>
-        <DrawerBody>
+      <DrawerContent minW="500px">
+        <DrawerBody w="100%" p={'30px'}>
           {selectedSlot &&
             (isCalendarEvent(selectedSlot) ? (
               <ActiveCalendarEvent slot={selectedSlot} />
