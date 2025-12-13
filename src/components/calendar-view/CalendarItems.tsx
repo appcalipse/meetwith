@@ -8,48 +8,78 @@ import CalendarItem from './CalendarItem'
 
 const CalendarItems: React.FC = () => {
   const { currrentDate } = useCalendarContext()
-  const startOfWeek = currrentDate.startOf('week')
+  const weekOffset = React.useRef(0)
+  const [isTransitioning, setIsTransitioning] = React.useState(false)
 
-  const TIME_SLOTS = Array.from({ length: 24 }, (_, i) =>
-    DateTime.fromObject({ hour: i, minute: 0 })
+  const currentWeek = currrentDate.startOf('week')
+  const previousWeek = React.useRef(currentWeek)
+
+  React.useEffect(() => {
+    if (!previousWeek.current.equals(currentWeek)) {
+      setIsTransitioning(true)
+      weekOffset.current =
+        currentWeek.diff(previousWeek.current, 'weeks').weeks * 100
+
+      // Smooth transition
+      setTimeout(() => {
+        previousWeek.current = currentWeek
+        weekOffset.current = 0
+        setIsTransitioning(false)
+      }, 200)
+    }
+  }, [currentWeek])
+
+  const timeSlots = React.useMemo(
+    () =>
+      Array.from({ length: 24 }, (_, i) =>
+        DateTime.fromObject({ hour: i, minute: 0 })
+      ),
+    []
   )
-  const days = Array.from({
-    length: 7,
-  }).map((_, index) => {
-    return startOfWeek.plus({ days: index }).startOf('day')
-  })
+
+  const days = React.useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, index) =>
+        currrentDate.startOf('week').plus({ days: index }).startOf('day')
+      ),
+    [currrentDate]
+  )
+
   return (
     <Grid templateColumns="minmax(45px, 70px) repeat(7, 1fr)" h="100%">
-      <Grid templateRows="repeat(1fr)">
-        {TIME_SLOTS.map((timeSlot, index) => (
-          <GridItem
-            pos="relative"
-            minH="35px"
-            borderInline="1px solid"
-            borderColor="neutral.700"
-            bg="neutral.825"
-            key={index}
-          >
-            <Text
-              top={'-13px'}
-              pos="absolute"
-              zIndex={2}
-              textAlign="center"
-              w="100%"
-            >
-              {timeSlot.toFormat('h a')}
-            </Text>
-          </GridItem>
-        ))}
-      </Grid>
+      <TimeColumn timeSlots={timeSlots} />
       {days.map((day, dayIndex) => (
         <CalendarItem
-          key={`${dayIndex}-${day.toMillis()}`}
+          key={day.toISODate()} // Use ISO date for stable keys
           dayIndex={dayIndex}
           timeSlot={day}
         />
       ))}
     </Grid>
+  )
+}
+
+const TimeColumn = ({ timeSlots }: { timeSlots: DateTime[] }) => (
+  <Grid templateRows="repeat(1fr)">
+    {timeSlots.map((timeSlot, index) => (
+      <TimeSlot key={timeSlot.hour} timeSlot={timeSlot} />
+    ))}
+  </Grid>
+)
+
+const TimeSlot: React.FC<{ timeSlot: DateTime }> = ({ timeSlot }) => {
+  return (
+    <GridItem
+      pos="relative"
+      minH="35px"
+      borderInline="1px solid"
+      borderColor="neutral.700"
+      bg="neutral.825"
+    >
+      <Text top={'-13px'} pos="absolute" zIndex={2} textAlign="center" w="100%">
+        {timeSlot.toFormat('h a')}
+      </Text>
+    </GridItem>
   )
 }
 
