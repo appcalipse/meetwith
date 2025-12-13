@@ -1,10 +1,12 @@
 import { Grid, GridItem } from '@chakra-ui/layout'
-import { DateTime, Interval } from 'luxon'
+import { DateTime } from 'luxon'
 import * as React from 'react'
 
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
+import { UnifiedEvent, WithInterval } from '@/types/Calendar'
+import { MeetingDecrypted } from '@/types/Meeting'
 
-import DayItem from './DayItem'
+import Event from './Event'
 
 interface CalendarItemProps {
   timeSlot: DateTime
@@ -12,31 +14,81 @@ interface CalendarItemProps {
 }
 
 const CalendarItem: React.FC<CalendarItemProps> = ({ timeSlot, dayIndex }) => {
-  const { calculateSlotForInterval } = useCalendarContext()
-  const TIME_SLOTS = Array.from({ length: 24 }, (_, i) =>
-    timeSlot.set({ hour: i, minute: 0 })
+  const { eventIndex } = useCalendarContext()
+  const { getSlotBgColor } = useCalendarContext()
+
+  const TIME_SLOTS = React.useMemo(
+    () =>
+      Array.from({ length: 24 }, (_, i) =>
+        timeSlot.set({ hour: i, minute: 0 })
+      ),
+    [timeSlot]
   )
-  const allSlotsForDay = calculateSlotForInterval(
-    Interval.fromDateTimes(timeSlot.startOf('day'), timeSlot.endOf('day'))
-  )
+  const dayEvents = React.useMemo(() => {
+    const dayStart = timeSlot.startOf('day')
+    return eventIndex.dayIndex.get(dayStart.toISODate()!) || []
+  }, [timeSlot, eventIndex])
 
   return (
     <Grid templateRows="repeat(1fr)" position="relative">
       {TIME_SLOTS.map((time, timeIndex) => (
-        <GridItem
-          key={`${dayIndex}-${timeIndex}`}
-          border="1px solid"
-          borderColor="neutral.700"
-          bg={dayIndex % 2 === 0 ? 'neutral.825' : 'neutral.950'}
-          height="36px"
-          cursor="pointer"
-          position="relative"
-        >
-          <DayItem time={time} allSlotsForDay={allSlotsForDay} />
-        </GridItem>
+        <TimeSlotItem
+          key={timeIndex}
+          time={time}
+          hourEvents={eventIndex.hourIndex.get(time.toISO()!) || []}
+          dayEvents={dayEvents}
+          dayIndex={dayIndex}
+          getSlotBgColor={getSlotBgColor}
+          timeIndex={timeIndex}
+        />
       ))}
     </Grid>
   )
 }
-
+const TimeSlotItem: React.FC<{
+  time: DateTime
+  dayIndex: number
+  timeIndex: number
+  getSlotBgColor: (calId: string) => string
+  hourEvents: Array<
+    WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
+  >
+  dayEvents: Array<
+    WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
+  >
+}> = ({ time, dayIndex, timeIndex, hourEvents, dayEvents, getSlotBgColor }) => {
+  const ref = React.useRef<HTMLDivElement>(null)
+  return (
+    <GridItem
+      border="1px solid"
+      borderColor="neutral.700"
+      bg={dayIndex % 2 === 0 ? 'neutral.825' : 'neutral.950'}
+      height="40px"
+      cursor="pointer"
+      animation={`slideFromLeft 0.3s ease-out ${timeIndex * 10}ms`}
+    >
+      <Grid
+        templateColumns={`repeat(${hourEvents.length}, minmax(0, 1fr))`}
+        w="100%"
+        h="100%"
+        gap={0.5}
+        ref={ref}
+      >
+        {hourEvents.map(event => (
+          <Event
+            key={`${event.id}-${time.toISO()}`}
+            event={event}
+            dayEvents={dayEvents}
+            timeSlot={time}
+            bg={
+              'calendarId' in event
+                ? getSlotBgColor(event.calendarId)
+                : '#FEF0EC'
+            }
+          />
+        ))}
+      </Grid>
+    </GridItem>
+  )
+}
 export default CalendarItem
