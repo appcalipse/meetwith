@@ -3,6 +3,7 @@ import * as React from 'react'
 
 import { CalendarProvider } from '@/providers/calendar/CalendarContext'
 
+import ActiveEvent from './ActiveEvent'
 import Calendar from './Calendar'
 import Sidebar from './Sidebar'
 
@@ -17,7 +18,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({}) => {
         <Sidebar />
         <Calendar />
       </HStack>
-      {/*<ActiveEvent />*/}
+      <ActiveEvent />
     </CalendarProvider>
   )
 }
