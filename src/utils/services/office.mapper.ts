@@ -1,3 +1,5 @@
+import { Frequency } from 'rrule'
+
 import {
   AttendeeStatus,
   DayOfWeek,
@@ -7,7 +9,7 @@ import {
   UnifiedEvent,
   UnifiedRecurrence,
 } from '@/types/Calendar'
-import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
+import { TimeSlotSource } from '@/types/Meeting'
 import {
   Attendee as O365Attendee,
   DateTimeTimeZone,
@@ -19,8 +21,6 @@ import {
   RecurrenceRange,
   ResponseStatus,
 } from '@/types/Office365'
-
-import { getOfficeMeetingIdMappingId } from '../database'
 
 export class Office365EventMapper {
   /**
@@ -93,7 +93,7 @@ export class Office365EventMapper {
 
       location: this.createO365Location(unifiedEvent.meeting_url || ''),
       attendees: this.createO365Attendees(unifiedEvent.attendees || []),
-      recurrence: this.createO365Recurrence(unifiedEvent.recurrence),
+      recurrence: unifiedEvent.recurrence?.providerRecurrence?.office365,
 
       // Office365-specific fields
       importance: o365Data.importance,
@@ -237,20 +237,18 @@ export class Office365EventMapper {
 
   private static mapRecurrenceFrequency(
     type: RecurrencePattern['type']
-  ): MeetingRepeat {
+  ): Frequency {
     switch (type) {
       case 'daily':
-        return MeetingRepeat.DAILY
+        return Frequency.DAILY
       case 'weekly':
-        return MeetingRepeat.WEEKLY
+        return Frequency.WEEKLY
       case 'absoluteMonthly':
       case 'relativeMonthly':
-        return MeetingRepeat.MONTHLY
+        return Frequency.MONTHLY
       case 'absoluteYearly':
       case 'relativeYearly':
-      // return MeetingRepeat.YEARLY
-      default:
-        return MeetingRepeat.NO_REPEAT
+        return Frequency.YEARLY
     }
   }
 
@@ -386,17 +384,17 @@ export class Office365EventMapper {
   }
 
   private static mapUnifiedFrequencyToO365(
-    frequency: MeetingRepeat
+    frequency: Frequency
   ): RecurrencePattern['type'] {
     switch (frequency) {
-      case MeetingRepeat.DAILY:
+      case Frequency.DAILY:
         return 'daily'
-      case MeetingRepeat.WEEKLY:
+      case Frequency.WEEKLY:
         return 'weekly'
-      case MeetingRepeat.MONTHLY:
+      case Frequency.MONTHLY:
         return 'absoluteMonthly' // Default to absolute
-      // case MeetingRepeat.YEARLY:
-      //   return 'absoluteYearly'
+      case Frequency.YEARLY:
+        return 'absoluteYearly'
       default:
         return 'weekly'
     }
