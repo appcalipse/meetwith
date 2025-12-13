@@ -1,4 +1,4 @@
-import { Frequency, RRuleSet, rrulestr } from 'rrule'
+import { Frequency, RRule, RRuleSet, rrulestr } from 'rrule'
 
 import {
   AttendeeStatus,
@@ -12,6 +12,7 @@ import {
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 
 import { getBaseEventId } from '../calendar_sync_helpers'
+import { isJson } from '../generic_utils'
 
 // Types for WebDAV/CalDAV events (based on your existing code)
 export interface WebDAVEvent {
@@ -118,7 +119,7 @@ export class WebDAVEventMapper {
       duration: webdavData?.duration,
       recurrenceId: webdavData?.recurrenceId,
       status: this.mapUnifiedStatusToWebDAV(unifiedEvent.status),
-      rrule: this.createWebDAVRecurrence(unifiedEvent.recurrence),
+      rrule: unifiedEvent.recurrence?.providerRecurrence?.webdav?.rrule,
     }
   }
 
@@ -368,7 +369,7 @@ export class WebDAVEventMapper {
     const ruleset = new RRuleSet()
     ruleset.rrule(rrule)
     return {
-      frequency: this.mapFrequency(rrule.options.freq),
+      frequency: rrule.options.freq,
       interval: rrule.options.interval || 1,
       daysOfWeek: rrule.options.byweekday,
       dayOfMonth: Array.isArray(rrule.options.bymonthday)
@@ -546,51 +547,17 @@ export class WebDAVEventMapper {
     recurrence?: UnifiedRecurrence | null
   ): string | undefined {
     if (!recurrence) return undefined
-
-    let rrule = `FREQ=${recurrence.frequency.toUpperCase()}`
-
-    if (recurrence.interval > 1) {
-      rrule += `;INTERVAL=${recurrence.interval}`
-    }
-
-    if (recurrence.daysOfWeek?.length) {
-      const days = recurrence.daysOfWeek.map(this.mapDayToWebDAV).join(',')
-
-      if (
-        recurrence.weekOfMonth &&
-        recurrence.frequency === MeetingRepeat.MONTHLY
-      ) {
-        const weekPrefix =
-          recurrence.weekOfMonth === -1
-            ? '-1'
-            : recurrence.weekOfMonth.toString()
-        const prefixedDays = recurrence.daysOfWeek
-          .map(day => `${weekPrefix}${this.mapDayToWebDAV(day)}`)
-          .join(',')
-        rrule += `;BYDAY=${prefixedDays}`
-      } else {
-        rrule += `;BYDAY=${days}`
-      }
-    }
-
-    if (recurrence.dayOfMonth) {
-      rrule += `;BYMONTHDAY=${recurrence.dayOfMonth}`
-    }
-
-    if (recurrence.weekOfMonth && !recurrence.daysOfWeek?.length) {
-      rrule += `;BYSETPOS=${recurrence.weekOfMonth}`
-    }
-
-    if (recurrence.endDate) {
-      const until = this.formatWebDAVUntilDate(recurrence.endDate)
-      rrule += `;UNTIL=${until}`
-    }
-
-    if (recurrence.occurrenceCount) {
-      rrule += `;COUNT=${recurrence.occurrenceCount}`
-    }
-
-    return rrule
+    const rrule = new RRule({
+      freq: recurrence.frequency,
+      interval: recurrence.interval || 1,
+      byweekday: recurrence.daysOfWeek,
+      bymonthday: recurrence.dayOfMonth ? [recurrence.dayOfMonth] : undefined,
+      bysetpos: recurrence.weekOfMonth ? [recurrence.weekOfMonth] : undefined,
+      until: recurrence.endDate || undefined,
+      count: recurrence.occurrenceCount || undefined,
+    })
+    const ruleset = rrule.toString()
+    return isJson(ruleset) ? JSON.parse(ruleset) : ruleset
   }
 
   private static mapDayToWebDAV(day: DayOfWeek): string {
