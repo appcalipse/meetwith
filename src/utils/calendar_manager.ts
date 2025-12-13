@@ -9,17 +9,23 @@ import {
   ReturnObject,
 } from 'ics'
 import { DateTime } from 'luxon'
-import { RRule } from 'rrule'
+import { RRule, rrulestr } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability } from '@/types/Account'
+import { UnifiedEvent } from '@/types/Calendar'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
   ConferenceMeeting,
   DBSlot,
   ExtendedDBSlot,
+  ExtendedSlotInstance,
+  ExtendedSlotSeries,
   GuestSlot,
+  isDBSlot,
+  isSlotInstance,
+  isSlotSeries,
   MeetingChangeType,
   MeetingDecrypted,
   MeetingInfo,
@@ -28,6 +34,8 @@ import {
   MeetingVersion,
   ParticipantMappingType,
   SchedulingType,
+  SlotInstance,
+  SlotSeries,
 } from '@/types/Meeting'
 import {
   ParticipantInfo,
@@ -2068,9 +2076,131 @@ const getMeetingRepeatFromRule = (rule: RRule): MeetingRepeat => {
       return MeetingRepeat.NO_REPEAT
   }
 }
+const meetWithSeriesPreprocessors = (
+  meetings: Array<ExtendedDBSlot | ExtendedSlotInstance | ExtendedSlotSeries>,
+  referenceDate: DateTime
+): Array<ExtendedDBSlot | ExtendedSlotInstance> => {
+  const start = referenceDate.startOf('month').startOf('week').toJSDate()
+  const end = referenceDate.endOf('month').endOf('week').toJSDate()
+  const dbSlots = meetings.filter((slot): slot is DBSlot => isDBSlot(slot))
+  const slotSeries = meetings.filter((slot): slot is SlotSeries =>
+    isSlotSeries(slot)
+  )
+  const slotSereisMap = new Map<string, SlotSeries>()
+  slotSeries.forEach(slotSerie => {
+    slotSereisMap.set(slotSerie.id!, slotSerie)
+  })
+  const slotInstances = meetings
+    .filter((slot): slot is SlotInstance => isSlotInstance(slot))
+    .map(slot => {
+      if (slot.meeting_info_encrypted) {
+        return slot
+      } else {
+        return {
+          ...slot,
+          meeting_info_encrypted: slotSereisMap.get(slot.series_id!)
+            ?.meeting_info_encrypted,
+        }
+      }
+    })
+
+  const slots = [...dbSlots, ...slotInstances]
+
+  for (const slotSerie of slotSeries) {
+    if (!slotSerie.rrule?.[0]) continue
+    const rule = rrulestr(slotSerie.rrule[0], {
+      dtstart: new Date(slotSerie.start), // The original start time of the series
+    })
+    const ghostStartTimes = rule.between(start, end, true)
+    for (const ghostStartTime of ghostStartTimes) {
+      const ghostEndTime = new Date(
+        ghostStartTime.getTime() +
+          (new Date(slotSerie.end).getTime() -
+            new Date(slotSerie.start).getTime())
+      )
+      // Check if an instance already exists for this occurrence
+      const instanceExists = slotInstances.some(
+        instance =>
+          instance.series_id === slotSerie.id &&
+          new Date(instance.start).getTime() === ghostStartTime.getTime()
+      )
+      if (!instanceExists) {
+        const slotInstance: SlotInstance = {
+          ...slotSerie,
+          id: `${slotSerie.id}_instance_${ghostStartTime.getTime()}`, // Unique ID for the ghost instance
+          series_id: slotSerie.id!,
+          start: ghostStartTime,
+          end: ghostEndTime,
+        }
+        slots.push(slotInstance)
+      }
+    }
+  }
+  return slots.filter(
+    (slot): slot is ExtendedDBSlot | ExtendedSlotInstance =>
+      !!slot.meeting_info_encrypted
+  )
+}
+const calendarEventsPreprocessors = (
+  events: Array<UnifiedEvent>,
+  referenceDate: DateTime
+) => {
+  const instances: Array<UnifiedEvent> = []
+  for (const event of events) {
+    const recurrence = event.recurrence
+    if (recurrence) {
+      const rrule = new RRule({
+        freq: recurrence.frequency,
+        interval: recurrence.interval || 1,
+        byweekday: recurrence.daysOfWeek,
+        bymonthday: recurrence.dayOfMonth ? [recurrence.dayOfMonth] : undefined,
+        bysetpos: recurrence.weekOfMonth ? [recurrence.weekOfMonth] : undefined,
+        until: recurrence.endDate || undefined,
+        count: recurrence.occurrenceCount || undefined,
+      })
+      const ghostStartTimes = rrule
+        .between(
+          referenceDate.startOf('month').startOf('week').toJSDate(),
+          referenceDate.endOf('month').endOf('week').toJSDate(),
+          true
+        )
+        .map(date => DateTime.fromJSDate(date))
+
+      for (const ghostStartTime of ghostStartTimes) {
+        const difference =
+          DateTime.fromJSDate(event.end)
+            .diff(DateTime.fromJSDate(event.start))
+            .toObject().minutes || 0
+        const ghostEndTime = ghostStartTime.plus({ minutes: difference })
+
+        // Check if an instance already exists for this occurrence
+        const instanceExists = instances.some(
+          instance =>
+            instance.sourceEventId === event.id &&
+            instance.start.getTime() === ghostStartTime.toJSDate().getTime()
+        )
+        if (!instanceExists) {
+          const eventInstance: UnifiedEvent = {
+            ...event,
+            id: `${event.sourceEventId}_${ghostStartTime.toFormat(
+              "yyyyMMdd'T'HHmmss"
+            )}`,
+            start: ghostStartTime.toJSDate(),
+            end: ghostEndTime.toJSDate(),
+          }
+          instances.push(eventInstance)
+        }
+      }
+    } else {
+      instances.push(event)
+    }
+  }
+  return instances
+}
 export {
   allSlots,
   buildMeetingData,
+  calendarEventsPreprocessors,
   cancelMeeting,
   cancelMeetingGuest,
   dateToHumanReadable,
@@ -2097,6 +2227,7 @@ export {
   isDiffRRULE,
   loadMeetingAccountAddresses,
   mapRelatedSlots,
+  meetWithSeriesPreprocessors,
   noNoReplyEmailForAccount,
   outLookUrlParsedDate,
   scheduleMeeting,
