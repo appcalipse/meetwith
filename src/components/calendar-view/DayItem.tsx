@@ -16,14 +16,18 @@ interface DayItemProps {
 }
 
 const DayItem: React.FC<DayItemProps> = ({ time, allSlotsForDay }) => {
-  const { calculateSlotForInterval, getSlotBgColor } = useCalendarContext()
+  const { getSlotBgColor } = useCalendarContext()
   const interval = Interval.fromDateTimes(
     time,
     time.plus({
       hours: 1,
     })
   )
-  const slots = calculateSlotForInterval(interval)
+  const slots = React.useMemo(() => {
+    if (!interval.start) return []
+
+    return allSlotsForDay.filter(event => interval.contains(event.start))
+  }, [])
   return slots.length > 0 ? (
     <Grid
       templateColumns={`repeat(${slots.length}, minmax(0, 1fr))`}
@@ -34,8 +38,8 @@ const DayItem: React.FC<DayItemProps> = ({ time, allSlotsForDay }) => {
       {slots.map(slot => (
         <Event
           key={slot.id}
-          slot={slot}
-          allSlotsForDay={allSlotsForDay}
+          event={slot}
+          dayEvents={allSlotsForDay}
           timeSlot={time}
           bg={
             'calendarId' in slot ? getSlotBgColor(slot.calendarId) : '#FEF0EC'
