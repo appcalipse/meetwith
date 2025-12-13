@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION get_meeting_series_without_instances(
     p_time_max timestamptz
 )
 RETURNS TABLE (
-    series_id text,
+    id text,
     account_address text,
     created_at timestamptz,
     start timestamptz,
@@ -21,7 +21,7 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT
-        ss.id as series_id,
+        ss.id,
         ss.account_address,
         ss.created_at,
         ss.original_start as start,
