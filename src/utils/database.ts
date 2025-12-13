@@ -844,7 +844,7 @@ const getSlotsForAccountWithConference = async (
   limit = 1000,
   offset = 0
 ): Promise<
-  Array<ExtendedDBSlot | ExtendedSlotInstance | ExtendedSlotSeries>
+  Array<ExtendedEventDBSlot | ExtendedSlotInstance | ExtendedSlotSeries>
 > => {
   const account = await getAccountFromDB(account_address)
 

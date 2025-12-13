@@ -37,9 +37,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         calendarEvents: unifiedEvents.filter(event => {
           const isMeetwithEvent = meetwithEvents.some(
             mwwEvent =>
-              mwwEvent.conferenceData &&
-              (mwwEvent.conferenceData.id === event.id ||
-                event.description?.includes(mwwEvent.conferenceData.id) ||
+              mwwEvent.meeting_id &&
+              (mwwEvent.meeting_id === event.id ||
+                event.description?.includes(mwwEvent.meeting_id) ||
                 event.description?.includes(mwwEvent.id!))
           )
           return !isMeetwithEvent // we only want to display non-meetwith events from calendars on the client side
