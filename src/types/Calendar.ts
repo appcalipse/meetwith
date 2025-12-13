@@ -1,4 +1,5 @@
 import { DateTime, Interval } from 'luxon'
+import { Frequency } from 'rrule'
 
 import {
   WebDAVAttendeeExtensions,
@@ -14,7 +15,6 @@ import {
   ExtendedSlotInstance,
   ExtendedSlotSeries,
   MeetingDecrypted,
-  MeetingRepeat,
   TimeSlotSource,
 } from './Meeting'
 import {
@@ -94,7 +94,7 @@ export interface Office365EventExtensions {
 }
 
 export interface UnifiedRecurrence {
-  frequency: MeetingRepeat
+  frequency: Frequency
   interval: number
 
   endDate: Optional<Date>
@@ -108,14 +108,14 @@ export interface UnifiedRecurrence {
 
   providerRecurrence?: {
     google?: {
-      rrule?: string[]
+      rrule: string[]
     }
     office365?: {
-      pattern?: RecurrencePattern
-      range?: RecurrenceRange
+      pattern: RecurrencePattern
+      range: RecurrenceRange
     }
     webdav?: {
-      rrule?: string
+      rrule: string
     }
   }
 }
@@ -187,7 +187,9 @@ const includesStatus = (
   statuses: readonly (ParticipationStatus | AttendeeStatus)[],
   status: AttendeeStatusType
 ): boolean => {
-  return status != null && statuses.includes(status as any)
+  return (
+    status != null && status != undefined && statuses.includes(status as any)
+  )
 }
 
 export const isDeclined = (status: AttendeeStatusType): boolean => {
