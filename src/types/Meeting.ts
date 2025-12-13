@@ -57,7 +57,7 @@ export interface DBSlot extends Interval {
 export interface SlotInstance extends DBSlot {
   series_id: string
 }
-export interface SlotSeries extends Omit<DBSlot, 'id'> {
+export interface SlotSeries extends DBSlot {
   rrule: string[]
   slot_id: string
 }
@@ -72,11 +72,32 @@ export interface GuestSlot extends DBSlot {
 export interface ExtendedDBSlot extends DBSlot {
   conferenceData?: ConferenceMeeting
 }
+export interface ExtendedEventDBSlot extends DBSlot {
+  meeting_id?: string
+}
 export interface ExtendedSlotInstance extends SlotInstance {
-  conferenceData?: ConferenceMeeting
+  meeting_id: string
 }
 export interface ExtendedSlotSeries extends SlotInstance {
-  conferenceData?: ConferenceMeeting
+  meeting_id: string
+}
+export const isSlotInstance = (
+  slot: DBSlot | SlotInstance | SlotSeries
+): slot is SlotInstance => {
+  return (slot as SlotInstance).series_id !== undefined
+}
+export const isSlotSeries = (
+  slot: DBSlot | SlotInstance | SlotSeries
+): slot is SlotSeries => {
+  return (slot as SlotSeries).slot_id !== undefined
+}
+export const isDBSlot = (
+  slot: DBSlot | SlotInstance | SlotSeries
+): slot is DBSlot => {
+  return (
+    (slot as SlotInstance).series_id === undefined &&
+    (slot as SlotSeries).slot_id === undefined
+  )
 }
 
 /**
