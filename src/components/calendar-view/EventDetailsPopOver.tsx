@@ -22,9 +22,14 @@ import { FaRegCopy } from 'react-icons/fa6'
 import { MdCancel } from 'react-icons/md'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { AttendeeStatus, UnifiedEvent, WithInterval } from '@/types/Calendar'
+import {
+  isAccepted,
+  isDeclined,
+  isPendingAction,
+  UnifiedEvent,
+  WithInterval,
+} from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
-import { ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import { dateToLocalizedRange } from '@/utils/calendar_manager'
 import { MeetingPermissions } from '@/utils/constants/schedule'
@@ -219,15 +224,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
           <Text fontWeight={700}>RSVP:</Text>
           <HStack alignItems="center" gap={2}>
             <Tag
-              bg={
-                [
-                  ParticipationStatus.Accepted,
-                  AttendeeStatus.ACCEPTED,
-                  AttendeeStatus.COMPLETED,
-                ].includes(actor?.status)
-                  ? 'green.500'
-                  : 'transparent'
-              }
+              bg={isAccepted(actor?.status) ? 'green.500' : 'transparent'}
               borderWidth={1}
               borderColor={'green.500'}
               rounded="full"
@@ -239,28 +236,13 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
               }}
             >
               <TagLabel
-                color={
-                  [
-                    ParticipationStatus.Accepted,
-                    AttendeeStatus.ACCEPTED,
-                    AttendeeStatus.COMPLETED,
-                  ].includes(actor?.status)
-                    ? 'white'
-                    : 'green.500'
-                }
+                color={isAccepted(actor?.status) ? 'white' : 'green.500'}
               >
                 Yes
               </TagLabel>
             </Tag>
             <Tag
-              bg={
-                [
-                  ParticipationStatus.Rejected,
-                  AttendeeStatus.DECLINED,
-                ].includes(actor?.status)
-                  ? 'red.250'
-                  : 'transparent'
-              }
+              bg={isDeclined(actor?.status) ? 'red.250' : 'transparent'}
               borderWidth={1}
               borderColor={'red.250'}
               rounded="full"
@@ -271,29 +253,13 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
                 base: '12px',
               }}
             >
-              <TagLabel
-                color={
-                  [
-                    ParticipationStatus.Rejected,
-                    AttendeeStatus.DECLINED,
-                  ].includes(actor?.status)
-                    ? 'white'
-                    : 'red.250'
-                }
-              >
+              <TagLabel color={isDeclined(actor?.status) ? 'white' : 'red.250'}>
                 No
               </TagLabel>
             </Tag>
             <Tag
               bg={
-                [
-                  ParticipationStatus.Pending,
-                  AttendeeStatus.TENTATIVE,
-                  AttendeeStatus.NEEDS_ACTION,
-                  AttendeeStatus.DELEGATED,
-                ].includes(actor?.status)
-                  ? 'primary.300'
-                  : 'transparent'
+                isPendingAction(actor?.status) ? 'primary.300' : 'transparent'
               }
               borderWidth={1}
               borderColor={'primary.300'}
@@ -306,16 +272,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
               }}
             >
               <TagLabel
-                color={
-                  [
-                    ParticipationStatus.Pending,
-                    AttendeeStatus.TENTATIVE,
-                    AttendeeStatus.NEEDS_ACTION,
-                    AttendeeStatus.DELEGATED,
-                  ].includes(actor?.status)
-                    ? 'white'
-                    : 'primary.300'
-                }
+                color={isPendingAction(actor?.status) ? 'white' : 'primary.300'}
               >
                 Maybe
               </TagLabel>
