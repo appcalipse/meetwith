@@ -88,6 +88,7 @@ import {
   ConferenceMeeting,
   DBSlot,
   ExtendedDBSlot,
+  ExtendedEventDBSlot,
   ExtendedSlotInstance,
   ExtendedSlotSeries,
   GroupMeetingRequest,
@@ -851,11 +852,11 @@ const getSlotsForAccountWithConference = async (
   const _end = end ? end.toISOString() : '2500-01-01'
   const [
     { data: slots, error: slotError },
-    { data: slotInstances, error: slotErrors },
-    { data: slotSeries, error: slotErrorsError },
+    { data: slotInstances },
+    { data: slotSeries },
   ] = await Promise.all([
     db.supabase
-      .from<ExtendedDBSlot>('slots')
+      .from<ExtendedEventDBSlot>('slots')
       .select()
       .eq('account_address', account.address)
       .eq('recurrence', MeetingRepeat.NO_REPEAT)
@@ -864,14 +865,11 @@ const getSlotsForAccountWithConference = async (
       )
       .range(offset, offset + limit - 1)
       .order('start'),
-    db.supabase.rpc<ExtendedSlotInstance>(
-      'get_slot_instances_with_meeting_info',
-      {
-        p_account_address: account.address,
-        p_time_min: _start,
-        p_time_max: _end,
-      }
-    ),
+    db.supabase.rpc<ExtendedSlotInstance>('get_slot_instances_with_meetings', {
+      p_account_address: account.address,
+      p_time_min: _start,
+      p_time_max: _end,
+    }),
     db.supabase.rpc<ExtendedSlotSeries>(
       'get_meeting_series_without_instances',
       {
@@ -886,13 +884,13 @@ const getSlotsForAccountWithConference = async (
     throw new Error(slotError.message)
     // //TODO: handle error
   }
-  const conferenceDataMap = await getMultipleConferenceDataBySlotId(
+  const conferenceDataMap = await getMultipleConferenceIdsDataBySlotId(
     slots?.map(slot => slot.id).filter(id => id) as string[]
   )
   for (const slot of slots) {
     if (!slot.id) continue
     const conferenceMeeting = conferenceDataMap.get(slot.id)
-    slot.conferenceData = conferenceMeeting
+    slot.meeting_id = conferenceMeeting?.id
   }
   return slots.concat(slotInstances || []).concat(slotSeries || [])
 }
@@ -1378,6 +1376,36 @@ const getMultipleConferenceDataBySlotId = async (
   }
 
   const slotToMeetingMap = new Map<string, ConferenceMeeting>()
+
+  data?.forEach(meeting => {
+    if (meeting.slots && Array.isArray(meeting.slots)) {
+      meeting.slots.forEach(slotId => {
+        if (slotIds.includes(slotId)) {
+          slotToMeetingMap.set(slotId, meeting)
+        }
+      })
+    }
+  })
+
+  return slotToMeetingMap
+}
+const getMultipleConferenceIdsDataBySlotId = async (
+  slotIds: string[]
+): Promise<Map<string, Pick<ConferenceMeeting, 'id'>>> => {
+  if (slotIds.length === 0) {
+    return new Map()
+  }
+  const { data, error } = await db.supabase.rpc<ConferenceMeeting>(
+    'get_meeting_id_by_slot_ids',
+    {
+      slot_ids: slotIds, // This should be a proper JavaScript array
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const slotToMeetingMap = new Map<string, Pick<ConferenceMeeting, 'id'>>()
 
   data?.forEach(meeting => {
     if (meeting.slots && Array.isArray(meeting.slots)) {
