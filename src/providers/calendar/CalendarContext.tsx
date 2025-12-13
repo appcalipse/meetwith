@@ -8,9 +8,13 @@ import {
   CalendarSyncInfo,
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
-import { MeetingDecrypted } from '@/types/Meeting'
+import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
 import { getEvents, listConnectedCalendars } from '@/utils/api_helper'
-import { decodeMeeting } from '@/utils/calendar_manager'
+import {
+  calendarEventsPreprocessors,
+  decodeMeeting,
+  meetWithSeriesPreprocessors,
+} from '@/utils/calendar_manager'
 
 interface ICalendarContext {
   calendars: undefined | ConnectedCalendarCore[]
@@ -26,16 +30,17 @@ interface ICalendarContext {
     > | null>
   >
   setSelectedCalendars: React.Dispatch<React.SetStateAction<CalendarSyncInfo[]>>
-  calendarEvents: Array<
-    WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
-  >
-  calculateSlotForInterval: (
-    interval: Interval
-  ) => WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>[]
-  getAllDayEvents: (
-    interval: Interval
-  ) => WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>[]
   getSlotBgColor: (calId: string) => string
+  eventIndex: {
+    dayIndex: Map<
+      string,
+      Array<WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>>
+    >
+    hourIndex: Map<
+      string,
+      Array<WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>>
+    >
+  }
 }
 
 export const CalendarContext = React.createContext<ICalendarContext>({
@@ -44,12 +49,10 @@ export const CalendarContext = React.createContext<ICalendarContext>({
   setCurrentDate: () => {},
   selectedCalendars: [],
   setSelectedCalendars: () => {},
-  calendarEvents: [],
-  calculateSlotForInterval: () => [],
-  getAllDayEvents: () => [],
   getSlotBgColor: () => '',
   selectedSlot: null,
   setSelectedSlot: () => {},
+  eventIndex: { dayIndex: new Map(), hourIndex: new Map() },
 })
 
 export const useCalendarContext = () => {
@@ -59,7 +62,6 @@ export const useCalendarContext = () => {
   }
   return context
 }
-
 export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   children,
 }) => {
@@ -82,8 +84,8 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   const createEventsQueryKey = React.useCallback(
     (date: DateTime) => [
       'calendar-events',
-      date.startOf('month').toISODate() || '',
-      date.endOf('month').toISODate() || '',
+      date.startOf('month').startOf('week').toISODate() || '',
+      date.endOf('month').startOf('week').toISODate() || '',
     ],
     []
   )
@@ -92,30 +94,37 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     async (date: DateTime) => {
       const res = await getEvents(date)
       return {
-        ...res,
+        calendarEvents: calendarEventsPreprocessors(res.calendarEvents, date),
         mwwEvents: await Promise.all(
-          res.mwwEvents.map(async meeting => {
-            // TODO: Pass all events through a preprocessor first before mapping this prepropcesssor shopuld get all the meeting sereis and check if all single instance of that meeting is already included in the events, if yes it returns all the events and discard the mastyer event otherwise it takes the availaible events and adds the master events to it.
-            try {
-              const decodedMeeting = await decodeMeeting(
-                meeting,
-                currentAccount!
-              )
-              return decodedMeeting
-            } catch (e) {
-              return null
+          meetWithSeriesPreprocessors(res.mwwEvents, date).map(
+            async meeting => {
+              // TODO: Pass all events through a preprocessor first before mapping this prepropcesssor shopuld get all the meeting sereis and check if all single instance of that meeting is already included in the events, if yes it returns all the events and discard the mastyer event otherwise it takes the availaible events and adds the master events to it.
+              try {
+                const decodedMeeting = await decodeMeeting(
+                  meeting as DBSlot,
+                  currentAccount!
+                )
+                return decodedMeeting
+              } catch (e) {
+                return null
+              }
             }
-          })
+          )
         ).then(meetings => meetings.filter(m => m !== null)),
       }
     },
     [currentAccount]
   )
+  const currentMonth = React.useMemo(
+    () => currrentDate.startOf('month'),
+    [currrentDate.year, currrentDate.month]
+  )
 
   const { data: events } = useQuery({
-    queryKey: createEventsQueryKey(currrentDate),
-    queryFn: () => fetchEventsForMonth(currrentDate),
+    queryKey: createEventsQueryKey(currentMonth),
+    queryFn: () => fetchEventsForMonth(currentMonth),
     staleTime: 5 * 60 * 1000,
+    enabled: !!currentMonth,
   })
 
   React.useEffect(() => {
@@ -133,7 +142,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
       queryFn: () => fetchEventsForMonth(nextMonth),
       staleTime: 10 * 60 * 1000, // Keep prefetched data fresh for 10 minutes
     })
-  }, [currrentDate, queryClient, fetchEventsForMonth, createEventsQueryKey])
+  }, [currentMonth, queryClient, fetchEventsForMonth, createEventsQueryKey])
 
   React.useEffect(() => {
     const selectedCalendars = () => {
@@ -146,24 +155,23 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     }
     setSelectedCalendars(selectedCalendars())
   }, [calendars])
-  const calendarEvents: Array<
-    WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
-  > = React.useMemo(() => {
-    if (!events) return []
-    const mwwEvents = events.mwwEvents || []
+  const eventIndex = React.useMemo(() => {
+    if (!events) return { dayIndex: new Map(), hourIndex: new Map() }
 
-    const externalEvents = (events.calendarEvents || []).filter(event => {
-      const isMeetwithEvent = mwwEvents.some(
-        mwwEvent =>
-          mwwEvent.meeting_id === event.id ||
-          event.description?.includes(mwwEvent.meeting_id)
-      )
-      const isCalendarSelected = selectedCalendars.some(
-        calendar => calendar.calendarId === event.calendarId
-      )
-      return !isMeetwithEvent && isCalendarSelected
-    })
-    return [...mwwEvents, ...externalEvents].map(event => ({
+    const processedEvents = [
+      ...(events.mwwEvents || []),
+      ...(events.calendarEvents || []).filter(event => {
+        const isMeetwithEvent = (events.mwwEvents || []).some(
+          mwwEvent =>
+            mwwEvent.meeting_id === event.id ||
+            event.description?.includes(mwwEvent.meeting_id)
+        )
+        const isCalendarSelected = selectedCalendars.some(
+          calendar => calendar.calendarId === event.calendarId
+        )
+        return !isMeetwithEvent && isCalendarSelected
+      }),
+    ].map(event => ({
       ...event,
       start: DateTime.fromJSDate(new Date(event.start)),
       end: DateTime.fromJSDate(new Date(event.end)),
@@ -172,14 +180,39 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
         DateTime.fromJSDate(new Date(event.end))
       ),
     }))
+
+    // Index events by hour for O(1) lookup
+    const hourIndex = new Map<
+      string,
+      Array<WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>>
+    >()
+    const dayIndex = new Map<
+      string,
+      Array<WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>>
+    >()
+
+    processedEvents.forEach(event => {
+      const dayKey = event.start.startOf('day').toISODate()!
+      if (!dayIndex.has(dayKey)) dayIndex.set(dayKey, [])
+      dayIndex.get(dayKey)!.push(event)
+      const key = event.start.startOf('hour').toISO()!
+      if (!hourIndex.has(key)) hourIndex.set(key, [])
+      hourIndex.get(key)!.push(event)
+      if (!event.end.hasSame(event.start, 'day')) {
+        // If event spans multiple days, index the start of the event on the next day
+        // e.g., an event from 10 PM to 2 AM next day
+        const nextDayKey = event.end.startOf('day').toISO()!
+        if (!hourIndex.has(nextDayKey)) hourIndex.set(nextDayKey, [])
+        hourIndex.get(nextDayKey)!.push({
+          ...event,
+          start: event.end.startOf('day'),
+        })
+      }
+    })
+
+    return { hourIndex, dayIndex }
   }, [events, selectedCalendars])
-  // console.log(calendarEvents.filter(val => val))
-  const calculateSlotForInterval = React.useCallback(
-    (interval: Interval) => {
-      return calendarEvents.filter(event => interval.contains(event.start))
-    },
-    [calendarEvents]
-  )
+
   const getSlotBgColor = React.useCallback(
     (calId?: string) => {
       return (
@@ -190,30 +223,28 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     [selectedCalendars]
   )
 
-  const getAllDayEvents = React.useCallback(
-    (interval: Interval) => {
-      return calendarEvents.filter(
-        event =>
-          'isAllDay' in event &&
-          event.interval.overlaps(interval) &&
-          event.isAllDay
-      )
-    },
-    [calendarEvents]
+  const context: ICalendarContext = React.useMemo(
+    () => ({
+      calendars,
+      currrentDate,
+      setCurrentDate,
+      selectedCalendars,
+      setSelectedCalendars,
+      getSlotBgColor,
+      selectedSlot,
+      setSelectedSlot,
+      eventIndex,
+    }),
+    [
+      calendars,
+      currrentDate,
+      selectedCalendars,
+      getSlotBgColor,
+      selectedSlot,
+      eventIndex,
+    ]
   )
-  const context: ICalendarContext = {
-    calendars,
-    currrentDate,
-    setCurrentDate,
-    selectedCalendars,
-    setSelectedCalendars,
-    calendarEvents,
-    calculateSlotForInterval,
-    getSlotBgColor,
-    getAllDayEvents,
-    selectedSlot,
-    setSelectedSlot,
-  }
+
   return (
     <CalendarContext.Provider value={context}>
       {children}
