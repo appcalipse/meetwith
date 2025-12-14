@@ -24,7 +24,9 @@ import {
   GetSubscriptionHistoryResponse,
   GetSubscriptionResponse,
   SubscribeRequest,
+  SubscribeRequestCrypto,
   SubscribeResponse,
+  SubscribeResponseCrypto,
 } from '@/types/Billing'
 import {
   CalendarSyncInfo,
@@ -1230,6 +1232,16 @@ export const subscribeToBillingPlan = async (
 ): Promise<SubscribeResponse> => {
   return await internalFetch<SubscribeResponse>(
     '/secure/billing/subscribe',
+    'POST',
+    request
+  )
+}
+
+export const subscribeToBillingPlanCrypto = async (
+  request: SubscribeRequestCrypto
+): Promise<SubscribeResponseCrypto> => {
+  return await internalFetch<SubscribeResponseCrypto>(
+    '/secure/billing/subscribe-crypto',
     'POST',
     request
   )

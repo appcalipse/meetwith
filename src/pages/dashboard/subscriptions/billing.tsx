@@ -8,8 +8,10 @@ import {
   Stack,
   Switch,
   Text,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import SubscriptionCheckoutModal from '@components/billing/SubscriptionCheckoutModal'
 import ChainLogo from '@components/icons/ChainLogo'
 import FiatLogo from '@components/icons/FiatLogo'
 import PaymentMethod from '@components/public-meeting/PaymentMethod'
@@ -20,16 +22,36 @@ import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
-import { SubscribeRequest } from '@/types/Billing'
-import { getBillingPlans, subscribeToBillingPlan } from '@/utils/api_helper'
+import {
+  SubscribeRequest,
+  SubscribeRequestCrypto,
+  SubscribeResponseCrypto,
+} from '@/types/Billing'
+import {
+  AcceptedToken,
+  getSupportedChainFromId,
+  supportedChains,
+} from '@/types/chains'
+import {
+  getBillingPlans,
+  subscribeToBillingPlan,
+  subscribeToBillingPlanCrypto,
+} from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
 const BillingCheckout = () => {
   const router = useRouter()
+  const currentAccount = useAccountContext()
   const [isYearly, setIsYearly] = useState(false)
   const { mode, plan } = router.query
+  const {
+    isOpen: isCryptoModalOpen,
+    onOpen: onCryptoModalOpen,
+    onClose: onCryptoModalClose,
+  } = useDisclosure()
 
   const monthlyPrice = 8
   const yearlyPrice = 80
@@ -42,6 +64,15 @@ const BillingCheckout = () => {
       ? `Extend my ${planName}`
       : 'Subscribe to Meetwith Premium'
 
+  // Get default chain and token from user preferences or use defaults
+  const defaultChainId =
+    currentAccount?.payment_preferences?.default_chain_id ||
+    supportedChains.find(chain => chain.walletSupported)?.id
+  const defaultChain = defaultChainId
+    ? getSupportedChainFromId(defaultChainId)
+    : supportedChains.find(chain => chain.walletSupported)
+  const defaultToken = AcceptedToken.USDC
+
   // Fetch billing plans
   const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
     queryKey: ['billingPlans'],
@@ -53,7 +84,7 @@ const BillingCheckout = () => {
     },
   })
 
-  // Subscribe mutation
+  // Stripe subscription mutation
   const subscribeMutation = useMutation({
     mutationFn: (request: SubscribeRequest) => subscribeToBillingPlan(request),
     onSuccess: response => {
@@ -68,6 +99,22 @@ const BillingCheckout = () => {
     },
     onError: (err: unknown) => {
       handleApiError('Failed to create checkout session', err)
+    },
+  })
+
+  // Crypto subscription mutation
+  const [cryptoPaymentConfig, setCryptoPaymentConfig] =
+    useState<SubscribeResponseCrypto | null>(null)
+
+  const cryptoSubscribeMutation = useMutation({
+    mutationFn: (request: SubscribeRequestCrypto) =>
+      subscribeToBillingPlanCrypto(request),
+    onSuccess: response => {
+      setCryptoPaymentConfig(response)
+      onCryptoModalOpen()
+    },
+    onError: (err: unknown) => {
+      handleApiError('Failed to create crypto subscription config', err)
     },
   })
 
@@ -96,6 +143,42 @@ const BillingCheckout = () => {
     } catch (error) {
       throw error
     }
+  }
+
+  const handlePayWithCrypto = async () => {
+    // Find the billing plan ID based on isYearly
+    const selectedPlan = plans.find(
+      plan => plan.billing_cycle === (isYearly ? 'yearly' : 'monthly')
+    )
+
+    if (!selectedPlan) {
+      handleApiError(
+        'Failed to create crypto subscription config',
+        new Error('Billing plan not found')
+      )
+      return
+    }
+
+    // Determine subscription type based on mode
+    const subscriptionType =
+      mode === 'extend' ? ('extension' as const) : ('initial' as const)
+
+    // Trigger the mutation
+    const request: SubscribeRequestCrypto = {
+      billing_plan_id: selectedPlan.id,
+      subscription_type: subscriptionType,
+    }
+
+    try {
+      await cryptoSubscribeMutation.mutateAsync(request)
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const handleCryptoPaymentSuccess = () => {
+    // Redirect to subscriptions page with success message
+    router.push('/dashboard/subscriptions?checkout=success')
   }
 
   return (
@@ -236,13 +319,29 @@ const BillingCheckout = () => {
               step={PaymentStep.SELECT_CRYPTO_NETWORK}
               icon={ChainLogo}
               type={PaymentType.CRYPTO}
-              onClick={async () => {
-                // TODO: integrate crypto billing checkout
-              }}
+              disabled={
+                isLoadingPlans ||
+                cryptoSubscribeMutation.isLoading ||
+                !defaultChain
+              }
+              onClick={handlePayWithCrypto}
             />
           </Stack>
         </VStack>
       </VStack>
+
+      {/* Crypto Subscription Checkout Modal */}
+      {cryptoPaymentConfig && defaultChain && (
+        <SubscriptionCheckoutModal
+          isOpen={isCryptoModalOpen}
+          onClose={onCryptoModalClose}
+          purchaseData={cryptoPaymentConfig.purchaseData}
+          amount={cryptoPaymentConfig.amount}
+          chain={defaultChain}
+          token={defaultToken}
+          onSuccess={handleCryptoPaymentSuccess}
+        />
+      )}
     </Container>
   )
 }
