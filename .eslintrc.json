@@ -30,6 +30,7 @@
     "@typescript-eslint/no-empty-function": "off",
     "@typescript-eslint/no-non-null-assertion": "off",
     "react/no-children-prop": "off",
+    "tailwindcss/no-custom-classname": "off",
     "simple-import-sort/imports": "error",
     "simple-import-sort/exports": "error",
     "jsx-a11y/accessible-emoji": "off",
