@@ -140,10 +140,14 @@ export interface OnrampMoneyWebhook {
 
 export interface IPurchaseData {
   message_channel: string
-  meeting_type_id: string
+  meeting_type_id?: string | null // Optional/null for subscription payments
   guest_email?: string
-  guest_name: string
+  guest_name?: string // Optional for subscription payments
   guest_address?: string
+  // Subscription metadata (only present for subscription payments)
+  subscription_type?: 'initial' | 'extension'
+  billing_plan_id?: string
+  account_address?: string // Account subscribing
   [key: string]: unknown
 }
 export interface ICheckoutMetadata {
