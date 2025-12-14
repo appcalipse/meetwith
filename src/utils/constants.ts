@@ -14,6 +14,10 @@ const DEFAULT_MESSAGE = (nonce: number) =>
 
 const YEAR_DURATION_IN_SECONDS = 31536000
 
+// Platform wallet address for receiving subscription payments
+export const SUBSCRIPTION_PAYMENT_RECEIVER_ADDRESS =
+  '0x91836F34a46a4b804744010EC81bF6648fEF4A25' as const
+
 const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 
 const discordRedirectUrl = `${baseURL}/dashboard/details`
