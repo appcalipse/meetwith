@@ -23,6 +23,9 @@ import {
   createSubscriptionTransaction,
   getActiveSubscriptionPeriod,
   getBillingPlanById,
+  getStripeSubscriptionByAccount,
+  getSubscriptionPeriodsByAccount,
+  updateSubscriptionPeriodStatus,
 } from '@/utils/database'
 import { Currency } from '@/utils/services/onramp.money'
 
@@ -263,5 +266,53 @@ export const handleCryptoSubscriptionPayment = async (
     subscription_type,
     billing_plan_id,
     expiry_time: calculatedExpiryTime.toISOString(),
+  }
+}
+
+export const cancelCryptoSubscription = async (
+  accountAddress: string
+): Promise<void> => {
+  try {
+    // Get all subscription periods for the account
+    const allSubscriptions = await getSubscriptionPeriodsByAccount(
+      accountAddress.toLowerCase()
+    )
+
+    // Get Stripe subscription for this account (if exists)
+    const stripeSubscription = await getStripeSubscriptionByAccount(
+      accountAddress.toLowerCase()
+    )
+
+    const now = new Date()
+
+    // Update all active crypto subscription periods to 'cancelled'
+    for (const sub of allSubscriptions) {
+      // Only update billing subscriptions (has billing_plan_id)
+      if (!sub.billing_plan_id) {
+        continue
+      }
+
+      // Only update active subscriptions that haven't expired yet
+      if (sub.status === 'active' && new Date(sub.expiry_time) > now) {
+        // Check if this is a Stripe subscription
+        const isStripeSubscription =
+          stripeSubscription &&
+          stripeSubscription.billing_plan_id === sub.billing_plan_id &&
+          stripeSubscription.account_address.toLowerCase() ===
+            accountAddress.toLowerCase()
+
+        // Only cancel if it's NOT a Stripe subscription
+        if (!isStripeSubscription) {
+          await updateSubscriptionPeriodStatus(sub.id, 'cancelled')
+        }
+      }
+    }
+  } catch (error) {
+    Sentry.captureException(error, {
+      extra: {
+        account_address: accountAddress,
+      },
+    })
+    throw error
   }
 }
