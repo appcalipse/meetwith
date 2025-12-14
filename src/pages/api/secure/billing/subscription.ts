@@ -114,18 +114,19 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         }
       }
 
-      // Determine payment provider from transaction
+      // Determine payment provider
       let paymentProvider: PaymentProvider | null = null
-      if (subscriptionPeriod.transaction_id) {
+
+      if (stripeSubscription) {
+        paymentProvider = PaymentProvider.STRIPE
+      } else if (subscriptionPeriod.billing_plan_id) {
+        paymentProvider = null
+      } else if (subscriptionPeriod.transaction_id) {
         const transaction = await getTransactionsById(
           subscriptionPeriod.transaction_id
         )
-        if (transaction?.provider) {
-          // Map transaction provider to PaymentProvider enum
-          if (transaction.provider === 'stripe') {
-            paymentProvider = PaymentProvider.STRIPE
-          }
-          // Future: handle crypto provider
+        if (transaction?.provider === 'stripe') {
+          paymentProvider = PaymentProvider.STRIPE
         }
       }
 
