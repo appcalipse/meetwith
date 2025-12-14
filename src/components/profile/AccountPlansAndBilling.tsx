@@ -26,7 +26,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, { useEffect, useRef, useState } from 'react'
@@ -39,6 +39,7 @@ import { PaymentProvider, SubscriptionHistoryItem } from '@/types/Billing'
 import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
 import {
+  cancelCryptoSubscription,
   getActiveSubscription,
   getManageSubscriptionUrl,
   getSubscriptionHistory,
@@ -48,6 +49,7 @@ import { handleApiError } from '@/utils/error_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 import Block from './components/Block'
+import CancelSubscriptionModal from './components/CancelSubscriptionModal'
 import CouponUsedModal from './components/CouponUsedModal'
 
 const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
@@ -65,6 +67,11 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     useState(false)
   const [currentPlan, setCurrentPlan] = useState<Plan | undefined>(undefined)
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const {
+    isOpen: isCancelModalOpen,
+    onOpen: onCancelModalOpen,
+    onClose: onCancelModalClose,
+  } = useDisclosure()
   const [couponCode, setCouponCode] = useState('')
   const [couponDuration, setCouponDuration] = useState(0)
   const [historyPage, setHistoryPage] = useState(1)
@@ -261,6 +268,21 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     }
   }
 
+  // Cancel crypto subscription mutation
+  const cancelSubscriptionMutation = useMutation({
+    mutationFn: () => cancelCryptoSubscription(),
+    onSuccess: () => {
+      void refetchBilling()
+    },
+    onError: (err: unknown) => {
+      handleApiError('Failed to cancel subscription', err)
+    },
+  })
+
+  const handleCancelSubscription = async () => {
+    await cancelSubscriptionMutation.mutateAsync()
+  }
+
   // Check if user has an active subscription
   const hasActiveSubscription =
     billingSubscriptionResponse?.is_active === true ||
@@ -371,6 +393,21 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
                   : undefined
               }
               secondaryCtaLoading={manageSubscriptionLoading}
+              tertiaryCtaLabel={
+                hasActiveSubscription &&
+                billingSubscriptionResponse?.payment_provider !==
+                  PaymentProvider.STRIPE
+                  ? 'Cancel Subscription'
+                  : undefined
+              }
+              onTertiaryCta={
+                hasActiveSubscription &&
+                billingSubscriptionResponse?.payment_provider !==
+                  PaymentProvider.STRIPE
+                  ? onCancelModalOpen
+                  : undefined
+              }
+              tertiaryCtaLoading={cancelSubscriptionMutation.isLoading}
             />
             <SubscriptionCard
               onClick={() =>
@@ -515,6 +552,15 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
             </Accordion>
           )}
       </Block>
+
+      {/* Cancel Subscription Modal */}
+      <CancelSubscriptionModal
+        isOpen={isCancelModalOpen}
+        onClose={onCancelModalClose}
+        onCancel={handleCancelSubscription}
+        isLoading={cancelSubscriptionMutation.isLoading}
+        expiryDate={billingExpiry || undefined}
+      />
     </VStack>
   )
 }
@@ -531,6 +577,9 @@ interface SubscriptionCardProps {
   secondaryCtaLabel?: string
   onSecondaryCta?: () => void
   secondaryCtaLoading?: boolean
+  tertiaryCtaLabel?: string
+  onTertiaryCta?: () => void
+  tertiaryCtaLoading?: boolean
 }
 
 export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
@@ -545,6 +594,9 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   secondaryCtaLabel,
   onSecondaryCta,
   secondaryCtaLoading = false,
+  tertiaryCtaLabel,
+  onTertiaryCta,
+  tertiaryCtaLoading = false,
 }) => {
   return (
     <VStack
@@ -602,28 +654,42 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
             {expiryText}
           </Text>
         )}
-        {planInfo && (primaryCtaLabel || secondaryCtaLabel) && (
-          <VStack spacing={2} width="100%">
-            {primaryCtaLabel && (
-              <Button width="full" colorScheme="primary" onClick={onClick}>
-                {primaryCtaLabel}
-              </Button>
-            )}
-            {secondaryCtaLabel && onSecondaryCta && (
-              <Button
-                width="full"
-                variant="outline"
-                borderColor="red.500"
-                color="red.500"
-                onClick={onSecondaryCta}
-                isLoading={secondaryCtaLoading}
-                loadingText="Loading..."
-              >
-                {secondaryCtaLabel}
-              </Button>
-            )}
-          </VStack>
-        )}
+        {planInfo &&
+          (primaryCtaLabel || secondaryCtaLabel || tertiaryCtaLabel) && (
+            <VStack spacing={2} width="100%">
+              {primaryCtaLabel && (
+                <Button width="full" colorScheme="primary" onClick={onClick}>
+                  {primaryCtaLabel}
+                </Button>
+              )}
+              {secondaryCtaLabel && onSecondaryCta && (
+                <Button
+                  width="full"
+                  variant="outline"
+                  borderColor="red.500"
+                  color="red.500"
+                  onClick={onSecondaryCta}
+                  isLoading={secondaryCtaLoading}
+                  loadingText="Loading..."
+                >
+                  {secondaryCtaLabel}
+                </Button>
+              )}
+              {tertiaryCtaLabel && onTertiaryCta && (
+                <Button
+                  width="full"
+                  variant="outline"
+                  borderColor="red.500"
+                  color="red.500"
+                  onClick={onTertiaryCta}
+                  isLoading={tertiaryCtaLoading}
+                  loadingText="Loading..."
+                >
+                  {tertiaryCtaLabel}
+                </Button>
+              )}
+            </VStack>
+          )}
       </Box>
     </VStack>
   )
