@@ -158,6 +158,11 @@ export const isCalendarEvent = (
 ): slot is WithInterval<UnifiedEvent<DateTime>> => {
   return 'calendarId' in slot
 }
+export const isCalendarEventWithoutDateTime = (
+  slot: WithInterval<UnifiedEvent | MeetingDecrypted>
+): slot is WithInterval<UnifiedEvent> => {
+  return 'calendarId' in slot
+}
 
 const DECLINED_STATUSES = [
   ParticipationStatus.Rejected,
