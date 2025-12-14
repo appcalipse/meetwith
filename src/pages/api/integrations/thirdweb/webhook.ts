@@ -13,6 +13,7 @@ import { Address, IPurchaseData } from '@/types/Transactions'
 import { PaymentType, TokenType } from '@/utils/constants/meeting-types'
 import { ChainNotFound } from '@/utils/errors'
 import { DEFAULT_MESSAGE_NAME, PubSubManager } from '@/utils/pub-sub.helper'
+import { handleCryptoSubscriptionPayment } from '@/utils/services/crypto.helper'
 
 export default async function handler(
   req: NextApiRequest,
@@ -59,14 +60,45 @@ export default async function handler(
           throw new ChainNotFound(chainId.toString())
         }
 
-        const {
-          guest_email,
-          guest_name,
-          message_channel,
-          guest_address,
-          meeting_type_id,
-        } = payload.data.purchaseData as IPurchaseData
+        const purchaseData = payload.data.purchaseData as IPurchaseData
+
         if (payload.data.status === 'COMPLETED') {
+          // Check if this is a subscription payment
+          // Subscription payments have billing_plan_id and no meeting_type_id
+          const isSubscriptionPayment =
+            !purchaseData.meeting_type_id && purchaseData.billing_plan_id
+
+          if (isSubscriptionPayment) {
+            // Handle subscription payment
+            try {
+              await handleCryptoSubscriptionPayment(payload, purchaseData)
+              // Subscription payment handled successfully
+              return res.status(200).send('OK')
+            } catch (error) {
+              captureException(error, {
+                extra: {
+                  purchaseData,
+                  payloadType: payload.type,
+                },
+              })
+              console.error(
+                'Failed to handle crypto subscription payment:',
+                error
+              )
+              return res
+                .status(500)
+                .send('Failed to process subscription payment')
+            }
+          }
+
+          // Continue with existing meeting payment flow
+          const {
+            guest_email,
+            guest_name,
+            message_channel,
+            guest_address,
+            meeting_type_id,
+          } = purchaseData
           let transactionHash =
             payload.type === 'pay.onramp-transaction'
               ? payload.data.transactionHash
@@ -138,7 +170,7 @@ export default async function handler(
             amount: parsedAmount,
             chain: supportedChain?.chain,
             fiat_equivalent,
-            meeting_type_id: meeting_type_id,
+            meeting_type_id: meeting_type_id ?? null,
             payment_method: PaymentType.CRYPTO,
             token_address,
             token_type: TokenType.ERC20,
