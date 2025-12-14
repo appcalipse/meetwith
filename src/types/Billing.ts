@@ -4,38 +4,29 @@ import { Tables } from './Supabase'
 // Enums
 // =====================================================
 
-/**
- * Billing cycle for subscription plans
- */
+// Billing cycle for subscription plans
 export enum BillingCycle {
   MONTHLY = 'monthly',
   YEARLY = 'yearly',
 }
 
-/**
- * Subscription status for billing subscriptions
- */
+// Subscription status for billing subscriptions
 export enum SubscriptionStatus {
   ACTIVE = 'active',
   CANCELLED = 'cancelled',
   EXPIRED = 'expired',
 }
 
-/**
- * Payment provider for billing subscriptions
- */
+// Payment provider for billing subscriptions
 export enum PaymentProvider {
   STRIPE = 'stripe',
-  // Future: CRYPTO = 'crypto',
 }
 
 // =====================================================
 // Core Billing Types
 // =====================================================
 
-/**
- * Billing plan information
- */
+// Billing plan information
 export interface BillingPlan {
   id: string
   name: string
@@ -45,10 +36,8 @@ export interface BillingPlan {
   updated_at: string | null
 }
 
-/**
- * Provider-specific mapping for billing plans
- * Maps billing plans to provider-specific product IDs
- */
+// Provider-specific mapping for billing plans
+// Maps billing plans to provider-specific product IDs
 export interface BillingPlanProvider {
   id: string
   provider: PaymentProvider
@@ -58,10 +47,8 @@ export interface BillingPlanProvider {
   updated_at: string | null
 }
 
-/**
- * Stripe subscription record
- * Maps account to long-lived Stripe subscription object
- */
+// Stripe subscription record
+// Maps account to long-lived Stripe subscription object
 export interface StripeSubscription {
   id: string
   account_address: string
@@ -72,10 +59,8 @@ export interface StripeSubscription {
   updated_at: string | null
 }
 
-/**
- * Links transactions to Stripe subscriptions
- * Provides traceability for all transactions belonging to a Stripe subscription
- */
+// Links transactions to Stripe subscriptions
+// Provides traceability for all transactions belonging to a Stripe subscription
 export interface StripeSubscriptionTransaction {
   id: string
   stripe_subscription_id: string
@@ -83,10 +68,8 @@ export interface StripeSubscriptionTransaction {
   created_at: string
 }
 
-/**
- * Subscription period record
- * One record per billing period (immutable model)
- */
+// Subscription period record
+// One record per billing period (immutable model)
 export interface SubscriptionPeriod {
   id: string
   owner_account: string
@@ -102,10 +85,8 @@ export interface SubscriptionPeriod {
   updated_at: string | null
 }
 
-/**
- * Billing plan with provider information
- * Used for displaying plans to users
- */
+// Billing plan with provider information
+// Used for displaying plans to users
 export interface BillingPlanWithProvider extends BillingPlan {
   provider_product_id?: string // Stripe product ID if provider mapping exists
 }
@@ -114,17 +95,13 @@ export interface BillingPlanWithProvider extends BillingPlan {
 // API Request/Response Types
 // =====================================================
 
-/**
- * Request to subscribe to a billing plan
- */
+// Request to subscribe to a billing plan
 export interface SubscribeRequest {
   billing_plan_id: string // 'monthly' or 'yearly'
   payment_method?: 'stripe' | 'crypto' // Optional, defaults to 'stripe'
 }
 
-/**
- * Response after initiating subscription
- */
+// Response after initiating subscription
 export interface SubscribeResponse {
   success: boolean
   checkout_url?: string // Stripe Checkout URL (for Stripe subscriptions)
@@ -132,23 +109,39 @@ export interface SubscribeResponse {
   message?: string
 }
 
-/**
- * Request to cancel a subscription
- */
+// Request to subscribe to a billing plan via crypto
+export interface SubscribeRequestCrypto {
+  billing_plan_id: string // 'monthly' or 'yearly'
+  subscription_type?: 'initial' | 'extension' // Optional, defaults to 'initial'
+}
+
+// Response after initiating crypto subscription
+// Returns payment configuration for Thirdweb payment widget
+export interface SubscribeResponseCrypto {
+  success: boolean
+  amount: number
+  currency: string
+  billing_plan_id: string
+  purchaseData: {
+    subscription_type: 'initial' | 'extension'
+    billing_plan_id: string
+    account_address: string
+    message_channel: string
+    meeting_type_id: null
+  }
+}
+
+// Request to cancel a subscription
 export type CancelSubscriptionRequest = Record<string, never>
 
-/**
- * Response after canceling subscription
- */
+// Response after canceling subscription
 export interface CancelSubscriptionResponse {
   success: boolean
   message: string
   cancellation_effective_date?: string // When subscription will actually end
 }
 
-/**
- * Response for getting current subscription
- */
+// Response for getting current subscription
 export interface GetSubscriptionResponse {
   subscription: SubscriptionPeriod | null
   billing_plan: BillingPlan | null
@@ -158,16 +151,12 @@ export interface GetSubscriptionResponse {
   payment_provider: PaymentProvider | null
 }
 
-/**
- * Response for getting available plans
- */
+// Response for getting available plans
 export interface GetPlansResponse {
   plans: BillingPlanWithProvider[]
 }
 
-/**
- * Response for getting subscription history
- */
+// Response for getting subscription history
 export interface SubscriptionHistoryItem {
   plan: string
   date: string
@@ -187,10 +176,8 @@ export interface GetSubscriptionHistoryResponse {
 // Helper Types
 // =====================================================
 
-/**
- * Combined subscription info (domain or billing)
- * Used by subscription manager
- */
+// Combined subscription info (domain or billing)
+// Used by subscription manager
 export interface ActiveSubscription {
   type: 'domain' | 'billing'
   subscription: SubscriptionPeriod | Tables<'subscriptions'>
@@ -198,9 +185,7 @@ export interface ActiveSubscription {
   expires_at: Date | string
 }
 
-/**
- * Stripe webhook event data for subscription events
- */
+// Stripe webhook event data for subscription events
 export interface StripeSubscriptionWebhookData {
   id: string
   customer: string
@@ -214,9 +199,7 @@ export interface StripeSubscriptionWebhookData {
   }
 }
 
-/**
- * Stripe invoice webhook event data
- */
+// Stripe invoice webhook event data
 export interface StripeInvoiceWebhookData {
   id: string
   subscription: string
