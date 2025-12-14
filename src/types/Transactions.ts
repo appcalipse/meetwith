@@ -144,6 +144,7 @@ export interface IPurchaseData {
   guest_email?: string
   guest_name?: string // Optional for subscription payments
   guest_address?: string
+  environment?: string
   // Subscription metadata (only present for subscription payments)
   subscription_type?: 'initial' | 'extension'
   billing_plan_id?: string

@@ -80,9 +80,13 @@ export const handleChargeSucceeded = async (
   event: Stripe.ChargeSucceededEvent
 ) => {
   const eventObject = event.data.object
+  const metadata = eventObject.metadata as ICheckoutMetadata
+  if (metadata.environment !== process.env.NEXT_PUBLIC_ENV_CONFIG) {
+    return
+  }
   await confirmFiatTransaction(
     eventObject.id,
-    eventObject.metadata as ICheckoutMetadata,
+    metadata,
     (eventObject.application_fee_amount || 0) / 100,
     {
       provider: PaymentProvider.STRIPE,

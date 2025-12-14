@@ -152,7 +152,7 @@ const DiscordBot: NextPage = () => {
                   <a>Reach out to our Discord</a>
                 </Link>{' '}
                 or{' '}
-                <Link isExternal href={'https://meetwith.xyz/parsa'}>
+                <Link isExternal href={'https://meetwith.xyz/sinachpat'}>
                   <a>book some time</a>
                 </Link>{' '}
                 with the team
