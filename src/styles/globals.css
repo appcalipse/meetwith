@@ -129,6 +129,7 @@ a {
   left: -7px;
 }
 
+.rsvp-select > div > div > hr,
 .timezone-select > div > div > hr,
 .custom-select > div > div > hr,
 .date-select > div > div > hr,
@@ -253,4 +254,20 @@ thead tr th {
     opacity: 1;
     transform: none;
   }
+}
+.rsvp-select {
+  max-width: 250px;
+}
+
+.rsvp-dropdown {
+  padding-inline: 0px !important;
+  margin-top: 1px !important;
+  padding-left: 4px !important;
+}
+
+.rsvp-select > div {
+  justify-content: center !important;
+  margin-inline: auto !important;
+  align-items: center !important;
+  border: none !important;
 }
