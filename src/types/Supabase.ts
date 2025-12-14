@@ -42,8 +42,6 @@ export type Database = {
       }
       account_preferences: {
         Row: {
-          availabilities: Json
-          availableTypes: Json[] | null
           availaibility_id: string | null
           avatar_url: string | null
           description: string | null
@@ -54,11 +52,8 @@ export type Database = {
           name: string | null
           owner_account_address: string
           socialLinks: Json[]
-          timezone: string
         }
         Insert: {
-          availabilities?: Json
-          availableTypes?: Json[] | null
           availaibility_id?: string | null
           avatar_url?: string | null
           description?: string | null
@@ -69,11 +64,8 @@ export type Database = {
           name?: string | null
           owner_account_address: string
           socialLinks: Json[]
-          timezone?: string
         }
         Update: {
-          availabilities?: Json
-          availableTypes?: Json[] | null
           availaibility_id?: string | null
           avatar_url?: string | null
           description?: string | null
@@ -84,7 +76,6 @@ export type Database = {
           name?: string | null
           owner_account_address?: string
           socialLinks?: Json[]
-          timezone?: string
         }
         Relationships: [
           {
@@ -170,6 +161,68 @@ export type Database = {
             referencedColumns: ['address']
           }
         ]
+      }
+      billing_plan_providers: {
+        Row: {
+          billing_plan_id: string
+          created_at: string
+          id: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_product_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          billing_plan_id: string
+          created_at?: string
+          id?: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_product_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          billing_plan_id?: string
+          created_at?: string
+          id?: string
+          provider?: Database['public']['Enums']['PaymentProvider']
+          provider_product_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_plan_providers_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      billing_plans: {
+        Row: {
+          billing_cycle: Database['public']['Enums']['BillingCycle']
+          created_at: string
+          id: string
+          name: string
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          billing_cycle: Database['public']['Enums']['BillingCycle']
+          created_at?: string
+          id: string
+          name: string
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          billing_cycle?: Database['public']['Enums']['BillingCycle']
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       calendar_webhooks: {
         Row: {
@@ -476,6 +529,24 @@ export type Database = {
           gated_entity_id?: string
           id?: number
           type?: string
+        }
+        Relationships: []
+      }
+      google_events_mapping: {
+        Row: {
+          calendar_id: string
+          event_id: string
+          mww_id: string
+        }
+        Insert: {
+          calendar_id: string
+          event_id: string
+          mww_id: string
+        }
+        Update: {
+          calendar_id?: string
+          event_id?: string
+          mww_id?: string
         }
         Relationships: []
       }
@@ -1291,7 +1362,7 @@ export type Database = {
           original_end: string
           original_start: string
           recurrence: Database['public']['Enums']['MeetingRepeat']
-          rrule: string | null
+          rrule: string[] | null
           slot_id: string
         }
         Insert: {
@@ -1303,7 +1374,7 @@ export type Database = {
           original_end: string
           original_start: string
           recurrence: Database['public']['Enums']['MeetingRepeat']
-          rrule?: string | null
+          rrule?: string[] | null
           slot_id: string
         }
         Update: {
@@ -1315,7 +1386,7 @@ export type Database = {
           original_end?: string
           original_start?: string
           recurrence?: Database['public']['Enums']['MeetingRepeat']
-          rrule?: string | null
+          rrule?: string[] | null
           slot_id?: string
         }
         Relationships: [
@@ -1372,6 +1443,87 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
+          }
+        ]
+      }
+      stripe_subscription_transactions: {
+        Row: {
+          created_at: string
+          id: string
+          stripe_subscription_id: string
+          transaction_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stripe_subscription_id: string
+          transaction_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stripe_subscription_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_subscription_transactions_stripe_subscription_id_fkey'
+            columns: ['stripe_subscription_id']
+            isOneToOne: false
+            referencedRelation: 'stripe_subscriptions'
+            referencedColumns: ['stripe_subscription_id']
+          },
+          {
+            foreignKeyName: 'stripe_subscription_transactions_transaction_id_fkey'
+            columns: ['transaction_id']
+            isOneToOne: false
+            referencedRelation: 'transactions'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      stripe_subscriptions: {
+        Row: {
+          account_address: string
+          billing_plan_id: string
+          created_at: string
+          id: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_address: string
+          billing_plan_id: string
+          created_at?: string
+          id?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_address?: string
+          billing_plan_id?: string
+          created_at?: string
+          id?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_subscriptions_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          },
+          {
+            foreignKeyName: 'stripe_subscriptions_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
           }
         ]
       }
@@ -1437,149 +1589,6 @@ export type Database = {
             foreignKeyName: 'subscriptions_transaction_id_fkey'
             columns: ['transaction_id']
             isOneToOne: false
-            referencedRelation: 'transactions'
-            referencedColumns: ['id']
-          }
-        ]
-      }
-      billing_plans: {
-        Row: {
-          billing_cycle: Database['public']['Enums']['BillingCycle']
-          created_at: string
-          id: string
-          name: string
-          price: number
-          updated_at: string | null
-        }
-        Insert: {
-          billing_cycle: Database['public']['Enums']['BillingCycle']
-          created_at?: string
-          id: string
-          name: string
-          price: number
-          updated_at?: string | null
-        }
-        Update: {
-          billing_cycle?: Database['public']['Enums']['BillingCycle']
-          created_at?: string
-          id?: string
-          name?: string
-          price?: number
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      billing_plan_providers: {
-        Row: {
-          billing_plan_id: string
-          created_at: string
-          id: string
-          provider: Database['public']['Enums']['PaymentProvider']
-          provider_product_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          billing_plan_id: string
-          created_at?: string
-          id?: string
-          provider: Database['public']['Enums']['PaymentProvider']
-          provider_product_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          billing_plan_id?: string
-          created_at?: string
-          id?: string
-          provider?: Database['public']['Enums']['PaymentProvider']
-          provider_product_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'billing_plan_providers_billing_plan_id_fkey'
-            columns: ['billing_plan_id']
-            isOneToOne: false
-            referencedRelation: 'billing_plans'
-            referencedColumns: ['id']
-          }
-        ]
-      }
-      stripe_subscriptions: {
-        Row: {
-          account_address: string
-          billing_plan_id: string
-          created_at: string
-          id: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          account_address: string
-          billing_plan_id: string
-          created_at?: string
-          id?: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          account_address?: string
-          billing_plan_id?: string
-          created_at?: string
-          id?: string
-          stripe_customer_id?: string
-          stripe_subscription_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'stripe_subscriptions_account_address_fkey'
-            columns: ['account_address']
-            isOneToOne: false
-            referencedRelation: 'accounts'
-            referencedColumns: ['address']
-          },
-          {
-            foreignKeyName: 'stripe_subscriptions_billing_plan_id_fkey'
-            columns: ['billing_plan_id']
-            isOneToOne: false
-            referencedRelation: 'billing_plans'
-            referencedColumns: ['id']
-          }
-        ]
-      }
-      stripe_subscription_transactions: {
-        Row: {
-          created_at: string
-          id: string
-          stripe_subscription_id: string
-          transaction_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          stripe_subscription_id: string
-          transaction_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          stripe_subscription_id?: string
-          transaction_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'stripe_subscription_transactions_stripe_subscription_id_fkey'
-            columns: ['stripe_subscription_id']
-            isOneToOne: false
-            referencedRelation: 'stripe_subscriptions'
-            referencedColumns: ['stripe_subscription_id']
-          },
-          {
-            foreignKeyName: 'stripe_subscription_transactions_transaction_id_fkey'
-            columns: ['transaction_id']
-            isOneToOne: true
             referencedRelation: 'transactions'
             referencedColumns: ['id']
           }
@@ -1774,6 +1783,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_accounts_by_calendar_emails: {
+        Args: { p_emails: string[]; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
       get_availability_types_for_account_preferences: {
         Args: { address: string }
         Returns: {
@@ -1930,6 +1943,7 @@ export type Database = {
         | 'METIS'
         | 'MATIC'
       AccountPreferenceNotification: 'send-tokens' | 'receive-tokens'
+      BillingCycle: 'monthly' | 'yearly'
       ChannelType: 'discord' | 'email' | 'account' | 'telegram'
       ContactStatus: 'active' | 'inactive'
       GroupRole: 'admin' | 'member'
@@ -1948,8 +1962,6 @@ export type Database = {
       PaymentDirection: 'debit' | 'credit'
       PaymentProvider: 'stripe'
       PaymentStatus: 'cancelled' | 'pending' | 'completed' | 'failed'
-      BillingCycle: 'monthly' | 'yearly'
-      SubscriptionStatus: 'active' | 'cancelled' | 'expired'
       PaymentType: 'fiat' | 'crypto'
       PlanType: 'one_off' | 'sessions'
       PollStatus: 'ongoing' | 'completed' | 'cancelled' | 'expired'
@@ -1962,6 +1974,7 @@ export type Database = {
       QuickPollParticipantType: 'scheduler' | 'invitee' | 'owner'
       RecurringStatus: 'confirmed' | 'cancelled' | 'modified'
       SessionType: 'paid' | 'free'
+      SubscriptionStatus: 'active' | 'cancelled' | 'expired'
       TimeSlotSource: 'mww' | 'Google' | 'iCloud' | 'Office 365' | 'Webdav'
       TokenType: 'erc20' | 'erc721' | 'stablecoin' | 'nft' | 'native'
       VerificationChannel: 'transaction-pin' | 'reset-email'
@@ -2106,6 +2119,7 @@ export const Constants = {
         'MATIC',
       ],
       AccountPreferenceNotification: ['send-tokens', 'receive-tokens'],
+      BillingCycle: ['monthly', 'yearly'],
       ChannelType: ['discord', 'email', 'account', 'telegram'],
       ContactStatus: ['active', 'inactive'],
       GroupRole: ['admin', 'member'],
@@ -2125,8 +2139,6 @@ export const Constants = {
       PaymentDirection: ['debit', 'credit'],
       PaymentProvider: ['stripe'],
       PaymentStatus: ['cancelled', 'pending', 'completed', 'failed'],
-      BillingCycle: ['monthly', 'yearly'],
-      SubscriptionStatus: ['active', 'cancelled', 'expired'],
       PaymentType: ['fiat', 'crypto'],
       PlanType: ['one_off', 'sessions'],
       PollStatus: ['ongoing', 'completed', 'cancelled', 'expired'],
@@ -2140,6 +2152,7 @@ export const Constants = {
       QuickPollParticipantType: ['scheduler', 'invitee', 'owner'],
       RecurringStatus: ['confirmed', 'cancelled', 'modified'],
       SessionType: ['paid', 'free'],
+      SubscriptionStatus: ['active', 'cancelled', 'expired'],
       TimeSlotSource: ['mww', 'Google', 'iCloud', 'Office 365', 'Webdav'],
       TokenType: ['erc20', 'erc721', 'stablecoin', 'nft', 'native'],
       VerificationChannel: ['transaction-pin', 'reset-email'],
