@@ -26,6 +26,7 @@ export interface InputTimePickerProps {
   inputProps?: InputProps
   iconColor?: string
   iconSize?: number
+  disabled?: boolean
 }
 
 const generateTimes = (currentDate: Date) => {
@@ -50,6 +51,7 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
   currentDate,
   value,
   inputProps,
+  disabled,
   ...props
 }) => {
   const [isEditing, setIsEditing] = useBoolean()
@@ -94,6 +96,7 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
             placeholder="Time"
             type="text"
             value={value}
+            isDisabled={disabled}
             readOnly
             {...inputProps}
           />
