@@ -79,9 +79,19 @@ export const getActiveProSubscriptionAsync = async (
   accountAddress: string
 ): Promise<Subscription | null> => {
   try {
-    // Get active subscription (billing or domain) via API
-    const subscription = await getActiveSubscription(accountAddress)
-    return subscription
+    // First check billing subscriptions
+    const billingSubscription = await getActiveSubscription(accountAddress)
+    if (billingSubscription?.subscription) {
+      return null
+    }
+
+    // Fall back to domain subscriptions
+    const subscriptions = await syncSubscriptions()
+    const activeDomainSubscription = subscriptions.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )
+
+    return activeDomainSubscription || null
   } catch (error) {
     Sentry.captureException(error)
     return null
