@@ -188,6 +188,7 @@ export const handleSubscriptionUpdated = async (
 ) => {
   const subscription = event.data.object
   const stripeSubscriptionId = subscription.id
+  const previousAttributes = event.data.previous_attributes || {}
 
   // Find stripe_subscriptions record
   const stripeSubscription = await getStripeSubscriptionById(
@@ -200,11 +201,46 @@ export const handleSubscriptionUpdated = async (
 
   const accountAddress = stripeSubscription.account_address.toLowerCase()
 
-  // Handle cancel_at_period_end changes
-  const cancelAtPeriodEnd = subscription.cancel_at_period_end
+  let actualCancelAt: number | null | undefined = subscription.cancel_at
+  try {
+    const stripe = new StripeService()
+    const fullSubscription = await stripe.subscriptions.retrieve(
+      stripeSubscriptionId
+    )
+    actualCancelAt = fullSubscription.cancel_at
+  } catch (error) {
+    // eslint-disable-next-line no-restricted-syntax
+    console.error(
+      '[Stripe webhook] subscription.updated - failed to fetch subscription from API',
+      error
+    )
+  }
 
-  if (cancelAtPeriodEnd === true) {
-    // Subscription is scheduled to cancel at period end
+  // Handle cancellation detection
+  // Using flexible billing mode: cancel_at (timestamp) indicates cancellation
+  const cancelAt = subscription.cancel_at
+  const previousCancelAt = previousAttributes.cancel_at
+
+  // Check if "cancel_at" timestamp was just set (changed from null to a timestamp)
+  const wasJustCancelled =
+    cancelAt !== null &&
+    cancelAt !== undefined &&
+    (previousCancelAt === null || previousCancelAt === undefined)
+
+  // Check if cancellation was just removed (cancel_at changed from timestamp to null)
+  const wasJustReactivated =
+    cancelAt === null &&
+    previousCancelAt !== null &&
+    previousCancelAt !== undefined
+
+  // Determine if subscription should be cancelled
+  const shouldCancel =
+    (cancelAt !== null && cancelAt !== undefined) ||
+    (actualCancelAt !== null && actualCancelAt !== undefined) ||
+    wasJustCancelled
+
+  // Handle cancellation (cancel_at timestamp set)
+  if (shouldCancel) {
     // Update all active subscription periods to 'cancelled' status
     try {
       const activeSubscriptions = await getSubscriptionPeriodsByAccount(
@@ -230,8 +266,8 @@ export const handleSubscriptionUpdated = async (
       )
       Sentry.captureException(error)
     }
-  } else if (cancelAtPeriodEnd === false) {
-    // Subscription was reactivated (cancel_at_period_end set to false)
+  } else if (wasJustReactivated) {
+    // Subscription was reactivated (cancel_at timestamp was removed)
     // Update cancelled subscription periods back to 'active' if still within expiry_time
     try {
       const allSubscriptions = await getSubscriptionPeriodsByAccount(

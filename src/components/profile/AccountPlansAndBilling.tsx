@@ -237,6 +237,18 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     )
   }
 
+  const handlePrimaryButtonClick = () => {
+    if (hasActiveSubscription) {
+      if (
+        billingSubscriptionResponse?.payment_provider !== PaymentProvider.STRIPE
+      ) {
+        goToBilling('extend', billingPlanLabel)
+      }
+    } else {
+      goToBilling('subscribe', getPlanInfo(Plan.PRO)?.name ?? 'Plan')
+    }
+  }
+
   const handleManageSubscription = async () => {
     setManageSubscriptionLoading(true)
     try {
@@ -323,14 +335,6 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
                   : undefined
               }
               planInfo={getPlanInfo(Plan.PRO)}
-              onClick={() =>
-                hasActiveSubscription
-                  ? goToBilling('extend', billingPlanLabel)
-                  : goToBilling(
-                      'subscribe',
-                      getPlanInfo(Plan.PRO)?.name ?? 'Plan'
-                    )
-              }
               active={isProCardActive}
               benefits={[
                 'Everything in Free plus (+)',
@@ -344,8 +348,14 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
               badge={activeBadge}
               expiryText={currentExpiryText}
               primaryCtaLabel={
-                hasActiveSubscription ? 'Extend Plan' : 'Subscribe'
+                hasActiveSubscription
+                  ? billingSubscriptionResponse?.payment_provider ===
+                    PaymentProvider.STRIPE
+                    ? undefined
+                    : 'Extend Plan'
+                  : 'Subscribe to Pro'
               }
+              onClick={handlePrimaryButtonClick}
               secondaryCtaLabel={
                 hasActiveSubscription &&
                 billingSubscriptionResponse?.payment_provider ===
@@ -592,11 +602,13 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
             {expiryText}
           </Text>
         )}
-        {planInfo && primaryCtaLabel && (
+        {planInfo && (primaryCtaLabel || secondaryCtaLabel) && (
           <VStack spacing={2} width="100%">
-            <Button width="full" colorScheme="primary" onClick={onClick}>
-              {primaryCtaLabel}
-            </Button>
+            {primaryCtaLabel && (
+              <Button width="full" colorScheme="primary" onClick={onClick}>
+                {primaryCtaLabel}
+              </Button>
+            )}
             {secondaryCtaLabel && onSecondaryCta && (
               <Button
                 width="full"
