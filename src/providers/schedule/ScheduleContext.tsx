@@ -1,6 +1,5 @@
 import React, { createContext, ReactNode, useContext, useState } from 'react'
 
-import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingReminders } from '@/types/common'
 import {
   MeetingDecrypted,
@@ -63,28 +62,33 @@ export const useScheduleState = () => {
   return context
 }
 
-interface ScheduleStateProviderProps {
+interface ScheduleStateProviderProps extends Partial<IScheduleStateContext> {
   children: ReactNode
 }
 
 export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   children,
+  ...props
 }) => {
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [duration, setDuration] = useState(30)
-  const [pickedTime, setPickedTime] = useState<Date | null>(null)
-  const [currentSelectedDate, setCurrentSelectedDate] = useState(new Date())
+  const [title, setTitle] = useState(props.title || '')
+  const [content, setContent] = useState(props.content || '')
+  const [duration, setDuration] = useState(props.duration || 30)
+  const [pickedTime, setPickedTime] = useState<Date | null>(
+    props.pickedTime || null
+  )
+  const [currentSelectedDate, setCurrentSelectedDate] = useState(
+    props.currentSelectedDate || new Date()
+  )
   const [timezone, setTimezone] = useState<string>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
   const [decryptedMeeting, setDecryptedMeeting] = useState<
     MeetingDecrypted | undefined
-  >(undefined)
+  >(props.decryptedMeeting || undefined)
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
     MeetingProvider.GOOGLE_MEET
   )
-  const [meetingUrl, setMeetingUrl] = useState('')
+  const [meetingUrl, setMeetingUrl] = useState(props.meetingUrl)
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{ value: MeetingReminders; label?: string }>
   >([
