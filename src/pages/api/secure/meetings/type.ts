@@ -29,12 +29,44 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (req.method === 'GET') {
       const limit = extractQuery(req.query, 'limit')
       const offset = extractQuery(req.query, 'offset')
-      const meetingTypes = await getMeetingTypes(
+      const allMeetingTypes = await getMeetingTypes(
         account_id,
         limit ? Number(limit) : undefined,
         offset ? Number(offset) : undefined
       )
-      return res.status(200).json(meetingTypes)
+
+      // Check subscription status for filtering
+      const isPro = await isProAccountAsync(account_id)
+
+      if (!isPro) {
+        // Free tier: return only first 1 FREE meeting type, hide all PAID
+        const freeMeetingTypes = allMeetingTypes.filter(
+          mt => mt.type === SessionType.FREE
+        )
+        const paidMeetingTypes = allMeetingTypes.filter(
+          mt => mt.type === SessionType.PAID
+        )
+
+        const limitedMeetingTypes = freeMeetingTypes.slice(0, 1)
+
+        return res.status(200).json({
+          meetingTypes: limitedMeetingTypes,
+          total: allMeetingTypes.length,
+          hidden: allMeetingTypes.length - limitedMeetingTypes.length,
+          paidHidden: paidMeetingTypes.length,
+          upgradeRequired:
+            allMeetingTypes.length > 1 || paidMeetingTypes.length > 0,
+        })
+      }
+
+      // Pro: return all meeting types
+      return res.status(200).json({
+        meetingTypes: allMeetingTypes,
+        total: allMeetingTypes.length,
+        hidden: 0,
+        paidHidden: 0,
+        upgradeRequired: false,
+      })
     }
     if (req.method === 'POST') {
       const meetingTypePayload = req.body as CreateMeetingTypeRequest
