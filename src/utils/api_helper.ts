@@ -10,6 +10,7 @@ import { DAVCalendar } from 'tsdav'
 
 import {
   Account,
+  GetMeetingTypesResponseWithMetadata,
   MeetingType,
   PaidMeetingTypes,
   PaymentPreferences,
@@ -44,6 +45,7 @@ import { DiscordAccount, DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
+  GetGroupsFullResponseWithMetadata,
   GetGroupsResponse,
   Group,
   GroupInvitePayload,
@@ -768,8 +770,15 @@ export const getGroupsFull = async (
   if (search) {
     url += `&search=${search}`
   }
-  const response = await internalFetch<Array<GetGroupsFullResponse>>(url)
-  return response
+  const response = await internalFetch<
+    Array<GetGroupsFullResponse> | GetGroupsFullResponseWithMetadata
+  >(url)
+
+  // Handle new response format (with metadata) or legacy format (array)
+  if (Array.isArray(response)) {
+    return response
+  }
+  return response.groups
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   const response = (await internalFetch(
@@ -1844,9 +1853,15 @@ export const getMeetingTypes = async (
   limit = 10,
   offset = 0
 ): Promise<MeetingType[]> => {
-  return await internalFetch<MeetingType[]>(
-    `/secure/meetings/type?limit=${limit}&offset=${offset}`
-  )
+  const response = await internalFetch<
+    MeetingType[] | GetMeetingTypesResponseWithMetadata
+  >(`/secure/meetings/type?limit=${limit}&offset=${offset}`)
+
+  // Handle new response format (with metadata) or legacy format (array)
+  if (Array.isArray(response)) {
+    return response
+  }
+  return response.meetingTypes
 }
 
 export const getMeetingType = async (id: string): Promise<MeetingType> => {

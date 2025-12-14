@@ -22,19 +22,23 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
     }
 
+    const accountAddress = req.session.account!.address
     const { syncOnly } = req.query
 
-    const calendars = await getConnectedCalendars(
-      req.session.account!.address,
-      { syncOnly: syncOnly === 'true', activeOnly: false }
-    )
+    const allCalendars = await getConnectedCalendars(accountAddress, {
+      syncOnly: syncOnly === 'true',
+      activeOnly: false,
+    })
+
+    // Check subscription status for filtering
+    const isPro = await isProAccountAsync(accountAddress)
 
     // Force all connected calendars to renew its Tokens
     // if needed for displaying calendars...
-    for (const calendar of calendars) {
+    for (const calendar of allCalendars) {
       try {
         const integration = getConnectedCalendarIntegration(
-          req.session.account!.address,
+          accountAddress,
           calendar.email,
           calendar.provider,
           calendar.payload
@@ -49,46 +53,64 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         // )
       }
     }
+
     try {
-      return res.status(200).json(
-        calendars.map(it => {
-          let grantedPermissions = 0
-          let expectedPermissions = 0
-          if (
-            it.payload &&
-            [TimeSlotSource.GOOGLE, TimeSlotSource.OFFICE].includes(it.provider)
-          ) {
-            const payload = JSON.parse(it.payload)
-            const permissions = payload.scope
-              .split(' ')
-              .filter(
-                (permission: string) =>
-                  !['offline_access', 'openid'].includes(permission)
-              )
-            if (it.provider === TimeSlotSource.GOOGLE) {
-              expectedPermissions = googleScopes.length
-              grantedPermissions = permissions.filter((permission: string) =>
-                googleScopes.includes(permission)
-              ).length
-            } else if (it.provider === TimeSlotSource.OFFICE) {
-              expectedPermissions = officeScopes.filter(
-                scope => scope !== 'offline_access'
-              ).length
-              grantedPermissions = permissions.filter((permission: string) =>
-                officeScopes.includes(permission)
-              ).length
-            }
+      // Filter calendars based on subscription status
+      let calendars = allCalendars
+      let hidden = 0
+      let upgradeRequired = false
+
+      if (!isPro) {
+        // Free tier: return only first 1 integration
+        calendars = allCalendars.slice(0, 1)
+        hidden = Math.max(0, allCalendars.length - 1)
+        upgradeRequired = allCalendars.length > 1
+      }
+
+      const response = calendars.map(it => {
+        let grantedPermissions = 0
+        let expectedPermissions = 0
+        if (
+          it.payload &&
+          [TimeSlotSource.GOOGLE, TimeSlotSource.OFFICE].includes(it.provider)
+        ) {
+          const payload = JSON.parse(it.payload)
+          const permissions = payload.scope
+            .split(' ')
+            .filter(
+              (permission: string) =>
+                !['offline_access', 'openid'].includes(permission)
+            )
+          if (it.provider === TimeSlotSource.GOOGLE) {
+            expectedPermissions = googleScopes.length
+            grantedPermissions = permissions.filter((permission: string) =>
+              googleScopes.includes(permission)
+            ).length
+          } else if (it.provider === TimeSlotSource.OFFICE) {
+            expectedPermissions = officeScopes.filter(
+              scope => scope !== 'offline_access'
+            ).length
+            grantedPermissions = permissions.filter((permission: string) =>
+              officeScopes.includes(permission)
+            ).length
           }
-          return {
-            id: it.id,
-            provider: it.provider,
-            email: it.email,
-            calendars: it.calendars,
-            expectedPermissions,
-            grantedPermissions,
-          }
-        })
-      )
+        }
+        return {
+          id: it.id,
+          provider: it.provider,
+          email: it.email,
+          calendars: it.calendars,
+          expectedPermissions,
+          grantedPermissions,
+        }
+      })
+
+      return res.status(200).json({
+        calendars: response,
+        total: allCalendars.length,
+        hidden,
+        upgradeRequired,
+      })
     } catch (e) {
       Sentry.captureException(e)
       return res.status(500).json({ message: 'An unexpected error occurred.' })

@@ -51,10 +51,47 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         searchQuery as string
       )
 
+      // Check subscription status for filtering
+      const isPro = await isProAccountAsync(address)
+
+      if (!isPro && (status === PollStatus.ONGOING || !status)) {
+        // Free tier: return only first 2 active polls
+        // Filter active polls (ONGOING status and not expired)
+        const now = new Date()
+        const activePolls = result.polls.filter(
+          poll =>
+            poll.status === PollStatus.ONGOING &&
+            new Date(poll.expires_at) > now
+        )
+        const otherPolls = result.polls.filter(
+          poll =>
+            poll.status !== PollStatus.ONGOING ||
+            new Date(poll.expires_at) <= now
+        )
+
+        const limitedActivePolls = activePolls.slice(0, 2)
+        const filteredPolls = [...limitedActivePolls, ...otherPolls]
+
+        const hiddenActivePolls = Math.max(0, activePolls.length - 2)
+
+        const response: QuickPollListResponse = {
+          polls: filteredPolls,
+          total_count: result.total_count,
+          has_more: result.has_more,
+          hidden: hiddenActivePolls,
+          upgradeRequired: activePolls.length > 2,
+        }
+
+        return res.status(200).json(response)
+      }
+
+      // Pro: return all polls
       const response: QuickPollListResponse = {
         polls: result.polls,
         total_count: result.total_count,
         has_more: result.has_more,
+        hidden: 0,
+        upgradeRequired: false,
       }
 
       return res.status(200).json(response)
