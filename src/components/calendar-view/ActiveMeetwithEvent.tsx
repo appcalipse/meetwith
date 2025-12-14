@@ -7,20 +7,26 @@ import {
   Heading,
   HStack,
   Link,
+  Text,
   VStack,
 } from '@chakra-ui/layout'
 import {
   FormControl,
+  FormHelperText,
   FormLabel,
+  Input,
   Menu,
   MenuButton,
   MenuDivider,
   MenuItem,
   MenuList,
   Portal,
+  Radio,
+  RadioGroup,
   Tooltip,
   useColorModeValue,
   useDisclosure,
+  useToast,
 } from '@chakra-ui/react'
 import { Select } from 'chakra-react-select'
 import { DateTime } from 'luxon'
@@ -34,8 +40,13 @@ import { MdCancel, MdOutlineEditCalendar } from 'react-icons/md'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
+import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
-import { MeetingChangeType, MeetingDecrypted } from '@/types/Meeting'
+import {
+  MeetingChangeType,
+  MeetingDecrypted,
+  MeetingProvider,
+} from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -48,11 +59,19 @@ import {
   generateOffice365CalendarUrl,
 } from '@/utils/calendar_manager'
 import { appUrl } from '@/utils/constants'
-import { MeetingPermissions } from '@/utils/constants/schedule'
-import { rsvpSelectComponent } from '@/utils/constants/select'
+import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
+import {
+  MeetingNotificationOptions,
+  MeetingPermissions,
+} from '@/utils/constants/schedule'
+import {
+  noClearCustomSelectComponent,
+  rsvpSelectComponent,
+} from '@/utils/constants/select'
 import {
   canAccountAccessPermission,
   isAccountSchedulerOrOwner,
+  renderProviderName,
 } from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { useToastHelpers } from '@/utils/toasts'
@@ -62,6 +81,7 @@ import { ChipInput } from '../chip-input'
 import { chipStyles } from '../chip-input/chip'
 import { SingleDatepicker } from '../input-date-picker'
 import { InputTimePicker } from '../input-time-picker'
+import RichTextEditor from '../profile/components/RichTextEditor'
 import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import { DeleteMeetingDialog } from '../schedule/delete-dialog'
 import ScheduleParticipantsSchedulerModal from '../schedule/ScheduleParticipantsSchedulerModal'
@@ -118,6 +138,7 @@ const renderRsvpStatus = (status: ParticipationStatus) => {
       )
   }
 }
+const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM)
 
 const RSVP_OPTIONS = [
   {
@@ -143,6 +164,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     onOpen: onCancelOpen,
     onClose: onCancelClose,
   } = useDisclosure()
+  const [isTitleValid, setIsTitleValid] = React.useState(true)
   const {
     title,
     content,
@@ -188,6 +210,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     return DateTime.fromJSDate(pickedTime).setZone(timezone).toFormat('hh:mm a')
   }, [pickedTime, timezone])
   const currentAccount = useAccountContext()
+  const toast = useToast()
   const canEditMeeting = canAccountAccessPermission(
     slot?.permissions,
     slot?.participants || [],
@@ -606,6 +629,148 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
               />
             )}
           </HStack>
+        </FormControl>
+        <FormControl
+          isInvalid={!isTitleValid}
+          isDisabled={!canEditMeeting || !isEditMode}
+        >
+          <FormLabel
+            _invalid={{
+              color: 'red.500',
+            }}
+          >
+            Title
+            <Text color="red.500" display="inline">
+              *
+            </Text>
+          </FormLabel>
+          <Input
+            placeholder="Enter meeting title"
+            _placeholder={{
+              color: 'neutral.400',
+            }}
+            borderColor="neutral.400"
+            value={title}
+            onChange={e => {
+              if (!isTitleValid && e.target.value) {
+                setIsTitleValid(true)
+              }
+              return setTitle(e.target.value)
+            }}
+            errorBorderColor="red.500"
+            isInvalid={!isTitleValid}
+          />
+          {!isTitleValid && (
+            <FormHelperText color="red.500">Title is required</FormHelperText>
+          )}
+        </FormControl>
+        <FormControl isDisabled={!canEditMeeting || !isEditMode}>
+          <FormLabel htmlFor="info">Description (optional)</FormLabel>
+          <RichTextEditor
+            id="info"
+            value={content}
+            onValueChange={setContent}
+            placeholder="Any information you want to share prior to the meeting?"
+            isDisabled={!canEditMeeting || !isEditMode}
+          />
+        </FormControl>
+        <VStack alignItems="start" w={'100%'} gap={4}>
+          <Text fontSize="18px" fontWeight={500}>
+            Location
+          </Text>
+          <RadioGroup
+            onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+            value={meetingProvider}
+            w={'100%'}
+            isDisabled={!canEditMeeting || !isEditMode}
+          >
+            <VStack w={'100%'} gap={4}>
+              {meetingProviders.map(provider => (
+                <Radio
+                  flexDirection="row-reverse"
+                  justifyContent="space-between"
+                  w="100%"
+                  colorScheme="primary"
+                  value={provider}
+                  key={provider}
+                >
+                  <Text
+                    fontWeight="600"
+                    color={'border-default-primary'}
+                    cursor="pointer"
+                  >
+                    {renderProviderName(provider)}
+                  </Text>
+                </Radio>
+              ))}
+            </VStack>
+          </RadioGroup>
+          {meetingProvider === MeetingProvider.CUSTOM && (
+            <Input
+              type="text"
+              placeholder="insert a custom meeting url"
+              isDisabled={!canEditMeeting || !isEditMode}
+              my={4}
+              value={meetingUrl}
+              onChange={e => setMeetingUrl(e.target.value)}
+            />
+          )}
+        </VStack>
+
+        <FormControl
+          w="100%"
+          maxW="100%"
+          isDisabled={!canEditMeeting || !isEditMode}
+        >
+          <FormLabel>Meeting Reminders</FormLabel>
+          <Select
+            value={meetingNotification}
+            colorScheme="gray"
+            onChange={val => {
+              const meetingNotification = val as Array<{
+                value: MeetingReminders
+                label?: string
+              }>
+              // can't select more than 5 notifications
+              if (meetingNotification.length > 5) {
+                toast({
+                  title: 'Limit reached',
+                  description: 'You can select up to 5 notifications only.',
+                  status: 'warning',
+                  duration: 3000,
+                  isClosable: true,
+                })
+                return
+              }
+              setMeetingNotification(meetingNotification)
+            }}
+            isDisabled={!canEditMeeting || !isEditMode}
+            className="noLeftBorder timezone-select"
+            placeholder="Select Notification Alerts"
+            isMulti
+            tagVariant={'solid'}
+            options={MeetingNotificationOptions}
+            components={noClearCustomSelectComponent}
+            chakraStyles={{
+              container: provided => ({
+                ...provided,
+                border: '1px solid',
+                borderTopColor: 'currentColor',
+                borderLeftColor: 'currentColor',
+                borderRightColor: 'currentColor',
+                borderBottomColor: 'currentColor',
+                borderColor: 'inherit',
+                borderRadius: 'md',
+                maxW: '100%',
+                display: 'block',
+              }),
+
+              placeholder: provided => ({
+                ...provided,
+                textAlign: 'left',
+              }),
+            }}
+          />
         </FormControl>
       </VStack>
     </VStack>
