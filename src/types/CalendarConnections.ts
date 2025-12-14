@@ -45,6 +45,14 @@ export interface ConnectedCalendar extends ConnectedCalendarCore {
   payload: any
 }
 
+// Response type for calendar integrations API
+export interface GetCalendarIntegrationsResponse {
+  calendars: ConnectedCalendarCore[]
+  total: number
+  hidden: number
+  upgradeRequired: boolean
+}
+
 export type NewCalendarEventType = {
   uid: string
   id: string
