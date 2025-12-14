@@ -31,6 +31,7 @@ import {
   ConnectedCalendar,
   ConnectedCalendarCore,
   ConnectResponse,
+  GetCalendarIntegrationsResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
 import {
@@ -1125,10 +1126,12 @@ export const listConnectedCalendars = async (
 ): Promise<ConnectedCalendarCore[]> => {
   return await queryClient.fetchQuery(
     QueryKeys.connectedCalendars(syncOnly),
-    () =>
-      internalFetch<ConnectedCalendarCore[]>(
+    async () => {
+      const response = await internalFetch<GetCalendarIntegrationsResponse>(
         `/secure/calendar_integrations?syncOnly=${syncOnly}`
       )
+      return response.calendars || []
+    }
   )
 }
 
