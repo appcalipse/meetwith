@@ -128,7 +128,11 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
             <PopoverCloseButton
               onClick={() => {
                 onClose()
-                setSelectedSlot(event)
+                setSelectedSlot({
+                  ...event,
+                  start: event.start.toJSDate(),
+                  end: event.end.toJSDate(),
+                })
               }}
               as={FaExpand}
               size={'24'}
