@@ -20,6 +20,7 @@ import {
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
+  CancelSubscriptionResponse,
   GetPlansResponse,
   GetSubscriptionHistoryResponse,
   GetSubscriptionResponse,
@@ -1246,6 +1247,14 @@ export const subscribeToBillingPlanCrypto = async (
     request
   )
 }
+
+export const cancelCryptoSubscription =
+  async (): Promise<CancelSubscriptionResponse> => {
+    return await internalFetch<CancelSubscriptionResponse>(
+      '/secure/billing/cancel-crypto',
+      'POST'
+    )
+  }
 
 export const validateWebdav = async (
   url: string,
