@@ -36,6 +36,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           return res.status(400).send('Webhook Error')
         }
       }
+
       switch (event.type) {
         case 'account.updated':
           await handleAccountUpdate(event)
@@ -59,8 +60,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           await handleSubscriptionTrialWillEnd(event)
           break
         default:
-          // eslint-disable-next-line no-restricted-syntax
-          console.log(`Unhandled event type: ${event.type}`)
+          break
       }
       return res.status(200).json({
         success: true,
