@@ -38,6 +38,7 @@ interface ChipInputProps {
   button?: ReactElement
   inputProps?: InputProps
   addDisabled?: boolean
+  renderBadge?: (item: ParticipantInfo) => ReactElement
 }
 
 export const ChipInput: React.FC<ChipInputProps> = ({
@@ -50,6 +51,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   placeholder = 'Type do add items',
   button,
   inputProps,
+  renderBadge,
 }) => {
   const [current, setCurrent] = useState('')
   const [focused, setFocused] = useState(false)
@@ -109,7 +111,9 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   }
 
   const badges = currentItems.map((it, idx) => {
-    return (
+    return renderBadge ? (
+      renderBadge(it)
+    ) : (
       <Box key={`${idx}-${it}`}>
         <BadgeChip
           onRemove={() => onRemoveItem(idx)}
@@ -190,7 +194,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       width="100%"
     >
       {badges}
-      <Box flex={1} pos="relative">
+      <Box pos="relative">
         <Input
           size={size}
           display={'inline-block'}
