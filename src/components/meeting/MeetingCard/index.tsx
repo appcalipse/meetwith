@@ -582,16 +582,16 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
         participants={decryptedMeeting?.participants || []}
         decryptedMeeting={decryptedMeeting}
       />
-      <CancelMeetingDialog
-        isOpen={isCancelOpen}
-        onClose={onCancelClose}
+      <DeleteMeetingDialog
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
         decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}
       />
-      <DeleteMeetingDialog
-        isOpen={isDeleteOpen}
-        onClose={onDeleteClose}
+      <CancelMeetingDialog
+        isOpen={isCancelOpen}
+        onClose={onCancelClose}
         decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}
