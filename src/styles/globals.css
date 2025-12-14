@@ -58,7 +58,7 @@ a {
   border-left-color: currentcolor;
   border-color: inherit;
   background: inherit;
-  min-height: 200px;
+  min-height: 75x;
   overflow: scroll;
   resize: vertical;
 }
