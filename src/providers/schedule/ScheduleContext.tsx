@@ -88,7 +88,7 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
     MeetingProvider.GOOGLE_MEET
   )
-  const [meetingUrl, setMeetingUrl] = useState(props.meetingUrl)
+  const [meetingUrl, setMeetingUrl] = useState(props.meetingUrl || '')
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{ value: MeetingReminders; label?: string }>
   >([
