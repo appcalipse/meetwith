@@ -1,6 +1,5 @@
 import React, { createContext, ReactNode, useContext, useState } from 'react'
 
-import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingReminders } from '@/types/common'
 import {
   MeetingDecrypted,

@@ -3,6 +3,8 @@ import { Account } from '@meta/Account'
 import { GroupMeetingRequest } from '@meta/Meeting'
 import { getAccountDisplayName } from '@utils/user_manager'
 import React from 'react'
+
+import { apiUrl } from '@/utils/constants'
 interface IProps {
   account?: Account
   teamMeetingRequest?: GroupMeetingRequest
@@ -19,8 +21,15 @@ const HeadMeta: React.FC<IProps> = ({ account, teamMeetingRequest, url }) => {
   const description =
     account?.preferences?.description ||
     'Schedule a meeting by simply connecting your web3 wallet, or use your email and schedule as a guest.'
-
-  return <Head title={title} description={description} url={url} />
+  const identifier = account?.address
+  return (
+    <Head
+      title={title}
+      description={description}
+      url={url}
+      ogImage={`${apiUrl}/accounts/social/og/${identifier}?params=${url}`}
+    />
+  )
 }
 
 export default HeadMeta
