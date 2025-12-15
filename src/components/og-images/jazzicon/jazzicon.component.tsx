@@ -28,7 +28,6 @@ export function Jazzicon(props: JazziconProps) {
         height: '100px',
         borderRadius: '50%',
         backgroundColor: paperColor.hex(),
-        overflow: 'hidden',
       }}
     >
       {times(DEFAULT_SHAPE_COUNT).map(i => (
