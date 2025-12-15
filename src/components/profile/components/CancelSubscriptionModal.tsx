@@ -88,8 +88,9 @@ const CancelSubscriptionModal: React.FC<CancelSubscriptionModalProps> = ({
             ref={cancelRef}
             onClick={onClose}
             isDisabled={isLoading}
+            variant="outline"
+            borderColor="border-default"
             color="text-primary"
-            variant="ghost"
             _hover={{ bg: 'bg-surface-tertiary' }}
           >
             Keep Subscription
