@@ -33,11 +33,17 @@ async function handler(
 
   try {
     if (typeof code !== 'string') {
-      return res.status(400).json({ message: 'No code returned' })
+      res.redirect(
+        `/dashboard/details?calendarResult=error&error=NO_CODE#connected-calendars`
+      )
+      return
     }
 
     if (!req.session.account) {
-      return res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
+      res.redirect(
+        `/dashboard/details?calendarResult=error&error=NOT_LOGGED_IN#connected-calendars`
+      )
+      return
     }
 
     const toUrlEncoded = (payload: Record<string, string>) =>

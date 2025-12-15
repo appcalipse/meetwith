@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 
-import { MeetingDecrypted } from '@/types/Meeting'
+import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
 export interface IActionsContext {
@@ -11,7 +11,7 @@ export interface IActionsContext {
     | ((
         actor?: ParticipantInfo,
         decryptedMeeting?: MeetingDecrypted
-      ) => Promise<MeetingDecrypted | undefined>)
+      ) => Promise<DBSlot | undefined>)
 }
 
 export const ActionsContext = createContext<IActionsContext | undefined>(

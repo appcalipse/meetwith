@@ -65,7 +65,11 @@ export default async function handler(
           message_channel,
           guest_address,
           meeting_type_id,
+          environment,
         } = payload.data.purchaseData as IPurchaseData
+        if (environment !== process.env.NEXT_PUBLIC_ENV_CONFIG) {
+          return res.status(200).send('OK')
+        }
         if (payload.data.status === 'COMPLETED') {
           let transactionHash =
             payload.type === 'pay.onramp-transaction'

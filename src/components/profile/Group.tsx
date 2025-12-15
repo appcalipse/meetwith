@@ -5,7 +5,6 @@ import {
   Flex,
   Heading,
   HStack,
-  Link,
   Tab,
   TabList,
   TabPanel,
@@ -17,7 +16,6 @@ import {
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
-import { FaArrowRight } from 'react-icons/fa'
 
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
@@ -26,7 +24,7 @@ import { useAvailabilityBlock } from '@/hooks/availability'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
-import { EditMode, Intents, InviteType } from '@/types/Dashboard'
+import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
 import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
 

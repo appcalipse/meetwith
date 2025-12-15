@@ -16,7 +16,7 @@ const YEAR_DURATION_IN_SECONDS = 31536000
 
 const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 
-const discordRedirectUrl = `${baseURL}/dashboard/details#connected-accounts`
+const discordRedirectUrl = `${baseURL}/dashboard/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwith.xyz'
 
@@ -51,6 +51,8 @@ const QUICKPOLL_TITLE_MAX_LENGTH = 200
 const QUICKPOLL_DESCRIPTION_MAX_LENGTH = 1000
 
 const QUICKPOLL_EXPIRY_BUFFER_HOURS = 1 // Minimum hours before expiry
+
+// Event title truncation constants
 
 const DASHBOARD_ROUTE_PREFIX = '/dashboard'
 const SETTINGS_ROUTE_PREFIX = `${DASHBOARD_ROUTE_PREFIX}/details`
