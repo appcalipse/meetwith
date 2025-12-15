@@ -3,6 +3,11 @@ import { addMonths, addYears } from 'date-fns'
 import { WebhookPayload } from 'thirdweb/dist/types/bridge'
 import { formatUnits } from 'viem'
 
+import {
+  BillingEmailPeriod,
+  BillingEmailPlan,
+  PaymentProvider as BillingPaymentProvider,
+} from '@/types/Billing'
 import { getSupportedChainFromId } from '@/types/chains'
 import { TablesInsert } from '@/types/Supabase'
 import {
@@ -22,11 +27,14 @@ import {
   createSubscriptionPeriod,
   createSubscriptionTransaction,
   getActiveSubscriptionPeriod,
+  getBillingEmailAccountInfo,
   getBillingPlanById,
   getStripeSubscriptionByAccount,
   getSubscriptionPeriodsByAccount,
   updateSubscriptionPeriodStatus,
 } from '@/utils/database'
+import { sendSubscriptionConfirmationEmail } from '@/utils/email_helper'
+import { getDisplayNameForEmail } from '@/utils/email_utils'
 import { Currency } from '@/utils/services/onramp.money'
 
 /**
@@ -259,6 +267,46 @@ export const handleCryptoSubscriptionPayment = async (
       },
     })
     throw error
+  }
+
+  // Send subscription confirmation email
+  try {
+    const accountInfo = await getBillingEmailAccountInfo(
+      account_address.toLowerCase()
+    )
+
+    if (accountInfo) {
+      // Process display name for email
+      const processedDisplayName = getDisplayNameForEmail(
+        accountInfo.displayName
+      )
+
+      const period: BillingEmailPeriod = {
+        registered_at: new Date(),
+        expiry_time: calculatedExpiryTime,
+      }
+
+      const emailPlan: BillingEmailPlan = {
+        id: billingPlan.id,
+        name: billingPlan.name,
+        price: billingPlan.price,
+        billing_cycle: billingPlan.billing_cycle,
+      }
+
+      await sendSubscriptionConfirmationEmail(
+        { ...accountInfo, displayName: processedDisplayName },
+        period,
+        emailPlan,
+        BillingPaymentProvider.CRYPTO,
+        {
+          amount: transactionData.fiatEquivalent,
+          currency: 'USD',
+        }
+      )
+    }
+  } catch (error) {
+    Sentry.captureException(error)
+    // Don't fail the subscription if email fails
   }
 
   return {

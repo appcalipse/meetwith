@@ -210,6 +210,44 @@ export const handleSubscriptionCreated = async (
         new Date(trialEnd * 1000).toISOString(),
         null
       )
+
+      // Send trial started email
+      try {
+        const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+
+        if (accountInfo) {
+          // Process display name for email
+          const processedDisplayName = getDisplayNameForEmail(
+            accountInfo.displayName
+          )
+
+          const billingPlan = await getBillingPlanById(billingPlanId)
+          if (billingPlan) {
+            const period: BillingEmailPeriod = {
+              registered_at: new Date(),
+              expiry_time: new Date(trialEnd * 1000),
+            }
+
+            const emailPlan: BillingEmailPlan = {
+              id: billingPlan.id,
+              name: billingPlan.name,
+              price: billingPlan.price,
+              billing_cycle: billingPlan.billing_cycle,
+            }
+
+            await sendSubscriptionConfirmationEmail(
+              { ...accountInfo, displayName: processedDisplayName },
+              period,
+              emailPlan,
+              BillingPaymentProvider.STRIPE,
+              undefined,
+              true // isTrial
+            )
+          }
+        }
+      } catch (error) {
+        Sentry.captureException(error)
+      }
     } catch (error) {
       Sentry.captureException(error)
     }

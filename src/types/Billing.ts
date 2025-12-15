@@ -20,6 +20,7 @@ export enum SubscriptionStatus {
 // Payment provider for billing subscriptions
 export enum PaymentProvider {
   STRIPE = 'stripe',
+  CRYPTO = 'crypto',
 }
 
 // =====================================================
