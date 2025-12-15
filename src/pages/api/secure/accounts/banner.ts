@@ -5,6 +5,7 @@ import { handlerReqWithFile, withFileUpload } from '@utils/uploads'
 import { NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { BannerSetting } from '@/types/Account'
 
 export const config = {
   api: {
@@ -18,17 +19,20 @@ const handler = async (req: handlerReqWithFile, res: NextApiResponse) => {
       if (!req.session.account?.address) {
         return res.status(401).json({ error: 'Unauthorized' })
       }
+      const banner_setting = JSON.parse(
+        req.body?.banner_setting || '{}'
+      ) as BannerSetting
       const { banner } = req.body?.files
       if (!banner) {
         return res.status(400).json({ error: 'File is required' })
       }
       const { filename, buffer, mimeType } = banner
-
       const userAvatar = await updatePreferenceBanner(
         req.session.account?.address,
         filename,
         buffer,
-        mimeType
+        mimeType,
+        banner_setting
       )
       if (!userAvatar) {
         return res.status(500).json({ error: 'Failed to update avatar' })
