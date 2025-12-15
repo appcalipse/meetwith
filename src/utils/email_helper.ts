@@ -834,6 +834,8 @@ export const sendSubscriptionConfirmationEmail = async (
   const periodStart = formatDateForEmail(period.registered_at)
   const periodEnd = formatDateForEmail(period.expiry_time)
 
+  const manageUrl = `${appUrl}/dashboard/subscriptions`
+
   const locals = {
     appUrl,
     displayName: getDisplayNameForEmail(account.displayName),
@@ -843,6 +845,7 @@ export const sendSubscriptionConfirmationEmail = async (
     periodEnd,
     provider,
     isTrial: isTrial || false,
+    manageUrl,
   }
 
   try {
@@ -881,6 +884,8 @@ export const sendSubscriptionCancelledEmail = async (
   const periodStart = formatDateForEmail(period.registered_at)
   const periodEnd = formatDateForEmail(period.expiry_time)
 
+  const manageUrl = `${appUrl}/dashboard/subscriptions`
+
   const locals = {
     appUrl,
     displayName: getDisplayNameForEmail(account.displayName),
@@ -889,6 +894,7 @@ export const sendSubscriptionCancelledEmail = async (
     periodStart,
     periodEnd,
     provider,
+    manageUrl,
   }
 
   try {
