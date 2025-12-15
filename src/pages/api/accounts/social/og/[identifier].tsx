@@ -6,6 +6,7 @@ import satori from 'satori'
 import sharp from 'sharp'
 
 import UserBanner from '@/components/og-images/Banner'
+import { appUrl } from '@/utils/constants'
 import {
   getAccountPreferencesLean,
   getOwnerPublicUrlServer,
@@ -18,6 +19,11 @@ const dmSansMediumData = fs.readFileSync(
 const dmSansBoldData = fs.readFileSync(
   join(process.cwd(), 'public', 'fonts', 'DMSans', 'DMSans-Bold.ttf')
 )
+const getUrlFromParams = (params: string) => {
+  const paths = params.split('/')
+  const pathname = paths.slice(1).join('/')
+  return `${appUrl}/${pathname}`
+}
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -31,9 +37,12 @@ export default async function handler(
       // fallback to default og image
       throw new Error('No account address')
     }
+
     const promises = [
       getAccountPreferencesLean(account_address),
-      params ? params : getOwnerPublicUrlServer(account_address),
+      params
+        ? getUrlFromParams(params)
+        : getOwnerPublicUrlServer(account_address),
     ] as [
       ReturnType<typeof getAccountPreferencesLean>,
       ReturnType<typeof getOwnerPublicUrlServer>
@@ -64,7 +73,7 @@ export default async function handler(
     const svg = await satori(
       <UserBanner
         avatar_url={avatar_url}
-        calendar_url={params || calendar_url}
+        calendar_url={calendar_url}
         description={user_preferences.description}
         banner_url={user_preferences.banner_url}
         name={user_preferences.name}
