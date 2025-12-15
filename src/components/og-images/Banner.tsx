@@ -1,5 +1,7 @@
 import * as React from 'react'
 
+import { BannerSetting } from '@/types/Account'
+
 import { Jazzicon } from './jazzicon'
 
 interface UserBannerProps {
@@ -9,6 +11,7 @@ interface UserBannerProps {
   description: string | null
   name: string | null
   calendar_url: string
+  banner_setting?: BannerSetting | null
 }
 const MAX_DESCRIPTION_LENGTH = 120
 const truncateText = (text: string | null, maxLength: number): string => {
@@ -23,6 +26,7 @@ const UserBanner: React.FC<UserBannerProps> = ({
   description,
   owner_account_address,
   name,
+  banner_setting,
 }) => {
   return (
     <div
@@ -84,58 +88,64 @@ const UserBanner: React.FC<UserBannerProps> = ({
               gap: '24px',
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: '20px',
-              }}
-            >
+            {banner_setting?.show_avatar && (
               <div
                 style={{
                   display: 'flex',
-                  flexDirection: 'column',
-                  width: '100px',
-                  height: '100px',
-                  overflow: 'hidden',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: '20px',
                 }}
               >
-                {avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={avatar_url}
-                    src={avatar_url}
-                    alt="Profile picture"
-                    width="300"
-                    height="300"
-                    style={{
-                      width: '100px',
-                      height: '100px',
-                      borderRadius: '50%',
-                    }}
-                  />
-                ) : (
-                  <Jazzicon address={owner_account_address} />
-                )}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100px',
+                    height: '100px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={avatar_url}
+                      src={avatar_url}
+                      alt="Profile picture"
+                      width="300"
+                      height="300"
+                      style={{
+                        width: '100px',
+                        height: '100px',
+                        borderRadius: '50%',
+                      }}
+                    />
+                  ) : (
+                    <Jazzicon address={owner_account_address} />
+                  )}
+                </div>
+                <h2
+                  style={{ color: 'white', fontWeight: 700, fontSize: '32px' }}
+                >
+                  {name}
+                </h2>
               </div>
-              <h2 style={{ color: 'white', fontWeight: 700, fontSize: '32px' }}>
-                {name}
-              </h2>
-            </div>
+            )}
 
-            <p
-              style={{
-                fontSize: '32px',
-                color: 'white',
-                wordBreak: 'break-word',
-                whiteSpace: 'pre-wrap',
-                fontWeight: 500,
-                lineHeight: '1.2',
-              }}
-            >
-              {truncateText(description, MAX_DESCRIPTION_LENGTH)}
-            </p>
+            {banner_setting?.show_description && (
+              <p
+                style={{
+                  fontSize: '32px',
+                  color: 'white',
+                  wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                  fontWeight: 500,
+                  lineHeight: '1.2',
+                }}
+              >
+                {truncateText(description, MAX_DESCRIPTION_LENGTH)}
+              </p>
+            )}
           </div>
         </div>
       </div>
