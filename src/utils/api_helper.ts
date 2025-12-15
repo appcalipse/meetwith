@@ -28,6 +28,7 @@ import {
   SubscribeRequestCrypto,
   SubscribeResponse,
   SubscribeResponseCrypto,
+  TrialEligibilityResponse,
 } from '@/types/Billing'
 import {
   CalendarSyncInfo,
@@ -1247,6 +1248,13 @@ export const subscribeToBillingPlanCrypto = async (
     request
   )
 }
+
+export const getTrialEligibility =
+  async (): Promise<TrialEligibilityResponse> =>
+    await internalFetch<TrialEligibilityResponse>(
+      '/secure/billing/trial/eligible',
+      'GET'
+    )
 
 export const cancelCryptoSubscription =
   async (): Promise<CancelSubscriptionResponse> => {
