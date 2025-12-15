@@ -27,7 +27,9 @@ const HeadMeta: React.FC<IProps> = ({ account, teamMeetingRequest, url }) => {
       title={title}
       description={description}
       url={url}
-      ogImage={`${apiUrl}/accounts/social/og/${identifier}?params=${url}`}
+      ogImage={`${apiUrl}/accounts/social/og/${identifier}?params=${encodeURIComponent(
+        url
+      )}`}
     />
   )
 }
