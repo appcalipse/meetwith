@@ -18,6 +18,7 @@ import {
   createSubscriptionPeriod,
   findSubscriptionPeriodByPlanAndExpiry,
   getActiveSubscriptionPeriod,
+  getBillingEmailAccountInfo,
   getBillingPlanById,
   getBillingPlanIdFromStripeProduct,
   getStripeSubscriptionById,
@@ -32,8 +33,17 @@ import { addMonths, addYears } from 'date-fns'
 import { NextApiRequest } from 'next'
 import Stripe from 'stripe'
 
-import { PaymentProvider as BillingPaymentProvider } from '@/types/Billing'
+import {
+  BillingEmailPeriod,
+  BillingEmailPlan,
+  PaymentProvider as BillingPaymentProvider,
+} from '@/types/Billing'
 import { TablesInsert } from '@/types/Supabase'
+import {
+  sendSubscriptionCancelledEmail,
+  sendSubscriptionConfirmationEmail,
+} from '@/utils/email_helper'
+import { getDisplayNameForEmail } from '@/utils/email_utils'
 
 export const getRawBody = async (req: NextApiRequest): Promise<Buffer> => {
   const chunks: Buffer[] = []
@@ -262,19 +272,74 @@ export const handleSubscriptionUpdated = async (
   if (shouldCancel) {
     // Update all active subscription periods to 'cancelled' status
     try {
-      const activeSubscriptions = await getSubscriptionPeriodsByAccount(
+      const allSubscriptions = await getSubscriptionPeriodsByAccount(
         accountAddress
       )
 
       // Update all active subscriptions that haven't expired yet
       const now = new Date()
-      for (const sub of activeSubscriptions) {
+      let mostRecentPeriod: (typeof allSubscriptions)[0] | null = null
+      for (const sub of allSubscriptions) {
         if (
           sub.status === 'active' &&
           new Date(sub.expiry_time) > now &&
           sub.billing_plan_id // Only update billing subscriptions
         ) {
           await updateSubscriptionPeriodStatus(sub.id, 'cancelled')
+        }
+
+        // Find the most recent active/cancelled period (by expiry_time) for email
+        // Include both active and cancelled periods that haven't expired
+        if (
+          (sub.status === 'active' || sub.status === 'cancelled') &&
+          new Date(sub.expiry_time) > now &&
+          sub.billing_plan_id &&
+          (!mostRecentPeriod ||
+            new Date(sub.expiry_time) > new Date(mostRecentPeriod.expiry_time))
+        ) {
+          mostRecentPeriod = sub
+        }
+      }
+
+      // Send subscription cancellation email
+      if (mostRecentPeriod && mostRecentPeriod.billing_plan_id) {
+        try {
+          const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+
+          if (accountInfo) {
+            // Process display name for email
+            const processedDisplayName = getDisplayNameForEmail(
+              accountInfo.displayName
+            )
+
+            // Get billing plan details
+            const billingPlan = await getBillingPlanById(
+              mostRecentPeriod.billing_plan_id
+            )
+
+            if (billingPlan) {
+              const period: BillingEmailPeriod = {
+                registered_at: mostRecentPeriod.registered_at,
+                expiry_time: mostRecentPeriod.expiry_time,
+              }
+
+              const emailPlan: BillingEmailPlan = {
+                id: billingPlan.id,
+                name: billingPlan.name,
+                price: billingPlan.price,
+                billing_cycle: billingPlan.billing_cycle,
+              }
+
+              await sendSubscriptionCancelledEmail(
+                { ...accountInfo, displayName: processedDisplayName },
+                period,
+                emailPlan,
+                BillingPaymentProvider.STRIPE
+              )
+            }
+          }
+        } catch (error) {
+          Sentry.captureException(error)
         }
       }
     } catch (error) {
@@ -767,6 +832,41 @@ export const handleInvoicePaymentSucceeded = async (
         calculatedExpiryTime.toISOString(),
         transactionId
       )
+
+      // Send subscription confirmation email (best-effort, don't block flow)
+      try {
+        const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+
+        if (accountInfo) {
+          // Process display name for email
+          const processedDisplayName = getDisplayNameForEmail(
+            accountInfo.displayName
+          )
+
+          const period: BillingEmailPeriod = {
+            registered_at: new Date(),
+            expiry_time: calculatedExpiryTime,
+          }
+
+          const emailPlan: BillingEmailPlan = {
+            id: billingPlan.id,
+            name: billingPlan.name,
+            price: billingPlan.price,
+            billing_cycle: billingPlan.billing_cycle,
+          }
+
+          await sendSubscriptionConfirmationEmail(
+            { ...accountInfo, displayName: processedDisplayName },
+            period,
+            emailPlan,
+            BillingPaymentProvider.STRIPE,
+            { amount: amountPaid, currency: currency || 'USD' }
+          )
+        }
+      } catch (error) {
+        Sentry.captureException(error)
+      }
+
       return // Don't proceed to renewal flow
     } catch (error) {
       Sentry.captureException(error)
@@ -792,6 +892,41 @@ export const handleInvoicePaymentSucceeded = async (
           existingPeriodForPlanChange.id,
           transactionId
         )
+
+        // Send subscription confirmation email for plan update
+        try {
+          const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+
+          if (accountInfo) {
+            // Process display name for email
+            const processedDisplayName = getDisplayNameForEmail(
+              accountInfo.displayName
+            )
+
+            const period: BillingEmailPeriod = {
+              registered_at: existingPeriodForPlanChange.registered_at,
+              expiry_time: existingPeriodForPlanChange.expiry_time,
+            }
+
+            const emailPlan: BillingEmailPlan = {
+              id: billingPlan.id,
+              name: billingPlan.name,
+              price: billingPlan.price,
+              billing_cycle: billingPlan.billing_cycle,
+            }
+
+            await sendSubscriptionConfirmationEmail(
+              { ...accountInfo, displayName: processedDisplayName },
+              period,
+              emailPlan,
+              BillingPaymentProvider.STRIPE,
+              { amount: amountPaid, currency: currency || 'USD' }
+            )
+          }
+        } catch (error) {
+          Sentry.captureException(error)
+        }
+
         return // Don't create a new subscription period
       } catch (error) {
         Sentry.captureException(error)
@@ -851,6 +986,41 @@ export const handleInvoicePaymentSucceeded = async (
           calculatedExpiryTime.toISOString(),
           transactionId
         )
+
+        // Send subscription confirmation email for plan update
+        try {
+          const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+
+          if (accountInfo) {
+            // Process display name for email
+            const processedDisplayName = getDisplayNameForEmail(
+              accountInfo.displayName
+            )
+
+            const period: BillingEmailPeriod = {
+              registered_at: new Date(),
+              expiry_time: calculatedExpiryTime,
+            }
+
+            const emailPlan: BillingEmailPlan = {
+              id: billingPlan.id,
+              name: billingPlan.name,
+              price: billingPlan.price,
+              billing_cycle: billingPlan.billing_cycle,
+            }
+
+            await sendSubscriptionConfirmationEmail(
+              { ...accountInfo, displayName: processedDisplayName },
+              period,
+              emailPlan,
+              BillingPaymentProvider.STRIPE,
+              { amount: amountPaid, currency: currency || 'USD' }
+            )
+          }
+        } catch (error) {
+          Sentry.captureException(error)
+        }
+
         return
       }
     } catch (error) {

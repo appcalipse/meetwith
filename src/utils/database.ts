@@ -47,7 +47,10 @@ import {
   VerificationChannel,
 } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
-import { PaymentProvider as BillingPaymentProvider } from '@/types/Billing'
+import {
+  BillingEmailAccountInfo,
+  PaymentProvider as BillingPaymentProvider,
+} from '@/types/Billing'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -1630,6 +1633,35 @@ const getAccountsNotificationSubscriptionEmails = async (
     if (userEmail) userEmails.push(userEmail)
   }
   return userEmails
+}
+
+// Get account info for billing emails (email and display name)
+const getBillingEmailAccountInfo = async (
+  accountAddress: string
+): Promise<BillingEmailAccountInfo | null> => {
+  try {
+    // Get email from account notification subscriptions
+    const email = await getAccountNotificationSubscriptionEmail(
+      accountAddress.toLowerCase()
+    )
+
+    if (!email) {
+      return null
+    }
+
+    // Get account to derive display name
+    const account = await getAccountFromDB(accountAddress.toLowerCase(), false)
+    const displayName =
+      account.preferences?.name || ellipsizeAddress(account.address)
+
+    return {
+      email,
+      displayName,
+    }
+  } catch (error) {
+    Sentry.captureException(error)
+    return null
+  }
 }
 
 const getGroupsAndMembers = async (
@@ -8323,6 +8355,7 @@ export {
   getActivePaymentAccount,
   getActivePaymentAccountDB,
   getActiveSubscriptionPeriod,
+  getBillingEmailAccountInfo,
   getBillingPlanById,
   getBillingPlanIdFromStripeProduct,
   getBillingPlanProvider,
