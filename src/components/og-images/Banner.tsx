@@ -98,7 +98,7 @@ const UserBanner: React.FC<UserBannerProps> = ({
                   flexDirection: 'column',
                   width: '100px',
                   height: '100px',
-                  overflow: 'clip',
+                  overflow: 'hidden',
                 }}
               >
                 {avatar_url ? (
@@ -112,6 +112,7 @@ const UserBanner: React.FC<UserBannerProps> = ({
                     style={{
                       width: '100px',
                       height: '100px',
+                      borderRadius: '50%',
                     }}
                   />
                 ) : (
