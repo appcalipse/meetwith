@@ -23,7 +23,7 @@ export function Jazzicon(props: JazziconProps) {
   return (
     <div
       style={{
-        display: 'flex', // Satori needs this on almost everything
+        display: 'flex',
         width: '100px',
         height: '100px',
         borderRadius: '50%',
