@@ -2,6 +2,8 @@ import { Box, HStack, Text, VStack } from '@chakra-ui/layout'
 import { Image, useBreakpointValue } from '@chakra-ui/react'
 import * as React from 'react'
 
+import { BannerSetting } from '@/types/Account'
+
 import { Avatar } from '../profile/components/Avatar'
 
 interface UserBannerProps {
@@ -10,6 +12,7 @@ interface UserBannerProps {
   owner_account_address: string
   description: string | null
   name: string | null
+  banner_setting?: BannerSetting | null
   calendar_url: string
 }
 const MAX_DESCRIPTION_LENGTH = 120
@@ -25,6 +28,7 @@ const UserBannerBrowser: React.FC<UserBannerProps> = ({
   description,
   owner_account_address,
   name,
+  banner_setting,
 }) => {
   const MAX_LENGTH =
     useBreakpointValue(
@@ -63,36 +67,40 @@ const UserBannerBrowser: React.FC<UserBannerProps> = ({
             alignItems="start"
             gap={6}
           >
-            <HStack gap={5}>
-              <Box
-                width={{ base: '50px', md: '75px', lg: '100px' }}
-                height={{ base: '50px', md: '75px', lg: '100px' }}
-              >
-                <Avatar
-                  address={owner_account_address}
-                  avatar_url={avatar_url}
-                  name={name || ''}
-                />
-              </Box>
-              <Text
-                color="white"
-                fontWeight={700}
-                fontSize={{ lg: '32px', base: '20px', md: '24px' }}
-              >
-                {name}
-              </Text>
-            </HStack>
+            {banner_setting?.show_avatar && (
+              <HStack gap={5}>
+                <Box
+                  width={{ base: '50px', md: '75px', lg: '100px' }}
+                  height={{ base: '50px', md: '75px', lg: '100px' }}
+                >
+                  <Avatar
+                    address={owner_account_address}
+                    avatar_url={avatar_url}
+                    name={name || ''}
+                  />
+                </Box>
+                <Text
+                  color="white"
+                  fontWeight={700}
+                  fontSize={{ lg: '32px', base: '20px', md: '24px' }}
+                >
+                  {name}
+                </Text>
+              </HStack>
+            )}
 
-            <Text
-              fontSize={{ lg: '32px', base: '20px', md: '24px' }}
-              color="white"
-              wordBreak="break-word"
-              whiteSpace="pre-wrap"
-              fontWeight={500}
-              lineHeight="1.2"
-            >
-              {truncateText(description, MAX_LENGTH)}
-            </Text>
+            {banner_setting?.show_description && (
+              <Text
+                fontSize={{ lg: '32px', base: '20px', md: '24px' }}
+                color="white"
+                wordBreak="break-word"
+                whiteSpace="pre-wrap"
+                fontWeight={500}
+                lineHeight="1.2"
+              >
+                {truncateText(description, MAX_LENGTH)}
+              </Text>
+            )}
           </VStack>
         </Box>
       </VStack>
