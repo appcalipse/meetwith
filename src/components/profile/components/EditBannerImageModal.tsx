@@ -2,6 +2,7 @@ import { ArrowBackIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
+  Checkbox,
   HStack,
   Modal,
   ModalCloseButton,
@@ -18,12 +19,13 @@ import {
 import { saveBanner } from '@utils/api_helper'
 import { handleApiError } from '@utils/error_helper'
 import { getCroppedImgRec } from '@utils/image-utils'
-import { useState } from 'react'
+import { ChangeEvent, useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { Area } from 'react-easy-crop/types'
 
 import UserBannerBrowser from '@/components/og-images/BannerBrowser'
 import useAccountContext from '@/hooks/useAccountContext'
+import { BannerSetting } from '@/types/Account'
 import { getAccountDomainUrl } from '@/utils/calendar_manager'
 import { appUrl } from '@/utils/constants'
 
@@ -32,7 +34,7 @@ interface IEditBannerImageModalProps {
   onDialogClose: () => void
   imageSrc: string | undefined
   accountAddress: string | undefined
-  changeBanner: (image: string) => void
+  changeBanner: (image: string, bannerSetting: BannerSetting) => void
 }
 
 const EditBannerImageModal = (props: IEditBannerImageModalProps) => {
@@ -42,6 +44,18 @@ const EditBannerImageModal = (props: IEditBannerImageModalProps) => {
   const [croppedImage, setCroppedImage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [isCropping, setIsCropping] = useState(false)
+  const [bannerSetting, setBannerSetting] = useState<BannerSetting>({
+    show_avatar: true,
+    show_description: true,
+  })
+  const handleBannerSettingChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const name = e.target.name as keyof BannerSetting
+    const state = e.target.checked
+    setBannerSetting(prevState => ({
+      ...prevState,
+      [name]: state,
+    }))
+  }
   const currentAccount = useAccountContext()
   const showCroppedImage = async () => {
     setIsCropping(true)
@@ -74,8 +88,9 @@ const EditBannerImageModal = (props: IEditBannerImageModalProps) => {
         blob,
         `cropped-avatar-${props.accountAddress}.${blob.type.split('/')[1]}`
       )
+      formdata.append('banner_setting', JSON.stringify(bannerSetting))
       const url = await saveBanner(formdata, props.accountAddress as string)
-      props.changeBanner(url)
+      props.changeBanner(url, bannerSetting)
       handleClose()
     } catch (e: unknown) {
       handleApiError('Error saving cropped image', e)
@@ -158,16 +173,78 @@ const EditBannerImageModal = (props: IEditBannerImageModalProps) => {
                 description={currentAccount?.preferences?.description || ''}
                 owner_account_address={currentAccount?.address || ''}
                 name={currentAccount?.preferences.name || ''}
+                banner_setting={bannerSetting}
               />
             </Box>
-            <Button
-              onClick={handleSave}
-              colorScheme="primary"
-              mt={2}
-              isLoading={saving}
+            <HStack
+              flexWrap={'wrap'}
+              w="100%"
+              alignItems="center"
+              justifyContent="center"
             >
-              Save Changes
-            </Button>
+              <Checkbox
+                borderRadius={8}
+                w="fit-content"
+                borderColor={
+                  bannerSetting?.show_avatar
+                    ? 'border-default-primary'
+                    : 'border-inverted-subtle'
+                }
+                colorScheme="primary"
+                isChecked={bannerSetting?.show_avatar}
+                onChange={e => handleBannerSettingChange(e)}
+                name="show_avatar"
+                justifyContent="space-between"
+                my="auto"
+              >
+                <Text
+                  fontWeight="600"
+                  color={
+                    bannerSetting?.show_avatar
+                      ? 'border-default-primary'
+                      : 'border-inverted-subtle'
+                  }
+                  cursor="pointer"
+                >
+                  Show Avatar
+                </Text>
+              </Checkbox>
+              <Checkbox
+                borderRadius={8}
+                w="fit-content"
+                borderColor={
+                  bannerSetting?.show_description
+                    ? 'border-default-primary'
+                    : 'border-inverted-subtle'
+                }
+                colorScheme="primary"
+                isChecked={bannerSetting?.show_description}
+                onChange={e => handleBannerSettingChange(e)}
+                name="show_description"
+                p={4}
+                justifyContent="space-between"
+              >
+                <Text
+                  fontWeight="600"
+                  color={
+                    bannerSetting?.show_description
+                      ? 'border-default-primary'
+                      : 'border-inverted-subtle'
+                  }
+                  cursor="pointer"
+                >
+                  Show Description
+                </Text>
+              </Checkbox>
+              <Button
+                onClick={handleSave}
+                colorScheme="primary"
+                mt={2}
+                isLoading={saving}
+              >
+                Save Changes
+              </Button>
+            </HStack>
           </VStack>
         ) : (
           <VStack gap={4} pb={4} minW={350} p={4}>
