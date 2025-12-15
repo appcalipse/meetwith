@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { addMonths, addYears } from 'date-fns'
+import { addDays, addMonths, addYears } from 'date-fns'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { v4 } from 'uuid'
 
@@ -9,8 +9,10 @@ import {
   SubscribeResponseCrypto,
 } from '@/types/Billing'
 import {
+  createSubscriptionPeriod,
   getActiveSubscriptionPeriod,
   getBillingPlanById,
+  hasSubscriptionHistory,
 } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -24,8 +26,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const accountAddress = req.session.account.address.toLowerCase()
 
       // Validate request body
-      const { billing_plan_id, subscription_type = 'initial' } =
-        req.body as SubscribeRequestCrypto
+      const {
+        billing_plan_id,
+        subscription_type = 'initial',
+        is_trial,
+      } = req.body as SubscribeRequestCrypto
 
       if (!billing_plan_id) {
         return res.status(400).json({ error: 'billing_plan_id is required' })
@@ -44,6 +49,42 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const billingPlan = await getBillingPlanById(billing_plan_id)
       if (!billingPlan) {
         return res.status(404).json({ error: 'Billing plan not found' })
+      }
+
+      // Trial flow: auto-create 14-day subscription without payment
+      if (is_trial) {
+        const hasHistory = await hasSubscriptionHistory(accountAddress)
+        if (hasHistory) {
+          return res.status(400).json({
+            error:
+              'Trial not available: account already has subscription history',
+          })
+        }
+
+        const trialExpiry = addDays(new Date(), 14)
+        await createSubscriptionPeriod(
+          accountAddress,
+          billing_plan_id,
+          'active',
+          trialExpiry.toISOString(),
+          null
+        )
+
+        const trialResponse: SubscribeResponseCrypto = {
+          success: true,
+          amount: 0,
+          currency: 'USD',
+          billing_plan_id,
+          purchaseData: {
+            subscription_type: 'initial',
+            billing_plan_id,
+            account_address: accountAddress,
+            message_channel: `subscription:trial:${v4()}:${billing_plan_id}`,
+            meeting_type_id: null,
+          },
+        }
+
+        return res.status(200).json(trialResponse)
       }
 
       // Extension Logic: Check if user has existing active subscription
