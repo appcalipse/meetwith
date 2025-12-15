@@ -23,12 +23,11 @@ export function Jazzicon(props: JazziconProps) {
   return (
     <div
       style={{
-        display: 'flex', // Satori needs this on almost everything
+        display: 'flex',
         width: '100px',
         height: '100px',
         borderRadius: '50%',
         backgroundColor: paperColor.hex(),
-        overflow: 'hidden',
       }}
     >
       {times(DEFAULT_SHAPE_COUNT).map(i => (
