@@ -107,6 +107,11 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
 
   const billingStatus = billingSubscription?.status ?? null
 
+  const isCryptoTrial =
+    billingSubscriptionResponse?.payment_provider !== PaymentProvider.STRIPE &&
+    billingSubscription?.billing_plan_id &&
+    !billingSubscription?.transaction_id
+
   const billingExpiry = billingSubscriptionResponse?.expires_at
     ? format(new Date(billingSubscriptionResponse.expires_at), 'PPP')
     : null
@@ -294,8 +299,10 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   const isProCardActive = hasActiveSubscription || currentPlan === Plan.PRO
 
   const activeBadge =
-    hasActiveSubscription &&
-    (billingStatus === 'active' || billingStatus === 'cancelled')
+    isCryptoTrial && hasActiveSubscription
+      ? 'Trial'
+      : hasActiveSubscription &&
+        (billingStatus === 'active' || billingStatus === 'cancelled')
       ? 'Active'
       : undefined
 
@@ -397,7 +404,9 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
                 hasActiveSubscription &&
                 billingSubscriptionResponse?.payment_provider !==
                   PaymentProvider.STRIPE
-                  ? 'Cancel Subscription'
+                  ? isCryptoTrial
+                    ? 'Cancel Trial'
+                    : 'Cancel Subscription'
                   : undefined
               }
               onTertiaryCta={

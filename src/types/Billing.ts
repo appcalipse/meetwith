@@ -116,6 +116,10 @@ export interface SubscribeRequestCrypto {
   is_trial?: boolean // Optional flag to start a crypto trial
 }
 
+export interface TrialEligibilityResponse {
+  eligible: boolean
+}
+
 // Response after initiating crypto subscription
 // Returns payment configuration for Thirdweb payment widget
 export interface SubscribeResponseCrypto {

@@ -1,4 +1,10 @@
 import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
   Box,
   Button,
   Container,
@@ -19,7 +25,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { PaymentStep, PaymentType } from '@utils/constants/meeting-types'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
 
 import useAccountContext from '@/hooks/useAccountContext'
@@ -29,6 +35,7 @@ import {
   SubscribeRequest,
   SubscribeRequestCrypto,
   SubscribeResponseCrypto,
+  TrialEligibilityResponse,
 } from '@/types/Billing'
 import {
   AcceptedToken,
@@ -37,6 +44,7 @@ import {
 } from '@/types/chains'
 import {
   getBillingPlans,
+  getTrialEligibility,
   subscribeToBillingPlan,
   subscribeToBillingPlanCrypto,
 } from '@/utils/api_helper'
@@ -52,6 +60,12 @@ const BillingCheckout = () => {
     onOpen: onCryptoModalOpen,
     onClose: onCryptoModalClose,
   } = useDisclosure()
+  const {
+    isOpen: isTrialDialogOpen,
+    onOpen: onTrialDialogOpen,
+    onClose: onTrialDialogClose,
+  } = useDisclosure()
+  const trialCancelRef = useRef<HTMLButtonElement | null>(null)
 
   const monthlyPrice = 8
   const yearlyPrice = 80
@@ -72,6 +86,19 @@ const BillingCheckout = () => {
     ? getSupportedChainFromId(defaultChainId)
     : supportedChains.find(chain => chain.walletSupported)
   const defaultToken = AcceptedToken.USDC
+
+  // Trial eligibility
+  const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
+    queryKey: ['trialEligibility'],
+    queryFn: getTrialEligibility,
+    staleTime: 60000,
+    refetchOnMount: true,
+    onError: (err: unknown) => {
+      handleApiError('Failed to check trial eligibility', err)
+    },
+  })
+
+  const isTrialEligible = trialEligibility?.eligible === true
 
   // Fetch billing plans
   const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
@@ -109,7 +136,12 @@ const BillingCheckout = () => {
   const cryptoSubscribeMutation = useMutation({
     mutationFn: (request: SubscribeRequestCrypto) =>
       subscribeToBillingPlanCrypto(request),
-    onSuccess: response => {
+    onSuccess: (response, variables) => {
+      // Trials: no payment modal; redirect to refresh subscription card
+      if (variables?.is_trial || response.amount <= 0) {
+        router.push('/dashboard/subscriptions?checkout=success')
+        return
+      }
       setCryptoPaymentConfig(response)
       onCryptoModalOpen()
     },
@@ -174,6 +206,37 @@ const BillingCheckout = () => {
     } catch (error) {
       throw error
     }
+  }
+
+  const handleStartCryptoTrial = async () => {
+    const selectedPlan = plans.find(
+      plan => plan.billing_cycle === (isYearly ? 'yearly' : 'monthly')
+    )
+
+    if (!selectedPlan) {
+      handleApiError(
+        'Failed to start trial',
+        new Error('Billing plan not found')
+      )
+      return
+    }
+
+    const request: SubscribeRequestCrypto = {
+      billing_plan_id: selectedPlan.id,
+      subscription_type: 'initial',
+      is_trial: true,
+    }
+
+    try {
+      await cryptoSubscribeMutation.mutateAsync(request)
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const handleConfirmCryptoTrial = async () => {
+    await handleStartCryptoTrial()
+    onTrialDialogClose()
   }
 
   const handleCryptoPaymentSuccess = () => {
@@ -305,7 +368,11 @@ const BillingCheckout = () => {
           >
             <PaymentMethod
               id="fiat"
-              name="Pay with Card"
+              name={
+                isTrialEligible
+                  ? 'Start 14-day free trial (card)'
+                  : 'Pay with Card'
+              }
               tag="Your fiat cards"
               step={PaymentStep.SELECT_PAYMENT_METHOD}
               icon={FiatLogo}
@@ -324,7 +391,13 @@ const BillingCheckout = () => {
                 cryptoSubscribeMutation.isLoading ||
                 !defaultChain
               }
-              onClick={handlePayWithCrypto}
+              onClick={
+                isTrialEligible
+                  ? async () => {
+                      onTrialDialogOpen()
+                    }
+                  : handlePayWithCrypto
+              }
             />
           </Stack>
         </VStack>
@@ -342,6 +415,59 @@ const BillingCheckout = () => {
           onSuccess={handleCryptoPaymentSuccess}
         />
       )}
+
+      {/* Crypto Trial Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isTrialDialogOpen}
+        onClose={onTrialDialogClose}
+        isCentered
+        leastDestructiveRef={trialCancelRef}
+      >
+        <AlertDialogOverlay bg="blackAlpha.900" />
+        <AlertDialogContent
+          bg="bg-surface"
+          borderColor="border-default"
+          borderWidth="1px"
+        >
+          <AlertDialogHeader
+            fontSize="lg"
+            fontWeight="bold"
+            color="text-primary"
+            pb={2}
+          >
+            Start 14-day crypto trial
+          </AlertDialogHeader>
+          <AlertDialogBody>
+            <VStack align="flex-start" spacing={3}>
+              <Text color="text-primary" fontSize="md">
+                You’ll get full Pro access for 14 days without payment. You can
+                extend to a paid plan at any time, or cancel the trial — access
+                continues until it expires.
+              </Text>
+            </VStack>
+          </AlertDialogBody>
+          <AlertDialogFooter>
+            <Button
+              ref={trialCancelRef}
+              onClick={onTrialDialogClose}
+              isDisabled={cryptoSubscribeMutation.isLoading}
+              variant="ghost"
+            >
+              Not now
+            </Button>
+            <Button
+              colorScheme="primary"
+              ml={3}
+              onClick={handleConfirmCryptoTrial}
+              isLoading={cryptoSubscribeMutation.isLoading}
+              loadingText="Starting trial..."
+              isDisabled={cryptoSubscribeMutation.isLoading}
+            >
+              Start trial
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Container>
   )
 }
