@@ -113,6 +113,7 @@ export interface SubscribeResponse {
 export interface SubscribeRequestCrypto {
   billing_plan_id: string // 'monthly' or 'yearly'
   subscription_type?: 'initial' | 'extension' // Optional, defaults to 'initial'
+  is_trial?: boolean // Optional flag to start a crypto trial
 }
 
 // Response after initiating crypto subscription
