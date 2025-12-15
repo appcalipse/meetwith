@@ -44,6 +44,7 @@ export type Database = {
         Row: {
           availaibility_id: string | null
           avatar_url: string | null
+          banner_setting: Json | null
           banner_url: string | null
           description: string | null
           id: string
@@ -57,6 +58,7 @@ export type Database = {
         Insert: {
           availaibility_id?: string | null
           avatar_url?: string | null
+          banner_setting?: Json | null
           banner_url?: string | null
           description?: string | null
           id?: string
@@ -70,6 +72,7 @@ export type Database = {
         Update: {
           availaibility_id?: string | null
           avatar_url?: string | null
+          banner_setting?: Json | null
           banner_url?: string | null
           description?: string | null
           id?: string
