@@ -25,7 +25,12 @@ import { useActiveWallet } from 'thirdweb/react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
-import { Account, SocialLink, SocialLinkType } from '@/types/Account'
+import {
+  Account,
+  BannerSetting,
+  SocialLink,
+  SocialLinkType,
+} from '@/types/Account'
 import { SupportedChain } from '@/types/chains'
 import { Plan } from '@/types/Subscription'
 import {
@@ -68,12 +73,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   )
   const { push } = useRouter()
   const [nameOptions, setNameOptions] = useState<DisplayName[]>([])
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
-    currentAccount?.preferences?.avatar_url
-  )
-  const [bannerUrl, setBannerUrl] = useState<string | undefined>(
-    currentAccount?.preferences?.banner_url
-  )
 
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | undefined>()
   const {
@@ -133,8 +132,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
             },
           ],
           ...(name?.value ? { name: name.value } : { name: '' }),
-          avatar_url: avatarUrl,
-          banner_url: bannerUrl,
         },
       })
       login(updatedAccount)
@@ -188,7 +185,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       )
     }
 
-    setAvatarUrl(currentAccount?.preferences?.avatar_url || undefined)
     setNewProDomain(currentAccount?.subscriptions?.[0]?.domain ?? '')
   }
 
@@ -196,7 +192,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
     const subscriptions = await syncSubscriptions()
     currentAccount!.subscriptions = subscriptions
-    await login(currentAccount!)
+    login(currentAccount!)
     setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
   }
 
@@ -366,7 +362,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
             onDialogClose={closeEditImageModal}
             accountAddress={currentAccount?.address}
             changeAvatar={avatar => {
-              setAvatarUrl(avatar)
               currentAccount.preferences.avatar_url = avatar
               void login(currentAccount)
             }}
@@ -377,9 +372,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
               <Box width="64px" height="64px">
                 <Avatar
                   address={currentAccount.address}
-                  avatar_url={
-                    avatarUrl || currentAccount.preferences?.avatar_url
-                  }
+                  avatar_url={currentAccount.preferences?.avatar_url}
                   name={getAccountDisplayName(currentAccount)}
                 />
               </Box>
@@ -506,7 +499,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
               pos="relative"
               rounded={6}
             >
-              {bannerUrl && (
+              {currentAccount?.preferences?.banner_url && (
                 <Button
                   flex={1}
                   colorScheme="primary"
@@ -524,9 +517,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                 </Button>
               )}
               <VStack gap={1}>
-                {bannerUrl ? (
+                {currentAccount?.preferences?.banner_url ? (
                   <Image
-                    src={bannerUrl}
+                    src={currentAccount?.preferences?.banner_url}
                     alt="Banner Image"
                     width={'75px'}
                     height={'auto'}
@@ -547,7 +540,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                   onClick={hanldeSelectBanner}
                   textDecoration="underline"
                 >
-                  {bannerUrl ? 'Upload new banner' : 'Upload banner'}
+                  {currentAccount?.preferences?.banner_url
+                    ? 'Upload new banner'
+                    : 'Upload banner'}
                 </Button>
               </VStack>
             </VStack>
@@ -599,9 +594,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         onDialogClose={closeEditBannerImageModal}
         imageSrc={selectedImageUrl || ''}
         accountAddress={currentAccount?.address}
-        changeBanner={(url: string) => {
-          setBannerUrl(url)
+        changeBanner={(url: string, bannerSetting: BannerSetting) => {
           currentAccount.preferences.banner_url = url
+          currentAccount.preferences.banner_setting = bannerSetting
           void login(currentAccount)
           closeEditBannerImageModal()
         }}

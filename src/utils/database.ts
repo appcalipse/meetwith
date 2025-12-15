@@ -31,6 +31,7 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
+  BannerSetting,
   BaseMeetingType,
   DiscordConnectedAccounts,
   MeetingType,
@@ -125,7 +126,7 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
+import { Json, Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
 import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
@@ -585,7 +586,8 @@ const updatePreferenceBanner = async (
   address: string,
   filename: string,
   buffer: Buffer,
-  mimeType: string
+  mimeType: string,
+  banner_setting: BannerSetting
 ) => {
   const contentType = mimeType
   const file = `uploads/banners/${Date.now()}-${filename}`
@@ -615,7 +617,7 @@ const updatePreferenceBanner = async (
 
   const { error: updateError } = await db.supabase
     .from<Tables<'account_preferences'>>('account_preferences')
-    .update({ banner_url: publicUrl })
+    .update({ banner_url: publicUrl, banner_setting: banner_setting as Json })
     .eq('owner_account_address', address.toLowerCase())
   if (updateError) {
     Sentry.captureException(updateError)
