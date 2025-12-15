@@ -6,6 +6,7 @@ import satori from 'satori'
 import sharp from 'sharp'
 
 import UserBanner from '@/components/og-images/Banner'
+import { BannerSetting } from '@/types/Account'
 import { appUrl } from '@/utils/constants'
 import {
   getAccountPreferencesLean,
@@ -78,6 +79,7 @@ export default async function handler(
         banner_url={user_preferences.banner_url}
         name={user_preferences.name}
         owner_account_address={user_preferences.owner_account_address}
+        banner_setting={user_preferences.banner_setting as BannerSetting}
       />,
       {
         width: 1200,
