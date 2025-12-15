@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
+import { Attendee } from 'ics'
 import {
   createAccount,
   createCalendarObject,
@@ -19,14 +20,14 @@ import {
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { Intents } from '@/types/Dashboard'
-import { MeetingChangeType, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { MeetingChangeType } from '@/types/Meeting'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
-import { generateIcs } from '../calendar_manager'
 import { appUrl } from '../constants'
-import { decryptContent, mockEncrypted } from '../cryptography'
-import { CalendarService } from './calendar.service.types'
+import { decryptContent } from '../cryptography'
+import { isValidEmail } from '../validations'
+import { generateIcsServer } from './calendar.backend.helper'
+import { ICaldavCalendarService } from './calendar.service.types'
 
 // ical.js has no ts typing
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -69,9 +70,7 @@ export interface CaldavCredentials {
  * - username (usually an email)
  * - password
  */
-export default class CaldavCalendarService
-  implements CalendarService<TimeSlotSource.ICLOUD>
-{
+export default class CaldavCalendarService implements ICaldavCalendarService {
   private url = ''
   private credentials: Record<string, string> = {}
   private headers: Record<string, string> = {}
@@ -130,8 +129,13 @@ export default class CaldavCalendarService
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    calendarId?: string
-  ): Promise<NewCalendarEventType> {
+    calendarId?: string,
+    useParticipants?: boolean
+  ): Promise<
+    NewCalendarEventType & {
+      attendees: Attendee[]
+    }
+  > {
     try {
       const calendars = await this.listCalendars()
 
@@ -139,41 +143,14 @@ export default class CaldavCalendarService
         ? calendars.find(c => c.url === calendarId)
         : calendars[0]
 
-      const participantsInfo: ParticipantInfo[] =
-        meetingDetails.participants.map(participant => ({
-          type: participant.type,
-          name: participant.name,
-          account_address: participant.account_address,
-          status: participant.status,
-          slot_id: participant.slot_id,
-          meeting_id: meetingDetails.meeting_id,
-        }))
-
-      const slot_id = meetingDetails.participants.filter(
-        p => p.account_address === calendarOwnerAccountAddress
-      )[0].slot_id
-
+      let ics: Awaited<ReturnType<typeof generateIcsServer>>
       try {
-        const ics = generateIcs(
-          {
-            meeting_url: meetingDetails.meeting_url,
-            start: new Date(meetingDetails.start),
-            end: new Date(meetingDetails.end),
-            id: meetingDetails.meeting_id,
-            meeting_id: meetingDetails.meeting_id,
-            created_at: new Date(meeting_creation_time),
-            participants: participantsInfo,
-            version: 0,
-            related_slot_ids: [],
-            meeting_info_encrypted: mockEncrypted,
-            reminders: meetingDetails.meetingReminders,
-            recurrence: meetingDetails.meetingRepeat,
-            title: meetingDetails.title,
-          },
+        ics = await generateIcsServer(
+          meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
-          false,
+          `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          useParticipants,
           {
             accountAddress: calendarOwnerAccountAddress,
             email: this.getConnectedEmail(),
@@ -200,25 +177,15 @@ export default class CaldavCalendarService
           )
         }
       } catch (err) {
+        console.error(err)
         Sentry.captureException(err)
         //Fastmail issue that doesn't accept attendees
-        const ics = generateIcs(
-          {
-            meeting_url: meetingDetails.meeting_url,
-            start: new Date(meetingDetails.start),
-            end: new Date(meetingDetails.end),
-            id: meetingDetails.meeting_id,
-            meeting_id: meetingDetails.meeting_id,
-            created_at: new Date(meeting_creation_time),
-            participants: participantsInfo,
-            version: 0,
-            related_slot_ids: [],
-            meeting_info_encrypted: mockEncrypted,
-          },
+        ics = await generateIcsServer(
+          meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
-          true
+          `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          false
         )
 
         if (!ics.value || ics.error)
@@ -241,14 +208,14 @@ export default class CaldavCalendarService
           )
         }
       }
-
       return {
-        uid: meetingDetails.meeting_id,
+        uid: meetingDetails.meeting_id.replaceAll('-', ''),
         id: meetingDetails.meeting_id,
         type: 'Cal Dav',
         password: '',
         url: '',
         additionalInfo: {},
+        attendees: ics.attendees,
       }
     } catch (reason) {
       Sentry.captureException(reason)
@@ -258,55 +225,42 @@ export default class CaldavCalendarService
 
   async updateEvent(
     calendarOwnerAccountAddress: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
     calendarId: string
-  ): Promise<NewCalendarEventType> {
+  ): Promise<
+    NewCalendarEventType & {
+      attendees: Attendee[]
+    }
+  > {
     try {
+      const { meeting_id } = meetingDetails
       const events = await this.getEventsByUID(meeting_id)
+      const eventToUpdate = events.find(
+        event => event.uid === meeting_id.replaceAll('-', '')
+      )
+      const useParticipants =
+        eventToUpdate &&
+        eventToUpdate.attendees
+          .map((a: string[]) => a.map(val => val.replace(/^MAILTO:/i, '')))
+          .flat()
+          .filter(
+            (a: string) => isValidEmail(a) && a !== this.getConnectedEmail()
+          ).length > 0
 
-      const participantsInfo: ParticipantInfo[] =
-        meetingDetails.participants.map(participant => ({
-          type: participant.type,
-          name: participant.name,
-          account_address: participant.account_address,
-          status: participant.status,
-          slot_id: participant.slot_id,
-          meeting_id,
-        }))
-
-      const slot_id = meetingDetails.participants.filter(
-        p => p.account_address === calendarOwnerAccountAddress
-      )[0].slot_id
-
-      const ics = generateIcs(
-        {
-          meeting_url: meetingDetails.meeting_url,
-          start: new Date(meetingDetails.start),
-          end: new Date(meetingDetails.end),
-          id: meeting_id,
-          created_at: new Date(),
-          participants: participantsInfo,
-          version: 0,
-          related_slot_ids: [],
-          meeting_id,
-          meeting_info_encrypted: mockEncrypted,
-          reminders: meetingDetails.meetingReminders,
-          recurrence: meetingDetails.meetingRepeat,
-        },
+      const ics = await generateIcsServer(
+        meetingDetails,
         calendarOwnerAccountAddress,
         MeetingChangeType.UPDATE,
-        `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
-        false,
+        `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+        useParticipants,
         {
           accountAddress: calendarOwnerAccountAddress,
           email: this.getConnectedEmail(),
         }
       )
 
-      if (!ics.value || ics.error) throw new Error('Error creating iCalString')
-
-      const eventToUpdate = events.filter(event => event.uid === meeting_id)[0]
+      if (!ics.value || ics.error || !eventToUpdate)
+        throw new Error('Error creating iCalString')
 
       const response = await updateCalendarObject({
         calendarObject: {
@@ -319,23 +273,12 @@ export default class CaldavCalendarService
       })
 
       if (response.status === 403) {
-        const ics2 = generateIcs(
-          {
-            meeting_url: meetingDetails.meeting_url,
-            start: new Date(meetingDetails.start),
-            end: new Date(meetingDetails.end),
-            id: meeting_id,
-            created_at: new Date(),
-            participants: participantsInfo,
-            version: 0,
-            related_slot_ids: [],
-            meeting_id,
-            meeting_info_encrypted: mockEncrypted,
-          },
+        const ics2 = await generateIcsServer(
+          meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.UPDATE,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
-          true
+          `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          false
         )
 
         if (!ics.value || ics.error)
@@ -353,12 +296,13 @@ export default class CaldavCalendarService
       }
 
       return {
-        uid: meeting_id,
+        uid: meeting_id.replaceAll('-', ''),
         id: meeting_id,
         type: 'Cal Dav',
         password: '',
         url: '',
         additionalInfo: {},
+        attendees: ics.attendees,
       }
     } catch (reason) {
       Sentry.captureException(reason)
@@ -368,9 +312,9 @@ export default class CaldavCalendarService
   async deleteEvent(meeting_id: string, calendarId: string): Promise<void> {
     try {
       const events = await this.getEventsByUID(meeting_id)
-
-      const eventsToDelete = events.filter(event => event.uid === meeting_id)
-
+      const eventsToDelete = events.filter(
+        event => event.uid === meeting_id.replaceAll('-', '')
+      )
       await Promise.all(
         eventsToDelete.map(event => {
           return deleteCalendarObject({
@@ -383,6 +327,7 @@ export default class CaldavCalendarService
         })
       )
     } catch (reason) {
+      console.error(reason)
       Sentry.captureException(reason)
       throw reason
     }
@@ -395,38 +340,110 @@ export default class CaldavCalendarService
   ): Promise<EventBusyDate[]> {
     const calendars = await this.listCalendars()
 
-    const calendarObjectsFromEveryCalendar = (
-      await Promise.all(
-        calendars
-          .filter(cal => calendarIds.includes(cal.url!))
-          .map(calendar =>
-            fetchCalendarObjects({
-              calendar,
-              headers: this.headers,
-              expand: true,
-              timeRange: {
-                start: new Date(dateFrom).toISOString(),
-                end: new Date(dateTo).toISOString(),
-              },
-            })
-          )
-      )
-    ).flat()
+    // CalDAV does not support pagination like Google Calendar (nextPageToken) or Office 365 (@odata.nextLink).
+    // Instead, we implement time-range filtering in chunks to ensure all events are retrieved.
+    const CHUNK_SIZE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
 
-    const events = calendarObjectsFromEveryCalendar
-      .filter(e => !!e.data)
-      .map(object => {
-        const jcalData = ICAL.parse(object.data)
-        const vcalendar = new ICAL.Component(jcalData)
-        const vevent = vcalendar.getFirstSubcomponent('vevent')
-        const event = new ICAL.Event(vevent)
+    const dateFromMs = new Date(dateFrom).getTime()
+    const dateToMs = new Date(dateTo).getTime()
+    const totalRangeMs = dateToMs - dateFromMs
 
-        return {
-          start: event.startDate.toJSDate().toISOString(),
-          end: event.endDate.toJSDate().toISOString(),
-        }
+    const fetchEventsForCalendar = async (
+      calendar: DAVCalendar,
+      start: string,
+      end: string
+    ) => {
+      try {
+        const objects = await fetchCalendarObjects({
+          calendar,
+          headers: this.headers,
+          expand: true,
+          timeRange: {
+            start: new Date(start).toISOString(),
+            end: new Date(end).toISOString(),
+          },
+        })
+
+        return objects
+          .filter(e => !!e.data)
+          .map(object => {
+            const jcalData = ICAL.parse(object.data)
+            const vcalendar = new ICAL.Component(jcalData)
+            const vevent = vcalendar.getFirstSubcomponent('vevent')
+            const event = new ICAL.Event(vevent)
+
+            return {
+              start: event.startDate.toJSDate().toISOString(),
+              end: event.endDate.toJSDate().toISOString(),
+              title: event.summary || '',
+              eventId: object.url || undefined,
+              email: this.email,
+              webLink: object.url || undefined,
+              recurrenceId: event.recurrenceId
+                ? event.recurrenceId.toString()
+                : undefined,
+            }
+          })
+      } catch (error) {
+        console.warn(
+          `Failed to fetch events for calendar ${calendar.url} in range ${start} to ${end}`,
+          error
+        )
+        Sentry.captureException(error)
+        return []
+      }
+    }
+
+    // Split the time range into 7-day chunks and fetch events for each chunk
+    const chunks: Array<{ start: Date; end: Date }> = []
+    let currentStart = dateFromMs
+
+    while (currentStart < dateToMs) {
+      const chunkEnd = Math.min(currentStart + CHUNK_SIZE_MS, dateToMs)
+      chunks.push({
+        start: new Date(currentStart),
+        end: new Date(chunkEnd),
       })
-    return Promise.resolve(events)
+      currentStart = chunkEnd
+    }
+
+    // Fetch events for each calendar and chunk in parallel
+    const allEventsPromises = calendars
+      .filter(cal => calendarIds.includes(cal.url!))
+      .map(async calendar => {
+        const chunkPromises = chunks.map(chunk =>
+          fetchEventsForCalendar(
+            calendar,
+            chunk.start.toISOString(),
+            chunk.end.toISOString()
+          )
+        )
+        const chunkResults = await Promise.all(chunkPromises)
+        return chunkResults.flat()
+      })
+
+    const allEventsArrays = await Promise.all(allEventsPromises)
+    const allEvents = allEventsArrays.flat()
+
+    // Deduplicate events using a composite key that includes recurrenceId for recurring events.
+    // This prevents filtering out recurring meeting instances, which share the same eventId (UID)
+    const uniqueEventsMap = new Map<string, EventBusyDate>()
+    for (const event of allEvents) {
+      const eventWithRecurrence = event as EventBusyDate & {
+        recurrenceId?: string
+      }
+      const eventKey = eventWithRecurrence.recurrenceId
+        ? `${event.eventId || 'unknown'}_${eventWithRecurrence.recurrenceId}`
+        : `${event.eventId || 'unknown'}_${new Date(event.start).getTime()}`
+
+      if (!uniqueEventsMap.has(eventKey)) {
+        const { recurrenceId, ...eventWithoutRecurrenceId } =
+          eventWithRecurrence
+        uniqueEventsMap.set(eventKey, eventWithoutRecurrenceId)
+      }
+    }
+
+    return Array.from(uniqueEventsMap.values())
   }
 
   async listCalendars() {
@@ -536,7 +553,6 @@ export default class CaldavCalendarService
     const events = []
 
     const calendars = await this.listCalendars()
-
     for (const cal of calendars) {
       const calEvents = await this.getEvents(cal.url, null, null, [
         `${cal.url}${uid}.ics`,

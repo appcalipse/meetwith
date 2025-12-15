@@ -23,13 +23,13 @@ import {
   getPollParticipantById,
   updateGuestParticipantDetails,
 } from '@/utils/api_helper'
-import { getGuestPollDetails, saveGuestPollDetails } from '@/utils/storage'
+import { saveGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
 
 interface GuestDetailsFormProps {
   pollData: QuickPollBySlugResponse
-  onSuccess: () => void
+  onSuccess: (isProfileUpdateOnly?: boolean) => void
   pollTitle?: string
   onNavigateBack?: () => void
 }
@@ -98,18 +98,29 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
 
     try {
       let participantId = currentParticipantId
+      let isProfileUpdateOnly = false
 
-      if (currentParticipantId && calendarConnected) {
+      // Determine if calendar was just connected in this session
+      const isCalendarJustConnected =
+        calendarConnected === 'true' ||
+        (Array.isArray(calendarConnected) && calendarConnected.includes('true'))
+      if (
+        currentParticipantId &&
+        guestAvailabilitySlots.length === 0 &&
+        !isCalendarJustConnected
+      ) {
         await updateGuestParticipantDetails(
           currentParticipantId,
           fullName.trim(),
           email.trim().toLowerCase()
         )
+        isProfileUpdateOnly = true
         showSuccessToast(
-          'Details saved!',
-          'Your calendar is connected and your details have been saved.'
+          'Profile updated!',
+          'Your name and email have been updated successfully.'
         )
       } else {
+        // Save availability
         const response = await addOrUpdateGuestParticipantWithAvailability(
           pollData.poll.slug,
           email.trim().toLowerCase(),
@@ -136,7 +147,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
 
       setIsEditingAvailability(false)
 
-      onSuccess()
+      onSuccess(isProfileUpdateOnly)
     } catch (error) {
       showErrorToast(
         'Failed to save details',

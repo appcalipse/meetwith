@@ -245,27 +245,50 @@ export const getMeetingBoundaries = (
   }
 }
 
-export const formatWithOrdinal = (dateTime: LuxonInterval<true>) => {
-  const zonedStart = dateTime.start
-  const zonedEnd = dateTime.end
-
-  const day = zonedStart.day
-  const suffix = ['th', 'st', 'nd', 'rd'][day % 10 > 3 ? 0 : day % 10]
-
-  // Same day interval
-  if (zonedStart.hasSame(zonedEnd, 'day')) {
-    return (
-      zonedStart
-        .toFormat('EEE, {**} MMMM - h:mm')
-        .replace('{**}', `${day}${suffix}`) +
-      ` - ${zonedEnd.toFormat('h:mm a')}`
-    )
+const getOrdinalSuffix = (day: number) => {
+  if (day >= 11 && day <= 13) {
+    return 'th'
   }
 
-  // Cross-day interval (rare for most meeting slots)
-  return `${zonedStart.toFormat('EEE, d MMM h:mm')} - ${zonedEnd.toFormat(
-    'EEE, d MMM h:mm a'
-  )}`
+  switch (day % 10) {
+    case 1:
+      return 'st'
+    case 2:
+      return 'nd'
+    case 3:
+      return 'rd'
+    default:
+      return 'th'
+  }
+}
+
+export const formatWithOrdinal = (
+  dateTime: LuxonInterval<true>,
+  timezone?: string
+) => {
+  const zone = timezone || dateTime.start.zoneName
+  const zonedStart = dateTime.start.setZone(zone)
+  const zonedEnd = dateTime.end.setZone(zone)
+
+  const startDay = zonedStart.day
+  const endDay = zonedEnd.day
+  const startSuffix = getOrdinalSuffix(startDay)
+  const endSuffix = getOrdinalSuffix(endDay)
+
+  const formattedStartDate = `${zonedStart.toFormat(
+    'EEE, MMM'
+  )} ${startDay}${startSuffix}`
+  const formattedStartTime = zonedStart.toFormat('h:mm a')
+  const formattedEndTime = zonedEnd.toFormat('h:mm a')
+
+  if (zonedStart.hasSame(zonedEnd, 'day')) {
+    return `${formattedStartDate} • ${formattedStartTime} - ${formattedEndTime}`
+  }
+
+  const formattedEndDate = `${zonedEnd.toFormat(
+    'EEE, MMM'
+  )} ${endDay}${endSuffix}`
+  return `${formattedStartDate} ${formattedStartTime} - ${formattedEndDate} ${formattedEndTime}`
 }
 export const getFormattedDateAndDuration = (
   timezone: string,
