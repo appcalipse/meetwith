@@ -8083,6 +8083,23 @@ const getActiveSubscriptionPeriod = async (
   return data
 }
 
+// Check if an account has any subscription history
+const hasSubscriptionHistory = async (
+  accountAddress: string
+): Promise<boolean> => {
+  const { count, error } = await db.supabase
+    .from('subscriptions')
+    .select('*', { count: 'exact', head: true })
+    .eq('owner_account', accountAddress.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to check subscription history: ${error.message}`)
+  }
+
+  return (count ?? 0) > 0
+}
+
 // Get all subscription periods for an account (history)
 const getSubscriptionPeriodsByAccount = async (
   accountAddress: string
@@ -8373,6 +8390,7 @@ export {
   handleMeetingCancelSync,
   handleUpdateTransactionStatus,
   handleWebhookEvent,
+  hasSubscriptionHistory,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
