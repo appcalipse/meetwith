@@ -216,3 +216,27 @@ export interface StripeInvoiceWebhookData {
   period_start: number
   period_end: number
 }
+
+// =====================================================
+// Email Helper Types
+// =====================================================
+
+// Account info for billing emails
+export interface BillingEmailAccountInfo {
+  email: string
+  displayName: string
+}
+
+// Period info for billing emails
+export interface BillingEmailPeriod {
+  registered_at: string | Date
+  expiry_time: string | Date
+}
+
+// Plan info for billing emails
+export interface BillingEmailPlan {
+  id: string
+  name: string
+  price: number
+  billing_cycle?: string | null
+}

@@ -5,6 +5,12 @@ import path from 'path'
 import puppeteer from 'puppeteer'
 import { CreateEmailOptions, Resend } from 'resend'
 
+import {
+  BillingEmailAccountInfo,
+  BillingEmailPeriod,
+  BillingEmailPlan,
+  PaymentProvider,
+} from '@/types/Billing'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { Group } from '@/types/Group'
 import { MeetingChangeType } from '@/types/Meeting'
@@ -25,6 +31,7 @@ import { appUrl } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
 import { getOwnerPublicUrlServer } from './database'
+import { formatDateForEmail, getDisplayNameForEmail } from './email_utils'
 import { generateIcsServer } from './services/calendar.backend.helper'
 import { getCalendars } from './sync_helper'
 import { getAllParticipantsDisplayName } from './user_manager'
@@ -803,6 +810,231 @@ export const sendReceiptEmail = async (
           value: 'email',
         },
       ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+
+// Billing / subscriptions
+
+export const sendSubscriptionConfirmationEmail = async (
+  account: BillingEmailAccountInfo,
+  period: BillingEmailPeriod,
+  billingPlan: BillingEmailPlan,
+  provider: PaymentProvider,
+  transaction?: { amount?: number; currency?: string }
+): Promise<void> => {
+  const email = new Email()
+
+  const periodStart = formatDateForEmail(period.registered_at)
+  const periodEnd = formatDateForEmail(period.expiry_time)
+
+  const locals = {
+    appUrl,
+    displayName: getDisplayNameForEmail(account.displayName),
+    planName: billingPlan.name,
+    price: transaction?.amount ?? billingPlan.price,
+    periodStart,
+    periodEnd,
+    provider,
+  }
+
+  try {
+    const rendered = await email.renderAll(
+      path.resolve('src', 'emails', 'billing', 'subscription_confirmation'),
+      locals
+    )
+
+    const msg: CreateEmailOptions = {
+      to: account.email,
+      subject: rendered.subject!,
+      html: rendered.html!,
+      text: rendered.text,
+      ...defaultResendOptions,
+      tags: [
+        { name: 'billing', value: 'subscription_confirmation' },
+        { name: 'payment_provider', value: provider },
+      ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+
+export const sendSubscriptionCancelledEmail = async (
+  account: BillingEmailAccountInfo,
+  period: BillingEmailPeriod,
+  billingPlan: BillingEmailPlan,
+  provider: PaymentProvider
+): Promise<void> => {
+  const email = new Email()
+
+  const periodStart = formatDateForEmail(period.registered_at)
+  const periodEnd = formatDateForEmail(period.expiry_time)
+
+  const locals = {
+    appUrl,
+    displayName: getDisplayNameForEmail(account.displayName),
+    planName: billingPlan.name,
+    price: billingPlan.price,
+    periodStart,
+    periodEnd,
+    provider,
+  }
+
+  try {
+    const rendered = await email.renderAll(
+      path.resolve('src', 'emails', 'billing', 'subscription_cancelled'),
+      locals
+    )
+
+    const msg: CreateEmailOptions = {
+      to: account.email,
+      subject: rendered.subject!,
+      html: rendered.html!,
+      text: rendered.text,
+      ...defaultResendOptions,
+      tags: [
+        { name: 'billing', value: 'subscription_cancelled' },
+        { name: 'payment_provider', value: provider },
+      ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+
+export const sendSubscriptionExpiredEmail = async (
+  account: BillingEmailAccountInfo,
+  period: BillingEmailPeriod,
+  billingPlan: BillingEmailPlan
+): Promise<void> => {
+  const email = new Email()
+
+  const periodEnd = formatDateForEmail(period.expiry_time)
+  const renewUrl = `${appUrl}/dashboard/subscriptions/billing?mode=extend&plan=${encodeURIComponent(
+    billingPlan.id
+  )}`
+
+  const locals = {
+    appUrl,
+    displayName: getDisplayNameForEmail(account.displayName),
+    periodEnd,
+    renewUrl,
+    planName: billingPlan.name,
+  }
+
+  try {
+    const rendered = await email.renderAll(
+      path.resolve('src', 'emails', 'billing', 'subscription_expired'),
+      locals
+    )
+
+    const msg: CreateEmailOptions = {
+      to: account.email,
+      subject: rendered.subject!,
+      html: rendered.html!,
+      text: rendered.text,
+      ...defaultResendOptions,
+      tags: [{ name: 'billing', value: 'subscription_expired' }],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+
+export const sendSubscriptionRenewalDueEmail = async (
+  account: BillingEmailAccountInfo,
+  period: BillingEmailPeriod,
+  billingPlan: BillingEmailPlan,
+  daysRemaining: number
+): Promise<void> => {
+  const email = new Email()
+
+  const periodEnd = formatDateForEmail(period.expiry_time)
+  const renewUrl = `${appUrl}/dashboard/subscriptions/billing?mode=extend&plan=${encodeURIComponent(
+    billingPlan.id
+  )}`
+
+  const locals = {
+    appUrl,
+    displayName: getDisplayNameForEmail(account.displayName),
+    periodEnd,
+    renewUrl,
+    daysRemaining,
+    planName: billingPlan.name,
+  }
+
+  try {
+    const rendered = await email.renderAll(
+      path.resolve('src', 'emails', 'billing', 'subscription_renewal_due'),
+      locals
+    )
+
+    const msg: CreateEmailOptions = {
+      to: account.email,
+      subject: rendered.subject!,
+      html: rendered.html!,
+      text: rendered.text,
+      ...defaultResendOptions,
+      tags: [{ name: 'billing', value: 'subscription_renewal_due' }],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+
+export const sendCryptoExpiryReminderEmail = async (
+  account: BillingEmailAccountInfo,
+  period: BillingEmailPeriod,
+  billingPlan: BillingEmailPlan,
+  daysRemaining: number
+): Promise<void> => {
+  const email = new Email()
+
+  const periodEnd = formatDateForEmail(period.expiry_time)
+  const renewUrl = `${appUrl}/dashboard/subscriptions/billing?mode=extend&plan=${encodeURIComponent(
+    billingPlan.id
+  )}`
+
+  const locals = {
+    appUrl,
+    displayName: getDisplayNameForEmail(account.displayName),
+    periodEnd,
+    renewUrl,
+    daysRemaining,
+    planName: billingPlan.name,
+  }
+
+  try {
+    const rendered = await email.renderAll(
+      path.resolve('src', 'emails', 'billing', 'subscription_crypto_reminder'),
+      locals
+    )
+
+    const msg: CreateEmailOptions = {
+      to: account.email,
+      subject: rendered.subject!,
+      html: rendered.html!,
+      text: rendered.text,
+      ...defaultResendOptions,
+      tags: [{ name: 'billing', value: 'subscription_crypto_reminder' }],
     }
 
     await resend.emails.send(msg)
