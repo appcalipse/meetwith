@@ -336,6 +336,23 @@ export const saveAvatar = async (
   await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
   return response
 }
+export const saveBanner = async (
+  formData: FormData,
+  address: string
+): Promise<string> => {
+  const response = await internalFetch<string>(
+    `/secure/accounts/banner`,
+    'POST',
+    formData,
+    {},
+    {
+      'Content-Type': 'multipart/form-data',
+    },
+    true
+  )
+  await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
+  return response
+}
 
 export const scheduleMeetingFromServer = async (
   scheduler_address: string,
