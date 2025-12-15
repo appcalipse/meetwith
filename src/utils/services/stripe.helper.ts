@@ -183,6 +183,35 @@ export const handleSubscriptionCreated = async (
     // Likely already exists (unique constraint). Continue silently.
   }
 
+  // If this subscription starts with a trial, create a trial subscription period now
+  // so the user has access during the trial. When the first paid invoice succeeds,
+  // a new paid period will be created via invoice.payment_succeeded.
+  const trialEnd = subscription.trial_end
+  const isTrialingNow =
+    subscription.status === 'trialing' &&
+    trialEnd !== null &&
+    trialEnd !== undefined &&
+    trialEnd * 1000 > Date.now()
+
+  if (isTrialingNow) {
+    try {
+      await createSubscriptionPeriod(
+        accountAddress,
+        billingPlanId,
+        'active',
+        new Date(trialEnd * 1000).toISOString(),
+        null
+      )
+    } catch (error) {
+      // eslint-disable-next-line no-restricted-syntax
+      console.error(
+        '[Stripe webhook] Failed to create trial subscription period on subscription.created',
+        error
+      )
+      Sentry.captureException(error)
+    }
+  }
+
   // Transaction and subscription period will be created when invoice.payment_succeeded fires
   // with billing_reason: 'subscription_create'
 }

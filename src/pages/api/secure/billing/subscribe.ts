@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { addMonths, addYears } from 'date-fns'
 import { NextApiRequest, NextApiResponse } from 'next'
+import Stripe from 'stripe'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
@@ -14,6 +15,7 @@ import {
   getBillingPlanById,
   getBillingPlanProvider,
   getStripeSubscriptionByAccount,
+  hasSubscriptionHistory,
 } from '@/utils/database'
 import { StripeService } from '@/utils/services/stripe.service'
 
@@ -90,6 +92,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const existingSubscription = await getActiveSubscriptionPeriod(
         accountAddress
       )
+      const hasHistory = await hasSubscriptionHistory(accountAddress)
+      const isTrialEligible = !hasHistory
       let calculatedExpiryTime: Date
 
       if (existingSubscription) {
@@ -116,7 +120,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const successUrl = `${appUrl}/dashboard/subscriptions?checkout=success&session_id={CHECKOUT_SESSION_ID}`
       const cancelUrl = `${appUrl}/dashboard/subscriptions?checkout=cancel`
 
-      const session = await stripe.checkout.sessions.create({
+      const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: 'subscription',
         customer: customerId,
         line_items: [
@@ -130,11 +134,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             account_address: accountAddress,
             billing_plan_id: billing_plan_id,
             calculated_expiry_time: calculatedExpiryTime.toISOString(),
+            is_trial: isTrialEligible.toString(),
           },
+          ...(isTrialEligible ? { trial_period_days: 14 } : {}),
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
-      })
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionParams)
 
       const response: SubscribeResponse = {
         success: true,
