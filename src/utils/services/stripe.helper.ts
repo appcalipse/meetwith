@@ -140,8 +140,6 @@ export const handleFeeCollected = async (
   )
 }
 
-// Subscription event handlers (to be implemented in Tasks 4.2, 4.3, 4.4)
-
 export const handleSubscriptionCreated = async (
   event: Stripe.CustomerSubscriptionCreatedEvent
 ) => {
@@ -180,7 +178,7 @@ export const handleSubscriptionCreated = async (
       billingPlanId
     )
   } catch (error) {
-    // Likely already exists (unique constraint). Continue silently.
+    Sentry.captureException(error)
   }
 
   // If this subscription starts with a trial, create a trial subscription period now
@@ -203,17 +201,9 @@ export const handleSubscriptionCreated = async (
         null
       )
     } catch (error) {
-      // eslint-disable-next-line no-restricted-syntax
-      console.error(
-        '[Stripe webhook] Failed to create trial subscription period on subscription.created',
-        error
-      )
       Sentry.captureException(error)
     }
   }
-
-  // Transaction and subscription period will be created when invoice.payment_succeeded fires
-  // with billing_reason: 'subscription_create'
 }
 
 export const handleSubscriptionUpdated = async (
@@ -242,11 +232,7 @@ export const handleSubscriptionUpdated = async (
     )
     actualCancelAt = fullSubscription.cancel_at
   } catch (error) {
-    // eslint-disable-next-line no-restricted-syntax
-    console.error(
-      '[Stripe webhook] subscription.updated - failed to fetch subscription from API',
-      error
-    )
+    Sentry.captureException(error)
   }
 
   // Handle cancellation detection
@@ -292,11 +278,6 @@ export const handleSubscriptionUpdated = async (
         }
       }
     } catch (error) {
-      // eslint-disable-next-line no-restricted-syntax
-      console.error(
-        '[Stripe webhook] Failed to update subscription periods for cancellation',
-        error
-      )
       Sentry.captureException(error)
     }
   } else if (wasJustReactivated) {
@@ -318,11 +299,6 @@ export const handleSubscriptionUpdated = async (
         }
       }
     } catch (error) {
-      // eslint-disable-next-line no-restricted-syntax
-      console.error(
-        '[Stripe webhook] Failed to reactivate subscription periods',
-        error
-      )
       Sentry.captureException(error)
     }
   }
@@ -423,24 +399,11 @@ export const handleSubscriptionUpdated = async (
               }
             }
           } catch (error) {
-            // eslint-disable-next-line no-restricted-syntax
-            console.error(
-              '[Stripe webhook] Failed to fetch subscription from Stripe API',
-              error
-            )
             Sentry.captureException(error)
             return
           }
 
           if (!currentPeriodEnd || typeof currentPeriodEnd !== 'number') {
-            // eslint-disable-next-line no-restricted-syntax
-            console.error(
-              '[Stripe webhook] subscription.current_period_end is missing or invalid after API fetch',
-              {
-                stripeSubscriptionId,
-                currentPeriodEnd,
-              }
-            )
             Sentry.captureException(
               new Error(
                 `Stripe subscription ${stripeSubscriptionId} missing current_period_end after API fetch`
@@ -453,15 +416,6 @@ export const handleSubscriptionUpdated = async (
 
           // Validate the date is valid
           if (isNaN(new Date(newExpiryTime).getTime())) {
-            // eslint-disable-next-line no-restricted-syntax
-            console.error(
-              '[Stripe webhook] Invalid expiry time calculated from current_period_end',
-              {
-                stripeSubscriptionId,
-                currentPeriodEnd,
-                calculatedExpiryTime: newExpiryTime,
-              }
-            )
             Sentry.captureException(
               new Error(
                 `Invalid expiry time for subscription ${stripeSubscriptionId}: ${newExpiryTime}`
@@ -499,33 +453,17 @@ export const handleSubscriptionUpdated = async (
               }
             }
           }
-
-          // Create new subscription period with new plan and expiry
-          await createSubscriptionPeriod(
-            accountAddress,
-            newBillingPlanId,
-            'active',
-            newExpiryTime,
-            null // transaction_id - will be set when invoice.payment_succeeded is received
-          )
         } catch (error) {
-          // eslint-disable-next-line no-restricted-syntax
-          console.error(
-            '[Stripe webhook] Failed to create subscription period for plan change',
-            error
-          )
           Sentry.captureException(error)
         }
       } else if (newBillingPlanId === null) {
         // Product ID not found in our billing_plan_providers table
-        // This could happen if a product was deleted or not properly configured
         Sentry.captureException(
           new Error(
             `Stripe product ID ${stripeProductId} not found in billing_plan_providers`
           )
         )
       }
-      // If newBillingPlanId === stripeSubscription.billing_plan_id, no update needed
     } else {
       // No subscription items or price/product information available
       // This shouldn't happen in normal operation, but we handle it gracefully
@@ -547,13 +485,7 @@ export const handleSubscriptionUpdated = async (
       )
     }
   } catch (error) {
-    // eslint-disable-next-line no-restricted-syntax
-    console.error(
-      '[Stripe webhook] Failed to detect/update plan changes',
-      error
-    )
     Sentry.captureException(error)
-    // continue; not fatal - subscription status updates still proceed
   }
 }
 
@@ -591,18 +523,8 @@ export const handleSubscriptionDeleted = async (
       }
     }
   } catch (error) {
-    // eslint-disable-next-line no-restricted-syntax
-    console.error(
-      '[Stripe webhook] Failed to expire subscription periods',
-      error
-    )
     Sentry.captureException(error)
   }
-
-  // Note: We intentionally don't update or delete the stripe_subscriptions record
-  // The record remains for historical reference and traceability
-  // The subscription periods being marked as 'expired' is sufficient to revoke access
-  // In the future, we could add a status field to stripe_subscriptions table if needed
 }
 
 export const handleInvoicePaymentSucceeded = async (
@@ -611,11 +533,6 @@ export const handleInvoicePaymentSucceeded = async (
   const invoice = event.data.object
 
   // Get subscription ID from invoice
-  // In webhook events, invoice.subscription can be:
-  // - A string (subscription ID) - most common
-  // - A Stripe.Subscription object (if expanded)
-  // - null/undefined (for one-time invoices)
-  // - Sometimes accessible via invoice.lines.data[0].subscription
   const invoiceData = invoice as unknown as {
     subscription?: string | Stripe.Subscription | null
     lines?: {
@@ -673,14 +590,6 @@ export const handleInvoicePaymentSucceeded = async (
           ? fullSubscriptionIdOrObject
           : fullSubscriptionIdOrObject?.id
     } catch (error) {
-      // eslint-disable-next-line no-restricted-syntax
-      console.error(
-        '[Stripe webhook] invoice.payment_succeeded failed to fetch full invoice for subscription extraction',
-        {
-          invoiceId: invoice.id,
-          error,
-        }
-      )
       Sentry.captureException(error)
     }
   }
@@ -704,15 +613,6 @@ export const handleInvoicePaymentSucceeded = async (
           stripeSubscriptionId = subscriptions.data[0].id
         }
       } catch (error) {
-        // eslint-disable-next-line no-restricted-syntax
-        console.error(
-          '[Stripe webhook] invoice.payment_succeeded failed to lookup subscription via customer',
-          {
-            invoiceId: invoice.id,
-            customerId,
-            error,
-          }
-        )
         Sentry.captureException(error)
       }
     }
@@ -776,11 +676,6 @@ export const handleInvoicePaymentSucceeded = async (
     const transaction = await createSubscriptionTransaction(transactionPayload)
     transactionId = transaction.id
   } catch (error) {
-    // eslint-disable-next-line no-restricted-syntax
-    console.error(
-      '[Stripe webhook] Failed to create transaction for invoice.payment_succeeded',
-      error
-    )
     Sentry.captureException(error)
     return
   }
@@ -792,11 +687,6 @@ export const handleInvoicePaymentSucceeded = async (
       transactionId
     )
   } catch (error) {
-    // eslint-disable-next-line no-restricted-syntax
-    console.error(
-      '[Stripe webhook] Failed to link transaction to stripe subscription',
-      error
-    )
     Sentry.captureException(error)
     // continue; not fatal for subsequent steps
   }
@@ -857,11 +747,6 @@ export const handleInvoicePaymentSucceeded = async (
         calculatedExpiryTime = new Date(currentPeriodEnd * 1000)
       }
     } catch (error) {
-      // eslint-disable-next-line no-restricted-syntax
-      console.error(
-        '[Stripe webhook] invoice.payment_succeeded subscription_create - failed to fetch subscription, calculating from billing plan',
-        error
-      )
       Sentry.captureException(error)
 
       // Fallback: Calculate from billing plan
@@ -884,11 +769,6 @@ export const handleInvoicePaymentSucceeded = async (
       )
       return // Don't proceed to renewal flow
     } catch (error) {
-      // eslint-disable-next-line no-restricted-syntax
-      console.error(
-        '[Stripe webhook] invoice.payment_succeeded failed to create subscription period for subscription_create',
-        error
-      )
       Sentry.captureException(error)
       return // Don't create duplicate period
     }
@@ -914,18 +794,67 @@ export const handleInvoicePaymentSucceeded = async (
         )
         return // Don't create a new subscription period
       } catch (error) {
-        // eslint-disable-next-line no-restricted-syntax
-        console.error(
-          '[Stripe webhook] invoice.payment_succeeded FAILED - Failed to link transaction to existing subscription period',
-          {
-            subscriptionPeriodId: existingPeriodForPlanChange.id,
-            transactionId,
-            error,
-          }
-        )
         Sentry.captureException(error)
-        // Continue to create new period as fallback
       }
+    }
+  }
+
+  // For subscription_update (plan change) without a pre-created period: derive expiry from subscription current_period_end
+  const deriveCurrentPeriodEnd = (
+    subscriptionObj?: Stripe.Subscription | null
+  ): number | undefined => {
+    if (!subscriptionObj) {
+      return undefined
+    }
+
+    const topLevel = (subscriptionObj as any)?.current_period_end
+    if (typeof topLevel === 'number') {
+      return topLevel
+    }
+
+    const items = (subscriptionObj as any)?.items?.data
+    if (Array.isArray(items) && items.length > 0) {
+      const first = items[0] as any
+      if (typeof first?.current_period_end === 'number') {
+        return first.current_period_end
+      }
+    }
+
+    return undefined
+  }
+
+  if (invoiceBillingReason === 'subscription_update') {
+    try {
+      let fullSubscription: Stripe.Subscription | null = null
+
+      // Try to use expanded subscription on invoice first
+      const invoiceSubscription = (invoice as any).subscription
+      if (invoiceSubscription && typeof invoiceSubscription !== 'string') {
+        fullSubscription = invoiceSubscription as Stripe.Subscription
+      }
+
+      if (!fullSubscription && stripeSubscriptionId) {
+        const stripe = new StripeService()
+        fullSubscription = await stripe.subscriptions.retrieve(
+          stripeSubscriptionId
+        )
+      }
+
+      const currentPeriodEnd = deriveCurrentPeriodEnd(fullSubscription)
+
+      if (currentPeriodEnd && typeof currentPeriodEnd === 'number') {
+        const calculatedExpiryTime = new Date(currentPeriodEnd * 1000)
+        await createSubscriptionPeriod(
+          accountAddress,
+          billingPlanId,
+          'active',
+          calculatedExpiryTime.toISOString(),
+          transactionId
+        )
+        return
+      }
+    } catch (error) {
+      Sentry.captureException(error)
     }
   }
 
@@ -966,11 +895,6 @@ export const handleInvoicePaymentSucceeded = async (
       transactionId
     )
   } catch (error) {
-    // eslint-disable-next-line no-restricted-syntax
-    console.error(
-      '[Stripe webhook] Failed to create subscription period for invoice.payment_succeeded',
-      error
-    )
     Sentry.captureException(error)
   }
 }
@@ -1015,11 +939,6 @@ export const handleInvoicePaymentFailed = async (
     // TODO: Send notification to user about payment failure (optional)
     // This could be implemented later with email notifications
   } catch (error) {
-    // eslint-disable-next-line no-restricted-syntax
-    console.error(
-      '[Stripe webhook] Failed to handle invoice payment failure',
-      error
-    )
     Sentry.captureException(error)
   }
 }
