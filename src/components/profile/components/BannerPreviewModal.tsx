@@ -75,6 +75,7 @@ const BannerPreviewModal = (props: IBannerPreviewModalProps) => {
             description={currentAccount?.preferences?.description || ''}
             owner_account_address={currentAccount?.address || ''}
             name={currentAccount?.preferences.name || ''}
+            banner_setting={currentAccount?.preferences?.banner_setting}
           />
         </Box>
       </ModalContent>
