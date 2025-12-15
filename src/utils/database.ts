@@ -8191,6 +8191,87 @@ const getSubscriptionHistory = async (
   }
 }
 
+// Get billing subscription periods expiring within a date range
+const getBillingPeriodsByExpiryWindow = async (
+  startDate: Date,
+  endDate: Date,
+  statuses: ('active' | 'cancelled')[] = ['active', 'cancelled']
+): Promise<Tables<'subscriptions'>[]> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .not('billing_plan_id', 'is', null) // Only billing subscriptions
+    .in('status', statuses)
+    .gte('expiry_time', startDate.toISOString())
+    .lte('expiry_time', endDate.toISOString())
+    .gt('expiry_time', new Date().toISOString()) // Not expired yet
+    .order('expiry_time', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to fetch billing periods by expiry window: ${error.message}`
+    )
+  }
+
+  return data || []
+}
+
+// Expire stale subscription periods (expiry_time in the past)
+const expireStaleSubscriptionPeriods = async (): Promise<{
+  success: boolean
+  expiredPeriods: Tables<'subscriptions'>[]
+  expiredCount: number
+  timestamp: string
+}> => {
+  try {
+    const now = new Date().toISOString()
+
+    // First, get the periods that need to be expired (before updating)
+    const { data: periodsToExpire, error: selectError } = await db.supabase
+      .from('subscriptions')
+      .select('*')
+      .not('billing_plan_id', 'is', null) // Only billing subscriptions
+      .in('status', ['active', 'cancelled'])
+      .lte('expiry_time', now) // Expired (in the past)
+
+    if (selectError) throw selectError
+
+    if (!periodsToExpire || periodsToExpire.length === 0) {
+      return {
+        success: true,
+        expiredPeriods: [],
+        expiredCount: 0,
+        timestamp: now,
+      }
+    }
+
+    // Update all expired periods to 'expired' status
+    const periodIds = periodsToExpire.map(p => p.id)
+    const { error: updateError } = await db.supabase
+      .from('subscriptions')
+      .update({ status: 'expired', updated_at: now })
+      .in('id', periodIds)
+      .in('status', ['active', 'cancelled'])
+
+    if (updateError) throw updateError
+
+    return {
+      success: true,
+      expiredPeriods: periodsToExpire,
+      expiredCount: periodsToExpire.length,
+      timestamp: now,
+    }
+  } catch (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to expire subscription periods: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    )
+  }
+}
+
 // Update subscription period status
 const updateSubscriptionPeriodStatus = async (
   subscriptionId: string,
@@ -8340,6 +8421,7 @@ export {
   deleteVerifications,
   editGroup,
   expireStalePolls,
+  expireStaleSubscriptionPeriods,
   findAccountByIdentifier,
   findAccountsByText,
   findRecentSubscriptionPeriodByPlan,
@@ -8356,6 +8438,7 @@ export {
   getActivePaymentAccountDB,
   getActiveSubscriptionPeriod,
   getBillingEmailAccountInfo,
+  getBillingPeriodsByExpiryWindow,
   getBillingPlanById,
   getBillingPlanIdFromStripeProduct,
   getBillingPlanProvider,
