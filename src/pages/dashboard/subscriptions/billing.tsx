@@ -382,7 +382,11 @@ const BillingCheckout = () => {
             />
             <PaymentMethod
               id="crypto"
-              name="Pay with crypto"
+              name={
+                isTrialEligible
+                  ? 'Start 14-day free trial (crypto)'
+                  : 'Pay with crypto'
+              }
               step={PaymentStep.SELECT_CRYPTO_NETWORK}
               icon={ChainLogo}
               type={PaymentType.CRYPTO}
