@@ -826,7 +826,8 @@ export const sendSubscriptionConfirmationEmail = async (
   period: BillingEmailPeriod,
   billingPlan: BillingEmailPlan,
   provider: PaymentProvider,
-  transaction?: { amount?: number; currency?: string }
+  transaction?: { amount?: number; currency?: string },
+  isTrial?: boolean
 ): Promise<void> => {
   const email = new Email()
 
@@ -837,10 +838,11 @@ export const sendSubscriptionConfirmationEmail = async (
     appUrl,
     displayName: getDisplayNameForEmail(account.displayName),
     planName: billingPlan.name,
-    price: transaction?.amount ?? billingPlan.price,
+    price: isTrial ? 0 : transaction?.amount ?? billingPlan.price,
     periodStart,
     periodEnd,
     provider,
+    isTrial: isTrial || false,
   }
 
   try {

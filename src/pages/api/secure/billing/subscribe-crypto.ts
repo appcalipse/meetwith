@@ -9,11 +9,19 @@ import {
   SubscribeResponseCrypto,
 } from '@/types/Billing'
 import {
+  BillingEmailPeriod,
+  BillingEmailPlan,
+  PaymentProvider as BillingPaymentProvider,
+} from '@/types/Billing'
+import {
   createSubscriptionPeriod,
   getActiveSubscriptionPeriod,
+  getBillingEmailAccountInfo,
   getBillingPlanById,
   hasSubscriptionHistory,
 } from '@/utils/database'
+import { sendSubscriptionConfirmationEmail } from '@/utils/email_helper'
+import { getDisplayNameForEmail } from '@/utils/email_utils'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -69,6 +77,41 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           trialExpiry.toISOString(),
           null
         )
+
+        // Send trial started email (best-effort, don't block flow)
+        try {
+          const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+
+          if (accountInfo) {
+            // Process display name for email
+            const processedDisplayName = getDisplayNameForEmail(
+              accountInfo.displayName
+            )
+
+            const period: BillingEmailPeriod = {
+              registered_at: new Date(),
+              expiry_time: trialExpiry,
+            }
+
+            const emailPlan: BillingEmailPlan = {
+              id: billingPlan.id,
+              name: billingPlan.name,
+              price: billingPlan.price,
+              billing_cycle: billingPlan.billing_cycle,
+            }
+
+            await sendSubscriptionConfirmationEmail(
+              { ...accountInfo, displayName: processedDisplayName },
+              period,
+              emailPlan,
+              BillingPaymentProvider.CRYPTO,
+              undefined,
+              true // isTrial
+            )
+          }
+        } catch (error) {
+          Sentry.captureException(error)
+        }
 
         const trialResponse: SubscribeResponseCrypto = {
           success: true,
