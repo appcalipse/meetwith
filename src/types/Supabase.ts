@@ -44,6 +44,7 @@ export type Database = {
         Row: {
           availaibility_id: string | null
           avatar_url: string | null
+          banner_url: string | null
           description: string | null
           id: string
           meetingProviders:
@@ -56,6 +57,7 @@ export type Database = {
         Insert: {
           availaibility_id?: string | null
           avatar_url?: string | null
+          banner_url?: string | null
           description?: string | null
           id?: string
           meetingProviders?:
@@ -68,6 +70,7 @@ export type Database = {
         Update: {
           availaibility_id?: string | null
           avatar_url?: string | null
+          banner_url?: string | null
           description?: string | null
           id?: string
           meetingProviders?:
@@ -1825,9 +1828,34 @@ export type Database = {
           role: string
         }[]
       }
+      get_meeting_id_by_slot_ids: {
+        Args: { slot_ids: string[] }
+        Returns: {
+          id: string
+        }[]
+      }
       get_meeting_primary_slot: {
         Args: { p_account_address?: string; p_meeting_id: string }
         Returns: Json
+      }
+      get_meeting_series_without_instances: {
+        Args: {
+          p_account_address: string
+          p_time_max: string
+          p_time_min: string
+        }
+        Returns: {
+          account_address: string
+          created_at: string
+          end: string
+          id: string
+          meeting_id: string
+          meeting_info_encrypted: Json
+          recurrence: string
+          rrule: string[]
+          slot_id: string
+          start: string
+        }[]
       }
       get_meeting_type_plans_by_account: {
         Args: { account_address: string }
@@ -1852,12 +1880,78 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_meetings_by_slot_ids: {
+        Args: { slot_ids: string[] }
+        Returns: {
+          access_type: string | null
+          created_at: string | null
+          encrypted_metadata: Json | null
+          end: string | null
+          id: string
+          meeting_url: string | null
+          permissions:
+            | Database['public']['Enums']['MeetingPermissions'][]
+            | null
+          provider: string | null
+          recurrence: Database['public']['Enums']['MeetingRepeat']
+          reminders: Json[] | null
+          slots: string[]
+          start: string | null
+          title: string | null
+          version: Database['public']['Enums']['MeetingVersion'] | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'meetings'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_paid_sessions:
+        | { Args: { current_account: string }; Returns: Json }
         | {
             Args: { account_address: string; current_account: string }
             Returns: Json
           }
-        | { Args: { current_account: string }; Returns: Json }
+      get_series_without_instances_lightweight: {
+        Args: {
+          p_account_address: string
+          p_time_max: string
+          p_time_min: string
+        }
+        Returns: {
+          account_address: string
+          created_at: string
+          end: string
+          guest_email: string
+          has_default_meeting_info: boolean
+          id: string
+          recurrence: string
+          rrule: string[]
+          slot_id: string
+          start: string
+        }[]
+      }
+      get_slot_instances_with_meetings: {
+        Args: {
+          p_account_address: string
+          p_time_max: string
+          p_time_min: string
+        }
+        Returns: {
+          account_address: string
+          end: string
+          id: string
+          meeting_id: string
+          meeting_info_encrypted: Json
+          role: string
+          series_id: string
+          slot_id: string
+          start: string
+          status: string
+          version: number
+        }[]
+      }
       get_telegram_notifications: {
         Args: never
         Returns: {
