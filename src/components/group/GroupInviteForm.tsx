@@ -122,12 +122,12 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       | React.MouseEvent<HTMLButtonElement>
   ) => {
     event.preventDefault()
-
-    if (!enteredIdentifier) return
+    const sanitizedIdentifier = enteredIdentifier.trim()
+    if (!sanitizedIdentifier) return
     setIsLoading(true)
     const isValidInput =
-      isValidEmail(enteredIdentifier) ||
-      isEthereumAddressOrDomain(enteredIdentifier)
+      isValidEmail(sanitizedIdentifier) ||
+      isEthereumAddressOrDomain(sanitizedIdentifier)
 
     if (!isValidInput) {
       toast({
@@ -144,8 +144,8 @@ const GroupInviteForm: FC<InviteModalProps> = ({
     if (
       invitedUsers.some(
         user =>
-          user.account_address === enteredIdentifier ||
-          user.email === enteredIdentifier
+          user.account_address === sanitizedIdentifier ||
+          user.email === sanitizedIdentifier
       )
     ) {
       toast({
@@ -160,19 +160,19 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       return
     }
 
-    const isEmail = isValidEmail(enteredIdentifier)
+    const isEmail = isValidEmail(sanitizedIdentifier)
     const newUser: InvitedUser = {
       id: invitedUsers.length,
-      account_address: !isEmail ? enteredIdentifier : '',
-      email: isEmail ? enteredIdentifier : '',
+      account_address: !isEmail ? sanitizedIdentifier : '',
+      email: isEmail ? sanitizedIdentifier : '',
       role: MemberType.ADMIN,
       groupId,
       userId: '',
       name: enteredIdentifier,
       invitePending: true,
     }
-    if (isValidEVMAddress(enteredIdentifier)) {
-      const info = await getExistingAccounts([enteredIdentifier])
+    if (isValidEVMAddress(sanitizedIdentifier)) {
+      const info = await getExistingAccounts([sanitizedIdentifier])
       const userDetails = info[0]
       if (userDetails) {
         newUser.userId = userDetails.preferences.id

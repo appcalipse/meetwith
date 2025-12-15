@@ -118,6 +118,7 @@ export interface AccountPreferences {
   name?: string
   avatar_url?: string
   meetingProviders: Array<MeetingProvider>
+  banner_url?: string
 }
 
 export interface PaymentPreferences {

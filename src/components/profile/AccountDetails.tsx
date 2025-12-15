@@ -7,11 +7,11 @@ import {
   FormLabel,
   Heading,
   HStack,
+  Image,
   Input,
   InputGroup,
   InputLeftAddon,
   useDisclosure,
-  VStack as ChakraVStack,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
 import { Avatar } from '@components/profile/components/Avatar'
@@ -19,7 +19,6 @@ import EditImageModal from '@components/profile/components/EditImageModal'
 import { handleApiError } from '@utils/error_helper'
 import { readFile } from '@utils/image-utils'
 import { ellipsizeAddress, getAccountDisplayName } from '@utils/user_manager'
-import { differenceInMonths, format } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import { useActiveWallet } from 'thirdweb/react'
@@ -32,8 +31,6 @@ import { Plan } from '@/types/Subscription'
 import {
   getUnstoppableDomainsForAddress,
   saveAccountChanges,
-} from '@/utils/api_helper'
-import {
   syncSubscriptions,
   updateCustomSubscriptionDomain,
 } from '@/utils/api_helper'
@@ -47,7 +44,10 @@ import {
 } from '@/utils/subscription_manager'
 import { useToastHelpers } from '@/utils/toasts'
 
+import ImageIcon from '../icons/Image'
+import BannerPreviewModal from './components/BannerPreviewModal'
 import Block from './components/Block'
+import EditBannerImageModal from './components/EditBannerImageModal'
 import HandlePicker, {
   DisplayName,
   ProfileInfoProvider,
@@ -66,16 +66,30 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const [description, setDescription] = useState(
     currentAccount?.preferences?.description || ''
   )
-  const { query, push } = useRouter()
+  const { push } = useRouter()
   const [nameOptions, setNameOptions] = useState<DisplayName[]>([])
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
     currentAccount?.preferences?.avatar_url
   )
+  const [bannerUrl, setBannerUrl] = useState<string | undefined>(
+    currentAccount?.preferences?.banner_url
+  )
+
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | undefined>()
   const {
     isOpen: isEditImageModalOpen,
     onOpen: openEditImageModal,
     onClose: closeEditImageModal,
+  } = useDisclosure()
+  const {
+    isOpen: isEditBannerImageModalOpen,
+    onOpen: openEditBannerImageModal,
+    onClose: closeEditBannerImageModal,
+  } = useDisclosure()
+  const {
+    isOpen: isBannerPreviewModalOpen,
+    onOpen: openBannerPreviewModal,
+    onClose: closeBannerPreviewModal,
   } = useDisclosure()
   const [name, setName] = useState<DisplayName | undefined>(() => {
     const currentName = currentAccount?.preferences?.name
@@ -120,9 +134,10 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           ],
           ...(name?.value ? { name: name.value } : { name: '' }),
           avatar_url: avatarUrl,
+          banner_url: bannerUrl,
         },
       })
-      await login(updatedAccount)
+      login(updatedAccount)
       reloadOnboardingInfo()
       showSuccessToast(
         'Profile Details Updated',
@@ -303,27 +318,38 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   }, [currentAccount])
 
   const handleSelectFile = async () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/jpeg, image/png, image/webp'
-    input.onchange = async e => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
-      setLoading(true)
-      try {
-        const blob = new Blob([file], {
-          type: file.type,
-        })
-        const imageDataUrl = await readFile(file)
-        setSelectedImageUrl(imageDataUrl)
-        openEditImageModal()
-      } catch (error) {
-        console.error('Error uploading image:', error)
-      } finally {
-        setLoading(false)
+    return new Promise<string | undefined>(resolve => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/jpeg, image/png, image/webp'
+      input.onchange = async e => {
+        const file = (e.target as HTMLInputElement).files?.[0]
+        if (!file) return
+        setLoading(true)
+        try {
+          const imageDataUrl = await readFile(file)
+          return resolve(imageDataUrl)
+        } catch (error) {
+          console.error('Error uploading image:', error)
+          resolve(undefined)
+        } finally {
+          setLoading(false)
+        }
       }
-    }
-    input.click()
+      input.click()
+    })
+  }
+  const handleSelectAvatar = async () => {
+    const imageDataUrl = await handleSelectFile()
+    if (!imageDataUrl) return
+    setSelectedImageUrl(imageDataUrl)
+    openEditImageModal()
+  }
+  const hanldeSelectBanner = async () => {
+    const imageDataUrl = await handleSelectFile()
+    if (!imageDataUrl) return
+    setSelectedImageUrl(imageDataUrl)
+    openEditBannerImageModal()
   }
 
   return (
@@ -368,7 +394,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                   variant={'link'}
                   px={0}
                   style={{ display: 'flex' }}
-                  onClick={handleSelectFile}
+                  onClick={handleSelectAvatar}
                   textDecoration="underline"
                 >
                   Edit profile picture
@@ -465,6 +491,68 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           </FormControl>
 
           <FormControl py={3}>
+            <FormLabel>
+              Link preview image (optional)
+              <Tooltip text="This image will be displayed when sharing your calendar link on social media platforms." />
+            </FormLabel>
+            <VStack
+              minH={'200px'}
+              justify="center"
+              align="center"
+              border="1px solid"
+              borderColor="whiteAlpha.300"
+              py={3}
+              px={5}
+              pos="relative"
+              rounded={6}
+            >
+              {bannerUrl && (
+                <Button
+                  flex={1}
+                  colorScheme="primary"
+                  variant={'link'}
+                  px={0}
+                  style={{ display: 'flex' }}
+                  onClick={openBannerPreviewModal}
+                  textDecoration="underline"
+                  position="absolute"
+                  right={4}
+                  top={3}
+                  cursor="pointer"
+                >
+                  Preview banner
+                </Button>
+              )}
+              <VStack gap={1}>
+                {bannerUrl ? (
+                  <Image
+                    src={bannerUrl}
+                    alt="Banner Image"
+                    width={'75px'}
+                    height={'auto'}
+                    objectFit="cover"
+                  />
+                ) : (
+                  <ImageIcon width={'50px'} height={'50px'} />
+                )}
+                <Text textAlign="center" mt={1}>
+                  Upload image that is not more than 2mb
+                </Text>
+                <Button
+                  flex={1}
+                  colorScheme="primary"
+                  variant={'link'}
+                  px={0}
+                  style={{ display: 'flex' }}
+                  onClick={hanldeSelectBanner}
+                  textDecoration="underline"
+                >
+                  {bannerUrl ? 'Upload new banner' : 'Upload banner'}
+                </Button>
+              </VStack>
+            </VStack>
+          </FormControl>
+          <FormControl py={3}>
             <FormLabel>Status message (optional)</FormLabel>
             <Textarea
               value={description}
@@ -506,15 +594,21 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         </>
       </Block>
 
-      <EditImageModal
-        isDialogOpen={isEditImageModalOpen}
-        onDialogClose={closeEditImageModal}
+      <EditBannerImageModal
+        isDialogOpen={isEditBannerImageModalOpen}
+        onDialogClose={closeEditBannerImageModal}
         imageSrc={selectedImageUrl || ''}
         accountAddress={currentAccount?.address}
-        changeAvatar={(url: string) => {
-          setAvatarUrl(url)
-          closeEditImageModal()
+        changeBanner={(url: string) => {
+          setBannerUrl(url)
+          currentAccount.preferences.banner_url = url
+          void login(currentAccount)
+          closeEditBannerImageModal()
         }}
+      />
+      <BannerPreviewModal
+        isDialogOpen={isBannerPreviewModalOpen}
+        onDialogClose={closeBannerPreviewModal}
       />
     </VStack>
   )
