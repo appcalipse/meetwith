@@ -33,8 +33,7 @@ import {
   LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
-import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/Discord'
+import { DiscordAccount, DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
@@ -86,8 +85,7 @@ import {
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
-import { TelegramConnection } from '@/types/Telegram'
-import { TelegramUserInfo } from '@/types/Telegram'
+import { TelegramConnection, TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import {
@@ -310,6 +308,23 @@ export const saveAvatar = async (
 ): Promise<string> => {
   const response = await internalFetch<string>(
     `/secure/accounts/avatar`,
+    'POST',
+    formData,
+    {},
+    {
+      'Content-Type': 'multipart/form-data',
+    },
+    true
+  )
+  await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
+  return response
+}
+export const saveBanner = async (
+  formData: FormData,
+  address: string
+): Promise<string> => {
+  const response = await internalFetch<string>(
+    `/secure/accounts/banner`,
     'POST',
     formData,
     {},
