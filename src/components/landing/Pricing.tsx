@@ -5,7 +5,7 @@ import { IoCheckmarkCircle } from 'react-icons/io5'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { logEvent } from '@/utils/analytics'
+import { EditMode, Intents } from '@/types/Dashboard'
 
 const FREE_FEATURES = [
   'Personal scheduling page',
@@ -46,9 +46,12 @@ export function Pricing() {
 
   const handleProPlan = async () => {
     if (!currentAccount) {
-      openConnection()
+      const redirectPath = `/dashboard/${EditMode.DETAILS}?intent=${Intents.SUBSCRIBE_PRO}#subscriptions`
+      openConnection(redirectPath)
     } else {
-      await router.push('/dashboard')
+      await router.push(
+        `/dashboard/${EditMode.DETAILS}?intent=${Intents.SUBSCRIBE_PRO}#subscriptions`
+      )
     }
   }
 

@@ -106,7 +106,6 @@ export const NavMenu: React.FC<{
         icon: FaUsers,
         mode: EditMode.QUICKPOLL,
         isBeta: true,
-        isDisabled: isProduction,
       },
       {
         name: 'Session Settings',

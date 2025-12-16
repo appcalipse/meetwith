@@ -69,6 +69,12 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         void push(`/dashboard/${EditMode.DETAILS}`)
         onOpen()
       }
+    } else if (intent === Intents.SUBSCRIBE_PRO) {
+      subsRef.current?.scrollIntoView({ behavior: 'smooth' })
+      setIsDialogOpen(true)
+      void push(`/dashboard/${EditMode.DETAILS}#subscriptions`, undefined, {
+        shallow: true,
+      })
     }
   }
 
