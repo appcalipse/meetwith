@@ -71,6 +71,7 @@ export default async function handler(
 
       avatar_url = `data:image/png;base64,${avatarPngBuffer.toString('base64')}`
     }
+
     const svg = await satori(
       <UserBanner
         avatar_url={avatar_url}
@@ -79,7 +80,12 @@ export default async function handler(
         banner_url={user_preferences.banner_url}
         name={user_preferences.name}
         owner_account_address={user_preferences.owner_account_address}
-        banner_setting={user_preferences.banner_setting as BannerSetting}
+        banner_setting={
+          (user_preferences.banner_setting || {
+            show_avatar: true,
+            show_description: true,
+          }) as BannerSetting
+        }
       />,
       {
         width: 1200,
