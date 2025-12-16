@@ -42,10 +42,10 @@ export type Database = {
       }
       account_preferences: {
         Row: {
-          availabilities: Json
-          availableTypes: Json[] | null
           availaibility_id: string | null
           avatar_url: string | null
+          banner_setting: Json | null
+          banner_url: string | null
           description: string | null
           id: string
           meetingProviders:
@@ -54,13 +54,12 @@ export type Database = {
           name: string | null
           owner_account_address: string
           socialLinks: Json[]
-          timezone: string
         }
         Insert: {
-          availabilities?: Json
-          availableTypes?: Json[] | null
           availaibility_id?: string | null
           avatar_url?: string | null
+          banner_setting?: Json | null
+          banner_url?: string | null
           description?: string | null
           id?: string
           meetingProviders?:
@@ -69,13 +68,12 @@ export type Database = {
           name?: string | null
           owner_account_address: string
           socialLinks: Json[]
-          timezone?: string
         }
         Update: {
-          availabilities?: Json
-          availableTypes?: Json[] | null
           availaibility_id?: string | null
           avatar_url?: string | null
+          banner_setting?: Json | null
+          banner_url?: string | null
           description?: string | null
           id?: string
           meetingProviders?:
@@ -84,7 +82,6 @@ export type Database = {
           name?: string | null
           owner_account_address?: string
           socialLinks?: Json[]
-          timezone?: string
         }
         Relationships: [
           {
@@ -170,6 +167,68 @@ export type Database = {
             referencedColumns: ['address']
           }
         ]
+      }
+      billing_plan_providers: {
+        Row: {
+          billing_plan_id: string
+          created_at: string
+          id: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_product_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          billing_plan_id: string
+          created_at?: string
+          id?: string
+          provider: Database['public']['Enums']['PaymentProvider']
+          provider_product_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          billing_plan_id?: string
+          created_at?: string
+          id?: string
+          provider?: Database['public']['Enums']['PaymentProvider']
+          provider_product_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_plan_providers_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      billing_plans: {
+        Row: {
+          billing_cycle: Database['public']['Enums']['BillingCycle']
+          created_at: string
+          id: string
+          name: string
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          billing_cycle: Database['public']['Enums']['BillingCycle']
+          created_at?: string
+          id: string
+          name: string
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          billing_cycle?: Database['public']['Enums']['BillingCycle']
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       calendar_webhooks: {
         Row: {
@@ -476,6 +535,24 @@ export type Database = {
           gated_entity_id?: string
           id?: number
           type?: string
+        }
+        Relationships: []
+      }
+      google_events_mapping: {
+        Row: {
+          calendar_id: string
+          event_id: string
+          mww_id: string
+        }
+        Insert: {
+          calendar_id: string
+          event_id: string
+          mww_id: string
+        }
+        Update: {
+          calendar_id?: string
+          event_id?: string
+          mww_id?: string
         }
         Relationships: []
       }
@@ -1375,36 +1452,129 @@ export type Database = {
           }
         ]
       }
+      stripe_subscription_transactions: {
+        Row: {
+          created_at: string
+          id: string
+          stripe_subscription_id: string
+          transaction_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stripe_subscription_id: string
+          transaction_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stripe_subscription_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_subscription_transactions_stripe_subscription_id_fkey'
+            columns: ['stripe_subscription_id']
+            isOneToOne: false
+            referencedRelation: 'stripe_subscriptions'
+            referencedColumns: ['stripe_subscription_id']
+          },
+          {
+            foreignKeyName: 'stripe_subscription_transactions_transaction_id_fkey'
+            columns: ['transaction_id']
+            isOneToOne: false
+            referencedRelation: 'transactions'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      stripe_subscriptions: {
+        Row: {
+          account_address: string
+          billing_plan_id: string
+          created_at: string
+          id: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_address: string
+          billing_plan_id: string
+          created_at?: string
+          id?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_address?: string
+          billing_plan_id?: string
+          created_at?: string
+          id?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_subscriptions_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          },
+          {
+            foreignKeyName: 'stripe_subscriptions_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       subscriptions: {
         Row: {
-          chain: string
+          billing_plan_id: string | null
+          chain: string | null
           config_ipfs_hash: string | null
-          domain: string
+          domain: string | null
           expiry_time: string
           id: string
           owner_account: string
-          plan_id: number
+          plan_id: number | null
           registered_at: string
+          status: Database['public']['Enums']['SubscriptionStatus']
+          transaction_id: string | null
+          updated_at: string | null
         }
         Insert: {
-          chain: string
+          billing_plan_id?: string | null
+          chain?: string | null
           config_ipfs_hash?: string | null
-          domain: string
+          domain?: string | null
           expiry_time: string
           id?: string
           owner_account: string
-          plan_id: number
+          plan_id?: number | null
           registered_at: string
+          status?: Database['public']['Enums']['SubscriptionStatus']
+          transaction_id?: string | null
+          updated_at?: string | null
         }
         Update: {
-          chain?: string
+          billing_plan_id?: string | null
+          chain?: string | null
           config_ipfs_hash?: string | null
-          domain?: string
+          domain?: string | null
           expiry_time?: string
           id?: string
           owner_account?: string
-          plan_id?: number
+          plan_id?: number | null
           registered_at?: string
+          status?: Database['public']['Enums']['SubscriptionStatus']
+          transaction_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -1413,6 +1583,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
+          },
+          {
+            foreignKeyName: 'subscriptions_billing_plan_id_fkey'
+            columns: ['billing_plan_id']
+            isOneToOne: false
+            referencedRelation: 'billing_plans'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_transaction_id_fkey'
+            columns: ['transaction_id']
+            isOneToOne: false
+            referencedRelation: 'transactions'
+            referencedColumns: ['id']
           }
         ]
       }
@@ -1460,6 +1644,7 @@ export type Database = {
           meeting_type_id: string | null
           metadata: Json
           method: Database['public']['Enums']['PaymentType']
+          provider: Database['public']['Enums']['PaymentProvider'] | null
           provider_reference_id: string | null
           status: Database['public']['Enums']['PaymentStatus']
           token_address: string | null
@@ -1482,6 +1667,7 @@ export type Database = {
           meeting_type_id?: string | null
           metadata: Json
           method: Database['public']['Enums']['PaymentType']
+          provider?: Database['public']['Enums']['PaymentProvider'] | null
           provider_reference_id?: string | null
           status: Database['public']['Enums']['PaymentStatus']
           token_address?: string | null
@@ -1504,6 +1690,7 @@ export type Database = {
           meeting_type_id?: string | null
           metadata?: Json
           method?: Database['public']['Enums']['PaymentType']
+          provider?: Database['public']['Enums']['PaymentProvider'] | null
           provider_reference_id?: string | null
           status?: Database['public']['Enums']['PaymentStatus']
           token_address?: string | null
@@ -1644,9 +1831,34 @@ export type Database = {
           role: string
         }[]
       }
+      get_meeting_id_by_slot_ids: {
+        Args: { slot_ids: string[] }
+        Returns: {
+          id: string
+        }[]
+      }
       get_meeting_primary_slot: {
         Args: { p_account_address?: string; p_meeting_id: string }
         Returns: Json
+      }
+      get_meeting_series_without_instances: {
+        Args: {
+          p_account_address: string
+          p_time_max: string
+          p_time_min: string
+        }
+        Returns: {
+          account_address: string
+          created_at: string
+          end: string
+          id: string
+          meeting_id: string
+          meeting_info_encrypted: Json
+          recurrence: string
+          rrule: string[]
+          slot_id: string
+          start: string
+        }[]
       }
       get_meeting_type_plans_by_account: {
         Args: { account_address: string }
@@ -1671,12 +1883,78 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_meetings_by_slot_ids: {
+        Args: { slot_ids: string[] }
+        Returns: {
+          access_type: string | null
+          created_at: string | null
+          encrypted_metadata: Json | null
+          end: string | null
+          id: string
+          meeting_url: string | null
+          permissions:
+            | Database['public']['Enums']['MeetingPermissions'][]
+            | null
+          provider: string | null
+          recurrence: Database['public']['Enums']['MeetingRepeat']
+          reminders: Json[] | null
+          slots: string[]
+          start: string | null
+          title: string | null
+          version: Database['public']['Enums']['MeetingVersion'] | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'meetings'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_paid_sessions:
+        | { Args: { current_account: string }; Returns: Json }
         | {
             Args: { account_address: string; current_account: string }
             Returns: Json
           }
-        | { Args: { current_account: string }; Returns: Json }
+      get_series_without_instances_lightweight: {
+        Args: {
+          p_account_address: string
+          p_time_max: string
+          p_time_min: string
+        }
+        Returns: {
+          account_address: string
+          created_at: string
+          end: string
+          guest_email: string
+          has_default_meeting_info: boolean
+          id: string
+          recurrence: string
+          rrule: string[]
+          slot_id: string
+          start: string
+        }[]
+      }
+      get_slot_instances_with_meetings: {
+        Args: {
+          p_account_address: string
+          p_time_max: string
+          p_time_min: string
+        }
+        Returns: {
+          account_address: string
+          end: string
+          id: string
+          meeting_id: string
+          meeting_info_encrypted: Json
+          role: string
+          series_id: string
+          slot_id: string
+          start: string
+          status: string
+          version: number
+        }[]
+      }
       get_telegram_notifications: {
         Args: never
         Returns: {
@@ -1762,6 +2040,7 @@ export type Database = {
         | 'METIS'
         | 'MATIC'
       AccountPreferenceNotification: 'send-tokens' | 'receive-tokens'
+      BillingCycle: 'monthly' | 'yearly'
       ChannelType: 'discord' | 'email' | 'account' | 'telegram'
       ContactStatus: 'active' | 'inactive'
       GroupRole: 'admin' | 'member'
@@ -1792,6 +2071,7 @@ export type Database = {
       QuickPollParticipantType: 'scheduler' | 'invitee' | 'owner'
       RecurringStatus: 'confirmed' | 'cancelled' | 'modified'
       SessionType: 'paid' | 'free'
+      SubscriptionStatus: 'active' | 'cancelled' | 'expired'
       TimeSlotSource: 'mww' | 'Google' | 'iCloud' | 'Office 365' | 'Webdav'
       TokenType: 'erc20' | 'erc721' | 'stablecoin' | 'nft' | 'native'
       VerificationChannel: 'transaction-pin' | 'reset-email'
@@ -1936,6 +2216,7 @@ export const Constants = {
         'MATIC',
       ],
       AccountPreferenceNotification: ['send-tokens', 'receive-tokens'],
+      BillingCycle: ['monthly', 'yearly'],
       ChannelType: ['discord', 'email', 'account', 'telegram'],
       ContactStatus: ['active', 'inactive'],
       GroupRole: ['admin', 'member'],
@@ -1968,6 +2249,7 @@ export const Constants = {
       QuickPollParticipantType: ['scheduler', 'invitee', 'owner'],
       RecurringStatus: ['confirmed', 'cancelled', 'modified'],
       SessionType: ['paid', 'free'],
+      SubscriptionStatus: ['active', 'cancelled', 'expired'],
       TimeSlotSource: ['mww', 'Google', 'iCloud', 'Office 365', 'Webdav'],
       TokenType: ['erc20', 'erc721', 'stablecoin', 'nft', 'native'],
       VerificationChannel: ['transaction-pin', 'reset-email'],

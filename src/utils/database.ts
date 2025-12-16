@@ -33,6 +33,7 @@ import { ResourceState } from '@/pages/api/server/webhook/calendar/sync'
 import {
   Account,
   AccountPreferences,
+  BannerSetting,
   BaseMeetingType,
   DiscordConnectedAccounts,
   LeanAccountInfo,
@@ -131,7 +132,13 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { Database, Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
+import {
+  Database,
+  Json,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+} from '@/types/Supabase'
 import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
@@ -250,7 +257,7 @@ import {
   sendReceiptEmail,
   sendSessionBookingIncomeEmail,
 } from './email_helper'
-import { deduplicateArray } from './generic_utils'
+import { deduplicateArray, deduplicateMembers } from './generic_utils'
 import PostHogClient from './posthog'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { IGoogleCalendarService } from './services/calendar.service.types'
@@ -343,13 +350,18 @@ const initAccountDBForWallet = async (
     availability_ids: [defaultBlock.id],
     calendars: [],
   }
-  const preferences: AccountPreferences = {
+  try {
+    await createMeetingType(user_account.address, meetingType)
+  } catch (e) {
+    console.error(e)
+    Sentry.captureException(e)
+  }
+  const preferences: TablesInsert<'account_preferences'> = {
     description: '',
-    availabilities: defaultAvailabilities,
     socialLinks: [],
-    timezone,
     meetingProviders: [MeetingProvider.GOOGLE_MEET],
     availaibility_id: defaultBlock.id,
+    owner_account_address: user_account.address,
   }
   try {
     await createMeetingType(user_account.address, meetingType)
@@ -357,19 +369,22 @@ const initAccountDBForWallet = async (
     Sentry.captureException(e)
   }
   try {
-    const responsePrefs = await db.supabase.from('account_preferences').insert({
-      ...preferences,
-      owner_account_address: user_account.address,
-    })
+    const responsePrefs = await db.supabase
+      .from('account_preferences')
+      .insert(preferences)
+
     if (responsePrefs.error) {
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
-    user_account.preferences = preferences
+    user_account.preferences = await getAccountPreferences(
+      user_account.address.toLowerCase()
+    )
     user_account.is_invited = is_invited || false
 
     return user_account
   } catch (error) {
+    console.error(error)
     Sentry.captureException(error)
     throw new Error("Account couldn't be created")
   }
@@ -621,6 +636,52 @@ const updatePreferenceAvatar = async (
 
   return publicUrl
 }
+const updatePreferenceBanner = async (
+  address: string,
+  filename: string,
+  buffer: Buffer,
+  mimeType: string,
+  banner_setting: BannerSetting
+) => {
+  const contentType = mimeType
+  const file = `uploads/banners/${Date.now()}-${filename}`
+  const { error } = await db.supabase.storage
+    .from('avatars')
+    .upload(file, buffer, {
+      contentType,
+      upsert: true,
+    })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new UploadError(
+      'Unable to upload banner. Please try again or contact support if the problem persists.'
+    )
+  }
+
+  const { data } = db.supabase.storage.from('avatars').getPublicUrl(file)
+
+  const publicUrl = data?.publicURL
+  if (!publicUrl) {
+    Sentry.captureException(new Error('Public URL is undefined after upload'))
+    throw new UploadError(
+      "Avatar upload completed but couldn't generate preview URL. Please refresh and try again."
+    )
+  }
+
+  const { error: updateError } = await db.supabase
+    .from<Tables<'account_preferences'>>('account_preferences')
+    .update({ banner_url: publicUrl, banner_setting: banner_setting as Json })
+    .eq('owner_account_address', address.toLowerCase())
+  if (updateError) {
+    Sentry.captureException(updateError)
+    throw new UploadError(
+      "Avatar uploaded successfully but couldn't update your profile. Please refresh and try again."
+    )
+  }
+
+  return publicUrl
+}
 const getAccountAvatarUrl = async (address: string): Promise<string | null> => {
   const { data, error } = await db.supabase
     .from('account_preferences')
@@ -649,7 +710,19 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 
   throw new AccountNotFoundError(identifier)
 }
-
+const getAccountPreferencesLean = async (owner_account_address: string) => {
+  const { data: account_preferences, error: account_preferences_error } =
+    await db.supabase
+      .from<Tables<'account_preferences'>>('account_preferences')
+      .select('*')
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .maybeSingle()
+  if (account_preferences_error) {
+    console.error(account_preferences_error)
+    throw new Error("Couldn't get account's preferences")
+  }
+  return account_preferences
+}
 export const getAccountPreferences = async (
   owner_account_address: string
 ): Promise<AccountPreferences> => {
@@ -1750,6 +1823,7 @@ const deleteMeetingFromDB = async (
     []
 
   const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
+
   if (error) {
     throw new Error(error.message)
   }
@@ -2198,18 +2272,21 @@ const getGroupsAndMembers = async (
     throw new Error(error.message)
   }
 
-  return data.map(group => ({
-    id: group.id,
-    name: group.name,
-    slug: group.slug,
-    members:
-      group.members.filter(member => {
-        if (includeInvites) {
-          return true
-        }
-        return !member.invitePending
-      }) || [],
-  })) as GetGroupsFullResponse[]
+  return data.map(group => {
+    return {
+      id: group.id,
+      name: group.name,
+      slug: group.slug,
+      members: deduplicateMembers(
+        group.members.filter(member => {
+          if (includeInvites) {
+            return true
+          }
+          return !member.invitePending
+        }) || []
+      ),
+    }
+  }) as GetGroupsFullResponse[]
 }
 
 async function findGroupsWithSingleMember(
@@ -6492,9 +6569,7 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
         if (updateError) {
           console.error(updateError)
         }
-      } catch (e) {
-        console.error('Error refreshing webhook:', e)
-      }
+      } catch (e) {}
     }
   }
 }
@@ -6924,7 +6999,10 @@ const handleSyncEvent = async (
     }
   }
 }
-const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
+const getAccountDomainUrl = (
+  account: Pick<Account, 'address' | 'subscriptions'>,
+  ellipsize?: boolean
+): string => {
   if (isProAccount(account)) {
     const domain = account.subscriptions?.find(
       sub => new Date(sub.expiry_time) > new Date()
@@ -6934,12 +7012,12 @@ const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
     }
   }
   return `address/${
-    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+    ellipsize ? ellipsizeAddress(account?.address) : account?.address
   }`
 }
 
 const getAccountCalendarUrl = async (
-  account: Account,
+  account: Pick<Account, 'address' | 'subscriptions'>,
   ellipsize?: boolean,
   meetingTypeId?: string
 ): Promise<string> => {
@@ -6967,7 +7045,10 @@ const getOwnerPublicUrlServer = async (
   meetingTypeId?: string
 ): Promise<string> => {
   try {
-    const ownerAccount = await getAccountFromDB(ownerAccountAddress)
+    const ownerAccount: Pick<Account, 'address' | 'subscriptions'> = {
+      subscriptions: await getSubscriptionFromDBForAccount(ownerAccountAddress),
+      address: ownerAccountAddress,
+    }
     return await getAccountCalendarUrl(ownerAccount, undefined, meetingTypeId)
   } catch (error) {
     Sentry.captureException(error, {
@@ -8608,6 +8689,7 @@ export {
   getAccountNonce,
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
+  getAccountPreferencesLean,
   getAccountsNotificationSubscriptionEmails,
   getAccountsWithTgConnected,
   getActivePaymentAccount,
@@ -8715,6 +8797,7 @@ export {
   updatePaymentAccount,
   updatePaymentPreferences,
   updatePreferenceAvatar,
+  updatePreferenceBanner,
   updateQuickPoll,
   updateQuickPollGuestDetails,
   updateQuickPollParticipantAvailability,

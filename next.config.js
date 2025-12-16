@@ -85,7 +85,7 @@ const moduleExports = {
   //       : false,
   // },
 
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev }) => {
     // Split your bundles more aggressively
     config.optimization.splitChunks = {
       chunks: 'all',

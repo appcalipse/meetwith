@@ -123,6 +123,8 @@ export interface AccountPreferences {
   name?: string
   avatar_url?: string
   meetingProviders: Array<MeetingProvider>
+  banner_url?: string
+  banner_setting?: BannerSetting
 }
 
 export interface PaymentPreferences {
@@ -170,4 +172,8 @@ export interface PaidMeetingTypes extends MeetingType {
   session_used: number
   session_total: number
   transaction_hash: Address
+}
+export interface BannerSetting {
+  show_avatar?: boolean
+  show_description?: boolean
 }
