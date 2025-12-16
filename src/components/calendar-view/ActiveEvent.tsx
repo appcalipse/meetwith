@@ -4,6 +4,7 @@ import * as React from 'react'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 import { ActionsContext } from '@/providers/schedule/ActionsContext'
+import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
 import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
 import { isCalendarEventWithoutDateTime } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
@@ -181,34 +182,37 @@ const ActiveEvent: React.FC = ({}) => {
         placement="right"
         onClose={() => setSelectedSlot(null)}
       >
-        <DrawerContent minW="fit-content">
-          <DrawerBody minW="fit-content" p={'30px'}>
+        <DrawerContent maxW="500px">
+          <DrawerBody p={'30px'}>
             {selectedSlot &&
               (isCalendarEventWithoutDateTime(selectedSlot) ? (
                 <ActiveCalendarEvent slot={selectedSlot} />
               ) : (
-                <ScheduleStateProvider
-                  {...{
-                    title: selectedSlot?.title,
-                    content: selectedSlot?.content || '',
-                    duration: Math.ceil(
-                      (selectedSlot.end.getTime() -
-                        selectedSlot.start.getTime()) /
-                        60000
-                    ),
-                    pickedTime: selectedSlot?.start,
-                    currentSelectedDate: selectedSlot?.start,
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    meetingProvider: selectedSlot?.provider,
-                    meetingUrl: selectedSlot?.meeting_url || '',
-                    meetingNotification: [],
-                    isScheduling: false,
-                    selectedPermissions: undefined,
-                    decryptedMeeting: selectedSlot,
-                  }}
-                >
-                  <ActiveMeetwithEvent slot={selectedSlot} />
-                </ScheduleStateProvider>
+                <ParticipantsProvider>
+                  <ScheduleStateProvider
+                    {...{
+                      title: selectedSlot?.title,
+                      content: selectedSlot?.content || '',
+                      duration: Math.ceil(
+                        (selectedSlot.end.getTime() -
+                          selectedSlot.start.getTime()) /
+                          60000
+                      ),
+                      pickedTime: selectedSlot?.start,
+                      currentSelectedDate: selectedSlot?.start,
+                      timezone:
+                        Intl.DateTimeFormat().resolvedOptions().timeZone,
+                      meetingProvider: selectedSlot?.provider,
+                      meetingUrl: selectedSlot?.meeting_url || '',
+                      meetingNotification: [],
+                      isScheduling: false,
+                      selectedPermissions: undefined,
+                      decryptedMeeting: selectedSlot,
+                    }}
+                  >
+                    <ActiveMeetwithEvent slot={selectedSlot} />
+                  </ScheduleStateProvider>
+                </ParticipantsProvider>
               ))}
           </DrawerBody>
         </DrawerContent>
