@@ -82,8 +82,11 @@ export function withFileUpload(
 
     const busboy = Busboy({ headers: req.headers })
     const files: Record<string, FileData> = {}
-
+    const fields: Record<string, string> = {}
     await new Promise<void>((resolve, reject) => {
+      busboy.on('field', (fieldname, value) => {
+        fields[fieldname] = value
+      })
       busboy.on('file', (fieldname, file, info) => {
         const chunks: Uint8Array[] = []
 
@@ -111,7 +114,7 @@ export function withFileUpload(
       })
       busboy.on('finish', () => {
         req.body = {
-          ...req.body,
+          ...fields,
           files,
         }
         resolve()
