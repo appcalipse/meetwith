@@ -3,6 +3,7 @@ import '../styles/swipers.css'
 
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import TawkMessengerReact from '@tawk.to/tawk-messenger-react'
 import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
@@ -85,6 +86,10 @@ function MyApp({
               <RedirectNotifier />
               <BaseLayout consentCookie={consentCookie ?? false}>
                 <RedirectHandler />
+                <TawkMessengerReact
+                  propertyId={process.env.NEXT_PUBLIC_TAWK_PROPERTY_ID!}
+                  widgetId={process.env.NEXT_PUBLIC_TAWK_WIDGET_ID!}
+                />
                 <Component {...customProps} />
               </BaseLayout>
               <ConnectModal />
