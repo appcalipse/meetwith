@@ -185,6 +185,13 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     setSelectedPermissions,
     setContent,
     decryptedMeeting,
+    currentSelectedDate,
+    setPickedTime,
+    setCurrentSelectedDate,
+    setDuration,
+    setDecryptedMeeting,
+    setIsScheduling,
+    setTimezone,
   } = useScheduleState()
   const {
     isOpen: isDeleteOpen,
@@ -196,7 +203,23 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     onOpen: onEditSchedulerOpen,
     onClose: onEditSchedulerClose,
   } = useDisclosure()
-  const [isEditMode, setIsEditMode] = React.useState(false)
+  React.useEffect(() => {
+    // setTitle(slot.title)
+    setContent(slot.content || '')
+    // setMeetingProvider(slot.provider)
+    setMeetingUrl(slot.meeting_url || '')
+    setPickedTime(new Date(slot.start))
+    setMeetingNotification(
+      (slot.reminders || []).map(reminder => ({
+        value: reminder,
+      }))
+    )
+    setSelectedPermissions(slot.permissions)
+    // setIsScheduling(false)
+    setDecryptedMeeting(slot)
+    setCurrentSelectedDate(new Date(slot.start))
+    setDuration(Math.ceil((slot.end.getTime() - slot.start.getTime()) / 60000))
+  }, [])
   const timezoneDate = React.useMemo(() => {
     if (!pickedTime) {
       return new Date()
@@ -475,6 +498,8 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
               width: 'fit-content',
               minWidth: '100px',
               borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 700,
             }),
           }}
         />
@@ -542,11 +567,11 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
                   renderParticipantChipLabel(participant)
                 }
                 placeholder="Add participants"
-                addDisabled={!canEditMeeting || !isEditMode}
-                isReadOnly={!canEditMeeting || !isEditMode}
+                addDisabled={!canEditMeeting}
+                isReadOnly={!canEditMeeting}
                 renderBadge={renderBadge}
                 inputProps={
-                  !isEditMode
+                  !canEditMeeting
                     ? {
                         display: 'none',
                       }
@@ -554,12 +579,12 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
                 }
               />
             </Box>
-            {isEditMode && (
+            {canEditMeeting && (
               <IconButton
                 aria-label="Add participants"
                 icon={<IoPersonAddOutline size={20} />}
                 onClick={handleParticipantsClick}
-                isDisabled={!canEditMeeting || !isEditMode}
+                isDisabled={!canEditMeeting}
                 bg="primary.200"
                 color="neutral.900"
                 borderRadius="6px"
@@ -575,15 +600,15 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
           <HStack alignItems="stretch" gap={3}>
             <Box
               flex="1"
-              cursor={isEditMode ? 'pointer' : 'default'}
-              onClick={isEditMode ? handlePickNewTime : undefined}
+              cursor={canEditMeeting ? 'pointer' : 'default'}
+              onClick={canEditMeeting ? handlePickNewTime : undefined}
             >
               <SingleDatepicker
                 date={timezoneDate}
                 onDateChange={() => undefined}
                 iconColor="neutral.300"
                 iconSize={20}
-                disabled={!isEditMode}
+                disabled={!canEditMeeting}
                 inputProps={{
                   py: 3,
                   pl: 12,
@@ -595,8 +620,8 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
             </Box>
             <Box
               flex="1"
-              cursor={isEditMode ? 'pointer' : 'default'}
-              onClick={isEditMode ? handlePickNewTime : undefined}
+              cursor={canEditMeeting ? 'pointer' : 'default'}
+              onClick={canEditMeeting ? handlePickNewTime : undefined}
             >
               <InputTimePicker
                 currentDate={timezoneDate}
@@ -604,7 +629,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
                 onChange={() => undefined}
                 iconColor="neutral.300"
                 iconSize={20}
-                disabled={!isEditMode}
+                disabled={!canEditMeeting}
                 inputProps={{
                   py: 3,
                   pl: 12,
@@ -614,12 +639,12 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
                 }}
               />
             </Box>
-            {isEditMode && (
+            {canEditMeeting && (
               <IconButton
                 aria-label="Edit date and time"
                 icon={<MdOutlineEditCalendar size={20} />}
                 onClick={handlePickNewTime}
-                isDisabled={!isEditMode}
+                isDisabled={!canEditMeeting}
                 bg="primary.200"
                 color="neutral.900"
                 borderRadius="6px"
@@ -630,10 +655,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
             )}
           </HStack>
         </FormControl>
-        <FormControl
-          isInvalid={!isTitleValid}
-          isDisabled={!canEditMeeting || !isEditMode}
-        >
+        <FormControl isInvalid={!isTitleValid} isDisabled={!canEditMeeting}>
           <FormLabel
             _invalid={{
               color: 'red.500',
@@ -664,14 +686,14 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
             <FormHelperText color="red.500">Title is required</FormHelperText>
           )}
         </FormControl>
-        <FormControl isDisabled={!canEditMeeting || !isEditMode}>
+        <FormControl isDisabled={!canEditMeeting}>
           <FormLabel htmlFor="info">Description (optional)</FormLabel>
           <RichTextEditor
             id="info"
             value={content}
             onValueChange={setContent}
             placeholder="Any information you want to share prior to the meeting?"
-            isDisabled={!canEditMeeting || !isEditMode}
+            isDisabled={!canEditMeeting}
           />
         </FormControl>
         <VStack alignItems="start" w={'100%'} gap={4}>
@@ -682,7 +704,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
             onChange={(val: MeetingProvider) => setMeetingProvider(val)}
             value={meetingProvider}
             w={'100%'}
-            isDisabled={!canEditMeeting || !isEditMode}
+            isDisabled={!canEditMeeting}
           >
             <VStack w={'100%'} gap={4}>
               {meetingProviders.map(provider => (
@@ -709,7 +731,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
             <Input
               type="text"
               placeholder="insert a custom meeting url"
-              isDisabled={!canEditMeeting || !isEditMode}
+              isDisabled={!canEditMeeting}
               my={4}
               value={meetingUrl}
               onChange={e => setMeetingUrl(e.target.value)}
@@ -717,11 +739,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
           )}
         </VStack>
 
-        <FormControl
-          w="100%"
-          maxW="100%"
-          isDisabled={!canEditMeeting || !isEditMode}
-        >
+        <FormControl w="100%" maxW="100%" isDisabled={!canEditMeeting}>
           <FormLabel>Meeting Reminders</FormLabel>
           <Select
             value={meetingNotification}
@@ -744,7 +762,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
               }
               setMeetingNotification(meetingNotification)
             }}
-            isDisabled={!canEditMeeting || !isEditMode}
+            isDisabled={!canEditMeeting}
             className="noLeftBorder timezone-select"
             placeholder="Select Notification Alerts"
             isMulti
