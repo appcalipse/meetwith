@@ -6,7 +6,7 @@ import * as React from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingDecrypted } from '@/types/Meeting'
-import { getMeetingsForDashboard } from '@/utils/api_helper'
+import { getMeetings } from '@/utils/api_helper'
 import { decodeMeeting } from '@/utils/calendar_manager'
 
 import Loading from '../Loading'
@@ -18,14 +18,18 @@ const UpComingEvents: React.FC = () => {
     currentAccount?.preferences.timezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone
   const { data, isLoading } = reactQuery.useQuery<Array<MeetingDecrypted>>({
-    queryKey: [],
+    queryKey: [
+      'upcoming-meetings',
+      currentAccount?.address,
+      DateTime.now().setZone(timezone).toISODate(),
+    ],
     enabled: !!currentAccount?.address,
     queryFn: () =>
-      getMeetingsForDashboard(
+      getMeetings(
         currentAccount?.address || '',
+        DateTime.now().setZone(timezone).startOf('day').toJSDate(),
         DateTime.now().setZone(timezone).endOf('day').toJSDate(),
-        10,
-        0
+        3
       )
         .then(async res => {
           return Promise.all(
