@@ -1,5 +1,5 @@
 import { Button } from '@chakra-ui/button'
-import { Box, Heading, Text, VStack } from '@chakra-ui/layout'
+import { Box, Heading, VStack } from '@chakra-ui/layout'
 import * as reactQuery from '@tanstack/react-query'
 import { DateTime } from 'luxon'
 import * as React from 'react'
@@ -52,14 +52,14 @@ const UpComingEvents: React.FC = () => {
           )
         ),
   })
-  return (
-    <VStack mt={5} alignItems="flex-start" w="100%" gap={2.5}>
-      <Heading fontSize={20}>Upcoming Events</Heading>
-      {isLoading ? (
-        <Box w="100%" display="flex" justifyContent="center" mt={5}>
-          <Loading />
-        </Box>
-      ) : data ? (
+  return isLoading ? (
+    <Box w="100%" display="flex" justifyContent="center" mt={5}>
+      <Loading />
+    </Box>
+  ) : (
+    data && data.length > 0 && (
+      <VStack mt={5} alignItems="flex-start" w="100%" gap={2.5}>
+        <Heading fontSize={20}>Upcoming Events</Heading>
         <>
           {data.map(meeting => (
             <UpComingEvent key={meeting.id} meeting={meeting} />
@@ -68,12 +68,8 @@ const UpComingEvents: React.FC = () => {
             View All Meetings
           </Button>
         </>
-      ) : (
-        <Text fontSize={16} fontWeight={400} color="text-subtle">
-          No Upcoming Events
-        </Text>
-      )}
-    </VStack>
+      </VStack>
+    )
   )
 }
 
