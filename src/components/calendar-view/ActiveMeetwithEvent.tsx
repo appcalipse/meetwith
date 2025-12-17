@@ -1,26 +1,10 @@
 import { Button, IconButton } from '@chakra-ui/button'
-import { CheckIcon } from '@chakra-ui/icons'
-import {
-  Badge,
-  Box,
-  Center,
-  Heading,
-  HStack,
-  Link,
-  Text,
-  VStack,
-} from '@chakra-ui/layout'
+import { Box, Heading, HStack, Link, Text, VStack } from '@chakra-ui/layout'
 import {
   FormControl,
   FormHelperText,
   FormLabel,
   Input,
-  Menu,
-  MenuButton,
-  MenuDivider,
-  MenuItem,
-  MenuList,
-  Portal,
   Radio,
   RadioGroup,
   Tooltip,
@@ -31,34 +15,17 @@ import {
 import { Select } from 'chakra-react-select'
 import { DateTime } from 'luxon'
 import * as React from 'react'
-import { BsDash } from 'react-icons/bs'
-import { FaEllipsisV } from 'react-icons/fa'
-import { FaTrash, FaX } from 'react-icons/fa6'
-import { IoPersonAddOutline } from 'react-icons/io5'
+import { FaTrash } from 'react-icons/fa6'
 import { MdCancel, MdOutlineEditCalendar } from 'react-icons/md'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
+import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
-import { Intents } from '@/types/Dashboard'
-import {
-  MeetingChangeType,
-  MeetingDecrypted,
-  MeetingProvider,
-} from '@/types/Meeting'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
+import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
+import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
-import {
-  generateGoogleCalendarUrl,
-  generateIcs,
-  generateOffice365CalendarUrl,
-} from '@/utils/calendar_manager'
-import { appUrl } from '@/utils/constants'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -74,70 +41,19 @@ import {
   renderProviderName,
 } from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
-import { useToastHelpers } from '@/utils/toasts'
-import { ellipsizeAddress } from '@/utils/user_manager'
 
-import { ChipInput } from '../chip-input'
-import { chipStyles } from '../chip-input/chip'
 import { SingleDatepicker } from '../input-date-picker'
 import { InputTimePicker } from '../input-time-picker'
 import RichTextEditor from '../profile/components/RichTextEditor'
-import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import { DeleteMeetingDialog } from '../schedule/delete-dialog'
 import ScheduleParticipantsSchedulerModal from '../schedule/ScheduleParticipantsSchedulerModal'
+import MeetingMenu from './MeetingMenu'
+import ParticipantsControl from './ParticipantsControl'
 
 interface ActiveMeetwithEventProps {
   slot: MeetingDecrypted
 }
-const renderRsvpStatus = (status: ParticipationStatus) => {
-  switch (status) {
-    case ParticipationStatus.Accepted:
-      return (
-        <VStack
-          as="span"
-          w={3}
-          h={3}
-          bg="green.500"
-          rounded="full"
-          justify="center"
-          align="center"
-          ml={1}
-        >
-          <CheckIcon width={'8px'} height={'8px'} />
-        </VStack>
-      )
-    case ParticipationStatus.Rejected:
-      return (
-        <VStack
-          as="span"
-          w={3}
-          h={3}
-          bg="red.250"
-          rounded="full"
-          justify="center"
-          align="center"
-          ml={1}
-        >
-          <FaX size={8} />
-        </VStack>
-      )
-    case ParticipationStatus.Pending:
-      return (
-        <VStack
-          as="span"
-          w={3}
-          h={3}
-          bg="#FF8D28"
-          rounded="full"
-          justify="center"
-          align="center"
-          ml={1}
-        >
-          <BsDash width={'8px'} height={'8px'} />
-        </VStack>
-      )
-  }
-}
+
 const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM)
 
 const RSVP_OPTIONS = [
@@ -159,12 +75,9 @@ interface RSVPOption {
   value: ParticipationStatus
 }
 const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
-  const {
-    isOpen: isCancelOpen,
-    onOpen: onCancelOpen,
-    onClose: onCancelClose,
-  } = useDisclosure()
   const [isTitleValid, setIsTitleValid] = React.useState(true)
+  const currentAccount = useAccountContext()
+
   const {
     title,
     content,
@@ -173,26 +86,21 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     meetingProvider,
     meetingUrl,
     meetingNotification,
-    meetingRepeat,
     timezone,
-    isScheduling,
-    selectedPermissions,
     setTitle,
+    setContent,
     setMeetingProvider,
     setMeetingUrl,
     setMeetingNotification,
-    setMeetingRepeat,
-    setSelectedPermissions,
-    setContent,
-    decryptedMeeting,
-    currentSelectedDate,
-    setPickedTime,
-    setCurrentSelectedDate,
-    setDuration,
-    setDecryptedMeeting,
-    setIsScheduling,
-    setTimezone,
+    isScheduling,
   } = useScheduleState()
+  const { handleSchedule, handleCancel } = useScheduleActions()
+  const canEditMeetingDetails = canAccountAccessPermission(
+    slot?.permissions,
+    slot?.participants || [],
+    currentAccount?.address,
+    [MeetingPermissions.INVITE_GUESTS, MeetingPermissions.EDIT_MEETING]
+  )
   const {
     isOpen: isDeleteOpen,
     onOpen: onDeleteOpen,
@@ -203,23 +111,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     onOpen: onEditSchedulerOpen,
     onClose: onEditSchedulerClose,
   } = useDisclosure()
-  React.useEffect(() => {
-    // setTitle(slot.title)
-    setContent(slot.content || '')
-    // setMeetingProvider(slot.provider)
-    setMeetingUrl(slot.meeting_url || '')
-    setPickedTime(new Date(slot.start))
-    setMeetingNotification(
-      (slot.reminders || []).map(reminder => ({
-        value: reminder,
-      }))
-    )
-    setSelectedPermissions(slot.permissions)
-    // setIsScheduling(false)
-    setDecryptedMeeting(slot)
-    setCurrentSelectedDate(new Date(slot.start))
-    setDuration(Math.ceil((slot.end.getTime() - slot.start.getTime()) / 60000))
-  }, [])
+
   const timezoneDate = React.useMemo(() => {
     if (!pickedTime) {
       return new Date()
@@ -232,7 +124,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     }
     return DateTime.fromJSDate(pickedTime).setZone(timezone).toFormat('hh:mm a')
   }, [pickedTime, timezone])
-  const currentAccount = useAccountContext()
   const toast = useToast()
   const canEditMeeting = canAccountAccessPermission(
     slot?.permissions,
@@ -245,7 +136,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
       return
     }
   }, [canEditMeeting])
-  const { selectedSlot, setSelectedSlot } = useCalendarContext()
+  const { setSelectedSlot } = useCalendarContext()
   const iconColor = useColorModeValue('gray.500', 'gray.200')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const actor = slot.participants.find(
@@ -257,7 +148,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
       value,
     })).find(option => option.value === actor?.status)
   )
-  const { showSuccessToast, showInfoToast, showErrorToast } = useToastHelpers()
   const _onChange = (newValue: RSVPOption) => {
     if (Array.isArray(newValue)) {
       return
@@ -268,105 +158,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
   const isSchedulerOrOwner = isAccountSchedulerOrOwner(
     slot?.participants,
     currentAccount?.address
-  )
-  const downloadIcs = async (
-    info: MeetingDecrypted,
-    currentConnectedAccountAddress: string
-  ) => {
-    try {
-      showInfoToast(
-        'Downloading calendar invite',
-        'Your download will begin shortly. Please check your downloads folder.'
-      )
-      const icsFile = await generateIcs(
-        info,
-        currentConnectedAccountAddress,
-        MeetingChangeType.CREATE,
-        `${appUrl}/dashboard/schedule?conferenceId=${slot.meeting_id}&intent=${Intents.UPDATE_MEETING}`
-      )
-
-      const url = window.URL.createObjectURL(
-        new Blob([icsFile.value!], { type: 'text/plain' })
-      )
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `meeting_${slot!.id}.ics`)
-
-      document.body.appendChild(link)
-      link.click()
-      link.parentNode!.removeChild(link)
-      showSuccessToast(
-        'Downloaded calendar invite',
-        'Ics file downloaded successfully'
-      )
-    } catch (e) {
-      showErrorToast(
-        'Download failed',
-        'There was an error downloading the ics file. Please try again.'
-      )
-    }
-  }
-  const menuItems = React.useMemo(
-    () => [
-      {
-        label: 'Add to Google Calendar',
-        onClick: async () => {
-          showInfoToast(
-            'Opening Google Calendar',
-            'A new tab will open with your Google Calendar invite.'
-          )
-          const url = await generateGoogleCalendarUrl(
-            slot?.meeting_id || '',
-            currentAccount!.address,
-            slot?.start,
-            slot?.end,
-            slot?.title || 'No Title',
-            slot?.content,
-            slot?.meeting_url,
-            Intl.DateTimeFormat().resolvedOptions().timeZone,
-            slot?.participants
-          )
-          showSuccessToast(
-            'Opening Link',
-            'A new tab has been opened with your Google Calendar invite.'
-          )
-          window.open(url, '_blank', 'noopener noreferrer')
-        },
-      },
-      {
-        label: 'Add to Office 365 Calendar',
-        onClick: async () => {
-          showInfoToast(
-            'Generating Link',
-            'A new tab will open with your Office 365 calendar invite.'
-          )
-          const url = await generateOffice365CalendarUrl(
-            slot?.meeting_id || '',
-            currentAccount!.address,
-            slot?.start,
-            slot?.end,
-            slot?.title || 'No Title',
-            slot?.content,
-            slot?.meeting_url,
-            Intl.DateTimeFormat().resolvedOptions().timeZone,
-            slot?.participants
-          )
-          showSuccessToast(
-            'Opening Link',
-            'A new tab has been opened with your Office 365 calendar invite.'
-          )
-          window.open(url, '_blank', 'noopener noreferrer')
-        },
-      },
-      {
-        label: 'Download calendar invite',
-        isAsync: true,
-        onClick: () => {
-          downloadIcs(slot, currentAccount!.address)
-        },
-      },
-    ],
-    [slot, currentAccount]
   )
 
   const handleDelete = () => {
@@ -380,48 +171,9 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
       onDeleteOpen()
     }
   }
-
-  const renderParticipantChipLabel = React.useCallback(
-    (participantInfo: ParticipantInfo) => {
-      const isParticipantScheduler =
-        participantInfo.type === ParticipantType.Scheduler
-      const isCurrentUser =
-        participantInfo.account_address &&
-        participantInfo.account_address.toLowerCase() ===
-          currentAccount?.address?.toLowerCase()
-
-      if (isParticipantScheduler) {
-        if (isCurrentUser) {
-          return 'You (Scheduler)'
-        }
-        const baseName =
-          participantInfo.name ||
-          participantInfo.guest_email ||
-          ellipsizeAddress(participantInfo.account_address || '')
-        return `${baseName} (Scheduler)`
-      }
-
-      return (
-        participantInfo.name ||
-        participantInfo.guest_email ||
-        ellipsizeAddress(participantInfo.account_address || '')
-      )
-    },
-    [currentAccount?.address]
-  )
-  const renderBadge = React.useCallback(
-    (participantInfo: ParticipantInfo) => (
-      <Badge sx={chipStyles.badge}>
-        <Center>
-          {renderParticipantChipLabel(participantInfo)}
-          {renderRsvpStatus(participantInfo.status)}
-        </Center>
-      </Badge>
-    ),
-    [renderParticipantChipLabel]
-  )
-  const handleChipInputChange = () => {}
-  const handleParticipantsClick = () => {}
+  if (!currentAccount) {
+    return null
+  }
   return (
     <VStack w="100%" spacing={4} alignItems="flex-start">
       <Button
@@ -464,7 +216,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
               color={iconColor}
               aria-label="remove"
               icon={<MdCancel size={16} />}
-              onClick={onCancelOpen}
+              onClick={handleCancel}
               bg={menuBgColor}
             />
           </Tooltip>
@@ -503,44 +255,9 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
             }),
           }}
         />
-        <Menu>
-          <MenuButton
-            as={IconButton}
-            color={iconColor}
-            aria-label="option"
-            icon={<FaEllipsisV size={16} />}
-            key={`${slot?.id}-option`}
-          />
-          <Portal>
-            <MenuList backgroundColor={menuBgColor}>
-              {menuItems.map((val, index, arr) => [
-                <MenuItem
-                  onClick={val.onClick}
-                  backgroundColor={menuBgColor}
-                  key={`${val.label}-${slot?.id}`}
-                  aria-busy
-                >
-                  {val.label}
-                </MenuItem>,
-                index !== arr.length - 1 && (
-                  <MenuDivider
-                    key={`divider-${index}-${slot?.id}`}
-                    borderColor="neutral.600"
-                  />
-                ),
-              ])}
-            </MenuList>
-          </Portal>
-        </Menu>
+
+        <MeetingMenu slot={slot} currentAccount={currentAccount} />
       </HStack>
-      <CancelMeetingDialog
-        isOpen={isCancelOpen}
-        onClose={onCancelClose}
-        decryptedMeeting={slot}
-        currentAccount={currentAccount}
-        afterCancel={() => setSelectedSlot(null)}
-        // TODO: create a removed slot array to map removed slot to so we don't need to refetch all slots and can just filter them out with it
-      />
       <ScheduleParticipantsSchedulerModal
         isOpen={isEditSchedulerOpen}
         onClose={onEditSchedulerClose}
@@ -556,45 +273,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
       />
       <VStack w={'100%'} gap={6} alignItems="flex-start">
         <Heading fontSize="x-large">Meeting Information</Heading>
-        <FormControl>
-          <FormLabel>Meeting participants</FormLabel>
-          <HStack alignItems="stretch" gap={3}>
-            <Box width="fit-content" flex={1}>
-              <ChipInput
-                currentItems={slot.participants || []}
-                onChange={handleChipInputChange}
-                renderItem={participant =>
-                  renderParticipantChipLabel(participant)
-                }
-                placeholder="Add participants"
-                addDisabled={!canEditMeeting}
-                isReadOnly={!canEditMeeting}
-                renderBadge={renderBadge}
-                inputProps={
-                  !canEditMeeting
-                    ? {
-                        display: 'none',
-                      }
-                    : undefined
-                }
-              />
-            </Box>
-            {canEditMeeting && (
-              <IconButton
-                aria-label="Add participants"
-                icon={<IoPersonAddOutline size={20} />}
-                onClick={handleParticipantsClick}
-                isDisabled={!canEditMeeting}
-                bg="primary.200"
-                color="neutral.900"
-                borderRadius="6px"
-                _hover={{
-                  bg: 'primary.300',
-                }}
-              />
-            )}
-          </HStack>
-        </FormControl>
+        <ParticipantsControl slot={slot} currentAccount={currentAccount} />
         <FormControl>
           <FormLabel>Date/Time</FormLabel>
           <HStack alignItems="stretch" gap={3}>
@@ -790,6 +469,44 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
             }}
           />
         </FormControl>
+        <HStack w="100%" flexWrap="wrap">
+          <Button
+            w="100%"
+            py={3}
+            flex={1}
+            flexBasis="50%"
+            h={'auto'}
+            colorScheme="primary"
+            onClick={handleSchedule}
+            isLoading={isScheduling}
+            isDisabled={
+              !title || !duration || !pickedTime || !canEditMeetingDetails
+            }
+          >
+            Update Meeting
+          </Button>
+          {isSchedulerOrOwner && (
+            <Button
+              w="100%"
+              py={3}
+              h={'auto'}
+              borderColor="red.500"
+              borderWidth={1}
+              color="red.500"
+              bg="transparent"
+              onClick={handleCancel}
+              variant="outline"
+              flex={1}
+              flexBasis="40%"
+              _hover={{
+                bg: 'red.500',
+                color: 'white',
+              }}
+            >
+              Cancel Meeting
+            </Button>
+          )}
+        </HStack>
       </VStack>
     </VStack>
   )
