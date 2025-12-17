@@ -1,4 +1,3 @@
-/* eslint-disable tailwindcss/no-custom-classname */
 import { InfoIcon } from '@chakra-ui/icons'
 import {
   Box,
@@ -21,7 +20,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { isProduction } from '@utils/constants'
 import { Select, SingleValue } from 'chakra-react-select'
 import { DateTime, Interval } from 'luxon'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
 
@@ -132,7 +131,7 @@ export function SchedulePickTime({
   const toast = useToast()
   const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
   const SLOT_LENGTH =
-    useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) ?? 3
+    useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) || 3
 
   useEffect(() => {
     // Only resolve after client-side rendering
@@ -208,6 +207,8 @@ export function SchedulePickTime({
     return monthsArray
   }, [currentSelectedDate.getFullYear(), timezone])
   const [dates, setDates] = useState<Array<Dates>>([])
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   const datesSlotsWithAvailability = useSlotsWithAvailability(
     dates,
     busySlots,
@@ -286,35 +287,69 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
-  const getDates = (scheduleDuration = duration) => {
-    const days = Array.from({ length: SLOT_LENGTH || 3 }, (v, k) => k)
-      .map(k =>
-        DateTime.fromJSDate(currentSelectedDate)
-          .setZone(timezone)
-          .startOf('day')
-          .plus({ days: k })
+  const getDates = useCallback(
+    (scheduleDuration = duration) => {
+      const days = Array.from({ length: SLOT_LENGTH || 3 }, (v, k) => k)
+        .map(k =>
+          DateTime.fromJSDate(currentSelectedDate)
+            .setZone(timezone)
+            .startOf('day')
+            .plus({ days: k })
+        )
+        .filter(val =>
+          DateTime.fromJSDate(currentSelectedDate)
+            .setZone(timezone)
+            .startOf('month')
+            .hasSame(val, 'month')
+        )
+      return days.map(date => {
+        const slots = getEmptySlots(date.toJSDate(), scheduleDuration)
+        return {
+          date: date.toJSDate(),
+          slots,
+        }
+      })
+    },
+    [currentSelectedDate, timezone, duration, SLOT_LENGTH]
+  )
+
+  const accounts = useMemo(
+    () =>
+      deduplicateArray(Object.values(groupAvailability).flat()).filter(
+        (val): val is string => Boolean(val)
+      ),
+    [groupAvailability]
+  )
+
+  const allParticipants = useMemo(
+    () =>
+      getMergedParticipants(
+        participants,
+        groups,
+        groupAvailability,
+        currentAccount?.address
       )
-      .filter(val =>
-        DateTime.fromJSDate(currentSelectedDate)
-          .setZone(timezone)
-          .startOf('month')
-          .hasSame(val, 'month')
-      )
-    return days.map(date => {
-      const slots = getEmptySlots(date.toJSDate(), scheduleDuration)
-      return {
-        date: date.toJSDate(),
-        slots,
-      }
-    })
-  }
+        .filter((val): val is AccountAddressRecord => !!val.account_address)
+        .map(val => val.account_address)
+        .concat([currentAccount?.address || '']),
+    [participants, groups, groupAvailability, currentAccount?.address]
+  )
 
   async function handleSlotLoad() {
     if (!isBreakpointResolved) return
-    setIsLoading(true)
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     try {
+      setIsLoading(true)
+      if (controller.signal.aborted) return
       setAvailableSlots(new Map())
       setBusySlots(new Map())
+
       const monthStart = DateTime.fromJSDate(currentSelectedDate)
         .setZone(timezone)
         .startOf('month')
@@ -324,22 +359,23 @@ export function SchedulePickTime({
         .endOf('month')
         .toJSDate()
 
-      const accounts = deduplicateArray(
-        Object.values(groupAvailability).flat()
-      ).filter((val): val is string => Boolean(val))
-      const allParticipants = getMergedParticipants(
-        participants,
-        groups,
-        groupAvailability,
-        currentAccount?.address
-      )
-        .filter((val): val is AccountAddressRecord => !!val.account_address)
-        .map(val => val.account_address)
-        .concat([currentAccount?.address || ''])
       const [busySlotsRaw, meetingMembers] = await Promise.all([
-        fetchBusySlotsRawForMultipleAccounts(accounts, monthStart, monthEnd),
-        getExistingAccounts(deduplicateArray(allParticipants)),
+        fetchBusySlotsRawForMultipleAccounts(
+          accounts,
+          monthStart,
+          monthEnd,
+          undefined,
+          undefined,
+          {
+            signal: controller.signal,
+          }
+        ),
+        getExistingAccounts(deduplicateArray(allParticipants), undefined, {
+          signal: controller.signal,
+        }),
       ])
+
+      if (controller.signal.aborted) return
 
       // Map raw busy slots to intervals for compatibility
       const busySlots = busySlotsRaw.map(busySlot => ({
@@ -352,6 +388,8 @@ export function SchedulePickTime({
 
       // Store full TimeSlot objects with event details
       const busySlotsWithDetailsMap: Map<string, TimeSlot[]> = new Map()
+      const busySlotsMap: Map<string, Interval[]> = new Map()
+
       const accountBusySlots = accounts.map(account => {
         return busySlots.filter(slot => slot.account_address === account)
       })
@@ -399,7 +437,6 @@ export function SchedulePickTime({
           )
         }
       }
-      const busySlotsMap: Map<string, Interval[]> = new Map()
       for (const account of accountBusySlots) {
         const busySlots = account.map(slot => {
           return slot.interval
@@ -409,42 +446,53 @@ export function SchedulePickTime({
           busySlots
         )
       }
-      setBusySlots(busySlotsMap)
-      setBusySlotsWithDetails(busySlotsWithDetailsMap)
-      setMeetingMembers(meetingMembers)
-      setAvailableSlots(availableSlotsMap)
-      setDates(getDates(duration))
-      const suggestedSlots = suggestBestSlots(
-        monthStart,
-        duration,
-        monthEnd,
-        timezone,
-        busySlots.map(slot => slot.interval).filter(slot => slot.isValid),
-        meetingMembers
-      )
+      if (!controller.signal.aborted) {
+        setBusySlots(busySlotsMap)
+        setBusySlotsWithDetails(busySlotsWithDetailsMap)
+        setMeetingMembers(meetingMembers)
+        setAvailableSlots(availableSlotsMap)
+        setDates(getDates(duration))
+        const suggestedSlots = suggestBestSlots(
+          monthStart,
+          duration,
+          monthEnd,
+          timezone,
+          busySlots.map(slot => slot.interval).filter(slot => slot.isValid),
+          meetingMembers
+        )
 
-      setSuggestedTimes(suggestedSlots)
+        setSuggestedTimes(suggestedSlots)
+      }
     } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Request was cancelled, ignore
+        return
+      }
       handleApiError('Error merging availabilities', error)
     } finally {
-      setIsLoading(false)
+      if (!controller.signal.aborted) {
+        setIsLoading(false)
+        abortControllerRef.current = null
+      }
     }
   }
-  const debouncedHandleSlotLoad = useDebounceCallback(handleSlotLoad, 300)
+  const debouncedHandleSlotLoad = useDebounceCallback(handleSlotLoad)
 
   useEffect(() => {
-    if (inviteModalOpen) return
     debouncedHandleSlotLoad()
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
   }, [
-    groupAvailability,
     currentSelectedDate.getMonth(),
+    currentSelectedDate.getFullYear(),
     duration,
-    inviteModalOpen,
+    accounts.join(','),
+    allParticipants.join(','),
     isBreakpointResolved,
   ])
-  useEffect(() => {
-    handleSlotLoad()
-  }, [SLOT_LENGTH])
   useEffect(() => {
     setDates(getDates())
   }, [currentSelectedDate, timezone, SLOT_LENGTH])
