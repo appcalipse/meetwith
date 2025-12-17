@@ -38,7 +38,7 @@ interface ChipInputProps {
   button?: ReactElement
   inputProps?: InputProps
   addDisabled?: boolean
-  renderBadge?: (item: ParticipantInfo) => ReactElement
+  renderBadge?: (item: ParticipantInfo, onRemove?: () => void) => ReactElement
 }
 
 export const ChipInput: React.FC<ChipInputProps> = ({
@@ -112,7 +112,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
 
   const badges = currentItems.map((it, idx) => {
     return renderBadge ? (
-      renderBadge(it)
+      renderBadge(it, () => onRemoveItem(idx))
     ) : (
       <Box key={`${idx}-${it}`}>
         <BadgeChip
