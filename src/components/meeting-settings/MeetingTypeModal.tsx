@@ -1385,7 +1385,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                         cursor="pointer"
                         textTransform="capitalize"
                       >
-                        Stripe
+                        Card (via Stripe)
                       </Text>
                     </Checkbox>
                   </HStack>
@@ -1397,14 +1397,13 @@ const MeetingTypeModal: FC<IProps> = props => {
                     alignSelf={'flex-start'}
                     fontWeight={700}
                   >
-                    A fiat payment channel is not connected.{' '}
+                    Please connect your Stripe account.{' '}
                     {/* TODO make the connection from this section */}
                     <Link
                       href="/dashboard/details#connected-accounts"
                       color="primary.200"
                       textDecor="underline"
                     >
-                      {' '}
                       Connect now.
                     </Link>
                   </Text>
