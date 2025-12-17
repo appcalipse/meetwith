@@ -17,9 +17,10 @@ import {
 } from '@/types/ParticipantInfo'
 import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
 import { getContactsLean, getGroupsFull } from '@/utils/api_helper'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { handleApiError } from '@/utils/error_helper'
 
-interface IParticipantsContext {
+export interface IParticipantsContext {
   participants: Array<ParticipantInfo | IGroupParticipant>
   standAloneParticipants: Array<ParticipantInfo>
   groupParticipants: Record<string, Array<string> | undefined>
@@ -50,9 +51,9 @@ interface IParticipantsContext {
   removeGroup: (groupId: string) => void
 }
 
-const ParticipantsContext = createContext<IParticipantsContext | undefined>(
-  undefined
-)
+export const ParticipantsContext = createContext<
+  IParticipantsContext | undefined
+>(undefined)
 
 export const useParticipants = () => {
   const context = useContext(ParticipantsContext)
@@ -91,10 +92,14 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   >([])
   const [groupParticipants, setGroupParticipants] = useState<
     Record<string, Array<string> | undefined>
-  >({})
+  >({
+    [NO_GROUP_KEY]: [currentAccount?.address || ''],
+  })
   const [groupAvailability, setGroupAvailability] = useState<
     Record<string, Array<string> | undefined>
-  >({})
+  >({
+    [NO_GROUP_KEY]: [currentAccount?.address || ''],
+  })
   const [meetingMembers, setMeetingMembers] = useState<Array<Account>>([])
   const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
   const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
