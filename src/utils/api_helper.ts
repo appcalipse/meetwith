@@ -144,7 +144,9 @@ import { queryClient } from './react_query'
 import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
-
+type RequestOption = {
+  signal?: AbortSignal
+}
 export const internalFetch = async <T>(
   path: string,
   method = 'GET',
@@ -153,7 +155,8 @@ export const internalFetch = async <T>(
   headers = {},
   isFormData = false,
   withRetry = true,
-  remainingRetries = 3
+  remainingRetries = 3,
+  signal?: AbortSignal
 ): Promise<T> => {
   const baseDelay = 1000
 
@@ -171,6 +174,7 @@ export const internalFetch = async <T>(
       body: isFormData
         ? (body as FormData)
         : (!!body && (JSON.stringify(body) as string)) || null,
+      signal,
     })
     if (response.status >= 200 && response.status < 300) {
       return (await response.json()) as T
@@ -201,7 +205,8 @@ export const internalFetch = async <T>(
         headers,
         isFormData,
         withRetry,
-        remainingRetries - 1
+        remainingRetries - 1,
+        signal
       )
     }
 
@@ -279,16 +284,27 @@ export const getExistingAccountsSimple = async (
 
 export const getExistingAccounts = async (
   addresses: string[],
-  fullInformation = true
+  fullInformation = true,
+  options?: RequestOption
 ): Promise<Account[]> => {
   try {
     return await queryClient.fetchQuery(
       QueryKeys.existingAccounts(addresses, fullInformation),
       () =>
-        internalFetch(`/accounts/existing`, 'POST', {
-          addresses,
-          fullInformation,
-        }) as Promise<Account[]>
+        internalFetch(
+          `/accounts/existing`,
+          'POST',
+          {
+            addresses,
+            fullInformation,
+          },
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          options?.signal
+        ) as Promise<Account[]>
     )
   } catch (e: unknown) {
     throw e
@@ -695,16 +711,27 @@ export const fetchBusySlotsRawForMultipleAccounts = async (
   start: Date,
   end: Date,
   limit?: number,
-  offset?: number
+  offset?: number,
+  options?: RequestOption
 ): Promise<TimeSlot[]> => {
-  const response = (await internalFetch(`/meetings/busy/team`, 'POST', {
-    addresses,
-    start,
-    end,
-    limit,
-    offset,
-    isRaw: true,
-  })) as TimeSlot[]
+  const response = (await internalFetch(
+    `/meetings/busy/team`,
+    'POST',
+    {
+      addresses,
+      start,
+      end,
+      limit,
+      offset,
+      isRaw: true,
+    },
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    options?.signal
+  )) as TimeSlot[]
 
   return response.map(slot => ({
     ...slot,
@@ -780,7 +807,10 @@ export const getGroupsFull = async (
   if (search) {
     url += `&search=${search}`
   }
-  const response = await internalFetch<Array<GetGroupsFullResponse>>(url)
+  const response = await queryClient.fetchQuery(
+    QueryKeys.groupFull(limit, offset, search, includeInvites),
+    () => internalFetch<Array<GetGroupsFullResponse>>(url)
+  )
   return response
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
@@ -1629,8 +1659,12 @@ export const getContacts = async (limit = 10, offset = 0, query = '') => {
   )
 }
 export const getContactsLean = async (limit = 10, offset = 0, query = '') => {
-  return await internalFetch<Array<LeanContact>>(
-    `/secure/contact?type=lean&limit=${limit}&offset=${offset}&q=${query}`
+  return await queryClient.fetchQuery(
+    QueryKeys.groupFull(limit, offset, query),
+    () =>
+      internalFetch<Array<LeanContact>>(
+        `/secure/contact?type=lean&limit=${limit}&offset=${offset}&q=${query}`
+      )
   )
 }
 
