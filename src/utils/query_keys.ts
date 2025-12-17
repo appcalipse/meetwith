@@ -64,4 +64,15 @@ export default class QueryKeys {
   static supportedCountries() {
     return ['supportedCountries']
   }
+  static groupFull(
+    limit?: number,
+    offset?: number,
+    search?: string,
+    includeInvites = true
+  ) {
+    return ['groupFull', limit, offset, search, includeInvites]
+  }
+  static contactFull(limit?: number, offset?: number, query?: string) {
+    return ['contactFull', limit, offset, query]
+  }
 }
