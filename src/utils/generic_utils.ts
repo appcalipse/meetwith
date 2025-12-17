@@ -63,10 +63,14 @@ export const canAccountAccessPermission = (
   permissions?: MeetingPermissions[],
   participants?: ParticipantInfo[] | DBSlot[],
   identifier?: string,
-  permission = MeetingPermissions.SEE_GUEST_LIST
+  permission:
+    | MeetingPermissions
+    | MeetingPermissions[] = MeetingPermissions.SEE_GUEST_LIST
 ) =>
-  permissions === undefined ||
-  !!permissions?.includes(permission) ||
+  (permissions &&
+    (permission instanceof Array
+      ? permission.some(perm => permissions?.includes(perm))
+      : !!permissions?.includes(permission))) ||
   isAccountSchedulerOrOwner(participants, identifier)
 
 export function formatUnits(value: bigint, decimals: number) {
