@@ -1,16 +1,34 @@
-import { Drawer, DrawerBody, DrawerContent, useToast } from '@chakra-ui/react'
+import {
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  useDisclosure,
+  useToast,
+} from '@chakra-ui/react'
+import { addMinutes } from 'date-fns'
+import { DateTime } from 'luxon'
 import * as React from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { useCalendarContext } from '@/providers/calendar/CalendarContext'
+import {
+  createEventsQueryKey,
+  useCalendarContext,
+} from '@/providers/calendar/CalendarContext'
 import { ActionsContext } from '@/providers/schedule/ActionsContext'
-import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
-import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { isCalendarEventWithoutDateTime } from '@/types/Calendar'
-import { MeetingDecrypted } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { deleteMeeting } from '@/utils/calendar_manager'
+import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
+import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
+import { isGroupParticipant } from '@/types/schedule'
+import { logEvent } from '@/utils/analytics'
+import { deleteMeeting, updateMeeting } from '@/utils/calendar_manager'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
+import {
+  MeetingNotificationOptions,
+  MeetingPermissions,
+} from '@/utils/constants/schedule'
 import { handleApiError } from '@/utils/error_helper'
 import {
   GateConditionNotValidError,
@@ -21,19 +39,100 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   MultipleSchedulersError,
+  PermissionDenied,
   TimeNotAvailableError,
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
+import { canAccountAccessPermission } from '@/utils/generic_utils'
+import { queryClient } from '@/utils/react_query'
+import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
 
+import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import ActiveCalendarEvent from './ActiveCalendarEvent'
 import ActiveMeetwithEvent from './ActiveMeetwithEvent'
 const ActiveEvent: React.FC = ({}) => {
-  const { selectedSlot, setSelectedSlot } = useCalendarContext()
+  const { selectedSlot, setSelectedSlot, currrentDate } = useCalendarContext()
   const currentAccount = useAccountContext()
   const toast = useToast()
-
+  const {
+    duration,
+    meetingNotification,
+    meetingProvider,
+    pickedTime,
+    setTitle,
+    content,
+    meetingUrl,
+    title,
+    meetingRepeat,
+    selectedPermissions,
+    setMeetingProvider,
+    setMeetingUrl,
+    setMeetingNotification,
+    setSelectedPermissions,
+    setContent,
+    setPickedTime,
+    setCurrentSelectedDate,
+    setDuration,
+    setDecryptedMeeting,
+    setIsScheduling,
+    setTimezone,
+  } = useScheduleState()
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const decryptedMeeting: MeetingDecrypted | undefined = React.useMemo(() => {
+    if (!selectedSlot || isCalendarEventWithoutDateTime(selectedSlot))
+      return undefined
+    return {
+      ...selectedSlot,
+      id: selectedSlot.id.split('_')[0],
+    }
+  }, [selectedSlot])
+  const {
+    setGroupParticipants,
+    setGroupAvailability,
+    meetingOwners,
+    setParticipants,
+    participants,
+    groupParticipants,
+    groups,
+  } = useParticipants()
+  React.useEffect(() => {
+    if (!selectedSlot) return
+    if (!isCalendarEventWithoutDateTime(selectedSlot)) {
+      setTitle(selectedSlot.title || 'No Title')
+      setContent(selectedSlot.content || '')
+      setDuration(
+        DateTime.fromJSDate(selectedSlot.end).diff(
+          DateTime.fromJSDate(selectedSlot.start),
+          'minutes'
+        ).minutes || 30
+      )
+      setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+      setMeetingProvider(selectedSlot.provider || MeetingProvider.GOOGLE_MEET)
+      setMeetingUrl(selectedSlot.meeting_url || '')
+      setPickedTime(new Date(selectedSlot.start))
+      const reminders = selectedSlot.reminders || []
+      setMeetingNotification(
+        MeetingNotificationOptions.filter(option =>
+          reminders.includes(option.value)
+        )
+      )
+      setSelectedPermissions(selectedSlot.permissions)
+      setIsScheduling(false)
+      setDecryptedMeeting(selectedSlot)
+      setCurrentSelectedDate(new Date(selectedSlot.start))
+      const participants = selectedSlot.participants || []
+      const participantsMap: Record<string, string[] | undefined> = {
+        [NO_GROUP_KEY]: participants
+          .map(participant => participant.account_address)
+          .filter((address): address is string => !!address),
+      }
+      setParticipants(participants)
+      setGroupParticipants(participantsMap)
+      setGroupAvailability(participantsMap)
+    }
+  }, [selectedSlot])
   const handleDelete = async (
     actor?: ParticipantInfo,
     decryptedMeeting?: MeetingDecrypted
@@ -170,10 +269,240 @@ const ActiveEvent: React.FC = ({}) => {
       }
     }
   }
+  const handleCleanup = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries(createEventsQueryKey(currrentDate)),
+      queryClient.invalidateQueries(
+        createEventsQueryKey(currrentDate.minus({ month: 1 }))
+      ),
+      queryClient.invalidateQueries(
+        createEventsQueryKey(currrentDate.plus({ month: 1 }))
+      ),
+    ])
+    setSelectedSlot(null)
+  }
+  const handleUpdate = async () => {
+    try {
+      if (!selectedSlot || !currentAccount?.address || !decryptedMeeting) return
+      setIsScheduling(true)
+      if (!isCalendarEventWithoutDateTime(selectedSlot)) {
+        if (!pickedTime) return
+        const start = new Date(pickedTime)
+        const end = addMinutes(new Date(start), duration)
+        const canViewParticipants = canAccountAccessPermission(
+          selectedSlot?.permissions,
+          selectedSlot?.participants || [],
+          currentAccount?.address,
+          MeetingPermissions.SEE_GUEST_LIST
+        )
+        const actualParticipants = canViewParticipants
+          ? participants
+          : participants
+              .filter(p => {
+                if (isGroupParticipant(p)) return true
+                return !p.isHidden
+              })
+              .concat(selectedSlot?.participants || [])
+        const allParticipants = getMergedParticipants(
+          actualParticipants,
+          groups,
+          groupParticipants
+        ).map(val => ({
+          ...val,
+          type: meetingOwners.some(
+            owner => owner.account_address === val.account_address
+          )
+            ? ParticipantType.Owner
+            : val.type,
+        }))
+        const _participants = await parseAccounts(allParticipants)
+
+        if (_participants.invalid.length > 0) {
+          toast({
+            title: 'Invalid invitees',
+            description: `Can't invite ${_participants.invalid.join(
+              ', '
+            )}. Please check the addresses/profiles/emails`,
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+          setIsScheduling(false)
+          return
+        }
+        const canUpdateOtherGuests = canAccountAccessPermission(
+          selectedSlot?.permissions,
+          selectedSlot?.participants || [],
+          currentAccount?.address,
+          MeetingPermissions.INVITE_GUESTS
+        )
+
+        if (
+          !canUpdateOtherGuests &&
+          selectedSlot?.participants?.length !== _participants.valid.length
+        ) {
+          toast({
+            title: 'Permission Denied',
+            description: 'You do not have permission to update other guests.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+          setIsScheduling(false)
+          return
+        }
+
+        await updateMeeting(
+          true,
+          currentAccount.address,
+          NO_MEETING_TYPE,
+          start,
+          end,
+          decryptedMeeting,
+          getSignature(currentAccount.address) || '',
+          _participants.valid,
+          content,
+          meetingUrl,
+          meetingProvider,
+          title,
+          meetingNotification.map(mn => mn.value),
+          meetingRepeat.value,
+          selectedPermissions
+        )
+        logEvent('Updated a meeting from calendar view', {
+          fromDashboard: true,
+          participantsSize: _participants.valid.length,
+        })
+      }
+    } catch (e: unknown) {
+      if (e instanceof MeetingWithYourselfError) {
+        toast({
+          title: "Ops! Can't do that",
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof TimeNotAvailableError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GateConditionNotValidError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'A meeting must have only one scheduler',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingChangeConflictError) {
+        toast({
+          title: 'Failed to update meeting',
+          description:
+            'Someone else has updated this meeting. Please reload and try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof InvalidURL) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'Please provide a valid url/link for your meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof Huddle01ServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof ZoomServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GoogleServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Google seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof UrlCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue generating a meeting url for your meeting. try using a different location',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof PermissionDenied) {
+        toast({
+          title: 'Permission Denied',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else {
+        handleApiError('Error scheduling meeting', e as Error)
+      }
+    } finally {
+      setIsScheduling(false)
+      setSelectedSlot(null)
+    }
+  }
   const context = {
     handleDelete,
-    handleSchedule: async () => {},
-    handleCancel: () => {},
+    handleSchedule: handleUpdate,
+    handleCancel: onOpen,
   }
   return (
     <ActionsContext.Provider value={context}>
@@ -182,37 +511,22 @@ const ActiveEvent: React.FC = ({}) => {
         placement="right"
         onClose={() => setSelectedSlot(null)}
       >
-        <DrawerContent maxW="500px">
+        <DrawerContent maxW="500px" bg="neutral.950">
           <DrawerBody p={'30px'}>
             {selectedSlot &&
               (isCalendarEventWithoutDateTime(selectedSlot) ? (
                 <ActiveCalendarEvent slot={selectedSlot} />
               ) : (
-                <ParticipantsProvider>
-                  <ScheduleStateProvider
-                    {...{
-                      title: selectedSlot?.title,
-                      content: selectedSlot?.content || '',
-                      duration: Math.ceil(
-                        (selectedSlot.end.getTime() -
-                          selectedSlot.start.getTime()) /
-                          60000
-                      ),
-                      pickedTime: selectedSlot?.start,
-                      currentSelectedDate: selectedSlot?.start,
-                      timezone:
-                        Intl.DateTimeFormat().resolvedOptions().timeZone,
-                      meetingProvider: selectedSlot?.provider,
-                      meetingUrl: selectedSlot?.meeting_url || '',
-                      meetingNotification: [],
-                      isScheduling: false,
-                      selectedPermissions: undefined,
-                      decryptedMeeting: selectedSlot,
-                    }}
-                  >
-                    <ActiveMeetwithEvent slot={selectedSlot} />
-                  </ScheduleStateProvider>
-                </ParticipantsProvider>
+                <>
+                  <CancelMeetingDialog
+                    isOpen={isOpen}
+                    onClose={onClose}
+                    decryptedMeeting={decryptedMeeting}
+                    currentAccount={currentAccount}
+                    afterCancel={handleCleanup}
+                  />
+                  <ActiveMeetwithEvent slot={selectedSlot} />
+                </>
               ))}
           </DrawerBody>
         </DrawerContent>
