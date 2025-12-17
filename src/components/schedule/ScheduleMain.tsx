@@ -963,9 +963,7 @@ const ScheduleMain: FC<IInitialProps> = ({
           setGroupAvailability(groupAvailability)
           setGroupParticipants(groupParticipants)
         }}
-        handleUpdateParticipants={(
-          participants: Array<ParticipantInfo | IGroupParticipant>
-        ) => setParticipants(participants)}
+        handleUpdateParticipants={setParticipants}
       />
       <Container
         maxW={{

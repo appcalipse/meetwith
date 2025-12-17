@@ -15,6 +15,7 @@ import { FaArrowLeft } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
@@ -92,7 +93,25 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     setIsSavingAvailability,
     setIsRefreshingAvailabilities,
   } = useQuickPollAvailability()
-
+  const {
+    addGroup,
+    groupAvailability,
+    groupParticipants,
+    groups,
+    meetingOwners,
+    participants,
+    setGroupAvailability,
+    setGroupParticipants,
+    setMeetingOwners,
+    setParticipants,
+  } = useParticipants()
+  const inviteKey = useMemo(
+    () =>
+      `${Object.values(groupAvailability).length}-${
+        Object.values(groupParticipants).length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
   const router = useRouter()
   const toast = useToast()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
@@ -681,6 +700,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           gap={'14px'}
         >
           <InviteParticipants
+            key={inviteKey}
             onClose={() => setIsInviteParticipantsOpen(false)}
             isOpen={isInviteParticipantsOpen}
             isQuickPoll={true}
@@ -694,6 +714,17 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
               })
               setIsInviteParticipantsOpen(false)
             }}
+            groupAvailability={groupAvailability}
+            groupParticipants={groupParticipants}
+            participants={participants}
+            handleUpdateGroups={(
+              groupAvailability: Record<string, Array<string> | undefined>,
+              groupParticipants: Record<string, Array<string> | undefined>
+            ) => {
+              setGroupAvailability(groupAvailability)
+              setGroupParticipants(groupParticipants)
+            }}
+            handleUpdateParticipants={setParticipants}
           />
           <QuickPollParticipants
             pollData={currentPollData}
