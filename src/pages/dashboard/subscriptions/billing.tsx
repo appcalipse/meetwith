@@ -32,9 +32,11 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import {
+  BillingCycle,
   SubscribeRequest,
   SubscribeRequestCrypto,
   SubscribeResponseCrypto,
+  SubscriptionType,
   TrialEligibilityResponse,
 } from '@/types/Billing'
 import {
@@ -153,7 +155,9 @@ const BillingCheckout = () => {
   const handlePayWithCard = async () => {
     // Find the billing plan ID based on isYearly
     const selectedPlan = plans.find(
-      plan => plan.billing_cycle === (isYearly ? 'yearly' : 'monthly')
+      plan =>
+        plan.billing_cycle ===
+        (isYearly ? BillingCycle.YEARLY : BillingCycle.MONTHLY)
     )
 
     if (!selectedPlan) {
@@ -166,7 +170,7 @@ const BillingCheckout = () => {
 
     // Trigger the mutation
     const request: SubscribeRequest = {
-      billing_plan_id: selectedPlan.id,
+      billing_plan_id: selectedPlan.billing_cycle,
       payment_method: 'stripe',
     }
 
@@ -180,7 +184,9 @@ const BillingCheckout = () => {
   const handlePayWithCrypto = async () => {
     // Find the billing plan ID based on isYearly
     const selectedPlan = plans.find(
-      plan => plan.billing_cycle === (isYearly ? 'yearly' : 'monthly')
+      plan =>
+        plan.billing_cycle ===
+        (isYearly ? BillingCycle.YEARLY : BillingCycle.MONTHLY)
     )
 
     if (!selectedPlan) {
@@ -193,11 +199,11 @@ const BillingCheckout = () => {
 
     // Determine subscription type based on mode
     const subscriptionType =
-      mode === 'extend' ? ('extension' as const) : ('initial' as const)
+      mode === 'extend' ? SubscriptionType.EXTENSION : SubscriptionType.INITIAL
 
     // Trigger the mutation
     const request: SubscribeRequestCrypto = {
-      billing_plan_id: selectedPlan.id,
+      billing_plan_id: selectedPlan.billing_cycle,
       subscription_type: subscriptionType,
     }
 
@@ -210,7 +216,9 @@ const BillingCheckout = () => {
 
   const handleStartCryptoTrial = async () => {
     const selectedPlan = plans.find(
-      plan => plan.billing_cycle === (isYearly ? 'yearly' : 'monthly')
+      plan =>
+        plan.billing_cycle ===
+        (isYearly ? BillingCycle.YEARLY : BillingCycle.MONTHLY)
     )
 
     if (!selectedPlan) {
@@ -222,8 +230,8 @@ const BillingCheckout = () => {
     }
 
     const request: SubscribeRequestCrypto = {
-      billing_plan_id: selectedPlan.id,
-      subscription_type: 'initial',
+      billing_plan_id: selectedPlan.billing_cycle,
+      subscription_type: SubscriptionType.INITIAL,
       is_trial: true,
     }
 
@@ -242,6 +250,14 @@ const BillingCheckout = () => {
   const handleCryptoPaymentSuccess = () => {
     // Redirect to subscriptions page with success message
     router.push('/dashboard/subscriptions?checkout=success')
+  }
+
+  const handleCryptoPaymentClick = async () => {
+    if (isTrialEligible) {
+      onTrialDialogOpen()
+    } else {
+      await handlePayWithCrypto()
+    }
   }
 
   return (
@@ -395,13 +411,7 @@ const BillingCheckout = () => {
                 cryptoSubscribeMutation.isLoading ||
                 !defaultChain
               }
-              onClick={
-                isTrialEligible
-                  ? async () => {
-                      onTrialDialogOpen()
-                    }
-                  : handlePayWithCrypto
-              }
+              onClick={handleCryptoPaymentClick}
             />
           </Stack>
         </VStack>

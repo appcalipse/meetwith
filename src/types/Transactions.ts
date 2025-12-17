@@ -3,6 +3,8 @@ import {
   PaymentStatus,
   PaymentType,
 } from '@/utils/constants/meeting-types'
+
+import { SubscriptionType } from './Billing'
 export type Address = `0x${string}`
 export interface BaseTransaction {
   method: PaymentType
@@ -146,7 +148,7 @@ export interface IPurchaseData {
   guest_address?: string
   environment?: string
   // Subscription metadata (only present for subscription payments)
-  subscription_type?: 'initial' | 'extension'
+  subscription_type?: SubscriptionType
   billing_plan_id?: string
   account_address?: string // Account subscribing
   [key: string]: unknown

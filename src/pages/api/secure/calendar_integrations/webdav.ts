@@ -77,7 +77,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (error instanceof CalendarIntegrationLimitExceededError) {
         return res.status(403).json({ error: error.message })
       }
-      throw error
+      return res.status(500).json({ error: 'An unexpected error occurred' })
     }
   } else if (req.method === 'PUT') {
     // Should be propfind, but cloudfront fucks it up by not allowing it

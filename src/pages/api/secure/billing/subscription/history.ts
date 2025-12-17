@@ -14,32 +14,29 @@ import {
   getSubscriptionHistory,
   getTransactionsById,
 } from '@/utils/database'
+import { extractQuery } from '@/utils/generic_utils'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     try {
-      // Authentication is handled by withSessionRoute middleware
       if (!req.session.account?.address) {
         return res.status(401).json({ error: 'Unauthorized' })
       }
 
       const accountAddress = req.session.account.address.toLowerCase()
 
-      // Get pagination parameters
-      const limit = req.query.limit
-        ? parseInt(req.query.limit as string, 10)
-        : 10
-      const offset = req.query.offset
-        ? parseInt(req.query.offset as string, 10)
-        : 0
+      const limitStr = extractQuery(req.query, 'limit')
+      const offsetStr = extractQuery(req.query, 'offset')
+      const limit = limitStr ? Number(limitStr) : 10
+      const offset = offsetStr ? Number(offsetStr) : 0
 
       // Validate pagination
-      if (limit < 1 || limit > 100) {
+      if (isNaN(limit) || limit < 1 || limit > 100) {
         return res
           .status(400)
           .json({ error: 'Limit must be between 1 and 100' })
       }
-      if (offset < 0) {
+      if (isNaN(offset) || offset < 0) {
         return res.status(400).json({ error: 'Offset must be >= 0' })
       }
 
@@ -117,7 +114,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
         const amount = transaction.amount
           ? `${transaction.amount.toFixed(2)} ${currency}`
-          : '0.00'
+          : `0.00 ${currency}`
 
         historyItems.push({
           plan: planName,

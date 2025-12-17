@@ -244,6 +244,22 @@ export class SubscriptionNotCustom extends Error {
   }
 }
 
+export class MissingSubscriptionMetadataError extends Error {
+  constructor() {
+    super(
+      'Missing required subscription metadata: billing_plan_id or account_address'
+    )
+    this.name = 'MissingSubscriptionMetadataError'
+  }
+}
+
+export class BillingPlanNotFoundError extends Error {
+  constructor(billing_plan_id: string) {
+    super(`Billing plan not found: ${billing_plan_id}`)
+    this.name = 'BillingPlanNotFoundError'
+  }
+}
+
 export class ContactAlreadyExists extends Error {
   constructor() {
     super(`Contact already exists`)

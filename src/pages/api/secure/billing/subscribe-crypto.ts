@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { addDays, addMonths, addYears } from 'date-fns'
+import { DateTime } from 'luxon'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { v4 } from 'uuid'
 
@@ -7,6 +7,7 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
   SubscribeRequestCrypto,
   SubscribeResponseCrypto,
+  SubscriptionType,
 } from '@/types/Billing'
 import {
   BillingEmailPeriod,
@@ -36,7 +37,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       // Validate request body
       const {
         billing_plan_id,
-        subscription_type = 'initial',
+        subscription_type = SubscriptionType.INITIAL,
         is_trial,
       } = req.body as SubscribeRequestCrypto
 
@@ -46,7 +47,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       if (
         subscription_type &&
-        !['initial', 'extension'].includes(subscription_type)
+        subscription_type !== SubscriptionType.INITIAL &&
+        subscription_type !== SubscriptionType.EXTENSION
       ) {
         return res.status(400).json({
           error: 'subscription_type must be "initial" or "extension"',
@@ -69,7 +71,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           })
         }
 
-        const trialExpiry = addDays(new Date(), 14)
+        const trialExpiry = DateTime.now().plus({ days: 14 }).toJSDate()
         await createSubscriptionPeriod(
           accountAddress,
           billing_plan_id,
@@ -119,7 +121,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           currency: 'USD',
           billing_plan_id,
           purchaseData: {
-            subscription_type: 'initial',
+            subscription_type: SubscriptionType.INITIAL,
             billing_plan_id,
             account_address: accountAddress,
             message_channel: `subscription:trial:${v4()}:${billing_plan_id}`,
@@ -136,23 +138,28 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       let calculatedExpiryTime: Date
 
-      if (existingSubscription && subscription_type === 'extension') {
+      if (
+        existingSubscription &&
+        subscription_type === SubscriptionType.EXTENSION
+      ) {
         // Extension: Add duration to existing farthest expiry
-        const existingExpiry = new Date(existingSubscription.expiry_time)
+        const existingExpiry = DateTime.fromISO(
+          existingSubscription.expiry_time
+        )
         if (billingPlan.billing_cycle === 'monthly') {
-          calculatedExpiryTime = addMonths(existingExpiry, 1)
+          calculatedExpiryTime = existingExpiry.plus({ months: 1 }).toJSDate()
         } else {
           // yearly
-          calculatedExpiryTime = addYears(existingExpiry, 1)
+          calculatedExpiryTime = existingExpiry.plus({ years: 1 }).toJSDate()
         }
       } else {
         // First-time subscription: Add duration from now
-        const now = new Date()
+        const now = DateTime.now()
         if (billingPlan.billing_cycle === 'monthly') {
-          calculatedExpiryTime = addMonths(now, 1)
+          calculatedExpiryTime = now.plus({ months: 1 }).toJSDate()
         } else {
           // yearly
-          calculatedExpiryTime = addYears(now, 1)
+          calculatedExpiryTime = now.plus({ years: 1 }).toJSDate()
         }
       }
 
@@ -161,7 +168,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       // Prepare purchase data for Thirdweb payment widget
       const purchaseData = {
-        subscription_type: subscription_type as 'initial' | 'extension',
+        subscription_type: subscription_type,
         billing_plan_id,
         account_address: accountAddress,
         message_channel: messageChannel,
