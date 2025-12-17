@@ -1,4 +1,3 @@
-/* eslint-disable tailwindcss/no-custom-classname */
 import { WarningTwoIcon } from '@chakra-ui/icons'
 import {
   Box,
@@ -28,7 +27,14 @@ import ScheduleParticipantsSchedulerModal from '@components/schedule/SchedulePar
 import { Select as ChakraSelect } from 'chakra-react-select'
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import {
+  startTransition,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { FaArrowLeft, FaChevronDown } from 'react-icons/fa'
 import { IoPersonAddOutline } from 'react-icons/io5'
 import { MdOutlineEditCalendar } from 'react-icons/md'
@@ -52,12 +58,7 @@ import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
-import {
-  IGroupParticipant,
-  isGroupParticipant,
-  Participant,
-} from '@/types/schedule'
-import { NO_GROUP_KEY } from '@/utils/constants/group'
+import { isGroupParticipant, Participant } from '@/types/schedule'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -68,9 +69,9 @@ import {
 import { noClearCustomSelectComponent } from '@/utils/constants/select'
 import {
   canAccountAccessPermission,
-  deduplicateArray,
   renderProviderName,
 } from '@/utils/generic_utils'
+import ParticipantService from '@/utils/participant.service'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import {
   ellipsizeAddress,
@@ -124,10 +125,8 @@ const ScheduleBase = () => {
     standAloneParticipants,
     setMeetingOwners,
     setParticipants,
-    removeGroup,
     setGroupParticipants,
     setGroupAvailability,
-    groupAvailability,
   } = useParticipants()
   const { handleCancel, handleSchedule } = useScheduleActions()
   const {
@@ -289,14 +288,6 @@ const ScheduleBase = () => {
       []
     )
   }, [participants, groupParticipants])
-  const formattedDate = useMemo(() => {
-    if (!pickedTime) {
-      return 'Invalid date'
-    }
-    return DateTime.fromJSDate(pickedTime)
-      .setZone(timezone)
-      .toFormat('MM/dd/yyyy')
-  }, [pickedTime, timezone])
   const formattedTime = useMemo(() => {
     if (!pickedTime) {
       return 'Invalid date'
@@ -327,195 +318,34 @@ const ScheduleBase = () => {
     }
     setInviteModalOpen(true)
   }, [canManageParticipants, setInviteModalOpen])
-  const getParticipantIdentifier = useCallback((participant: Participant) => {
-    if (isGroupParticipant(participant)) {
-      return `group-${participant.id}`
-    }
-    return (
-      participant.account_address?.toLowerCase() ||
-      participant.guest_email?.toLowerCase() ||
-      participant.name?.toLowerCase() ||
-      ''
-    )
-  }, [])
+
   const renderParticipantChipLabel = useCallback(
-    (participant: Participant) => {
-      if (isGroupParticipant(participant)) {
-        return participant.name
-      }
-      const participantInfo = participant as ParticipantInfo
-      const isParticipantScheduler =
-        participantInfo.type === ParticipantType.Scheduler
-      const isCurrentUser =
-        participantInfo.account_address &&
-        participantInfo.account_address.toLowerCase() ===
-          currentAccount?.address?.toLowerCase()
-
-      if (isParticipantScheduler) {
-        if (isCurrentUser) {
-          return 'You (Scheduler)'
-        }
-        const baseName =
-          participantInfo.name ||
-          participantInfo.guest_email ||
-          ellipsizeAddress(participantInfo.account_address || '')
-        return `${baseName} (Scheduler)`
-      }
-
-      return (
-        participantInfo.name ||
-        participantInfo.guest_email ||
-        ellipsizeAddress(participantInfo.account_address || '')
-      )
-    },
+    (participant: Participant) =>
+      currentAccount?.address
+        ? ParticipantService.renderParticipantChipLabel(
+            participant,
+            currentAccount?.address
+          )
+        : '',
     [currentAccount?.address]
   )
   const handleChipInputChange = useCallback(
     (updatedItems: ParticipantInfo[]) => {
-      if (!canManageParticipants) {
-        return
-      }
-      const updatedList = updatedItems as unknown as Array<
-        Participant | ParticipantInfo
-      >
-      const updatedIdentifiers = new Set(
-        updatedList.map(participant =>
-          getParticipantIdentifier(participant as Participant)
-        )
+      if (!canManageParticipants) return
+      const participantService = new ParticipantService(
+        displayParticipants,
+        updatedItems
       )
 
-      const removedItems = displayParticipants.filter(participant => {
-        const identifier = getParticipantIdentifier(participant)
-        return identifier && !updatedIdentifiers.has(identifier)
-      })
-
-      const removedParticipantIdentifiers = new Set(
-        removedItems
-          .filter(participant => !isGroupParticipant(participant))
-          .map(getParticipantIdentifier)
-      )
-
-      const removedParticipantAddresses = new Set(
-        removedItems
-          .filter(
-            (participant): participant is ParticipantInfo =>
-              !isGroupParticipant(participant) && !!participant.account_address
-          )
-          .map(participant => participant.account_address!.toLowerCase())
-      )
-
-      const addedItems = updatedList.filter(participant => {
-        const identifier = getParticipantIdentifier(participant as Participant)
-        if (!identifier) {
-          return false
-        }
-        return !displayParticipants.some(
-          existing => getParticipantIdentifier(existing) === identifier
-        )
-      })
-
-      if (removedParticipantIdentifiers.size > 0) {
+      startTransition(() => {
+        setGroupParticipants(prev => participantService.handleDerivatives(prev))
+        setGroupAvailability(prev => participantService.handleDerivatives(prev))
         setParticipants(prev =>
-          prev.filter(existingParticipant => {
-            const identifier = getParticipantIdentifier(existingParticipant)
-            return !removedParticipantIdentifiers.has(identifier)
-          })
+          participantService.handleParticipantUpdate(prev)
         )
-        setGroupParticipants(prev => {
-          const updated = { ...prev }
-          Object.keys(updated).forEach(key => {
-            const participantsForGroup = updated[key]?.filter(address => {
-              if (!address) return false
-              return !removedParticipantAddresses.has(address.toLowerCase())
-            })
-            if (participantsForGroup && participantsForGroup.length > 0) {
-              updated[key] = participantsForGroup
-            } else {
-              delete updated[key]
-            }
-          })
-          return updated
-        })
-        setGroupAvailability(prev => {
-          const updated = { ...prev }
-          Object.keys(updated).forEach(key => {
-            const availabilityForGroup = updated[key]?.filter(address => {
-              if (!address) return false
-              return !removedParticipantAddresses.has(address.toLowerCase())
-            })
-            if (availabilityForGroup && availabilityForGroup.length > 0) {
-              updated[key] = availabilityForGroup
-            } else {
-              delete updated[key]
-            }
-          })
-          return updated
-        })
-      }
-
-      if (addedItems.length > 0) {
-        const participantsToAdd = addedItems.filter(
-          (participant): participant is ParticipantInfo =>
-            !isGroupParticipant(participant as Participant)
-        )
-
-        if (participantsToAdd.length > 0) {
-          setParticipants(prev => {
-            const existingIdentifiers = new Set(
-              prev.map(existing =>
-                getParticipantIdentifier(existing as Participant)
-              )
-            )
-            const newParticipants = participantsToAdd
-              .map(participant => ({
-                ...participant,
-                isHidden: false,
-              }))
-              .filter(participant => {
-                const identifier = getParticipantIdentifier(
-                  participant as Participant
-                )
-                if (!identifier || existingIdentifiers.has(identifier)) {
-                  return false
-                }
-                existingIdentifiers.add(identifier)
-                return true
-              })
-            return [...prev, ...newParticipants]
-          })
-
-          const newAddresses = participantsToAdd
-            .map(participant => participant.account_address?.toLowerCase())
-            .filter((address): address is string => !!address)
-
-          if (newAddresses.length > 0) {
-            setGroupParticipants(prev => ({
-              ...prev,
-              [NO_GROUP_KEY]: deduplicateArray([
-                ...(prev[NO_GROUP_KEY] || []),
-                ...newAddresses,
-              ]),
-            }))
-            setGroupAvailability(prev => ({
-              ...prev,
-              [NO_GROUP_KEY]: deduplicateArray([
-                ...(prev[NO_GROUP_KEY] || []),
-                ...newAddresses,
-              ]),
-            }))
-          }
-        }
-      }
+      })
     },
-    [
-      canManageParticipants,
-      displayParticipants,
-      getParticipantIdentifier,
-      removeGroup,
-      setGroupParticipants,
-      setGroupAvailability,
-      setParticipants,
-    ]
+    [canManageParticipants, displayParticipants]
   )
   return (
     <Box w="100%">
@@ -913,7 +743,6 @@ const ScheduleBase = () => {
                   isScheduling ||
                   isUpdateMeetingIntent
                 }
-                // eslint-disable-next-line tailwindcss/no-custom-classname
                 className="noLeftBorder timezone-select"
                 options={MeetingRepeatOptions}
                 components={noClearCustomSelectComponent}
