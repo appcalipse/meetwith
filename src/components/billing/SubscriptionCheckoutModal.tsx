@@ -48,7 +48,6 @@ const SubscriptionCheckoutModal = ({
   const handlePaymentError = (error: Error) => {
     showErrorToast('Payment Failed', error.message)
     subscriptionRef.current = false
-    onClose()
   }
 
   const listenForTransaction = async () => {
@@ -83,7 +82,6 @@ const SubscriptionCheckoutModal = ({
           'Your subscription has been activated.'
         )
       } else {
-        subscriptionRef.current = false
         showErrorToast(
           'Payment Failed',
           'Transaction was not found on the blockchain'
@@ -92,6 +90,7 @@ const SubscriptionCheckoutModal = ({
       }
     } catch (e) {
       console.error('Error listening for subscription transaction:', e)
+    } finally {
       subscriptionRef.current = false
     }
   }
