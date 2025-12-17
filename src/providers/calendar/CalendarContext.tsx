@@ -50,7 +50,11 @@ export const CalendarContext = React.createContext<ICalendarContext>({
   setSelectedSlot: () => {},
   eventIndex: { dayIndex: new Map(), hourIndex: new Map() },
 })
-
+export const createEventsQueryKey = (date: DateTime) => [
+  'calendar-events',
+  date.startOf('month').startOf('week').toISODate() || '',
+  date.endOf('month').startOf('week').toISODate() || '',
+]
 export const useCalendarContext = () => {
   const context = React.useContext(CalendarContext)
   if (!context) {
@@ -76,15 +80,6 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   })
   const queryClient = useQueryClient()
   const currentAccount = useAccountContext()
-
-  const createEventsQueryKey = React.useCallback(
-    (date: DateTime) => [
-      'calendar-events',
-      date.startOf('month').startOf('week').toISODate() || '',
-      date.endOf('month').startOf('week').toISODate() || '',
-    ],
-    []
-  )
 
   const fetchEventsForMonth = React.useCallback(
     async (date: DateTime) => {
