@@ -76,6 +76,23 @@ export const getActiveProSubscription = (
   )
 }
 
+// Get the most recent active billing subscription from account subscriptions
+export const getActiveBillingSubscription = (
+  account?: Pick<Account, 'subscriptions'> | null
+): Subscription | null => {
+  if (!account?.subscriptions) return null
+
+  const now = new Date()
+  const billingSubs = account.subscriptions
+    .filter(sub => sub.billing_plan_id && new Date(sub.expiry_time) > now)
+    .sort(
+      (a, b) =>
+        new Date(b.expiry_time).getTime() - new Date(a.expiry_time).getTime()
+    )
+
+  return billingSubs.length > 0 ? billingSubs[0] : null
+}
+
 // checks both domain and billing subscriptions
 export const getActiveProSubscriptionAsync = async (
   accountAddress: string
