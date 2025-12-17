@@ -19,13 +19,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         accountAddress
       )
 
-      // Check if subscription is actually active
-      // Note: Both 'active' and 'cancelled' statuses grant Pro access until expiry_time
-      // A cancelled subscription should still be considered "active" until it expires
       const hasActive =
         subscriptionPeriod !== null &&
-        (subscriptionPeriod.status === 'active' ||
-          subscriptionPeriod.status === 'cancelled') &&
         new Date(subscriptionPeriod.expiry_time) > new Date()
 
       return res.status(200).json({ hasActive })

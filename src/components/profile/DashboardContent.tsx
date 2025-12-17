@@ -45,12 +45,7 @@ const DashboardContent: React.FC<{
 
   const renderSelected = () => {
     if (currentSection && settingsSections.has(currentSection as string)) {
-      return (
-        <Settings
-          currentAccount={currentAccount!}
-          initialSectionSlug={currentSection as string}
-        />
-      )
+      return <Settings currentAccount={currentAccount!} />
     }
     switch (currentSection) {
       case EditMode.MEETINGS:

@@ -12,18 +12,15 @@ import { getBillingPlanProviders, getBillingPlans } from '@/utils/database'
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     try {
-      // Authentication is handled by withSessionRoute middleware
       if (!req.session.account?.address) {
         return res.status(401).json({ error: 'Unauthorized' })
       }
 
-      // Fetch billing plans from database
-      const plans = await getBillingPlans()
-
-      // Fetch Stripe provider mappings
-      const stripeProviders = await getBillingPlanProviders(
-        PaymentProvider.STRIPE
-      )
+      // Fetch billing plans and Stripe provider mappings in parallel
+      const [plans, stripeProviders] = await Promise.all([
+        getBillingPlans(),
+        getBillingPlanProviders(PaymentProvider.STRIPE),
+      ])
 
       // Create a map of plan_id -> provider_product_id for quick lookup
       const providerMap = new Map<string, string>()

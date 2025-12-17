@@ -7,6 +7,7 @@ import {
   BillingEmailPeriod,
   BillingEmailPlan,
   PaymentProvider as BillingPaymentProvider,
+  SubscriptionType,
 } from '@/types/Billing'
 import { getSupportedChainFromId } from '@/types/chains'
 import { TablesInsert } from '@/types/Supabase'
@@ -35,6 +36,10 @@ import {
 } from '@/utils/database'
 import { sendSubscriptionConfirmationEmail } from '@/utils/email_helper'
 import { getDisplayNameForEmail } from '@/utils/email_utils'
+import {
+  BillingPlanNotFoundError,
+  MissingSubscriptionMetadataError,
+} from '@/utils/errors'
 import { Currency } from '@/utils/services/onramp.money'
 
 /**
@@ -54,9 +59,7 @@ export const handleCryptoSubscriptionPayment = async (
 
   // Validate required subscription metadata
   if (!billing_plan_id || !account_address) {
-    const error = new Error(
-      'Missing required subscription metadata: billing_plan_id or account_address'
-    )
+    const error = new MissingSubscriptionMetadataError()
     Sentry.captureException(error, {
       extra: { purchaseData, payloadType: payload.type },
     })
@@ -66,7 +69,7 @@ export const handleCryptoSubscriptionPayment = async (
   // Get billing plan details
   const billingPlan = await getBillingPlanById(billing_plan_id)
   if (!billingPlan) {
-    const error = new Error(`Billing plan not found: ${billing_plan_id}`)
+    const error = new BillingPlanNotFoundError(billing_plan_id)
     Sentry.captureException(error, {
       extra: { billing_plan_id },
     })
@@ -179,7 +182,10 @@ export const handleCryptoSubscriptionPayment = async (
   )
   let calculatedExpiryTime: Date
 
-  if (existingSubscription && subscription_type === 'extension') {
+  if (
+    existingSubscription &&
+    subscription_type === SubscriptionType.EXTENSION
+  ) {
     // Extension: Add duration to existing farthest expiry
     const existingExpiry = new Date(existingSubscription.expiry_time)
     if (billingPlan.billing_cycle === 'monthly') {

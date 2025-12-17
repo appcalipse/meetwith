@@ -23,6 +23,12 @@ export enum PaymentProvider {
   CRYPTO = 'crypto',
 }
 
+// Subscription type for billing subscriptions
+export enum SubscriptionType {
+  INITIAL = 'initial',
+  EXTENSION = 'extension',
+}
+
 // =====================================================
 // Core Billing Types
 // =====================================================
@@ -98,7 +104,7 @@ export interface BillingPlanWithProvider extends BillingPlan {
 
 // Request to subscribe to a billing plan
 export interface SubscribeRequest {
-  billing_plan_id: string // 'monthly' or 'yearly'
+  billing_plan_id: BillingCycle // 'monthly' or 'yearly'
   payment_method?: 'stripe' | 'crypto' // Optional, defaults to 'stripe'
 }
 
@@ -112,8 +118,8 @@ export interface SubscribeResponse {
 
 // Request to subscribe to a billing plan via crypto
 export interface SubscribeRequestCrypto {
-  billing_plan_id: string // 'monthly' or 'yearly'
-  subscription_type?: 'initial' | 'extension' // Optional, defaults to 'initial'
+  billing_plan_id: BillingCycle // 'monthly' or 'yearly'
+  subscription_type?: SubscriptionType // Optional, defaults to 'initial'
   is_trial?: boolean // Optional flag to start a crypto trial
 }
 
@@ -129,7 +135,7 @@ export interface SubscribeResponseCrypto {
   currency: string
   billing_plan_id: string
   purchaseData: {
-    subscription_type: 'initial' | 'extension'
+    subscription_type: SubscriptionType
     billing_plan_id: string
     account_address: string
     message_channel: string

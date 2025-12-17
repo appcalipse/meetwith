@@ -39,8 +39,7 @@ interface SettingsNavItem {
 
 const Settings: React.FC<{
   currentAccount: Account
-  initialSectionSlug?: string
-}> = ({ currentAccount, initialSectionSlug }) => {
+}> = ({ currentAccount }) => {
   const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
   const settingsNavItems: SettingsNavItem[] = useMemo(() => {
     const tabs = [
@@ -145,32 +144,6 @@ const Settings: React.FC<{
       { shallow: true }
     )
   }
-  useEffect(() => {
-    // If an initial slug is provided (from route), set the section immediately
-    if (initialSectionSlug) {
-      switch (initialSectionSlug) {
-        case SettingsSection.SUBSCRIPTIONS:
-          setActiveSection(SettingsSection.SUBSCRIPTIONS)
-          return
-        case SettingsSection.CONNECTED_ACCOUNTS:
-          setActiveSection(SettingsSection.CONNECTED_ACCOUNTS)
-          return
-        case SettingsSection.CONNECTED_CALENDARS:
-          setActiveSection(SettingsSection.CONNECTED_CALENDARS)
-          return
-        case SettingsSection.NOTIFICATIONS:
-          setActiveSection(SettingsSection.NOTIFICATIONS)
-          return
-        case SettingsSection.WALLET_PAYMENT:
-          setActiveSection(SettingsSection.WALLET_PAYMENT)
-          return
-        case SettingsSection.DETAILS:
-        default:
-          setActiveSection(SettingsSection.DETAILS)
-      }
-    }
-  }, [initialSectionSlug])
-
   useEffect(() => {
     if (calendarResult || stripeResult) {
       if (calendarResult === 'error') {

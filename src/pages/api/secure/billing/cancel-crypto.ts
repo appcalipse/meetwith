@@ -33,15 +33,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       // Send subscription cancellation email (best-effort, don't block flow)
       try {
-        // Get all subscription periods to find the latest cancelled crypto period
-        const allSubscriptions = await getSubscriptionPeriodsByAccount(
-          accountAddress
-        )
-
-        // Get Stripe subscription to exclude Stripe periods
-        const stripeSubscription = await getStripeSubscriptionByAccount(
-          accountAddress
-        )
+        // Fetch subscription periods and Stripe subscription in parallel
+        const [allSubscriptions, stripeSubscription] = await Promise.all([
+          getSubscriptionPeriodsByAccount(accountAddress),
+          getStripeSubscriptionByAccount(accountAddress),
+        ])
 
         const now = new Date()
         let mostRecentCryptoPeriod: (typeof allSubscriptions)[0] | null = null

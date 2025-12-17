@@ -93,6 +93,14 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     return getActiveBillingSubscription(currentAccount)
   }, [currentAccount?.subscriptions])
 
+  // Get blockchain subscription if no billing subscription exists
+  const blockchainSubscription = React.useMemo(() => {
+    if (billingSubscription) return undefined
+    return currentAccount?.subscriptions?.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )
+  }, [billingSubscription, currentAccount?.subscriptions])
+
   // Fetch billing plan details only if we have a billing subscription
   const {
     data: billingSubscriptionDetails,
@@ -322,6 +330,54 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       })`
     : undefined
 
+  // Compute CTA props for SubscriptionCard
+  const proCardCtaProps = React.useMemo(() => {
+    const primaryCtaLabel = hasActiveSubscription
+      ? paymentProvider === PaymentProvider.STRIPE
+        ? undefined
+        : 'Extend Plan'
+      : 'Subscribe to Pro'
+
+    const secondaryCtaLabel =
+      hasActiveSubscription && paymentProvider === PaymentProvider.STRIPE
+        ? 'Manage Subscription'
+        : undefined
+
+    const onSecondaryCta =
+      hasActiveSubscription && paymentProvider === PaymentProvider.STRIPE
+        ? () => void handleManageSubscription()
+        : undefined
+
+    const tertiaryCtaLabel =
+      hasActiveSubscription && paymentProvider !== PaymentProvider.STRIPE
+        ? isCryptoTrial
+          ? 'Cancel Trial'
+          : 'Cancel Subscription'
+        : undefined
+
+    const onTertiaryCta =
+      hasActiveSubscription && paymentProvider !== PaymentProvider.STRIPE
+        ? onCancelModalOpen
+        : undefined
+
+    return {
+      primaryCtaLabel,
+      secondaryCtaLabel,
+      onSecondaryCta,
+      secondaryCtaLoading: manageSubscriptionLoading,
+      tertiaryCtaLabel,
+      onTertiaryCta,
+      tertiaryCtaLoading: cancelSubscriptionMutation.isLoading,
+    }
+  }, [
+    hasActiveSubscription,
+    paymentProvider,
+    isCryptoTrial,
+    manageSubscriptionLoading,
+    cancelSubscriptionMutation.isLoading,
+    onCancelModalOpen,
+  ])
+
   return (
     <VStack width="100%" maxW="100%" gap={6} alignItems={'flex-start'}>
       <Heading fontSize="2xl">Account Plans & Billing</Heading>
@@ -363,55 +419,14 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
             gridGap={2}
           >
             <SubscriptionCard
-              subscription={
-                // Use blockchain subscription if no billing subscription exists
-                !billingSubscription
-                  ? currentAccount?.subscriptions?.find(
-                      sub => new Date(sub.expiry_time) > new Date()
-                    )
-                  : undefined
-              }
+              subscription={blockchainSubscription}
               planInfo={getPlanInfo(Plan.PRO)}
               active={isProCardActive}
               benefits={PRO_PLAN_BENEFITS}
               badge={activeBadge}
               expiryText={currentExpiryText}
-              primaryCtaLabel={
-                hasActiveSubscription
-                  ? paymentProvider === PaymentProvider.STRIPE
-                    ? undefined
-                    : 'Extend Plan'
-                  : 'Subscribe to Pro'
-              }
               onClick={handlePrimaryButtonClick}
-              secondaryCtaLabel={
-                hasActiveSubscription &&
-                paymentProvider === PaymentProvider.STRIPE
-                  ? 'Manage Subscription'
-                  : undefined
-              }
-              onSecondaryCta={
-                hasActiveSubscription &&
-                paymentProvider === PaymentProvider.STRIPE
-                  ? () => void handleManageSubscription()
-                  : undefined
-              }
-              secondaryCtaLoading={manageSubscriptionLoading}
-              tertiaryCtaLabel={
-                hasActiveSubscription &&
-                paymentProvider !== PaymentProvider.STRIPE
-                  ? isCryptoTrial
-                    ? 'Cancel Trial'
-                    : 'Cancel Subscription'
-                  : undefined
-              }
-              onTertiaryCta={
-                hasActiveSubscription &&
-                paymentProvider !== PaymentProvider.STRIPE
-                  ? onCancelModalOpen
-                  : undefined
-              }
-              tertiaryCtaLoading={cancelSubscriptionMutation.isLoading}
+              {...proCardCtaProps}
             />
             <SubscriptionCard
               onClick={() =>

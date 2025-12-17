@@ -36,17 +36,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(400).json({ error: 'billing_plan_id is required' })
       }
 
-      // Get billing plan from database
-      const billingPlan = await getBillingPlanById(billing_plan_id)
+      const [billingPlan, stripeProductId] = await Promise.all([
+        getBillingPlanById(billing_plan_id),
+        getBillingPlanProvider(billing_plan_id, PaymentProvider.STRIPE),
+      ])
+
       if (!billingPlan) {
         return res.status(404).json({ error: 'Billing plan not found' })
       }
 
-      // Get Stripe product ID from billing_plan_providers
-      const stripeProductId = await getBillingPlanProvider(
-        billing_plan_id,
-        PaymentProvider.STRIPE
-      )
       if (!stripeProductId) {
         return res
           .status(404)
@@ -89,10 +87,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       // Extension Logic: Check if user has existing active subscription
-      const existingSubscription = await getActiveSubscriptionPeriod(
-        accountAddress
-      )
-      const hasHistory = await hasSubscriptionHistory(accountAddress)
+      // Fetch existing subscription and history status in parallel
+      const [existingSubscription, hasHistory] = await Promise.all([
+        getActiveSubscriptionPeriod(accountAddress),
+        hasSubscriptionHistory(accountAddress),
+      ])
       const isTrialEligible = !hasHistory
       let calculatedExpiryTime: Date
 

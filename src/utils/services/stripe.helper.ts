@@ -289,13 +289,13 @@ export const handleSubscriptionUpdated = async (
   const previousCancelAt = previousAttributes.cancel_at
 
   // Check if "cancel_at" timestamp was just set (changed from null to a timestamp)
-  const wasJustCancelled =
+  const isJustCancelled =
     cancelAt !== null &&
     cancelAt !== undefined &&
     (previousCancelAt === null || previousCancelAt === undefined)
 
   // Check if cancellation was just removed (cancel_at changed from timestamp to null)
-  const wasJustReactivated =
+  const isJustReactivated =
     cancelAt === null &&
     previousCancelAt !== null &&
     previousCancelAt !== undefined
@@ -304,7 +304,7 @@ export const handleSubscriptionUpdated = async (
   const shouldCancel =
     (cancelAt !== null && cancelAt !== undefined) ||
     (actualCancelAt !== null && actualCancelAt !== undefined) ||
-    wasJustCancelled
+    isJustCancelled
 
   // Handle cancellation (cancel_at timestamp set)
   if (shouldCancel) {
@@ -329,7 +329,6 @@ export const handleSubscriptionUpdated = async (
         // Find the most recent active/cancelled period (by expiry_time) for email
         // Include both active and cancelled periods that haven't expired
         if (
-          (sub.status === 'active' || sub.status === 'cancelled') &&
           new Date(sub.expiry_time) > now &&
           sub.billing_plan_id &&
           (!mostRecentPeriod ||
@@ -383,7 +382,7 @@ export const handleSubscriptionUpdated = async (
     } catch (error) {
       Sentry.captureException(error)
     }
-  } else if (wasJustReactivated) {
+  } else if (isJustReactivated) {
     // Subscription was reactivated (cancel_at timestamp was removed)
     // Update cancelled subscription periods back to 'active' if still within expiry_time
     try {
@@ -546,7 +545,6 @@ export const handleSubscriptionUpdated = async (
 
               for (const sub of allSubscriptions) {
                 if (
-                  (sub.status === 'active' || sub.status === 'cancelled') &&
                   new Date(sub.expiry_time) < newExpiry &&
                   new Date(sub.expiry_time) > now &&
                   sub.billing_plan_id
@@ -618,7 +616,6 @@ export const handleSubscriptionDeleted = async (
     const now = new Date()
     for (const sub of activeSubscriptions) {
       if (
-        (sub.status === 'active' || sub.status === 'cancelled') &&
         new Date(sub.expiry_time) > now &&
         sub.billing_plan_id // Only update billing subscriptions
       ) {
