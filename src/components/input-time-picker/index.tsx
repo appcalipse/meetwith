@@ -56,9 +56,9 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useBoolean()
   const iconColor = useColorModeValue('gray.500', props.iconColor || 'gray.200')
-  const times = generateTimes(
-    typeof currentDate === 'number' ? new Date(currentDate) : currentDate
-  ).filter(time => !isBefore(time, new Date()))
+  const times = generateTimes(new Date(currentDate)).filter(
+    time => !isBefore(time, new Date())
+  )
 
   return (
     <Popover
