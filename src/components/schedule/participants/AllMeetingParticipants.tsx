@@ -1,5 +1,5 @@
 import { Text, VStack } from '@chakra-ui/layout'
-import React, { useCallback } from 'react'
+import { useCallback } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
