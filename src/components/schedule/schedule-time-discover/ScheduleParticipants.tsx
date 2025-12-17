@@ -8,7 +8,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { useContext, useMemo } from 'react'
+import React, { useCallback, useContext, useMemo } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
@@ -17,8 +17,10 @@ import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
+import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 interface ScheduleParticipantsProps {
@@ -37,6 +39,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
   } = useParticipants()
   const { currentAccount } = useContext(AccountContext)
   const { setInviteModalOpen } = useScheduleNavigation()
+  const { showInfoToast } = useToastHelpers()
   const groups = useMemo(
     () =>
       participants.filter(val => {
@@ -55,22 +58,43 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       ),
     [groupAvailability]
   )
-  const handleAvailabilityChange = (account_address?: string) => {
-    if (!account_address) return
-    const keys = Object.keys(groupAvailability)
-    for (const key of keys) {
-      setGroupAvailability(prev => {
-        const allGroupParticipants = prev[key] || []
-        const newParticipants = allAvailabilities.includes(account_address)
-          ? allGroupParticipants.filter(val => val !== account_address)
-          : [...allGroupParticipants, account_address]
-        return {
-          ...prev,
-          [key]: newParticipants,
+
+  const addressToGroupMap = useMemo(() => {
+    const map = new Map<string, string>()
+    Object.entries(groupAvailability || {}).forEach(([groupKey, addresses]) => {
+      addresses?.forEach(address => {
+        if (address) map.set(address.toLowerCase(), groupKey)
+      })
+    })
+    return map
+  }, [groupAvailability])
+
+  const handleAvailabilityChange = useCallback(
+    (account_address?: string) => {
+      if (!account_address) return
+      React.startTransition(() => {
+        const existingGroup = addressToGroupMap.get(
+          account_address.toLowerCase()
+        )
+
+        if (existingGroup) {
+          setGroupAvailability(prev => ({
+            ...prev,
+            [existingGroup]: (prev[existingGroup] || []).filter(
+              val => val !== account_address
+            ),
+          }))
+        } else {
+          setGroupAvailability(prev => ({
+            ...prev,
+            [NO_GROUP_KEY]: [...(prev[NO_GROUP_KEY] || []), account_address],
+          }))
         }
       })
-    }
-  }
+    },
+    [addressToGroupMap]
+  )
+
   const totalParticipantsCount = useMemo(() => {
     const participantsMerged = getMergedParticipants(
       participants,
@@ -81,39 +105,51 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
     return participantsMerged.length + 1
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
   const handleParticipantRemove = (participant: ParticipantInfo) => {
-    const account_address = participant.account_address?.toLowerCase()
-    if (account_address === currentAccount?.address || !account_address) return
     React.startTransition(() => {
-      setParticipants(prev =>
-        prev.filter(p =>
-          isGroupParticipant(p)
-            ? true
-            : p.account_address?.toLowerCase() !== account_address
+      if (participant.account_address) {
+        const account_address = participant.account_address?.toLowerCase()
+        if (account_address === currentAccount?.address || !account_address) {
+          showInfoToast(
+            'Cannot remove meeting scheduler',
+            'As the meeting scheduler, you must remain in this meeting.'
+          )
+          return
+        }
+        setParticipants(prev =>
+          prev.filter(p =>
+            isGroupParticipant(p)
+              ? true
+              : p.account_address?.toLowerCase() !== account_address
+          )
         )
-      )
-      const keys = Object.keys(groupAvailability)
-      for (const key of keys) {
-        setGroupParticipants(prev => {
-          const allGroupParticipants = prev[key] || []
-          const newParticipants = allGroupParticipants.includes(account_address)
-            ? allGroupParticipants.filter(val => val !== account_address)
-            : [...allGroupParticipants, account_address]
-          return {
-            ...prev,
-            [key]: newParticipants,
-          }
-        })
 
         setGroupAvailability(prev => {
-          const allGroupAvailability = prev[key] || []
-          const newAvailability = allGroupAvailability.includes(account_address)
-            ? allGroupAvailability.filter(val => val !== account_address)
-            : [...allGroupAvailability, account_address]
-          return {
-            ...prev,
-            [key]: newAvailability,
-          }
+          const updated = { ...prev }
+          Object.keys(updated).forEach(key => {
+            if (updated[key]?.includes(account_address)) {
+              updated[key] = updated[key].filter(val => val !== account_address)
+            }
+          })
+          return updated
         })
+
+        setGroupParticipants(prev => {
+          const updated = { ...prev }
+          Object.keys(updated).forEach(key => {
+            if (updated[key]?.includes(account_address)) {
+              updated[key] = updated[key].filter(val => val !== account_address)
+            }
+          })
+          return updated
+        })
+      } else {
+        setParticipants(prev =>
+          prev.filter(p =>
+            isGroupParticipant(p)
+              ? true
+              : p.guest_email?.toLowerCase() !== participant.guest_email
+          )
+        )
       }
     })
   }
@@ -125,8 +161,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       borderColor={'input-border'}
       rounded={12}
       gap={5}
-      minH="80vh"
-      maxH={'90vh'}
+      maxH={'80vh'}
       overflowY={'auto'}
       w={isMobile ? '100%' : 'fit-content'}
       mx={isMobile ? 'auto' : 0}
@@ -160,10 +195,14 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
         </VStack>
       )}
       <VStack gap={4} w="100%">
-        {meetingMembers?.map((participant, index) => {
+        {meetingMembers?.map(participant => {
           return (
             <HStack
-              key={index}
+              key={
+                participant.account_address ||
+                participant.guest_email ||
+                participant.name
+              }
               width={'100%'}
               justifyContent={'space-between'}
               alignItems={'center'}
