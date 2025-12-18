@@ -14,6 +14,7 @@ import {
   TagLabel,
   Tooltip,
   useColorModeValue,
+  useDisclosure,
 } from '@chakra-ui/react'
 import { DateTime } from 'luxon'
 import * as React from 'react'
@@ -22,6 +23,10 @@ import { FaRegCopy } from 'react-icons/fa6'
 import { MdCancel } from 'react-icons/md'
 
 import useAccountContext from '@/hooks/useAccountContext'
+import {
+  createEventsQueryKey,
+  useCalendarContext,
+} from '@/providers/calendar/CalendarContext'
 import {
   isAccepted,
   isDeclined,
@@ -35,21 +40,35 @@ import { dateToLocalizedRange } from '@/utils/calendar_manager'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { canAccountAccessPermission } from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
+import { queryClient } from '@/utils/react_query'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
+import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import { TruncatedText } from './TruncatedText'
 
 interface EventDetailsPopOverProps {
   slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
+  onSelectEvent: () => void
+  onClose: () => void
 }
 const isCalendarEvent = (
   slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
 ): slot is WithInterval<UnifiedEvent<DateTime>> => {
   return 'calendarId' in slot
 }
-const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
+const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
+  slot,
+  onClose,
+  onSelectEvent,
+}) => {
   const currentAccount = useAccountContext()
   const [copyFeedbackOpen, setCopyFeedbackOpen] = React.useState(false)
+  const {
+    isOpen: isCancelOpen,
+    onOpen: onCancelOpen,
+    onClose: onCancelClose,
+  } = useDisclosure()
+  const { currrentDate } = useCalendarContext()
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
   const participants = React.useMemo(() => {
@@ -110,9 +129,29 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
       setCopyFeedbackOpen(false)
     }, 2000)
   }
-
+  const handleCleanup = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries(createEventsQueryKey(currrentDate)),
+      queryClient.invalidateQueries(
+        createEventsQueryKey(currrentDate.minus({ month: 1 }))
+      ),
+      queryClient.invalidateQueries(
+        createEventsQueryKey(currrentDate.plus({ month: 1 }))
+      ),
+    ])
+    onClose()
+  }
   return (
     <VStack width="100%" align="start" gap={6} p={4}>
+      {!isCalendarEvent(slot) && (
+        <CancelMeetingDialog
+          isOpen={isCancelOpen}
+          onClose={onCancelClose}
+          decryptedMeeting={slot}
+          currentAccount={currentAccount}
+          afterCancel={handleCleanup}
+        />
+      )}
       <VStack width="100%" align="start" gap={4}>
         <Heading fontWeight={500} fontSize={'24px'}>
           {slot.title}
@@ -207,7 +246,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
             color={iconColor}
             aria-label="edit"
             icon={<FaEdit size={16} />}
-            // onClick={handleEditMeeting}
+            onClick={onSelectEvent}
           />
         </Tooltip>
         <Tooltip label="Cancel meeting" placement="top">
@@ -215,7 +254,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({ slot }) => {
             color={iconColor}
             aria-label="remove"
             icon={<MdCancel size={16} />}
-            // onClick={onCancelOpen}
+            onClick={onCancelOpen}
           />
         </Tooltip>
       </HStack>
