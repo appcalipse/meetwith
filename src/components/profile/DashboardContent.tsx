@@ -27,7 +27,7 @@ const DashboardContent: React.FC<{
 }> = ({ currentSection }) => {
   const { currentAccount } = useContext(AccountContext)
   const settingsSections = new Set<string>([
-    EditMode.DETAILS,
+    SettingsSection.DETAILS,
     SettingsSection.CONNECTED_CALENDARS,
     SettingsSection.CONNECTED_ACCOUNTS,
     SettingsSection.NOTIFICATIONS,
@@ -58,10 +58,6 @@ const DashboardContent: React.FC<{
         return <AvailabilityConfig currentAccount={currentAccount!} />
       case EditMode.MEETING_SETTINGS:
         return <MeetingSettings currentAccount={currentAccount!} />
-      case EditMode.CALENDARS:
-        return <ConnectCalendar currentAccount={currentAccount!} />
-      case EditMode.NOTIFICATIONS:
-        return <NotificationsConfig currentAccount={currentAccount!} />
       case EditMode.WALLET:
         return (
           <WalletProvider>

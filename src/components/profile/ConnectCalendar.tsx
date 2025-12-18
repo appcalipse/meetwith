@@ -32,7 +32,7 @@ const GoProCTA = () => (
   <VStack>
     <Text py="6">
       <Link
-        href={`/dashboard/${SettingsSection.SUBSCRIPTIONS}`}
+        href={`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`}
         colorScheme="primary"
         fontWeight="bold"
       >

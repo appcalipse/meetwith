@@ -200,7 +200,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     if (!isProAccount(currentAccount!) && _participants.length > 1) {
       setInputError(
         <Text>
-          <Link href={`/dashboard/${SettingsSection.SUBSCRIPTIONS}`}>
+          <Link href={`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`}>
             Go PRO
           </Link>{' '}
           to be able to schedule meetings with more than one invitee

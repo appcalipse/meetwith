@@ -141,7 +141,7 @@ const BillingCheckout = () => {
     onSuccess: (response, variables) => {
       // Trials: no payment modal; redirect to refresh subscription card
       if (variables?.is_trial || response.amount <= 0) {
-        router.push('/dashboard/subscriptions?checkout=success')
+        router.push('/dashboard/settings/subscriptions?checkout=success')
         return
       }
       setCryptoPaymentConfig(response)
@@ -249,7 +249,7 @@ const BillingCheckout = () => {
 
   const handleCryptoPaymentSuccess = () => {
     // Redirect to subscriptions page with success message
-    router.push('/dashboard/subscriptions?checkout=success')
+    router.push('/dashboard/settings/subscriptions?checkout=success')
   }
 
   const handleCryptoPaymentClick = async () => {

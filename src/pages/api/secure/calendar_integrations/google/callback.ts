@@ -37,14 +37,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (error) {
     Sentry.captureException(error)
     if (!stateObject)
-      return res.redirect(`/dashboard/connected-calendars?calendarResult=error`)
+      return res.redirect(
+        `/dashboard/settings/connected-calendars?calendarResult=error`
+      )
     else {
       stateObject.error = 'Google Calendar integration failed.'
       const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
         'base64'
       )
       return res.redirect(
-        `/dashboard/connected-calendars?calendarResult=error&state=${newState64}`
+        `/dashboard/settings/connected-calendars?calendarResult=error&state=${newState64}`
       )
     }
   }
@@ -132,7 +134,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const integrationCount = await countCalendarIntegrations(accountAddress)
       if (integrationCount >= 1) {
         return res.redirect(
-          `/dashboard/connected-calendars?calendarResult=error&error=${encodeURIComponent(
+          `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
             'Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.'
           )}`
         )
@@ -181,7 +183,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.redirect(redirect_url)
   }
   return res.redirect(
-    `/dashboard/connected-calendars?calendarResult=success${
+    `/dashboard/settings/connected-calendars?calendarResult=success${
       !!state ? `&state=${newState64}` : ''
     }`
   )

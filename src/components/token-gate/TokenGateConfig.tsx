@@ -106,7 +106,7 @@ export const TokenGateConfig: React.FC<{ currentAccount: Account }> = ({
           {!isPro && (
             <Text>
               <Link
-                href="/dashboard/subscriptions"
+                href="/dashboard/settings/subscriptions"
                 colorScheme="primary"
                 fontWeight="bold"
               >
