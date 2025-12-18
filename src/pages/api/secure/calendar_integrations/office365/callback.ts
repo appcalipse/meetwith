@@ -14,7 +14,7 @@ import {
   getAccountNotificationSubscriptions,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/subscription_manager'
+import { isProAccountAsync } from '@/utils/database'
 
 const credentials = {
   client_id: process.env.MS_GRAPH_CLIENT_ID!,

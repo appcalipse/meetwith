@@ -31,7 +31,12 @@ import { appUrl } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
 import { getOwnerPublicUrlServer } from './database'
-import { formatDateForEmail, getDisplayNameForEmail } from './email_utils'
+import { getBillingEmailAccountInfo } from './database'
+import {
+  formatDateForEmail,
+  formatDaysRemainingForEmail,
+  getDisplayNameForEmail,
+} from './email_utils'
 import { generateIcsServer } from './services/calendar.backend.helper'
 import { getCalendars } from './sync_helper'
 import { getAllParticipantsDisplayName } from './user_manager'
@@ -820,6 +825,42 @@ export const sendReceiptEmail = async (
 }
 
 // Billing / subscriptions
+export const sendSubscriptionConfirmationEmailForAccount = async (
+  accountAddress: string,
+  billingPlan: BillingEmailPlan,
+  registeredAt: Date | string,
+  expiryTime: Date | string,
+  provider: PaymentProvider,
+  transaction?: { amount?: number; currency?: string },
+  isTrial?: boolean
+): Promise<void> => {
+  try {
+    const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+
+    if (!accountInfo) {
+      return // Silently return if account info not found
+    }
+
+    // Process display name for email
+    const processedDisplayName = getDisplayNameForEmail(accountInfo.displayName)
+
+    const period: BillingEmailPeriod = {
+      registered_at: registeredAt,
+      expiry_time: expiryTime,
+    }
+
+    await sendSubscriptionConfirmationEmail(
+      { ...accountInfo, displayName: processedDisplayName },
+      period,
+      billingPlan,
+      provider,
+      transaction,
+      isTrial
+    )
+  } catch (error) {
+    Sentry.captureException(error)
+  }
+}
 
 export const sendSubscriptionConfirmationEmail = async (
   account: BillingEmailAccountInfo,
@@ -870,6 +911,39 @@ export const sendSubscriptionConfirmationEmail = async (
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
+  }
+}
+
+export const sendSubscriptionCancelledEmailForAccount = async (
+  accountAddress: string,
+  billingPlan: BillingEmailPlan,
+  registeredAt: Date | string,
+  expiryTime: Date | string,
+  provider: PaymentProvider
+): Promise<void> => {
+  try {
+    const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+
+    if (!accountInfo) {
+      return // Silently return if account info not found
+    }
+
+    // Process display name for email
+    const processedDisplayName = getDisplayNameForEmail(accountInfo.displayName)
+
+    const period: BillingEmailPeriod = {
+      registered_at: registeredAt,
+      expiry_time: expiryTime,
+    }
+
+    await sendSubscriptionCancelledEmail(
+      { ...accountInfo, displayName: processedDisplayName },
+      period,
+      billingPlan,
+      provider
+    )
+  } catch (error) {
+    Sentry.captureException(error)
   }
 }
 
@@ -983,6 +1057,7 @@ export const sendSubscriptionRenewalDueEmail = async (
     periodEnd,
     renewUrl,
     daysRemaining,
+    daysText: formatDaysRemainingForEmail(daysRemaining),
     planName: billingPlan.name,
   }
 
@@ -1027,6 +1102,7 @@ export const sendCryptoExpiryReminderEmail = async (
     periodEnd,
     renewUrl,
     daysRemaining,
+    daysText: formatDaysRemainingForEmail(daysRemaining),
     planName: billingPlan.name,
   }
 

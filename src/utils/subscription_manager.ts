@@ -24,7 +24,6 @@ import {
 import {
   getActiveSubscription,
   getSubscriptionByDomain,
-  hasActiveBillingSubscription,
   syncSubscriptions,
 } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
@@ -42,30 +41,6 @@ export const isProAccount = (
   }
   // This sync version only checks domain subscriptions for backward compatibility
   return false
-}
-
-// Async version - checks both domain and billing subscriptions
-export const isProAccountAsync = async (
-  accountAddress: string
-): Promise<boolean> => {
-  try {
-    // Check billing subscription periods
-    const hasBilling = await hasActiveBillingSubscription(accountAddress)
-    if (hasBilling) {
-      return true
-    }
-
-    // Check domain subscriptions
-    const subscriptions = await syncSubscriptions()
-    const hasDomain = subscriptions.some(
-      sub => new Date(sub.expiry_time) > new Date()
-    )
-
-    return hasDomain
-  } catch (error) {
-    Sentry.captureException(error)
-    return false
-  }
 }
 
 export const getActiveProSubscription = (

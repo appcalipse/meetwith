@@ -2,8 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { getGroupsAndMembers, initDB } from '@/utils/database'
+import { isProAccountAsync } from '@/utils/database'
 import { extractQuery } from '@/utils/generic_utils'
-import { isProAccountAsync } from '@/utils/subscription_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {

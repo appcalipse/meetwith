@@ -9,9 +9,9 @@ import {
   connectedCalendarExists,
   countCalendarIntegrations,
 } from '@/utils/database'
+import { isProAccountAsync } from '@/utils/database'
 import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
 import CaldavCalendarService from '@/utils/services/caldav.service'
-import { isProAccountAsync } from '@/utils/subscription_manager'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!req.session.account) {

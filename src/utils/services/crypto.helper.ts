@@ -4,7 +4,6 @@ import { WebhookPayload } from 'thirdweb/dist/types/bridge'
 import { formatUnits } from 'viem'
 
 import {
-  BillingEmailPeriod,
   BillingEmailPlan,
   PaymentProvider as BillingPaymentProvider,
   SubscriptionType,
@@ -28,14 +27,12 @@ import {
   createSubscriptionPeriod,
   createSubscriptionTransaction,
   getActiveSubscriptionPeriod,
-  getBillingEmailAccountInfo,
   getBillingPlanById,
   getStripeSubscriptionByAccount,
   getSubscriptionPeriodsByAccount,
   updateSubscriptionPeriodStatus,
 } from '@/utils/database'
-import { sendSubscriptionConfirmationEmail } from '@/utils/email_helper'
-import { getDisplayNameForEmail } from '@/utils/email_utils'
+import { sendSubscriptionConfirmationEmailForAccount } from '@/utils/email_helper'
 import {
   BillingPlanNotFoundError,
   MissingSubscriptionMetadataError,
@@ -276,44 +273,24 @@ export const handleCryptoSubscriptionPayment = async (
   }
 
   // Send subscription confirmation email
-  try {
-    const accountInfo = await getBillingEmailAccountInfo(
-      account_address.toLowerCase()
-    )
-
-    if (accountInfo) {
-      // Process display name for email
-      const processedDisplayName = getDisplayNameForEmail(
-        accountInfo.displayName
-      )
-
-      const period: BillingEmailPeriod = {
-        registered_at: new Date(),
-        expiry_time: calculatedExpiryTime,
-      }
-
-      const emailPlan: BillingEmailPlan = {
-        id: billingPlan.id,
-        name: billingPlan.name,
-        price: billingPlan.price,
-        billing_cycle: billingPlan.billing_cycle,
-      }
-
-      await sendSubscriptionConfirmationEmail(
-        { ...accountInfo, displayName: processedDisplayName },
-        period,
-        emailPlan,
-        BillingPaymentProvider.CRYPTO,
-        {
-          amount: transactionData.fiatEquivalent,
-          currency: 'USD',
-        }
-      )
-    }
-  } catch (error) {
-    Sentry.captureException(error)
-    // Don't fail the subscription if email fails
+  const emailPlan: BillingEmailPlan = {
+    id: billingPlan.id,
+    name: billingPlan.name,
+    price: billingPlan.price,
+    billing_cycle: billingPlan.billing_cycle,
   }
+
+  await sendSubscriptionConfirmationEmailForAccount(
+    account_address.toLowerCase(),
+    emailPlan,
+    new Date(),
+    calculatedExpiryTime,
+    BillingPaymentProvider.CRYPTO,
+    {
+      amount: transactionData.fiatEquivalent,
+      currency: 'USD',
+    }
+  )
 
   return {
     transaction,
