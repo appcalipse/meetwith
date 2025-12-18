@@ -216,7 +216,9 @@ const loadMeetingAccountAddresses = async (
     }
   }
   const slotsAccounts = [
-    ...otherSlots.map(it => it.account_address.toLowerCase()),
+    ...otherSlots
+      .filter(it => it.account_address)
+      .map(it => it.account_address!.toLowerCase()),
   ]
   if (currentAccountAddress) {
     slotsAccounts.unshift(currentAccountAddress.toLowerCase())
@@ -876,15 +878,12 @@ const updateMeetingConferenceGuest = async (
   if (!existingDBSlot) {
     throw new MeetingChangeConflictError()
   }
-  const existingMeeting = await decryptMeetingGuest(existingDBSlot)
 
-  //TODO: anyone can update a meeting, but we might need to change the participants statuses
-
-  // make sure that we are trying to update the latest version of the meeting,
-  // otherwise it means that somebody changes before this one
   if (decryptedMeeting.version !== existingDBSlot.version) {
     throw new MeetingChangeConflictError()
   }
+
+  const existingMeeting = decryptedMeeting
 
   const existingMeetingAccounts = await loadMeetingAccountAddresses(
     existingMeeting!
@@ -1284,12 +1283,15 @@ const cancelMeetingGuest = async (
     throw new MeetingChangeConflictError()
   }
   const existingMeeting = await decodeMeetingGuest(existingDBSlot)
+  if (!existingMeeting) {
+    throw new MeetingChangeConflictError()
+  }
 
   // Only the owner or scheduler of the meeting can cancel it
-  const meetingOwners = existingMeeting!.participants.filter(
+  const meetingOwners = existingMeeting.participants.filter(
     user => user.type === ParticipantType.Owner
   )
-  const meetingScheduler = existingMeeting!.participants.find(
+  const meetingScheduler = existingMeeting.participants.find(
     user => user.type === ParticipantType.Scheduler
   )
   if (
@@ -1508,7 +1510,8 @@ const generateIcs = async (
   meeting: MeetingDecrypted,
   ownerAddress: string,
   meetingStatus: MeetingChangeType,
-  changeUrl?: string,
+  rescheduleUrl?: string,
+  cancelUrl?: string,
   removeAttendess?: boolean,
   destination?: { accountAddress: string; email: string },
   isPrivate?: boolean
@@ -1533,7 +1536,8 @@ const generateIcs = async (
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
-      changeUrl
+      rescheduleUrl,
+      cancelUrl
     ),
     url,
     location: meeting.meeting_url,
@@ -1898,10 +1902,12 @@ const generateGoogleCalendarUrl = async (
   }
   if (content || meeting_url) {
     const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    const cancelUrl = `${appUrl}/dashboard/meetings?conferenceId=${meeting_id}&intent=${Intents.CANCEL_MEETING}`
     baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      changeUrl
+      changeUrl,
+      cancelUrl
     )}`
   }
   if (timezone) {
@@ -1960,10 +1966,12 @@ const generateOffice365CalendarUrl = async (
   }
   if (content || meeting_url) {
     const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    const cancelUrl = `${appUrl}/dashboard/meetings?conferenceId=${meeting_id}&intent=${Intents.CANCEL_MEETING}`
     baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      changeUrl
+      changeUrl,
+      cancelUrl
     )}`
   }
   if (participants) {

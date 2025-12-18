@@ -73,7 +73,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(400).send(e)
       } else {
         Sentry.captureException(e)
-        return res.status(500).send(e)
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        return res.status(500).json({ error: errorMessage, details: String(e) })
       }
     }
   } else if (req.method === 'DELETE') {

@@ -55,9 +55,11 @@ import {
   AllMeetingSlotsUsedError,
   GateConditionNotValidError,
   GoogleServiceUnavailable,
+  GuestRescheduleForbiddenError,
   Huddle01ServiceUnavailable,
   InvalidURL,
   MeetingCreationError,
+  MeetingDetailsModificationDenied,
   MeetingWithYourselfError,
   MultipleSchedulersError,
   ServiceUnavailableError,
@@ -1085,21 +1087,9 @@ const PublicPage: FC<IProps> = props => {
       try {
         let meeting: MeetingDecrypted
 
-        if (meetingSlotId) {
-          meeting = await updateMeetingAsGuest(
-            meetingSlotId,
-            selectedType.id,
-            start,
-            end,
-            participants,
-            meetingProvider || MeetingProvider.HUDDLE,
-            content,
-            meetingUrl,
-            title,
-            meetingReminders,
-            meetingRepeat
-          )
-        } else if (conferenceId) {
+        // Prioritize conferenceId over meetingSlotId for single calendar events
+        // conferenceId is the new way for single calendar events where both host and guest can reschedule
+        if (conferenceId) {
           if (conferenceActor === 'account') {
             meeting = await updateMeeting(
               true,
@@ -1135,6 +1125,22 @@ const PublicPage: FC<IProps> = props => {
               meetingRepeat
             )
           }
+        } else if (meetingSlotId) {
+          // Legacy path for old guest meetings (not single calendar events)
+          // This path throws GuestRescheduleForbiddenError for multi-slot meetings
+          meeting = await updateMeetingAsGuest(
+            meetingSlotId,
+            selectedType.id,
+            start,
+            end,
+            participants,
+            meetingProvider || MeetingProvider.HUDDLE,
+            content,
+            meetingUrl,
+            title,
+            meetingReminders,
+            meetingRepeat
+          )
         } else {
           meeting = await scheduleMeeting(
             false,
@@ -1294,7 +1300,25 @@ const PublicPage: FC<IProps> = props => {
           toast({
             title: 'Service Unavailable',
             description:
-              'We’re having trouble connecting at the moment. Please try again shortly.',
+              "We're having trouble connecting at the moment. Please try again shortly.",
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof GuestRescheduleForbiddenError) {
+          toast({
+            title: 'Failed to schedule meeting',
+            description: e.message,
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else if (e instanceof MeetingDetailsModificationDenied) {
+          toast({
+            title: 'Failed to schedule meeting',
+            description: e.message,
             status: 'error',
             duration: 5000,
             position: 'top',

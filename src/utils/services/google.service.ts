@@ -251,6 +251,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
                 )}?conferenceId=${meetingDetails.meeting_id}`
               : `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
 
+          const cancelUrl = `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
+
           const payload: calendar_v3.Schema$Event = {
             // yes, google event ids allows only letters and numbers
             id: meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
@@ -262,7 +264,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             description: CalendarServiceHelper.getMeetingSummary(
               meetingDetails.content,
               meetingDetails.meeting_url,
-              changeUrl
+              changeUrl,
+              cancelUrl
             ),
             start: {
               dateTime: new Date(meetingDetails.start).toISOString(),
@@ -404,6 +407,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       )?.responseStatus
 
       const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+      const cancelUrl = `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
 
       const payload: calendar_v3.Schema$Event = {
         id: meeting_id.replaceAll('-', ''), // required to edit events later
@@ -415,7 +419,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         description: CalendarServiceHelper.getMeetingSummary(
           meetingDetails.content,
           meetingDetails.meeting_url,
-          changeUrl
+          changeUrl,
+          cancelUrl
         ),
         start: {
           dateTime: new Date(meetingDetails.start).toISOString(),
