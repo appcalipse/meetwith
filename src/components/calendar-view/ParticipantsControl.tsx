@@ -43,7 +43,7 @@ const renderRsvpStatus = (status: ParticipationStatus) => {
             rounded="full"
             justify="center"
             align="center"
-            ml={1}
+            mr={1}
           >
             <CheckIcon width={'8px'} height={'8px'} />
           </VStack>
@@ -60,7 +60,7 @@ const renderRsvpStatus = (status: ParticipationStatus) => {
             rounded="full"
             justify="center"
             align="center"
-            ml={1}
+            mr={1}
           >
             <FaX size={8} />
           </VStack>
@@ -77,7 +77,7 @@ const renderRsvpStatus = (status: ParticipationStatus) => {
             rounded="full"
             justify="center"
             align="center"
-            ml={1}
+            mr={1}
           >
             <BsDash width={'8px'} height={'8px'} />
           </VStack>
@@ -136,8 +136,8 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
     (participantInfo: ParticipantInfo, onRemove?: () => void) => (
       <Badge sx={chipStyles.badge}>
         <Center>
-          {renderParticipantChipLabel(participantInfo)}
           {renderRsvpStatus(participantInfo.status)}
+          {renderParticipantChipLabel(participantInfo)}
           {canAddParticipants && (
             <Link
               sx={chipStyles.close}
