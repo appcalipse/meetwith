@@ -4,13 +4,16 @@ import {
   ModalContent,
   ModalOverlay,
 } from '@chakra-ui/react'
-import { DEFAULT_MESSAGE_NAME, PubSubManager } from '@utils/pub-sub.helper'
+import {
+  DEFAULT_SUBSCRIPTION_MESSAGE_NAME,
+  PubSubManager,
+} from '@utils/pub-sub.helper'
 import React, { useEffect, useRef } from 'react'
 import { CheckoutWidget, useActiveWallet } from 'thirdweb/react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { ChainInfo, SupportedChain, supportedChains } from '@/types/chains'
-import { Address, IPurchaseData, Transaction } from '@/types/Transactions'
+import { Address, ISubscriptionData, Transaction } from '@/types/Transactions'
 import { SUBSCRIPTION_PAYMENT_RECEIVER_ADDRESS } from '@/utils/constants'
 import { useToastHelpers } from '@/utils/toasts'
 import { thirdWebClient } from '@/utils/user_manager'
@@ -18,7 +21,7 @@ import { thirdWebClient } from '@/utils/user_manager'
 type Props = {
   isOpen: boolean
   onClose: () => void
-  purchaseData: IPurchaseData
+  subscriptionData: ISubscriptionData
   amount: number
   chain: ChainInfo
   token: string
@@ -29,7 +32,7 @@ type Props = {
 const SubscriptionCheckoutModal = ({
   isOpen,
   onClose,
-  purchaseData,
+  subscriptionData,
   amount,
   chain,
   token,
@@ -60,8 +63,8 @@ const SubscriptionCheckoutModal = ({
       const pubSubManager = new PubSubManager()
       const transaction = await new Promise<Transaction>(async resolve => {
         await pubSubManager.subscribeToMessages(
-          purchaseData.message_channel,
-          DEFAULT_MESSAGE_NAME,
+          subscriptionData.subscription_channel,
+          DEFAULT_SUBSCRIPTION_MESSAGE_NAME,
           message => {
             const transaction = JSON.parse(message.data) as Transaction
             resolve(transaction)
@@ -70,8 +73,8 @@ const SubscriptionCheckoutModal = ({
       })
 
       await pubSubManager.unsubscribeFromMessages(
-        purchaseData.message_channel,
-        DEFAULT_MESSAGE_NAME
+        subscriptionData.subscription_channel,
+        DEFAULT_SUBSCRIPTION_MESSAGE_NAME
       )
 
       if (transaction.transaction_hash) {
@@ -96,11 +99,11 @@ const SubscriptionCheckoutModal = ({
   }
 
   useEffect(() => {
-    if (!isOpen || !purchaseData.message_channel) {
+    if (!isOpen || !subscriptionData.subscription_channel) {
       return
     }
     void listenForTransaction()
-  }, [purchaseData.message_channel])
+  }, [subscriptionData.subscription_channel])
 
   const sellerAddress = SUBSCRIPTION_PAYMENT_RECEIVER_ADDRESS as Address
 
@@ -132,9 +135,9 @@ const SubscriptionCheckoutModal = ({
           seller={sellerAddress}
           name="Meetwith Premium Subscription"
           description={`${
-            purchaseData.billing_plan_id === 'yearly' ? 'Yearly' : 'Monthly'
+            subscriptionData.billing_plan_id === 'yearly' ? 'Yearly' : 'Monthly'
           } subscription plan`}
-          purchaseData={purchaseData}
+          purchaseData={subscriptionData}
           onError={handlePaymentError}
         />
       </ModalContent>

@@ -13,6 +13,7 @@ import {
   BillingEmailPlan,
   PaymentProvider as BillingPaymentProvider,
 } from '@/types/Billing'
+import { ISubscriptionData } from '@/types/Transactions'
 import {
   createSubscriptionPeriod,
   getActiveSubscriptionPeriod,
@@ -100,12 +101,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           amount: 0,
           currency: 'USD',
           billing_plan_id,
-          purchaseData: {
+          subscriptionData: {
             subscription_type: SubscriptionType.INITIAL,
             billing_plan_id,
             account_address: accountAddress,
-            message_channel: `subscription:trial:${v4()}:${billing_plan_id}`,
-            meeting_type_id: null,
+            subscription_channel: `crypto-subscription:trial:${v4()}:${billing_plan_id}`,
           },
         }
 
@@ -143,16 +143,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         }
       }
 
-      // Generate message channel for pub/sub communication
-      const messageChannel = `subscription:${v4()}:${billing_plan_id}`
+      // Generate subscription channel for pub/sub communication
+      const subscriptionChannel = `crypto-subscription:${v4()}:${billing_plan_id}`
 
-      // Prepare purchase data for Thirdweb payment widget
-      const purchaseData = {
+      // Prepare subscription data for Thirdweb payment widget
+      const subscriptionData: ISubscriptionData = {
         subscription_type: subscription_type,
         billing_plan_id,
         account_address: accountAddress,
-        message_channel: messageChannel,
-        meeting_type_id: null,
+        subscription_channel: subscriptionChannel,
       }
 
       const response: SubscribeResponseCrypto = {
@@ -160,7 +159,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         amount: billingPlan.price,
         currency: 'USD',
         billing_plan_id,
-        purchaseData,
+        subscriptionData,
       }
 
       return res.status(200).json(response)

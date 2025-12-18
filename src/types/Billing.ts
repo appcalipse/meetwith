@@ -134,12 +134,11 @@ export interface SubscribeResponseCrypto {
   amount: number
   currency: string
   billing_plan_id: string
-  purchaseData: {
+  subscriptionData: {
     subscription_type: SubscriptionType
     billing_plan_id: string
     account_address: string
-    message_channel: string
-    meeting_type_id: null
+    subscription_channel: string
   }
 }
 

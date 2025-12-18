@@ -16,7 +16,7 @@ import {
   OnrampTransactionData,
   TransactionData,
 } from '@/types/Thirdweb'
-import { IPurchaseData } from '@/types/Transactions'
+import { ISubscriptionData } from '@/types/Transactions'
 import {
   PaymentDirection,
   PaymentStatus,
@@ -45,20 +45,20 @@ import { Currency } from '@/utils/services/onramp.money'
  */
 export const handleCryptoSubscriptionPayment = async (
   payload: WebhookPayload,
-  purchaseData: IPurchaseData
+  subscriptionData: ISubscriptionData
 ) => {
   const {
     billing_plan_id,
     subscription_type,
     account_address,
-    message_channel,
-  } = purchaseData
+    subscription_channel,
+  } = subscriptionData
 
   // Validate required subscription metadata
   if (!billing_plan_id || !account_address) {
     const error = new MissingSubscriptionMetadataError()
     Sentry.captureException(error, {
-      extra: { purchaseData, payloadType: payload.type },
+      extra: { subscriptionData, payloadType: payload.type },
     })
     throw error
   }
@@ -232,7 +232,7 @@ export const handleCryptoSubscriptionPayment = async (
     metadata: {
       subscription_type,
       billing_plan_id,
-      message_channel,
+      subscription_channel,
     },
   }
 

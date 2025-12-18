@@ -422,7 +422,7 @@ const BillingCheckout = () => {
         <SubscriptionCheckoutModal
           isOpen={isCryptoModalOpen}
           onClose={onCryptoModalClose}
-          purchaseData={cryptoPaymentConfig.purchaseData}
+          subscriptionData={cryptoPaymentConfig.subscriptionData}
           amount={cryptoPaymentConfig.amount}
           chain={defaultChain}
           token={defaultToken}

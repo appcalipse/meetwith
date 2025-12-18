@@ -9,10 +9,14 @@ import { formatUnits } from 'viem'
 
 import { getSupportedChainFromId } from '@/types/chains'
 import { ConfirmCryptoTransactionRequest } from '@/types/Requests'
-import { Address, IPurchaseData } from '@/types/Transactions'
+import { Address, IPurchaseData, ISubscriptionData } from '@/types/Transactions'
 import { PaymentType, TokenType } from '@/utils/constants/meeting-types'
 import { ChainNotFound } from '@/utils/errors'
-import { DEFAULT_MESSAGE_NAME, PubSubManager } from '@/utils/pub-sub.helper'
+import {
+  DEFAULT_MESSAGE_NAME,
+  DEFAULT_SUBSCRIPTION_MESSAGE_NAME,
+  PubSubManager,
+} from '@/utils/pub-sub.helper'
 import { handleCryptoSubscriptionPayment } from '@/utils/services/crypto.helper'
 
 export default async function handler(
@@ -60,24 +64,39 @@ export default async function handler(
           throw new ChainNotFound(chainId.toString())
         }
 
-        const purchaseData = payload.data.purchaseData as IPurchaseData
+        const purchaseData = payload.data.purchaseData as
+          | IPurchaseData
+          | ISubscriptionData
 
         if (payload.data.status === 'COMPLETED') {
           // Check if this is a subscription payment
-          // Subscription payments have billing_plan_id and no meeting_type_id
           const isSubscriptionPayment =
-            !purchaseData.meeting_type_id && purchaseData.billing_plan_id
+            'subscription_channel' in purchaseData &&
+            'billing_plan_id' in purchaseData
 
           if (isSubscriptionPayment) {
             // Handle subscription payment
             try {
-              await handleCryptoSubscriptionPayment(payload, purchaseData)
+              const subscriptionData = purchaseData as ISubscriptionData
+              const result = await handleCryptoSubscriptionPayment(
+                payload,
+                subscriptionData
+              )
+
+              // Publish transaction to subscription channel for frontend
+              const pubSubManager = new PubSubManager()
+              await pubSubManager.publishMessage(
+                subscriptionData.subscription_channel,
+                DEFAULT_SUBSCRIPTION_MESSAGE_NAME,
+                JSON.stringify(result.transaction)
+              )
+
               // Subscription payment handled successfully
               return res.status(200).send('OK')
             } catch (error) {
               captureException(error, {
                 extra: {
-                  purchaseData,
+                  subscriptionData: purchaseData,
                   payloadType: payload.type,
                 },
               })
