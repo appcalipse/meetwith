@@ -8184,12 +8184,51 @@ const getActiveSubscriptionPeriod = async (
   return data
 }
 
+// Check if an account has a subscription within the 3-day grace period
+const hasGracePeriodSubscription = async (
+  accountAddress: string
+): Promise<boolean> => {
+  try {
+    const threeDaysAgo = new Date()
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+    const threeDaysAgoISO = threeDaysAgo.toISOString()
+    const nowISO = new Date().toISOString()
+
+    const { data: gracePeriodSubscriptions, error: graceError } =
+      await db.supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('owner_account', accountAddress.toLowerCase())
+        .not('billing_plan_id', 'is', null) // Only billing subscriptions
+        .gte('expiry_time', threeDaysAgoISO) // Expired within last 3 days
+        .lt('expiry_time', nowISO) // But expired (not active)
+        .order('expiry_time', { ascending: false })
+        .limit(1)
+
+    if (graceError) {
+      Sentry.captureException(graceError)
+      return false
+    }
+
+    return gracePeriodSubscriptions && gracePeriodSubscriptions.length > 0
+  } catch (error) {
+    Sentry.captureException(error)
+    return false
+  }
+}
+
 // Check if an account has Pro access (billing or domain subscription)
+// Includes a 3-day grace period for expired subscriptions
 const isProAccountAsync = async (accountAddress: string): Promise<boolean> => {
   try {
     // Check billing subscription periods
     const activePeriod = await getActiveSubscriptionPeriod(accountAddress)
     if (activePeriod && activePeriod.billing_plan_id) {
+      return true
+    }
+
+    // Check for subscriptions within grace period
+    if (await hasGracePeriodSubscription(accountAddress)) {
       return true
     }
 
