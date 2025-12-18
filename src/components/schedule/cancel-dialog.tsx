@@ -61,7 +61,7 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
       currentAccount!.address
     )
   }
-
+  if (!meetingInfo) return null
   return (
     <AlertDialog
       isOpen={isOpen}
