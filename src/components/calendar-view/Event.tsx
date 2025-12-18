@@ -14,13 +14,14 @@ import { FaExpand, FaX } from 'react-icons/fa6'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 import {
-  AttendeeStatus,
+  isAccepted,
   isCalendarEvent,
+  isDeclined,
+  isPendingAction,
   UnifiedEvent,
   WithInterval,
 } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
-import { ParticipationStatus } from '@/types/ParticipantInfo'
 import {
   generateBorderColor,
   getDesignSystemTextColor,
@@ -52,26 +53,9 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
       )
     }
   }, [event, currentAccount])
-  const isDeclined =
-    actor?.status &&
-    [ParticipationStatus.Rejected, AttendeeStatus.DECLINED].includes(
-      actor?.status
-    )
-  const isPendingAction =
-    actor?.status &&
-    [
-      ParticipationStatus.Pending,
-      AttendeeStatus.TENTATIVE,
-      AttendeeStatus.NEEDS_ACTION,
-      AttendeeStatus.DELEGATED,
-    ].includes(actor?.status)
-  const isAccepted =
-    actor?.status &&
-    [
-      ParticipationStatus.Accepted,
-      AttendeeStatus.ACCEPTED,
-      AttendeeStatus.COMPLETED,
-    ].includes(actor?.status)
+  const isDeclinedStatus = isDeclined(actor?.status)
+  const isPendingStatus = isPendingAction(actor?.status)
+  const isAcceptedStatus = isAccepted(actor?.status)
 
   const isStartInsideOtherEvent = dayEvents.filter(otherEvent => {
     if (otherEvent.id === event.id) return false
@@ -82,6 +66,16 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
   const margin = isStartInsideOtherEvent.length * 3
   const top =
     ((event.start.diff(timeSlot, 'minutes').toObject().minutes || 0) / 60) * 36
+  const handleSelectEvent = (close: () => void) => {
+    close()
+    if (!isCalendarEvent(event)) {
+      setSelectedSlot({
+        ...event,
+        start: event.start.toJSDate(),
+        end: event.end.toJSDate(),
+      })
+    }
+  }
   return (
     <Popover isLazy placement="auto">
       {({ onClose }) => (
@@ -126,16 +120,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
           <PopoverContent zIndex={10} width="600px">
             <PopoverArrow />
             <PopoverCloseButton
-              onClick={() => {
-                onClose()
-                if (!isCalendarEvent(event)) {
-                  setSelectedSlot({
-                    ...event,
-                    start: event.start.toJSDate(),
-                    end: event.end.toJSDate(),
-                  })
-                }
-              }}
+              onClick={() => handleSelectEvent(onClose)}
               as={isCalendarEvent(event) ? FaX : FaExpand}
               size={'24'}
               top={4}
@@ -143,7 +128,11 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
             />
 
             <PopoverBody>
-              <EventDetailsPopOver slot={event} />
+              <EventDetailsPopOver
+                slot={event}
+                onSelectEvent={() => handleSelectEvent(onClose)}
+                onClose={onClose}
+              />
             </PopoverBody>
           </PopoverContent>
         </>
