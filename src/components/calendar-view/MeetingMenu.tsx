@@ -5,7 +5,7 @@ import {
   MenuItem,
   MenuList,
 } from '@chakra-ui/menu'
-import { IconButton, Portal, useColorModeValue } from '@chakra-ui/react'
+import { IconButton, useColorModeValue } from '@chakra-ui/react'
 import { FC, useCallback, useMemo } from 'react'
 import { FaEllipsisV } from 'react-icons/fa'
 
@@ -138,26 +138,24 @@ const MeetingMenu: FC<MeetingMenuProps> = ({ slot, currentAccount }) => {
         icon={<FaEllipsisV size={16} />}
         key={`${slot?.id}-option`}
       />
-      <Portal>
-        <MenuList backgroundColor={menuBgColor}>
-          {menuItems.map((val, index, arr) => [
-            <MenuItem
-              onClick={val.onClick}
-              backgroundColor={menuBgColor}
-              key={`${val.label}-${slot?.id}`}
-              aria-busy
-            >
-              {val.label}
-            </MenuItem>,
-            index !== arr.length - 1 && (
-              <MenuDivider
-                key={`divider-${index}-${slot?.id}`}
-                borderColor="neutral.600"
-              />
-            ),
-          ])}
-        </MenuList>
-      </Portal>
+      <MenuList backgroundColor={menuBgColor}>
+        {menuItems.map((val, index, arr) => [
+          <MenuItem
+            onClick={val.onClick}
+            backgroundColor={menuBgColor}
+            key={`${val.label}-${slot?.id}`}
+            aria-busy
+          >
+            {val.label}
+          </MenuItem>,
+          index !== arr.length - 1 && (
+            <MenuDivider
+              key={`divider-${index}-${slot?.id}`}
+              borderColor="neutral.600"
+            />
+          ),
+        ])}
+      </MenuList>
     </Menu>
   )
 }
