@@ -21,9 +21,9 @@ interface ICalendarContext {
   currrentDate: DateTime
   setCurrentDate: (date: DateTime) => void
   selectedCalendars: CalendarSyncInfo[]
-  selectedSlot: WithInterval<UnifiedEvent | MeetingDecrypted> | null
+  selectedSlot: WithInterval<MeetingDecrypted> | null
   setSelectedSlot: React.Dispatch<
-    React.SetStateAction<WithInterval<UnifiedEvent | MeetingDecrypted> | null>
+    React.SetStateAction<WithInterval<MeetingDecrypted> | null>
   >
   setSelectedCalendars: React.Dispatch<React.SetStateAction<CalendarSyncInfo[]>>
   getSlotBgColor: (calId: string) => string
@@ -71,9 +71,8 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   const [selectedCalendars, setSelectedCalendars] = React.useState<
     CalendarSyncInfo[]
   >([])
-  const [selectedSlot, setSelectedSlot] = React.useState<WithInterval<
-    UnifiedEvent | MeetingDecrypted
-  > | null>(null)
+  const [selectedSlot, setSelectedSlot] =
+    React.useState<WithInterval<MeetingDecrypted> | null>(null)
   const { data: calendars } = useQuery({
     queryKey: ['connected-calendars'],
     queryFn: () => listConnectedCalendars(false),

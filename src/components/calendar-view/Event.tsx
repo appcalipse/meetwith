@@ -9,7 +9,7 @@ import {
 } from '@chakra-ui/react'
 import { DateTime } from 'luxon'
 import * as React from 'react'
-import { FaExpand } from 'react-icons/fa6'
+import { FaExpand, FaX } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
@@ -128,13 +128,15 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
             <PopoverCloseButton
               onClick={() => {
                 onClose()
-                setSelectedSlot({
-                  ...event,
-                  start: event.start.toJSDate(),
-                  end: event.end.toJSDate(),
-                })
+                if (!isCalendarEvent(event)) {
+                  setSelectedSlot({
+                    ...event,
+                    start: event.start.toJSDate(),
+                    end: event.end.toJSDate(),
+                  })
+                }
               }}
-              as={FaExpand}
+              as={isCalendarEvent(event) ? FaX : FaExpand}
               size={'24'}
               top={4}
               right={4}
