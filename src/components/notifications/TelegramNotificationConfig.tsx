@@ -52,7 +52,6 @@ const TelegramNotificationConfig: React.FC<Props> = ({
           (Please first{' '}
           <Link
             href={`/dashboard/settings/${SettingsSection.CONNECTED_ACCOUNTS}`}
-            passHref
           >
             <Text
               as="span"
