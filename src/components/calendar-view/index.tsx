@@ -2,6 +2,7 @@ import { HStack } from '@chakra-ui/layout'
 import * as React from 'react'
 
 import { CalendarProvider } from '@/providers/calendar/CalendarContext'
+import { NavigationProvider } from '@/providers/schedule/NavigationContext'
 import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
 import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
 
@@ -20,11 +21,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({}) => {
         <Sidebar />
         <Calendar />
       </HStack>
-      <ParticipantsProvider>
-        <ScheduleStateProvider>
-          <ActiveEvent />
-        </ScheduleStateProvider>
-      </ParticipantsProvider>
+      <NavigationProvider>
+        <ParticipantsProvider>
+          <ScheduleStateProvider>
+            <ActiveEvent />
+          </ScheduleStateProvider>
+        </ParticipantsProvider>
+      </NavigationProvider>
     </CalendarProvider>
   )
 }
