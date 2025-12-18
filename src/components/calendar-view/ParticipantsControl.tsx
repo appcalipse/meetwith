@@ -29,6 +29,7 @@ import { chipStyles } from '../chip-input/chip'
 interface ParticipantsControlProps {
   currentAccount: Account
   slot: MeetingDecrypted
+  openInviteModal: () => void
 }
 const renderRsvpStatus = (status: ParticipationStatus) => {
   switch (status) {
@@ -89,6 +90,7 @@ const renderRsvpStatus = (status: ParticipationStatus) => {
 const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
   currentAccount,
   slot,
+  openInviteModal,
 }) => {
   const canAddParticipants = canAccountAccessPermission(
     slot?.permissions,
@@ -210,8 +212,6 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
     [canAddParticipants, displayParticipants]
   )
 
-  const handleParticipantsClick = () => {}
-
   return (
     <FormControl>
       <FormLabel>Meeting participants</FormLabel>
@@ -238,7 +238,7 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
           <IconButton
             aria-label="Add participants"
             icon={<IoPersonAddOutline size={20} />}
-            onClick={handleParticipantsClick}
+            onClick={openInviteModal}
             isDisabled={!canAddParticipants}
             bg="primary.200"
             color="neutral.900"
