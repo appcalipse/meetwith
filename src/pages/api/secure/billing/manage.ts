@@ -49,7 +49,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (error && typeof error === 'object' && 'type' in error) {
         const stripeError = error as { type: string; message?: string }
         return res.status(400).json({
-          error: stripeError.message || 'Stripe API error',
+          error:
+            stripeError.message ||
+            "We couldn't reach Stripe to manage your subscription. Please try again in a moment.",
           type: stripeError.type,
         })
       }
