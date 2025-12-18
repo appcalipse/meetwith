@@ -20,7 +20,7 @@ export const SUBSCRIPTION_PAYMENT_RECEIVER_ADDRESS =
 
 const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 
-const discordRedirectUrl = `${baseURL}/dashboard/details`
+const discordRedirectUrl = `${baseURL}/dashboard/settings/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwith.xyz'
 
@@ -59,7 +59,7 @@ const QUICKPOLL_EXPIRY_BUFFER_HOURS = 1 // Minimum hours before expiry
 // Event title truncation constants
 
 const DASHBOARD_ROUTE_PREFIX = '/dashboard'
-const SETTINGS_ROUTE_PREFIX = `${DASHBOARD_ROUTE_PREFIX}/details`
+const SETTINGS_ROUTE_PREFIX = `${DASHBOARD_ROUTE_PREFIX}/settings`
 const DASHBOARD_SCHEDULE_ROUTE = `${DASHBOARD_ROUTE_PREFIX}/schedule`
 const PUBLIC_USERNAME_ROUTE = '/[...address]'
 const PUBLIC_ADDRESS_ROUTE = `/address${PUBLIC_USERNAME_ROUTE}`

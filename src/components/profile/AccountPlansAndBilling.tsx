@@ -155,13 +155,13 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       if (coupon) {
         setCouponCode(coupon.toString())
         setCouponDuration(DEFAULT_COUPON_DURATION_MONTHS)
-        void push(`/dashboard/${EditMode.DETAILS}`)
+        void push(`/dashboard/settings/${SettingsSection.DETAILS}`)
         onOpen()
       }
     } else if (intent === Intents.SUBSCRIBE_PRO) {
       subsRef.current?.scrollIntoView({ behavior: 'smooth' })
       void push(
-        `/dashboard/${SettingsSection.SUBSCRIPTIONS}/billing`,
+        `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}/billing`,
         undefined,
         {
           shallow: true,
@@ -191,7 +191,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       } = query
       void replace(
         {
-          pathname: `/dashboard/${SettingsSection.SUBSCRIPTIONS}`,
+          pathname: `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`,
           query: restQuery,
         },
         undefined,
@@ -203,7 +203,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       const { checkout: _checkout, ...restQuery } = query
       void replace(
         {
-          pathname: `/dashboard/${SettingsSection.SUBSCRIPTIONS}`,
+          pathname: `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`,
           query: restQuery,
         },
         undefined,
@@ -224,7 +224,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       const { portal_success: _portal_success, ...restQuery } = query
       void replace(
         {
-          pathname: `/dashboard/${SettingsSection.SUBSCRIPTIONS}`,
+          pathname: `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`,
           query: restQuery,
         },
         undefined,
@@ -264,7 +264,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     if (planName) queryParams.set('plan', planName)
     const queryString = queryParams.toString()
     void push(
-      `/dashboard/${SettingsSection.SUBSCRIPTIONS}/billing${
+      `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}/billing${
         queryString ? `?${queryString}` : ''
       }`
     )

@@ -209,7 +209,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
 
     setLoadingSub(false)
 
-    router.push(`/dashboard/${SettingsSection.NOTIFICATIONS}`)
+    router.push(`/dashboard/settings/${SettingsSection.NOTIFICATIONS}`)
   }
   const handleResent = async () => {
     setIsResetting(true)
@@ -312,7 +312,9 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               <Button
                 colorScheme="primary"
                 onClick={() =>
-                  router.push(`/dashboard/${SettingsSection.NOTIFICATIONS}`)
+                  router.push(
+                    `/dashboard/settings/${SettingsSection.NOTIFICATIONS}`
+                  )
                 }
                 width="100%"
               >
@@ -335,7 +337,9 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                   colorScheme="primary"
                   width="100%"
                   onClick={() =>
-                    router.push(`/dashboard/${EditMode.CALENDARS}`)
+                    router.push(
+                      `/dashboard/settings/${SettingsSection.CONNECTED_CALENDARS}`
+                    )
                   }
                 >
                   Connect Calendar

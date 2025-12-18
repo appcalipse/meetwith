@@ -46,10 +46,10 @@ export function Pricing() {
 
   const handleProPlan = async () => {
     if (!currentAccount) {
-      const redirectPath = `/dashboard/subscriptions/billing`
+      const redirectPath = `/dashboard/settings/subscriptions/billing`
       openConnection(redirectPath)
     } else {
-      await router.push(`/dashboard/subscriptions/billing`)
+      await router.push(`/dashboard/settings/subscriptions/billing`)
     }
   }
 

@@ -11,7 +11,7 @@ import {
   BillingEmailPlan,
   PaymentProvider,
 } from '@/types/Billing'
-import { EditMode, Intents } from '@/types/Dashboard'
+import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import { Group } from '@/types/Group'
 import { MeetingChangeType } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
@@ -46,7 +46,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
   from: FROM,
   headers: {
-    'List-Unsubscribe': `<${appUrl}/dashboard/${EditMode.NOTIFICATIONS}>`,
+    'List-Unsubscribe': `<${appUrl}/dashboard/settings/${SettingsSection.NOTIFICATIONS}>`,
   },
 }
 
@@ -875,7 +875,7 @@ export const sendSubscriptionConfirmationEmail = async (
   const periodStart = formatDateForEmail(period.registered_at)
   const periodEnd = formatDateForEmail(period.expiry_time)
 
-  const manageUrl = `${appUrl}/dashboard/subscriptions`
+  const manageUrl = `${appUrl}/dashboard/settings/subscriptions`
 
   const locals = {
     appUrl,
@@ -958,7 +958,7 @@ export const sendSubscriptionCancelledEmail = async (
   const periodStart = formatDateForEmail(period.registered_at)
   const periodEnd = formatDateForEmail(period.expiry_time)
 
-  const manageUrl = `${appUrl}/dashboard/subscriptions`
+  const manageUrl = `${appUrl}/dashboard/settings/subscriptions`
 
   const locals = {
     appUrl,
@@ -1004,7 +1004,7 @@ export const sendSubscriptionExpiredEmail = async (
   const email = new Email()
 
   const periodEnd = formatDateForEmail(period.expiry_time)
-  const renewUrl = `${appUrl}/dashboard/subscriptions/billing?mode=extend&plan=${encodeURIComponent(
+  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=extend&plan=${encodeURIComponent(
     billingPlan.id
   )}`
 
@@ -1047,7 +1047,7 @@ export const sendSubscriptionRenewalDueEmail = async (
   const email = new Email()
 
   const periodEnd = formatDateForEmail(period.expiry_time)
-  const renewUrl = `${appUrl}/dashboard/subscriptions/billing?mode=extend&plan=${encodeURIComponent(
+  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=extend&plan=${encodeURIComponent(
     billingPlan.id
   )}`
 
@@ -1092,7 +1092,7 @@ export const sendCryptoExpiryReminderEmail = async (
   const email = new Email()
 
   const periodEnd = formatDateForEmail(period.expiry_time)
-  const renewUrl = `${appUrl}/dashboard/subscriptions/billing?mode=extend&plan=${encodeURIComponent(
+  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=extend&plan=${encodeURIComponent(
     billingPlan.id
   )}`
 

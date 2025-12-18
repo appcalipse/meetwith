@@ -119,12 +119,14 @@ const Settings: React.FC<{
     setActiveSection(section)
 
     const sectionPath: Record<SettingsSection, string> = {
-      [SettingsSection.DETAILS]: '/dashboard/details',
-      [SettingsSection.CONNECTED_CALENDARS]: '/dashboard/connected-calendars',
-      [SettingsSection.CONNECTED_ACCOUNTS]: '/dashboard/connected-accounts',
-      [SettingsSection.NOTIFICATIONS]: '/dashboard/notifications',
-      [SettingsSection.SUBSCRIPTIONS]: '/dashboard/subscriptions',
-      [SettingsSection.WALLET_PAYMENT]: '/dashboard/wallet-payment',
+      [SettingsSection.DETAILS]: '/dashboard/settings/details',
+      [SettingsSection.CONNECTED_CALENDARS]:
+        '/dashboard/settings/connected-calendars',
+      [SettingsSection.CONNECTED_ACCOUNTS]:
+        '/dashboard/settings/connected-accounts',
+      [SettingsSection.NOTIFICATIONS]: '/dashboard/settings/notifications',
+      [SettingsSection.SUBSCRIPTIONS]: '/dashboard/settings/subscriptions',
+      [SettingsSection.WALLET_PAYMENT]: '/dashboard/settings/wallet-payment',
     }
 
     const { section: _omit, ...restQuery } = router.query ?? {}
@@ -194,8 +196,8 @@ const Settings: React.FC<{
       void router.replace(
         {
           pathname: calendarResult
-            ? '/dashboard/connected-calendars'
-            : '/dashboard/connected-accounts',
+            ? '/dashboard/settings/connected-calendars'
+            : '/dashboard/settings/connected-accounts',
           query,
         },
         undefined
@@ -205,7 +207,7 @@ const Settings: React.FC<{
   useEffect(() => {
     if (!router.isReady) return
     const path = router.asPath.split('?')[0]
-    const sectionSlug = path.replace('/dashboard/', '')
+    const sectionSlug = path.replace('/dashboard/settings/', '')
 
     switch (sectionSlug) {
       case SettingsSection.SUBSCRIPTIONS:

@@ -66,12 +66,12 @@ const DashboardOnboardingGauge: FC = () => {
     {
       enabled: accountDetailsComplete,
       label: 'Add a display name',
-      link: `/dashboard/${EditMode.DETAILS}`,
+      link: `/dashboard/settings/${SettingsSection.DETAILS}`,
     },
     {
       enabled: calendarsConnected,
       label: 'Connect a calendar',
-      link: `/dashboard/${SettingsSection.CONNECTED_CALENDARS}`,
+      link: `/dashboard/settings/${SettingsSection.CONNECTED_CALENDARS}`,
     },
     {
       enabled: availabilitiesSet,

@@ -37,14 +37,14 @@ async function handler(
   try {
     if (typeof code !== 'string') {
       res.redirect(
-        `/dashboard/connected-calendars?calendarResult=error&error=NO_CODE`
+        `/dashboard/settings/connected-calendars?calendarResult=error&error=NO_CODE`
       )
       return
     }
 
     if (!req.session.account) {
       res.redirect(
-        `/dashboard/connected-calendars?calendarResult=error&error=NOT_LOGGED_IN`
+        `/dashboard/settings/connected-calendars?calendarResult=error&error=NOT_LOGGED_IN`
       )
       return
     }
@@ -78,7 +78,7 @@ async function handler(
 
     if (!response.ok) {
       res.redirect(
-        `/dashboard/connected-calendars?calendarResult=error&error=${encodeURIComponent(
+        `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
           JSON.stringify(responseBody)
         )}`
       )
@@ -126,7 +126,7 @@ async function handler(
         const integrationCount = await countCalendarIntegrations(accountAddress)
         if (integrationCount >= 1) {
           res.redirect(
-            `/dashboard/connected-calendars?calendarResult=error&error=${encodeURIComponent(
+            `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
               'Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.'
             )}`
           )
@@ -183,7 +183,7 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/connected-calendars?calendarResult=success${
+      `/dashboard/settings/connected-calendars?calendarResult=success${
         newState64 ? `&state=${newState64}` : ''
       }`
     )
@@ -210,7 +210,7 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/connected-calendars?calendarResult=success${
+      `/dashboard/settings/connected-calendars?calendarResult=success${
         newState64 ? `&state=${newState64}` : ''
       }`
     )
