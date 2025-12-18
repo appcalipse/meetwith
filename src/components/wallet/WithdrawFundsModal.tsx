@@ -25,11 +25,9 @@ import {
 } from '@chakra-ui/react'
 import { OnrampWebSDK } from '@onramp.money/onramp-web-sdk'
 import { useQuery } from '@tanstack/react-query'
-import React, { useContext, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { useSmartReconnect } from '@/hooks/useSmartReconnect'
-import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import {
   AcceptedToken,
   getSupportedChainFromId,
@@ -50,8 +48,6 @@ type Props = {
 
 const WithdrawFundsModal = (props: Props) => {
   const currentAccount = useAccountContext()
-  const { needsReconnection, attemptReconnection } = useSmartReconnect()
-  const { openConnection } = useContext(OnboardingModalContext)
 
   const [processLoading, setProcessLoading] = useState(false)
   const { activeChainId, selectedNetworkInfo, acceptedTokens } = useMemo(() => {
@@ -131,21 +127,6 @@ const WithdrawFundsModal = (props: Props) => {
   })
 
   const handleShowWithdrawWidget = async () => {
-    if (needsReconnection) {
-      const reconnectedWallet = await attemptReconnection()
-      if (!reconnectedWallet) {
-        openConnection(undefined, false)
-        toast({
-          title: 'Wallet Not Connected',
-          description: 'Please connect your wallet to proceed.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        })
-        return
-      }
-    }
-
     if (
       amount > formatUnits(data?.balance || 0n, data?.tokenInfo?.decimals || 6)
     ) {
