@@ -6047,7 +6047,6 @@ const getPaymentPreferences = async (
     .maybeSingle()
 
   if (error) {
-    console.error('Database error in getPaymentPreferences:', error)
     if (error.code === 'PGRST116') {
       // No rows returned
       return null
@@ -7041,7 +7040,12 @@ const updateQuickPollParticipantStatus = async (
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new QuickPollParticipantNotFoundError(participantId)
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
     }
@@ -7105,8 +7109,15 @@ const addQuickPollParticipant = async (
         .eq('account_address', participantData.account_address)
         .maybeSingle()
 
-      if (existingByAccountError) throw existingByAccountError
-      existingParticipant = data
+      if (existingByAccountError) {
+        if (existingByAccountError.code === 'PGRST116') {
+          existingParticipant = null
+        } else {
+          throw existingByAccountError
+        }
+      } else {
+        existingParticipant = data
+      }
     } else if (participantData.guest_email) {
       const { data, error: existingByEmailError } = await db.supabase
         .from('quick_poll_participants')
@@ -7115,8 +7126,15 @@ const addQuickPollParticipant = async (
         .eq('guest_email', participantData.guest_email)
         .maybeSingle()
 
-      if (existingByEmailError) throw existingByEmailError
-      existingParticipant = data
+      if (existingByEmailError) {
+        if (existingByEmailError.code === 'PGRST116') {
+          existingParticipant = null
+        } else {
+          throw existingByEmailError
+        }
+      } else {
+        existingParticipant = data
+      }
     }
 
     if (existingParticipant) {
@@ -7308,7 +7326,12 @@ const updateQuickPollParticipantAvailability = async (
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new QuickPollParticipantNotFoundError(participantId)
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
     }
@@ -7344,7 +7367,12 @@ const updateQuickPollGuestDetails = async (
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new QuickPollParticipantNotFoundError(participantId)
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
     }
@@ -7427,7 +7455,12 @@ const getQuickPollParticipantByIdentifier = async (
       .or(`account_address.eq.${identifier},guest_email.eq.${identifier}`)
       .single()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new QuickPollParticipantNotFoundError(identifier)
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(identifier)
     }
