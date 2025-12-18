@@ -10,7 +10,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useCallback, useContext, useMemo, useState } from 'react'
+import { useCallback, useContext, useMemo, useState } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
@@ -105,8 +105,8 @@ export function QuickPollParticipants({
   }, [pollData, setParticipants])
   const inviteKey = useMemo(
     () =>
-      `${Object.values(groupAvailability).length}-${
-        Object.values(groupParticipants).length
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
       }-${participants.length}`,
     [groupAvailability, groupParticipants, participants]
   )

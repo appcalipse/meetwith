@@ -47,7 +47,7 @@ import {
   QuickPollParticipantStatus,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
-import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
+import { isGroupParticipant } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
   decodeMeetingGuest,
@@ -941,8 +941,8 @@ const ScheduleMain: FC<IInitialProps> = ({
   }
   const inviteKey = useMemo(
     () =>
-      `${Object.values(groupAvailability).length}-${
-        Object.values(groupParticipants).length
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
       }-${participants.length}`,
     [groupAvailability, groupParticipants, participants]
   )

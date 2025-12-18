@@ -145,8 +145,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   } = useParticipants()
   const inviteKey = useMemo(
     () =>
-      `${Object.values(groupAvailability).length}-${
-        Object.values(groupParticipants).length
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
       }-${participants.length}`,
     [groupAvailability, groupParticipants, participants]
   )
