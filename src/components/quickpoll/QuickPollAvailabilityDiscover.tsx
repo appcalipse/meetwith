@@ -1,5 +1,4 @@
 import {
-  Button,
   Heading,
   HStack,
   Icon,
@@ -8,7 +7,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { DateTime, Interval } from 'luxon'
+import { Interval } from 'luxon'
 import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
@@ -20,7 +19,6 @@ import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
-  AvailabilitySlot,
   PollVisibility,
   QuickPollBySlugResponse,
   QuickPollIntent,
@@ -38,7 +36,6 @@ import { parseMonthAvailabilitiesToDate } from '@/utils/date_helper'
 import {
   computeAvailabilitySlotsWithOverrides,
   computeBaseAvailability,
-  convertAvailabilitySlotRangesToIntervals,
   convertBusySlotsToIntervals,
   convertSelectedSlotsToAvailabilitySlots,
   getMonthRange,
@@ -107,8 +104,8 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   } = useParticipants()
   const inviteKey = useMemo(
     () =>
-      `${Object.values(groupAvailability).length}-${
-        Object.values(groupParticipants).length
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
       }-${participants.length}`,
     [groupAvailability, groupParticipants, participants]
   )
