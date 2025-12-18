@@ -4,6 +4,7 @@ import {
   UpdateMeetingTypeRequest,
 } from '@meta/Requests'
 import { SessionType } from '@utils/constants/meeting-types'
+import { isProAccountAsync } from '@utils/database'
 import {
   LastMeetingTypeError,
   MeetingSlugAlreadyExists,
@@ -11,7 +12,6 @@ import {
   PaidMeetingTypeNotAllowedError,
 } from '@utils/errors'
 import { extractQuery } from '@utils/generic_utils'
-import { isProAccountAsync } from '@utils/subscription_manager'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'

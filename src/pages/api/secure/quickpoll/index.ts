@@ -18,13 +18,13 @@ import {
   createQuickPoll,
   getQuickPollsForAccount,
 } from '@/utils/database'
+import { isProAccountAsync } from '@/utils/database'
 import {
   QuickPollCreationError,
   QuickPollLimitExceededError,
   QuickPollValidationError,
   UnauthorizedError,
 } from '@/utils/errors'
-import { isProAccountAsync } from '@/utils/subscription_manager'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req

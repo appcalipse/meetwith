@@ -3,12 +3,12 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { CreateGroupPayload, CreateGroupsResponse } from '@/types/Group'
 import { countGroups, createGroupInDB } from '@/utils/database'
+import { isProAccountAsync } from '@/utils/database'
 import {
   AccountNotFoundError,
   GroupCreationError,
   SchedulingGroupLimitExceededError,
 } from '@/utils/errors'
-import { isProAccountAsync } from '@/utils/subscription_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {

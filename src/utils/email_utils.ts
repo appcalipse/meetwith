@@ -20,3 +20,14 @@ export const getDisplayNameForEmail = (displayName: string): string => {
   }
   return displayName
 }
+
+// Format days remaining for email display
+export const formatDaysRemainingForEmail = (daysRemaining: number): string => {
+  if (daysRemaining === 0) {
+    return 'today'
+  }
+  if (daysRemaining === 1) {
+    return '1 day'
+  }
+  return `${daysRemaining} days`
+}

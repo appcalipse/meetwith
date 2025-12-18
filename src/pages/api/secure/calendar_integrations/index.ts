@@ -11,9 +11,9 @@ import {
   getConnectedCalendars,
   removeConnectedCalendar,
 } from '@/utils/database'
+import { isProAccountAsync } from '@/utils/database'
 import { CalendarSyncLimitExceededError } from '@/utils/errors'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
-import { isProAccountAsync } from '@/utils/subscription_manager'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {

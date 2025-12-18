@@ -1,11 +1,11 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
-import { EditMode, SettingsSection } from '@meta/Dashboard'
 import React, { useContext } from 'react'
 
 import NotFound from '@/pages/404'
 import { AccountContext } from '@/providers/AccountProvider'
 import MetricStateProvider from '@/providers/MetricStateProvider'
 import { WalletProvider } from '@/providers/WalletProvider'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
 
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'

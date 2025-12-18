@@ -9,8 +9,8 @@ import {
   connectedCalendarExists,
   countCalendarIntegrations,
 } from '@/utils/database'
+import { isProAccountAsync } from '@/utils/database'
 import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
-import { isProAccountAsync } from '@/utils/subscription_manager'
 
 const APPLE_WEBDAV_URL = 'https://caldav.icloud.com'
 

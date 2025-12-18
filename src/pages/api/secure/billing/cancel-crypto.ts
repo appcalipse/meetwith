@@ -3,19 +3,16 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
-  BillingEmailPeriod,
   BillingEmailPlan,
   CancelSubscriptionResponse,
   PaymentProvider as BillingPaymentProvider,
 } from '@/types/Billing'
 import {
-  getBillingEmailAccountInfo,
   getBillingPlanById,
   getStripeSubscriptionByAccount,
   getSubscriptionPeriodsByAccount,
 } from '@/utils/database'
-import { sendSubscriptionCancelledEmail } from '@/utils/email_helper'
-import { getDisplayNameForEmail } from '@/utils/email_utils'
+import { sendSubscriptionCancelledEmailForAccount } from '@/utils/email_helper'
 import { cancelCryptoSubscription } from '@/utils/services/crypto.helper'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -69,39 +66,26 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
         // Send email if we found a cancelled crypto period
         if (mostRecentCryptoPeriod && mostRecentCryptoPeriod.billing_plan_id) {
-          const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+          // Get billing plan details
+          const billingPlan = await getBillingPlanById(
+            mostRecentCryptoPeriod.billing_plan_id
+          )
 
-          if (accountInfo) {
-            // Process display name for email
-            const processedDisplayName = getDisplayNameForEmail(
-              accountInfo.displayName
-            )
-
-            // Get billing plan details
-            const billingPlan = await getBillingPlanById(
-              mostRecentCryptoPeriod.billing_plan_id
-            )
-
-            if (billingPlan) {
-              const period: BillingEmailPeriod = {
-                registered_at: mostRecentCryptoPeriod.registered_at,
-                expiry_time: mostRecentCryptoPeriod.expiry_time,
-              }
-
-              const emailPlan: BillingEmailPlan = {
-                id: billingPlan.id,
-                name: billingPlan.name,
-                price: billingPlan.price,
-                billing_cycle: billingPlan.billing_cycle,
-              }
-
-              await sendSubscriptionCancelledEmail(
-                { ...accountInfo, displayName: processedDisplayName },
-                period,
-                emailPlan,
-                BillingPaymentProvider.CRYPTO
-              )
+          if (billingPlan) {
+            const emailPlan: BillingEmailPlan = {
+              id: billingPlan.id,
+              name: billingPlan.name,
+              price: billingPlan.price,
+              billing_cycle: billingPlan.billing_cycle,
             }
+
+            await sendSubscriptionCancelledEmailForAccount(
+              accountAddress,
+              emailPlan,
+              mostRecentCryptoPeriod.registered_at,
+              mostRecentCryptoPeriod.expiry_time,
+              BillingPaymentProvider.CRYPTO
+            )
           }
         }
       } catch (error) {

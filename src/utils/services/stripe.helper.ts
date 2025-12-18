@@ -18,7 +18,6 @@ import {
   createSubscriptionPeriod,
   findSubscriptionPeriodByPlanAndExpiry,
   getActiveSubscriptionPeriod,
-  getBillingEmailAccountInfo,
   getBillingPlanById,
   getBillingPlanIdFromStripeProduct,
   getStripeSubscriptionById,
@@ -34,16 +33,14 @@ import { NextApiRequest } from 'next'
 import Stripe from 'stripe'
 
 import {
-  BillingEmailPeriod,
   BillingEmailPlan,
   PaymentProvider as BillingPaymentProvider,
 } from '@/types/Billing'
 import { TablesInsert } from '@/types/Supabase'
 import {
-  sendSubscriptionCancelledEmail,
-  sendSubscriptionConfirmationEmail,
+  sendSubscriptionCancelledEmailForAccount,
+  sendSubscriptionConfirmationEmailForAccount,
 } from '@/utils/email_helper'
-import { getDisplayNameForEmail } from '@/utils/email_utils'
 
 export const getRawBody = async (req: NextApiRequest): Promise<Buffer> => {
   const chunks: Buffer[] = []
@@ -213,37 +210,24 @@ export const handleSubscriptionCreated = async (
 
       // Send trial started email
       try {
-        const accountInfo = await getBillingEmailAccountInfo(accountAddress)
-
-        if (accountInfo) {
-          // Process display name for email
-          const processedDisplayName = getDisplayNameForEmail(
-            accountInfo.displayName
-          )
-
-          const billingPlan = await getBillingPlanById(billingPlanId)
-          if (billingPlan) {
-            const period: BillingEmailPeriod = {
-              registered_at: new Date(),
-              expiry_time: new Date(trialEnd * 1000),
-            }
-
-            const emailPlan: BillingEmailPlan = {
-              id: billingPlan.id,
-              name: billingPlan.name,
-              price: billingPlan.price,
-              billing_cycle: billingPlan.billing_cycle,
-            }
-
-            await sendSubscriptionConfirmationEmail(
-              { ...accountInfo, displayName: processedDisplayName },
-              period,
-              emailPlan,
-              BillingPaymentProvider.STRIPE,
-              undefined,
-              true // isTrial
-            )
+        const billingPlan = await getBillingPlanById(billingPlanId)
+        if (billingPlan) {
+          const emailPlan: BillingEmailPlan = {
+            id: billingPlan.id,
+            name: billingPlan.name,
+            price: billingPlan.price,
+            billing_cycle: billingPlan.billing_cycle,
           }
+
+          await sendSubscriptionConfirmationEmailForAccount(
+            accountAddress,
+            emailPlan,
+            new Date(),
+            new Date(trialEnd * 1000),
+            BillingPaymentProvider.STRIPE,
+            undefined,
+            true // isTrial
+          )
         }
       } catch (error) {
         Sentry.captureException(error)
@@ -341,39 +325,26 @@ export const handleSubscriptionUpdated = async (
       // Send subscription cancellation email
       if (mostRecentPeriod && mostRecentPeriod.billing_plan_id) {
         try {
-          const accountInfo = await getBillingEmailAccountInfo(accountAddress)
+          // Get billing plan details
+          const billingPlan = await getBillingPlanById(
+            mostRecentPeriod.billing_plan_id
+          )
 
-          if (accountInfo) {
-            // Process display name for email
-            const processedDisplayName = getDisplayNameForEmail(
-              accountInfo.displayName
-            )
-
-            // Get billing plan details
-            const billingPlan = await getBillingPlanById(
-              mostRecentPeriod.billing_plan_id
-            )
-
-            if (billingPlan) {
-              const period: BillingEmailPeriod = {
-                registered_at: mostRecentPeriod.registered_at,
-                expiry_time: mostRecentPeriod.expiry_time,
-              }
-
-              const emailPlan: BillingEmailPlan = {
-                id: billingPlan.id,
-                name: billingPlan.name,
-                price: billingPlan.price,
-                billing_cycle: billingPlan.billing_cycle,
-              }
-
-              await sendSubscriptionCancelledEmail(
-                { ...accountInfo, displayName: processedDisplayName },
-                period,
-                emailPlan,
-                BillingPaymentProvider.STRIPE
-              )
+          if (billingPlan) {
+            const emailPlan: BillingEmailPlan = {
+              id: billingPlan.id,
+              name: billingPlan.name,
+              price: billingPlan.price,
+              billing_cycle: billingPlan.billing_cycle,
             }
+
+            await sendSubscriptionCancelledEmailForAccount(
+              accountAddress,
+              emailPlan,
+              mostRecentPeriod.registered_at,
+              mostRecentPeriod.expiry_time,
+              BillingPaymentProvider.STRIPE
+            )
           }
         } catch (error) {
           Sentry.captureException(error)
@@ -869,38 +840,21 @@ export const handleInvoicePaymentSucceeded = async (
       )
 
       // Send subscription confirmation email (best-effort, don't block flow)
-      try {
-        const accountInfo = await getBillingEmailAccountInfo(accountAddress)
-
-        if (accountInfo) {
-          // Process display name for email
-          const processedDisplayName = getDisplayNameForEmail(
-            accountInfo.displayName
-          )
-
-          const period: BillingEmailPeriod = {
-            registered_at: new Date(),
-            expiry_time: calculatedExpiryTime,
-          }
-
-          const emailPlan: BillingEmailPlan = {
-            id: billingPlan.id,
-            name: billingPlan.name,
-            price: billingPlan.price,
-            billing_cycle: billingPlan.billing_cycle,
-          }
-
-          await sendSubscriptionConfirmationEmail(
-            { ...accountInfo, displayName: processedDisplayName },
-            period,
-            emailPlan,
-            BillingPaymentProvider.STRIPE,
-            { amount: amountPaid, currency: currency || 'USD' }
-          )
-        }
-      } catch (error) {
-        Sentry.captureException(error)
+      const emailPlan: BillingEmailPlan = {
+        id: billingPlan.id,
+        name: billingPlan.name,
+        price: billingPlan.price,
+        billing_cycle: billingPlan.billing_cycle,
       }
+
+      await sendSubscriptionConfirmationEmailForAccount(
+        accountAddress,
+        emailPlan,
+        new Date(),
+        calculatedExpiryTime,
+        BillingPaymentProvider.STRIPE,
+        { amount: amountPaid, currency: currency || 'USD' }
+      )
 
       return // Don't proceed to renewal flow
     } catch (error) {
@@ -929,38 +883,21 @@ export const handleInvoicePaymentSucceeded = async (
         )
 
         // Send subscription confirmation email for plan update
-        try {
-          const accountInfo = await getBillingEmailAccountInfo(accountAddress)
-
-          if (accountInfo) {
-            // Process display name for email
-            const processedDisplayName = getDisplayNameForEmail(
-              accountInfo.displayName
-            )
-
-            const period: BillingEmailPeriod = {
-              registered_at: existingPeriodForPlanChange.registered_at,
-              expiry_time: existingPeriodForPlanChange.expiry_time,
-            }
-
-            const emailPlan: BillingEmailPlan = {
-              id: billingPlan.id,
-              name: billingPlan.name,
-              price: billingPlan.price,
-              billing_cycle: billingPlan.billing_cycle,
-            }
-
-            await sendSubscriptionConfirmationEmail(
-              { ...accountInfo, displayName: processedDisplayName },
-              period,
-              emailPlan,
-              BillingPaymentProvider.STRIPE,
-              { amount: amountPaid, currency: currency || 'USD' }
-            )
-          }
-        } catch (error) {
-          Sentry.captureException(error)
+        const emailPlan: BillingEmailPlan = {
+          id: billingPlan.id,
+          name: billingPlan.name,
+          price: billingPlan.price,
+          billing_cycle: billingPlan.billing_cycle,
         }
+
+        await sendSubscriptionConfirmationEmailForAccount(
+          accountAddress,
+          emailPlan,
+          existingPeriodForPlanChange.registered_at,
+          existingPeriodForPlanChange.expiry_time,
+          BillingPaymentProvider.STRIPE,
+          { amount: amountPaid, currency: currency || 'USD' }
+        )
 
         return // Don't create a new subscription period
       } catch (error) {
@@ -1023,38 +960,21 @@ export const handleInvoicePaymentSucceeded = async (
         )
 
         // Send subscription confirmation email for plan update
-        try {
-          const accountInfo = await getBillingEmailAccountInfo(accountAddress)
-
-          if (accountInfo) {
-            // Process display name for email
-            const processedDisplayName = getDisplayNameForEmail(
-              accountInfo.displayName
-            )
-
-            const period: BillingEmailPeriod = {
-              registered_at: new Date(),
-              expiry_time: calculatedExpiryTime,
-            }
-
-            const emailPlan: BillingEmailPlan = {
-              id: billingPlan.id,
-              name: billingPlan.name,
-              price: billingPlan.price,
-              billing_cycle: billingPlan.billing_cycle,
-            }
-
-            await sendSubscriptionConfirmationEmail(
-              { ...accountInfo, displayName: processedDisplayName },
-              period,
-              emailPlan,
-              BillingPaymentProvider.STRIPE,
-              { amount: amountPaid, currency: currency || 'USD' }
-            )
-          }
-        } catch (error) {
-          Sentry.captureException(error)
+        const emailPlan: BillingEmailPlan = {
+          id: billingPlan.id,
+          name: billingPlan.name,
+          price: billingPlan.price,
+          billing_cycle: billingPlan.billing_cycle,
         }
+
+        await sendSubscriptionConfirmationEmailForAccount(
+          accountAddress,
+          emailPlan,
+          new Date(),
+          calculatedExpiryTime,
+          BillingPaymentProvider.STRIPE,
+          { amount: amountPaid, currency: currency || 'USD' }
+        )
 
         return
       }

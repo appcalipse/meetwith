@@ -8178,6 +8178,30 @@ const getActiveSubscriptionPeriod = async (
   return data
 }
 
+// Check if an account has Pro access (billing or domain subscription)
+const isProAccountAsync = async (accountAddress: string): Promise<boolean> => {
+  try {
+    // Check billing subscription periods
+    const activePeriod = await getActiveSubscriptionPeriod(accountAddress)
+    if (activePeriod && activePeriod.billing_plan_id) {
+      return true
+    }
+
+    // Check domain subscriptions (billing_plan_id is null, domain is not null)
+    const domainSubscriptions = await getSubscriptionFromDBForAccount(
+      accountAddress
+    )
+    const hasDomain = domainSubscriptions.some(
+      sub => sub.billing_plan_id === null && sub.domain !== null
+    )
+
+    return hasDomain
+  } catch (error) {
+    Sentry.captureException(error)
+    return false
+  }
+}
+
 // Check if an account has any subscription history
 const hasSubscriptionHistory = async (
   accountAddress: string
@@ -8576,6 +8600,7 @@ export {
   insertOfficeEventMapping,
   invalidatePreviousVerifications,
   isGroupAdmin,
+  isProAccountAsync,
   isSlotAvailable as isSlotFree,
   isUserContact,
   leaveGroup,
