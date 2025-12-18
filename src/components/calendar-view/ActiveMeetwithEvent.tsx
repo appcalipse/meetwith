@@ -5,8 +5,6 @@ import {
   FormHelperText,
   FormLabel,
   Input,
-  Radio,
-  RadioGroup,
   Tooltip,
   useColorModeValue,
   useDisclosure,
@@ -21,6 +19,8 @@ import { MdCancel, MdOutlineEditCalendar } from 'react-icons/md'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
+import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
@@ -32,6 +32,7 @@ import {
   MeetingPermissions,
 } from '@/utils/constants/schedule'
 import {
+  customSelectComponents,
   noClearCustomSelectComponent,
   rsvpSelectComponent,
 } from '@/utils/constants/select'
@@ -46,6 +47,7 @@ import { SingleDatepicker } from '../input-date-picker'
 import { InputTimePicker } from '../input-time-picker'
 import RichTextEditor from '../profile/components/RichTextEditor'
 import { DeleteMeetingDialog } from '../schedule/delete-dialog'
+import InviteParticipants from '../schedule/participants/InviteParticipants'
 import ScheduleParticipantsSchedulerModal from '../schedule/ScheduleParticipantsSchedulerModal'
 import MeetingMenu from './MeetingMenu'
 import ParticipantsControl from './ParticipantsControl'
@@ -54,7 +56,12 @@ interface ActiveMeetwithEventProps {
   slot: MeetingDecrypted
 }
 
-const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM)
+const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM).map(
+  provider => ({
+    value: provider,
+    label: renderProviderName(provider),
+  })
+)
 
 const RSVP_OPTIONS = [
   {
@@ -77,7 +84,16 @@ interface RSVPOption {
 const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
   const [isTitleValid, setIsTitleValid] = React.useState(true)
   const currentAccount = useAccountContext()
-
+  const {
+    setGroupParticipants,
+    setGroupAvailability,
+    setParticipants,
+    groups,
+    groupParticipants,
+    groupAvailability,
+    participants,
+  } = useParticipants()
+  const { setInviteModalOpen, inviteModalOpen } = useScheduleNavigation()
   const {
     title,
     content,
@@ -159,7 +175,12 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     slot?.participants,
     currentAccount?.address
   )
-
+  const meetingProviderValue = meetingProviders.find(
+    provider => provider.value === meetingProvider
+  )
+  const _onChangeProvider = (newValue: any) => {
+    setMeetingProvider(newValue.value)
+  }
   const handleDelete = () => {
     if (
       isAccountSchedulerOrOwner(slot?.participants, currentAccount?.address, [
@@ -171,11 +192,34 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
       onDeleteOpen()
     }
   }
+  const inviteKey = React.useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
   if (!currentAccount) {
     return null
   }
   return (
     <VStack w="100%" spacing={4} alignItems="flex-start">
+      <InviteParticipants
+        key={inviteKey}
+        isOpen={inviteModalOpen}
+        onClose={() => setInviteModalOpen(false)}
+        groupAvailability={groupAvailability}
+        groupParticipants={groupParticipants}
+        participants={participants}
+        handleUpdateGroups={(
+          groupAvailability: Record<string, Array<string> | undefined>,
+          groupParticipants: Record<string, Array<string> | undefined>
+        ) => {
+          setGroupAvailability(groupAvailability)
+          setGroupParticipants(groupParticipants)
+        }}
+        handleUpdateParticipants={setParticipants}
+      />
       <Button
         variant="link"
         color="primary.200"
@@ -273,7 +317,11 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
       />
       <VStack w={'100%'} gap={6} alignItems="flex-start">
         <Heading fontSize="x-large">Meeting Information</Heading>
-        <ParticipantsControl slot={slot} currentAccount={currentAccount} />
+        <ParticipantsControl
+          slot={slot}
+          currentAccount={currentAccount}
+          openInviteModal={() => setInviteModalOpen(true)}
+        />
         <FormControl>
           <FormLabel>Date/Time</FormLabel>
           <HStack alignItems="stretch" gap={3}>
@@ -379,39 +427,28 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
           <Text fontSize="18px" fontWeight={500}>
             Location
           </Text>
-          <RadioGroup
-            onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-            value={meetingProvider}
-            w={'100%'}
-            isDisabled={!canEditMeeting}
-          >
-            <VStack w={'100%'} gap={4}>
-              {meetingProviders.map(provider => (
-                <Radio
-                  flexDirection="row-reverse"
-                  justifyContent="space-between"
-                  w="100%"
-                  colorScheme="primary"
-                  value={provider}
-                  key={provider}
-                >
-                  <Text
-                    fontWeight="600"
-                    color={'border-default-primary'}
-                    cursor="pointer"
-                  >
-                    {renderProviderName(provider)}
-                  </Text>
-                </Radio>
-              ))}
-            </VStack>
-          </RadioGroup>
+          <Select
+            value={meetingProviderValue}
+            colorScheme="primary"
+            onChange={newValue => _onChangeProvider(newValue)}
+            className="noLeftBorder timezone-select"
+            options={meetingProviders}
+            components={customSelectComponents}
+            chakraStyles={{
+              container: provided => ({
+                ...provided,
+                borderColor: 'input-border',
+                bg: 'select-bg',
+                w: '100%',
+              }),
+            }}
+          />
           {meetingProvider === MeetingProvider.CUSTOM && (
             <Input
               type="text"
               placeholder="insert a custom meeting url"
               isDisabled={!canEditMeeting}
-              my={4}
+              mb={4}
               value={meetingUrl}
               onChange={e => setMeetingUrl(e.target.value)}
             />
@@ -451,12 +488,8 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
             chakraStyles={{
               container: provided => ({
                 ...provided,
-                border: '1px solid',
-                borderTopColor: 'currentColor',
-                borderLeftColor: 'currentColor',
-                borderRightColor: 'currentColor',
-                borderBottomColor: 'currentColor',
-                borderColor: 'inherit',
+                borderColor: 'input-border',
+                bg: 'select-bg',
                 borderRadius: 'md',
                 maxW: '100%',
                 display: 'block',
