@@ -7,6 +7,7 @@ import { officeScopes } from '@/pages/api/secure/calendar_integrations/office365
 import { TimeSlotSource } from '@/types/Meeting'
 import {
   addOrUpdateConnectedCalendar,
+  countCalendarIntegrations,
   countCalendarSyncs,
   getConnectedCalendars,
   removeConnectedCalendar,
@@ -25,17 +26,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const accountAddress = req.session.account!.address
     const { syncOnly } = req.query
 
-    const allCalendars = await getConnectedCalendars(accountAddress, {
+    const isPro = await isProAccountAsync(accountAddress)
+
+    const calendars = await getConnectedCalendars(accountAddress, {
       syncOnly: syncOnly === 'true',
       activeOnly: false,
+      limit: !isPro ? 1 : undefined,
     })
 
-    // Check subscription status for filtering
-    const isPro = await isProAccountAsync(accountAddress)
+    const totalCount = await countCalendarIntegrations(accountAddress)
 
     // Force all connected calendars to renew its Tokens
     // if needed for displaying calendars...
-    for (const calendar of allCalendars) {
+    for (const calendar of calendars) {
       try {
         const integration = getConnectedCalendarIntegration(
           accountAddress,
@@ -55,17 +58,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      // Filter calendars based on subscription status
-      let calendars = allCalendars
-      let hidden = 0
-      let upgradeRequired = false
-
-      if (!isPro) {
-        // Free tier: return only first 1 integration
-        calendars = allCalendars.slice(0, 1)
-        hidden = Math.max(0, allCalendars.length - 1)
-        upgradeRequired = allCalendars.length > 1
-      }
+      // Calculate metadata for free tier
+      const hidden = !isPro ? Math.max(0, totalCount - 1) : 0
+      const upgradeRequired = !isPro && totalCount > 1
 
       const response = calendars.map(it => {
         let grantedPermissions = 0
@@ -107,7 +102,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
       return res.status(200).json({
         calendars: response,
-        total: allCalendars.length,
+        total: totalCount,
         hidden,
         upgradeRequired,
       })
