@@ -2473,9 +2473,11 @@ const getConnectedCalendars = async (
   {
     syncOnly,
     activeOnly: _activeOnly,
+    limit,
   }: {
     syncOnly?: boolean
     activeOnly?: boolean
+    limit?: number
   }
 ): Promise<ConnectedCalendar[]> => {
   const query = db.supabase
@@ -2483,6 +2485,10 @@ const getConnectedCalendars = async (
     .select()
     .eq('account_address', address.toLowerCase())
     .order('id', { ascending: true })
+
+  if (limit) {
+    query.limit(limit)
+  }
 
   const { data, error } = await query
 
