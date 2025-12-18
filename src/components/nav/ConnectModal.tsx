@@ -57,7 +57,7 @@ export const ConnectModal: React.FC = ({}) => {
   const wallets = [
     inAppWallet({
       auth: {
-        options: ['email', 'google', 'phone', 'passkey'],
+        options: ['email', 'google', 'passkey'],
       },
 
       // executionMode: {
