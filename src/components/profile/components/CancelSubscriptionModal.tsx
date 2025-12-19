@@ -11,6 +11,7 @@ import {
 } from '@chakra-ui/react'
 import React, { useRef } from 'react'
 
+import { handleApiError } from '@/utils/error_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 interface CancelSubscriptionModalProps {
@@ -40,7 +41,7 @@ const CancelSubscriptionModal: React.FC<CancelSubscriptionModalProps> = ({
       )
       onClose()
     } catch (error) {
-      // Error handling is done in the mutation's onError
+      handleApiError('Failed to cancel subscription', error)
     }
   }
 

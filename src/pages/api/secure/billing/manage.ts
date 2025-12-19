@@ -9,7 +9,6 @@ import { StripeService } from '@/utils/services/stripe.service'
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     try {
-      // Authentication is handled by withSessionRoute middleware
       if (!req.session.account?.address) {
         return res.status(401).json({ error: 'Unauthorized' })
       }

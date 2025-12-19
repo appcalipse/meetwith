@@ -304,15 +304,11 @@ export const cancelCryptoSubscription = async (
   accountAddress: string
 ): Promise<void> => {
   try {
-    // Get all subscription periods for the account
-    const allSubscriptions = await getSubscriptionPeriodsByAccount(
-      accountAddress.toLowerCase()
-    )
-
-    // Get Stripe subscription for this account (if exists)
-    const stripeSubscription = await getStripeSubscriptionByAccount(
-      accountAddress.toLowerCase()
-    )
+    // Fetch all subscription periods and Stripe subscription in parallel
+    const [allSubscriptions, stripeSubscription] = await Promise.all([
+      getSubscriptionPeriodsByAccount(accountAddress.toLowerCase()),
+      getStripeSubscriptionByAccount(accountAddress.toLowerCase()),
+    ])
 
     const now = new Date()
 

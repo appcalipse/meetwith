@@ -77,14 +77,16 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           continue // Skip if missing required data
         }
 
-        // Get transaction (only completed ones)
-        const transaction = await getTransactionsById(period.transaction_id)
+        // Fetch transaction and billing plan in parallel
+        const [transaction, billingPlan] = await Promise.all([
+          getTransactionsById(period.transaction_id),
+          getBillingPlanById(period.billing_plan_id),
+        ])
+
         if (!transaction || transaction.status !== PaymentStatus.COMPLETED) {
           continue
         }
 
-        // Get billing plan
-        const billingPlan = await getBillingPlanById(period.billing_plan_id)
         if (!billingPlan) {
           continue
         }

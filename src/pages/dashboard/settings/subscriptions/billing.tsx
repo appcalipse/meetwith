@@ -33,6 +33,7 @@ import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import {
   BillingCycle,
+  BillingMode,
   SubscribeRequest,
   SubscribeRequestCrypto,
   SubscribeResponseCrypto,
@@ -76,7 +77,7 @@ const BillingCheckout = () => {
   const planName =
     typeof plan === 'string' && plan.length > 0 ? plan : 'Meetwith PRO'
   const heading =
-    mode === 'extend'
+    mode === BillingMode.EXTEND
       ? `Extend my ${planName}`
       : 'Subscribe to Meetwith Premium'
 
@@ -199,7 +200,9 @@ const BillingCheckout = () => {
 
     // Determine subscription type based on mode
     const subscriptionType =
-      mode === 'extend' ? SubscriptionType.EXTENSION : SubscriptionType.INITIAL
+      mode === BillingMode.EXTEND
+        ? SubscriptionType.EXTENSION
+        : SubscriptionType.INITIAL
 
     // Trigger the mutation
     const request: SubscribeRequestCrypto = {

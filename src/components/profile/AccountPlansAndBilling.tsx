@@ -37,7 +37,11 @@ import CustomLoading from '@/components/CustomLoading'
 import Pagination from '@/components/profile/Pagination'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account } from '@/types/Account'
-import { PaymentProvider, SubscriptionHistoryItem } from '@/types/Billing'
+import {
+  BillingMode,
+  PaymentProvider,
+  SubscriptionHistoryItem,
+} from '@/types/Billing'
 import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import {
   FREE_PLAN_BENEFITS,
@@ -258,7 +262,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     staleTime: 60000, // 1 minute
   })
 
-  const goToBilling = (mode?: 'extend' | 'subscribe', planName?: string) => {
+  const goToBilling = (mode?: BillingMode, planName?: string) => {
     const queryParams = new URLSearchParams()
     if (mode) queryParams.set('mode', mode)
     if (planName) queryParams.set('plan', planName)
@@ -273,10 +277,10 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   const handlePrimaryButtonClick = () => {
     if (hasActiveSubscription) {
       if (paymentProvider !== PaymentProvider.STRIPE) {
-        goToBilling('extend', billingPlanLabel)
+        goToBilling(BillingMode.EXTEND, billingPlanLabel)
       }
     } else {
-      goToBilling('subscribe', getPlanInfo(Plan.PRO)?.name ?? 'Plan')
+      goToBilling(BillingMode.SUBSCRIBE, getPlanInfo(Plan.PRO)?.name ?? 'Plan')
     }
   }
 
@@ -430,7 +434,10 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
             />
             <SubscriptionCard
               onClick={() =>
-                goToBilling('subscribe', getPlanInfo(Plan.PRO)?.name ?? 'Plan')
+                goToBilling(
+                  BillingMode.SUBSCRIBE,
+                  getPlanInfo(Plan.PRO)?.name ?? 'Plan'
+                )
               }
               active={!isProCardActive}
               benefits={FREE_PLAN_BENEFITS}

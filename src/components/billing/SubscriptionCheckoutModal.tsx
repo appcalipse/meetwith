@@ -26,7 +26,7 @@ type Props = {
   chain: ChainInfo
   token: string
   country?: string
-  onSuccess?: () => void
+  onSuccess: () => void
 }
 
 const SubscriptionCheckoutModal = ({
@@ -78,7 +78,7 @@ const SubscriptionCheckoutModal = ({
       )
 
       if (transaction.transaction_hash) {
-        onSuccess?.()
+        onSuccess()
         onClose()
         showSuccessToast(
           'Subscription Successful',

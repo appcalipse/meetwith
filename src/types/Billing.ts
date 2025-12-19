@@ -29,6 +29,12 @@ export enum SubscriptionType {
   EXTENSION = 'extension',
 }
 
+// Billing page mode for navigation
+export enum BillingMode {
+  EXTEND = 'extend',
+  SUBSCRIBE = 'subscribe',
+}
+
 // =====================================================
 // Core Billing Types
 // =====================================================
