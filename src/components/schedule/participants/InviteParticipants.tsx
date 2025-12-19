@@ -83,6 +83,10 @@ const InviteParticipants: FC<IProps> = ({
     meetingOwners,
     setMeetingMembers,
     setMeetingOwners,
+    allAvailaibility,
+    allParticipants,
+    removeParticipant,
+    toggleAvailability,
   } = useParticipants()
   const [standAloneParticipants, setStandAloneParticipants] = useState<
     Array<ParticipantInfo>
@@ -319,6 +323,10 @@ const InviteParticipants: FC<IProps> = ({
     contacts,
     isContactsPrefetching,
     setStandAloneParticipants,
+    allAvailaibility,
+    allParticipants,
+    removeParticipant,
+    toggleAvailability,
   }
   return (
     <ParticipantsContext.Provider value={context}>
@@ -334,7 +342,9 @@ const InviteParticipants: FC<IProps> = ({
           shadow="none"
           height={{ base: '100vh', md: 'auto' }}
           minH={{ base: '100vh', md: 'auto' }}
+          maxH={{ base: '100vh', md: '95vh' }}
           borderRadius={{ base: 0, md: 'md' }}
+          overflowY="scroll"
         >
           <ModalCloseButton />
           <ModalBody>
