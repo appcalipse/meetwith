@@ -3,6 +3,7 @@ import React, {
   ReactNode,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 
@@ -19,6 +20,7 @@ import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
 import { getContactsLean, getGroupsFull } from '@/utils/api_helper'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { handleApiError } from '@/utils/error_helper'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 
 export interface IParticipantsContext {
   participants: Array<ParticipantInfo | IGroupParticipant>
@@ -49,6 +51,11 @@ export interface IParticipantsContext {
   setIsGroupPrefetching: React.Dispatch<React.SetStateAction<boolean>>
   addGroup: (group: IGroupParticipant) => void
   removeGroup: (groupId: string) => void
+
+  removeParticipant: (participant: ParticipantInfo) => void
+  toggleAvailability: (accountAddress: string) => void
+  allAvailaibility: Array<ParticipantInfo>
+  allParticipants: Array<ParticipantInfo>
 }
 
 export const ParticipantsContext = createContext<
@@ -178,6 +185,105 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
       void handlePrefetchContacts()
     }
   }, [skipFetching])
+  const addressToGroupMap = useMemo(() => {
+    const map = new Map<string, string>()
+    Object.entries(groupAvailability || {}).forEach(([groupKey, addresses]) => {
+      addresses?.forEach(address => {
+        if (address) map.set(address.toLowerCase(), groupKey)
+      })
+    })
+    return map
+  }, [groupAvailability])
+
+  const allAvailaibility = useMemo(
+    () => getMergedParticipants(participants, groups, groupAvailability),
+    [participants, groups, groupAvailability, currentAccount?.address]
+  )
+  const allParticipants = useMemo(
+    () =>
+      getMergedParticipants(
+        participants,
+        groups,
+        groupAvailability,
+        currentAccount?.address
+      ),
+    [participants, groups, groupAvailability, currentAccount?.address]
+  )
+  const toggleAvailability = (accountAddress: string) => {
+    const addr = accountAddress.toLowerCase()
+    const existingGroup = addressToGroupMap.get(addr)
+
+    setGroupAvailability(prev => {
+      if (existingGroup) {
+        const nextGroup = (prev[existingGroup] || []).filter(
+          a => a?.toLowerCase() !== addr
+        )
+        const next: Record<string, Array<string> | undefined> = {
+          ...prev,
+          [existingGroup]: nextGroup,
+        }
+        if (nextGroup.length === 0) delete next[existingGroup]
+        return next
+      }
+
+      return {
+        ...prev,
+        [NO_GROUP_KEY]: [...(prev[NO_GROUP_KEY] || []), addr],
+      }
+    })
+  }
+
+  const removeParticipant = (participant: ParticipantInfo) => {
+    const schedulerAddr = currentAccount?.address?.toLowerCase()
+    const accountAddr = participant.account_address?.toLowerCase()
+    const guestEmail = participant.guest_email?.toLowerCase()
+
+    if (accountAddr) {
+      if (schedulerAddr && accountAddr === schedulerAddr) {
+        return
+      }
+
+      setParticipants(prev =>
+        prev.filter(p => {
+          if (isGroupParticipant(p)) return true
+          return p.account_address?.toLowerCase() !== accountAddr
+        })
+      )
+
+      setGroupAvailability(prev =>
+        Object.fromEntries(
+          Object.entries(prev)
+            .map(([key, addresses]) => [
+              key,
+              (addresses || []).filter(a => a?.toLowerCase() !== accountAddr),
+            ])
+            .filter(([, addresses]) => addresses.length > 0)
+        )
+      )
+
+      setGroupParticipants(prev =>
+        Object.fromEntries(
+          Object.entries(prev)
+            .map(([key, addresses]) => [
+              key,
+              (addresses || []).filter(a => a?.toLowerCase() !== accountAddr),
+            ])
+            .filter(([, addresses]) => addresses.length > 0)
+        )
+      )
+
+      return
+    }
+
+    if (guestEmail) {
+      setParticipants(prev =>
+        prev.filter(p => {
+          if (isGroupParticipant(p)) return true
+          return (p.guest_email || '').toLowerCase() !== guestEmail
+        })
+      )
+    }
+  }
   const value = {
     participants,
     standAloneParticipants,
@@ -199,6 +305,10 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     contacts,
     isContactsPrefetching,
     setStandAloneParticipants,
+    removeParticipant,
+    toggleAvailability,
+    allParticipants,
+    allAvailaibility,
   }
 
   return (

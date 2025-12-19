@@ -17,39 +17,44 @@ export const getMergedParticipants = (
   groupParticipants: Record<string, Array<string> | undefined>,
   accountAddress?: string
 ) => {
+  const seenAddresses = new Set<string>()
   const allParticipants: Array<ParticipantInfo> = []
+
+  const groupsMap = new Map(groups.map(g => [g.id, g]))
+
   for (const participant of participants) {
     if (isGroupParticipant(participant)) {
-      const group = groups.find(g => g.id === participant.id)
-      if (group) {
-        const groupMembers = groupParticipants?.[participant.id] || []
-        const membersSanitized = groupMembers
-          .map(member => {
-            const groupMember = group.members.find(m => m.address === member)
-            if (
-              groupMember &&
-              groupMember.address &&
-              allParticipants.every(
-                val => val.account_address !== groupMember.address
-              )
-            ) {
-              return {
-                account_address: groupMember.address,
-                name: groupMember.displayName,
-                type: ParticipantType.Invitee,
-                status: ParticipationStatus.Pending,
-                meeting_id: '',
-              }
-            }
-            return undefined
+      const group = groupsMap.get(participant.id)
+      if (!group) continue
+
+      const groupMembers = groupParticipants?.[participant.id]
+      if (!groupMembers) continue
+
+      const membersMap = new Map(group.members.map(m => [m.address, m]))
+
+      for (const memberAddress of groupMembers) {
+        if (seenAddresses.has(memberAddress)) continue
+
+        const groupMember = membersMap.get(memberAddress)
+        if (groupMember?.address) {
+          seenAddresses.add(memberAddress)
+          allParticipants.push({
+            account_address: groupMember.address,
+            name: groupMember.displayName,
+            type: ParticipantType.Invitee,
+            status: ParticipationStatus.Pending,
+            meeting_id: '',
           })
-          .filter(val => val !== undefined)
-        allParticipants.push(...membersSanitized)
+        }
       }
     } else {
-      allParticipants.push(participant)
+      if (!seenAddresses.has(participant.account_address || '')) {
+        seenAddresses.add(participant.account_address || '')
+        allParticipants.push(participant)
+      }
     }
   }
+
   return accountAddress
     ? allParticipants.filter(val => val.account_address !== accountAddress)
     : allParticipants
