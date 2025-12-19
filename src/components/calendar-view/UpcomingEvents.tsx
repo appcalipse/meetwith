@@ -27,7 +27,7 @@ const UpComingEvents: React.FC = () => {
     queryFn: () =>
       getMeetings(
         currentAccount?.address || '',
-        DateTime.now().setZone(timezone).startOf('day').toJSDate(),
+        DateTime.now().setZone(timezone).toJSDate(),
         DateTime.now().setZone(timezone).endOf('day').toJSDate(),
         3
       )
