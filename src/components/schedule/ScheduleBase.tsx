@@ -383,7 +383,7 @@ const ScheduleBase = () => {
       >
         <VStack gap={4} width="100%" alignItems="flex-start">
           {isUpdatingMeeting && !hasPickedNewTime ? (
-            <Link href={`/dashboard/${EditMode.GROUPS}`}>
+            <Link href={`/dashboard/${EditMode.MEETINGS}`}>
               <HStack alignItems="flex-start" mb={0} cursor="pointer">
                 <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
                 <Heading fontSize={16} color="primary.500">
