@@ -13,6 +13,36 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(401).send('Unauthorized')
     }
     try {
+      // Check subscription status first
+      const isPro = await isProAccountAsync(account_address)
+
+      if (!isPro) {
+        const allGroups = await getGroupsAndMembers(
+          account_address,
+          '5',
+          '0',
+          '',
+          extractQuery(req.query, 'includeInvites') === 'true'
+        )
+
+        // Get total count for all groups
+        const allGroupsUnlimited = await getGroupsAndMembers(
+          account_address,
+          undefined,
+          undefined,
+          '',
+          extractQuery(req.query, 'includeInvites') === 'true'
+        )
+
+        return res.status(200).json({
+          groups: allGroups,
+          total: allGroupsUnlimited.length,
+          hidden: Math.max(0, allGroupsUnlimited.length - 5),
+          upgradeRequired: allGroupsUnlimited.length > 5,
+        })
+      }
+
+      // Pro: fetch all groups with search/limit/offset from query params
       const allGroups = await getGroupsAndMembers(
         account_address,
         extractQuery(req.query, 'limit'),
@@ -21,24 +51,18 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         extractQuery(req.query, 'includeInvites') === 'true'
       )
 
-      // Check subscription status for filtering
-      const isPro = await isProAccountAsync(account_address)
+      // Get total count for pagination
+      const allGroupsForCount = await getGroupsAndMembers(
+        account_address,
+        undefined,
+        undefined,
+        extractQuery(req.query, 'search'),
+        extractQuery(req.query, 'includeInvites') === 'true'
+      )
 
-      if (!isPro) {
-        // Free tier: return only first 5 groups
-        const limitedGroups = allGroups.slice(0, 5)
-        return res.status(200).json({
-          groups: limitedGroups,
-          total: allGroups.length,
-          hidden: Math.max(0, allGroups.length - 5),
-          upgradeRequired: allGroups.length > 5,
-        })
-      }
-
-      // Pro: return all groups
       return res.status(200).json({
         groups: allGroups,
-        total: allGroups.length,
+        total: allGroupsForCount.length,
         hidden: 0,
         upgradeRequired: false,
       })

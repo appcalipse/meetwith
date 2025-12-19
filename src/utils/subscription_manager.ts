@@ -73,16 +73,24 @@ export const getActiveProSubscriptionAsync = async (
   accountAddress: string
 ): Promise<Subscription | null> => {
   try {
-    // First check billing subscriptions
+    const threeDaysAgo = new Date()
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+
     const billingSubscription = await getActiveSubscription(accountAddress)
     if (billingSubscription?.subscription) {
-      return null
+      const expiresAt = billingSubscription.expires_at
+        ? new Date(billingSubscription.expires_at)
+        : null
+
+      if (expiresAt && expiresAt > threeDaysAgo) {
+        return null
+      }
     }
 
     // Fall back to domain subscriptions
     const subscriptions = await syncSubscriptions()
     const activeDomainSubscription = subscriptions.find(
-      sub => new Date(sub.expiry_time) > new Date()
+      sub => new Date(sub.expiry_time) > threeDaysAgo
     )
 
     return activeDomainSubscription || null
