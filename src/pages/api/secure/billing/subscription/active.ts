@@ -20,7 +20,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       )
 
       const hasActive =
-        subscriptionPeriod !== null &&
+        subscriptionPeriod &&
         new Date(subscriptionPeriod.expiry_time) > new Date()
 
       return res.status(200).json({ hasActive })

@@ -70,9 +70,7 @@ export default async function handler(
 
         if (payload.data.status === 'COMPLETED') {
           // Check if this is a subscription payment
-          const isSubscriptionPayment =
-            'subscription_channel' in purchaseData &&
-            'billing_plan_id' in purchaseData
+          const isSubscriptionPayment = 'subscription_channel' in purchaseData
 
           if (isSubscriptionPayment) {
             // Handle subscription payment
