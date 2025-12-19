@@ -20,7 +20,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { isProduction } from '@utils/constants'
 import { Select, SingleValue } from 'chakra-react-select'
 import { DateTime, Interval } from 'luxon'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
 
@@ -28,7 +28,6 @@ import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { useAvailabilityBlock } from '@/hooks/availability'
 import useAccountContext from '@/hooks/useAccountContext'
-import { useDebounceCallback } from '@/hooks/useDebounceCallback'
 import useSlotsWithAvailability from '@/hooks/useSlotsWithAvailability'
 import {
   Page,
@@ -38,7 +37,6 @@ import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { TimeSlot } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
   fetchBusySlotsRawForMultipleAccounts,
   getExistingAccounts,
@@ -55,14 +53,16 @@ import {
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
-import { getMergedParticipants } from '@/utils/schedule.helper'
 import { suggestBestSlots } from '@/utils/slots.helper'
 import { getAccountDisplayName } from '@/utils/user_manager'
-
-import ScheduleTimeSlot from './ScheduleTimeSlot'
 interface AccountAddressRecord extends ParticipantInfo {
   account_address: string
 }
+
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+
+import ScheduleTimeSlot from './ScheduleTimeSlot'
+
 export enum State {
   ALL_AVAILABLE,
   MOST_AVAILABLE,
@@ -108,6 +108,7 @@ export type Dates = {
 
 interface ISchedulePickTimeProps {
   openParticipantModal: () => void
+  onClose?: () => void
 }
 
 export function SchedulePickTime({
@@ -138,14 +139,9 @@ export function SchedulePickTime({
     const timer = setTimeout(() => setIsBreakpointResolved(true), 100)
     return () => clearTimeout(timer)
   }, [])
-  const {
-    groupAvailability,
-    meetingMembers,
-    setMeetingMembers,
-    participants,
-    groups,
-  } = useParticipants()
-  const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
+  const { meetingMembers, setMeetingMembers, allAvailaibility } =
+    useParticipants()
+  const { handlePageSwitch } = useScheduleNavigation()
 
   const { block: defaultAvailabilityBlock } = useAvailabilityBlock(
     currentAccount?.preferences?.availaibility_id
@@ -163,17 +159,13 @@ export function SchedulePickTime({
   const [busySlotsWithDetails, setBusySlotsWithDetails] = useState<
     Map<string, TimeSlot[]>
   >(new Map())
-  const availabilityAddresses = useMemo(() => {
-    const keys = Object.keys(groupAvailability)
-    const participantsSet = new Set<string>()
-    for (const key of keys) {
-      const allGroupParticipants = groupAvailability[key] || []
-      for (const participant of allGroupParticipants) {
-        participantsSet.add(participant)
-      }
-    }
-    return Array.from(participantsSet)
-  }, [groupAvailability])
+  const availabilityAddresses = useMemo(
+    () =>
+      allAvailaibility
+        .filter((val): val is AccountAddressRecord => !!val.account_address)
+        .map(val => val.account_address),
+    [allAvailaibility]
+  )
 
   const getEmptySlots = (
     time: Date,
@@ -313,28 +305,6 @@ export function SchedulePickTime({
     [currentSelectedDate, timezone, duration, SLOT_LENGTH]
   )
 
-  const accounts = useMemo(
-    () =>
-      deduplicateArray(Object.values(groupAvailability).flat()).filter(
-        (val): val is string => Boolean(val)
-      ),
-    [groupAvailability]
-  )
-
-  const allParticipants = useMemo(
-    () =>
-      getMergedParticipants(
-        participants,
-        groups,
-        groupAvailability,
-        currentAccount?.address
-      )
-        .filter((val): val is AccountAddressRecord => !!val.account_address)
-        .map(val => val.account_address)
-        .concat([currentAccount?.address || '']),
-    [participants, groups, groupAvailability, currentAccount?.address]
-  )
-
   async function handleSlotLoad() {
     if (!isBreakpointResolved) return
     if (abortControllerRef.current) {
@@ -361,7 +331,7 @@ export function SchedulePickTime({
 
       const [busySlotsRaw, meetingMembers] = await Promise.all([
         fetchBusySlotsRawForMultipleAccounts(
-          accounts,
+          availabilityAddresses,
           monthStart,
           monthEnd,
           undefined,
@@ -370,9 +340,13 @@ export function SchedulePickTime({
             signal: controller.signal,
           }
         ),
-        getExistingAccounts(deduplicateArray(allParticipants), undefined, {
-          signal: controller.signal,
-        }),
+        getExistingAccounts(
+          deduplicateArray(availabilityAddresses),
+          undefined,
+          {
+            signal: controller.signal,
+          }
+        ),
       ])
 
       if (controller.signal.aborted) return
@@ -390,12 +364,12 @@ export function SchedulePickTime({
       const busySlotsWithDetailsMap: Map<string, TimeSlot[]> = new Map()
       const busySlotsMap: Map<string, Interval[]> = new Map()
 
-      const accountBusySlots = accounts.map(account => {
+      const accountBusySlots = availabilityAddresses.map(account => {
         return busySlots.filter(slot => slot.account_address === account)
       })
 
       // Store busy slots with details grouped by account
-      for (const account of accounts) {
+      for (const account of availabilityAddresses) {
         const accountSlots = busySlotsRaw
           .filter(slot => {
             const slotAddress = slot.account_address?.toLowerCase()
@@ -476,10 +450,9 @@ export function SchedulePickTime({
       }
     }
   }
-  const debouncedHandleSlotLoad = useDebounceCallback(handleSlotLoad)
 
   useEffect(() => {
-    debouncedHandleSlotLoad()
+    handleSlotLoad()
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
@@ -489,8 +462,7 @@ export function SchedulePickTime({
     currentSelectedDate.getMonth(),
     currentSelectedDate.getFullYear(),
     duration,
-    accounts.join(','),
-    allParticipants.join(','),
+    availabilityAddresses,
     isBreakpointResolved,
   ])
   useEffect(() => {
@@ -551,14 +523,7 @@ export function SchedulePickTime({
     const currentDate = DateTime.now().setZone(timezone)
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
-  const durationOptions = useMemo(
-    () =>
-      DEFAULT_GROUP_SCHEDULING_DURATION.map(type => ({
-        value: type.duration,
-        label: durationToHumanReadable(type.duration),
-      })),
-    []
-  )
+
   const handleJumpToBestSlot = () => {
     if (suggestedTimes.length === 0) {
       toast({
@@ -578,9 +543,7 @@ export function SchedulePickTime({
   }
 
   const handleTimeSelection = (time: Date) => {
-    React.startTransition(() => {
-      setPickedTime(time)
-    })
+    setPickedTime(time)
     handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
 
