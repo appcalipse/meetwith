@@ -21,6 +21,9 @@ import {
   hasSubscriptionHistory,
 } from '@/utils/database'
 import { sendSubscriptionConfirmationEmailForAccount } from '@/utils/email_helper'
+import { EmailQueue } from '@/utils/workers/email.queue'
+
+const emailQueue = new EmailQueue()
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -77,7 +80,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           null
         )
 
-        // Send trial started email (best-effort, don't block flow)
+        // Send trial started email (non-blocking, queued)
         const emailPlan: BillingEmailPlan = {
           id: billingPlan.id,
           name: billingPlan.name,
@@ -85,15 +88,23 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           billing_cycle: billingPlan.billing_cycle,
         }
 
-        await sendSubscriptionConfirmationEmailForAccount(
-          accountAddress,
-          emailPlan,
-          new Date(),
-          trialExpiry,
-          BillingPaymentProvider.CRYPTO,
-          undefined,
-          true // isTrial
-        )
+        emailQueue.add(async () => {
+          try {
+            await sendSubscriptionConfirmationEmailForAccount(
+              accountAddress,
+              emailPlan,
+              new Date(),
+              trialExpiry,
+              BillingPaymentProvider.CRYPTO,
+              undefined,
+              true // isTrial
+            )
+            return true
+          } catch (error) {
+            Sentry.captureException(error)
+            return false
+          }
+        })
 
         const trialResponse: SubscribeResponseCrypto = {
           success: true,
