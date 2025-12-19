@@ -4,6 +4,7 @@ import * as React from 'react'
 import { CalendarProvider } from '@/providers/calendar/CalendarContext'
 import { NavigationProvider } from '@/providers/schedule/NavigationContext'
 import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
+import { PermissionsProvider } from '@/providers/schedule/PermissionsContext'
 import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
 
 import ActiveEvent from './ActiveEvent'
@@ -21,13 +22,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({}) => {
         <Sidebar />
         <Calendar />
       </HStack>
-      <NavigationProvider>
-        <ParticipantsProvider>
-          <ScheduleStateProvider>
-            <ActiveEvent />
-          </ScheduleStateProvider>
-        </ParticipantsProvider>
-      </NavigationProvider>
+      <PermissionsProvider>
+        <NavigationProvider>
+          <ParticipantsProvider>
+            <ScheduleStateProvider>
+              <ActiveEvent />
+            </ScheduleStateProvider>
+          </ParticipantsProvider>
+        </NavigationProvider>
+      </PermissionsProvider>
     </CalendarProvider>
   )
 }
