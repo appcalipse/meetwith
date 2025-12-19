@@ -51,7 +51,7 @@ const useSlotsWithAvailability = (
             ? hasOverlap
             : !isBusy && hasOverlap
 
-          isSlotAvailable.push(isUserAvailable)
+          isSlotAvailable.push(isUserAvailable && slot.start >= now)
           userStates.push({
             state: isUserAvailable,
             displayName: accountDisplayNames.get(account) || '',
@@ -92,7 +92,7 @@ const useSlotsWithAvailability = (
                 DateTime.fromJSDate(busyStart),
                 DateTime.fromJSDate(busyEnd)
               )
-              return busyInterval.overlaps(slot)
+              return busyInterval.overlaps(slot) && slot.start >= now
             })
 
             // Only include event if it has event information
@@ -127,8 +127,6 @@ const useSlotsWithAvailability = (
     dates,
     busySlots,
     availableSlots,
-    meetingMembers,
-    participantAvailabilities,
     timezone,
     busySlotsWithDetails,
     currentAccountAddress,

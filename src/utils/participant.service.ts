@@ -46,28 +46,36 @@ class ParticipantService {
   }
   handleDerivatives(prev: Record<string, Array<string> | undefined>) {
     const updated = { ...prev }
-    this.removed.forEach(participant => {
-      if (participant.account_address) {
-        const account_address = participant.account_address.toLowerCase()
-        Object.keys(updated).forEach(key => {
-          if (updated[key]?.includes(account_address)) {
-            updated[key] = updated[key].filter(val => val !== account_address)
-          }
-        })
-      }
-    })
+    for (const participant of this.removed) {
+      if (!participant.account_address) continue
 
-    this.added.forEach(participant => {
-      if (participant.account_address) {
-        const account_address = participant.account_address.toLowerCase()
-        if (!updated[NO_GROUP_KEY]?.includes(account_address)) {
-          updated[NO_GROUP_KEY] = [
-            ...(updated[NO_GROUP_KEY] || []),
-            account_address,
-          ]
+      const accountAddress = participant.account_address.toLowerCase()
+      for (const [key, addresses] of Object.entries(updated)) {
+        if (addresses?.includes(accountAddress)) {
+          updated[key] = addresses.filter(val => val !== accountAddress)
         }
       }
-    })
+    }
+
+    const toAdd = new Set<string>()
+    for (const participant of this.added) {
+      if (participant.account_address) {
+        toAdd.add(participant.account_address.toLowerCase())
+      }
+    }
+
+    if (toAdd.size > 0) {
+      const existing = new Set(updated[NO_GROUP_KEY] || [])
+      const newAddresses = [...existing]
+
+      for (const address of toAdd) {
+        if (!existing.has(address)) {
+          newAddresses.push(address)
+        }
+      }
+
+      updated[NO_GROUP_KEY] = newAddresses
+    }
     return updated
   }
   handleParticipantUpdate(prev: Participant[]) {
