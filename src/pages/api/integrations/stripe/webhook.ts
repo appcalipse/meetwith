@@ -6,7 +6,6 @@ import {
   handleInvoicePaymentSucceeded,
   handleSubscriptionCreated,
   handleSubscriptionDeleted,
-  handleSubscriptionTrialWillEnd,
   handleSubscriptionUpdated,
 } from '@utils/services/stripe.helper'
 import { StripeService } from '@utils/services/stripe.service'
@@ -55,9 +54,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           break
         case 'invoice.payment_failed':
           await handleInvoicePaymentFailed(event)
-          break
-        case 'customer.subscription.trial_will_end':
-          await handleSubscriptionTrialWillEnd(event)
           break
         default:
           break
