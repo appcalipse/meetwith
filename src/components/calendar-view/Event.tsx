@@ -6,13 +6,17 @@ import {
   PopoverCloseButton,
   PopoverContent,
   PopoverTrigger,
+  useDisclosure,
 } from '@chakra-ui/react'
 import { DateTime } from 'luxon'
 import * as React from 'react'
 import { FaExpand, FaX } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { useCalendarContext } from '@/providers/calendar/CalendarContext'
+import {
+  createEventsQueryKey,
+  useCalendarContext,
+} from '@/providers/calendar/CalendarContext'
 import {
   isAccepted,
   isCalendarEvent,
@@ -26,7 +30,9 @@ import {
   generateBorderColor,
   getDesignSystemTextColor,
 } from '@/utils/color-utils'
+import { queryClient } from '@/utils/react_query'
 
+import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import EventDetailsPopOver from './EventDetailsPopOver'
 
 interface EventProps {
@@ -41,7 +47,12 @@ interface EventProps {
 
 const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
   const currentAccount = useAccountContext()
-  const { setSelectedSlot } = useCalendarContext()
+  const { setSelectedSlot, currrentDate } = useCalendarContext()
+  const {
+    isOpen: isCancelOpen,
+    onOpen: onCancelOpen,
+    onClose: onCancelClose,
+  } = useDisclosure()
   const actor = React.useMemo(() => {
     if (isCalendarEvent(event)) {
       return event.attendees?.find(
@@ -76,10 +87,31 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
       })
     }
   }
+  const handleCleanup = async (close: () => void) => {
+    await Promise.all([
+      queryClient.invalidateQueries(createEventsQueryKey(currrentDate)),
+      queryClient.invalidateQueries(
+        createEventsQueryKey(currrentDate.minus({ month: 1 }))
+      ),
+      queryClient.invalidateQueries(
+        createEventsQueryKey(currrentDate.plus({ month: 1 }))
+      ),
+    ])
+    close()
+  }
   return (
     <Popover isLazy placement="auto">
       {({ onClose }) => (
         <>
+          {isCancelOpen && !isCalendarEvent(event) && (
+            <CancelMeetingDialog
+              isOpen
+              onClose={onCancelClose}
+              decryptedMeeting={event}
+              currentAccount={currentAccount}
+              afterCancel={() => handleCleanup(onClose)}
+            />
+          )}
           <PopoverTrigger>
             <GridItem
               bg={bg}
@@ -132,6 +164,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
                 slot={event}
                 onSelectEvent={() => handleSelectEvent(onClose)}
                 onClose={onClose}
+                onCancelOpen={onCancelOpen}
               />
             </PopoverBody>
           </PopoverContent>
