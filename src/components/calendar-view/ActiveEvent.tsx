@@ -1,7 +1,9 @@
 import {
+  Box,
   Drawer,
   DrawerBody,
   DrawerContent,
+  Portal,
   useDisclosure,
   useToast,
 } from '@chakra-ui/react'
@@ -15,7 +17,9 @@ import {
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
 import { ActionsContext } from '@/providers/schedule/ActionsContext'
+import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { isCalendarEventWithoutDateTime } from '@/types/Calendar'
 import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
@@ -50,6 +54,8 @@ import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
 
 import { CancelMeetingDialog } from '../schedule/cancel-dialog'
+import InviteParticipants from '../schedule/participants/InviteParticipants'
+import ScheduleTimeDiscover from '../schedule/ScheduleTimeDiscover'
 import ActiveCalendarEvent from './ActiveCalendarEvent'
 import ActiveMeetwithEvent from './ActiveMeetwithEvent'
 const ActiveEvent: React.FC = ({}) => {
@@ -80,6 +86,11 @@ const ActiveEvent: React.FC = ({}) => {
     setTimezone,
   } = useScheduleState()
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const {
+    isOpen: isDiscoverTimeOpen,
+    onOpen: onDiscoverTimeOpen,
+    onClose: onDiscoverTimeClose,
+  } = useDisclosure()
   const decryptedMeeting: MeetingDecrypted | undefined = React.useMemo(() => {
     if (!selectedSlot || isCalendarEventWithoutDateTime(selectedSlot))
       return undefined
@@ -95,8 +106,12 @@ const ActiveEvent: React.FC = ({}) => {
     setParticipants,
     participants,
     groupParticipants,
+    groupAvailability,
     groups,
   } = useParticipants()
+  const { setInviteModalOpen, inviteModalOpen } = useScheduleNavigation()
+  const { setCanEditMeetingDetails, setCanEditMeetingParticipants } =
+    useParticipantPermissions()
   React.useEffect(() => {
     if (!selectedSlot) return
     if (!isCalendarEventWithoutDateTime(selectedSlot)) {
@@ -131,8 +146,29 @@ const ActiveEvent: React.FC = ({}) => {
       setParticipants(participants)
       setGroupParticipants(participantsMap)
       setGroupAvailability(participantsMap)
+      const canEditMeetingDetails = canAccountAccessPermission(
+        selectedSlot?.permissions,
+        selectedSlot?.participants || [],
+        currentAccount?.address,
+        MeetingPermissions.EDIT_MEETING
+      )
+      const canEditMeetingParticipants = canAccountAccessPermission(
+        selectedSlot?.permissions,
+        selectedSlot?.participants || [],
+        currentAccount?.address,
+        [MeetingPermissions.INVITE_GUESTS, MeetingPermissions.EDIT_MEETING]
+      )
+      setCanEditMeetingDetails(canEditMeetingDetails)
+      setCanEditMeetingParticipants(canEditMeetingParticipants)
     }
   }, [selectedSlot])
+  const inviteKey = React.useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
   const handleDelete = async (
     actor?: ParticipantInfo,
     decryptedMeeting?: MeetingDecrypted
@@ -499,6 +535,7 @@ const ActiveEvent: React.FC = ({}) => {
       setSelectedSlot(null)
     }
   }
+
   const context = {
     handleDelete,
     handleSchedule: handleUpdate,
@@ -507,9 +544,11 @@ const ActiveEvent: React.FC = ({}) => {
   return (
     <ActionsContext.Provider value={context}>
       <Drawer
-        isOpen={!!selectedSlot}
+        isOpen={!isDiscoverTimeOpen && !!selectedSlot}
         placement="right"
-        onClose={() => setSelectedSlot(null)}
+        onClose={() => !isDiscoverTimeOpen && setSelectedSlot(null)}
+        closeOnOverlayClick={!isDiscoverTimeOpen}
+        closeOnEsc={!isDiscoverTimeOpen}
       >
         <DrawerContent maxW="500px" bg="neutral.950">
           <DrawerBody p={'30px'}>
@@ -525,12 +564,59 @@ const ActiveEvent: React.FC = ({}) => {
                     currentAccount={currentAccount}
                     afterCancel={handleCleanup}
                   />
-                  <ActiveMeetwithEvent slot={selectedSlot} />
+                  <ActiveMeetwithEvent
+                    slot={selectedSlot}
+                    onDiscoverTimeOpen={onDiscoverTimeOpen}
+                  />
                 </>
               ))}
           </DrawerBody>
         </DrawerContent>
       </Drawer>
+      <InviteParticipants
+        key={inviteKey}
+        isOpen={inviteModalOpen}
+        onClose={() => setInviteModalOpen(false)}
+        groupAvailability={groupAvailability}
+        groupParticipants={groupParticipants}
+        participants={participants}
+        handleUpdateGroups={(
+          groupAvailability: Record<string, Array<string> | undefined>,
+          groupParticipants: Record<string, Array<string> | undefined>
+        ) => {
+          setGroupAvailability(groupAvailability)
+          setGroupParticipants(groupParticipants)
+        }}
+        handleUpdateParticipants={setParticipants}
+      />
+      {isDiscoverTimeOpen && (
+        <Portal>
+          <Box
+            position="fixed"
+            inset={0}
+            zIndex={1000}
+            overflowY="scroll"
+            px={{
+              md: 10,
+            }}
+            pt={10}
+            flex={1}
+            pb={16}
+            onClick={e => e.stopPropagation()}
+          >
+            <Box
+              inset={0}
+              zIndex={-1}
+              pos="fixed"
+              w="100vw"
+              height="100vh"
+              bg="#131A20CC"
+              backdropFilter={'blur(25px)'}
+            />
+            <ScheduleTimeDiscover onClose={onDiscoverTimeClose} />
+          </Box>
+        </Portal>
+      )}
     </ActionsContext.Provider>
   )
 }
