@@ -41,6 +41,9 @@ import {
   sendSubscriptionCancelledEmailForAccount,
   sendSubscriptionConfirmationEmailForAccount,
 } from '@/utils/email_helper'
+import { EmailQueue } from '@/utils/workers/email.queue'
+
+const emailQueue = new EmailQueue()
 
 export const getRawBody = async (req: NextApiRequest): Promise<Buffer> => {
   const chunks: Buffer[] = []
@@ -208,7 +211,7 @@ export const handleSubscriptionCreated = async (
         null
       )
 
-      // Send trial started email
+      // Send trial started email (non-blocking, queued)
       try {
         const billingPlan = await getBillingPlanById(billingPlanId)
         if (billingPlan) {
@@ -219,15 +222,23 @@ export const handleSubscriptionCreated = async (
             billing_cycle: billingPlan.billing_cycle,
           }
 
-          await sendSubscriptionConfirmationEmailForAccount(
-            accountAddress,
-            emailPlan,
-            new Date(),
-            new Date(trialEnd * 1000),
-            BillingPaymentProvider.STRIPE,
-            undefined,
-            true // isTrial
-          )
+          emailQueue.add(async () => {
+            try {
+              await sendSubscriptionConfirmationEmailForAccount(
+                accountAddress,
+                emailPlan,
+                new Date(),
+                new Date(trialEnd * 1000),
+                BillingPaymentProvider.STRIPE,
+                undefined,
+                true // isTrial
+              )
+              return true
+            } catch (error) {
+              Sentry.captureException(error)
+              return false
+            }
+          })
         }
       } catch (error) {
         Sentry.captureException(error)
@@ -322,13 +333,12 @@ export const handleSubscriptionUpdated = async (
         }
       }
 
-      // Send subscription cancellation email
+      // Send subscription cancellation email (non-blocking, queued)
       if (mostRecentPeriod && mostRecentPeriod.billing_plan_id) {
+        const billingPlanId = mostRecentPeriod.billing_plan_id
         try {
           // Get billing plan details
-          const billingPlan = await getBillingPlanById(
-            mostRecentPeriod.billing_plan_id
-          )
+          const billingPlan = await getBillingPlanById(billingPlanId)
 
           if (billingPlan) {
             const emailPlan: BillingEmailPlan = {
@@ -338,13 +348,21 @@ export const handleSubscriptionUpdated = async (
               billing_cycle: billingPlan.billing_cycle,
             }
 
-            await sendSubscriptionCancelledEmailForAccount(
-              accountAddress,
-              emailPlan,
-              mostRecentPeriod.registered_at,
-              mostRecentPeriod.expiry_time,
-              BillingPaymentProvider.STRIPE
-            )
+            emailQueue.add(async () => {
+              try {
+                await sendSubscriptionCancelledEmailForAccount(
+                  accountAddress,
+                  emailPlan,
+                  mostRecentPeriod!.registered_at,
+                  mostRecentPeriod!.expiry_time,
+                  BillingPaymentProvider.STRIPE
+                )
+                return true
+              } catch (error) {
+                Sentry.captureException(error)
+                return false
+              }
+            })
           }
         } catch (error) {
           Sentry.captureException(error)
@@ -839,7 +857,7 @@ export const handleInvoicePaymentSucceeded = async (
         transactionId
       )
 
-      // Send subscription confirmation email (best-effort, don't block flow)
+      // Send subscription confirmation email (non-blocking, queued)
       const emailPlan: BillingEmailPlan = {
         id: billingPlan.id,
         name: billingPlan.name,
@@ -847,14 +865,22 @@ export const handleInvoicePaymentSucceeded = async (
         billing_cycle: billingPlan.billing_cycle,
       }
 
-      await sendSubscriptionConfirmationEmailForAccount(
-        accountAddress,
-        emailPlan,
-        new Date(),
-        calculatedExpiryTime,
-        BillingPaymentProvider.STRIPE,
-        { amount: amountPaid, currency: currency || 'USD' }
-      )
+      emailQueue.add(async () => {
+        try {
+          await sendSubscriptionConfirmationEmailForAccount(
+            accountAddress,
+            emailPlan,
+            new Date(),
+            calculatedExpiryTime,
+            BillingPaymentProvider.STRIPE,
+            { amount: amountPaid, currency: currency || 'USD' }
+          )
+          return true
+        } catch (error) {
+          Sentry.captureException(error)
+          return false
+        }
+      })
 
       return // Don't proceed to renewal flow
     } catch (error) {
@@ -882,7 +908,7 @@ export const handleInvoicePaymentSucceeded = async (
           transactionId
         )
 
-        // Send subscription confirmation email for plan update
+        // Send subscription confirmation email for plan update (non-blocking, queued)
         const emailPlan: BillingEmailPlan = {
           id: billingPlan.id,
           name: billingPlan.name,
@@ -890,14 +916,22 @@ export const handleInvoicePaymentSucceeded = async (
           billing_cycle: billingPlan.billing_cycle,
         }
 
-        await sendSubscriptionConfirmationEmailForAccount(
-          accountAddress,
-          emailPlan,
-          existingPeriodForPlanChange.registered_at,
-          existingPeriodForPlanChange.expiry_time,
-          BillingPaymentProvider.STRIPE,
-          { amount: amountPaid, currency: currency || 'USD' }
-        )
+        emailQueue.add(async () => {
+          try {
+            await sendSubscriptionConfirmationEmailForAccount(
+              accountAddress,
+              emailPlan,
+              existingPeriodForPlanChange.registered_at,
+              existingPeriodForPlanChange.expiry_time,
+              BillingPaymentProvider.STRIPE,
+              { amount: amountPaid, currency: currency || 'USD' }
+            )
+            return true
+          } catch (error) {
+            Sentry.captureException(error)
+            return false
+          }
+        })
 
         return // Don't create a new subscription period
       } catch (error) {
@@ -959,7 +993,7 @@ export const handleInvoicePaymentSucceeded = async (
           transactionId
         )
 
-        // Send subscription confirmation email for plan update
+        // Send subscription confirmation email for plan update (non-blocking, queued)
         const emailPlan: BillingEmailPlan = {
           id: billingPlan.id,
           name: billingPlan.name,
@@ -967,14 +1001,22 @@ export const handleInvoicePaymentSucceeded = async (
           billing_cycle: billingPlan.billing_cycle,
         }
 
-        await sendSubscriptionConfirmationEmailForAccount(
-          accountAddress,
-          emailPlan,
-          new Date(),
-          calculatedExpiryTime,
-          BillingPaymentProvider.STRIPE,
-          { amount: amountPaid, currency: currency || 'USD' }
-        )
+        emailQueue.add(async () => {
+          try {
+            await sendSubscriptionConfirmationEmailForAccount(
+              accountAddress,
+              emailPlan,
+              new Date(),
+              calculatedExpiryTime,
+              BillingPaymentProvider.STRIPE,
+              { amount: amountPaid, currency: currency || 'USD' }
+            )
+            return true
+          } catch (error) {
+            Sentry.captureException(error)
+            return false
+          }
+        })
 
         return
       }

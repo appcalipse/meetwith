@@ -33,6 +33,9 @@ import {
   updateSubscriptionPeriodStatus,
 } from '@/utils/database'
 import { sendSubscriptionConfirmationEmailForAccount } from '@/utils/email_helper'
+import { EmailQueue } from '@/utils/workers/email.queue'
+
+const emailQueue = new EmailQueue()
 import {
   BillingPlanNotFoundError,
   MissingSubscriptionMetadataError,
@@ -280,17 +283,26 @@ export const handleCryptoSubscriptionPayment = async (
     billing_cycle: billingPlan.billing_cycle,
   }
 
-  await sendSubscriptionConfirmationEmailForAccount(
-    account_address.toLowerCase(),
-    emailPlan,
-    new Date(),
-    calculatedExpiryTime,
-    BillingPaymentProvider.CRYPTO,
-    {
-      amount: transactionData.fiatEquivalent,
-      currency: 'USD',
+  // Send subscription confirmation email (non-blocking, queued)
+  emailQueue.add(async () => {
+    try {
+      await sendSubscriptionConfirmationEmailForAccount(
+        account_address.toLowerCase(),
+        emailPlan,
+        new Date(),
+        calculatedExpiryTime,
+        BillingPaymentProvider.CRYPTO,
+        {
+          amount: transactionData.fiatEquivalent,
+          currency: 'USD',
+        }
+      )
+      return true
+    } catch (error) {
+      Sentry.captureException(error)
+      return false
     }
-  )
+  })
 
   return {
     transaction,

@@ -14,6 +14,9 @@ import {
 } from '@/utils/database'
 import { sendSubscriptionCancelledEmailForAccount } from '@/utils/email_helper'
 import { cancelCryptoSubscription } from '@/utils/services/crypto.helper'
+import { EmailQueue } from '@/utils/workers/email.queue'
+
+const emailQueue = new EmailQueue()
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -27,7 +30,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       // Cancel crypto subscription
       await cancelCryptoSubscription(accountAddress)
 
-      // Send subscription cancellation email (best-effort, don't block flow)
+      // Prepare email data
       try {
         // Fetch subscription periods and Stripe subscription in parallel
         const [allSubscriptions, stripeSubscription] = await Promise.all([
@@ -63,7 +66,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           }
         }
 
-        // Send email if we found a cancelled crypto period
+        // Send email if we found a cancelled crypto period (non-blocking, queued)
         if (mostRecentCryptoPeriod && mostRecentCryptoPeriod.billing_plan_id) {
           // Get billing plan details
           const billingPlan = await getBillingPlanById(
@@ -78,13 +81,21 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
               billing_cycle: billingPlan.billing_cycle,
             }
 
-            await sendSubscriptionCancelledEmailForAccount(
-              accountAddress,
-              emailPlan,
-              mostRecentCryptoPeriod.registered_at,
-              mostRecentCryptoPeriod.expiry_time,
-              BillingPaymentProvider.CRYPTO
-            )
+            emailQueue.add(async () => {
+              try {
+                await sendSubscriptionCancelledEmailForAccount(
+                  accountAddress,
+                  emailPlan,
+                  mostRecentCryptoPeriod!.registered_at,
+                  mostRecentCryptoPeriod!.expiry_time,
+                  BillingPaymentProvider.CRYPTO
+                )
+                return true
+              } catch (error) {
+                Sentry.captureException(error)
+                return false
+              }
+            })
           }
         }
       } catch (error) {
