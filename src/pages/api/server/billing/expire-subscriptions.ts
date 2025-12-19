@@ -1,14 +1,24 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { BillingEmailPeriod, BillingEmailPlan } from '@/types/Billing'
+import { NotificationChannel } from '@/types/AccountNotifications'
+import {
+  BillingEmailPeriod,
+  BillingEmailPlan,
+  BillingMode,
+} from '@/types/Billing'
+import { appUrl } from '@/utils/constants'
 import {
   expireStaleSubscriptionPeriods,
+  getAccountNotificationSubscriptions,
   getBillingEmailAccountInfo,
   getBillingPlanById,
+  getDiscordAccount,
 } from '@/utils/database'
 import { sendSubscriptionExpiredEmail } from '@/utils/email_helper'
 import { getDisplayNameForEmail } from '@/utils/email_utils'
+import { dmAccount } from '@/utils/services/discord.helper'
+import { sendDm } from '@/utils/services/telegram.helper'
 import { EmailQueue } from '@/utils/workers/email.queue'
 
 const emailQueue = new EmailQueue()
@@ -22,8 +32,11 @@ export default async function expireSubscriptions(
       // Expire all stale subscription periods
       const result = await expireStaleSubscriptionPeriods()
 
-      // Send expiry emails for each expired period
+      // Send expiry emails and notifications for each expired period
       let emailCount = 0
+      let discordCount = 0
+      let telegramCount = 0
+
       for (const period of result.expiredPeriods) {
         if (!period.billing_plan_id) continue
 
@@ -54,12 +67,69 @@ export default async function expireSubscriptions(
               billing_cycle: billingPlan.billing_cycle,
             }
 
+            // Send email
             await sendSubscriptionExpiredEmail(
               { ...accountInfo, displayName: processedDisplayName },
               emailPeriod,
               emailPlan
             )
             emailCount++
+
+            // Get notification subscriptions
+            const notifications = await getAccountNotificationSubscriptions(
+              accountAddress
+            )
+
+            // Prepare renewal URL
+            const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=${
+              BillingMode.EXTEND
+            }&plan=${encodeURIComponent(billingPlan.id)}`
+
+            const message = `Your ${billingPlan.name} subscription has expired. You can renew your subscription at any time to continue enjoying Pro features.\n\nRenew [here](${renewUrl})`
+
+            // Send Discord notification if enabled
+            const discordNotification = notifications.notification_types.find(
+              n => n.channel === NotificationChannel.DISCORD && !n.disabled
+            )
+            if (discordNotification) {
+              const discordAccount = await getDiscordAccount(accountAddress)
+              if (discordAccount?.discord_id) {
+                try {
+                  await dmAccount(
+                    accountAddress,
+                    discordAccount.discord_id,
+                    message
+                  )
+                  discordCount++
+                } catch (error) {
+                  Sentry.captureException(error, {
+                    extra: {
+                      accountAddress,
+                      context: 'Discord notification for subscription expiry',
+                    },
+                  })
+                }
+              }
+            }
+
+            // Send Telegram notification if enabled
+            const telegramNotification = notifications.notification_types.find(
+              n => n.channel === NotificationChannel.TELEGRAM && !n.disabled
+            )
+            if (telegramNotification) {
+              try {
+                await sendDm(telegramNotification.destination, message)
+                telegramCount++
+              } catch (error) {
+                Sentry.captureException(error, {
+                  extra: {
+                    accountAddress,
+                    context: 'Telegram notification for subscription expiry',
+                  },
+                })
+              }
+            }
+
             return true
           } catch (error) {
             Sentry.captureException(error)
@@ -72,8 +142,10 @@ export default async function expireSubscriptions(
         success: true,
         expiredCount: result.expiredCount,
         emailCount,
+        discordCount,
+        telegramCount,
         timestamp: result.timestamp,
-        message: `Successfully expired ${result.expiredCount} subscription period(s) and sent ${emailCount} email(s)`,
+        message: `Successfully expired ${result.expiredCount} subscription period(s) and sent ${emailCount} email(s), ${discordCount} Discord message(s), and ${telegramCount} Telegram message(s)`,
       })
     } catch (error) {
       Sentry.captureException(error)

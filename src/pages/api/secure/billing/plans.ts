@@ -39,9 +39,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         provider_product_id: providerMap.get(plan.id),
       }))
 
-      return res
-        .status(200)
-        .json({ plans: plansWithProvider } as GetPlansResponse)
+      return res.status(200).json({ plans: plansWithProvider })
     } catch (error) {
       console.error('Error fetching billing plans:', error)
       Sentry.captureException(error)

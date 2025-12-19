@@ -25,7 +25,6 @@ import { sendSubscriptionConfirmationEmailForAccount } from '@/utils/email_helpe
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     try {
-      // Authentication is handled by withSessionRoute middleware
       if (!req.session.account?.address) {
         return res.status(401).json({ error: 'Unauthorized' })
       }
