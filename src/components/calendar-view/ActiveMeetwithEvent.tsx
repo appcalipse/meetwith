@@ -10,7 +10,7 @@ import {
   useDisclosure,
   useToast,
 } from '@chakra-ui/react'
-import { Select } from 'chakra-react-select'
+import { Select, SingleValue } from 'chakra-react-select'
 import { DateTime } from 'luxon'
 import * as React from 'react'
 import { FaTrash } from 'react-icons/fa6'
@@ -21,6 +21,7 @@ import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
@@ -32,8 +33,9 @@ import {
   MeetingPermissions,
 } from '@/utils/constants/schedule'
 import {
-  customSelectComponents,
+  getCustomSelectComponents,
   noClearCustomSelectComponent,
+  Option,
   rsvpSelectComponent,
 } from '@/utils/constants/select'
 import {
@@ -47,21 +49,21 @@ import { SingleDatepicker } from '../input-date-picker'
 import { InputTimePicker } from '../input-time-picker'
 import RichTextEditor from '../profile/components/RichTextEditor'
 import { DeleteMeetingDialog } from '../schedule/delete-dialog'
-import InviteParticipants from '../schedule/participants/InviteParticipants'
 import ScheduleParticipantsSchedulerModal from '../schedule/ScheduleParticipantsSchedulerModal'
 import MeetingMenu from './MeetingMenu'
 import ParticipantsControl from './ParticipantsControl'
 
 interface ActiveMeetwithEventProps {
   slot: MeetingDecrypted
+  onDiscoverTimeOpen: () => void
 }
 
-const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM).map(
-  provider => ({
-    value: provider,
-    label: renderProviderName(provider),
-  })
-)
+const meetingProviders: Array<Option<MeetingProvider>> = BASE_PROVIDERS.concat(
+  MeetingProvider.CUSTOM
+).map(provider => ({
+  value: provider,
+  label: renderProviderName(provider),
+}))
 
 const RSVP_OPTIONS = [
   {
@@ -81,18 +83,14 @@ interface RSVPOption {
   label: string
   value: ParticipationStatus
 }
-const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
+const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
+  slot,
+  onDiscoverTimeOpen,
+}) => {
   const [isTitleValid, setIsTitleValid] = React.useState(true)
   const currentAccount = useAccountContext()
-  const {
-    setGroupParticipants,
-    setGroupAvailability,
-    setParticipants,
-    groups,
-    groupParticipants,
-    groupAvailability,
-    participants,
-  } = useParticipants()
+  const { groupParticipants, groupAvailability, participants } =
+    useParticipants()
   const { setInviteModalOpen, inviteModalOpen } = useScheduleNavigation()
   const {
     title,
@@ -111,12 +109,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     isScheduling,
   } = useScheduleState()
   const { handleSchedule, handleCancel } = useScheduleActions()
-  const canEditMeetingDetails = canAccountAccessPermission(
-    slot?.permissions,
-    slot?.participants || [],
-    currentAccount?.address,
-    [MeetingPermissions.INVITE_GUESTS, MeetingPermissions.EDIT_MEETING]
-  )
+  const { canEditMeetingDetails } = useParticipantPermissions()
   const {
     isOpen: isDeleteOpen,
     onOpen: onDeleteOpen,
@@ -147,11 +140,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
     currentAccount?.address,
     MeetingPermissions.EDIT_MEETING
   )
-  const handlePickNewTime = React.useCallback(() => {
-    if (!canEditMeeting) {
-      return
-    }
-  }, [canEditMeeting])
+
   const { setSelectedSlot } = useCalendarContext()
   const iconColor = useColorModeValue('gray.500', 'gray.200')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
@@ -178,8 +167,10 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
   const meetingProviderValue = meetingProviders.find(
     provider => provider.value === meetingProvider
   )
-  const _onChangeProvider = (newValue: any) => {
-    setMeetingProvider(newValue.value)
+  const _onChangeProvider = (
+    newValue: SingleValue<Option<MeetingProvider>>
+  ) => {
+    setMeetingProvider(newValue?.value || MeetingProvider.CUSTOM)
   }
   const handleDelete = () => {
     if (
@@ -204,22 +195,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
   }
   return (
     <VStack w="100%" spacing={4} alignItems="flex-start">
-      <InviteParticipants
-        key={inviteKey}
-        isOpen={inviteModalOpen}
-        onClose={() => setInviteModalOpen(false)}
-        groupAvailability={groupAvailability}
-        groupParticipants={groupParticipants}
-        participants={participants}
-        handleUpdateGroups={(
-          groupAvailability: Record<string, Array<string> | undefined>,
-          groupParticipants: Record<string, Array<string> | undefined>
-        ) => {
-          setGroupAvailability(groupAvailability)
-          setGroupParticipants(groupParticipants)
-        }}
-        handleUpdateParticipants={setParticipants}
-      />
       <Button
         variant="link"
         color="primary.200"
@@ -318,7 +293,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
       <VStack w={'100%'} gap={6} alignItems="flex-start">
         <Heading fontSize="x-large">Meeting Information</Heading>
         <ParticipantsControl
-          slot={slot}
           currentAccount={currentAccount}
           openInviteModal={() => setInviteModalOpen(true)}
         />
@@ -328,7 +302,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
             <Box
               flex="1"
               cursor={canEditMeeting ? 'pointer' : 'default'}
-              onClick={canEditMeeting ? handlePickNewTime : undefined}
+              onClick={canEditMeeting ? onDiscoverTimeOpen : undefined}
             >
               <SingleDatepicker
                 date={timezoneDate}
@@ -345,11 +319,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
                 }}
               />
             </Box>
-            <Box
-              flex="1"
-              cursor={canEditMeeting ? 'pointer' : 'default'}
-              onClick={canEditMeeting ? handlePickNewTime : undefined}
-            >
+            <Box flex="1" cursor={canEditMeeting ? 'pointer' : 'default'}>
               <InputTimePicker
                 currentDate={timezoneDate}
                 value={formattedTime}
@@ -370,7 +340,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
               <IconButton
                 aria-label="Edit date and time"
                 icon={<MdOutlineEditCalendar size={20} />}
-                onClick={handlePickNewTime}
+                onClick={onDiscoverTimeOpen}
                 isDisabled={!canEditMeeting}
                 bg="primary.200"
                 color="neutral.900"
@@ -427,13 +397,17 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
           <Text fontSize="18px" fontWeight={500}>
             Location
           </Text>
-          <Select
+          <Select<Option<MeetingProvider>>
             value={meetingProviderValue}
             colorScheme="primary"
             onChange={newValue => _onChangeProvider(newValue)}
+            onInputChange={console.log}
             className="noLeftBorder timezone-select"
             options={meetingProviders}
-            components={customSelectComponents}
+            components={getCustomSelectComponents<
+              Option<MeetingProvider>,
+              false
+            >()}
             chakraStyles={{
               container: provided => ({
                 ...provided,
@@ -518,27 +492,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({ slot }) => {
           >
             Update Meeting
           </Button>
-          {isSchedulerOrOwner && (
-            <Button
-              w="100%"
-              py={3}
-              h={'auto'}
-              borderColor="red.500"
-              borderWidth={1}
-              color="red.500"
-              bg="transparent"
-              onClick={handleCancel}
-              variant="outline"
-              flex={1}
-              flexBasis="40%"
-              _hover={{
-                bg: 'red.500',
-                color: 'white',
-              }}
-            >
-              Cancel Meeting
-            </Button>
-          )}
         </HStack>
       </VStack>
     </VStack>
