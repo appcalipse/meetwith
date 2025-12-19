@@ -10,15 +10,13 @@ import { FaX } from 'react-icons/fa6'
 import { IoPersonAddOutline } from 'react-icons/io5'
 
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { Account } from '@/types/Account'
-import { MeetingDecrypted } from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
-import { MeetingPermissions } from '@/utils/constants/schedule'
-import { canAccountAccessPermission } from '@/utils/generic_utils'
 import ParticipantService from '@/utils/participant.service'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -28,7 +26,6 @@ import { chipStyles } from '../chip-input/chip'
 
 interface ParticipantsControlProps {
   currentAccount: Account
-  slot: MeetingDecrypted
   openInviteModal: () => void
 }
 const renderRsvpStatus = (status: ParticipationStatus) => {
@@ -89,15 +86,10 @@ const renderRsvpStatus = (status: ParticipationStatus) => {
 
 const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
   currentAccount,
-  slot,
   openInviteModal,
 }) => {
-  const canAddParticipants = canAccountAccessPermission(
-    slot?.permissions,
-    slot?.participants || [],
-    currentAccount?.address,
-    [MeetingPermissions.INVITE_GUESTS, MeetingPermissions.EDIT_MEETING]
-  )
+  const { canEditMeetingParticipants } = useParticipantPermissions()
+
   const {
     setGroupParticipants,
     setGroupAvailability,
@@ -136,11 +128,14 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
   )
   const renderBadge = React.useCallback(
     (participantInfo: ParticipantInfo, onRemove?: () => void) => (
-      <Badge sx={chipStyles.badge}>
+      <Badge
+        sx={chipStyles.badge}
+        key={participantInfo.account_address || participantInfo.guest_email}
+      >
         <Center>
           {renderRsvpStatus(participantInfo.status)}
           {renderParticipantChipLabel(participantInfo)}
-          {canAddParticipants && (
+          {canEditMeetingParticipants && (
             <Link
               sx={chipStyles.close}
               size={'xs'}
@@ -194,7 +189,7 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
   }, [participants, groupParticipants, groups])
   const handleChipInputChange = React.useCallback(
     (updatedItems: ParticipantInfo[]) => {
-      if (!canAddParticipants) return
+      if (!canEditMeetingParticipants) return
 
       const participantService = new ParticipantService(
         displayParticipants,
@@ -209,7 +204,7 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
         )
       })
     },
-    [canAddParticipants, displayParticipants]
+    [canEditMeetingParticipants, displayParticipants]
   )
 
   return (
@@ -222,11 +217,11 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
             onChange={handleChipInputChange}
             renderItem={participant => renderParticipantChipLabel(participant)}
             placeholder="Add participants"
-            addDisabled={!canAddParticipants}
-            isReadOnly={!canAddParticipants}
+            addDisabled={!canEditMeetingParticipants}
+            isReadOnly={!canEditMeetingParticipants}
             renderBadge={renderBadge}
             inputProps={
-              !canAddParticipants
+              !canEditMeetingParticipants
                 ? {
                     display: 'none',
                   }
@@ -234,12 +229,12 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
             }
           />
         </Box>
-        {canAddParticipants && (
+        {canEditMeetingParticipants && (
           <IconButton
             aria-label="Add participants"
             icon={<IoPersonAddOutline size={20} />}
             onClick={openInviteModal}
-            isDisabled={!canAddParticipants}
+            isDisabled={!canEditMeetingParticipants}
             bg="primary.200"
             color="neutral.900"
             borderRadius="6px"
