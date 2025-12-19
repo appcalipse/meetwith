@@ -166,6 +166,12 @@ import {
   AllMeetingSlotsUsedError,
   AlreadyGroupMemberError,
   AvailabilityBlockNotFoundError,
+  BillingPeriodsFetchError,
+  BillingPlanFetchError,
+  BillingPlanFromStripeProductError,
+  BillingPlanProviderFetchError,
+  BillingPlanProvidersFetchError,
+  BillingPlansFetchError,
   ChainNotFound,
   ContactAlreadyExists,
   ContactInviteNotForAccount,
@@ -206,7 +212,21 @@ import {
   QuickPollSlugNotFoundError,
   QuickPollUnauthorizedError,
   QuickPollUpdateError,
+  StripeSubscriptionCreationError,
+  StripeSubscriptionFetchError,
+  StripeSubscriptionTransactionLinkError,
+  StripeSubscriptionUpdateError,
+  SubscriptionHistoryCheckError,
+  SubscriptionHistoryFetchError,
   SubscriptionNotCustom,
+  SubscriptionPeriodCreationError,
+  SubscriptionPeriodFetchError,
+  SubscriptionPeriodFindError,
+  SubscriptionPeriodsExpirationError,
+  SubscriptionPeriodsFetchError,
+  SubscriptionPeriodStatusUpdateError,
+  SubscriptionPeriodTransactionUpdateError,
+  SubscriptionTransactionCreationError,
   TimeNotAvailableError,
   TransactionIsRequired,
   TransactionNotFoundError,
@@ -7862,7 +7882,7 @@ const getBillingPlans = async (): Promise<Tables<'billing_plans'>[]> => {
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to fetch billing plans: ${error.message}`)
+    throw new BillingPlansFetchError(error.message)
   }
 
   return data || []
@@ -7880,7 +7900,7 @@ const getBillingPlanById = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to fetch billing plan: ${error.message}`)
+    throw new BillingPlanFetchError(planId, error.message)
   }
 
   return data
@@ -7912,7 +7932,7 @@ const getBillingPlanProviders = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to fetch billing plan providers: ${error.message}`)
+    throw new BillingPlanProvidersFetchError(error.message)
   }
 
   return data || []
@@ -7932,7 +7952,7 @@ const getBillingPlanProvider = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to fetch billing plan provider: ${error.message}`)
+    throw new BillingPlanProviderFetchError(planId, provider, error.message)
   }
 
   return data?.provider_product_id || null
@@ -7952,9 +7972,7 @@ const getBillingPlanIdFromStripeProduct = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(
-      `Failed to fetch billing plan from Stripe product: ${error.message}`
-    )
+    throw new BillingPlanFromStripeProductError(stripeProductId, error.message)
   }
 
   return data?.billing_plan_id || null
@@ -7984,11 +8002,11 @@ const createStripeSubscription = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to create Stripe subscription: ${error.message}`)
+    throw new StripeSubscriptionCreationError(error.message)
   }
 
   if (!data) {
-    throw new Error('Failed to create Stripe subscription: no data returned')
+    throw new StripeSubscriptionCreationError('No data returned')
   }
 
   return data
@@ -8008,7 +8026,7 @@ const getStripeSubscriptionByAccount = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to fetch Stripe subscription: ${error.message}`)
+    throw new StripeSubscriptionFetchError(accountAddress, error.message)
   }
 
   return data
@@ -8026,7 +8044,7 @@ const getStripeSubscriptionById = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to fetch Stripe subscription: ${error.message}`)
+    throw new StripeSubscriptionFetchError(stripeSubscriptionId, error.message)
   }
 
   return data
@@ -8052,11 +8070,14 @@ const updateStripeSubscription = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to update Stripe subscription: ${error.message}`)
+    throw new StripeSubscriptionUpdateError(stripeSubscriptionId, error.message)
   }
 
   if (!data) {
-    throw new Error('Failed to update Stripe subscription: no data returned')
+    throw new StripeSubscriptionUpdateError(
+      stripeSubscriptionId,
+      'No data returned'
+    )
   }
 
   return data
@@ -8080,15 +8101,11 @@ const linkTransactionToStripeSubscription = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(
-      `Failed to link transaction to Stripe subscription: ${error.message}`
-    )
+    throw new StripeSubscriptionTransactionLinkError(error.message)
   }
 
   if (!data) {
-    throw new Error(
-      'Failed to link transaction to Stripe subscription: no data returned'
-    )
+    throw new StripeSubscriptionTransactionLinkError('No data returned')
   }
 
   return data
@@ -8106,15 +8123,11 @@ const createSubscriptionTransaction = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(
-      `Failed to create subscription transaction: ${error.message}`
-    )
+    throw new SubscriptionTransactionCreationError(error.message)
   }
 
   if (!data) {
-    throw new Error(
-      'Failed to create subscription transaction: no data returned'
-    )
+    throw new SubscriptionTransactionCreationError('No data returned')
   }
 
   return data
@@ -8147,11 +8160,11 @@ const createSubscriptionPeriod = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to create subscription period: ${error.message}`)
+    throw new SubscriptionPeriodCreationError(error.message)
   }
 
   if (!data) {
-    throw new Error('Failed to create subscription period: no data returned')
+    throw new SubscriptionPeriodCreationError('No data returned')
   }
 
   return data
@@ -8176,9 +8189,7 @@ const getActiveSubscriptionPeriod = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(
-      `Failed to fetch active subscription period: ${error.message}`
-    )
+    throw new SubscriptionPeriodFetchError(accountAddress, error.message)
   }
 
   return data
@@ -8258,7 +8269,7 @@ const hasSubscriptionHistory = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to check subscription history: ${error.message}`)
+    throw new SubscriptionHistoryCheckError(accountAddress, error.message)
   }
 
   return (count ?? 0) > 0
@@ -8276,7 +8287,7 @@ const getSubscriptionPeriodsByAccount = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to fetch subscription periods: ${error.message}`)
+    throw new SubscriptionPeriodsFetchError(accountAddress, error.message)
   }
 
   return data || []
@@ -8298,9 +8309,7 @@ const getSubscriptionHistory = async (
 
   if (countError) {
     Sentry.captureException(countError)
-    throw new Error(
-      `Failed to count subscription periods: ${countError.message}`
-    )
+    throw new SubscriptionHistoryFetchError(accountAddress, countError.message)
   }
 
   // Get paginated subscription periods
@@ -8314,7 +8323,7 @@ const getSubscriptionHistory = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to fetch subscription history: ${error.message}`)
+    throw new SubscriptionHistoryFetchError(accountAddress, error.message)
   }
 
   return {
@@ -8341,9 +8350,7 @@ const getBillingPeriodsByExpiryWindow = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(
-      `Failed to fetch billing periods by expiry window: ${error.message}`
-    )
+    throw new BillingPeriodsFetchError(error.message)
   }
 
   return data || []
@@ -8396,10 +8403,8 @@ const expireStaleSubscriptionPeriods = async (): Promise<{
     }
   } catch (error) {
     Sentry.captureException(error)
-    throw new Error(
-      `Failed to expire subscription periods: ${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`
+    throw new SubscriptionPeriodsExpirationError(
+      error instanceof Error ? error.message : 'Unknown error'
     )
   }
 }
@@ -8421,14 +8426,13 @@ const updateSubscriptionPeriodStatus = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(
-      `Failed to update subscription period status: ${error.message}`
-    )
+    throw new SubscriptionPeriodStatusUpdateError(subscriptionId, error.message)
   }
 
   if (!data) {
-    throw new Error(
-      'Failed to update subscription period status: no data returned'
+    throw new SubscriptionPeriodStatusUpdateError(
+      subscriptionId,
+      'No data returned'
     )
   }
 
@@ -8452,14 +8456,16 @@ const updateSubscriptionPeriodTransaction = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(
-      `Failed to update subscription period transaction: ${error.message}`
+    throw new SubscriptionPeriodTransactionUpdateError(
+      subscriptionId,
+      error.message
     )
   }
 
   if (!data) {
-    throw new Error(
-      'Failed to update subscription period transaction: no data returned'
+    throw new SubscriptionPeriodTransactionUpdateError(
+      subscriptionId,
+      'No data returned'
     )
   }
 
@@ -8483,7 +8489,7 @@ const findSubscriptionPeriodByPlanAndExpiry = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(`Failed to find subscription period: ${error.message}`)
+    throw new SubscriptionPeriodFindError(error.message)
   }
 
   return data
@@ -8506,9 +8512,7 @@ const findRecentSubscriptionPeriodByPlan = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error(
-      `Failed to find recent subscription period: ${error.message}`
-    )
+    throw new SubscriptionPeriodFindError(error.message)
   }
 
   return data
