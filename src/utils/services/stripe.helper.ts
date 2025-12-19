@@ -18,6 +18,7 @@ import {
   createSubscriptionPeriod,
   findSubscriptionPeriodByPlanAndExpiry,
   getActiveSubscriptionPeriod,
+  getBillingEmailAccountInfo,
   getBillingPlanById,
   getBillingPlanIdFromStripeProduct,
   getStripeSubscriptionById,
@@ -1093,25 +1094,8 @@ export const handleInvoicePaymentFailed = async (
     return
   }
 
-  const accountAddress = stripeSubscription.account_address.toLowerCase()
-
-  // Update subscription status to reflect payment failure
-  // Note: Stripe will retry payment attempts, so we don't immediately expire subscriptions
-  // We could optionally mark subscription periods as 'cancelled' if payment fails multiple times
-  // For now, we'll just log the failure - Stripe handles retries automatically
-  try {
-    // Optionally: Update subscription periods to 'cancelled' if this is a final failure
-    // For now, we'll let Stripe handle retries and only update on subscription.deleted
-    // This can be enhanced later to track payment failure count and handle accordingly
-    // TODO: Send notification to user about payment failure (optional)
-    // This could be implemented later with email notifications
-  } catch (error) {
-    Sentry.captureException(error)
-  }
-}
-
-export const handleSubscriptionTrialWillEnd = async (
-  event: Stripe.CustomerSubscriptionTrialWillEndEvent
-) => {
-  // TODO: Optional - implement notification logic
+  // Note: Stripe automatically sends payment failure emails to customers when invoice.payment_failed events occur.
+  // Stripe will also automatically retry payment attempts, so we don't immediately expire subscriptions.
+  // We handle this webhook event primarily for logging/monitoring purposes, not for sending duplicate notifications.
+  Sentry.captureException(new Error('Stripe invoice payment failed'))
 }
