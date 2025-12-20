@@ -2216,6 +2216,19 @@ const calendarEventsPreprocessors = (
   }
   return instances
 }
+
+const rsvpMeeting = (status: ParticipationStatus, eventId: string) => {
+  const isRecurringMeeting = eventId.includes('_')
+  if (isRecurringMeeting) {
+  }
+}
+const handleRsvpForRecurringMeeting = (
+  status: ParticipationStatus,
+  eventId: string
+) => {
+  const [sourceEventId, instanceIdentifier] = eventId.split('_instance_')
+}
+
 export {
   allSlots,
   buildMeetingData,
