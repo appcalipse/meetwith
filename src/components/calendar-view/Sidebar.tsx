@@ -17,7 +17,7 @@ const Sidebar: React.FC = () => {
       borderColor="neutral.700"
     >
       <CalendarPicker />
-      {/*<ConnectedCalendar />*/}
+      <ConnectedCalendar />
       <UpComingEvents />
     </VStack>
   )
