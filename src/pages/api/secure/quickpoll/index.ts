@@ -76,7 +76,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           total_count: allActivePollsCountResult.total_count,
           has_more: false, // Free users don't get pagination for active polls
           hidden: hiddenActivePolls,
-          upgradeRequired: allActivePollsCountResult.total_count > 2,
+          upgradeRequired: allActivePollsCountResult.total_count >= 2,
         }
 
         return res.status(200).json(response)

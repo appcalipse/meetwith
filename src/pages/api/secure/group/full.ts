@@ -38,7 +38,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           groups: allGroups,
           total: allGroupsUnlimited.length,
           hidden: Math.max(0, allGroupsUnlimited.length - 5),
-          upgradeRequired: allGroupsUnlimited.length > 5,
+          upgradeRequired: allGroupsUnlimited.length >= 5,
         })
       }
 
