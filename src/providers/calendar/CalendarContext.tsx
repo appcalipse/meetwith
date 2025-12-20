@@ -9,6 +9,7 @@ import {
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
 import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
+import { ParticipationStatus } from '@/types/ParticipantInfo'
 import { getEvents, listConnectedCalendars } from '@/utils/api_helper'
 import {
   calendarEventsPreprocessors,
@@ -37,6 +38,10 @@ interface ICalendarContext {
       Array<WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>>
     >
   }
+}
+export type CalendarEventsData = {
+  calendarEvents: UnifiedEvent[]
+  mwwEvents: MeetingDecrypted[]
 }
 
 export const CalendarContext = React.createContext<ICalendarContext>({
@@ -73,6 +78,9 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   >([])
   const [selectedSlot, setSelectedSlot] =
     React.useState<WithInterval<MeetingDecrypted> | null>(null)
+  const [optimisticRSVPs, setOptimisticRSVPs] = React.useState<
+    Map<string, ParticipationStatus>
+  >(new Map())
   const { data: calendars } = useQuery({
     queryKey: ['connected-calendars'],
     queryFn: () => listConnectedCalendars(false),
@@ -81,7 +89,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   const currentAccount = useAccountContext()
 
   const fetchEventsForMonth = React.useCallback(
-    async (date: DateTime) => {
+    async (date: DateTime): Promise<CalendarEventsData> => {
       const res = await getEvents(date)
       return {
         calendarEvents: calendarEventsPreprocessors(res.calendarEvents, date),
