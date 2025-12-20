@@ -16,6 +16,7 @@ import { FaPlus } from 'react-icons/fa'
 import ConnectCalendarModal from '@/components/ConnectedCalendars/ConnectCalendarModal'
 import { ConnectedCalendarCard } from '@/components/ConnectedCalendars/ConnectedCalendarCard'
 import { DisabledCalendarCard } from '@/components/ConnectedCalendars/DisabledCalendarCard'
+import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { Account } from '@/types/Account'
 import {
   ConnectedCalendarCore,
@@ -112,6 +113,8 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
   const [calendarConnections, setCalendarConnections] = useState<
     ConnectedCalendarCore[]
   >([])
+  const { canCreateCalendar, isLoading: isLoadingResourceLimits } =
+    useResourceLimits()
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
@@ -175,6 +178,12 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         mb={7}
         alignSelf="flex-start"
         leftIcon={<FaPlus />}
+        isDisabled={isLoadingResourceLimits || !canCreateCalendar}
+        title={
+          !canCreateCalendar
+            ? 'Upgrade to Pro to connect more calendars'
+            : undefined
+        }
       >
         Add calendar connection
       </Button>

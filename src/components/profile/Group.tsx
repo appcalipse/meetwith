@@ -22,6 +22,7 @@ import ModalLoading from '@/components/Loading/ModalLoading'
 import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
 import { useAvailabilityBlock } from '@/hooks/availability'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
+import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
 import { Intents, InviteType } from '@/types/Dashboard'
@@ -41,6 +42,8 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const groupRef = useRef<GroupRef>(null)
   const groupInviteRef = useRef<GroupInvitesRef>(null)
+  const { canCreateGroup, isLoading: isLoadingResourceLimits } =
+    useResourceLimits()
 
   const {
     block: defaultAvailabilityBlock,
@@ -178,6 +181,12 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             mb={4}
             leftIcon={<FaPlus />}
             w={'100%'}
+            isDisabled={isLoadingResourceLimits || !canCreateGroup}
+            title={
+              !canCreateGroup
+                ? 'Upgrade to Pro to create more groups'
+                : undefined
+            }
           >
             Create new group
           </Button>
@@ -234,6 +243,12 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             colorScheme="primary"
             display={{ base: 'none', md: 'flex' }}
             leftIcon={<FaPlus />}
+            isDisabled={isLoadingResourceLimits || !canCreateGroup}
+            title={
+              !canCreateGroup
+                ? 'Upgrade to Pro to create more groups'
+                : undefined
+            }
           >
             Create new group
           </Button>

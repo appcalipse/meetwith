@@ -27,6 +27,7 @@ import GroupAdminChangeModal from '@/components/group/GroupAdminChangeModal'
 import GroupAdminLeaveModal from '@/components/group/GroupAdminLeaveModal'
 import LeaveGroupModal from '@/components/group/LeaveGroupModal'
 import RemoveGroupMemberModal from '@/components/group/RemoveGroupMemberModal'
+import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { getGroupsFull } from '@/utils/api_helper'
@@ -80,6 +81,8 @@ export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 const Groups = forwardRef<GroupRef, Props>(
   ({ currentAccount, search }: Props, ref) => {
     const toast = useToast()
+    const { canCreateGroup, isLoading: isLoadingResourceLimits } =
+      useResourceLimits()
 
     const { data, isLoading, isFetching, hasNextPage, fetchNextPage, error } =
       useInfiniteQuery({
@@ -208,6 +211,12 @@ const Groups = forwardRef<GroupRef, Props>(
             mt={{ base: 4, md: 0 }}
             mb={4}
             leftIcon={<FaPlus />}
+            isDisabled={isLoadingResourceLimits || !canCreateGroup}
+            title={
+              !canCreateGroup
+                ? 'Upgrade to Pro to create more groups'
+                : undefined
+            }
           >
             Create new group
           </Button>

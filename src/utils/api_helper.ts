@@ -802,6 +802,19 @@ export const getGroupsFull = async (
   }
   return response.groups
 }
+
+export const getGroupsFullWithMetadata = async (
+  limit?: number,
+  offset?: number,
+  search?: string,
+  includeInvites = true
+): Promise<GetGroupsFullResponseWithMetadata> => {
+  let url = `/secure/group/full?limit=${limit}&offset=${offset}&includeInvites=${includeInvites}`
+  if (search) {
+    url += `&search=${search}`
+  }
+  return await internalFetch<GetGroupsFullResponseWithMetadata>(url)
+}
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   const response = (await internalFetch(
     `/secure/group/empty`
@@ -1153,6 +1166,14 @@ export const listConnectedCalendars = async (
       )
       return response.calendars || []
     }
+  )
+}
+
+export const getCalendarIntegrationsWithMetadata = async (
+  syncOnly = false
+): Promise<GetCalendarIntegrationsResponse> => {
+  return await internalFetch<GetCalendarIntegrationsResponse>(
+    `/secure/calendar_integrations?syncOnly=${syncOnly}`
   )
 }
 
@@ -1911,6 +1932,15 @@ export const getMeetingTypes = async (
     return response
   }
   return response.meetingTypes
+}
+
+export const getMeetingTypesWithMetadata = async (
+  limit = 10,
+  offset = 0
+): Promise<GetMeetingTypesResponseWithMetadata> => {
+  return await internalFetch<GetMeetingTypesResponseWithMetadata>(
+    `/secure/meetings/type?limit=${limit}&offset=${offset}`
+  )
 }
 
 export const getMeetingType = async (id: string): Promise<MeetingType> => {

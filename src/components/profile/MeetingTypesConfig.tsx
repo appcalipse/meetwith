@@ -19,6 +19,7 @@ import { getAccountCalendarUrl } from '@utils/calendar_manager'
 import React, { ReactNode, useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
+import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { AvailabilityBlock } from '@/types/availability'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { PaymentAccountStatus } from '@/types/PaymentAccount'
@@ -37,6 +38,8 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   const bgColor = useColorModeValue('white', 'neutral.900')
   const [selectedType, setSelectedType] = useState<MeetingType | null>(null)
   const [createKey, setCreateKey] = useState<string>(uuidv4())
+  const { canCreateMeetingType, isLoading: isLoadingResourceLimits } =
+    useResourceLimits()
 
   const {
     isOpen: isModalOpen,
@@ -208,6 +211,12 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
                 base: 'xs',
                 md: 'md',
               }}
+              isDisabled={isLoadingResourceLimits || !canCreateMeetingType}
+              title={
+                !canCreateMeetingType
+                  ? 'Upgrade to Pro to create more meeting types'
+                  : undefined
+              }
             >
               New Meeting Type
             </Button>

@@ -21,6 +21,7 @@ import { FiSearch } from 'react-icons/fi'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
+import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 
 import CountSkeleton from './CountSkeleton'
@@ -32,6 +33,8 @@ const AllPolls = () => {
   const [activeTab, setActiveTab] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
+  const { canCreateQuickPoll, isLoading: isLoadingResourceLimits } =
+    useResourceLimits()
 
   const {
     ongoingPollsCount,
@@ -101,6 +104,12 @@ const AllPolls = () => {
               bg: 'primary.400',
             }}
             onClick={() => push('/dashboard/create-poll')}
+            isDisabled={isLoadingResourceLimits || !canCreateQuickPoll}
+            title={
+              !canCreateQuickPoll
+                ? 'Upgrade to Pro to create more active polls'
+                : undefined
+            }
           >
             Run new poll
           </Button>

@@ -55,7 +55,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           hidden: allMeetingTypes.length - limitedMeetingTypes.length,
           paidHidden: paidMeetingTypes.length,
           upgradeRequired:
-            allMeetingTypes.length > 1 || paidMeetingTypes.length > 0,
+            allMeetingTypes.length >= 1 || paidMeetingTypes.length >= 0,
         })
       }
 
