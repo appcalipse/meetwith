@@ -8647,6 +8647,20 @@ const updatePaymentAccount = async (
     : updatedPaymentAccount
 }
 
+const getSlotInstance = async (slotInstanceId: string) => {
+  const { data: slotInstance, error } = await db.supabase.rpc(
+    'get_slot_instance_by_id',
+    { instance_id: slotInstanceId }
+  )
+  if (error) {
+    throw new Error('Could not fetch slot instance')
+  }
+  if (!slotInstance) {
+    throw new Error('Slot instance not found')
+  }
+  return slotInstance
+}
+
 export {
   acceptContactInvite,
   addContactInvite,
@@ -8744,6 +8758,7 @@ export {
   getQuickPollsForAccount,
   getSlotById,
   getSlotByMeetingIdAndAccount,
+  getSlotInstance,
   getSlotsByIds,
   getSlotSeries,
   getSlotSeriesId,
