@@ -204,7 +204,7 @@ export const handleSubscriptionCreated = async (
 
   if (isTrialingNow) {
     try {
-      await createSubscriptionPeriod(
+      const createdPeriod = await createSubscriptionPeriod(
         accountAddress,
         billingPlanId,
         'active',
@@ -228,8 +228,8 @@ export const handleSubscriptionCreated = async (
               await sendSubscriptionConfirmationEmailForAccount(
                 accountAddress,
                 emailPlan,
-                new Date(),
-                new Date(trialEnd * 1000),
+                createdPeriod.registered_at,
+                createdPeriod.expiry_time,
                 BillingPaymentProvider.STRIPE,
                 undefined,
                 true // isTrial
@@ -850,7 +850,7 @@ export const handleInvoicePaymentSucceeded = async (
 
     // Create subscription period with invoice transaction
     try {
-      await createSubscriptionPeriod(
+      const createdPeriod = await createSubscriptionPeriod(
         accountAddress,
         billingPlanId,
         'active',
@@ -871,8 +871,8 @@ export const handleInvoicePaymentSucceeded = async (
           await sendSubscriptionConfirmationEmailForAccount(
             accountAddress,
             emailPlan,
-            new Date(),
-            calculatedExpiryTime,
+            createdPeriod.registered_at,
+            createdPeriod.expiry_time,
             BillingPaymentProvider.STRIPE,
             { amount: amountPaid, currency: currency || 'USD' }
           )
@@ -986,7 +986,7 @@ export const handleInvoicePaymentSucceeded = async (
 
       if (currentPeriodEnd && typeof currentPeriodEnd === 'number') {
         const calculatedExpiryTime = new Date(currentPeriodEnd * 1000)
-        await createSubscriptionPeriod(
+        const createdPeriod = await createSubscriptionPeriod(
           accountAddress,
           billingPlanId,
           'active',
@@ -1007,8 +1007,8 @@ export const handleInvoicePaymentSucceeded = async (
             await sendSubscriptionConfirmationEmailForAccount(
               accountAddress,
               emailPlan,
-              new Date(),
-              calculatedExpiryTime,
+              createdPeriod.registered_at,
+              createdPeriod.expiry_time,
               BillingPaymentProvider.STRIPE,
               { amount: amountPaid, currency: currency || 'USD' }
             )

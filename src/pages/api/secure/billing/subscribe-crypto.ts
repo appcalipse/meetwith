@@ -72,7 +72,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         }
 
         const trialExpiry = DateTime.now().plus({ days: 14 }).toJSDate()
-        await createSubscriptionPeriod(
+        const createdPeriod = await createSubscriptionPeriod(
           accountAddress,
           billing_plan_id,
           'active',
@@ -93,8 +93,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             await sendSubscriptionConfirmationEmailForAccount(
               accountAddress,
               emailPlan,
-              new Date(),
-              trialExpiry,
+              createdPeriod.registered_at,
+              createdPeriod.expiry_time,
               BillingPaymentProvider.CRYPTO,
               undefined,
               true // isTrial
