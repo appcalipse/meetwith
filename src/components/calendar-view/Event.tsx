@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
   useDisclosure,
 } from '@chakra-ui/react'
+import { colord } from 'colord'
 import { DateTime } from 'luxon'
 import * as React from 'react'
 import { FaExpand, FaX } from 'react-icons/fa6'
@@ -18,7 +19,6 @@ import {
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
 import {
-  isAccepted,
   isCalendarEvent,
   isDeclined,
   isPendingAction,
@@ -66,7 +66,6 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
   }, [event, currentAccount])
   const isDeclinedStatus = isDeclined(actor?.status)
   const isPendingStatus = isPendingAction(actor?.status)
-  const isAcceptedStatus = isAccepted(actor?.status)
 
   const isStartInsideOtherEvent = dayEvents.filter(otherEvent => {
     if (otherEvent.id === event.id) return false
@@ -78,7 +77,6 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
   const top =
     ((event.start.diff(timeSlot, 'minutes').toObject().minutes || 0) / 60) * 36
   const handleSelectEvent = (close: () => void) => {
-    close()
     if (!isCalendarEvent(event)) {
       setSelectedSlot({
         ...event,
@@ -86,7 +84,13 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
         end: event.end.toJSDate(),
       })
     }
+    close()
   }
+  const borderColor = React.useMemo(() => generateBorderColor(bg), [bg])
+  const stripeColor = React.useMemo(
+    () => colord(borderColor).alpha(0.35).toRgbString(),
+    [borderColor]
+  )
   const handleCleanup = async (close: () => void) => {
     await Promise.all([
       queryClient.invalidateQueries(createEventsQueryKey(currrentDate)),
@@ -119,14 +123,13 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
               borderLeftWidth={5}
               rounded={'3px'}
               px={1.5}
-              borderColor={generateBorderColor(bg)}
+              borderColor={borderColor}
               color={getDesignSystemTextColor(bg)}
               w="100%"
               minW={0}
               height={`${Math.max(height, 18)}px`}
               marginTop={margin}
               marginLeft={margin}
-              top={top}
               zIndex={2}
               py={0}
               overflowY="hidden"
@@ -134,6 +137,19 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
                 borderWidth: '2px',
                 borderLeftWidth: 5,
               }}
+              position="relative"
+              _after={
+                isPendingStatus
+                  ? {
+                      content: '""',
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: '3px',
+                      pointerEvents: 'none',
+                      backgroundImage: `repeating-linear-gradient(135deg, ${stripeColor} 0 6px, rgba(0,0,0,0) 6px 12px)`,
+                    }
+                  : undefined
+              }
             >
               <VStack gap={0}>
                 <Text
@@ -142,6 +158,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
                   overflow="hidden"
                   textOverflow="ellipsis"
                   fontSize="xs"
+                  textDecoration={isDeclinedStatus ? 'line-through' : undefined}
                 >
                   {event.title}
                 </Text>
