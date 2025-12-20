@@ -78,6 +78,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   const { updateUser } = useContext(AccountContext)
 
   const subsRef = useRef<any>(null)
+  const processedCheckoutRef = useRef<string | undefined>(undefined)
   const [manageSubscriptionLoading, setManageSubscriptionLoading] =
     useState(false)
   const [currentPlan, setCurrentPlan] = useState<Plan | undefined>(undefined)
@@ -184,35 +185,45 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
 
   // Handle Stripe Checkout redirects
   useEffect(() => {
-    if (checkout === 'success') {
-      showSuccessToast('Subscription successful!', 'Welcome to Pro!')
-      void updateUser()
-      // Clean up query parameters
-      const {
-        checkout: _checkout,
-        session_id: _session_id,
-        ...restQuery
-      } = query
-      void replace(
-        {
-          pathname: `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`,
-          query: restQuery,
-        },
-        undefined,
-        { shallow: true }
-      )
-    } else if (checkout === 'cancel') {
-      showInfoToast('Payment cancelled', 'You can try again anytime.')
-      // Clean up query parameters
-      const { checkout: _checkout, ...restQuery } = query
-      void replace(
-        {
-          pathname: `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`,
-          query: restQuery,
-        },
-        undefined,
-        { shallow: true }
-      )
+    const checkoutValue = checkout as string | undefined
+
+    // Only process if checkout has a value and we haven't processed this value yet
+    if (checkoutValue && processedCheckoutRef.current !== checkoutValue) {
+      processedCheckoutRef.current = checkoutValue
+
+      if (checkoutValue === 'success') {
+        showSuccessToast('Subscription successful!', 'Welcome to Pro!')
+        void updateUser()
+        // Clean up query parameters
+        const {
+          checkout: _checkout,
+          session_id: _session_id,
+          ...restQuery
+        } = query
+        void replace(
+          {
+            pathname: `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`,
+            query: restQuery,
+          },
+          undefined,
+          { shallow: true }
+        )
+      } else if (checkoutValue === 'cancel') {
+        showInfoToast('Payment cancelled', 'You can try again anytime.')
+        // Clean up query parameters
+        const { checkout: _checkout, ...restQuery } = query
+        void replace(
+          {
+            pathname: `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`,
+            query: restQuery,
+          },
+          undefined,
+          { shallow: true }
+        )
+      }
+    } else if (!checkoutValue) {
+      // Reset the ref when checkout is cleared
+      processedCheckoutRef.current = undefined
     }
   }, [checkout, query, replace, showSuccessToast, showInfoToast, updateUser])
 

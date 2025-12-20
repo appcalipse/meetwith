@@ -255,8 +255,9 @@ export const handleCryptoSubscriptionPayment = async (
   }
 
   // Create subscription period
+  let createdPeriod
   try {
-    await createSubscriptionPeriod(
+    createdPeriod = await createSubscriptionPeriod(
       account_address.toLowerCase(),
       billing_plan_id,
       'active',
@@ -289,8 +290,8 @@ export const handleCryptoSubscriptionPayment = async (
       await sendSubscriptionConfirmationEmailForAccount(
         account_address.toLowerCase(),
         emailPlan,
-        new Date(),
-        calculatedExpiryTime,
+        createdPeriod.registered_at,
+        createdPeriod.expiry_time,
         BillingPaymentProvider.CRYPTO,
         {
           amount: transactionData.fiatEquivalent,
