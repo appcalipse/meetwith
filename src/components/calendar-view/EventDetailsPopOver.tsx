@@ -22,7 +22,11 @@ import { FaRegCopy } from 'react-icons/fa6'
 import { MdCancel } from 'react-icons/md'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { useCalendarContext } from '@/providers/calendar/CalendarContext'
+import {
+  CalendarEventsData,
+  createEventsQueryKey,
+  useCalendarContext,
+} from '@/providers/calendar/CalendarContext'
 import {
   isAccepted,
   isDeclined,
@@ -31,11 +35,16 @@ import {
   WithInterval,
 } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
+import { ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import { dateToLocalizedRange } from '@/utils/calendar_manager'
 import { MeetingPermissions } from '@/utils/constants/schedule'
-import { canAccountAccessPermission } from '@/utils/generic_utils'
+import {
+  canAccountAccessPermission,
+  isAccountSchedulerOrOwner,
+} from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
+import { queryClient } from '@/utils/react_query'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { TruncatedText } from './TruncatedText'
@@ -56,10 +65,13 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
   onSelectEvent,
   onCancelOpen,
 }) => {
+  const { currrentDate } = useCalendarContext()
   const currentAccount = useAccountContext()
   const [copyFeedbackOpen, setCopyFeedbackOpen] = React.useState(false)
 
-  const { currrentDate } = useCalendarContext()
+  const isSchedulerOrOwner =
+    !isCalendarEvent(slot) &&
+    isAccountSchedulerOrOwner(slot?.participants, currentAccount?.address)
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
   const participants = React.useMemo(() => {
@@ -119,6 +131,44 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
     setTimeout(() => {
       setCopyFeedbackOpen(false)
     }, 2000)
+  }
+  const handleRSVP = async (status: ParticipationStatus) => {
+    if (isCalendarEvent(slot) || !actor) return
+    if (status === actor.status) return
+
+    logEvent(`Clicked RSVP ${status} from Event Details PopOver`)
+
+    // Optimistically update the query cache in-place
+    queryClient.setQueryData<CalendarEventsData>(
+      createEventsQueryKey(currrentDate),
+      old => {
+        if (!old?.mwwEvents) return old
+        return {
+          ...old,
+          mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
+            if (event.id !== slot.id) return event
+            return {
+              ...event,
+              participants: event.participants.map((p: any) =>
+                p.account_address === currentAccount?.address
+                  ? { ...p, status }
+                  : p
+              ),
+            }
+          }),
+        }
+      }
+    )
+
+    // Background persistence
+    try {
+      // TODO: Call your backend API
+      // await updateParticipantStatus(slot.meeting_id, currentAccount.address, status)
+    } catch (error) {
+      // On failure, invalidate to revert to server state
+      queryClient.invalidateQueries(createEventsQueryKey(currrentDate))
+      console.error('Failed to update RSVP:', error)
+    }
   }
 
   return (
@@ -220,14 +270,16 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
             onClick={onSelectEvent}
           />
         </Tooltip>
-        <Tooltip label="Cancel meeting" placement="top">
-          <IconButton
-            color={iconColor}
-            aria-label="remove"
-            icon={<MdCancel size={16} />}
-            onClick={onCancelOpen}
-          />
-        </Tooltip>
+        {isSchedulerOrOwner && (
+          <Tooltip label="Cancel meeting" placement="top">
+            <IconButton
+              color={iconColor}
+              aria-label="remove"
+              icon={<MdCancel size={16} />}
+              onClick={onCancelOpen}
+            />
+          </Tooltip>
+        )}
       </HStack>
       {actor && (
         <HStack alignItems="center" gap={3.5}>
@@ -243,6 +295,11 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                 lg: '16px',
                 md: '14px',
                 base: '12px',
+              }}
+              onClick={() => {
+                if (!isCalendarEvent(slot)) {
+                  handleRSVP(ParticipationStatus.Accepted)
+                }
               }}
             >
               <TagLabel
@@ -262,6 +319,11 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                 md: '14px',
                 base: '12px',
               }}
+              onClick={() => {
+                if (!isCalendarEvent(slot)) {
+                  handleRSVP(ParticipationStatus.Rejected)
+                }
+              }}
             >
               <TagLabel color={isDeclined(actor?.status) ? 'white' : 'red.250'}>
                 No
@@ -279,6 +341,11 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                 lg: '16px',
                 md: '14px',
                 base: '12px',
+              }}
+              onClick={() => {
+                if (!isCalendarEvent(slot)) {
+                  handleRSVP(ParticipationStatus.Pending)
+                }
               }}
             >
               <TagLabel
