@@ -72,6 +72,7 @@
     "arrow-keys-react": "^1.0.6",
     "busboy": "^1.6.0",
     "chakra-react-select": "^4.7.6",
+    "colord": "^2.9.3",
     "cookie": "0.7.0",
     "countries-and-timezones": "^3.6.0",
     "crypto-js": "^4.1.1",
