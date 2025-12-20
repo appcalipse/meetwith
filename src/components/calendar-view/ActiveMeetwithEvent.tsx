@@ -183,13 +183,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
       onDeleteOpen()
     }
   }
-  const inviteKey = React.useMemo(
-    () =>
-      `${Object.values(groupAvailability).flat().length}-${
-        Object.values(groupParticipants).flat().length
-      }-${participants.length}`,
-    [groupAvailability, groupParticipants, participants]
-  )
   if (!currentAccount) {
     return null
   }
