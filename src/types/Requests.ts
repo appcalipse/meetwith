@@ -38,6 +38,14 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   eventId?: string | null
   calendar_id?: string | null
 }
+export interface MeetingInstanceUpdateRequest extends MeetingCreationRequest {
+  slotsToRemove: string[]
+  guestsToRemove: ParticipantInfo[]
+  version: number
+  eventId?: string | null
+  calendar_id?: string | null
+  series_id: string
+}
 
 export interface MeetingCreationRequest {
   type: SchedulingType
@@ -122,6 +130,11 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   notification_hash?: string
   rrule?: Array<string>
   skipCalendarSync?: boolean
+  skipNotify?: boolean
+}
+export interface MeetingInstanceCreationSyncRequest
+  extends MeetingCreationSyncRequest {
+  original_start_time: Date
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
