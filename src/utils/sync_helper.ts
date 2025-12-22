@@ -436,4 +436,5 @@ export const ExternalCalendarSync = {
 
     await Promise.all(tasks)
   },
+  updateInstance: async (meetingDetails: MeetingCreationSyncRequest) => {},
 }

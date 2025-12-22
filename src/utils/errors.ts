@@ -547,3 +547,10 @@ export class QuickPollAlreadyCompletedError extends Error {
     this.name = 'QuickPollAlreadyCompletedError'
   }
 }
+
+export class DecryptionFailedError extends Error {
+  constructor() {
+    super('Failed to decrypt the data')
+    this.name = 'DecryptionFailedError'
+  }
+}
