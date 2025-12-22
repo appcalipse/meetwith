@@ -20,8 +20,11 @@ import {
   MicrosoftGraphEvent,
   RecurrencePattern,
 } from '@/types/Office365'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
+import {
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '@/types/Requests'
 
 import { appUrl } from '../constants'
 import {
@@ -485,9 +488,11 @@ export class Office365CalendarService implements IOffcie365CalendarService {
           type: 'required',
           status: {
             response:
-              participant.account_address === calendarOwnerAccountAddress
+              participant.status === ParticipationStatus.Accepted
                 ? 'accepted'
-                : 'none',
+                : participant.status === ParticipationStatus.Rejected
+                ? 'declined'
+                : 'notResponded',
             time: new Date().toISOString(),
           },
         }
@@ -503,5 +508,47 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       }
     }
     return payload
+  }
+  async updateEventInstance(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    calendarId: string
+  ): Promise<void> {
+    const meeting_id = meetingDetails.meeting_id
+    const officeId = await getOfficeEventMappingId(meeting_id)
+
+    if (!officeId) {
+      Sentry.captureException("Can't find office event mapping")
+      throw new Error("Can't find office event mapping")
+    }
+    const originalStartTime = new Date(
+      meetingDetails.original_start_time
+    ).toISOString()
+
+    const instances = await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${officeId}/instances`)
+      .filter(`start/dateTime eq '${originalStartTime}'`)
+      .get()
+
+    const instance: MicrosoftGraphEvent | null = instances.value[0]
+    if (!instance || !instance?.id) {
+      throw new Error('Instance not found')
+    }
+    const useParticipants =
+      instance.attendees &&
+      instance.attendees.filter(
+        attendee => attendee?.emailAddress.address !== this.getConnectedEmail()
+      ).length > 0
+    await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${instance.id}`)
+      .patch(
+        this.translateEvent(
+          calendarOwnerAccountAddress,
+          meetingDetails,
+          meeting_id,
+          new Date(),
+          useParticipants
+        )
+      )
   }
 }
