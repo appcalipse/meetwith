@@ -15,7 +15,10 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import {
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '@/types/Requests'
 
 import { handleRRULEForMeeting } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
@@ -1226,6 +1229,119 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       )
     )
     return events.flat()
+  }
+
+  async updateEventInstance(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    calendarId: string
+  ): Promise<void> {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    const seriesMasterId = meetingDetails.meeting_id
+    const originalStartTime = meetingDetails.original_start_time
+
+    const instances = await calendar.events.instances({
+      calendarId,
+      eventId: seriesMasterId,
+      timeMin: new Date(originalStartTime).toISOString(),
+      timeMax: new Date(originalStartTime).toISOString(),
+    })
+
+    const instance = instances.data.items?.[0]
+    if (!instance?.id) {
+      throw new Error('Instance not found')
+    }
+
+    await calendar.events.patch({
+      calendarId,
+      eventId: instance.id,
+      requestBody: await this.buildEventUpdatePayload(
+        calendarOwnerAccountAddress,
+        meetingDetails,
+        instance
+      ),
+    })
+  }
+  async buildEventUpdatePayload(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    event?: calendar_v3.Schema$Event
+  ) {
+    const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    const meeting_id = meetingDetails.meeting_id
+
+    const participantsInfo: ParticipantInfo[] = meetingDetails.participants.map(
+      participant => ({
+        type: participant.type,
+        name: participant.name,
+        account_address: participant.account_address,
+        status: participant.status,
+        slot_id: '',
+        meeting_id,
+      })
+    )
+    const payload: calendar_v3.Schema$Event = {
+      summary: CalendarServiceHelper.getMeetingTitle(
+        calendarOwnerAccountAddress,
+        participantsInfo,
+        meetingDetails.title
+      ),
+      description: CalendarServiceHelper.getMeetingSummary(
+        meetingDetails.content,
+        meetingDetails.meeting_url,
+        changeUrl
+      ),
+      start: {
+        dateTime: new Date(meetingDetails.start).toISOString(),
+        timeZone: 'UTC',
+      },
+      end: {
+        dateTime: new Date(meetingDetails.end).toISOString(),
+        timeZone: 'UTC',
+      },
+      attendees: [],
+      guestsCanModify: meetingDetails.meetingPermissions?.includes(
+        MeetingPermissions.EDIT_MEETING
+      ),
+      guestsCanInviteOthers: meetingDetails.meetingPermissions?.includes(
+        MeetingPermissions.INVITE_GUESTS
+      ),
+      guestsCanSeeOtherGuests: meetingDetails.meetingPermissions?.includes(
+        MeetingPermissions.SEE_GUEST_LIST
+      ),
+      reminders: {
+        useDefault: false,
+        overrides: [{ method: 'popup', minutes: 10 }],
+      },
+    }
+
+    if (meetingDetails.meeting_url) {
+      payload['location'] = meetingDetails.meeting_url
+    }
+    if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
+      payload.reminders.overrides = meetingDetails.meetingReminders.map(
+        this.createReminder
+      )
+    }
+    if (event?.extendedProperties?.private?.includesParticipants === 'true') {
+      const guest = meetingDetails.participants.find(
+        participant => participant.guest_email
+      )
+      // Build deduplicated attendees list using helper
+      const attendees = await this.buildAttendeesListForUpdate(
+        meetingDetails.participants,
+        calendarOwnerAccountAddress,
+        undefined,
+        guest
+      )
+
+      payload.attendees = attendees
+    }
+    return payload
   }
 }
 
