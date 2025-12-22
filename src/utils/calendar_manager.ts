@@ -14,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability } from '@/types/Account'
 import { UnifiedEvent } from '@/types/Calendar'
-import { MeetingReminders } from '@/types/common'
+import { MeetingReminders, RecurringStatus } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
   ConferenceMeeting,
@@ -59,6 +59,7 @@ import {
   getMeeting,
   getMeetingGuest,
   getSlotByMeetingId,
+  getSlotInstanceById,
   getSlotsByIds,
   isSlotFreeApiCall,
   scheduleMeeting as apiScheduleMeeting,
@@ -67,6 +68,7 @@ import {
   syncMeeting,
   updateMeeting as apiUpdateMeeting,
   updateMeetingAsGuest as apiUpdateMeetingAsGuest,
+  updateMeetingInstance,
 } from '@/utils/api_helper'
 
 import { diff, intersec } from './collections'
@@ -79,6 +81,7 @@ import {
   simpleHash,
 } from './cryptography'
 import {
+  DecryptionFailedError,
   GuestListModificationDenied,
   GuestRescheduleForbiddenError,
   InvalidURL,
@@ -86,6 +89,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingDetailsModificationDenied,
+  MeetingNotFoundError,
   MeetingWithYourselfError,
   MultipleSchedulersError,
   TimeNotAvailableError,
@@ -810,7 +814,6 @@ const updateMeeting = async (
     ignoreOwnerAvailability: true,
   }
 
-  // Fetch the updated data one last time
   if (decryptedMeeting.user_type === 'guest') {
     const slot: DBSlot = await apiUpdateMeetingAsGuest(
       decryptedMeeting?.id,
@@ -2146,6 +2149,7 @@ const meetWithSeriesPreprocessors = (
       if (!instanceExists) {
         const slotInstance: SlotInstance = {
           ...slotSerie,
+          status: RecurringStatus.CONFIRMED,
           id: `${slotSerie.id}_instance_${ghostStartTime.getTime()}`, // Unique ID for the ghost instance
           series_id: slotSerie.id!,
           start: ghostStartTime,
@@ -2155,10 +2159,17 @@ const meetWithSeriesPreprocessors = (
       }
     }
   }
-  return slots.filter(
-    (slot): slot is ExtendedDBSlot | ExtendedSlotInstance =>
-      !!slot.meeting_info_encrypted
-  )
+
+  return slots
+    .filter(
+      (slot): slot is ExtendedDBSlot | ExtendedSlotInstance =>
+        !!slot.meeting_info_encrypted
+    )
+    .filter(
+      slot =>
+        (isSlotInstance(slot) && slot.status !== RecurringStatus.CANCELLED) ||
+        isDBSlot(slot)
+    )
 }
 const calendarEventsPreprocessors = (
   events: Array<UnifiedEvent>,
@@ -2217,16 +2228,104 @@ const calendarEventsPreprocessors = (
   return instances
 }
 
-const rsvpMeeting = (status: ParticipationStatus, eventId: string) => {
-  const isRecurringMeeting = eventId.includes('_')
-  if (isRecurringMeeting) {
-  }
-}
-const handleRsvpForRecurringMeeting = (
+const rsvpMeeting = async (
+  eventId: string,
+  accountAddress: string,
   status: ParticipationStatus,
-  eventId: string
+  signal: AbortSignal
 ) => {
-  const [sourceEventId, instanceIdentifier] = eventId.split('_instance_')
+  const isRecurringMeeting = eventId.includes('_')
+  const currentAccount = await getAccount(accountAddress)
+  let decryptedMeeting: MeetingDecrypted | null = null
+  let series_id: string | null = null
+  if (isRecurringMeeting) {
+    const slot = await getSlotInstanceById(eventId, signal)
+    if (!slot || !slot.account_address) {
+      throw new MeetingNotFoundError(eventId)
+    }
+    series_id = slot.series_id
+    decryptedMeeting = await decodeMeeting(slot, currentAccount)
+    decryptedMeeting?.participants &&
+      (decryptedMeeting.participants = decryptedMeeting.participants.map(
+        participant => {
+          const hasRecurringMeeting = participant.slot_id?.includes('_')
+          if (hasRecurringMeeting) {
+            return participant
+          }
+          return {
+            ...participant,
+            slot_id:
+              participant.slot_id + eventId.substring(eventId.lastIndexOf('_')),
+          }
+        }
+      ))
+  } else {
+    const existingDBSlot = await getMeeting(eventId, signal)
+    if (!existingDBSlot || !existingDBSlot.account_address) {
+      throw new MeetingNotFoundError(eventId)
+    }
+    decryptedMeeting = await decryptMeeting(existingDBSlot, currentAccount)
+  }
+  const participants = (decryptedMeeting?.participants || []).map(
+    participant => {
+      if (participant.account_address === accountAddress) {
+        return {
+          ...participant,
+          status,
+        }
+      }
+      return participant
+    }
+  )
+  if (!decryptedMeeting) {
+    throw new DecryptionFailedError()
+  }
+  const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
+
+  const meetingData = await buildMeetingData(
+    SchedulingType.REGULAR,
+    '',
+    decryptedMeeting.start,
+    decryptedMeeting.end,
+    participantData.sanitizedParticipants,
+    participantData.allAccounts,
+    {},
+    decryptedMeeting.provider || MeetingProvider.GOOGLE_MEET,
+    currentAccount,
+    decryptedMeeting.content,
+    decryptedMeeting.meeting_url,
+    decryptedMeeting.meeting_id,
+    decryptedMeeting.title,
+    decryptedMeeting.reminders,
+    decryptedMeeting.recurrence,
+    decryptedMeeting.permissions,
+    null
+  )
+  const payload = {
+    ...meetingData,
+    version: decryptedMeeting.version + 1,
+    slotsToRemove: [],
+    guestsToRemove: [],
+    ignoreOwnerAvailability: true,
+  }
+  if (isRecurringMeeting) {
+    const slot: DBSlot = await updateMeetingInstance(
+      decryptedMeeting.id,
+      {
+        ...payload,
+        series_id: series_id!,
+      },
+      signal
+    )
+    return await decryptMeeting(slot, currentAccount)!
+  } else {
+    const slot: DBSlot = await apiUpdateMeeting(
+      decryptedMeeting.id,
+      payload,
+      signal
+    )
+    return await decryptMeeting(slot, currentAccount)!
+  }
 }
 
 export {
@@ -2262,6 +2361,7 @@ export {
   meetWithSeriesPreprocessors,
   noNoReplyEmailForAccount,
   outLookUrlParsedDate,
+  rsvpMeeting,
   scheduleMeeting,
   selectDefaultProvider,
   updateMeeting,

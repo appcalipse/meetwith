@@ -55,6 +55,7 @@ import {
   GuestSlot,
   MeetingDecrypted,
   MeetingInfo,
+  SlotInstance,
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -82,6 +83,7 @@ import {
   MeetingCancelRequest,
   MeetingCheckoutRequest,
   MeetingCreationRequest,
+  MeetingInstanceUpdateRequest,
   MeetingUpdateRequest,
   RequestInvoiceRequest,
   UpdateAvailabilityBlockMeetingTypesRequest,
@@ -155,8 +157,7 @@ export const internalFetch = async <T>(
   headers = {},
   isFormData = false,
   withRetry = true,
-  remainingRetries = 3,
-  signal?: AbortSignal
+  remainingRetries = 3
 ): Promise<T> => {
   const baseDelay = 1000
 
@@ -174,7 +175,6 @@ export const internalFetch = async <T>(
       body: isFormData
         ? (body as FormData)
         : (!!body && (JSON.stringify(body) as string)) || null,
-      signal,
     })
     if (response.status >= 200 && response.status < 300) {
       return (await response.json()) as T
@@ -205,8 +205,7 @@ export const internalFetch = async <T>(
         headers,
         isFormData,
         withRetry,
-        remainingRetries - 1,
-        signal
+        remainingRetries - 1
       )
     }
 
@@ -298,12 +297,7 @@ export const getExistingAccounts = async (
             addresses,
             fullInformation,
           },
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          options?.signal
+          options
         ) as Promise<Account[]>
     )
   } catch (e: unknown) {
@@ -481,13 +475,48 @@ export const updateMeetingAsGuest = async (
 
 export const updateMeeting = async (
   slotId: string,
-  meeting: MeetingUpdateRequest
+  meeting: MeetingUpdateRequest,
+  signal?: AbortSignal
 ): Promise<DBSlot> => {
   try {
     const response = await internalFetch<DBSlot>(
       `/secure/meetings/${slotId}`,
       'POST',
-      meeting
+      meeting,
+      { signal }
+    )
+    await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
+    return response
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status === 404) {
+        throw new MeetingNotFoundError(slotId)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      }
+    }
+    throw e
+  }
+}
+export const updateMeetingInstance = async (
+  slotId: string,
+  meeting: MeetingInstanceUpdateRequest,
+  signal: AbortSignal
+): Promise<DBSlot> => {
+  try {
+    const response = await internalFetch<DBSlot>(
+      `/secure/meetings/instances/${slotId}`,
+      'POST',
+      meeting,
+      { signal }
     )
     await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
     return response
@@ -725,12 +754,7 @@ export const fetchBusySlotsRawForMultipleAccounts = async (
       offset,
       isRaw: true,
     },
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    options?.signal
+    options
   )) as TimeSlot[]
 
   return response.map(slot => ({
@@ -942,8 +966,16 @@ export const subscribeToWaitlist = async (
   return !!result?.success
 }
 
-export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
-  const response = await internalFetch<DBSlot>(`/meetings/meeting/${slot_id}`)
+export const getMeeting = async (
+  slot_id: string,
+  signal?: AbortSignal
+): Promise<DBSlot> => {
+  const response = await internalFetch<DBSlot>(
+    `/meetings/meeting/${slot_id}`,
+    'GET',
+    null,
+    { signal }
+  )
   return {
     ...response,
     start: new Date(response.start),
@@ -2398,4 +2430,27 @@ export const getEvents = async (
       referenceDate.endOf('month').endOf('week').toISO() || ''
     )}`
   )
+}
+
+export const getSlotInstanceById = async (
+  slotId: string,
+  signal?: AbortSignal
+): Promise<SlotInstance | null> => {
+  try {
+    return await internalFetch<SlotInstance>(
+      `/meetings/slot/instance/${slotId}`,
+      'GET',
+      undefined,
+      { signal }
+    ).then(slot => ({
+      ...slot,
+      start: new Date(slot.start),
+      end: new Date(slot.end),
+    }))
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
 }
