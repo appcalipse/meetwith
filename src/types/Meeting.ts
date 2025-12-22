@@ -1,7 +1,7 @@
 import { Interval } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 
-import { ConditionRelation } from '@/types/common'
+import { ConditionRelation, RecurringStatus } from '@/types/common'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 import { MeetingReminders } from './common'
@@ -56,6 +56,8 @@ export interface DBSlot extends Interval {
 }
 export interface SlotInstance extends DBSlot {
   series_id: string
+  status: RecurringStatus
+  slot_id: string
 }
 export interface SlotSeries extends DBSlot {
   rrule: string[]
