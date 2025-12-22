@@ -7,10 +7,6 @@ import {
   MeetingCreationSyncRequest,
 } from '@/types/Requests'
 import {
-  createOrUpdateEventNotification,
-  getEventNotification,
-} from '@/utils/database'
-import {
   notifyForMeetingCancellation,
   notifyForOrUpdateNewMeeting,
 } from '@/utils/notification_helper'
@@ -42,34 +38,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     request.start = new Date(request.start)
     request.end = new Date(request.end)
     request.created_at = new Date(request.created_at)
-    if (
-      request.notification_hash &&
-      request.eventId &&
-      request.participantActing.account_address
-    ) {
-      const eventNotification = await getEventNotification(request.eventId)
-      if (
-        eventNotification &&
-        eventNotification?.last_notified_hash === request.notification_hash
-      ) {
-        return res.status(200).send(true)
-      } else {
-        try {
-          await createOrUpdateEventNotification({
-            event_id: request.eventId,
-            last_notified_hash: request.notification_hash,
-            account_address: request.participantActing.account_address,
-          })
-        } catch (error) {
-          Sentry.captureException(error)
-        }
-      }
-    }
 
-    try {
-      await notifyForOrUpdateNewMeeting(MeetingChangeType.UPDATE, request)
-    } catch (error) {
-      Sentry.captureException(error)
+    if (!request.skipNotify) {
+      try {
+        await notifyForOrUpdateNewMeeting(MeetingChangeType.UPDATE, request)
+      } catch (error) {
+        Sentry.captureException(error)
+      }
     }
 
     try {
