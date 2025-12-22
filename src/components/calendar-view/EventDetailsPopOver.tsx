@@ -37,7 +37,7 @@ import {
 import { MeetingDecrypted } from '@/types/Meeting'
 import { ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
-import { dateToLocalizedRange } from '@/utils/calendar_manager'
+import { dateToLocalizedRange, rsvpMeeting } from '@/utils/calendar_manager'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
   canAccountAccessPermission,
@@ -65,6 +65,8 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
   onSelectEvent,
   onCancelOpen,
 }) => {
+  const rsvpAbortControllerRef = React.useRef<AbortController | null>(null)
+
   const { currrentDate } = useCalendarContext()
   const currentAccount = useAccountContext()
   const [copyFeedbackOpen, setCopyFeedbackOpen] = React.useState(false)
@@ -115,7 +117,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
         participant => participant.account_address === currentAccount?.address
       )
     }
-  }, [])
+  }, [slot, currentAccount])
   const handleCopy = async () => {
     try {
       if ('clipboard' in navigator) {
@@ -133,12 +135,18 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
     }, 2000)
   }
   const handleRSVP = async (status: ParticipationStatus) => {
-    if (isCalendarEvent(slot) || !actor) return
+    if (isCalendarEvent(slot) || !actor || !currentAccount) return
     if (status === actor.status) return
+    // cancel any in-flight rsvp request
+    if (rsvpAbortControllerRef.current) {
+      rsvpAbortControllerRef.current.abort()
+    }
+
+    const abortController = new AbortController()
+    rsvpAbortControllerRef.current = abortController
 
     logEvent(`Clicked RSVP ${status} from Event Details PopOver`)
 
-    // Optimistically update the query cache in-place
     queryClient.setQueryData<CalendarEventsData>(
       createEventsQueryKey(currrentDate),
       old => {
@@ -149,7 +157,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
             if (event.id !== slot.id) return event
             return {
               ...event,
-              participants: event.participants.map((p: any) =>
+              participants: event.participants.map(p =>
                 p.account_address === currentAccount?.address
                   ? { ...p, status }
                   : p
@@ -160,14 +168,20 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
       }
     )
 
-    // Background persistence
     try {
-      // TODO: Call your backend API
-      // await updateParticipantStatus(slot.meeting_id, currentAccount.address, status)
+      await rsvpMeeting(
+        slot.id,
+        currentAccount.address,
+        status,
+        abortController.signal
+      )
     } catch (error) {
-      // On failure, invalidate to revert to server state
-      queryClient.invalidateQueries(createEventsQueryKey(currrentDate))
       console.error('Failed to update RSVP:', error)
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Request was cancelled, ignore
+        return
+      }
+      queryClient.invalidateQueries(createEventsQueryKey(currrentDate))
     }
   }
 
