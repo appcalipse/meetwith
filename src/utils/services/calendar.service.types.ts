@@ -7,7 +7,10 @@ import {
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MicrosoftGraphEvent } from '@/types/Office365'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import {
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '@/types/Requests'
 
 export type EventBusyDate = {
   start: Date | string
@@ -83,6 +86,19 @@ export interface BaseCalendarService {
     dateFrom: string,
     dateTo: string
   ): Promise<UnifiedEvent[]>
+
+  /**
+   * Updates a single instance of a recurring event
+   *
+   * @param calendarOwnerAccountAddress the owner account address
+   * @param meetingDetails meeting details including series_id and original start time
+   * @param calendarId the calendar ID
+   */
+  updateEventInstance(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    calendarId: string
+  ): Promise<void>
 }
 export interface IOffcie365CalendarService extends BaseCalendarService {
   /**
