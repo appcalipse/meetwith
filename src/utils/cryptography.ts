@@ -22,7 +22,7 @@ const getContentFromEncrypted = async (
     const pvtKey = decryptContent(signature, account.encoded_signature)
     return await decryptWithPrivateKey(pvtKey, encrypted)
   } catch (error) {
-    console.error(error)
+    console.error(error, encrypted)
     return ''
   }
 }
