@@ -133,7 +133,7 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   skipNotify?: boolean
 }
 export interface MeetingInstanceCreationSyncRequest
-  extends MeetingCreationSyncRequest {
+  extends Omit<MeetingCreationSyncRequest, 'meetingRepeat'> {
   original_start_time: Date
 }
 export interface GroupInviteNotifyRequest {
