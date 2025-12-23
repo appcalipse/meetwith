@@ -3,7 +3,10 @@ import * as Sentry from '@sentry/nextjs'
 import { Account } from '@/types/Account'
 import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import {
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '@/types/Requests'
 
 import { NO_MEETING_TYPE } from './constants/meeting-types'
 import { getConnectedCalendars, getMeetingTypeFromDB } from './database'
@@ -436,5 +439,101 @@ export const ExternalCalendarSync = {
 
     await Promise.all(tasks)
   },
-  updateInstance: async (meetingDetails: MeetingCreationSyncRequest) => {},
+  updateInstance: async (
+    meetingDetails: MeetingInstanceCreationSyncRequest
+  ) => {
+    if (!meetingDetails.original_start_time) {
+      throw new Error(
+        'original_start_time is required for recurring instance updates'
+      )
+    }
+
+    const calendarOrganizer = await getCalendarOrganizer(meetingDetails)
+    if (!calendarOrganizer || !calendarOrganizer.account_address) {
+      throw new Error('Organizer Account not found for meeting calendar sync')
+    }
+
+    const calendars = await getCalendars(
+      calendarOrganizer.account_address,
+      meetingDetails.meeting_type_id
+    )
+
+    const promises = []
+
+    for (const calendar of calendars) {
+      const integration = getConnectedCalendarIntegration(
+        calendar.account_address,
+        calendar.email,
+        calendar.provider,
+        calendar.payload
+      )
+
+      for (const innerCalendar of calendar.calendars!) {
+        if (innerCalendar.enabled && innerCalendar.sync) {
+          promises.push(
+            (async () => {
+              try {
+                await integration.updateEventInstance(
+                  calendarOrganizer.account_address!,
+                  meetingDetails,
+                  innerCalendar.calendarId
+                )
+              } catch (error) {
+                console.error(
+                  `Failed to update instance in ${calendar.provider}:`,
+                  error
+                )
+                Sentry.captureException(error)
+              }
+            })()
+          )
+        }
+      }
+    }
+
+    // Sync to other participants' calendars
+    const participantPromises = []
+    for (const participant of meetingDetails.participants) {
+      if (
+        participant.account_address &&
+        participant.account_address !== calendarOrganizer.account_address
+      ) {
+        const participantCalendars = await getCalendars(
+          participant.account_address,
+          meetingDetails.meeting_type_id
+        )
+        for (const pCalendar of participantCalendars) {
+          const integration = getConnectedCalendarIntegration(
+            pCalendar.account_address,
+            pCalendar.email,
+            pCalendar.provider,
+            pCalendar.payload
+          )
+          for (const innerCalendar of pCalendar.calendars!) {
+            if (innerCalendar.enabled && innerCalendar.sync) {
+              participantPromises.push(
+                (async () => {
+                  try {
+                    await integration.updateEventInstance(
+                      participant.account_address!,
+                      meetingDetails,
+                      innerCalendar.calendarId
+                    )
+                  } catch (error) {
+                    console.error(
+                      `Failed to update instance for participant ${participant.account_address}:`,
+                      error
+                    )
+                    Sentry.captureException(error)
+                  }
+                })()
+              )
+            }
+          }
+        }
+      }
+    }
+
+    await Promise.all([...promises, ...participantPromises])
+  },
 }
