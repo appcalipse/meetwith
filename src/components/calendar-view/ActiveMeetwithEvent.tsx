@@ -17,16 +17,20 @@ import { FaTrash } from 'react-icons/fa6'
 import { MdCancel, MdOutlineEditCalendar } from 'react-icons/md'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { useCalendarContext } from '@/providers/calendar/CalendarContext'
+import {
+  CalendarEventsData,
+  createEventsQueryKey,
+  useCalendarContext,
+} from '@/providers/calendar/CalendarContext'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
-import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
+import { rsvpMeeting } from '@/utils/calendar_manager'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -44,6 +48,7 @@ import {
   renderProviderName,
 } from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
+import { queryClient } from '@/utils/react_query'
 
 import { SingleDatepicker } from '../input-date-picker'
 import { InputTimePicker } from '../input-time-picker'
@@ -89,9 +94,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
 }) => {
   const [isTitleValid, setIsTitleValid] = React.useState(true)
   const currentAccount = useAccountContext()
-  const { groupParticipants, groupAvailability, participants } =
-    useParticipants()
-  const { setInviteModalOpen, inviteModalOpen } = useScheduleNavigation()
+  const { setInviteModalOpen } = useScheduleNavigation()
   const {
     title,
     content,
@@ -141,24 +144,76 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
     MeetingPermissions.EDIT_MEETING
   )
 
-  const { setSelectedSlot } = useCalendarContext()
+  const { setSelectedSlot, currrentDate } = useCalendarContext()
   const iconColor = useColorModeValue('gray.500', 'gray.200')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const actor = slot.participants.find(
     participant => participant.account_address === currentAccount?.address
   )
+  const rsvpAbortControllerRef = React.useRef<AbortController | null>(null)
+
   const [rsvp, setRsvp] = React.useState<RSVPOption | undefined>(
     RSVP_OPTIONS.map(({ label, value }) => ({
       label: `RSVP: ${label}`,
       value,
     })).find(option => option.value === actor?.status)
   )
+  const handleRSVP = async (status: ParticipationStatus) => {
+    if (!actor || !currentAccount) return
+    if (status === actor.status) return
+    // cancel any in-flight rsvp request
+    if (rsvpAbortControllerRef.current) {
+      rsvpAbortControllerRef.current.abort()
+    }
+
+    const abortController = new AbortController()
+    rsvpAbortControllerRef.current = abortController
+
+    logEvent(`Clicked RSVP ${status} from Event Details PopOver`)
+
+    queryClient.setQueryData<CalendarEventsData>(
+      createEventsQueryKey(currrentDate),
+      old => {
+        if (!old?.mwwEvents) return old
+        return {
+          ...old,
+          mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
+            if (event.id !== slot.id) return event
+            return {
+              ...event,
+              participants: event.participants.map(p =>
+                p.account_address === currentAccount?.address
+                  ? { ...p, status }
+                  : p
+              ),
+            }
+          }),
+        }
+      }
+    )
+
+    try {
+      await rsvpMeeting(
+        slot.id,
+        currentAccount.address,
+        status,
+        abortController.signal
+      )
+    } catch (error) {
+      console.error('Failed to update RSVP:', error)
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Request was cancelled, ignore
+        return
+      }
+      queryClient.invalidateQueries(createEventsQueryKey(currrentDate))
+    }
+  }
   const _onChange = (newValue: RSVPOption) => {
     if (Array.isArray(newValue)) {
       return
     }
-
     setRsvp({ ...newValue, label: `RSVP: ${newValue.label}` } as RSVPOption)
+    void handleRSVP(newValue.value)
   }
   const isSchedulerOrOwner = isAccountSchedulerOrOwner(
     slot?.participants,
