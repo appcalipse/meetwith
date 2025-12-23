@@ -10,6 +10,8 @@ RETURNS TABLE(
     id UUID,
     name TEXT,
     slug TEXT,
+    avatar_url TEXT,
+    description TEXT,
     members JSONB
 )
 LANGUAGE plpgsql
@@ -21,7 +23,9 @@ BEGIN
       gm.role,
       g.id,
       g.name,
-      g.slug
+      g.slug,
+      g.avatar_url,
+      g.description
     FROM group_members gm
     JOIN groups g ON gm.group_id = g.id
     WHERE gm.member_id = LOWER(user_address)
@@ -97,6 +101,8 @@ BEGIN
     ug.id,
     ug.name,
     ug.slug,
+    ug.avatar_url,
+    ug.description,
     COALESCE(cd.all_members, '[]'::JSONB) as members
   FROM user_groups ug
   LEFT JOIN combined_data cd ON cd.group_id = ug.id;
