@@ -5,6 +5,7 @@ import { MeetingChangeType } from '@/types/Meeting'
 import {
   MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
 import {
   notifyForMeetingCancellation,
@@ -14,7 +15,7 @@ import { ExternalCalendarSync } from '@/utils/sync_helper'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'PATCH') {
-    const request = req.body as MeetingCreationSyncRequest
+    const request = req.body as MeetingInstanceCreationSyncRequest
 
     request.start = new Date(request.start)
     request.end = new Date(request.end)
