@@ -1,3 +1,4 @@
+import { AvailabilityBlock } from './availability'
 import { Subscription } from './Subscription'
 
 export enum MemberType {
@@ -153,4 +154,10 @@ export interface GroupInviteFilters {
 export interface CreateGroupPayload {
   name: string
   slug?: string
+}
+
+export interface GroupMemberAvailability {
+  groupId: string
+  memberAddress: string
+  availabilityBlocks: AvailabilityBlock[]
 }
