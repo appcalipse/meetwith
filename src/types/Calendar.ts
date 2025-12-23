@@ -153,9 +153,9 @@ export type WithInterval<T> = T & {
   interval: Interval
 }
 
-export const isCalendarEvent = (
-  slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
-): slot is WithInterval<UnifiedEvent<DateTime>> => {
+export const isCalendarEvent = <T extends object = DateTime>(
+  slot: WithInterval<UnifiedEvent<T> | MeetingDecrypted<T>>
+): slot is WithInterval<UnifiedEvent<T>> => {
   return 'calendarId' in slot
 }
 export const isCalendarEventWithoutDateTime = (
