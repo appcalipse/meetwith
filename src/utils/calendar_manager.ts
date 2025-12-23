@@ -662,6 +662,7 @@ const updateMeeting = async (
   ) {
     throw new MeetingDetailsModificationDenied()
   }
+
   const currentAccount = await getAccount(currentAccountAddress)
   let existingMeeting: MeetingDecrypted | null = null
   if (decryptedMeeting.user_type === 'guest') {
