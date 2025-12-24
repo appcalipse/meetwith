@@ -2021,6 +2021,8 @@ export type Database = {
           name: string
           role: string
           slug: string
+          avatar_url: string | null
+          description: string | null
         }[]
       }
       search_accounts: {

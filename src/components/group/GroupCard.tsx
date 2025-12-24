@@ -2,6 +2,8 @@ import {
   AccordionButton,
   AccordionItem,
   AccordionPanel,
+  Badge,
+  Box,
   Button,
   Flex,
   Heading,
@@ -15,6 +17,7 @@ import {
   MenuList,
   Portal,
   Spacer,
+  Spinner,
   Table,
   TableContainer,
   Tbody,
@@ -26,6 +29,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import React, { Fragment, useContext, useId, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
@@ -35,14 +39,20 @@ import { GroupContext } from '@/components/group/Groups'
 import { Account } from '@/types/Account'
 import { GetGroupsFullResponse, MemberType, MenuOptions } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
-import { updateGroupRole } from '@/utils/api_helper'
+import {
+  getGroupMemberAvailabilities,
+  updateGroupRole,
+} from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
 
+import GroupAvatar from './GroupAvatar'
 import GroupMemberCard from './GroupMemberCard'
 
 export interface IGroupCard extends GetGroupsFullResponse {
   currentAccount: Account
   onAddNewMember: (groupId: string, groupName: string) => void
+  onOpenSettingsModal?: () => void
+  hideAvailabilityLabels?: boolean
   mt: number
   resetState: () => void
 }
@@ -70,7 +80,17 @@ const GroupCard: React.FC<IGroupCard> = props => {
   } = useContext(GroupContext)
 
   const renderPopOverOptions = (role: MemberType): Array<MenuOptions> => {
-    const defaultOptions: Array<MenuOptions> = []
+    const defaultOptions: Array<MenuOptions> = [
+      {
+        label: 'Group settings',
+        onClick: () => {
+          if (props.onOpenSettingsModal) {
+            pickGroupId(props.id)
+            props.onOpenSettingsModal()
+          }
+        },
+      },
+    ]
     switch (role) {
       case MemberType.ADMIN:
         return [
@@ -107,7 +127,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
           },
         ]
       default:
-        return []
+        return defaultOptions
     }
   }
   const updateRole = async (data: ChangeGroupAdminRequest) => {
@@ -118,6 +138,20 @@ const GroupCard: React.FC<IGroupCard> = props => {
     () => renderPopOverOptions(actor?.role || MemberType.MEMBER),
     [actor?.role]
   )
+
+  // Fetch current user's availability blocks for this group
+  const { data: memberAvailabilities, isLoading: isLoadingAvailabilities } =
+    useQuery({
+      queryKey: [
+        'groupMemberAvailabilities',
+        props.id,
+        props.currentAccount.address,
+      ],
+      queryFn: () =>
+        getGroupMemberAvailabilities(props.id, props.currentAccount.address),
+      enabled: !!props.id && !!props.currentAccount.address,
+    })
+
   return (
     <AccordionItem
       width="100%"
@@ -141,7 +175,14 @@ const GroupCard: React.FC<IGroupCard> = props => {
               md: 'row',
             }}
           >
-            <VStack gap={0} alignItems="start">
+            <HStack gap={3} alignItems="center" flex={1} minW={0}>
+              {/* Group Avatar */}
+              <GroupAvatar
+                avatarUrl={props.avatar_url}
+                groupName={props.name}
+                boxSize={{ base: '40px', md: '48px' }}
+                flexShrink={0}
+              />
               <Heading
                 size={'lg'}
                 maxW={{ '2xl': '400px', lg: 270, xl: 300, base: 200 }}
@@ -152,7 +193,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
               >
                 {props.name}
               </Heading>
-            </VStack>
+            </HStack>
             <Button
               colorScheme="primary"
               display={{ base: 'flex', md: 'none' }}
@@ -162,7 +203,40 @@ const GroupCard: React.FC<IGroupCard> = props => {
             >
               Schedule
             </Button>
-            <HStack gap={3} width="fit-content">
+            <HStack gap={3} width="fit-content" alignItems="center">
+              {/* Availability Block Badge */}
+              {!props.hideAvailabilityLabels &&
+                (isLoadingAvailabilities ? (
+                  <Spinner size="xs" />
+                ) : memberAvailabilities && memberAvailabilities.length > 0 ? (
+                  <HStack gap={2} flexWrap="wrap">
+                    {memberAvailabilities.slice(0, 2).map(block => (
+                      <Badge
+                        key={block.id}
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        {block.title}
+                      </Badge>
+                    ))}
+                    {memberAvailabilities.length > 2 && (
+                      <Badge
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        +{memberAvailabilities.length - 2} more
+                      </Badge>
+                    )}
+                  </HStack>
+                ) : null)}
               <Button
                 colorScheme="primary"
                 display={{ base: 'none', md: 'flex' }}
