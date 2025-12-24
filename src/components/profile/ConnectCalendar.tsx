@@ -16,7 +16,6 @@ import { FaPlus } from 'react-icons/fa'
 import ConnectCalendarModal from '@/components/ConnectedCalendars/ConnectCalendarModal'
 import { ConnectedCalendarCard } from '@/components/ConnectedCalendars/ConnectedCalendarCard'
 import { DisabledCalendarCard } from '@/components/ConnectedCalendars/DisabledCalendarCard'
-import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { Account } from '@/types/Account'
 import {
   ConnectedCalendarCore,
@@ -25,6 +24,7 @@ import {
 import { SettingsSection } from '@/types/Dashboard'
 import {
   deleteConnectedCalendar,
+  getCalendarIntegrationsWithMetadata,
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { isProAccount } from '@/utils/subscription_manager'
@@ -113,27 +113,29 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
   const [calendarConnections, setCalendarConnections] = useState<
     ConnectedCalendarCore[]
   >([])
-  const { canCreateCalendar, isLoading: isLoadingResourceLimits } =
-    useResourceLimits()
+  const [canCreateCalendar, setCanCreateCalendar] = useState(true)
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
   const loadCalendars = async () => {
     setLoading(true)
-    return listConnectedCalendars()
-      .then(data => {
-        // for old version without the calendars property
-        const calendars = data?.map((calendar: ConnectedCalendarCore) => ({
+    try {
+      const response = await getCalendarIntegrationsWithMetadata()
+      const calendars = response.calendars || []
+      // for old version without the calendars property
+      const formattedCalendars = calendars.map(
+        (calendar: ConnectedCalendarCore) => ({
           ...calendar,
           calendars: calendar.calendars,
-        }))
-        setCalendarConnections(calendars)
-        setLoading(false)
-      })
-      .catch(error => {
-        console.error(error)
-        setLoading(false)
-      })
+        })
+      )
+      setCalendarConnections(formattedCalendars)
+      setCanCreateCalendar(!response.upgradeRequired)
+      setLoading(false)
+    } catch (error) {
+      console.error(error)
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -178,7 +180,7 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         mb={7}
         alignSelf="flex-start"
         leftIcon={<FaPlus />}
-        isDisabled={isLoadingResourceLimits || !canCreateCalendar}
+        isDisabled={!canCreateCalendar}
         title={
           !canCreateCalendar
             ? 'Upgrade to Pro to connect more calendars'

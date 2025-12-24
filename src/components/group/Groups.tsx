@@ -27,10 +27,9 @@ import GroupAdminChangeModal from '@/components/group/GroupAdminChangeModal'
 import GroupAdminLeaveModal from '@/components/group/GroupAdminLeaveModal'
 import LeaveGroupModal from '@/components/group/LeaveGroupModal'
 import RemoveGroupMemberModal from '@/components/group/RemoveGroupMemberModal'
-import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
-import { getGroupsFull } from '@/utils/api_helper'
+import { getGroupsFullWithMetadata } from '@/utils/api_helper'
 import { GROUP_PAGE_SIZE } from '@/utils/constants/group'
 import { ApiFetchError } from '@/utils/errors'
 import QueryKeys from '@/utils/query_keys'
@@ -81,26 +80,32 @@ export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 const Groups = forwardRef<GroupRef, Props>(
   ({ currentAccount, search }: Props, ref) => {
     const toast = useToast()
-    const { canCreateGroup, isLoading: isLoadingResourceLimits } =
-      useResourceLimits()
 
     const { data, isLoading, isFetching, hasNextPage, fetchNextPage, error } =
       useInfiniteQuery({
         queryKey: QueryKeys.groups(currentAccount?.address, search),
         queryFn: ({ pageParam = 0 }) => {
-          return getGroupsFull(GROUP_PAGE_SIZE, pageParam, search)
+          return getGroupsFullWithMetadata(GROUP_PAGE_SIZE, pageParam, search)
         },
         getNextPageParam: (lastPage, allPages) => {
-          if (!lastPage || lastPage.length < GROUP_PAGE_SIZE) {
+          if (
+            !lastPage ||
+            !lastPage.groups ||
+            lastPage.groups.length < GROUP_PAGE_SIZE
+          ) {
             return undefined
           }
-          return allPages.flat().length
+          return allPages.reduce(
+            (acc, page) => acc + (page.groups?.length || 0),
+            0
+          )
         },
         enabled: !!currentAccount?.address,
         staleTime: 0,
         refetchOnMount: true,
       })
-    const groups = data?.pages.flat() ?? []
+    const groups = data?.pages.flatMap(page => page.groups || []) ?? []
+    const canCreateGroup = !data?.pages[0]?.upgradeRequired
     const firstFetch = isLoading
     const loading = isFetching
     const noMoreFetch = !hasNextPage
@@ -211,7 +216,7 @@ const Groups = forwardRef<GroupRef, Props>(
             mt={{ base: 4, md: 0 }}
             mb={4}
             leftIcon={<FaPlus />}
-            isDisabled={isLoadingResourceLimits || !canCreateGroup}
+            isDisabled={!canCreateGroup}
             title={
               !canCreateGroup
                 ? 'Upgrade to Pro to create more groups'
