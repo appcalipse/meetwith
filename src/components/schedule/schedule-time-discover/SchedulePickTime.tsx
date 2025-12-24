@@ -43,6 +43,7 @@ import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
   fetchBusySlotsRawForMultipleAccounts,
   getExistingAccounts,
+  getGroupMembersAvailabilities,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
@@ -56,7 +57,10 @@ import {
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
-import { getMergedParticipants } from '@/utils/schedule.helper'
+import {
+  getMergedParticipants,
+  mergeAvailabilityBlocks,
+} from '@/utils/schedule.helper'
 import { suggestBestSlots } from '@/utils/slots.helper'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -378,19 +382,58 @@ export function SchedulePickTime({
         string,
         Interval[]
       >()
+
+      // Check if we're scheduling for a group
+      const groupAvailabilityKeys = Object.keys(groupAvailability)
+      const isGroupScheduling = groupAvailabilityKeys.length > 0
+
+      // Fetch group-specific availabilities if scheduling for a group
+      const groupMemberAvailabilities: Record<string, Interval[]> = {}
+
+      if (isGroupScheduling) {
+        // Get the single group ID
+        const groupId = groupAvailabilityKeys[0]
+
+        try {
+          const groupBlocksData = await getGroupMembersAvailabilities(groupId)
+
+          // Convert availability blocks to intervals for each member
+          for (const [memberAddress, blocks] of Object.entries(
+            groupBlocksData
+          )) {
+            if (blocks && blocks.length > 0) {
+              groupMemberAvailabilities[memberAddress.toLowerCase()] =
+                mergeAvailabilityBlocks(blocks, monthStart, monthEnd)
+            }
+          }
+        } catch (error) {
+          console.warn(
+            `Failed to fetch group availabilities for group ${groupId}:`,
+            error
+          )
+        }
+      }
+
       for (const memberAccount of meetingMembers) {
         if (!memberAccount.address) continue
         try {
-          const availabilities = parseMonthAvailabilitiesToDate(
-            memberAccount?.preferences?.availabilities || [],
-            monthStart,
-            monthEnd,
-            memberAccount?.preferences?.timezone || 'UTC'
-          )
-          availableSlotsMap.set(
-            memberAccount.address.toLowerCase(),
-            availabilities
-          )
+          const memberAddressLower = memberAccount.address.toLowerCase()
+
+          // Use group-specific availability if available, otherwise fallback to default
+          const groupSpecificAvailability =
+            groupMemberAvailabilities[memberAddressLower]
+
+          const availabilities =
+            groupSpecificAvailability && groupSpecificAvailability.length > 0
+              ? groupSpecificAvailability
+              : parseMonthAvailabilitiesToDate(
+                  memberAccount?.preferences?.availabilities || [],
+                  monthStart,
+                  monthEnd,
+                  memberAccount?.preferences?.timezone || 'UTC'
+                )
+
+          availableSlotsMap.set(memberAddressLower, availabilities)
         } catch (error) {
           console.warn(
             'Failed to parse availability for member:',
