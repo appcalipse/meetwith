@@ -13,6 +13,7 @@ import {
   Text,
   useDisclosure,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
@@ -22,12 +23,12 @@ import ModalLoading from '@/components/Loading/ModalLoading'
 import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
 import { useAvailabilityBlock } from '@/hooks/availability'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
-import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
 import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
 import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
+import { getGroupsFullWithMetadata } from '@/utils/api_helper'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
 import Groups, { GroupRef } from '../group/Groups'
@@ -42,8 +43,15 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const groupRef = useRef<GroupRef>(null)
   const groupInviteRef = useRef<GroupInvitesRef>(null)
-  const { canCreateGroup, isLoading: isLoadingResourceLimits } =
-    useResourceLimits()
+
+  // Fetch metadata to get upgradeRequired status
+  const { data: groupsMetadata } = useQuery({
+    queryKey: ['groupsMetadata', currentAccount?.address],
+    queryFn: () => getGroupsFullWithMetadata(1, 0, '', true),
+    enabled: !!currentAccount?.address,
+    staleTime: 30000,
+  })
+  const canCreateGroup = !groupsMetadata?.upgradeRequired
 
   const {
     block: defaultAvailabilityBlock,
@@ -181,7 +189,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             mb={4}
             leftIcon={<FaPlus />}
             w={'100%'}
-            isDisabled={isLoadingResourceLimits || !canCreateGroup}
+            isDisabled={!canCreateGroup}
             title={
               !canCreateGroup
                 ? 'Upgrade to Pro to create more groups'
@@ -243,7 +251,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             colorScheme="primary"
             display={{ base: 'none', md: 'flex' }}
             leftIcon={<FaPlus />}
-            isDisabled={isLoadingResourceLimits || !canCreateGroup}
+            isDisabled={!canCreateGroup}
             title={
               !canCreateGroup
                 ? 'Upgrade to Pro to create more groups'

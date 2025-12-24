@@ -6,7 +6,6 @@ import { FaUsers } from 'react-icons/fa6'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
 import CustomLoading from '@/components/CustomLoading'
-import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { Account } from '@/types/Account'
 import { getQuickPolls } from '@/utils/api_helper'
 import { QUICKPOLL_MIN_LIMIT } from '@/utils/constants'
@@ -21,8 +20,6 @@ interface QuickPollProps {
 
 const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
   const { push } = useRouter()
-  const { canCreateQuickPoll, isLoading: isLoadingResourceLimits } =
-    useResourceLimits()
 
   // Check if user has existing polls
   const { data: pollsData, isLoading } = useQuery({
@@ -38,6 +35,7 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
   }
 
   const hasExistingPolls = (pollsData?.polls?.length || 0) > 0
+  const canCreateQuickPoll = !pollsData?.upgradeRequired
 
   // If user has existing polls
   if (hasExistingPolls) {
@@ -131,7 +129,7 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
             }}
             transition="all 0.2s ease-in-out"
             onClick={() => push(`/dashboard/create-poll`)}
-            isDisabled={isLoadingResourceLimits || !canCreateQuickPoll}
+            isDisabled={!canCreateQuickPoll}
             title={
               !canCreateQuickPoll
                 ? 'Upgrade to Pro to create more active polls'

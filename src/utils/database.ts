@@ -7050,7 +7050,7 @@ const getQuickPollsForAccount = async (
       `
       )
       .in('id', pollIds)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .range(offset, offset + safeLimit - 1)
 
     if (status) {

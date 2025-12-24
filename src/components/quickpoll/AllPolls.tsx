@@ -15,14 +15,17 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { FiSearch } from 'react-icons/fi'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
-import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
+import { PollStatus } from '@/types/QuickPoll'
+import { getQuickPolls } from '@/utils/api_helper'
+import { QUICKPOLL_MIN_LIMIT } from '@/utils/constants'
 
 import CountSkeleton from './CountSkeleton'
 import OngoingPolls from './OngoingPolls'
@@ -33,8 +36,15 @@ const AllPolls = () => {
   const [activeTab, setActiveTab] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
-  const { canCreateQuickPoll, isLoading: isLoadingResourceLimits } =
-    useResourceLimits()
+
+  // Fetch metadata to get upgradeRequired status
+  const { data: pollsMetadata } = useQuery({
+    queryKey: ['quickpolls-metadata'],
+    queryFn: () =>
+      getQuickPolls(QUICKPOLL_MIN_LIMIT, 0, undefined, PollStatus.ONGOING),
+    staleTime: 30000,
+  })
+  const canCreateQuickPoll = !pollsMetadata?.upgradeRequired
 
   const {
     ongoingPollsCount,
@@ -104,7 +114,7 @@ const AllPolls = () => {
               bg: 'primary.400',
             }}
             onClick={() => push('/dashboard/create-poll')}
-            isDisabled={isLoadingResourceLimits || !canCreateQuickPoll}
+            isDisabled={!canCreateQuickPoll}
             title={
               !canCreateQuickPoll
                 ? 'Upgrade to Pro to create more active polls'

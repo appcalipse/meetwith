@@ -19,13 +19,12 @@ import { getAccountCalendarUrl } from '@utils/calendar_manager'
 import React, { ReactNode, useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
-import { useResourceLimits } from '@/hooks/useResourceLimits'
 import { AvailabilityBlock } from '@/types/availability'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
   getAvailabilityBlocks,
-  getMeetingTypes,
+  getMeetingTypesWithMetadata,
   getStripeStatus,
   listConnectedCalendars,
 } from '@/utils/api_helper'
@@ -38,8 +37,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   const bgColor = useColorModeValue('white', 'neutral.900')
   const [selectedType, setSelectedType] = useState<MeetingType | null>(null)
   const [createKey, setCreateKey] = useState<string>(uuidv4())
-  const { canCreateMeetingType, isLoading: isLoadingResourceLimits } =
-    useResourceLimits()
+  const [canCreateMeetingType, setCanCreateMeetingType] = useState(true)
 
   const {
     isOpen: isModalOpen,
@@ -81,15 +79,18 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   const fetchMeetingTypes = async (reset?: boolean, limit = 10) => {
     const PAGE_SIZE = limit
     setIsLoading(true)
-    const netMeetingTypes = await getMeetingTypes(
+    const response = await getMeetingTypesWithMetadata(
       PAGE_SIZE,
       reset ? 0 : meetingTypes.length
     )
+
+    const netMeetingTypes = response.meetingTypes || []
 
     if (netMeetingTypes.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
     setMeetingTypes((reset ? [] : [...meetingTypes]).concat(netMeetingTypes))
+    setCanCreateMeetingType(!response.upgradeRequired)
     setIsLoading(false)
     setFirstFetch(false)
   }
@@ -211,7 +212,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
                 base: 'xs',
                 md: 'md',
               }}
-              isDisabled={isLoadingResourceLimits || !canCreateMeetingType}
+              isDisabled={!canCreateMeetingType}
               title={
                 !canCreateMeetingType
                   ? 'Upgrade to Pro to create more meeting types'
