@@ -30,8 +30,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const calendars = await getConnectedCalendars(accountAddress, {
       syncOnly: syncOnly === 'true',
-      activeOnly: true,
-      isPro,
     })
 
     const totalCount = await countCalendarIntegrations(accountAddress)

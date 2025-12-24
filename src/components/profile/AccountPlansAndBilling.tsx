@@ -225,7 +225,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       // Reset the ref when checkout is cleared
       processedCheckoutRef.current = undefined
     }
-  }, [checkout, query, replace, showSuccessToast, showInfoToast, updateUser])
+  }, [checkout, query])
 
   // Handle Stripe Customer Portal return redirect
   useEffect(() => {
@@ -246,7 +246,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         { shallow: true }
       )
     }
-  }, [portal_success, query, replace, showSuccessToast, updateUser])
+  }, [portal_success, query])
 
   const syncCurrentSubscriptions = async () => {
     const subs = await syncSubscriptions()

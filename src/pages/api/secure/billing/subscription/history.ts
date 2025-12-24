@@ -83,11 +83,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           getBillingPlanById(period.billing_plan_id),
         ])
 
-        if (!transaction || transaction.status !== PaymentStatus.COMPLETED) {
-          continue
-        }
-
-        if (!billingPlan) {
+        if (
+          !transaction ||
+          transaction.status !== PaymentStatus.COMPLETED ||
+          !billingPlan
+        ) {
           continue
         }
 
