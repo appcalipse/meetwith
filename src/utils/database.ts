@@ -130,6 +130,7 @@ import {
   MeetingCheckoutRequest,
   MeetingCreationRequest,
   MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
   MeetingInstanceUpdateRequest,
   MeetingUpdateRequest,
 } from '@/types/Requests'
@@ -3734,7 +3735,12 @@ const parseParticipantSlots = async (
         let isEditingToSameTime = false
 
         if (isEditing && participant.slot_id) {
-          const existingSlot = await getMeetingFromDB(participant.slot_id)
+          let existingSlot: DBSlot
+          if (participant.slot_id.includes('_')) {
+            existingSlot = await getSlotInstance(participant.slot_id)
+          } else {
+            existingSlot = await getMeetingFromDB(participant.slot_id)
+          }
           const sameStart =
             new Date(existingSlot.start).getTime() ===
             new Date(meetingUpdateRequest.start).getTime()
@@ -4055,12 +4061,7 @@ const updateMeeting = async (
 }
 const updateMeetingInstance = async (
   participantActing: ParticipantBaseInfo,
-  meetingUpdateRequest: MeetingInstanceUpdateRequest,
-  options: {
-    force?: boolean
-    skipRecurrenceUpdate?: boolean
-    skipNoitfiation?: boolean
-  } = {}
+  meetingUpdateRequest: MeetingInstanceUpdateRequest
 ): Promise<DBSlot> => {
   const {
     meetingResponse,
@@ -4069,29 +4070,33 @@ const updateMeetingInstance = async (
     changingTime,
     timezone,
   } = await parseParticipantSlots(participantActing, meetingUpdateRequest)
-  const slots: Array<TablesInsert<'slot_instance'>> = dbSlots.map(slot => ({
-    id: slot.id,
-    override_meeting_info_encrypted: slot.meeting_info_encrypted,
-    status: RecurringStatus.MODIFIED,
-    series_id: meetingUpdateRequest.series_id,
-    start: slot.start,
-    role: slot.role || ParticipantType.Invitee,
-    end: slot.end,
-    account_address: slot.account_address,
-    created_at: slot.created_at,
-    guest_email: slot.guest_email,
-    version: slot.version,
-  }))
+  const slots: Array<TablesInsert<'slot_instance'>> = await Promise.all(
+    dbSlots.map(async slot => {
+      const slotInstance = await getSlotInstance(slot.id!)
+      return {
+        id: slot.id,
+        override_meeting_info_encrypted: slot.meeting_info_encrypted,
+        status: RecurringStatus.MODIFIED,
+        series_id: slotInstance.series_id,
+        start: slot.start,
+        role: slot.role || ParticipantType.Invitee,
+        end: slot.end,
+        account_address: slot.account_address,
+        created_at: slot.created_at,
+        guest_email: slot.guest_email,
+        version: slot.version,
+      }
+    })
+  )
 
   const query = await db.supabase
     .from('slot_instance')
     .upsert(slots, { onConflict: 'id' })
-  for (const slot of meetingUpdateRequest.slotsToRemove) {
-    await db.supabase
-      .from('slot_instance')
-      .update({ status: RecurringStatus.CANCELLED })
-      .eq('id', slot)
-  }
+
+  await db.supabase
+    .from('slot_instance')
+    .update({ status: RecurringStatus.CANCELLED })
+    .in('id', meetingUpdateRequest.slotsToRemove)
 
   const { data, error } = query
   if (error) {
@@ -4099,38 +4104,51 @@ const updateMeetingInstance = async (
   }
   meetingResponse.id = data?.[index]?.id
   meetingResponse.created_at = data?.[index]?.created_at
+  const { data: slotSerie } = await db.supabase
+    .from<Tables<'slot_series'>>('slot_series')
+    .select()
+    .eq('id', data[0].series_id)
+    .maybeSingle()
+  if (slotSerie) {
+    const newDate = DateTime.fromJSDate(new Date(meetingUpdateRequest.start))
+    const originalStartTime = DateTime.fromJSDate(
+      new Date(slotSerie?.original_start)
+    ).set({
+      day: newDate.day,
+      month: newDate.month,
+      year: newDate.year,
+    })
+    const body: MeetingInstanceCreationSyncRequest = {
+      participantActing,
+      meeting_id: meetingUpdateRequest.meeting_id,
+      start: meetingUpdateRequest.start,
+      end: meetingUpdateRequest.end,
+      created_at: new Date(meetingResponse.created_at!),
+      timezone,
+      meeting_url: meetingUpdateRequest.meeting_url,
+      meetingProvider: meetingUpdateRequest.meetingProvider,
+      participants: meetingUpdateRequest.participants_mapping,
+      title: meetingUpdateRequest.title,
+      content: meetingUpdateRequest.content,
+      changes: changingTime ? { dateChange: changingTime } : undefined,
+      meetingReminders: meetingUpdateRequest.meetingReminders,
+      meetingPermissions: meetingUpdateRequest.meetingPermissions,
+      skipCalendarSync: false,
+      skipNotify: true,
+      rrule: meetingUpdateRequest.rrule,
+      original_start_time: originalStartTime.toJSDate(),
+    }
 
-  const body: MeetingCreationSyncRequest = {
-    participantActing,
-    meeting_id: meetingUpdateRequest.meeting_id,
-    start: meetingUpdateRequest.start,
-    end: meetingUpdateRequest.end,
-    created_at: new Date(meetingResponse.created_at!),
-    timezone,
-    meeting_url: meetingUpdateRequest.meeting_url,
-    meetingProvider: meetingUpdateRequest.meetingProvider,
-    participants: meetingUpdateRequest.participants_mapping,
-    title: meetingUpdateRequest.title,
-    content: meetingUpdateRequest.content,
-    changes: changingTime ? { dateChange: changingTime } : undefined,
-    meetingReminders: meetingUpdateRequest.meetingReminders,
-    meetingRepeat: meetingUpdateRequest.meetingRepeat,
-    meetingPermissions: meetingUpdateRequest.meetingPermissions,
-    skipCalendarSync: false,
-    skipNotify: true,
-    rrule: meetingUpdateRequest.rrule,
+    // Doing notifications and syncs asynchronously
+    fetch(`${apiUrl}/server/meetings/instance/syncAndNotify`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+      headers: {
+        'X-Server-Secret': process.env.SERVER_SECRET!,
+        'Content-Type': 'application/json',
+      },
+    })
   }
-
-  // Doing notifications and syncs asynchronously
-  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-    headers: {
-      'X-Server-Secret': process.env.SERVER_SECRET!,
-      'Content-Type': 'application/json',
-    },
-  })
-
   if (
     meetingUpdateRequest.slotsToRemove.length > 0 ||
     meetingUpdateRequest.guestsToRemove.length > 0
