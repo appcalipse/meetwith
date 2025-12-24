@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
+import { DateTime } from 'luxon'
 
 import { UnifiedEvent } from '@/types/Calendar'
 import {
@@ -1241,19 +1242,33 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       version: 'v3',
       auth: myGoogleAuth,
     })
-    const seriesMasterId = meetingDetails.meeting_id
+    const seriesMasterId = meetingDetails.meeting_id.replaceAll('-', '')
     const originalStartTime = meetingDetails.original_start_time
-
+    const dateFrom = DateTime.fromJSDate(new Date(originalStartTime))
+      .startOf('day')
+      .toISO()
+    const dateTo = DateTime.fromJSDate(new Date(originalStartTime))
+      .endOf('day')
+      .toISO()
     const instances = await calendar.events.instances({
       calendarId,
       eventId: seriesMasterId,
-      timeMin: new Date(originalStartTime).toISOString(),
-      timeMax: new Date(originalStartTime).toISOString(),
+      timeMin: dateFrom!,
+      timeMax: dateTo!,
     })
 
     const instance = instances.data.items?.[0]
     if (!instance?.id) {
       throw new Error('Instance not found')
+    }
+    // check if the owner is organizer
+    const actor = instance.attendees?.find(
+      attendee => attendee.self && attendee.organizer
+    )
+    if (!actor) {
+      // eslint-disable-next-line no-restricted-syntax
+      console.info('Calendar owner is not the organizer of this event')
+      return
     }
 
     await calendar.events.patch({
