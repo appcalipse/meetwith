@@ -898,6 +898,9 @@ const updateMeetingInstance = async (
     getAccount(currentAccountAddress),
     getSlotInstanceById(decryptedMeeting.id),
   ])
+  if (!existingDBSlot) {
+    throw new MeetingChangeConflictError()
+  }
   const existingMeeting = await decryptMeeting(
     existingDBSlot,
     currentAccount,
@@ -2539,10 +2542,7 @@ const rsvpMeeting = async (
   if (isRecurringMeeting) {
     const slot: DBSlot = await apiUpdateMeetingInstance(
       decryptedMeeting.id,
-      {
-        ...payload,
-        series_id: series_id!,
-      },
+      payload,
       signal
     )
     return await decryptMeeting(slot, currentAccount)!
