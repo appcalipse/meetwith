@@ -45,6 +45,8 @@ export type Database = {
           availableTypes: Json[]
           availaibility_id: string | null
           avatar_url: string | null
+          banner_setting: Json | null
+          banner_url: string | null
           description: string | null
           id: string
           meetingProviders:
@@ -58,6 +60,8 @@ export type Database = {
           availableTypes?: Json[]
           availaibility_id?: string | null
           avatar_url?: string | null
+          banner_setting?: Json | null
+          banner_url?: string | null
           description?: string | null
           id?: string
           meetingProviders?:
@@ -71,6 +75,8 @@ export type Database = {
           availableTypes?: Json[]
           availaibility_id?: string | null
           avatar_url?: string | null
+          banner_setting?: Json | null
+          banner_url?: string | null
           description?: string | null
           id?: string
           meetingProviders?:
@@ -1432,19 +1438,19 @@ export type Database = {
         | {
             Args: {
               current_account: string
-              max_results: number
+              current_account_email: string
+              max_results?: number
               search: string
-              skip: number
+              skip?: number
             }
             Returns: Json
           }
         | {
             Args: {
               current_account: string
-              current_account_email: string
-              max_results?: number
+              max_results: number
               search: string
-              skip?: number
+              skip: number
             }
             Returns: Json
           }
@@ -1500,7 +1506,7 @@ export type Database = {
       PaymentStatus: 'cancelled' | 'pending' | 'completed' | 'failed'
       PaymentType: 'fiat' | 'crypto'
       PlanType: 'one_off' | 'sessions'
-      PollStatus: 'ongoing' | 'completed' | 'cancelled'
+      PollStatus: 'ongoing' | 'completed' | 'cancelled' | 'expired'
       PollVisibility: 'public' | 'private'
       QuickPollParticipantStatus:
         | 'pending'
@@ -1674,7 +1680,7 @@ export const Constants = {
       PaymentStatus: ['cancelled', 'pending', 'completed', 'failed'],
       PaymentType: ['fiat', 'crypto'],
       PlanType: ['one_off', 'sessions'],
-      PollStatus: ['ongoing', 'completed', 'cancelled'],
+      PollStatus: ['ongoing', 'completed', 'cancelled', 'expired'],
       PollVisibility: ['public', 'private'],
       QuickPollParticipantStatus: [
         'pending',

@@ -31,6 +31,7 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
+  BannerSetting,
   BaseMeetingType,
   DiscordConnectedAccounts,
   MeetingType,
@@ -122,7 +123,7 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
+import { Json, Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
 import { TelegramAccountInfo, TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
@@ -573,6 +574,52 @@ const updatePreferenceAvatar = async (
 
   return publicUrl
 }
+const updatePreferenceBanner = async (
+  address: string,
+  filename: string,
+  buffer: Buffer,
+  mimeType: string,
+  banner_setting: BannerSetting
+) => {
+  const contentType = mimeType
+  const file = `uploads/banners/${Date.now()}-${filename}`
+  const { error } = await db.supabase.storage
+    .from('avatars')
+    .upload(file, buffer, {
+      contentType,
+      upsert: true,
+    })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new UploadError(
+      'Unable to upload banner. Please try again or contact support if the problem persists.'
+    )
+  }
+
+  const { data } = db.supabase.storage.from('avatars').getPublicUrl(file)
+
+  const publicUrl = data?.publicURL
+  if (!publicUrl) {
+    Sentry.captureException(new Error('Public URL is undefined after upload'))
+    throw new UploadError(
+      "Avatar upload completed but couldn't generate preview URL. Please refresh and try again."
+    )
+  }
+
+  const { error: updateError } = await db.supabase
+    .from<Tables<'account_preferences'>>('account_preferences')
+    .update({ banner_url: publicUrl, banner_setting: banner_setting as Json })
+    .eq('owner_account_address', address.toLowerCase())
+  if (updateError) {
+    Sentry.captureException(updateError)
+    throw new UploadError(
+      "Avatar uploaded successfully but couldn't update your profile. Please refresh and try again."
+    )
+  }
+
+  return publicUrl
+}
 const getAccountAvatarUrl = async (address: string): Promise<string | null> => {
   const { data, error } = await db.supabase
     .from('account_preferences')
@@ -601,7 +648,19 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 
   throw new AccountNotFoundError(identifier)
 }
-
+const getAccountPreferencesLean = async (owner_account_address: string) => {
+  const { data: account_preferences, error: account_preferences_error } =
+    await db.supabase
+      .from<Tables<'account_preferences'>>('account_preferences')
+      .select('*')
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .maybeSingle()
+  if (account_preferences_error) {
+    console.error(account_preferences_error)
+    throw new Error("Couldn't get account's preferences")
+  }
+  return account_preferences
+}
 export const getAccountPreferences = async (
   owner_account_address: string
 ): Promise<AccountPreferences> => {
@@ -5911,7 +5970,10 @@ const handleCalendarRsvps = async (
   integration.updateEventExtendedProperties &&
     integration.updateEventExtendedProperties(meetingId, calendarId)
 }
-const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
+const getAccountDomainUrl = (
+  account: Pick<Account, 'address' | 'subscriptions'>,
+  ellipsize?: boolean
+): string => {
   if (isProAccount(account)) {
     const domain = account.subscriptions?.find(
       sub => new Date(sub.expiry_time) > new Date()
@@ -5921,12 +5983,12 @@ const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
     }
   }
   return `address/${
-    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+    ellipsize ? ellipsizeAddress(account?.address) : account?.address
   }`
 }
 
 const getAccountCalendarUrl = async (
-  account: Account,
+  account: Pick<Account, 'address' | 'subscriptions'>,
   ellipsize?: boolean,
   meetingTypeId?: string
 ): Promise<string> => {
@@ -5954,7 +6016,10 @@ const getOwnerPublicUrlServer = async (
   meetingTypeId?: string
 ): Promise<string> => {
   try {
-    const ownerAccount = await getAccountFromDB(ownerAccountAddress)
+    const ownerAccount: Pick<Account, 'address' | 'subscriptions'> = {
+      subscriptions: await getSubscriptionFromDBForAccount(ownerAccountAddress),
+      address: ownerAccountAddress,
+    }
     return await getAccountCalendarUrl(ownerAccount, undefined, meetingTypeId)
   } catch (error) {
     Sentry.captureException(error, {
@@ -7572,6 +7637,7 @@ export {
   getAccountNonce,
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
+  getAccountPreferencesLean,
   getAccountsNotificationSubscriptionEmails,
   getAccountsWithTgConnected,
   getActivePaymentAccount,
@@ -7669,6 +7735,7 @@ export {
   updatePaymentAccount,
   updatePaymentPreferences,
   updatePreferenceAvatar,
+  updatePreferenceBanner,
   updateQuickPoll,
   updateQuickPollGuestDetails,
   updateQuickPollParticipantAvailability,

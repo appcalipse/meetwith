@@ -948,11 +948,11 @@ const MeetingTypeModal: FC<IProps> = props => {
                       colorScheme="primary"
                       value={provider}
                       isChecked={selectedProviders.includes(provider)}
-                      onChange={e => {
+                      onChange={e =>
                         handleMeetingPlatformChange(
                           e.target.value as MeetingProvider
                         )
-                      }}
+                      }
                       p={4}
                       flexDirection="row-reverse"
                       justifyContent="space-between"
