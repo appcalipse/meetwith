@@ -44,7 +44,6 @@ export interface MeetingInstanceUpdateRequest extends MeetingCreationRequest {
   version: number
   eventId?: string | null
   calendar_id?: string | null
-  series_id: string
 }
 
 export interface MeetingCreationRequest {
