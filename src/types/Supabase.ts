@@ -680,27 +680,72 @@ export type Database = {
       }
       groups: {
         Row: {
+          avatar_url: string | null
           created_at: string
+          description: string | null
           id: string
           name: string
           slug: string | null
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           slug?: string | null
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           slug?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      group_availabilities: {
+        Row: {
+          availability_id: string
+          created_at: string
+          group_id: string
+          id: string
+          member_id: string
+        }
+        Insert: {
+          availability_id: string
+          created_at?: string
+          group_id: string
+          id?: string
+          member_id: string
+        }
+        Update: {
+          availability_id?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'group_availabilities_availability_id_fkey'
+            columns: ['availability_id']
+            isOneToOne: false
+            referencedRelation: 'availabilities'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'group_availabilities_group_id_member_id_fkey'
+            columns: ['group_id', 'member_id']
+            isOneToOne: false
+            referencedRelation: 'group_members'
+            referencedColumns: ['group_id', 'member_id']
+          }
+        ]
       }
       groups_to_meetings: {
         Row: {
@@ -1976,6 +2021,8 @@ export type Database = {
           name: string
           role: string
           slug: string
+          avatar_url: string | null
+          description: string | null
         }[]
       }
       search_accounts: {

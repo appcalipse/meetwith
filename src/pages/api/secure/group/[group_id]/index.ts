@@ -22,8 +22,16 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(200).json(group)
     }
     if (req.method === 'PUT') {
-      const { slug, name } = req.body as UpdateGroupPayload
-      await editGroup(group_id, account_address, name, slug)
+      const { slug, name, avatar_url, description } =
+        req.body as UpdateGroupPayload
+      await editGroup(
+        group_id,
+        account_address,
+        name,
+        slug,
+        avatar_url,
+        description
+      )
       return res.status(200).json({
         success: true,
       })
