@@ -506,10 +506,10 @@ export const updateMeeting = async (
     throw e
   }
 }
-export const updateMeetingInstance = async (
+export const apiUpdateMeetingInstance = async (
   slotId: string,
   meeting: MeetingInstanceUpdateRequest,
-  signal: AbortSignal
+  signal?: AbortSignal
 ): Promise<DBSlot> => {
   try {
     const response = await internalFetch<DBSlot>(
