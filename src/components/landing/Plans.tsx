@@ -169,7 +169,7 @@ export function Plans() {
       openConnection()
     } else {
       if (selectedPlan && selectedPlan === Plan.PRO) {
-        await router.push('/dashboard/details')
+        await router.push('/dashboard/settings/details')
       } else {
         await router.push('/dashboard')
       }

@@ -98,7 +98,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const { currentAccount } = useContext(AccountContext)
   const [domain, setDomain] = useState<string>('')
   const [currentChain, setCurrentChain] = useState<ChainInfo | undefined>(
-    _currentSubscription ? getChainInfo(_currentSubscription.chain) : undefined
+    _currentSubscription && _currentSubscription.chain
+      ? getChainInfo(_currentSubscription.chain)
+      : undefined
   )
   const [currentToken, setCurrentToken] = useState<
     AcceptedTokenInfo | undefined
@@ -366,7 +368,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   useEffect(() => {
-    if (_currentSubscription) {
+    if (_currentSubscription && _currentSubscription.chain) {
       !domain && updateDomain()
       setCurrentChain(getChainInfo(_currentSubscription.chain))
     }
@@ -505,6 +507,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
   const renderChainInfo = (showInfo = false) => {
     if (_currentSubscription) {
+      if (!_currentSubscription.chain) {
+        return null
+      }
       return _currentSubscription.chain === SupportedChain.CUSTOM ? (
         <Text mt="4">You are currently subscribed using a coupon.</Text>
       ) : (

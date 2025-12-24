@@ -148,3 +148,10 @@ export interface CreateGroupPayload {
   name: string
   slug?: string
 }
+
+export interface GetGroupsFullResponseWithMetadata {
+  groups: Array<GetGroupsFullResponse>
+  total: number
+  hidden: number
+  upgradeRequired: boolean
+}

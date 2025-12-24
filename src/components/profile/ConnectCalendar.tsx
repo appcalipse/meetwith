@@ -21,8 +21,10 @@ import {
   ConnectedCalendarCore,
   ConnectedCalendarIcons,
 } from '@/types/CalendarConnections'
+import { SettingsSection } from '@/types/Dashboard'
 import {
   deleteConnectedCalendar,
+  getCalendarIntegrationsWithMetadata,
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { isProAccount } from '@/utils/subscription_manager'
@@ -31,7 +33,7 @@ const GoProCTA = () => (
   <VStack>
     <Text py="6">
       <Link
-        href="/dashboard/details#subscriptions"
+        href={`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`}
         colorScheme="primary"
         fontWeight="bold"
       >
@@ -111,25 +113,29 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
   const [calendarConnections, setCalendarConnections] = useState<
     ConnectedCalendarCore[]
   >([])
+  const [canCreateCalendar, setCanCreateCalendar] = useState(true)
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
   const loadCalendars = async () => {
     setLoading(true)
-    return listConnectedCalendars()
-      .then(data => {
-        // for old version without the calendars property
-        const calendars = data?.map((calendar: ConnectedCalendarCore) => ({
+    try {
+      const response = await getCalendarIntegrationsWithMetadata()
+      const calendars = response.calendars || []
+      // for old version without the calendars property
+      const formattedCalendars = calendars.map(
+        (calendar: ConnectedCalendarCore) => ({
           ...calendar,
           calendars: calendar.calendars,
-        }))
-        setCalendarConnections(calendars)
-        setLoading(false)
-      })
-      .catch(error => {
-        console.error(error)
-        setLoading(false)
-      })
+        })
+      )
+      setCalendarConnections(formattedCalendars)
+      setCanCreateCalendar(!response.upgradeRequired)
+      setLoading(false)
+    } catch (error) {
+      console.error(error)
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -174,6 +180,12 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         mb={7}
         alignSelf="flex-start"
         leftIcon={<FaPlus />}
+        isDisabled={!canCreateCalendar}
+        title={
+          !canCreateCalendar
+            ? 'Upgrade to Pro to connect more calendars'
+            : undefined
+        }
       >
         Add calendar connection
       </Button>

@@ -1558,7 +1558,7 @@ export type Database = {
           owner_account: string
           plan_id?: number | null
           registered_at: string
-          status?: Database['public']['Enums']['SubscriptionStatus']
+          status: Database['public']['Enums']['SubscriptionStatus']
           transaction_id?: string | null
           updated_at?: string | null
         }

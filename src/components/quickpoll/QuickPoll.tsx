@@ -35,6 +35,7 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
   }
 
   const hasExistingPolls = (pollsData?.polls?.length || 0) > 0
+  const canCreateQuickPoll = !pollsData?.upgradeRequired
 
   // If user has existing polls
   if (hasExistingPolls) {
@@ -128,6 +129,12 @@ const QuickPoll = ({ currentAccount: _currentAccount }: QuickPollProps) => {
             }}
             transition="all 0.2s ease-in-out"
             onClick={() => push(`/dashboard/create-poll`)}
+            isDisabled={!canCreateQuickPoll}
+            title={
+              !canCreateQuickPoll
+                ? 'Upgrade to Pro to create more active polls'
+                : undefined
+            }
           >
             Run new poll
           </Button>

@@ -21,7 +21,7 @@ import { BiCopy } from 'react-icons/bi'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { EditMode, Intents } from '@/types/Dashboard'
+import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import { Coupon } from '@/types/Subscription'
 import { getNewestCoupon } from '@/utils/api_helper'
 import { COUPON_CAMPAIGN_END_DATE } from '@/utils/constants/coupons'
@@ -73,11 +73,11 @@ const ProAccessPopUp = () => {
   const onClaim = () => {
     if (logged) {
       push(
-        `/dashboard/${EditMode.DETAILS}?coupon=${coupon?.code}&intent=${Intents.USE_COUPON}`
+        `/dashboard/settings/${SettingsSection.DETAILS}?coupon=${coupon?.code}&intent=${Intents.USE_COUPON}`
       )
     } else {
       openConnection(
-        `/dashboard/${EditMode.DETAILS}?coupon=${coupon?.code}&intent=${Intents.USE_COUPON}`
+        `/dashboard/settings/${SettingsSection.DETAILS}?coupon=${coupon?.code}&intent=${Intents.USE_COUPON}`
       )
     }
     onClose()

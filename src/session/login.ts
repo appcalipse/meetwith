@@ -87,7 +87,7 @@ export const useLogin = () => {
             (await router.push(
               redirectPath
                 ? `${redirectPath}&authstate=${state}`
-                : `/dashboard/details?state=${state}`
+                : `/dashboard/settings/details?state=${state}`
             ))
           return
         }

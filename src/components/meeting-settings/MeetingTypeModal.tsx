@@ -77,7 +77,7 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import { AcceptedToken, getSupportedChainFromId } from '@/types/chains'
-import { EditMode } from '@/types/Dashboard'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
 import { MeetingProvider } from '@/types/Meeting'
 import { PaymentAccountStatus } from '@/types/PaymentAccount'
 
@@ -1406,7 +1406,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                     Please connect your Stripe account.{' '}
                     {/* TODO make the connection from this section */}
                     <Link
-                      href="/dashboard/details#connected-accounts"
+                      href="/dashboard/settings/connected-accounts"
                       color="primary.200"
                       textDecor="underline"
                     >

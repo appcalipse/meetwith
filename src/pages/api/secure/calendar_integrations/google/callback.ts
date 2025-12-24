@@ -12,9 +12,13 @@ import { TimeSlotSource } from '@/types/Meeting'
 import { apiUrl, OnboardingSubject } from '@/utils/constants'
 import {
   addOrUpdateConnectedCalendar,
+  connectedCalendarExists,
+  countCalendarIntegrations,
   getAccountNotificationSubscriptions,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
+import { isProAccountAsync } from '@/utils/database'
+import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -34,7 +38,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     Sentry.captureException(error)
     if (!stateObject)
       return res.redirect(
-        `/dashboard/details?calendarResult=error#connected-calendars`
+        `/dashboard/settings/connected-calendars?calendarResult=error`
       )
     else {
       stateObject.error = 'Google Calendar integration failed.'
@@ -42,7 +46,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         'base64'
       )
       return res.redirect(
-        `/dashboard/details?calendarResult=error&state=${newState64}#connected-calendars`
+        `/dashboard/settings/connected-calendars?calendarResult=error&state=${newState64}`
       )
     }
   }
@@ -113,8 +117,33 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     ]
   }
 
+  // Check subscription status for feature limits
+  const accountAddress = req.session.account.address
+  const isPro = await isProAccountAsync(accountAddress)
+
+  if (!isPro) {
+    // Check if this is a new integration (not updating existing)
+    const existingIntegration = await connectedCalendarExists(
+      accountAddress,
+      userInfoRes.data.email!,
+      TimeSlotSource.GOOGLE
+    )
+
+    // If it's a new integration, check the limit
+    if (!existingIntegration) {
+      const integrationCount = await countCalendarIntegrations(accountAddress)
+      if (integrationCount >= 1) {
+        return res.redirect(
+          `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
+            'Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.'
+          )}`
+        )
+      }
+    }
+  }
+
   await addOrUpdateConnectedCalendar(
-    req.session.account.address,
+    accountAddress,
     userInfoRes.data.email!,
     TimeSlotSource.GOOGLE,
     calendars,
@@ -154,9 +183,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.redirect(redirect_url)
   }
   return res.redirect(
-    `/dashboard/details?calendarResult=success${
+    `/dashboard/settings/connected-calendars?calendarResult=success${
       !!state ? `&state=${newState64}` : ''
-    }#connected-calendars`
+    }`
   )
 }
 

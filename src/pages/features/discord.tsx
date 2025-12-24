@@ -61,7 +61,7 @@ const DiscordBot: NextPage = () => {
                   size="lg"
                   colorScheme="primary"
                   as="a"
-                  href="https://discord.com/oauth2/authorize?client_id=1039594066486247465&permissions=380104607744&redirect_uri=https%3A%2F%2Fmeetwithwallet.xyz%2Fdashboard%2Fdetails%3FdiscordResult%3Dtrue&scope=bot"
+                  href="https://discord.com/oauth2/authorize?client_id=1039594066486247465&permissions=380104607744&redirect_uri=https%3A%2F%2Fmeetwithwallet.xyz%2Fdashboard%2Fsettings%2Fdetails%3FdiscordResult%3Dtrue&scope=bot"
                 >
                   Install Meetwith bot
                 </Button>
@@ -141,7 +141,7 @@ const DiscordBot: NextPage = () => {
                   size="lg"
                   colorScheme="primary"
                   as="a"
-                  href="https://discord.com/oauth2/authorize?client_id=1039594066486247465&permissions=380104607744&redirect_uri=https%3A%2F%2Fmeetwithwallet.xyz%2Fdashboard%2Fdetails%3FdiscordResult%3Dtrue&scope=bot"
+                  href="https://discord.com/oauth2/authorize?client_id=1039594066486247465&permissions=380104607744&redirect_uri=https%3A%2F%2Fmeetwithwallet.xyz%2Fdashboard%2Fsettings%2Fdetails%3FdiscordResult%3Dtrue&scope=bot"
                 >
                   Install Meetwith bot
                 </Button>

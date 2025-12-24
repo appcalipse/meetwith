@@ -14,7 +14,6 @@ export const getCalendars = async (
 ) => {
   let calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
-    activeOnly: true,
   })
   if (meeting_type_id && meeting_type_id !== NO_MEETING_TYPE) {
     const meetingType = await getMeetingTypeFromDB(meeting_type_id)
@@ -341,7 +340,6 @@ const syncDeletedEventWithCalendar = async (
 ) => {
   const calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
-    activeOnly: true,
   })
 
   for (const calendar of calendars) {

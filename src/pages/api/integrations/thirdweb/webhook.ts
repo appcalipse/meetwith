@@ -9,10 +9,15 @@ import { formatUnits } from 'viem'
 
 import { getSupportedChainFromId } from '@/types/chains'
 import { ConfirmCryptoTransactionRequest } from '@/types/Requests'
-import { Address, IPurchaseData } from '@/types/Transactions'
+import { Address, IPurchaseData, ISubscriptionData } from '@/types/Transactions'
 import { PaymentType, TokenType } from '@/utils/constants/meeting-types'
 import { ChainNotFound } from '@/utils/errors'
-import { DEFAULT_MESSAGE_NAME, PubSubManager } from '@/utils/pub-sub.helper'
+import {
+  DEFAULT_MESSAGE_NAME,
+  DEFAULT_SUBSCRIPTION_MESSAGE_NAME,
+  PubSubManager,
+} from '@/utils/pub-sub.helper'
+import { handleCryptoSubscriptionPayment } from '@/utils/services/crypto.helper'
 
 export default async function handler(
   req: NextApiRequest,
@@ -59,18 +64,62 @@ export default async function handler(
           throw new ChainNotFound(chainId.toString())
         }
 
-        const {
-          guest_email,
-          guest_name,
-          message_channel,
-          guest_address,
-          meeting_type_id,
-          environment,
-        } = payload.data.purchaseData as IPurchaseData
-        if (environment !== process.env.NEXT_PUBLIC_ENV_CONFIG) {
-          return res.status(200).send('OK')
-        }
+        const purchaseData = payload.data.purchaseData as
+          | IPurchaseData
+          | ISubscriptionData
+
         if (payload.data.status === 'COMPLETED') {
+          // Check if this is a subscription payment
+          const isSubscriptionPayment = 'subscription_channel' in purchaseData
+
+          if (isSubscriptionPayment) {
+            // Handle subscription payment
+            try {
+              const subscriptionData = purchaseData as ISubscriptionData
+              const result = await handleCryptoSubscriptionPayment(
+                payload,
+                subscriptionData
+              )
+
+              // Publish transaction to subscription channel for frontend
+              const pubSubManager = new PubSubManager()
+              await pubSubManager.publishMessage(
+                subscriptionData.subscription_channel,
+                DEFAULT_SUBSCRIPTION_MESSAGE_NAME,
+                JSON.stringify(result.transaction)
+              )
+
+              // Subscription payment handled successfully
+              return res.status(200).send('OK')
+            } catch (error) {
+              captureException(error, {
+                extra: {
+                  subscriptionData: purchaseData,
+                  payloadType: payload.type,
+                },
+              })
+              console.error(
+                'Failed to handle crypto subscription payment:',
+                error
+              )
+              return res
+                .status(500)
+                .send('Failed to process subscription payment')
+            }
+          }
+
+          // Continue with existing meeting payment flow
+          const {
+            guest_email,
+            guest_name,
+            message_channel,
+            guest_address,
+            meeting_type_id,
+            environment,
+          } = payload.data.purchaseData as IPurchaseData
+          if (environment !== process.env.NEXT_PUBLIC_ENV_CONFIG) {
+            return res.status(200).send('OK')
+          }
           let transactionHash =
             payload.type === 'pay.onramp-transaction'
               ? payload.data.transactionHash
@@ -142,7 +191,7 @@ export default async function handler(
             amount: parsedAmount,
             chain: supportedChain?.chain,
             fiat_equivalent,
-            meeting_type_id: meeting_type_id,
+            meeting_type_id: meeting_type_id ?? null,
             payment_method: PaymentType.CRYPTO,
             token_address,
             token_type: TokenType.ERC20,

@@ -1,5 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
-import { getRawBody, handleAccountUpdate } from '@utils/services/stripe.helper'
+import {
+  getRawBody,
+  handleAccountUpdate,
+  handleInvoicePaymentFailed,
+  handleInvoicePaymentSucceeded,
+  handleSubscriptionCreated,
+  handleSubscriptionDeleted,
+  handleSubscriptionUpdated,
+} from '@utils/services/stripe.helper'
 import { StripeService } from '@utils/services/stripe.service'
 import { NextApiRequest, NextApiResponse } from 'next'
 import Stripe from 'stripe'
@@ -27,13 +35,28 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           return res.status(400).send('Webhook Error')
         }
       }
+
       switch (event.type) {
         case 'account.updated':
           await handleAccountUpdate(event)
           break
+        case 'customer.subscription.created':
+          await handleSubscriptionCreated(event)
+          break
+        case 'customer.subscription.updated':
+          await handleSubscriptionUpdated(event)
+          break
+        case 'customer.subscription.deleted':
+          await handleSubscriptionDeleted(event)
+          break
+        case 'invoice.payment_succeeded':
+          await handleInvoicePaymentSucceeded(event)
+          break
+        case 'invoice.payment_failed':
+          await handleInvoicePaymentFailed(event)
+          break
         default:
-          // eslint-disable-next-line no-restricted-syntax
-          console.log(`Unhandled event type: ${event.type}`)
+          break
       }
       return res.status(200).json({
         success: true,
