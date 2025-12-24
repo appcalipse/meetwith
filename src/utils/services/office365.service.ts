@@ -521,16 +521,23 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       Sentry.captureException("Can't find office event mapping")
       throw new Error("Can't find office event mapping")
     }
-    const originalStartTime = new Date(
-      meetingDetails.original_start_time
-    ).toISOString()
-
+    const originalStartTime = meetingDetails.original_start_time
+    const dateFrom = encodeURIComponent(
+      DateTime.fromJSDate(new Date(originalStartTime)).startOf('day').toISO()!
+    )
+    const dateTo = encodeURIComponent(
+      DateTime.fromJSDate(new Date(originalStartTime)).endOf('day').toISO()!
+    )
     const instances = await this.graphClient
       .api(`/me/calendars/${calendarId}/events/${officeId}/instances`)
-      .filter(`start/dateTime eq '${originalStartTime}'`)
+      .query({
+        startDateTime: dateFrom!,
+        endDateTime: dateTo!,
+      })
       .get()
 
     const instance: MicrosoftGraphEvent | null = instances.value[0]
+
     if (!instance || !instance?.id) {
       throw new Error('Instance not found')
     }
