@@ -2492,18 +2492,14 @@ const getConnectedCalendars = async (
   address: string,
   {
     syncOnly,
-    activeOnly,
     limit,
-    isPro,
   }: {
     syncOnly?: boolean
-    activeOnly?: boolean
     limit?: number
-    isPro?: boolean
   }
 ): Promise<ConnectedCalendar[]> => {
-  const effectiveLimit =
-    limit !== undefined ? limit : isPro === false ? 1 : undefined
+  const isPro = await isProAccountAsync(address)
+  const effectiveLimit = limit !== undefined ? limit : !isPro ? 1 : undefined
 
   const query = db.supabase
     .from('connected_calendars')
@@ -2525,17 +2521,12 @@ const getConnectedCalendars = async (
 
   let connectedCalendars: ConnectedCalendar[] = data
 
-  // Filter to only active calendars (those with at least one enabled calendar)
-  if (activeOnly) {
-    connectedCalendars = connectedCalendars.filter(cal => {
-      if (!cal.calendars || !Array.isArray(cal.calendars)) {
-        return false
-      }
-      return cal.calendars.some(
-        (c: { enabled?: boolean }) => c.enabled === true
-      )
-    })
-  }
+  connectedCalendars = connectedCalendars.filter(cal => {
+    if (!cal.calendars || !Array.isArray(cal.calendars)) {
+      return false
+    }
+    return cal.calendars.some((c: { enabled?: boolean }) => c.enabled === true)
+  })
 
   if (syncOnly) {
     const calendars: ConnectedCalendar[] = JSON.parse(
