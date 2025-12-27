@@ -130,6 +130,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
               height={`${Math.max(height, 18)}px`}
               marginTop={margin}
               marginLeft={margin}
+              top={top}
               zIndex={2}
               py={0}
               overflowY="hidden"
@@ -151,7 +152,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
                   : undefined
               }
             >
-              <VStack gap={0}>
+              <VStack gap={0} align="flex-start" w="100%" minW={0}>
                 <Text
                   w="100%"
                   whiteSpace="nowrap"
@@ -162,7 +163,17 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
                 >
                   {event.title}
                 </Text>
-                <Text fontSize="10px">{event.interval.toFormat('t')}</Text>
+                {height >= 36 && (
+                  <Text
+                    fontSize="10px"
+                    w="100%"
+                    whiteSpace="nowrap"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                  >
+                    {event.interval.toFormat('t')}
+                  </Text>
+                )}
               </VStack>
             </GridItem>
           </PopoverTrigger>
