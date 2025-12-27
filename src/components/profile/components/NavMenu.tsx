@@ -36,7 +36,6 @@ import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
-import { isProduction } from '@/utils/constants'
 import {
   getNotificationTime,
   incrementNotificationLookup,
@@ -86,7 +85,7 @@ export const NavMenu: React.FC<{
 
   const LinkItems: Array<LinkItemProps> = useMemo(() => {
     const tabs: Array<LinkItemProps> = [
-      { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
+      { name: 'My Schedule', icon: FaCalendarDay, mode: EditMode.MEETINGS },
       {
         name: 'My Groups',
         icon: FaUserGroup,
