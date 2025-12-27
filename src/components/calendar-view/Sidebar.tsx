@@ -15,6 +15,8 @@ const Sidebar: React.FC = () => {
       justifyContent="flex-start"
       borderRightWidth={1}
       borderColor="neutral.700"
+      bg="neutral.825"
+      roundedLeft={10}
     >
       <CalendarPicker />
       <ConnectedCalendar />
