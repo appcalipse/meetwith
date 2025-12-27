@@ -15,7 +15,7 @@ const Dashboard: NextPage<DashboardProps> = props => {
       data-testid={`dashboard-${props.section}`}
       maxW={{
         base: '100%',
-        '2xl': '8xl',
+        '2xl': props.section === EditMode.MEETINGS ? undefined : '8xl',
       }}
       mt={{ base: 16, md: 8 }}
       flex={1}
