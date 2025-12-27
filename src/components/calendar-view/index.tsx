@@ -1,4 +1,4 @@
-import { HStack } from '@chakra-ui/layout'
+import { Box, HStack } from '@chakra-ui/layout'
 import * as React from 'react'
 
 import { CalendarProvider } from '@/providers/calendar/CalendarContext'
@@ -18,8 +18,19 @@ interface CalendarViewProps {
 const CalendarView: React.FC<CalendarViewProps> = ({}) => {
   return (
     <CalendarProvider>
-      <HStack align="start" gap={0} w="100%" overflowX="hidden">
-        <Sidebar />
+      <HStack
+        align="start"
+        gap={0}
+        w="100%"
+        overflowX="hidden"
+        mt={{
+          md: 0,
+          base: '100px',
+        }}
+      >
+        <Box display={{ base: 'none', md: 'block' }} flexShrink={0}>
+          <Sidebar />
+        </Box>
         <Calendar />
       </HStack>
       <PermissionsProvider>
