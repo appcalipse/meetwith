@@ -1695,7 +1695,6 @@ const handleMeetingCancelSync = async (
   }
 }
 const deleteRecurringSlotInstances = async (slotIds: string[]) => {
-  // First delete all slot instances associated in the event that the slotIds are series slots
   const { data } = await db.supabase
     .from<Tables<'slot_series'>>('slot_series')
     .delete()
@@ -1821,18 +1820,21 @@ const deleteMeetingFromDB = async (
   skipRecurrenceUpdate = false
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
-
+  const cleanedSlotIds = slotIds.map(id => id.split('_')[0])
   const oldSlots: DBSlot[] =
-    (await db.supabase.from<DBSlot>('slots').select().in('id', slotIds)).data ||
-    []
+    (await db.supabase.from<DBSlot>('slots').select().in('id', cleanedSlotIds))
+      .data || []
 
-  const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
+  const { error } = await db.supabase
+    .from('slots')
+    .delete()
+    .in('id', cleanedSlotIds)
 
   if (error) {
     throw new Error(error.message)
   }
   if (!skipRecurrenceUpdate) {
-    await deleteRecurringSlotInstances(slotIds)
+    await deleteRecurringSlotInstances(cleanedSlotIds)
   }
 
   const body: MeetingCancelSyncRequest = {
@@ -3894,9 +3896,10 @@ const updateMeeting = async (
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts
 
-  const query = await db.supabase
-    .from('slots')
-    .upsert(slots, { onConflict: 'id' })
+  const query = await db.supabase.from('slots').upsert(
+    slots.map(slot => ({ ...slot, id: slot.id.split('_')[0] })),
+    { onConflict: 'id' }
+  )
   //TODO: handle error
   const { data, error } = query
   if (error) {
@@ -3937,7 +3940,7 @@ const updateMeeting = async (
       reminders: meetingUpdateRequest.meetingReminders,
       version: MeetingVersion.V3,
       title: meetingUpdateRequest.title,
-      slots: updatedSlots,
+      slots: updatedSlots.map(s => (s.includes('_') ? s.split('_')[0] : s)),
       permissions: meetingUpdateRequest.meetingPermissions,
       encrypted_metadata: meetingUpdateRequest.encrypted_metadata,
     })
