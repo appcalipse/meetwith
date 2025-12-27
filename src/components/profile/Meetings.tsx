@@ -6,6 +6,11 @@ import {
   Image,
   Spacer,
   Spinner,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   Text,
   useToast,
   VStack,
@@ -45,6 +50,7 @@ import {
 } from '@/utils/errors'
 import { getSignature } from '@/utils/storage'
 
+import CalendarView from '../calendar-view'
 import MeetingCard from '../meeting/MeetingCard'
 import { useCancelDialog } from '../schedule/cancel.dialog.hook'
 const Meetings: React.FC<{ currentAccount: Account }> = ({
@@ -370,40 +376,52 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   }, [slotId])
 
   return (
-    <ActionsContext.Provider value={context}>
-      <Flex direction={'column'} maxWidth="100%">
-        <HStack justifyContent="center" alignItems="flex-start" mb={4}>
-          <Heading flex={1} fontSize="2xl">
-            My Meetings
-            <Text fontSize="sm" fontWeight={100} mt={1}>
-              Timezone: {timezone}
-            </Text>
-          </Heading>
+    <Tabs w="100%" variant="soft-rounded" colorScheme="primary">
+      <ActionsContext.Provider value={context}>
+        <Flex direction={'column'} w="100%">
+          <HStack justifyContent="space-between" alignItems="flex-start" mb={4}>
+            <Heading flex={1} fontSize="2xl">
+              My Meetings
+              <Text fontSize="sm" fontWeight={100} mt={1}>
+                Timezone: {timezone}
+              </Text>
+            </Heading>
+            <TabList>
+              <Tab>My Calendar</Tab>
+              <Tab>My meetings</Tab>
+            </TabList>
+            <Button
+              onClick={() => push(`/dashboard/schedule`)}
+              colorScheme="primary"
+              display={{ base: 'none', md: 'flex' }}
+              mt={{ base: 4, md: 0 }}
+              mb={4}
+              leftIcon={<FaPlus />}
+            >
+              New meeting
+            </Button>
+          </HStack>
           <Button
             onClick={() => push(`/dashboard/schedule`)}
             colorScheme="primary"
-            display={{ base: 'none', md: 'flex' }}
-            mt={{ base: 4, md: 0 }}
-            mb={4}
+            display={{ base: 'flex', md: 'none' }}
+            mb={8}
             leftIcon={<FaPlus />}
           >
             New meeting
           </Button>
-        </HStack>
-        <Button
-          onClick={() => push(`/dashboard/schedule`)}
-          colorScheme="primary"
-          display={{ base: 'flex', md: 'none' }}
-          mb={8}
-          leftIcon={<FaPlus />}
-        >
-          New meeting
-        </Button>
-        {content}
-        <MeetingDialog />
-        <CancelDialog />
-      </Flex>
-    </ActionsContext.Provider>
+
+          <TabPanels>
+            <TabPanel>
+              <CalendarView />
+            </TabPanel>
+            <TabPanel>{content}</TabPanel>
+          </TabPanels>
+          <MeetingDialog />
+          <CancelDialog />
+        </Flex>
+      </ActionsContext.Provider>
+    </Tabs>
   )
 }
 
