@@ -1420,9 +1420,10 @@ const deleteMeeting = async (
     guestsToRemove,
     version: decryptedMeeting.version + 1,
   }
+  const slotId = decryptedMeeting.id.split('_')[0]
 
   // Fetch the updated data one last time
-  const slot: DBSlot = await apiUpdateMeeting(decryptedMeeting.id, payload)
+  const slot: DBSlot = await apiUpdateMeeting(slotId, payload)
   return slot
 }
 
@@ -1470,17 +1471,19 @@ const cancelMeeting = async (
     )
   }
 
+  const slotId = decryptedMeeting.id.split('_')[0]
   // Only the owner or scheduler of the meeting can cancel it
-  const isMeetingOwners = existingMeeting!.participants.find(
+  const isMeetingOwners = existingMeeting?.participants.find(
     user =>
       user.type === ParticipantType.Owner &&
-      user.slot_id === decryptedMeeting.id
+      user.slot_id?.split('_')[0] === slotId
   )
-  const isMeetingScheduler = existingMeeting!.participants.find(
+  const isMeetingScheduler = existingMeeting?.participants.find(
     user =>
       user.type === ParticipantType.Scheduler &&
-      user.slot_id === decryptedMeeting.id
+      user.slot_id?.split('_')[0] === slotId
   )
+
   if (!isMeetingOwners && !isMeetingScheduler) {
     throw new MeetingCancelForbiddenError()
   }
@@ -1492,7 +1495,17 @@ const cancelMeeting = async (
   }
   // Fetch the updated data one last time
   const response = await apiCancelMeeting(
-    decryptedMeeting,
+    {
+      ...decryptedMeeting,
+      id: slotId,
+      participants: existingMeeting!.participants.map(p => ({
+        ...p,
+        slot_id: p.slot_id?.split('_')[0],
+      })),
+      related_slot_ids: decryptedMeeting.related_slot_ids.map(
+        id => id.split('_')[0]
+      ),
+    },
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
 
