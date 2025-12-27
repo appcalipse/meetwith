@@ -58,7 +58,14 @@ const CalendarHeader: React.FC = ({}) => {
           pt={'14px'}
           pb={5}
         >
-          <Text>{day.toFormat('ccc dd')}</Text>
+          <Text display={{ base: 'none', md: 'block' }}>
+            {day.toFormat('ccc dd')}
+          </Text>
+          <Text display={{ base: 'block', md: 'none' }}>
+            {day.toFormat('ccccc')}
+            <br />
+            <b>{day.toFormat('dd')}</b>
+          </Text>
         </GridItem>
       ))}
     </Grid>
