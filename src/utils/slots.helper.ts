@@ -1,12 +1,4 @@
-import {
-  addMinutes,
-  compareAsc,
-  format,
-  getDay,
-  getHours,
-  Interval,
-  isAfter,
-} from 'date-fns'
+import { addMinutes, compareAsc, getDay, Interval, isAfter } from 'date-fns'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime, Interval as LuxonInterval } from 'luxon'
 
@@ -177,4 +169,25 @@ export const suggestBestSlots = (
     .filter(slot => {
       return !sortedBusySlots.some(busySlot => busySlot.overlaps(slot))
     })
+}
+
+export const getEmptySlots = (
+  time: Date,
+  scheduleDuration: number,
+  timezone = 'UTC'
+): Array<LuxonInterval<true>> => {
+  const slots: Array<LuxonInterval<true>> = []
+  const slotsPerHour = 60 / (scheduleDuration || 30)
+  const totalSlots = 24 * slotsPerHour
+
+  for (let i = 0; i < totalSlots; i++) {
+    const minutesFromStart = i * (scheduleDuration || 30)
+    const start = DateTime.fromJSDate(time)
+      .setZone(timezone)
+      .startOf('day')
+      .plus({ minutes: minutesFromStart })
+    const slot = LuxonInterval.after(start, { minute: scheduleDuration || 30 })
+    if (slot.isValid) slots.push(slot)
+  }
+  return slots
 }
