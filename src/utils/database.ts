@@ -2496,10 +2496,10 @@ const getConnectedCalendars = async (
   }: {
     syncOnly?: boolean
     limit?: number
-  }
+  } = {}
 ): Promise<ConnectedCalendar[]> => {
   const isPro = await isProAccountAsync(address)
-  const effectiveLimit = limit !== undefined ? limit : !isPro ? 1 : undefined
+  const effectiveLimit = !isPro ? 1 : limit !== undefined ? limit : undefined
 
   const query = db.supabase
     .from('connected_calendars')
