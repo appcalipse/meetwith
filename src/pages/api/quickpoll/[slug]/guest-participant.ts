@@ -4,6 +4,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import {
   AddOrUpdateGuestParticipantRequest,
   PollVisibility,
+  QuickPollParticipantStatus,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
 import {
@@ -12,6 +13,7 @@ import {
   getQuickPollParticipantByIdentifier,
   updateQuickPollGuestDetails,
   updateQuickPollParticipantAvailability,
+  updateQuickPollParticipantStatus,
 } from '@/utils/database'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -94,6 +96,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         participant.id,
         available_slots,
         timezone
+      )
+
+      participant = await updateQuickPollParticipantStatus(
+        participant.id,
+        QuickPollParticipantStatus.ACCEPTED
       )
     }
 
