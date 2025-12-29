@@ -75,4 +75,10 @@ export default class QueryKeys {
   static contactFull(limit?: number, offset?: number, query?: string) {
     return ['contactFull', limit, offset, query]
   }
+  static contacts(accountAddress?: string, search?: string) {
+    return ['contacts', accountAddress, search]
+  }
+  static contactRequests(accountAddress?: string, search?: string) {
+    return ['contactRequests', accountAddress, search]
+  }
 }
