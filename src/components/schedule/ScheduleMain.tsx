@@ -175,8 +175,10 @@ const ScheduleMain: FC<IInitialProps> = ({
   const handleGroupPrefetch = async () => {
     if (!groupId) return
     try {
-      const group = await getGroup(groupId)
-      const fetchedGroupMembers = await getGroupsMembers(groupId)
+      const [group, fetchedGroupMembers] = await Promise.all([
+        getGroup(groupId),
+        getGroupsMembers(groupId),
+      ])
       const actualMembers = fetchedGroupMembers
         .filter(val => !val.invitePending)
         .filter(val => !!val.address)
