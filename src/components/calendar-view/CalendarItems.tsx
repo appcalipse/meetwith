@@ -8,26 +8,6 @@ import CalendarItem from './CalendarItem'
 
 const CalendarItems: React.FC = () => {
   const { currrentDate } = useCalendarContext()
-  const weekOffset = React.useRef(0)
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
-
-  const currentWeek = currrentDate.startOf('week')
-  const previousWeek = React.useRef(currentWeek)
-
-  React.useEffect(() => {
-    if (!previousWeek.current.equals(currentWeek)) {
-      setIsTransitioning(true)
-      weekOffset.current =
-        currentWeek.diff(previousWeek.current, 'weeks').weeks * 100
-
-      // Smooth transition
-      setTimeout(() => {
-        previousWeek.current = currentWeek
-        weekOffset.current = 0
-        setIsTransitioning(false)
-      }, 200)
-    }
-  }, [currentWeek])
 
   const timeSlots = React.useMemo(
     () =>
@@ -46,7 +26,7 @@ const CalendarItems: React.FC = () => {
   )
 
   return (
-    <Grid templateColumns="minmax(45px, 70px) repeat(7, 1fr)" h="100%">
+    <Grid templateColumns="minmax(40px, 50px) repeat(7, 1fr)" h="100%">
       <TimeColumn timeSlots={timeSlots} />
       {days.map((day, dayIndex) => (
         <CalendarItem
@@ -61,7 +41,7 @@ const CalendarItems: React.FC = () => {
 
 const TimeColumn = ({ timeSlots }: { timeSlots: DateTime[] }) => (
   <Grid templateRows="repeat(1fr)">
-    {timeSlots.map((timeSlot, index) => (
+    {timeSlots.map(timeSlot => (
       <TimeSlot key={timeSlot.hour} timeSlot={timeSlot} />
     ))}
   </Grid>
@@ -75,8 +55,18 @@ const TimeSlot: React.FC<{ timeSlot: DateTime }> = ({ timeSlot }) => {
       borderInline="1px solid"
       borderColor="neutral.700"
       bg="neutral.825"
+      color={timeSlot.hour === 0 ? 'transparent' : undefined}
     >
-      <Text top={'-13px'} pos="absolute" zIndex={2} textAlign="center" w="100%">
+      <Text
+        top={'-10px'}
+        pos="absolute"
+        zIndex={2}
+        textAlign="center"
+        w="100%"
+        fontSize={'12px'}
+        fontWeight={500}
+        userSelect="none"
+      >
         {timeSlot.toFormat('h a')}
       </Text>
     </GridItem>

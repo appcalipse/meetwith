@@ -31,7 +31,7 @@ const CalendarHeader: React.FC = ({}) => {
 
   return (
     <Grid
-      templateColumns="minmax(45px, 70px) repeat(7, 1fr)"
+      templateColumns="minmax(40px, 50px) repeat(7, 1fr)"
       fontSize={'sm'}
       textAlign="center"
       roundedTopRight={10}
@@ -44,9 +44,9 @@ const CalendarHeader: React.FC = ({}) => {
         pb={5}
         borderColor="neutral.700"
         borderWidth={1}
-        borderBottom={'none'}
+        borderRight={0}
       >
-        <Text>UTC{getOffsetString(utcOffset)}</Text>
+        <Text fontSize={'12px'}>UTC{getOffsetString(utcOffset)}</Text>
       </GridItem>
 
       {days.map((day, index) => (
@@ -54,9 +54,10 @@ const CalendarHeader: React.FC = ({}) => {
           key={`${day.toMillis()}-${index}`}
           w="100%"
           borderColor="neutral.700"
-          borderWidth={1}
+          borderTopWidth={1}
           pt={'14px'}
           pb={5}
+          fontSize={'12px'}
         >
           <Text display={{ base: 'none', md: 'block' }}>
             {day.toFormat('ccc dd')}
