@@ -20,7 +20,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { isProduction } from '@utils/constants'
 import { Select, SingleValue } from 'chakra-react-select'
 import { DateTime, Interval } from 'luxon'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
 
@@ -51,13 +51,14 @@ import {
   TimeZoneOption,
 } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
-import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
-import { suggestBestSlots } from '@/utils/slots.helper'
+import { getEmptySlots, suggestBestSlots } from '@/utils/slots.helper'
 import { getAccountDisplayName } from '@/utils/user_manager'
 interface AccountAddressRecord extends ParticipantInfo {
   account_address: string
 }
+
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
@@ -127,65 +128,200 @@ export function SchedulePickTime({
   } = useScheduleState()
   const { canEditMeetingDetails, isUpdatingMeeting } =
     useParticipantPermissions()
+  const { allAvailaibility } = useParticipants()
   const currentAccount = useAccountContext()
-  const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
   const toast = useToast()
-  const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
   const SLOT_LENGTH =
     useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) || 3
+  const queryClient = useQueryClient()
+
+  const addresses = useMemo(
+    () =>
+      allAvailaibility
+        .filter((val): val is AccountAddressRecord => !!val.account_address)
+        .map(val => val.account_address)
+        .sort(),
+    [allAvailaibility]
+  )
+
+  const monthStart = DateTime.fromJSDate(currentSelectedDate)
+    .setZone(timezone)
+    .startOf('month')
+    .toJSDate()
+  const monthEnd = DateTime.fromJSDate(currentSelectedDate)
+    .setZone(timezone)
+    .endOf('month')
+    .toJSDate()
+
+  const { data: busySlotsRaw, isLoading: isBusySlotsLoading } = useQuery({
+    queryKey: ['busySlots', addresses, monthStart, monthEnd],
+    queryFn: ({ signal }) =>
+      fetchBusySlotsRawForMultipleAccounts(
+        addresses,
+        monthStart,
+        monthEnd,
+        undefined,
+        undefined,
+        signal
+      ),
+  })
+
+  const { data: meetingMembers, isLoading: isMeetingMembersLoading } = useQuery(
+    {
+      queryKey: ['meetingMembers', addresses],
+      queryFn: ({ signal }) =>
+        getExistingAccounts(deduplicateArray(addresses), undefined, { signal }),
+    }
+  )
+
+  const busySlots = useMemo(() => {
+    if (!busySlotsRaw) return new Map()
+    const busySlotsMap: Map<string, Interval[]> = new Map<string, Interval[]>()
+    const busySlotsData = busySlotsRaw.map(busySlot => ({
+      account_address: busySlot.account_address,
+      interval: Interval.fromDateTimes(
+        new Date(busySlot.start),
+        new Date(busySlot.end)
+      ),
+    }))
+
+    const accountBusySlots = addresses.map(account => {
+      return busySlotsData.filter(slot => slot.account_address === account)
+    })
+    for (const account of accountBusySlots) {
+      const busySlots = account.map(slot => {
+        return slot.interval
+      })
+      busySlotsMap.set(account?.[0]?.account_address?.toLowerCase(), busySlots)
+    }
+    return busySlotsMap
+  }, [busySlotsRaw, addresses])
+
+  const busySlotsWithDetails = useMemo(() => {
+    if (!busySlotsRaw) return new Map()
+    const busySlotsWithDetailsMap: Map<string, TimeSlot[]> = new Map<
+      string,
+      TimeSlot[]
+    >()
+    for (const account of addresses) {
+      const accountSlots = busySlotsRaw
+        .filter(slot => {
+          const slotAddress = slot.account_address?.toLowerCase()
+          const accountAddress = account?.toLowerCase()
+          return slotAddress === accountAddress
+        })
+        .map(slot => ({
+          ...slot,
+          start: new Date(slot.start),
+          end: new Date(slot.end),
+        }))
+      if (accountSlots.length > 0) {
+        busySlotsWithDetailsMap.set(account.toLowerCase(), accountSlots)
+      }
+    }
+    return busySlotsWithDetailsMap
+  }, [busySlotsRaw, addresses])
+  const availableSlots = useMemo(() => {
+    if (!meetingMembers) return new Map()
+    const availableSlotsMap: Map<string, Interval[]> = new Map<
+      string,
+      Interval[]
+    >()
+
+    for (const memberAccount of meetingMembers) {
+      if (!memberAccount.address) continue
+      try {
+        const availabilities = parseMonthAvailabilitiesToDate(
+          memberAccount?.preferences?.availabilities || [],
+          monthStart,
+          monthEnd,
+          memberAccount?.preferences?.timezone || 'UTC'
+        )
+        availableSlotsMap.set(
+          memberAccount.address.toLowerCase(),
+          availabilities
+        )
+      } catch (error) {
+        console.warn(
+          'Failed to parse availability for member:',
+          memberAccount.address,
+          error
+        )
+      }
+    }
+    return availableSlotsMap
+  }, [meetingMembers, monthStart, monthEnd])
+
+  const suggestedTimes = useMemo(() => {
+    if (!meetingMembers || !busySlotsRaw) return []
+    const busySlotsData = busySlotsRaw.map(busySlot => ({
+      account_address: busySlot.account_address,
+      interval: Interval.fromDateTimes(
+        new Date(busySlot.start),
+        new Date(busySlot.end)
+      ),
+    }))
+    return suggestBestSlots(
+      monthStart,
+      duration,
+      monthEnd,
+      timezone,
+      busySlotsData.map(slot => slot.interval).filter(slot => slot.isValid),
+      meetingMembers || []
+    )
+  }, [busySlotsRaw, meetingMembers, duration])
+  const isLoading = isBusySlotsLoading || isMeetingMembersLoading
 
   useEffect(() => {
-    // Only resolve after client-side rendering
-    const timer = setTimeout(() => setIsBreakpointResolved(true), 100)
-    return () => clearTimeout(timer)
-  }, [])
-  const { meetingMembers, setMeetingMembers, allAvailaibility } =
-    useParticipants()
+    if (isLoading) return
+    const nextMonth = DateTime.fromJSDate(currentSelectedDate).plus({
+      months: 1,
+    })
+    const nextMonthStart = nextMonth.startOf('month').toJSDate()
+    const nextMonthEnd = nextMonth.endOf('month').toJSDate()
+    void queryClient.prefetchQuery({
+      queryKey: ['busySlots', addresses, nextMonthStart, nextMonthEnd],
+      queryFn: ({ signal }) =>
+        fetchBusySlotsRawForMultipleAccounts(
+          addresses,
+          nextMonthStart,
+          nextMonthEnd,
+          undefined,
+          undefined,
+          signal
+        ),
+    })
+  }, [currentSelectedDate, addresses, isLoading])
+
   const { handlePageSwitch } = useScheduleNavigation()
 
   const { block: defaultAvailabilityBlock } = useAvailabilityBlock(
     currentAccount?.preferences?.availaibility_id
   )
 
-  const [isLoading, setIsLoading] = useState(true)
+  const dates = useMemo(() => {
+    const days = Array.from({ length: SLOT_LENGTH || 3 }, (v, k) => k)
+      .map(k =>
+        DateTime.fromJSDate(currentSelectedDate)
+          .setZone(timezone)
+          .startOf('day')
+          .plus({ days: k })
+      )
+      .filter(val =>
+        DateTime.fromJSDate(currentSelectedDate)
+          .setZone(timezone)
+          .startOf('month')
+          .hasSame(val, 'month')
+      )
+    return days.map(date => {
+      const slots = getEmptySlots(date.toJSDate(), duration, timezone)
+      return {
+        date: date.toJSDate(),
+        slots,
+      }
+    })
+  }, [currentSelectedDate, timezone, duration, SLOT_LENGTH])
 
-  const isDisplayLoading = isLoading
-  const [availableSlots, setAvailableSlots] = useState<
-    Map<string, Interval<true>[]>
-  >(new Map())
-  const [busySlots, setBusySlots] = useState<Map<string, Interval<true>[]>>(
-    new Map()
-  )
-  const [busySlotsWithDetails, setBusySlotsWithDetails] = useState<
-    Map<string, TimeSlot[]>
-  >(new Map())
-  const availabilityAddresses = useMemo(
-    () =>
-      allAvailaibility
-        .filter((val): val is AccountAddressRecord => !!val.account_address)
-        .map(val => val.account_address),
-    [allAvailaibility]
-  )
-
-  const getEmptySlots = (
-    time: Date,
-    scheduleDuration = duration
-  ): Array<Interval<true>> => {
-    const slots: Array<Interval<true>> = []
-    const slotsPerHour = 60 / (scheduleDuration || 30)
-    const totalSlots = 24 * slotsPerHour
-
-    for (let i = 0; i < totalSlots; i++) {
-      const minutesFromStart = i * (scheduleDuration || 30)
-      const start = DateTime.fromJSDate(time)
-        .setZone(timezone)
-        .startOf('day')
-        .plus({ minutes: minutesFromStart })
-      const slot = Interval.after(start, { minute: scheduleDuration || 30 })
-      if (slot.isValid) slots.push(slot)
-    }
-    return slots
-  }
   const months = useMemo(() => {
     const monthsArray = []
     let currentDateInTimezone = DateTime.now().setZone(timezone)
@@ -198,15 +334,13 @@ export function SchedulePickTime({
     }
     return monthsArray
   }, [currentSelectedDate.getFullYear(), timezone])
-  const [dates, setDates] = useState<Array<Dates>>([])
-  const abortControllerRef = useRef<AbortController | null>(null)
 
   const datesSlotsWithAvailability = useSlotsWithAvailability(
     dates,
     busySlots,
     availableSlots,
-    meetingMembers,
-    availabilityAddresses,
+    meetingMembers || [],
+    addresses,
     timezone,
     busySlotsWithDetails,
     currentAccount?.address
@@ -279,195 +413,7 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
-  const getDates = useCallback(
-    (scheduleDuration = duration) => {
-      const days = Array.from({ length: SLOT_LENGTH || 3 }, (v, k) => k)
-        .map(k =>
-          DateTime.fromJSDate(currentSelectedDate)
-            .setZone(timezone)
-            .startOf('day')
-            .plus({ days: k })
-        )
-        .filter(val =>
-          DateTime.fromJSDate(currentSelectedDate)
-            .setZone(timezone)
-            .startOf('month')
-            .hasSame(val, 'month')
-        )
-      return days.map(date => {
-        const slots = getEmptySlots(date.toJSDate(), scheduleDuration)
-        return {
-          date: date.toJSDate(),
-          slots,
-        }
-      })
-    },
-    [currentSelectedDate, timezone, duration, SLOT_LENGTH]
-  )
 
-  async function handleSlotLoad() {
-    if (!isBreakpointResolved) return
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
-    try {
-      setIsLoading(true)
-      if (controller.signal.aborted) return
-      setAvailableSlots(new Map())
-      setBusySlots(new Map())
-
-      const monthStart = DateTime.fromJSDate(currentSelectedDate)
-        .setZone(timezone)
-        .startOf('month')
-        .toJSDate()
-      const monthEnd = DateTime.fromJSDate(currentSelectedDate)
-        .setZone(timezone)
-        .endOf('month')
-        .toJSDate()
-
-      const [busySlotsRaw, meetingMembers] = await Promise.all([
-        fetchBusySlotsRawForMultipleAccounts(
-          availabilityAddresses,
-          monthStart,
-          monthEnd,
-          undefined,
-          undefined,
-          {
-            signal: controller.signal,
-          }
-        ),
-        getExistingAccounts(
-          deduplicateArray(availabilityAddresses),
-          undefined,
-          {
-            signal: controller.signal,
-          }
-        ),
-      ])
-
-      if (controller.signal.aborted) return
-
-      // Map raw busy slots to intervals for compatibility
-      const busySlots = busySlotsRaw.map(busySlot => ({
-        account_address: busySlot.account_address,
-        interval: Interval.fromDateTimes(
-          new Date(busySlot.start),
-          new Date(busySlot.end)
-        ),
-      }))
-
-      // Store full TimeSlot objects with event details
-      const busySlotsWithDetailsMap: Map<string, TimeSlot[]> = new Map()
-      const busySlotsMap: Map<string, Interval[]> = new Map()
-
-      const accountBusySlots = availabilityAddresses.map(account => {
-        return busySlots.filter(slot => slot.account_address === account)
-      })
-
-      // Store busy slots with details grouped by account
-      for (const account of availabilityAddresses) {
-        const accountSlots = busySlotsRaw
-          .filter(slot => {
-            const slotAddress = slot.account_address?.toLowerCase()
-            const accountAddress = account?.toLowerCase()
-            return slotAddress === accountAddress
-          })
-          .map(slot => ({
-            ...slot,
-            start: new Date(slot.start),
-            end: new Date(slot.end),
-          }))
-        if (accountSlots.length > 0) {
-          busySlotsWithDetailsMap.set(account.toLowerCase(), accountSlots)
-        }
-      }
-
-      const availableSlotsMap: Map<string, Interval[]> = new Map<
-        string,
-        Interval[]
-      >()
-      for (const memberAccount of meetingMembers) {
-        if (!memberAccount.address) continue
-        try {
-          const availabilities = parseMonthAvailabilitiesToDate(
-            memberAccount?.preferences?.availabilities || [],
-            monthStart,
-            monthEnd,
-            memberAccount?.preferences?.timezone || 'UTC'
-          )
-          availableSlotsMap.set(
-            memberAccount.address.toLowerCase(),
-            availabilities
-          )
-        } catch (error) {
-          console.warn(
-            'Failed to parse availability for member:',
-            memberAccount.address,
-            error
-          )
-        }
-      }
-      for (const account of accountBusySlots) {
-        const busySlots = account.map(slot => {
-          return slot.interval
-        })
-        busySlotsMap.set(
-          account?.[0]?.account_address?.toLowerCase(),
-          busySlots
-        )
-      }
-      if (!controller.signal.aborted) {
-        setBusySlots(busySlotsMap)
-        setBusySlotsWithDetails(busySlotsWithDetailsMap)
-        setMeetingMembers(meetingMembers)
-        setAvailableSlots(availableSlotsMap)
-        setDates(getDates(duration))
-        const suggestedSlots = suggestBestSlots(
-          monthStart,
-          duration,
-          monthEnd,
-          timezone,
-          busySlots.map(slot => slot.interval).filter(slot => slot.isValid),
-          meetingMembers
-        )
-
-        setSuggestedTimes(suggestedSlots)
-      }
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        // Request was cancelled, ignore
-        return
-      }
-      handleApiError('Error merging availabilities', error)
-    } finally {
-      if (!controller.signal.aborted) {
-        setIsLoading(false)
-        abortControllerRef.current = null
-      }
-    }
-  }
-
-  useEffect(() => {
-    handleSlotLoad()
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
-    }
-  }, [
-    currentSelectedDate.getMonth(),
-    currentSelectedDate.getFullYear(),
-    duration,
-    availabilityAddresses,
-    isBreakpointResolved,
-  ])
-  useEffect(() => {
-    setDates(getDates())
-  }, [currentSelectedDate, timezone, SLOT_LENGTH])
   const handleScheduledTimeBack = () => {
     const currentDate = DateTime.fromJSDate(currentSelectedDate)
       .setZone(timezone)
@@ -510,7 +456,11 @@ export function SchedulePickTime({
     setCurrentSelectedDate(newDate.toJSDate())
   }
   const HOURS_SLOTS = useMemo(() => {
-    const slots = getEmptySlots(new Date(), duration >= 45 ? duration : 60)
+    const slots = getEmptySlots(
+      new Date(),
+      duration >= 45 ? duration : 60,
+      timezone
+    )
     return slots.map(val => {
       const zonedTime = val.start.setZone(timezone)
       return zonedTime.toFormat(zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a')
@@ -619,6 +569,7 @@ export function SchedulePickTime({
                 *
               </Text>
             </FormLabel>
+
             <ChakraSelect
               id="duration"
               placeholder="Duration"
@@ -888,7 +839,7 @@ export function SchedulePickTime({
               })}
             </HStack>
           </VStack>
-          {isDisplayLoading ? (
+          {isLoading ? (
             <VStack
               w="100%"
               borderWidth={1}
