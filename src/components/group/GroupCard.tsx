@@ -59,7 +59,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   )
   const [isAdmin, setIsAdmin] = useState(actor?.role === MemberType.ADMIN)
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>(
-    props.members?.map(member => member.role)
+    props.members?.map(member => member.role) || []
   )
   const {
     openDeleteModal,
@@ -346,11 +346,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {props.members.map(member => (
+                    {props.members?.map(member => (
                       <GroupMemberCard
                         currentAccount={props.currentAccount}
                         key={member?.address}
-                        isEmpty={props.members.length < 2}
+                        isEmpty={props.members && props.members.length < 2}
                         viewerRole={actor?.role || MemberType.MEMBER}
                         groupRoles={groupRoles}
                         setGroupRoles={setGroupRoles}
