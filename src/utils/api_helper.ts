@@ -741,7 +741,7 @@ export const fetchBusySlotsRawForMultipleAccounts = async (
   end: Date,
   limit?: number,
   offset?: number,
-  options?: RequestOption
+  signal?: AbortSignal
 ): Promise<TimeSlot[]> => {
   const response = (await internalFetch(
     `/meetings/busy/team`,
@@ -754,7 +754,9 @@ export const fetchBusySlotsRawForMultipleAccounts = async (
       offset,
       isRaw: true,
     },
-    options
+    {
+      signal,
+    }
   )) as TimeSlot[]
 
   return response.map(slot => ({
