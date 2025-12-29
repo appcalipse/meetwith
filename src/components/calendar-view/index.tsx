@@ -22,7 +22,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({}) => {
         align="start"
         gap={0}
         w="100%"
-        overflowX="hidden"
+        overflowX="clip"
         mt={{
           md: 0,
           base: '100px',
