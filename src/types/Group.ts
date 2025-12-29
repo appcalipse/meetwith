@@ -16,7 +16,7 @@ export interface GetGroupsFullResponse {
   id: string
   name: string
   slug: string
-  members: Array<GroupMember>
+  members?: Array<GroupMember>
 }
 
 export interface CreateGroupsResponse {
