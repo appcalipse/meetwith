@@ -200,13 +200,7 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     [participants, groups, groupAvailability, currentAccount?.address]
   )
   const allParticipants = useMemo(
-    () =>
-      getMergedParticipants(
-        participants,
-        groups,
-        groupAvailability,
-        currentAccount?.address
-      ),
+    () => getMergedParticipants(participants, groups, groupAvailability),
     [participants, groups, groupAvailability, currentAccount?.address]
   )
   const toggleAvailability = (accountAddress: string) => {
