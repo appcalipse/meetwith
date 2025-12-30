@@ -75,7 +75,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         })
         promises.push(promise)
       }
-      await Promise.all(promises)
+      await Promise.race([
+        Promise.all(promises),
+        new Promise(res =>
+          // eslint-disable-next-line no-restricted-syntax
+          setTimeout(() => res(() => console.info('TIMEOUT')), 20000)
+        ),
+      ])
       return res.status(200).send('OK')
     } catch (e) {
       Sentry.captureException(e)
