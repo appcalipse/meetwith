@@ -355,7 +355,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
               <SingleDatepicker
                 date={timezoneDate}
                 onDateChange={() => undefined}
-                iconColor="neutral.300"
+                // iconColor="neutral.300"
                 iconSize={20}
                 disabled={!canEditMeeting}
                 inputProps={{
@@ -363,7 +363,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
                   pl: 12,
                   borderColor: 'neutral.400',
                   borderRadius: '6px',
-                  bg: 'neutral.650',
                 }}
               />
             </Box>
@@ -380,7 +379,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
                   pl: 12,
                   borderColor: 'neutral.400',
                   borderRadius: '6px',
-                  bg: 'neutral.650',
                 }}
               />
             </Box>
@@ -460,7 +458,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
               container: provided => ({
                 ...provided,
                 borderColor: 'input-border',
-                bg: 'select-bg',
                 w: '100%',
               }),
             }}
@@ -511,7 +508,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
               container: provided => ({
                 ...provided,
                 borderColor: 'input-border',
-                bg: 'select-bg',
                 borderRadius: 'md',
                 maxW: '100%',
                 display: 'block',
