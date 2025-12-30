@@ -172,7 +172,7 @@ export const suggestBestSlots = (
 }
 
 export const getEmptySlots = (
-  time: Date,
+  time: DateTime,
   scheduleDuration: number,
   timezone = 'UTC'
 ): Array<LuxonInterval<true>> => {
@@ -180,14 +180,14 @@ export const getEmptySlots = (
   const slotsPerHour = 60 / (scheduleDuration || 30)
   const totalSlots = 24 * slotsPerHour
 
+  const dayStart = time.setZone(timezone).startOf('day')
+
   for (let i = 0; i < totalSlots; i++) {
     const minutesFromStart = i * (scheduleDuration || 30)
-    const start = DateTime.fromJSDate(time)
-      .setZone(timezone)
-      .startOf('day')
-      .plus({ minutes: minutesFromStart })
-    const slot = LuxonInterval.after(start, { minute: scheduleDuration || 30 })
+    const start = dayStart.plus({ minutes: minutesFromStart })
+    const slot = LuxonInterval.after(start, { minutes: scheduleDuration || 30 }) // ✅ Fixed typo: 'minute' → 'minutes'
     if (slot.isValid) slots.push(slot)
   }
+
   return slots
 }
