@@ -26,7 +26,6 @@ import { FaAnglesRight } from 'react-icons/fa6'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
-import { useAvailabilityBlock } from '@/hooks/availability'
 import useAccountContext from '@/hooks/useAccountContext'
 import useSlotsWithAvailability from '@/hooks/useSlotsWithAvailability'
 import {
@@ -46,7 +45,6 @@ import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
   getCustomSelectComponents,
-  Option,
   timeZoneFilter,
   TimeZoneOption,
 } from '@/utils/constants/select'
@@ -60,9 +58,10 @@ interface AccountAddressRecord extends ParticipantInfo {
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
+import useSlotCache from '@/hooks/useSlotCache'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
-import ScheduleTimeSlot from './ScheduleTimeSlot'
+import ScheduleDateSection from './ScheduleDateSection'
 
 export enum State {
   ALL_AVAILABLE,
@@ -118,21 +117,32 @@ export function SchedulePickTime({
   const {
     timezone,
     setTimezone,
-    currentSelectedDate,
     setPickedTime,
-    setCurrentSelectedDate,
     pickedTime,
     duration,
     setDuration,
     isScheduling,
+    currentSelectedDate,
+    setCurrentSelectedDate,
   } = useScheduleState()
+
   const { canEditMeetingDetails, isUpdatingMeeting } =
     useParticipantPermissions()
   const { allAvailaibility } = useParticipants()
   const currentAccount = useAccountContext()
   const toast = useToast()
-  const SLOT_LENGTH =
-    useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) || 3
+
+  const SLOT_LENGTH_RAW = useBreakpointValue(
+    { base: 3, md: 5, lg: 7 },
+    { ssr: true, fallback: '3' }
+  )
+
+  const [SLOT_LENGTH, setSlotLength] = useState(Number(SLOT_LENGTH_RAW) || 7)
+
+  useEffect(() => {
+    setSlotLength(Number(SLOT_LENGTH_RAW) || 7)
+  }, [SLOT_LENGTH_RAW])
+
   const queryClient = useQueryClient()
 
   const addresses = useMemo(
@@ -144,14 +154,14 @@ export function SchedulePickTime({
     [allAvailaibility]
   )
 
-  const monthStart = DateTime.fromJSDate(currentSelectedDate)
-    .setZone(timezone)
-    .startOf('month')
-    .toJSDate()
-  const monthEnd = DateTime.fromJSDate(currentSelectedDate)
-    .setZone(timezone)
-    .endOf('month')
-    .toJSDate()
+  const { monthStart, monthEnd } = useMemo(() => {
+    const start = currentSelectedDate
+      .setZone(timezone)
+      .startOf('month')
+      .toJSDate()
+    const end = currentSelectedDate.setZone(timezone).endOf('month').toJSDate()
+    return { monthStart: start, monthEnd: end }
+  }, [currentSelectedDate.year, currentSelectedDate.month, timezone])
 
   const { data: busySlotsRaw, isLoading: isBusySlotsLoading } = useQuery({
     queryKey: ['busySlots', addresses, monthStart, monthEnd],
@@ -176,51 +186,51 @@ export function SchedulePickTime({
 
   const busySlots = useMemo(() => {
     if (!busySlotsRaw) return new Map()
-    const busySlotsMap: Map<string, Interval[]> = new Map<string, Interval[]>()
-    const busySlotsData = busySlotsRaw.map(busySlot => ({
-      account_address: busySlot.account_address,
-      interval: Interval.fromDateTimes(
+    const busySlotsMap = new Map<string, Interval[]>()
+
+    for (const busySlot of busySlotsRaw) {
+      const address = busySlot.account_address?.toLowerCase()
+      if (!address) continue
+
+      const interval = Interval.fromDateTimes(
         new Date(busySlot.start),
         new Date(busySlot.end)
-      ),
-    }))
+      )
 
-    const accountBusySlots = addresses.map(account => {
-      return busySlotsData.filter(slot => slot.account_address === account)
-    })
-    for (const account of accountBusySlots) {
-      const busySlots = account.map(slot => {
-        return slot.interval
-      })
-      busySlotsMap.set(account?.[0]?.account_address?.toLowerCase(), busySlots)
-    }
-    return busySlotsMap
-  }, [busySlotsRaw, addresses])
-
-  const busySlotsWithDetails = useMemo(() => {
-    if (!busySlotsRaw) return new Map()
-    const busySlotsWithDetailsMap: Map<string, TimeSlot[]> = new Map<
-      string,
-      TimeSlot[]
-    >()
-    for (const account of addresses) {
-      const accountSlots = busySlotsRaw
-        .filter(slot => {
-          const slotAddress = slot.account_address?.toLowerCase()
-          const accountAddress = account?.toLowerCase()
-          return slotAddress === accountAddress
-        })
-        .map(slot => ({
-          ...slot,
-          start: new Date(slot.start),
-          end: new Date(slot.end),
-        }))
-      if (accountSlots.length > 0) {
-        busySlotsWithDetailsMap.set(account.toLowerCase(), accountSlots)
+      const existing = busySlotsMap.get(address)
+      if (existing) {
+        existing.push(interval)
+      } else {
+        busySlotsMap.set(address, [interval])
       }
     }
+
+    return busySlotsMap
+  }, [busySlotsRaw])
+  const busySlotsWithDetails = useMemo(() => {
+    if (!busySlotsRaw) return new Map()
+    const busySlotsWithDetailsMap = new Map<string, TimeSlot[]>()
+
+    for (const slot of busySlotsRaw) {
+      const address = slot.account_address?.toLowerCase()
+      if (!address) continue
+
+      const timeSlot = {
+        ...slot,
+        start: new Date(slot.start),
+        end: new Date(slot.end),
+      }
+
+      const existing = busySlotsWithDetailsMap.get(address)
+      if (existing) {
+        existing.push(timeSlot)
+      } else {
+        busySlotsWithDetailsMap.set(address, [timeSlot])
+      }
+    }
+
     return busySlotsWithDetailsMap
-  }, [busySlotsRaw, addresses])
+  }, [busySlotsRaw])
   const availableSlots = useMemo(() => {
     if (!meetingMembers) return new Map()
     const availableSlotsMap: Map<string, Interval[]> = new Map<
@@ -274,53 +284,79 @@ export function SchedulePickTime({
 
   useEffect(() => {
     if (isLoading) return
-    const nextMonth = DateTime.fromJSDate(currentSelectedDate).plus({
-      months: 1,
-    })
-    const nextMonthStart = nextMonth.startOf('month').toJSDate()
-    const nextMonthEnd = nextMonth.endOf('month').toJSDate()
-    void queryClient.prefetchQuery({
-      queryKey: ['busySlots', addresses, nextMonthStart, nextMonthEnd],
-      queryFn: ({ signal }) =>
-        fetchBusySlotsRawForMultipleAccounts(
-          addresses,
-          nextMonthStart,
-          nextMonthEnd,
-          undefined,
-          undefined,
-          signal
-        ),
-    })
-  }, [currentSelectedDate, addresses, isLoading])
+
+    // Debounce prefetch to avoid blocking on rapid navigation
+    const timeoutId = setTimeout(() => {
+      const nextMonth = currentSelectedDate.plus({
+        months: 1,
+      })
+      const nextMonthStart = nextMonth.startOf('month').toJSDate()
+      const nextMonthEnd = nextMonth.endOf('month').toJSDate()
+
+      const queryKey = ['busySlots', addresses, nextMonthStart, nextMonthEnd]
+
+      // Skip if already cached
+      if (queryClient.getQueryData(queryKey)) return
+
+      void queryClient.prefetchQuery({
+        queryKey,
+        queryFn: ({ signal }) =>
+          fetchBusySlotsRawForMultipleAccounts(
+            addresses,
+            nextMonthStart,
+            nextMonthEnd,
+            undefined,
+            undefined,
+            signal
+          ),
+      })
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [
+    currentSelectedDate.month,
+    currentSelectedDate.year,
+    addresses,
+    isLoading,
+    queryClient,
+  ])
 
   const { handlePageSwitch } = useScheduleNavigation()
-
-  const { block: defaultAvailabilityBlock } = useAvailabilityBlock(
-    currentAccount?.preferences?.availaibility_id
-  )
+  const slotTemplate = useSlotCache(duration, timezone)
 
   const dates = useMemo(() => {
-    const days = Array.from({ length: SLOT_LENGTH || 3 }, (v, k) => k)
-      .map(k =>
-        DateTime.fromJSDate(currentSelectedDate)
-          .setZone(timezone)
-          .startOf('day')
-          .plus({ days: k })
-      )
-      .filter(val =>
-        DateTime.fromJSDate(currentSelectedDate)
-          .setZone(timezone)
-          .startOf('month')
-          .hasSame(val, 'month')
-      )
+    const baseDate = currentSelectedDate.setZone(timezone).startOf('day')
+    const monthStart = baseDate.startOf('month')
+
+    const days = []
+    for (let k = 0; k < (SLOT_LENGTH || 3); k++) {
+      const day = baseDate.plus({ days: k })
+      if (day.hasSame(monthStart, 'month')) {
+        days.push(day)
+      }
+    }
+
     return days.map(date => {
-      const slots = getEmptySlots(date.toJSDate(), duration, timezone)
+      const dateStart = date.startOf('day')
+      const templateStart = slotTemplate[0].start.startOf('day')
+      const offsetMillis = dateStart.toMillis() - templateStart.toMillis()
+
+      // Shift template slots to actual date
+      const slots = slotTemplate
+        .map(slot =>
+          Interval.fromDateTimes(
+            slot.start.plus({ milliseconds: offsetMillis }),
+            slot.end.plus({ milliseconds: offsetMillis })
+          )
+        )
+        .filter((slot): slot is Interval<true> => slot.isValid)
+
       return {
         date: date.toJSDate(),
         slots,
       }
     })
-  }, [currentSelectedDate, timezone, duration, SLOT_LENGTH])
+  }, [currentSelectedDate, timezone, SLOT_LENGTH, slotTemplate])
 
   const months = useMemo(() => {
     const monthsArray = []
@@ -333,8 +369,7 @@ export function SchedulePickTime({
       currentDateInTimezone = currentDateInTimezone.plus({ months: 1 })
     }
     return monthsArray
-  }, [currentSelectedDate.getFullYear(), timezone])
-
+  }, [currentSelectedDate.year, timezone])
   const datesSlotsWithAvailability = useSlotsWithAvailability(
     dates,
     busySlots,
@@ -375,18 +410,13 @@ export function SchedulePickTime({
     if (!newMonth) {
       const year = month.label.split(' ')[1]
       setCurrentSelectedDate(
-        DateTime.now()
-          .set({ month: Number(month.value), day: 1, year: Number(year) })
-          .toJSDate()
+        DateTime.now().set({
+          month: Number(month.value),
+          day: 1,
+          year: Number(year),
+        })
       )
     }
-  }
-  const _onChangeDuration = (newValue: unknown) => {
-    if (Array.isArray(newValue)) {
-      return
-    }
-    const duration = newValue as Option<number, string>
-    setDuration(duration?.value ? Number(duration.value) : 30)
   }
 
   const tzOptions = useMemo(
@@ -415,9 +445,7 @@ export function SchedulePickTime({
   }
 
   const handleScheduledTimeBack = () => {
-    const currentDate = DateTime.fromJSDate(currentSelectedDate)
-      .setZone(timezone)
-      .startOf('day')
+    const currentDate = currentSelectedDate.setZone(timezone).startOf('day')
     let newDate = currentDate.minus({ days: SLOT_LENGTH })
     const differenceInDays = currentDate
       .diff(currentDate.startOf('month'), 'days')
@@ -435,12 +463,10 @@ export function SchedulePickTime({
         newDate.toJSDate()
       )
     }
-    setCurrentSelectedDate(newDate.toJSDate())
+    setCurrentSelectedDate(newDate)
   }
   const handleScheduledTimeNext = () => {
-    const currentDate = DateTime.fromJSDate(currentSelectedDate)
-      .setZone(timezone)
-      .startOf('day')
+    const currentDate = currentSelectedDate.setZone(timezone).startOf('day')
     let newDate = currentDate.plus({ days: SLOT_LENGTH })
     if (!newDate.hasSame(currentDate, 'month')) {
       newDate = newDate.startOf('month')
@@ -453,11 +479,11 @@ export function SchedulePickTime({
       )
     }
 
-    setCurrentSelectedDate(newDate.toJSDate())
+    setCurrentSelectedDate(newDate)
   }
   const HOURS_SLOTS = useMemo(() => {
     const slots = getEmptySlots(
-      new Date(),
+      DateTime.now(),
       duration >= 45 ? duration : 60,
       timezone
     )
@@ -468,8 +494,7 @@ export function SchedulePickTime({
   }, [duration, timezone])
 
   const isBackDisabled = useMemo(() => {
-    const selectedDate =
-      DateTime.fromJSDate(currentSelectedDate).setZone(timezone)
+    const selectedDate = currentSelectedDate.setZone(timezone)
     const currentDate = DateTime.now().setZone(timezone)
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
@@ -800,13 +825,19 @@ export function SchedulePickTime({
               >
                 <Box h={'48px'} width={'100%'} />
               </VStack>
-              {datesSlotsWithAvailability.map((date, index) => {
+              {datesSlotsWithAvailability?.map((date, index) => {
                 return (
                   <SlideFade
                     in={true}
                     key={'date' + index + date.date.toDateString()}
-                    transition={{ exit: { delay: 0 }, enter: { duration: 1 } }}
-                    style={{ flex: 1 }}
+                    transition={{
+                      exit: { delay: 0 },
+                      enter: { duration: 0.2 },
+                    }}
+                    style={{
+                      flex: 1,
+                      willChange: 'opacity, transform',
+                    }}
                   >
                     <VStack flex={1} w="100%" align={'center'} gap={2}>
                       <VStack align={'center'} w="100%" h={12} gap={0}>
@@ -895,44 +926,21 @@ export function SchedulePickTime({
                   })}
                 </VStack>
               </VStack>
-              {datesSlotsWithAvailability.map((date, index) => {
+              {datesSlotsWithAvailability?.map((date, index) => {
                 return (
-                  <SlideFade
-                    in={true}
+                  <ScheduleDateSection
                     key={index + date.date.toDateString()}
-                    transition={{ exit: { delay: 0 }, enter: { duration: 1 } }}
-                    style={{ flex: 1 }}
-                  >
-                    <VStack flex={1} align={'flex-start'} gap={2}>
-                      <VStack
-                        width="100%"
-                        align={'flex-start'}
-                        borderWidth={1}
-                        borderRadius={5}
-                        gap={'-1px'}
-                        bg="bg-canvas-subtle"
-                        p={1}
-                      >
-                        {date.slots.map(slotData => {
-                          return (
-                            <ScheduleTimeSlot
-                              key={slotData.slotKey}
-                              slotData={slotData}
-                              pickedTime={pickedTime}
-                              duration={duration}
-                              handleTimePick={handleTimeSelection}
-                              timezone={timezone}
-                              currentAccountAddress={currentAccount?.address}
-                              displayNameToAddress={displayNameToAddress}
-                              defaultAvailabilityBlock={
-                                defaultAvailabilityBlock
-                              }
-                            />
-                          )
-                        })}
-                      </VStack>
-                    </VStack>
-                  </SlideFade>
+                    pickedTime={pickedTime}
+                    duration={duration}
+                    timezone={timezone}
+                    currentAccountAddress={currentAccount?.address}
+                    displayNameToAddress={displayNameToAddress}
+                    defaultBlockId={
+                      currentAccount?.preferences?.availaibility_id
+                    }
+                    slots={date.slots}
+                    handleTimeSelection={handleTimeSelection}
+                  />
                 )
               })}
             </HStack>
