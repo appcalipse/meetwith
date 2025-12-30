@@ -31,7 +31,10 @@ import RemoveGroupMemberModal from '@/components/group/RemoveGroupMemberModal'
 import { Account } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import { GetGroupsFullResponse, GroupMember, MemberType } from '@/types/Group'
-import { getAvailabilityBlocks, getGroupsFull } from '@/utils/api_helper'
+import {
+  getAvailabilityBlocks,
+  getGroupsFullWithMetadata,
+} from '@/utils/api_helper'
 import { GROUP_PAGE_SIZE } from '@/utils/constants/group'
 import { ApiFetchError } from '@/utils/errors'
 import QueryKeys from '@/utils/query_keys'
@@ -88,19 +91,27 @@ const Groups = forwardRef<GroupRef, Props>(
       useInfiniteQuery({
         queryKey: QueryKeys.groups(currentAccount?.address, search),
         queryFn: ({ pageParam = 0 }) => {
-          return getGroupsFull(GROUP_PAGE_SIZE, pageParam, search)
+          return getGroupsFullWithMetadata(GROUP_PAGE_SIZE, pageParam, search)
         },
         getNextPageParam: (lastPage, allPages) => {
-          if (!lastPage || lastPage.length < GROUP_PAGE_SIZE) {
+          if (
+            !lastPage ||
+            !lastPage.groups ||
+            lastPage.groups.length < GROUP_PAGE_SIZE
+          ) {
             return undefined
           }
-          return allPages.flat().length
+          return allPages.reduce(
+            (acc, page) => acc + (page.groups?.length || 0),
+            0
+          )
         },
         enabled: !!currentAccount?.address,
         staleTime: 0,
         refetchOnMount: true,
       })
-    const groups = data?.pages.flat() ?? []
+    const groups = data?.pages.flatMap(page => page.groups || []) ?? []
+    const canCreateGroup = !data?.pages[0]?.upgradeRequired
     const firstFetch = isLoading
     const loading = isFetching
     const noMoreFetch = !hasNextPage
@@ -243,6 +254,12 @@ const Groups = forwardRef<GroupRef, Props>(
             mt={{ base: 4, md: 0 }}
             mb={4}
             leftIcon={<FaPlus />}
+            isDisabled={!canCreateGroup}
+            title={
+              !canCreateGroup
+                ? 'Upgrade to Pro to create more groups'
+                : undefined
+            }
           >
             Create new group
           </Button>

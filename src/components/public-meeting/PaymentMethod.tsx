@@ -22,20 +22,23 @@ interface IProps {
 }
 
 const PaymentMethod: FC<IProps> = props => {
-  const { handleSelectPaymentMethod, setPaymentType } = useContext(
-    PublicScheduleContext
-  )
+  const scheduleCtx = useContext(PublicScheduleContext)
+  const handleSelectPaymentMethod = scheduleCtx?.handleSelectPaymentMethod
+  const setPaymentType = scheduleCtx?.setPaymentType
   const [loading, setLoading] = useState(false)
   const tagBg = useColorModeValue('neutral.100', '#2D3748')
   const handleSelect = async () => {
     setLoading(true)
-    if (props.onClick) {
-      setPaymentType(props.type)
-      await props.onClick()
-    } else {
-      await handleSelectPaymentMethod(props.type, props.step)
+    try {
+      if (props.onClick) {
+        setPaymentType?.(props.type)
+        await props.onClick()
+      } else if (handleSelectPaymentMethod) {
+        await handleSelectPaymentMethod(props.type, props.step)
+      }
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
   return (
     <VStack

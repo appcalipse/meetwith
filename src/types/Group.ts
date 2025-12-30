@@ -157,6 +157,13 @@ export interface CreateGroupPayload {
   slug?: string
 }
 
+export interface GetGroupsFullResponseWithMetadata {
+  groups: Array<GetGroupsFullResponse>
+  total: number
+  hidden: number
+  upgradeRequired: boolean
+}
+
 export interface GroupMemberAvailability {
   groupId: string
   memberAddress: string
