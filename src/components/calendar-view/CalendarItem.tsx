@@ -61,11 +61,10 @@ const TimeSlotItem: React.FC<{
   return (
     <GridItem
       border="1px solid"
-      borderColor="neutral.700"
-      bg={dayIndex % 2 === 0 ? 'neutral.825' : 'neutral.950'}
+      borderColor="border-subtle"
+      bg={dayIndex % 2 === 0 ? 'bg-event' : 'bg-event-alternate'}
       height="40px"
       cursor="pointer"
-      animation={`slideFromLeft 0.3s ease-out ${timeIndex * 10}ms`}
     >
       <Grid
         templateColumns={`repeat(${hourEvents.length}, minmax(0, 1fr))`}

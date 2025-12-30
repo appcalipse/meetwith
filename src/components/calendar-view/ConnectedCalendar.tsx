@@ -7,7 +7,7 @@ import {
   HStack,
 } from '@chakra-ui/react'
 import * as React from 'react'
-import { FaChevronDown, FaChevronUp } from 'react-icons/fa6'
+import { FaChevronDown, FaChevronRight } from 'react-icons/fa6'
 
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 
@@ -20,7 +20,7 @@ const ConnectedCalendar: React.FC = () => {
     <Accordion allowToggle width="100%">
       <AccordionItem
         width="100%"
-        borderColor="text-subtle"
+        borderColor="connected-calendar-border"
         borderWidth={1}
         borderRadius="0.375rem"
         py={1.5}
@@ -28,13 +28,18 @@ const ConnectedCalendar: React.FC = () => {
       >
         {({ isExpanded }) => (
           <>
-            <AccordionButton color="white" cursor="pointer" width="100%" p={0}>
+            <AccordionButton
+              color="upcoming-event-title"
+              cursor="pointer"
+              width="100%"
+              p={0}
+            >
               <HStack justifyContent="space-between" w="full">
                 <Heading fontSize={16}>Connected Calendars</Heading>
                 {isExpanded ? (
-                  <FaChevronUp size={15} />
-                ) : (
                   <FaChevronDown size={15} />
+                ) : (
+                  <FaChevronRight size={15} />
                 )}
               </HStack>
             </AccordionButton>

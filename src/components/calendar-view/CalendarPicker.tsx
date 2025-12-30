@@ -28,7 +28,7 @@ const CalendarPicker: React.FC = () => {
       <Grid
         templateColumns="repeat(7, 1fr)"
         w="100%"
-        color="white"
+        // color="white"
         textAlign="center"
         rowGap={1}
       >
@@ -48,7 +48,9 @@ const CalendarPicker: React.FC = () => {
             py={1.5}
             fontSize={14}
             bg={
-              day.hasSame(currrentDate, 'week') ? 'neutral.800' : 'transparent'
+              day.hasSame(currrentDate, 'week')
+                ? 'bg-calendar-row'
+                : 'transparent'
             }
             onClick={() => setCurrentDate(day)}
             roundedLeft={
@@ -70,6 +72,7 @@ const CalendarPicker: React.FC = () => {
               bg={
                 day.hasSame(currrentDate, 'day') ? 'primary.500' : 'transparent'
               }
+              color={day.hasSame(currrentDate, 'day') ? 'white' : 'inherit'}
               w="fit-content"
               mx="auto"
               px={2}

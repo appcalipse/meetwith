@@ -37,7 +37,7 @@ const UpComingEvent: React.FC<UpComingEventProps> = ({ meeting }) => {
       spacing={4}
       w="100%"
       borderWidth={1}
-      borderColor="neutral.700"
+      borderColor="border-subtle"
       py={2.5}
       px={3}
       rounded="md"
@@ -61,10 +61,11 @@ const UpComingEvent: React.FC<UpComingEventProps> = ({ meeting }) => {
           whiteSpace="nowrap"
           overflow="hidden"
           textOverflow="ellipsis"
+          color="upcoming-event-title"
         >
           {meeting.title || 'No Title'}
         </Heading>
-        <Text fontWeight={500} w="100%">
+        <Text fontWeight={500} w="100%" color="upcoming-event-text">
           {`${DateTime.fromJSDate(meeting.start).toFormat(
             "dd LLL yyyy 'at' h:mma"
           )}`}
