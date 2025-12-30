@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
+import { LuCalendarCheck2 } from 'react-icons/lu'
 import { MdOutlineCalendarMonth } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
@@ -20,12 +21,33 @@ import { Account } from '@/types/Account'
 import CalendarView from '../calendar-view'
 import MeetingBase from '../meeting/Base'
 const NavigationTab = () => (
-  <TabList>
-    <Tab>
-      <MdOutlineCalendarMonth />
+  <TabList
+    w={{ base: '100%', md: 'auto' }}
+    bg="tab-bg"
+    p={1}
+    borderWidth={1}
+    rounded={6}
+  >
+    <Tab
+      alignItems="center"
+      gap={1}
+      _selected={{
+        bg: 'tab-button-bg',
+      }}
+    >
+      <MdOutlineCalendarMonth size={24} />
       My Calendar
     </Tab>
-    <Tab>My meetings</Tab>
+    <Tab
+      alignItems="center"
+      gap={1}
+      _selected={{
+        bg: 'tab-button-bg',
+      }}
+    >
+      <LuCalendarCheck2 size={24} />
+      My meetings
+    </Tab>
   </TabList>
 )
 const Meetings: React.FC<{ currentAccount: Account }> = ({
@@ -47,14 +69,14 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   return (
     <Tabs
       w="100%"
-      variant="soft-rounded"
+      variant="unstyled"
       colorScheme="primary"
       index={currentTab}
       onChange={index => setCurrentTab(index)}
     >
       <Flex direction={'column'} w="100%">
         <HStack justifyContent="space-between" alignItems="flex-start" mb={4}>
-          <Heading flex={1} fontSize="2xl">
+          <Heading fontSize="2xl">
             My Meetings
             <Text fontSize="sm" fontWeight={100} mt={1}>
               Timezone: {timezone}
