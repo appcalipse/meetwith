@@ -8,10 +8,13 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as React from 'react'
-import { FaChevronDown, FaChevronUp } from 'react-icons/fa6'
+import { FaChevronDown, FaChevronRight } from 'react-icons/fa6'
 
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
-import { ConnectedCalendarCore } from '@/types/CalendarConnections'
+import {
+  CalendarSyncInfo,
+  ConnectedCalendarCore,
+} from '@/types/CalendarConnections'
 
 interface ConnectedCalendarItemProps {
   calendar: ConnectedCalendarCore
@@ -21,19 +24,34 @@ const ConnectedCalendarItem: React.FC<ConnectedCalendarItemProps> = ({
   calendar,
 }) => {
   const { selectedCalendars, setSelectedCalendars } = useCalendarContext()
+  const handleToggleCalendar = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    cal: CalendarSyncInfo
+  ) => {
+    if (e.target.checked) {
+      setSelectedCalendars([...selectedCalendars, cal])
+    } else {
+      setSelectedCalendars(
+        selectedCalendars.filter(
+          selCal =>
+            !(selCal.calendarId === cal.calendarId && selCal.name === cal.name)
+        )
+      )
+    }
+  }
   return (
     <AccordionItem p={0} m={0} width="100%" border="none">
       {({ isExpanded }) => (
         <>
-          <AccordionButton color="white" p={0} w="100%">
+          <AccordionButton color="upcoming-event-title" p={0} w="100%">
             <HStack justifyContent="space-between" w="100%">
               <HStack gap={1}>
                 <Text fontWeight={700}>{calendar.email}</Text>
               </HStack>
               {isExpanded ? (
-                <FaChevronUp size={15} />
-              ) : (
                 <FaChevronDown size={15} />
+              ) : (
+                <FaChevronRight size={15} />
               )}
             </HStack>
           </AccordionButton>
@@ -48,6 +66,7 @@ const ConnectedCalendarItem: React.FC<ConnectedCalendarItemProps> = ({
                   <Checkbox
                     width={6}
                     height={6}
+                    id={`${cal.calendarId}-${calendar.id}`}
                     borderColor={cal.color || 'primary.500'}
                     sx={{
                       '& .chakra-checkbox__control': {
@@ -64,23 +83,11 @@ const ConnectedCalendarItem: React.FC<ConnectedCalendarItemProps> = ({
                         selCal.calendarId === cal.calendarId &&
                         selCal.name === cal.name
                     )}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedCalendars([...selectedCalendars, cal])
-                      } else {
-                        setSelectedCalendars(
-                          selectedCalendars.filter(
-                            selCal =>
-                              !(
-                                selCal.calendarId === cal.calendarId &&
-                                selCal.name === cal.name
-                              )
-                          )
-                        )
-                      }
-                    }}
+                    onChange={e => handleToggleCalendar(e, cal)}
                   />
-                  <Text fontSize="14">{cal.name}</Text>
+                  <label htmlFor={`${cal.calendarId}-${calendar.id}`}>
+                    <Text fontSize="14">{cal.name}</Text>
+                  </label>
                 </HStack>
               ))}
             </VStack>

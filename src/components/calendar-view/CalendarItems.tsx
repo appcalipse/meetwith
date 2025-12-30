@@ -26,7 +26,11 @@ const CalendarItems: React.FC = () => {
   )
 
   return (
-    <Grid templateColumns="minmax(40px, 50px) repeat(7, 1fr)" h="100%">
+    <Grid
+      templateColumns="minmax(40px, 50px) repeat(7, 1fr)"
+      h="100%"
+      bg="bg-surface-event"
+    >
       <TimeColumn timeSlots={timeSlots} />
       {days.map((day, dayIndex) => (
         <CalendarItem
@@ -53,8 +57,8 @@ const TimeSlot: React.FC<{ timeSlot: DateTime }> = ({ timeSlot }) => {
       pos="relative"
       minH="35px"
       borderInline="1px solid"
-      borderColor="neutral.700"
-      bg="neutral.825"
+      borderColor="border-subtle"
+      bg="bg-event"
       color={timeSlot.hour === 0 ? 'transparent' : undefined}
     >
       <Text

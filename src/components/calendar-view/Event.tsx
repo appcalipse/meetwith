@@ -6,6 +6,7 @@ import {
   PopoverCloseButton,
   PopoverContent,
   PopoverTrigger,
+  useColorMode,
   useDisclosure,
 } from '@chakra-ui/react'
 import { colord } from 'colord'
@@ -86,7 +87,11 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
     }
     close()
   }
-  const borderColor = React.useMemo(() => generateBorderColor(bg), [bg])
+  const { colorMode } = useColorMode()
+  const borderColor = React.useMemo(
+    () => generateBorderColor(bg, colorMode === 'light'),
+    [bg, colorMode]
+  )
   const stripeColor = React.useMemo(
     () => colord(borderColor).alpha(0.35).toRgbString(),
     [borderColor]
@@ -104,7 +109,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
     close()
   }
   return (
-    <Popover isLazy placement="auto">
+    <Popover isLazy placement="auto" strategy="fixed" gutter={12}>
       {({ onClose }) => (
         <>
           {isCancelOpen && !isCalendarEvent(event) && (
@@ -177,7 +182,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
               </VStack>
             </GridItem>
           </PopoverTrigger>
-          <PopoverContent zIndex={10} width="600px">
+          <PopoverContent zIndex={1500} width="600px">
             <PopoverArrow />
             <PopoverCloseButton
               onClick={() => handleSelectEvent(onClose)}

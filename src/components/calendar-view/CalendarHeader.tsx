@@ -36,13 +36,13 @@ const CalendarHeader: React.FC = ({}) => {
       textAlign="center"
       roundedTopRight={10}
       overflow="hidden"
-      bg="neutral.825"
+      bg="bg-event"
     >
       <GridItem
         w="100%"
         pt={'14px'}
         pb={5}
-        borderColor="neutral.700"
+        borderColor="border-subtle"
         borderWidth={1}
         borderRight={0}
       >
@@ -53,7 +53,7 @@ const CalendarHeader: React.FC = ({}) => {
         <GridItem
           key={`${day.toMillis()}-${index}`}
           w="100%"
-          borderColor="neutral.700"
+          borderColor="border-subtle"
           borderTopWidth={1}
           pt={'14px'}
           pb={5}
