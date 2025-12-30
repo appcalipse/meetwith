@@ -1,6 +1,7 @@
 import Ably, { InboundMessage, RealtimeChannel } from 'ably'
 
 export const DEFAULT_MESSAGE_NAME = 'webhook-event'
+export const DEFAULT_SUBSCRIPTION_MESSAGE_NAME = 'subscription-webhook-event'
 
 interface SubscriptionCallback {
   (message: InboundMessage): void

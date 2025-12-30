@@ -49,6 +49,10 @@ import {
 } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
+  BillingEmailAccountInfo,
+  PaymentProvider as BillingPaymentProvider,
+} from '@/types/Billing'
+import {
   CalendarSyncInfo,
   ConnectedCalendar,
   ConnectedCalendarCore,
@@ -163,6 +167,12 @@ import {
   AllMeetingSlotsUsedError,
   AlreadyGroupMemberError,
   AvailabilityBlockNotFoundError,
+  BillingPeriodsFetchError,
+  BillingPlanFetchError,
+  BillingPlanFromStripeProductError,
+  BillingPlanProviderFetchError,
+  BillingPlanProvidersFetchError,
+  BillingPlansFetchError,
   ChainNotFound,
   ContactAlreadyExists,
   ContactInviteNotForAccount,
@@ -203,7 +213,21 @@ import {
   QuickPollSlugNotFoundError,
   QuickPollUnauthorizedError,
   QuickPollUpdateError,
+  StripeSubscriptionCreationError,
+  StripeSubscriptionFetchError,
+  StripeSubscriptionTransactionLinkError,
+  StripeSubscriptionUpdateError,
+  SubscriptionHistoryCheckError,
+  SubscriptionHistoryFetchError,
   SubscriptionNotCustom,
+  SubscriptionPeriodCreationError,
+  SubscriptionPeriodFetchError,
+  SubscriptionPeriodFindError,
+  SubscriptionPeriodsExpirationError,
+  SubscriptionPeriodsFetchError,
+  SubscriptionPeriodStatusUpdateError,
+  SubscriptionPeriodTransactionUpdateError,
+  SubscriptionTransactionCreationError,
   TimeNotAvailableError,
   TransactionIsRequired,
   TransactionNotFoundError,
@@ -1884,6 +1908,35 @@ const getAccountsNotificationSubscriptionEmails = async (
   return userEmails
 }
 
+// Get account info for billing emails (email and display name)
+const getBillingEmailAccountInfo = async (
+  accountAddress: string
+): Promise<BillingEmailAccountInfo | null> => {
+  try {
+    // Get email from account notification subscriptions
+    const email = await getAccountNotificationSubscriptionEmail(
+      accountAddress.toLowerCase()
+    )
+
+    if (!email) {
+      return null
+    }
+
+    // Get account to derive display name
+    const account = await getAccountFromDB(accountAddress.toLowerCase(), false)
+    const displayName =
+      account.preferences?.name || ellipsizeAddress(account.address)
+
+    return {
+      email,
+      displayName,
+    }
+  } catch (error) {
+    Sentry.captureException(error)
+    return null
+  }
+}
+
 const getGroupsAndMembers = async (
   address: string,
   limit?: string,
@@ -2657,17 +2710,24 @@ const getConnectedCalendars = async (
   address: string,
   {
     syncOnly,
-    activeOnly: _activeOnly,
+    limit,
   }: {
     syncOnly?: boolean
-    activeOnly?: boolean
-  }
+    limit?: number
+  } = {}
 ): Promise<ConnectedCalendar[]> => {
+  const isPro = await isProAccountAsync(address)
+  const effectiveLimit = !isPro ? 1 : limit !== undefined ? limit : undefined
+
   const query = db.supabase
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
-    .order('id', { ascending: true })
+    .order('created', { ascending: true })
+
+  if (effectiveLimit) {
+    query.limit(effectiveLimit)
+  }
 
   const { data, error } = await query
 
@@ -2677,10 +2737,15 @@ const getConnectedCalendars = async (
 
   if (!data) return []
 
-  // const connectedCalendars: ConnectedCalendar[] =
-  //   !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
-  // ignore pro for now
-  const connectedCalendars: ConnectedCalendar[] = data
+  let connectedCalendars: ConnectedCalendar[] = data
+
+  connectedCalendars = connectedCalendars.filter(cal => {
+    if (!cal.calendars || !Array.isArray(cal.calendars)) {
+      return false
+    }
+    return cal.calendars.some((c: { enabled?: boolean }) => c.enabled === true)
+  })
+
   if (syncOnly) {
     const calendars: ConnectedCalendar[] = JSON.parse(
       JSON.stringify(connectedCalendars)
@@ -2740,6 +2805,65 @@ const getQuickPollCalendars = async (
   }
 
   return connectedCalendars
+}
+
+// Count calendar integrations for an account
+const countCalendarIntegrations = async (
+  account_address: string
+): Promise<number> => {
+  const { count, error } = await db.supabase
+    .from('connected_calendars')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_address', account_address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count calendar integrations: ${error.message}`)
+  }
+
+  return count || 0
+}
+
+// Count calendars with sync enabled for an account
+// Optionally exclude a specific integration (when updating that integration)
+const countCalendarSyncs = async (
+  account_address: string,
+  excludeProvider?: TimeSlotSource,
+  excludeEmail?: string
+): Promise<number> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .select('calendars, provider, email')
+    .eq('account_address', account_address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count calendar syncs: ${error.message}`)
+  }
+
+  if (!data) return 0
+
+  // Count calendars with sync: true across all integrations
+  // Exclude the specified integration if provided (when updating)
+  let syncCount = 0
+  for (const integration of data) {
+    // Skip excluded integration
+    if (
+      excludeProvider &&
+      excludeEmail &&
+      integration.provider === excludeProvider &&
+      integration.email?.toLowerCase() === excludeEmail.toLowerCase()
+    ) {
+      continue
+    }
+
+    const calendars = integration.calendars as CalendarSyncInfo[]
+    if (Array.isArray(calendars)) {
+      syncCount += calendars.filter(cal => cal.sync === true).length
+    }
+  }
+
+  return syncCount
 }
 
 const connectedCalendarExists = async (
@@ -3703,6 +3827,21 @@ export async function isUserAdminOfGroup(
   }
 
   return data?.role === MemberType.ADMIN
+}
+
+// Count groups for an account
+const countGroups = async (account_address: string): Promise<number> => {
+  const { count, error } = await db.supabase
+    .from('group_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('member_id', account_address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count groups: ${error.message}`)
+  }
+
+  return count || 0
 }
 
 export async function createGroupInDB(
@@ -4763,6 +4902,22 @@ const getMeetingTypesLean = async (
   }
   return data
 }
+// Count meeting types for an account (excluding deleted)
+const countMeetingTypes = async (account_address: string): Promise<number> => {
+  const { count, error } = await db.supabase
+    .from('meeting_type')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count meeting types: ${error.message}`)
+  }
+
+  return count || 0
+}
+
 const getMeetingTypes = async (
   account_address: string,
   limit = 10,
@@ -6389,7 +6544,6 @@ const getPaymentPreferences = async (
     .maybeSingle()
 
   if (error) {
-    console.error('Database error in getPaymentPreferences:', error)
     if (error.code === 'PGRST116') {
       // No rows returned
       return null
@@ -6729,6 +6883,48 @@ const checkPollSlugExists = async (slug: string): Promise<boolean> => {
       error instanceof Error ? error.message : 'Unknown error'
     )
   }
+}
+
+// Count active QuickPolls for an account (polls where user is scheduler/owner)
+const countActiveQuickPolls = async (
+  account_address: string
+): Promise<number> => {
+  const now = new Date().toISOString()
+
+  // First, get all poll IDs where the account is a scheduler (owner)
+  const { data: participations, error: participationError } = await db.supabase
+    .from('quick_poll_participants')
+    .select('poll_id')
+    .eq('account_address', account_address.toLowerCase())
+    .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+
+  if (participationError) {
+    Sentry.captureException(participationError)
+    throw new Error(
+      `Failed to count active QuickPolls: ${participationError.message}`
+    )
+  }
+
+  if (!participations || participations.length === 0) {
+    return 0
+  }
+
+  const pollIds = participations.map(p => p.poll_id)
+
+  // Count active polls (ONGOING status and not expired)
+  const { count, error } = await db.supabase
+    .from('quick_polls')
+    .select('*', { count: 'exact', head: true })
+    .in('id', pollIds)
+    .eq('status', PollStatus.ONGOING)
+    .gt('expires_at', now)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count active QuickPolls: ${error.message}`)
+  }
+
+  return count || 0
 }
 
 const createQuickPoll = async (
@@ -7071,7 +7267,7 @@ const getQuickPollsForAccount = async (
       `
       )
       .in('id', pollIds)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .range(offset, offset + safeLimit - 1)
 
     if (status) {
@@ -7383,7 +7579,12 @@ const updateQuickPollParticipantStatus = async (
       .select()
       .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new QuickPollParticipantNotFoundError(participantId)
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
     }
@@ -7447,8 +7648,15 @@ const addQuickPollParticipant = async (
         .eq('account_address', participantData.account_address)
         .maybeSingle()
 
-      if (existingByAccountError) throw existingByAccountError
-      existingParticipant = data
+      if (existingByAccountError) {
+        if (existingByAccountError.code === 'PGRST116') {
+          existingParticipant = null
+        } else {
+          throw existingByAccountError
+        }
+      } else {
+        existingParticipant = data
+      }
     } else if (participantData.guest_email) {
       const { data, error: existingByEmailError } = await db.supabase
         .from('quick_poll_participants')
@@ -7457,8 +7665,15 @@ const addQuickPollParticipant = async (
         .eq('guest_email', participantData.guest_email)
         .maybeSingle()
 
-      if (existingByEmailError) throw existingByEmailError
-      existingParticipant = data
+      if (existingByEmailError) {
+        if (existingByEmailError.code === 'PGRST116') {
+          existingParticipant = null
+        } else {
+          throw existingByEmailError
+        }
+      } else {
+        existingParticipant = data
+      }
     }
 
     if (existingParticipant) {
@@ -7650,7 +7865,12 @@ const updateQuickPollParticipantAvailability = async (
       .select()
       .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new QuickPollParticipantNotFoundError(participantId)
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
     }
@@ -7686,7 +7906,12 @@ const updateQuickPollGuestDetails = async (
       .select()
       .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new QuickPollParticipantNotFoundError(participantId)
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
     }
@@ -7769,7 +7994,12 @@ const getQuickPollParticipantByIdentifier = async (
       .or(`account_address.eq.${identifier},guest_email.eq.${identifier}`)
       .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new QuickPollParticipantNotFoundError(identifier)
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(identifier)
     }
@@ -7900,6 +8130,612 @@ const updatePaymentAccount = async (
     : updatedPaymentAccount
 }
 
+// Get all billing plans from the database
+const getBillingPlans = async (): Promise<Tables<'billing_plans'>[]> => {
+  const { data, error } = await db.supabase
+    .from('billing_plans')
+    .select('*')
+    .order('billing_cycle', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new BillingPlansFetchError(error.message)
+  }
+
+  return data || []
+}
+
+// Get a single billing plan by ID
+const getBillingPlanById = async (
+  planId: string
+): Promise<Tables<'billing_plans'> | null> => {
+  const { data, error } = await db.supabase
+    .from('billing_plans')
+    .select('*')
+    .eq('id', planId)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new BillingPlanFetchError(planId, error.message)
+  }
+
+  return data
+}
+
+// Get all billing plan providers, optionally filtered by provider
+// Returns providers with plan details (joined with billing_plans)
+const getBillingPlanProviders = async (
+  provider?: BillingPaymentProvider
+): Promise<
+  Array<
+    Tables<'billing_plan_providers'> & {
+      billing_plan: Tables<'billing_plans'>
+    }
+  >
+> => {
+  let query = db.supabase.from('billing_plan_providers').select(
+    `
+      *,
+      billing_plan: billing_plans(*)
+    `
+  )
+
+  if (provider) {
+    query = query.eq('provider', provider)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new BillingPlanProvidersFetchError(error.message)
+  }
+
+  return data || []
+}
+
+// Get provider mapping for a specific plan
+const getBillingPlanProvider = async (
+  planId: string,
+  provider: BillingPaymentProvider
+): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('billing_plan_providers')
+    .select('provider_product_id')
+    .eq('billing_plan_id', planId)
+    .eq('provider', provider)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new BillingPlanProviderFetchError(planId, provider, error.message)
+  }
+
+  return data?.provider_product_id || null
+}
+
+// Get billing plan ID from Stripe product ID
+const getBillingPlanIdFromStripeProduct = async (
+  stripeProductId: string,
+  provider: BillingPaymentProvider = BillingPaymentProvider.STRIPE
+): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('billing_plan_providers')
+    .select('billing_plan_id')
+    .eq('provider_product_id', stripeProductId)
+    .eq('provider', provider)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new BillingPlanFromStripeProductError(stripeProductId, error.message)
+  }
+
+  return data?.billing_plan_id || null
+}
+
+// Stripe Subscription Helpers
+
+// Create a new Stripe subscription record
+const createStripeSubscription = async (
+  accountAddress: string,
+  stripeSubscriptionId: string,
+  stripeCustomerId: string,
+  billingPlanId: string
+): Promise<Tables<'stripe_subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscriptions')
+    .insert([
+      {
+        account_address: accountAddress.toLowerCase(),
+        stripe_subscription_id: stripeSubscriptionId,
+        stripe_customer_id: stripeCustomerId,
+        billing_plan_id: billingPlanId,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new StripeSubscriptionCreationError(error.message)
+  }
+
+  if (!data) {
+    throw new StripeSubscriptionCreationError('No data returned')
+  }
+
+  return data
+}
+
+// Get Stripe subscription by account address
+const getStripeSubscriptionByAccount = async (
+  accountAddress: string
+): Promise<Tables<'stripe_subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscriptions')
+    .select('*')
+    .eq('account_address', accountAddress.toLowerCase())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new StripeSubscriptionFetchError(accountAddress, error.message)
+  }
+
+  return data
+}
+
+// Get Stripe subscription by Stripe subscription ID
+const getStripeSubscriptionById = async (
+  stripeSubscriptionId: string
+): Promise<Tables<'stripe_subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscriptions')
+    .select('*')
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new StripeSubscriptionFetchError(stripeSubscriptionId, error.message)
+  }
+
+  return data
+}
+
+// Update Stripe subscription record
+const updateStripeSubscription = async (
+  stripeSubscriptionId: string,
+  updates: {
+    billing_plan_id?: string
+    stripe_customer_id?: string
+  }
+): Promise<Tables<'stripe_subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscriptions')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new StripeSubscriptionUpdateError(stripeSubscriptionId, error.message)
+  }
+
+  if (!data) {
+    throw new StripeSubscriptionUpdateError(
+      stripeSubscriptionId,
+      'No data returned'
+    )
+  }
+
+  return data
+}
+
+// Link a transaction to a Stripe subscription
+const linkTransactionToStripeSubscription = async (
+  stripeSubscriptionId: string,
+  transactionId: string
+): Promise<Tables<'stripe_subscription_transactions'>> => {
+  const { data, error } = await db.supabase
+    .from('stripe_subscription_transactions')
+    .insert([
+      {
+        stripe_subscription_id: stripeSubscriptionId,
+        transaction_id: transactionId,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new StripeSubscriptionTransactionLinkError(error.message)
+  }
+
+  if (!data) {
+    throw new StripeSubscriptionTransactionLinkError('No data returned')
+  }
+
+  return data
+}
+
+// Create a subscription transaction (for billing subscriptions)
+const createSubscriptionTransaction = async (
+  payload: TablesInsert<'transactions'>
+): Promise<Tables<'transactions'>> => {
+  const { data, error } = await db.supabase
+    .from('transactions')
+    .insert([payload])
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionTransactionCreationError(error.message)
+  }
+
+  if (!data) {
+    throw new SubscriptionTransactionCreationError('No data returned')
+  }
+
+  return data
+}
+
+// Subscription Period Helpers
+
+// Create a new subscription period
+const createSubscriptionPeriod = async (
+  ownerAccount: string,
+  billingPlanId: string,
+  status: 'active' | 'cancelled' | 'expired',
+  expiryTime: string,
+  transactionId: string | null
+): Promise<Tables<'subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .insert([
+      {
+        owner_account: ownerAccount.toLowerCase(),
+        billing_plan_id: billingPlanId,
+        status,
+        expiry_time: expiryTime,
+        transaction_id: transactionId,
+        registered_at: new Date().toISOString(),
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodCreationError(error.message)
+  }
+
+  if (!data) {
+    throw new SubscriptionPeriodCreationError('No data returned')
+  }
+
+  return data
+}
+
+// Get active subscription period for an account
+// Returns the subscription with the farthest expiry_time among all active subscriptions
+// Note: Includes both 'active' and 'cancelled' statuses, as cancelled subscriptions
+// should still grant Pro access until expiry_time passes
+const getActiveSubscriptionPeriod = async (
+  accountAddress: string
+): Promise<Tables<'subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .in('status', ['active', 'cancelled'])
+    .gt('expiry_time', new Date().toISOString())
+    .order('expiry_time', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodFetchError(accountAddress, error.message)
+  }
+
+  return data
+}
+
+// Check if an account has Pro access (billing or domain subscription)
+const isProAccountAsync = async (accountAddress: string): Promise<boolean> => {
+  try {
+    // Check billing subscription periods
+    const activePeriod = await getActiveSubscriptionPeriod(accountAddress)
+    if (activePeriod && activePeriod.billing_plan_id) {
+      return true
+    }
+
+    // Check domain subscriptions (billing_plan_id is null, domain is not null)
+    const domainSubscriptions = await getSubscriptionFromDBForAccount(
+      accountAddress
+    )
+    const hasDomain = domainSubscriptions.some(
+      sub => sub.billing_plan_id === null && sub.domain !== null
+    )
+
+    return hasDomain
+  } catch (error) {
+    Sentry.captureException(error)
+    return false
+  }
+}
+
+// Check if an account has any subscription history
+const hasSubscriptionHistory = async (
+  accountAddress: string
+): Promise<boolean> => {
+  const { count, error } = await db.supabase
+    .from('subscriptions')
+    .select('*', { count: 'exact', head: true })
+    .eq('owner_account', accountAddress.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionHistoryCheckError(accountAddress, error.message)
+  }
+
+  return (count ?? 0) > 0
+}
+
+// Get all subscription periods for an account (history)
+const getSubscriptionPeriodsByAccount = async (
+  accountAddress: string
+): Promise<Tables<'subscriptions'>[]> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .order('registered_at', { ascending: false })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodsFetchError(accountAddress, error.message)
+  }
+
+  return data || []
+}
+
+// Get subscription history with pagination (for payment history)
+// Returns subscription periods with transaction and billing plan data
+const getSubscriptionHistory = async (
+  accountAddress: string,
+  limit = 10,
+  offset = 0
+): Promise<{ periods: Tables<'subscriptions'>[]; total: number }> => {
+  // First, get total count of billing subscriptions
+  const { count, error: countError } = await db.supabase
+    .from('subscriptions')
+    .select('*', { count: 'exact', head: true })
+    .eq('owner_account', accountAddress.toLowerCase())
+    .not('billing_plan_id', 'is', null) // Only billing subscriptions
+
+  if (countError) {
+    Sentry.captureException(countError)
+    throw new SubscriptionHistoryFetchError(accountAddress, countError.message)
+  }
+
+  // Get paginated subscription periods
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .not('billing_plan_id', 'is', null) // Only billing subscriptions
+    .order('registered_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionHistoryFetchError(accountAddress, error.message)
+  }
+
+  return {
+    periods: data || [],
+    total: count || 0,
+  }
+}
+
+// Get billing subscription periods expiring within a date range
+const getBillingPeriodsByExpiryWindow = async (
+  startDate: Date,
+  endDate: Date,
+  statuses: ('active' | 'cancelled')[] = ['active', 'cancelled']
+): Promise<Tables<'subscriptions'>[]> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .not('billing_plan_id', 'is', null) // Only billing subscriptions
+    .in('status', statuses)
+    .gte('expiry_time', startDate.toISOString())
+    .lte('expiry_time', endDate.toISOString())
+    .gt('expiry_time', new Date().toISOString()) // Not expired yet
+    .order('expiry_time', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new BillingPeriodsFetchError(error.message)
+  }
+
+  return data || []
+}
+
+// Expire stale subscription periods (expiry_time in the past)
+const expireStaleSubscriptionPeriods = async (): Promise<{
+  success: boolean
+  expiredPeriods: Tables<'subscriptions'>[]
+  expiredCount: number
+  timestamp: string
+}> => {
+  try {
+    const now = new Date().toISOString()
+
+    // First, get the periods that need to be expired (before updating)
+    const { data: periodsToExpire, error: selectError } = await db.supabase
+      .from('subscriptions')
+      .select('*')
+      .not('billing_plan_id', 'is', null) // Only billing subscriptions
+      .in('status', ['active', 'cancelled'])
+      .lte('expiry_time', now) // Expired (in the past)
+
+    if (selectError) throw selectError
+
+    if (!periodsToExpire || periodsToExpire.length === 0) {
+      return {
+        success: true,
+        expiredPeriods: [],
+        expiredCount: 0,
+        timestamp: now,
+      }
+    }
+
+    // Update all expired periods to 'expired' status
+    const periodIds = periodsToExpire.map(p => p.id)
+    const { error: updateError } = await db.supabase
+      .from('subscriptions')
+      .update({ status: 'expired', updated_at: now })
+      .in('id', periodIds)
+      .in('status', ['active', 'cancelled'])
+
+    if (updateError) throw updateError
+
+    return {
+      success: true,
+      expiredPeriods: periodsToExpire,
+      expiredCount: periodsToExpire.length,
+      timestamp: now,
+    }
+  } catch (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodsExpirationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+// Update subscription period status
+const updateSubscriptionPeriodStatus = async (
+  subscriptionId: string,
+  status: 'active' | 'cancelled' | 'expired'
+): Promise<Tables<'subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subscriptionId)
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodStatusUpdateError(subscriptionId, error.message)
+  }
+
+  if (!data) {
+    throw new SubscriptionPeriodStatusUpdateError(
+      subscriptionId,
+      'No data returned'
+    )
+  }
+
+  return data
+}
+
+// Update subscription period transaction_id
+const updateSubscriptionPeriodTransaction = async (
+  subscriptionId: string,
+  transactionId: string
+): Promise<Tables<'subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .update({
+      transaction_id: transactionId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subscriptionId)
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodTransactionUpdateError(
+      subscriptionId,
+      error.message
+    )
+  }
+
+  if (!data) {
+    throw new SubscriptionPeriodTransactionUpdateError(
+      subscriptionId,
+      'No data returned'
+    )
+  }
+
+  return data
+}
+
+const findSubscriptionPeriodByPlanAndExpiry = async (
+  accountAddress: string,
+  billingPlanId: string,
+  expiryTime: string
+): Promise<Tables<'subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .eq('billing_plan_id', billingPlanId)
+    .is('transaction_id', null)
+    .order('registered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodFindError(error.message)
+  }
+
+  return data
+}
+
+const findRecentSubscriptionPeriodByPlan = async (
+  accountAddress: string,
+  billingPlanId: string,
+  createdAfter: string
+): Promise<Tables<'subscriptions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .eq('billing_plan_id', billingPlanId)
+    .gte('registered_at', createdAfter)
+    .order('registered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodFindError(error.message)
+  }
+
+  return data
+}
+
 export {
   acceptContactInvite,
   addContactInvite,
@@ -7913,12 +8749,20 @@ export {
   confirmFiatTransaction,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  countActiveQuickPolls,
+  countCalendarIntegrations,
+  countCalendarSyncs,
+  countGroups,
+  countMeetingTypes,
   createCheckOutTransaction,
   createCryptoTransaction,
   createMeetingType,
   createPaymentPreferences,
   createPinHash,
   createQuickPoll,
+  createStripeSubscription,
+  createSubscriptionPeriod,
+  createSubscriptionTransaction,
   createTgConnection,
   createVerification,
   deleteAllTgConnections,
@@ -7931,8 +8775,11 @@ export {
   deleteVerifications,
   editGroup,
   expireStalePolls,
+  expireStaleSubscriptionPeriods,
   findAccountByIdentifier,
   findAccountsByText,
+  findRecentSubscriptionPeriodByPlan,
+  findSubscriptionPeriodByPlanAndExpiry,
   getAccountAvatarUrl,
   getAccountFromDB,
   getAccountFromDBPublic,
@@ -7944,6 +8791,14 @@ export {
   getAccountsWithTgConnected,
   getActivePaymentAccount,
   getActivePaymentAccountDB,
+  getActiveSubscriptionPeriod,
+  getBillingEmailAccountInfo,
+  getBillingPeriodsByExpiryWindow,
+  getBillingPlanById,
+  getBillingPlanIdFromStripeProduct,
+  getBillingPlanProvider,
+  getBillingPlanProviders,
+  getBillingPlans,
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
@@ -7996,6 +8851,10 @@ export {
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
+  getStripeSubscriptionByAccount,
+  getStripeSubscriptionById,
+  getSubscriptionHistory,
+  getSubscriptionPeriodsByAccount,
   getTgConnection,
   getTgConnectionByTgId,
   getTransactionsById,
@@ -8004,14 +8863,17 @@ export {
   handleMeetingCancelSync,
   handleUpdateTransactionStatus,
   handleWebhookEvent,
+  hasSubscriptionHistory,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
   invalidatePreviousVerifications,
   isGroupAdmin,
+  isProAccountAsync,
   isSlotAvailable as isSlotFree,
   isUserContact,
   leaveGroup,
+  linkTransactionToStripeSubscription,
   manageGroupInvite,
   publicGroupJoin,
   recordOffRampTransaction,
@@ -8049,6 +8911,9 @@ export {
   updateQuickPollParticipants,
   updateQuickPollParticipantStatus,
   updateRecurringSlots,
+  updateStripeSubscription,
+  updateSubscriptionPeriodStatus,
+  updateSubscriptionPeriodTransaction,
   upsertGateCondition,
   verifyUserPin,
   verifyVerificationCode,

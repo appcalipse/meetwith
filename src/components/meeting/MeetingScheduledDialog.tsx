@@ -25,7 +25,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
-import { EditMode, Intents } from '@/types/Dashboard'
+import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import { MeetingDecrypted, SchedulingType } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
@@ -209,7 +209,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
 
     setLoadingSub(false)
 
-    router.push('/dashboard/notifications')
+    router.push(`/dashboard/settings/${SettingsSection.NOTIFICATIONS}`)
   }
   const handleResent = async () => {
     setIsResetting(true)
@@ -311,7 +311,11 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
             ) : hasConnectedCalendar ? (
               <Button
                 colorScheme="primary"
-                onClick={() => router.push('/dashboard/notifications')}
+                onClick={() =>
+                  router.push(
+                    `/dashboard/settings/${SettingsSection.NOTIFICATIONS}`
+                  )
+                }
                 width="100%"
               >
                 Go to Notifications
@@ -332,7 +336,11 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 <Button
                   colorScheme="primary"
                   width="100%"
-                  onClick={() => router.push('/dashboard/calendars')}
+                  onClick={() =>
+                    router.push(
+                      `/dashboard/settings/${SettingsSection.CONNECTED_CALENDARS}`
+                    )
+                  }
                 >
                   Connect Calendar
                 </Button>

@@ -10,6 +10,7 @@ import { DAVCalendar } from 'tsdav'
 
 import {
   Account,
+  GetMeetingTypesResponseWithMetadata,
   MeetingType,
   PaidMeetingTypes,
   PaymentPreferences,
@@ -19,10 +20,22 @@ import {
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
+  CancelSubscriptionResponse,
+  GetPlansResponse,
+  GetSubscriptionHistoryResponse,
+  GetSubscriptionResponse,
+  SubscribeRequest,
+  SubscribeRequestCrypto,
+  SubscribeResponse,
+  SubscribeResponseCrypto,
+  TrialEligibilityResponse,
+} from '@/types/Billing'
+import {
   CalendarSyncInfo,
   ConnectedCalendar,
   ConnectedCalendarCore,
   ConnectResponse,
+  GetCalendarIntegrationsResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
 import {
@@ -37,6 +50,7 @@ import { DiscordAccount, DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
+  GetGroupsFullResponseWithMetadata,
   GetGroupsResponse,
   Group,
   GroupInvitePayload,
@@ -778,8 +792,28 @@ export const getGroupsFull = async (
   if (search) {
     url += `&search=${search}`
   }
-  const response = await internalFetch<Array<GetGroupsFullResponse>>(url)
-  return response
+  const response = await internalFetch<
+    Array<GetGroupsFullResponse> | GetGroupsFullResponseWithMetadata
+  >(url)
+
+  // Handle new response format (with metadata) or legacy format (array)
+  if (Array.isArray(response)) {
+    return response
+  }
+  return response.groups
+}
+
+export const getGroupsFullWithMetadata = async (
+  limit?: number,
+  offset?: number,
+  search?: string,
+  includeInvites = true
+): Promise<GetGroupsFullResponseWithMetadata> => {
+  let url = `/secure/group/full?limit=${limit}&offset=${offset}&includeInvites=${includeInvites}`
+  if (search) {
+    url += `&search=${search}`
+  }
+  return await internalFetch<GetGroupsFullResponseWithMetadata>(url)
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   const response = (await internalFetch(
@@ -1176,10 +1210,20 @@ export const listConnectedCalendars = async (
 ): Promise<ConnectedCalendarCore[]> => {
   return await queryClient.fetchQuery(
     QueryKeys.connectedCalendars(syncOnly),
-    () =>
-      internalFetch<ConnectedCalendarCore[]>(
+    async () => {
+      const response = await internalFetch<GetCalendarIntegrationsResponse>(
         `/secure/calendar_integrations?syncOnly=${syncOnly}`
       )
+      return response.calendars || []
+    }
+  )
+}
+
+export const getCalendarIntegrationsWithMetadata = async (
+  syncOnly = false
+): Promise<GetCalendarIntegrationsResponse> => {
+  return await internalFetch<GetCalendarIntegrationsResponse>(
+    `/secure/calendar_integrations?syncOnly=${syncOnly}`
   )
 }
 
@@ -1216,6 +1260,97 @@ export const getSubscriptionByDomain = async (
 ): Promise<Subscription | undefined> => {
   return (await internalFetch(`/subscriptions/check/${domain}`)) as Subscription
 }
+
+export const hasActiveBillingSubscription = async (
+  accountAddress: string
+): Promise<boolean> => {
+  try {
+    const response = await internalFetch<{ hasActive: boolean }>(
+      `/secure/billing/subscription/active`
+    )
+    return response.hasActive
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return false
+    }
+    throw e
+  }
+}
+
+export const getActiveSubscription = async (
+  accountAddress: string
+): Promise<GetSubscriptionResponse | null> => {
+  try {
+    return (await internalFetch(
+      `/secure/billing/subscription`
+    )) as GetSubscriptionResponse
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
+}
+
+export const getManageSubscriptionUrl = async (): Promise<string> => {
+  const response = await internalFetch<{ url: string }>(
+    `/secure/billing/manage`
+  )
+  return response.url
+}
+
+export const getSubscriptionHistory = async (
+  limit = 10,
+  offset = 0
+): Promise<GetSubscriptionHistoryResponse> => {
+  const response = await internalFetch<GetSubscriptionHistoryResponse>(
+    `/secure/billing/subscription/history?limit=${limit}&offset=${offset}`
+  )
+  return response
+}
+
+export const getBillingPlans = async (): Promise<GetPlansResponse['plans']> => {
+  const response = await internalFetch<GetPlansResponse>(
+    '/secure/billing/plans',
+    'GET'
+  )
+  return response.plans
+}
+
+export const subscribeToBillingPlan = async (
+  request: SubscribeRequest
+): Promise<SubscribeResponse> => {
+  return await internalFetch<SubscribeResponse>(
+    '/secure/billing/subscribe',
+    'POST',
+    request
+  )
+}
+
+export const subscribeToBillingPlanCrypto = async (
+  request: SubscribeRequestCrypto
+): Promise<SubscribeResponseCrypto> => {
+  return await internalFetch<SubscribeResponseCrypto>(
+    '/secure/billing/subscribe-crypto',
+    'POST',
+    request
+  )
+}
+
+export const getTrialEligibility =
+  async (): Promise<TrialEligibilityResponse> =>
+    await internalFetch<TrialEligibilityResponse>(
+      '/secure/billing/trial/eligible',
+      'GET'
+    )
+
+export const cancelCryptoSubscription =
+  async (): Promise<CancelSubscriptionResponse> => {
+    return await internalFetch<CancelSubscriptionResponse>(
+      '/secure/billing/cancel-crypto',
+      'POST'
+    )
+  }
 
 export const validateWebdav = async (
   url: string,
@@ -1838,7 +1973,22 @@ export const getMeetingTypes = async (
   limit = 10,
   offset = 0
 ): Promise<MeetingType[]> => {
-  return await internalFetch<MeetingType[]>(
+  const response = await internalFetch<
+    MeetingType[] | GetMeetingTypesResponseWithMetadata
+  >(`/secure/meetings/type?limit=${limit}&offset=${offset}`)
+
+  // Handle new response format (with metadata) or legacy format (array)
+  if (Array.isArray(response)) {
+    return response
+  }
+  return response.meetingTypes
+}
+
+export const getMeetingTypesWithMetadata = async (
+  limit = 10,
+  offset = 0
+): Promise<GetMeetingTypesResponseWithMetadata> => {
+  return await internalFetch<GetMeetingTypesResponseWithMetadata>(
     `/secure/meetings/type?limit=${limit}&offset=${offset}`
   )
 }
