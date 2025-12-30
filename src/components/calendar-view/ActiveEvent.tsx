@@ -136,7 +136,11 @@ const ActiveEvent: React.FC = ({}) => {
       setSelectedPermissions(selectedSlot.permissions)
       setIsScheduling(false)
       setDecryptedMeeting(selectedSlot)
-      setCurrentSelectedDate(new Date(selectedSlot.start))
+      setCurrentSelectedDate(
+        selectedSlot.start
+          ? DateTime.fromJSDate(selectedSlot.start)
+          : currrentDate
+      )
       const participants = selectedSlot.participants || []
       const participantsMap: Record<string, string[] | undefined> = {
         [NO_GROUP_KEY]: participants
@@ -550,7 +554,7 @@ const ActiveEvent: React.FC = ({}) => {
         closeOnOverlayClick={!isDiscoverTimeOpen}
         closeOnEsc={!isDiscoverTimeOpen}
       >
-        <DrawerContent maxW="500px" bg="neutral.950">
+        <DrawerContent maxW="500px" bg="bg-event-alternate">
           <DrawerBody p={'30px'}>
             {selectedSlot &&
               (isCalendarEventWithoutDateTime(selectedSlot) ? (
