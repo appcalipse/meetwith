@@ -1,6 +1,7 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
 import { EditMode } from '@meta/Dashboard'
 import React, { useContext } from 'react'
+import { useLocalStorage } from 'usehooks-ts'
 
 import NotFound from '@/pages/404'
 import { AccountContext } from '@/providers/AccountProvider'
@@ -26,6 +27,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
 }) => {
   const { currentAccount } = useContext(AccountContext)
+  const [isOpened, setIsOpened] = useLocalStorage('SIDEBAR::OPENED', true)
   const isSettings = currentSection === EditMode.DETAILS
   const isSchedule = currentSection === EditMode.MEETINGS
 
@@ -69,7 +71,10 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         width="100%"
         maxWidth="100%"
         justifyContent="space-between"
-        pl={{ base: 0, lg: !isSettings ? (isSchedule ? '23%' : '302px') : 0 }}
+        pl={{
+          base: 0,
+          lg: !isSettings ? (!isOpened ? '100px' : '23%') : 0,
+        }}
         pr={isSettings ? 0 : 8}
       >
         <RedirectHandler />
@@ -82,7 +87,11 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
             top={0}
             zIndex={10}
           >
-            <NavMenu currentSection={currentSection} />
+            <NavMenu
+              currentSection={currentSection}
+              isOpened={isOpened}
+              toggleSidebar={() => setIsOpened(!isOpened)}
+            />
           </Box>
         )}
         <Box
