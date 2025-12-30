@@ -43,7 +43,6 @@ import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
   fetchBusySlotsRawForMultipleAccounts,
   getExistingAccounts,
-  getGroupMembersAvailabilities,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
@@ -145,6 +144,7 @@ export function SchedulePickTime({
   }, [])
   const {
     groupAvailability,
+    groupMembersAvailabilities,
     meetingMembers,
     setMeetingMembers,
     participants,
@@ -387,16 +387,17 @@ export function SchedulePickTime({
       const groupAvailabilityKeys = Object.keys(groupAvailability)
       const isGroupScheduling = groupAvailabilityKeys.length > 0
 
-      // Fetch group-specific availabilities if scheduling for a group
+      // Use group-specific availabilities from context (prefetched in ScheduleMain)
       const groupMemberAvailabilities: Record<string, Interval[]> = {}
 
       if (isGroupScheduling) {
         // Get the single group ID
         const groupId = groupAvailabilityKeys[0]
 
-        try {
-          const groupBlocksData = await getGroupMembersAvailabilities(groupId)
+        // Get group members availabilities from context
+        const groupBlocksData = groupMembersAvailabilities[groupId]
 
+        if (groupBlocksData) {
           // Convert availability blocks to intervals for each member
           for (const [memberAddress, blocks] of Object.entries(
             groupBlocksData
@@ -406,11 +407,6 @@ export function SchedulePickTime({
                 mergeAvailabilityBlocks(blocks, monthStart, monthEnd)
             }
           }
-        } catch (error) {
-          console.warn(
-            `Failed to fetch group availabilities for group ${groupId}:`,
-            error
-          )
         }
       }
 

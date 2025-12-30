@@ -1906,6 +1906,15 @@ const getGroupsAndMembers = async (
   }
 
   return data.map(group => {
+    const memberAvailabilities: AvailabilityBlock[] = Array.isArray(
+      group.member_availabilities
+    )
+      ? group.member_availabilities.map((avail: any) => ({
+          ...avail,
+          isDefault: false,
+        }))
+      : []
+
     return {
       id: group.id,
       name: group.name,
@@ -1920,6 +1929,7 @@ const getGroupsAndMembers = async (
           return !member.invitePending
         }) || []
       ),
+      member_availabilities: memberAvailabilities,
     }
   }) as GetGroupsFullResponse[]
 }

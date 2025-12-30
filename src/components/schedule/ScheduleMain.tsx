@@ -53,6 +53,7 @@ import {
   decodeMeetingGuest,
   getContactById,
   getGroup,
+  getGroupMembersAvailabilities,
   getGroupsMembers,
   getMeeting,
   getQuickPollById,
@@ -151,6 +152,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     meetingOwners,
     participants,
     setGroupAvailability,
+    setGroupMembersAvailabilities,
     setGroupParticipants,
     setMeetingOwners,
     setParticipants,
@@ -175,8 +177,12 @@ const ScheduleMain: FC<IInitialProps> = ({
   const handleGroupPrefetch = async () => {
     if (!groupId) return
     try {
-      const group = await getGroup(groupId)
-      const fetchedGroupMembers = await getGroupsMembers(groupId)
+      const [group, fetchedGroupMembers, groupMembersAvailabilitiesData] =
+        await Promise.all([
+          getGroup(groupId),
+          getGroupsMembers(groupId),
+          getGroupMembersAvailabilities(groupId),
+        ])
       const actualMembers = fetchedGroupMembers
         .filter(val => !val.invitePending)
         .filter(val => !!val.address)
@@ -191,6 +197,10 @@ const ScheduleMain: FC<IInitialProps> = ({
         setGroupParticipants(prev => ({
           ...prev,
           [groupId]: allAddresses,
+        }))
+        setGroupMembersAvailabilities(prev => ({
+          ...prev,
+          [groupId]: groupMembersAvailabilitiesData,
         }))
         addGroup({
           isGroup: true,

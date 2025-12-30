@@ -48,12 +48,12 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
 
   // Preference to hide availability block labels in group cards
   const [hideAvailabilityLabels, setHideAvailabilityLabels] = useState(() =>
-    getHideGroupAvailabilityLabels()
+    getHideGroupAvailabilityLabels(currentAccount?.address || '')
   )
 
   const handleToggleHideLabels = (checked: boolean) => {
     setHideAvailabilityLabels(checked)
-    setHideGroupAvailabilityLabels(checked)
+    setHideGroupAvailabilityLabels(currentAccount?.address || '', checked)
   }
 
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)

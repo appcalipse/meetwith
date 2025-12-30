@@ -21,7 +21,7 @@ import {
 } from '@chakra-ui/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Select as ChakraSelect } from 'chakra-react-select'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { AvailabilityBlock } from '@/types/availability'
@@ -173,21 +173,57 @@ const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
 
   // Initialize edited availability blocks when data loads
   useEffect(() => {
-    if (groupMemberAvailabilities) {
+    // If group-specific availability exists, use it
+    if (groupMemberAvailabilities && groupMemberAvailabilities.length > 0) {
       setEditedAvailabilityBlocks(
         groupMemberAvailabilities.map(block => ({
           value: block.id,
           label: block.title,
         }))
       )
+    } else if (
+      // If no group-specific availability, prefill with default availability block
+      groupMemberAvailabilities !== undefined &&
+      availabilityBlocks &&
+      currentAccount?.preferences?.availaibility_id
+    ) {
+      const defaultBlockId = currentAccount.preferences.availaibility_id
+      const defaultBlock = availabilityBlocks.find(
+        block => block.id === defaultBlockId
+      )
+      if (defaultBlock) {
+        setEditedAvailabilityBlocks([
+          {
+            value: defaultBlock.id,
+            label: defaultBlock.title,
+          },
+        ])
+      }
     }
-  }, [groupMemberAvailabilities])
+  }, [
+    groupMemberAvailabilities,
+    availabilityBlocks,
+    currentAccount?.preferences?.availaibility_id,
+  ])
 
   const availabilityBlockOptions: Option<string>[] =
     availabilityBlocks?.map(block => ({
       value: block.id,
       label: block.title,
     })) || []
+
+  // Determine baseline availability IDs for comparison
+  const baselineAvailabilityIds = useMemo(() => {
+    // If group-specific availability exists, use it
+    if (groupMemberAvailabilities && groupMemberAvailabilities.length > 0) {
+      return groupMemberAvailabilities.map(b => b.id).sort()
+    }
+    // Otherwise, use default availability block if it exists
+    if (currentAccount?.preferences?.availaibility_id) {
+      return [currentAccount.preferences.availaibility_id]
+    }
+    return []
+  }, [groupMemberAvailabilities, currentAccount?.preferences?.availaibility_id])
 
   const handleAvailabilityBlockChange = (newValue: unknown) => {
     const newSelected = (newValue as Option<string>[]) || []
@@ -207,12 +243,10 @@ const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
     }
 
     // Update availability blocks if changed
-    const currentAvailabilityIds =
-      groupMemberAvailabilities?.map(b => b.id) || []
     const newAvailabilityIds = editedAvailabilityBlocks.map(opt => opt.value)
     const hasAvailabilityChanged =
-      currentAvailabilityIds.length !== newAvailabilityIds.length ||
-      !currentAvailabilityIds.every(id => newAvailabilityIds.includes(id))
+      baselineAvailabilityIds.length !== newAvailabilityIds.length ||
+      !baselineAvailabilityIds.every(id => newAvailabilityIds.includes(id))
 
     if (hasAvailabilityChanged) {
       await updateAvailabilityMutation.mutateAsync(newAvailabilityIds)
@@ -248,10 +282,7 @@ const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
   const hasChanges =
     groupName !== group.name ||
     groupDescription !== (group.description || '') ||
-    groupMemberAvailabilities
-      ?.map(b => b.id)
-      .sort()
-      .join(',') !==
+    baselineAvailabilityIds.join(',') !==
       editedAvailabilityBlocks
         .map(opt => opt.value)
         .sort()
