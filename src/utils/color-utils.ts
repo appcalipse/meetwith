@@ -120,7 +120,10 @@ function rgbToHex(r: number, g: number, b: number): string {
  * @param backgroundColor - Hex color string (e.g., '#FEF0EC')
  * @returns Hex color string for the border (e.g., '#F35826')
  */
-export function generateBorderColor(backgroundColor: string): string {
+export function generateBorderColor(
+  backgroundColor: string,
+  isLight = false
+): string {
   // Remove # if present and validate
   const cleanHex = backgroundColor.replace('#', '')
   if (!/^[0-9A-Fa-f]{6}$/.test(cleanHex)) {
@@ -140,21 +143,31 @@ export function generateBorderColor(backgroundColor: string): string {
   let { h, s, l } = hsl
 
   // For very light colors (high lightness), we need to create a bold accent
-  if (l > 85) {
-    // High saturation for bold color
-    s = Math.min(85, s + 60)
-    // Much lower lightness for strong contrast
-    l = Math.max(25, l - 60)
-  } else if (l > 60) {
-    // Medium light colors
-    s = Math.min(80, s + 40)
-    l = Math.max(30, l - 35)
+  if (isLight) {
+    // Dark theme: lighten borders for contrast
+    if (l < 15) {
+      s = Math.min(85, s + 60)
+      l = Math.min(75, l + 60)
+    } else if (l < 40) {
+      s = Math.min(80, s + 40)
+      l = Math.min(70, l + 35)
+    } else {
+      s = Math.min(75, s + 20)
+      l = Math.min(80, l + 20)
+    }
   } else {
-    // Already somewhat dark, just enhance saturation
-    s = Math.min(75, s + 20)
-    l = Math.max(20, l - 20)
+    // Light theme: darken borders for contrast (existing behavior)
+    if (l > 85) {
+      s = Math.min(85, s + 60)
+      l = Math.max(25, l - 60)
+    } else if (l > 60) {
+      s = Math.min(80, s + 40)
+      l = Math.max(30, l - 35)
+    } else {
+      s = Math.min(75, s + 20)
+      l = Math.max(20, l - 20)
+    }
   }
-
   // Adjust hue slightly for warmer tones if it's in the orange/red family
   if ((h >= 0 && h <= 30) || (h >= 330 && h <= 360)) {
     // Orange/red hues - make slightly warmer
