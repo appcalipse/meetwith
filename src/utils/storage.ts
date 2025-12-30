@@ -117,13 +117,23 @@ const removeGuestPollDetails = (pollId: string) => {
   window.localStorage.removeItem(`${GUEST_POLL_DETAILS}:${pollId}`)
 }
 
-const getHideGroupAvailabilityLabels = (): boolean => {
-  const stored = window.localStorage.getItem(HIDE_GROUP_AVAILABILITY_LABELS)
+const getHideGroupAvailabilityLabels = (account_address: string): boolean => {
+  if (typeof window === 'undefined' || !account_address) return false
+  const stored = window.localStorage.getItem(
+    `${HIDE_GROUP_AVAILABILITY_LABELS}:${account_address.toLowerCase()}`
+  )
   return stored === 'true'
 }
 
-const setHideGroupAvailabilityLabels = (value: boolean): void => {
-  window.localStorage.setItem(HIDE_GROUP_AVAILABILITY_LABELS, String(value))
+const setHideGroupAvailabilityLabels = (
+  account_address: string,
+  value: boolean
+): void => {
+  if (typeof window === 'undefined' || !account_address) return
+  window.localStorage.setItem(
+    `${HIDE_GROUP_AVAILABILITY_LABELS}:${account_address.toLowerCase()}`,
+    String(value)
+  )
 }
 
 export {

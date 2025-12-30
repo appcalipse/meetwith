@@ -20,6 +20,7 @@ export interface GetGroupsFullResponse {
   avatar_url?: string | null
   description?: string | null
   members: Array<GroupMember>
+  member_availabilities?: AvailabilityBlock[]
 }
 
 export interface CreateGroupsResponse {
