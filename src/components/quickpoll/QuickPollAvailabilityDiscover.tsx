@@ -302,7 +302,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
           // Compute month range for base availability calculation
           const { monthStart, monthEnd } = getMonthRange(
-            currentSelectedDate,
+            currentSelectedDate.toJSDate(),
             timezone
           )
 
@@ -399,7 +399,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
           // Compute month range for base availability calculation
           const { monthStart, monthEnd } = getMonthRange(
-            currentSelectedDate,
+            currentSelectedDate.toJSDate(),
             timezone
           )
 
