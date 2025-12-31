@@ -48,21 +48,21 @@ jobs:
         id: changes_summary
         run: |
           echo "CHANGES_SUMMARY<<EOF" >> $GITHUB_ENV
-          echo "## What Changed in This Deployment:" >> $GITHUB_ENV
+          echo "## 📋 What Changed in This Deployment:" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
 
           # Get last 5 commits with enhanced descriptions
-          git --no-pager log --pretty=format:"%s%n%b" -3 | while IFS= read -r commit; do
+          git --no-pager log --pretty=format:"%s%n%b" -5 | while IFS= read -r commit; do
             # Convert technical terms to user-friendly language
             enhanced_commit=$(echo "$commit" | \
-              sed -E 's/^fix(\([^)]+\))?:/ **Bug Fix:** /i' | \
-              sed -E 's/^feat(\([^)]+\))?:/**New Feature:** /i' | \
-              sed -E 's/^chore(\([^)]+\))?:/**Maintenance:** /i' | \
-              sed -E 's/^docs(\([^)]+\))?:/**Documentation:** /i' | \
-              sed -E 's/^style(\([^)]+\))?:/**UI\/Styling:** /i' | \
-              sed -E 's/^refactor(\([^)]+\))?:/**Code Improvement:** /i' | \
-              sed -E 's/^test(\([^)]+\))?:/**Testing:** /i' | \
-              sed -E 's/^perf(\([^)]+\))?:/**Performance:** /i' | \
+              sed -E 's/^fix(\([^)]+\))?:/🐛 **Bug Fix:** /i' | \
+              sed -E 's/^feat(\([^)]+\))?:/✨ **New Feature:** /i' | \
+              sed -E 's/^chore(\([^)]+\))?:/🧹 **Maintenance:** /i' | \
+              sed -E 's/^docs(\([^)]+\))?:/📚 **Documentation:** /i' | \
+              sed -E 's/^style(\([^)]+\))?:/💄 **UI\/Styling:** /i' | \
+              sed -E 's/^refactor(\([^)]+\))?:/♻️ **Code Improvement:** /i' | \
+              sed -E 's/^test(\([^)]+\))?:/🧪 **Testing:** /i' | \
+              sed -E 's/^perf(\([^)]+\))?:/⚡ **Performance:** /i' | \
               sed -E 's/API/User Interface/gi' | \
               sed -E 's/component/interface element/gi' | \
               sed -E 's/endpoint/connection point/gi' | \
@@ -70,12 +70,12 @@ jobs:
               sed -E 's/optimize/improve speed of/gi' | \
               sed -E 's/refactor/reorganize and improve/gi')
 
-              # If no conventional commit format detected, add default emoji
-              if [[ ! "$enhanced_commit" =~ ^[[:space:]]*[^[:alnum:][:space:]] ]]; then
-                enhanced_commit="**Update:** $enhanced_commit"
-              fi
+            # If no conventional commit format detected, add default emoji
+            if [[ ! "$enhanced_commit" =~ ^[🐛✨🧹📚💄♻️🧪⚡] ]]; then
+              enhanced_commit="🔧 **Update:** $enhanced_commit"
+            fi
 
-              echo "• $enhanced_commit" >> $GITHUB_ENV
+            echo "• $enhanced_commit" >> $GITHUB_ENV
           done
           echo "" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
@@ -85,7 +85,7 @@ jobs:
         run: |
           echo "TECH_DETAILS<<EOF" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          echo "##Technical Details:" >> $GITHUB_ENV
+          echo "## 🔧 Technical Details:" >> $GITHUB_ENV
           echo "**Deployment Time:** $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
@@ -100,7 +100,7 @@ jobs:
         with:
           args: |
             <@976068042318569482> <@615959113586835476>
-            **Meet With Wallet - Deployment Completed**
+            🚀 **Meet With Wallet - Deployment Completed**
 
             **Environment:** ${{ github.ref == 'refs/heads/main' && '🌟 Production' || github.ref == 'refs/heads/develop' && '🧪 Preview' || github.ref == 'refs/heads/pre-prod' && '🎯 Pre-Production' || '❓ Unknown' }}
             **Status:** ${{ job.status == 'success' && '✅ Successful' || '❌ Failed' }}
@@ -110,6 +110,6 @@ jobs:
 
             ${{ env.TECH_DETAILS }}
 
-            **Links:**
+            **🔗 Links:**
             • [View Deployment Details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             • [Browse Code Changes](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
