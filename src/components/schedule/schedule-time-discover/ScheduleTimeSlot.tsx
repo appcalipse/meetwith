@@ -8,9 +8,8 @@ import {
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { formatWithOrdinal, getMeetingBoundaries } from '@utils/date_helper'
 import { DateTime, Interval } from 'luxon'
-import React, { FC } from 'react'
+import { FC, memo, useState } from 'react'
 
-import { AvailabilityBlock } from '@/types/availability'
 import { TimeSlot } from '@/types/Meeting'
 
 import { getBgColor, State } from './SchedulePickTime'
@@ -31,7 +30,7 @@ export interface ScheduleTimeSlotProps {
   duration: number
   currentAccountAddress?: string
   displayNameToAddress: Map<string, string>
-  defaultAvailabilityBlock?: AvailabilityBlock
+  defaultBlockId?: string | null
 }
 
 const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
@@ -42,7 +41,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
   duration,
   currentAccountAddress,
   displayNameToAddress,
-  defaultAvailabilityBlock,
+  defaultBlockId,
 }) => {
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const { slot, state, userStates } = slotData
@@ -67,13 +66,14 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
     : false
 
   const { isTopElement, isBottomElement } = getMeetingBoundaries(slot, duration)
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false)
 
   // Get current user event and URL from slotData
   const currentUserEvent = slotData.currentUserEvent
   const eventUrl = slotData.eventUrl
 
   return (
-    <Tooltip.Root key={slot.start.toISOTime()}>
+    <Tooltip.Root key={slot.start.toISOTime()} onOpenChange={setIsTooltipOpen}>
       <Tooltip.Trigger asChild>
         <Button
           bg={getBgColor(state)}
@@ -102,31 +102,33 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
           }}
         />
       </Tooltip.Trigger>
-      <Tooltip.Content style={{ zIndex: 10 }} side="right">
-        <Box
-          p={2}
-          bg={itemsBgColor}
-          borderRadius={10}
-          boxShadow="md"
-          py={3}
-          px={4}
-        >
-          <Text mb={'7px'}>
-            {formatWithOrdinal(slot)} ({timezone})
-          </Text>
+      {isTooltipOpen && (
+        <Tooltip.Content style={{ zIndex: 10 }} side="right">
+          <Box
+            p={2}
+            bg={itemsBgColor}
+            borderRadius={10}
+            boxShadow="md"
+            py={3}
+            px={4}
+          >
+            <Text mb={'7px'}>
+              {formatWithOrdinal(slot)} ({timezone})
+            </Text>
 
-          <TimeSlotTooltipBody
-            userStates={userStates}
-            displayNameToAddress={displayNameToAddress}
-            currentAccountAddress={currentAccountAddress}
-            currentUserEvent={currentUserEvent}
-            eventUrl={eventUrl}
-            defaultAvailabilityBlock={defaultAvailabilityBlock}
-          />
-        </Box>
-        <Tooltip.Arrow />
-      </Tooltip.Content>
+            <TimeSlotTooltipBody
+              userStates={userStates}
+              displayNameToAddress={displayNameToAddress}
+              currentAccountAddress={currentAccountAddress}
+              currentUserEvent={currentUserEvent}
+              eventUrl={eventUrl}
+              defaultBlockId={defaultBlockId}
+            />
+          </Box>
+          <Tooltip.Arrow />
+        </Tooltip.Content>
+      )}
     </Tooltip.Root>
   )
 }
-export default React.memo(ScheduleTimeSlot)
+export default memo(ScheduleTimeSlot)

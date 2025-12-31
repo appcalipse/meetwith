@@ -40,6 +40,7 @@ export const colors = {
     845: '#1D2630',
     850: '#181F24',
     900: '#131A20',
+    950: '#192129',
   },
   green: {
     700: '#00411D',
@@ -67,6 +68,7 @@ export const colors = {
   },
   red: {
     100: '#FFD5D6',
+    250: '#FF383C',
     300: '#FF2023',
     400: '#FF1115',
     500: '#FF0000',
@@ -141,6 +143,18 @@ const newTheme = {
         default: 'white',
         _dark: 'neutral.900',
       },
+      'tab-button-bg': {
+        default: 'white',
+        _dark: 'neutral.900',
+      },
+      'event-text': {
+        default: 'neutral.900',
+        _dark: 'primary.500',
+      },
+      'upcoming-event-title': {
+        default: 'neutral.900',
+        _dark: 'neutral.0',
+      },
       'bg-surface-secondary': {
         default: 'white',
         _dark: 'neutral.850',
@@ -161,6 +175,15 @@ const newTheme = {
         default: 'neutral.100',
         _dark: 'neutral.825',
       },
+      'bg-event-alternate': {
+        default: 'neutral.50',
+        _dark: 'neutral.950',
+      },
+      'bg-event': {
+        default: 'neutral.0',
+        _dark: 'neutral.825',
+      },
+      'bg-calendar-row': { default: 'neutral.200', _dark: 'neutral.800' },
       'bg-surface-tertiary-4': {
         default: 'neutral.50',
         _dark: 'neutral.825',
@@ -180,6 +203,10 @@ const newTheme = {
       'border-inverted-subtle': {
         default: 'neutral.700',
         _dark: 'neutral.0',
+      },
+      'sidebar-inverted-subtle': {
+        default: 'neutral.700',
+        _dark: 'neutral.200',
       },
       'border-emphasis': {
         default: 'neutral.300',
@@ -261,6 +288,10 @@ const newTheme = {
         default: 'white',
         _dark: 'neutral.800',
       },
+      'tab-bg': {
+        default: 'neutral.100',
+        _dark: 'neutral.800',
+      },
       'card-border': {
         default: 'neutral.200',
         _dark: 'neutral.800',
@@ -280,6 +311,14 @@ const newTheme = {
       'dropdown-hover': {
         default: 'neutral.50',
         _dark: 'neutral.800',
+      },
+      'upcoming-event-text': {
+        default: 'neutral.400',
+        _dark: 'neutral.100',
+      },
+      'connected-calendar-border': {
+        default: 'neutral.100',
+        _dark: 'neutral.400',
       },
     },
   },

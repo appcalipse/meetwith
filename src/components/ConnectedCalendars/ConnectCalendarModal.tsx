@@ -113,7 +113,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
       isCentered
     >
       <ModalOverlay>
-        <ModalContent maxW="45rem">
+        <ModalContent maxW={{ base: '20rem', md: '45rem' }}>
           <ModalHeader>
             <Heading size={'md'}>Choose calendar type</Heading>
           </ModalHeader>

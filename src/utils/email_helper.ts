@@ -456,7 +456,6 @@ export const updateMeetingEmail = async (
   const meetingPermissions = meetingDetails.meetingPermissions
   const meetingTypeId = meetingDetails.meeting_type_id
   const changes = meetingDetails.changes
-
   if (!changes?.dateChange) {
     return true
   }

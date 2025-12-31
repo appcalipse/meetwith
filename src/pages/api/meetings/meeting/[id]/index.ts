@@ -1,16 +1,23 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { getMeetingFromDB } from '@/utils/database'
+import { getMeetingFromDB, getSlotInstance } from '@/utils/database'
+import { extractQuery } from '@/utils/generic_utils'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    if (!req.query.id) {
+    const id = extractQuery(req.query, 'id')
+    if (!id) {
       return res.status(404).send('Id parameter required')
     }
-
+    let meeting
     try {
-      const meeting = await getMeetingFromDB(req.query.id as string)
+      if (id.includes('_')) {
+        // recurring meeting instance
+        meeting = await getSlotInstance(id)
+      } else {
+        meeting = await getMeetingFromDB(id)
+      }
       return res.status(200).json(meeting)
     } catch (err) {
       Sentry.captureException(err)

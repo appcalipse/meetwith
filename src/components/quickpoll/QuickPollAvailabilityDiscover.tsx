@@ -1,5 +1,4 @@
 import {
-  Button,
   Heading,
   HStack,
   Icon,
@@ -8,18 +7,18 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { DateTime, Interval } from 'luxon'
+import { Interval } from 'luxon'
 import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
-  AvailabilitySlot,
   PollVisibility,
   QuickPollBySlugResponse,
   QuickPollIntent,
@@ -37,7 +36,6 @@ import { parseMonthAvailabilitiesToDate } from '@/utils/date_helper'
 import {
   computeAvailabilitySlotsWithOverrides,
   computeBaseAvailability,
-  convertAvailabilitySlotRangesToIntervals,
   convertBusySlotsToIntervals,
   convertSelectedSlotsToAvailabilitySlots,
   getMonthRange,
@@ -92,7 +90,25 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     setIsSavingAvailability,
     setIsRefreshingAvailabilities,
   } = useQuickPollAvailability()
-
+  const {
+    addGroup,
+    groupAvailability,
+    groupParticipants,
+    groups,
+    meetingOwners,
+    participants,
+    setGroupAvailability,
+    setGroupParticipants,
+    setMeetingOwners,
+    setParticipants,
+  } = useParticipants()
+  const inviteKey = useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
   const router = useRouter()
   const toast = useToast()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
@@ -286,7 +302,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
           // Compute month range for base availability calculation
           const { monthStart, monthEnd } = getMonthRange(
-            currentSelectedDate,
+            currentSelectedDate.toJSDate(),
             timezone
           )
 
@@ -383,7 +399,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
           // Compute month range for base availability calculation
           const { monthStart, monthEnd } = getMonthRange(
-            currentSelectedDate,
+            currentSelectedDate.toJSDate(),
             timezone
           )
 
@@ -681,6 +697,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           gap={'14px'}
         >
           <InviteParticipants
+            key={inviteKey}
             onClose={() => setIsInviteParticipantsOpen(false)}
             isOpen={isInviteParticipantsOpen}
             isQuickPoll={true}
@@ -694,6 +711,17 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
               })
               setIsInviteParticipantsOpen(false)
             }}
+            groupAvailability={groupAvailability}
+            groupParticipants={groupParticipants}
+            participants={participants}
+            handleUpdateGroups={(
+              groupAvailability: Record<string, Array<string> | undefined>,
+              groupParticipants: Record<string, Array<string> | undefined>
+            ) => {
+              setGroupAvailability(groupAvailability)
+              setGroupParticipants(groupParticipants)
+            }}
+            handleUpdateParticipants={setParticipants}
           />
           <QuickPollParticipants
             pollData={currentPollData}

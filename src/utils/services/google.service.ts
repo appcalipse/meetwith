@@ -1,8 +1,9 @@
 import * as Sentry from '@sentry/nextjs'
-import { format, getWeekOfMonth } from 'date-fns'
 import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
+import { DateTime } from 'luxon'
 
+import { UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -15,15 +16,24 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import {
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '@/types/Requests'
 
+import { handleRRULEForMeeting } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { NO_MEETING_TYPE } from '../constants/meeting-types'
 import { MeetingPermissions } from '../constants/schedule'
-import { getOwnerPublicUrlServer, updateCalendarPayload } from '../database'
+import {
+  getGoogleEventMappingId,
+  getOwnerPublicUrlServer,
+  updateCalendarPayload,
+} from '../database'
 import { getCalendarPrimaryEmail } from '../sync_helper'
 import { CalendarServiceHelper } from './calendar.helper'
-import { IGoogleCalendarService } from './calendar.service.types'
+import { EventList, IGoogleCalendarService } from './calendar.service.types'
+import { GoogleEventMapper } from './google.mapper'
 import { withRetry } from './retry.service'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -161,41 +171,32 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
 
   async listEvents(
     calendarId: string,
-    dateFrom: Date,
-    dateTo: Date
-  ): Promise<calendar_v3.Schema$Event[]> {
-    return new Promise((resolve, reject) =>
-      this.auth.getToken().then(myGoogleAuth => {
-        const calendar = google.calendar({
-          version: 'v3',
-          auth: myGoogleAuth,
-        })
-
-        calendar.events.list(
-          {
-            calendarId,
-            timeMin: dateFrom.toISOString(),
-            timeMax: dateTo.toISOString(),
-            singleEvents: true,
-            orderBy: 'updated',
-            q: 'meetingId',
-            showDeleted: true,
-            updatedMin: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
-          },
-          (err, res) => {
-            if (err) {
-              console.error(
-                'There was an error contacting google calendar service: ',
-                err
-              )
-              return reject(err)
-            }
-            const events = res?.data.items || []
-            return resolve(events)
-          }
-        )
+    syncToken: string | undefined | null
+  ): Promise<EventList> {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    const aggregatedEvents: calendar_v3.Schema$Event[] = []
+    let nextSyncToken: string | undefined
+    let token: string | undefined
+    do {
+      const response = await calendar.events.list({
+        calendarId,
+        syncToken: syncToken ?? undefined,
+        showDeleted: true,
+        pageToken: token,
       })
-    )
+      aggregatedEvents.push(...(response.data.items || []))
+      token = response.data.nextPageToken || undefined
+      const storedSyncToken = response.data.nextSyncToken
+      if (storedSyncToken) nextSyncToken = storedSyncToken
+    } while (token)
+    return {
+      events: aggregatedEvents,
+      nextSyncToken,
+    }
   }
 
   async createEvent(
@@ -294,11 +295,14 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
               ),
             location: meetingDetails.meeting_url,
             status: 'confirmed',
+
             extendedProperties: {
               private: {
                 updatedBy: 'meetwith',
                 lastUpdatedAt: new Date().toISOString(),
                 meetingId: meetingDetails.meeting_id,
+                meetingTypeId: meetingDetails.meeting_type_id || '',
+                includesParticipants: useParticipants ? 'true' : 'false',
               },
             },
           }
@@ -311,22 +315,12 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             meetingDetails.meetingRepeat &&
             meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
           ) {
-            let RRULE = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()};INTERVAL=1`
-            const dayOfWeek = format(
-              meetingDetails.start,
-              'eeeeee'
-            ).toUpperCase()
-            const weekOfMonth = getWeekOfMonth(meetingDetails.start)
-
-            switch (meetingDetails.meetingRepeat) {
-              case MeetingRepeat.WEEKLY:
-                RRULE += `;BYDAY=${dayOfWeek}`
-                break
-              case MeetingRepeat.MONTHLY:
-                RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
-                break
-            }
-            payload.recurrence = [RRULE]
+            payload.recurrence =
+              meetingDetails.rrule ||
+              handleRRULEForMeeting(
+                meetingDetails.meetingRepeat,
+                new Date(meetingDetails.start)
+              )
           }
           const calendar = google.calendar({
             version: 'v3',
@@ -398,15 +392,20 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           slot_id: '',
           meeting_id,
         }))
-      const event = await this.getEventById(meeting_id, _calendarId)
+      const event = await this.getEventById(
+        meetingDetails.eventId || meeting_id,
+        _calendarId
+      )
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
-
       const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
-
+      const eventId =
+        (await getGoogleEventMappingId(meeting_id, _calendarId)) ||
+        meetingDetails.eventId ||
+        meeting_id.replaceAll('-', '')
       const payload: calendar_v3.Schema$Event = {
-        id: meeting_id.replaceAll('-', ''), // required to edit events later
+        id: eventId,
         summary: CalendarServiceHelper.getMeetingTitle(
           calendarOwnerAccountAddress,
           participantsInfo,
@@ -445,7 +444,12 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         extendedProperties: {
           private: {
             updatedBy: 'meetwith',
+            meetingId: meetingDetails.meeting_id,
             lastUpdatedAt: new Date().toISOString(),
+            meetingTypeId: meetingDetails.meeting_type_id || '',
+            includesParticipants:
+              event?.extendedProperties?.private?.includesParticipants ||
+              'false',
           },
         },
       }
@@ -462,17 +466,18 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         meetingDetails.meetingRepeat &&
         meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
       ) {
-        payload.recurrence = [
-          `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`,
-        ]
+        payload.recurrence =
+          meetingDetails.rrule ||
+          handleRRULEForMeeting(
+            meetingDetails.meetingRepeat,
+            new Date(meetingDetails.start)
+          )
       }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
       )
-      const attendeeLength =
-        event?.attendees?.filter(attendee => !attendee.self).length || 0
 
-      if (attendeeLength > 0) {
+      if (event?.extendedProperties?.private?.includesParticipants === 'true') {
         // Build deduplicated attendees list using helper
         const attendees = await this.buildAttendeesListForUpdate(
           meetingDetails.participants,
@@ -487,37 +492,47 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         version: 'v3',
         auth: myGoogleAuth,
       })
-      calendar.events.update(
-        {
-          auth: myGoogleAuth,
-          calendarId,
-          eventId: meeting_id.replaceAll('-', ''),
-          sendNotifications: true,
-          sendUpdates: 'all',
-          requestBody: payload,
-        },
-        function (err, event) {
-          if (err) {
-            console.error(
-              'There was an error contacting google calendar service: ',
-              err
-            )
-
-            return reject(err)
-          }
-          return resolve({
-            uid: meeting_id,
-            ...event?.data,
-            id: meeting_id,
-            additionalInfo: {
-              hangoutLink: event?.data.hangoutLink || '',
-            },
-            type: 'google_calendar',
-            password: '',
-            url: '',
+      try {
+        let event
+        if (eventId.includes('_')) {
+          event = await calendar.events.patch({
+            auth: myGoogleAuth,
+            calendarId,
+            eventId,
+            sendNotifications: true,
+            sendUpdates: 'all',
+            requestBody: payload,
+          })
+        } else {
+          event = await calendar.events.update({
+            auth: myGoogleAuth,
+            calendarId,
+            eventId,
+            sendNotifications: true,
+            sendUpdates: 'all',
+            requestBody: payload,
           })
         }
-      )
+        return resolve({
+          uid: meeting_id,
+          ...event?.data,
+          id: meeting_id,
+          additionalInfo: {
+            hangoutLink: event?.data.hangoutLink || '',
+          },
+          type: 'google_calendar',
+          password: '',
+          url: '',
+        })
+      } catch (err) {
+        if (err) {
+          console.error(
+            'There was an error contacting google calendar service: ',
+            err
+          )
+          return reject(err)
+        }
+      }
     })
   }
 
@@ -550,14 +565,15 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         version: 'v3',
         auth: myGoogleAuth,
       })
-
+      const eventId =
+        (await getGoogleEventMappingId(meeting_id, _calendarId)) ||
+        meeting_id.replaceAll('-', '')
       const calendarId = parseCalendarId(_calendarId)
-
       calendar.events.delete(
         {
           auth: myGoogleAuth,
           calendarId,
-          eventId: meeting_id.replaceAll('-', ''),
+          eventId,
           sendNotifications: true,
           sendUpdates: 'all',
         },
@@ -599,7 +615,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           // Use events.list to get full event details including title and ID
           const eventsPromises = calendarIds.map(async calendarId => {
             try {
-              const allEvents: any[] = []
+              const allEvents = []
               let pageToken: string | undefined
 
               // Paginate through all events using nextPageToken
@@ -661,7 +677,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
                   reject(err)
                   return
                 }
-                let fallbackResult: any = []
+                let fallbackResult: Array<EventBusyDate> = []
 
                 if (apires?.data.calendars) {
                   fallbackResult = Object.values(apires.data.calendars).reduce(
@@ -702,7 +718,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
                 reject(err)
                 return
               }
-              let fallbackResult: any = []
+              let fallbackResult: Array<EventBusyDate> = []
 
               if (apires?.data.calendars) {
                 fallbackResult = Object.values(apires.data.calendars).reduce(
@@ -976,7 +992,31 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       }
     })
   }
-
+  async initialSync(calendarId: string, dateFrom: string, dateTo: string) {
+    try {
+      const myGoogleAuth = await this.auth.getToken()
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+      let token: string | undefined
+      do {
+        const response = await calendar.events.list({
+          calendarId: calendarId,
+          pageToken: token,
+          timeMin: dateFrom,
+          timeMax: dateTo,
+          singleEvents: true,
+          showDeleted: true,
+        })
+        token = response.data.nextPageToken!
+        const storedSyncToken = response.data.nextSyncToken
+        if (storedSyncToken) return storedSyncToken
+      } while (token)
+    } catch (error) {
+      console.error('Initial sync error:', error)
+    }
+  }
   private googleAuth = (
     address: string,
     email: string,
@@ -1152,6 +1192,171 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
     }
 
     return attendees
+  }
+  private async getEventsCalendarId(
+    calendarId: string,
+    dateFrom: string,
+    dateTo: string
+  ): Promise<UnifiedEvent[]> {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    const aggregatedEvents: calendar_v3.Schema$Event[] = []
+    let token: string | undefined
+    do {
+      const response = await calendar.events.list({
+        calendarId,
+        timeMin: dateFrom,
+        timeMax: dateTo,
+        pageToken: token,
+      })
+      aggregatedEvents.push(...(response.data.items || []))
+      token = response.data.nextPageToken || undefined
+    } while (token)
+    return aggregatedEvents.map(event =>
+      GoogleEventMapper.toUnified(event, calendarId, this.email)
+    )
+  }
+  async getEvents(
+    calendarIds: string[],
+    dateFrom: string,
+    dateTo: string
+  ): Promise<UnifiedEvent[]> {
+    const events = await Promise.all(
+      calendarIds.map(calId =>
+        this.getEventsCalendarId(calId, dateFrom, dateTo)
+      )
+    )
+    return events.flat()
+  }
+
+  async updateEventInstance(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    calendarId: string
+  ): Promise<void> {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    const seriesMasterId = meetingDetails.meeting_id.replaceAll('-', '')
+    const originalStartTime = meetingDetails.original_start_time
+    const dateFrom = DateTime.fromJSDate(new Date(originalStartTime))
+      .startOf('day')
+      .toISO()
+    const dateTo = DateTime.fromJSDate(new Date(originalStartTime))
+      .endOf('day')
+      .toISO()
+    const instances = await calendar.events.instances({
+      calendarId,
+      eventId: seriesMasterId,
+      timeMin: dateFrom!,
+      timeMax: dateTo!,
+    })
+
+    const instance = instances.data.items?.[0]
+    if (!instance?.id) {
+      throw new Error('Instance not found')
+    }
+    // check if the owner is organizer
+    const actor = instance.attendees?.find(
+      attendee => attendee.self && attendee.organizer
+    )
+    if (!actor) {
+      // eslint-disable-next-line no-restricted-syntax
+      console.info('Calendar owner is not the organizer of this event')
+      return
+    }
+
+    await calendar.events.patch({
+      calendarId,
+      eventId: instance.id,
+      requestBody: await this.buildEventUpdatePayload(
+        calendarOwnerAccountAddress,
+        meetingDetails,
+        instance
+      ),
+    })
+  }
+  async buildEventUpdatePayload(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    event?: calendar_v3.Schema$Event
+  ) {
+    const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    const meeting_id = meetingDetails.meeting_id
+
+    const participantsInfo: ParticipantInfo[] = meetingDetails.participants.map(
+      participant => ({
+        type: participant.type,
+        name: participant.name,
+        account_address: participant.account_address,
+        status: participant.status,
+        slot_id: '',
+        meeting_id,
+      })
+    )
+    const payload: calendar_v3.Schema$Event = {
+      summary: CalendarServiceHelper.getMeetingTitle(
+        calendarOwnerAccountAddress,
+        participantsInfo,
+        meetingDetails.title
+      ),
+      description: CalendarServiceHelper.getMeetingSummary(
+        meetingDetails.content,
+        meetingDetails.meeting_url,
+        changeUrl
+      ),
+      start: {
+        dateTime: new Date(meetingDetails.start).toISOString(),
+        timeZone: 'UTC',
+      },
+      end: {
+        dateTime: new Date(meetingDetails.end).toISOString(),
+        timeZone: 'UTC',
+      },
+      attendees: [],
+      guestsCanModify: meetingDetails.meetingPermissions?.includes(
+        MeetingPermissions.EDIT_MEETING
+      ),
+      guestsCanInviteOthers: meetingDetails.meetingPermissions?.includes(
+        MeetingPermissions.INVITE_GUESTS
+      ),
+      guestsCanSeeOtherGuests: meetingDetails.meetingPermissions?.includes(
+        MeetingPermissions.SEE_GUEST_LIST
+      ),
+      reminders: {
+        useDefault: false,
+        overrides: [{ method: 'popup', minutes: 10 }],
+      },
+    }
+
+    if (meetingDetails.meeting_url) {
+      payload['location'] = meetingDetails.meeting_url
+    }
+    if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
+      payload.reminders.overrides = meetingDetails.meetingReminders.map(
+        this.createReminder
+      )
+    }
+    if (event?.extendedProperties?.private?.includesParticipants === 'true') {
+      const guest = meetingDetails.participants.find(
+        participant => participant.guest_email
+      )
+      // Build deduplicated attendees list using helper
+      const attendees = await this.buildAttendeesListForUpdate(
+        meetingDetails.participants,
+        calendarOwnerAccountAddress,
+        undefined,
+        guest
+      )
+
+      payload.attendees = attendees
+    }
+    return payload
   }
 }
 

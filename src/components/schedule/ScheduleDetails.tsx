@@ -1,4 +1,3 @@
-/* eslint-disable tailwindcss/no-custom-classname */
 import { Text } from '@chakra-ui/layout'
 import {
   Button,
