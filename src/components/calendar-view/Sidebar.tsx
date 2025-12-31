@@ -2,6 +2,7 @@ import { VStack } from '@chakra-ui/layout'
 import * as React from 'react'
 
 import CalendarPicker from './CalendarPicker'
+import ConnectCalendarButton from './ConnectCalendarButton'
 import ConnectedCalendar from './ConnectedCalendar'
 import UpComingEvents from './UpcomingEvents'
 
@@ -14,13 +15,14 @@ const Sidebar: React.FC = () => {
       alignItems="start"
       justifyContent="flex-start"
       borderRightWidth={1}
-      borderColor="neutral.700"
+      borderColor="menu-button-hover"
       bg="bg-event"
       roundedLeft={10}
     >
       <CalendarPicker />
       <ConnectedCalendar />
       <UpComingEvents />
+      <ConnectCalendarButton />
     </VStack>
   )
 }
