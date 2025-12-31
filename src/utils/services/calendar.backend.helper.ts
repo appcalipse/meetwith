@@ -364,9 +364,7 @@ export const CalendarBackendHelper = {
     startDate: Date,
     endDate: Date
   ): Promise<UnifiedEvent[]> => {
-    const calendars = await getConnectedCalendars(account_address, {
-      activeOnly: true,
-    })
+    const calendars = await getConnectedCalendars(account_address)
     const events = await Promise.all(
       calendars.map(async calendar => {
         const integration = getConnectedCalendarIntegration(
@@ -402,9 +400,7 @@ export const CalendarBackendHelper = {
     }
 
     // Find the calendar integration for this event
-    const calendars = await getConnectedCalendars(account_address, {
-      activeOnly: true,
-    })
+    const calendars = await getConnectedCalendars(account_address)
 
     const targetCalendar = calendars.find(
       cal =>
