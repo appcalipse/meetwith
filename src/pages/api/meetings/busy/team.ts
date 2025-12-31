@@ -36,29 +36,27 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         req.session.account?.address?.toLowerCase() || null
 
       // Filter event details: only include detailed event info for current user
-      // For other users, only return basic busy time info
-      const filteredSlots = isRaw
-        ? busySlots.map(slot => {
-            const timeSlot = slot as TimeSlot
-            const slotAccountAddress = timeSlot.account_address?.toLowerCase()
-            const isCurrentUser =
-              currentUserAddress && slotAccountAddress === currentUserAddress
+      const filteredSlots = busySlots.map(slot => {
+        const timeSlot = slot as TimeSlot
+        if (!timeSlot.account_address) {
+          return slot
+        }
 
-            if (isCurrentUser) {
-              // Return full details for current user
-              return slot
-            } else {
-              // For other users, return only basic info
-              // Remove event details: eventTitle, eventId, eventWebLink, eventEmail
-              return {
-                start: slot.start,
-                end: slot.end,
-                source: timeSlot.source,
-                account_address: timeSlot.account_address,
-              }
-            }
-          })
-        : busySlots
+        const slotAccountAddress = timeSlot.account_address.toLowerCase()
+        const isCurrentUser =
+          currentUserAddress && slotAccountAddress === currentUserAddress
+
+        if (isCurrentUser) {
+          return slot
+        } else {
+          return {
+            start: slot.start,
+            end: slot.end,
+            source: timeSlot.source,
+            account_address: timeSlot.account_address,
+          }
+        }
+      })
 
       return res.status(200).json(filteredSlots)
     }
