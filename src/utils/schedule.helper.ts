@@ -30,7 +30,7 @@ export const getMergedParticipants = (
       const groupMembers = groupParticipants?.[participant.id]
       if (!groupMembers) continue
 
-      const membersMap = new Map(group.members.map(m => [m.address, m]))
+      const membersMap = new Map(group.members?.map(m => [m.address, m]) || [])
 
       for (const memberAddress of groupMembers) {
         if (seenAddresses.has(memberAddress)) continue
