@@ -1,6 +1,8 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { TimeSlot } from '@/types/Meeting'
 import { AccountNotFoundError } from '@/utils/errors'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
@@ -25,7 +27,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         : undefined
 
     try {
-      const busySlots: Interval[] =
+      const busySlots: TimeSlot[] =
         await CalendarBackendHelper.getBusySlotsForAccount(
           address,
           startDate,
@@ -34,7 +36,28 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           offset
         )
 
-      return res.status(200).json(busySlots)
+      const currentUserAddress =
+        req.session.account?.address?.toLowerCase() || null
+      const requestedAddress = address?.toLowerCase()
+      const isCurrentUser =
+        currentUserAddress && requestedAddress === currentUserAddress
+
+      // Filter event details: only include detailed event info for current user
+      const filteredSlots = busySlots.map(slot => {
+        if (isCurrentUser) {
+          // Return full details for current user
+          return slot
+        } else {
+          return {
+            start: slot.start,
+            end: slot.end,
+            source: slot.source,
+            account_address: slot.account_address,
+          }
+        }
+      })
+
+      return res.status(200).json(filteredSlots)
     } catch (error) {
       if (error instanceof AccountNotFoundError) {
         return res.status(404).json({ error: error.message })
@@ -46,4 +69,4 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default handler
+export default withSessionRoute(handler)
