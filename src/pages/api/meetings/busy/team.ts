@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { ConditionRelation } from '@/types/common'
 import { TimeSlot } from '@/types/Meeting'
 import { initDB } from '@/utils/database'
@@ -31,7 +32,33 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           isRaw
         )
 
-      return res.status(200).json(busySlots)
+      const currentUserAddress =
+        req.session.account?.address?.toLowerCase() || null
+
+      // Filter event details: only include detailed event info for current user
+      const filteredSlots = busySlots.map(slot => {
+        const timeSlot = slot as TimeSlot
+        if (!timeSlot.account_address) {
+          return slot
+        }
+
+        const slotAccountAddress = timeSlot.account_address.toLowerCase()
+        const isCurrentUser =
+          currentUserAddress && slotAccountAddress === currentUserAddress
+
+        if (isCurrentUser) {
+          return slot
+        } else {
+          return {
+            start: slot.start,
+            end: slot.end,
+            source: timeSlot.source,
+            account_address: timeSlot.account_address,
+          }
+        }
+      })
+
+      return res.status(200).json(filteredSlots)
     }
   } catch (error) {
     return res.status(500).send(error)
@@ -39,4 +66,4 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default handler
+export default withSessionRoute(handler)

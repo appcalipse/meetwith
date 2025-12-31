@@ -1,5 +1,6 @@
 import {
   Accordion,
+  Box,
   Button,
   HStack,
   Image,
@@ -16,6 +17,7 @@ import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from 'react'
 import { FaPlus } from 'react-icons/fa'
@@ -87,34 +89,38 @@ const Groups = forwardRef<GroupRef, Props>(
   ({ currentAccount, search, hideAvailabilityLabels = false }: Props, ref) => {
     const toast = useToast()
 
-    const { data, isLoading, isFetching, hasNextPage, fetchNextPage, error } =
-      useInfiniteQuery({
-        queryKey: QueryKeys.groups(currentAccount?.address, search),
-        queryFn: ({ pageParam = 0 }) => {
-          return getGroupsFullWithMetadata(GROUP_PAGE_SIZE, pageParam, search)
-        },
-        getNextPageParam: (lastPage, allPages) => {
-          if (
-            !lastPage ||
-            !lastPage.groups ||
-            lastPage.groups.length < GROUP_PAGE_SIZE
-          ) {
-            return undefined
-          }
-          return allPages.reduce(
-            (acc, page) => acc + (page.groups?.length || 0),
-            0
-          )
-        },
-        enabled: !!currentAccount?.address,
-        staleTime: 0,
-        refetchOnMount: true,
-      })
+    const {
+      data,
+      isLoading,
+      isFetchingNextPage,
+      hasNextPage,
+      fetchNextPage,
+      error,
+    } = useInfiniteQuery({
+      queryKey: QueryKeys.groups(currentAccount?.address, search),
+      queryFn: ({ pageParam = 0 }) => {
+        return getGroupsFullWithMetadata(GROUP_PAGE_SIZE, pageParam, search)
+      },
+      getNextPageParam: (lastPage, allPages) => {
+        if (
+          !lastPage ||
+          !lastPage.groups ||
+          lastPage.groups.length < GROUP_PAGE_SIZE
+        ) {
+          return undefined
+        }
+        return allPages.reduce(
+          (acc, page) => acc + (page.groups?.length || 0),
+          0
+        )
+      },
+      enabled: !!currentAccount?.address,
+      staleTime: 0,
+      refetchOnMount: true,
+    })
     const groups = data?.pages.flatMap(page => page.groups || []) ?? []
     const canCreateGroup = !data?.pages[0]?.upgradeRequired
     const firstFetch = isLoading
-    const loading = isFetching
-    const noMoreFetch = !hasNextPage
 
     // Fetch user's availability blocks (used in settings modal)
     const { data: availabilityBlocks } = useQuery<AvailabilityBlock[]>({
@@ -197,11 +203,29 @@ const Groups = forwardRef<GroupRef, Props>(
       setSelectedGroupMember,
       openRemoveModal,
     }
-    const fetchGroups = () => {
-      if (hasNextPage && !isFetching) {
-        fetchNextPage()
-      }
-    }
+
+    const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+    // Intersection Observer for infinite scroll
+    useEffect(() => {
+      if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return
+
+      const observer = new IntersectionObserver(
+        entries => {
+          if (entries[0].isIntersecting) {
+            void fetchNextPage()
+          }
+        },
+        {
+          root: null,
+          rootMargin: '200px',
+          threshold: 0.1,
+        }
+      )
+
+      observer.observe(loadMoreRef.current)
+      return () => observer.disconnect()
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
     const handleAddNewMember = (groupId: string, groupName: string) => {
       setSelectedGroupId(groupId)
@@ -330,7 +354,7 @@ const Groups = forwardRef<GroupRef, Props>(
                   currentAccount={currentAccount}
                   {...group}
                   onAddNewMember={(...args) => {
-                    const actor = group.members.find(
+                    const actor = group.members?.find(
                       member => member.address === currentAccount?.address
                     )
                     if (!actor || actor?.role !== MemberType.ADMIN) return
@@ -343,17 +367,25 @@ const Groups = forwardRef<GroupRef, Props>(
                 />
               ))}
             </Accordion>
-            {!noMoreFetch && !firstFetch && (
-              <Button
-                isLoading={loading}
-                colorScheme="primary"
-                variant="outline"
-                alignSelf="center"
+            {hasNextPage && (
+              <Box
+                ref={loadMoreRef}
+                w="100%"
+                h="20px"
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
                 my={4}
-                onClick={() => fetchGroups()}
               >
-                Load more
-              </Button>
+                {isFetchingNextPage && (
+                  <Spinner size="md" color="primary.500" />
+                )}
+              </Box>
+            )}
+            {!hasNextPage && groups.length > 0 && (
+              <Text color="gray.500" fontSize="sm" textAlign="center" my={4}>
+                No more groups to load
+              </Text>
             )}
             <Spacer />
             <InviteModal

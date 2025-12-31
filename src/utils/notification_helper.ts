@@ -65,6 +65,8 @@ type EmailNotificationRequest =
       changeType: MeetingChangeType.DELETE
       meetingDetails: MeetingCancelSyncRequest
     }
+export const emailQueue = new EmailQueue()
+
 export const notifyForGroupInviteJoinOrReject = async (
   accountsToNotify: string[],
   group_id: string,
@@ -88,7 +90,6 @@ export const notifyForGroupInviteJoinOrReject = async (
 
   return
 }
-const emailQueue = new EmailQueue()
 export const notifyForMeetingCancellation = async (
   meetingDetails: MeetingCancelSyncRequest
 ): Promise<void> => {

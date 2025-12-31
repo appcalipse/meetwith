@@ -61,12 +61,12 @@ const GroupCard: React.FC<IGroupCard> = props => {
 
   const id = useId()
   const { push } = useRouter()
-  const actor = props.members.find(
+  const actor = props.members?.find(
     member => member.address === props.currentAccount.address
   )
   const [isAdmin, setIsAdmin] = useState(actor?.role === MemberType.ADMIN)
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>(
-    props.members.map(member => member.role)
+    props.members?.map(member => member.role) || []
   )
   const {
     openDeleteModal,
@@ -554,11 +554,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {props.members.map(member => (
+                    {props.members?.map(member => (
                       <GroupMemberCard
                         currentAccount={props.currentAccount}
                         key={member?.address}
-                        isEmpty={props.members.length < 2}
+                        isEmpty={props.members && props.members.length < 2}
                         viewerRole={actor?.role || MemberType.MEMBER}
                         groupRoles={groupRoles}
                         setGroupRoles={setGroupRoles}
