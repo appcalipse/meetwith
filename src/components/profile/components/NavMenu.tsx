@@ -36,7 +36,7 @@ import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardin
 import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
-import { EditMode } from '@/types/Dashboard'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
@@ -127,7 +127,6 @@ export const NavMenu: React.FC<{
         icon: FaCalendarAlt,
         mode: EditMode.AVAILABILITY,
       },
-
       { name: 'Settings', icon: FaCog, mode: EditMode.DETAILS },
     ]
     return tabs.filter(item => !item.isDisabled)
@@ -235,7 +234,11 @@ export const NavMenu: React.FC<{
 
   const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })
-    await router.push(`/dashboard/${mode}`)
+    const path =
+      mode === EditMode.DETAILS
+        ? `/dashboard/settings/${SettingsSection.DETAILS}`
+        : `/dashboard/${mode}`
+    await router.push(path)
     isMenuOpen && closeMenu!()
   }
 

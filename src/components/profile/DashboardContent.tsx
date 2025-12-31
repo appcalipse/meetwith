@@ -1,5 +1,4 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
-import { EditMode } from '@meta/Dashboard'
 import React, { useContext } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
 
@@ -7,6 +6,7 @@ import NotFound from '@/pages/404'
 import { AccountContext } from '@/providers/AccountProvider'
 import MetricStateProvider from '@/providers/MetricStateProvider'
 import { WalletProvider } from '@/providers/WalletProvider'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
 
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
@@ -23,15 +23,32 @@ import MeetingSettings from './MeetingSettings'
 import Settings from './Settings'
 import Wallet from './Wallet'
 
-const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
-  currentSection,
-}) => {
+const DashboardContent: React.FC<{
+  currentSection?: EditMode | string
+}> = ({ currentSection }) => {
   const { currentAccount } = useContext(AccountContext)
   const [isOpened, setIsOpened] = useLocalStorage('SIDEBAR::OPENED', true)
-  const isSettings = currentSection === EditMode.DETAILS
-  const isSchedule = currentSection === EditMode.MEETINGS
+  const settingsSections = new Set<string>([
+    SettingsSection.DETAILS,
+    SettingsSection.CONNECTED_CALENDARS,
+    SettingsSection.CONNECTED_ACCOUNTS,
+    SettingsSection.NOTIFICATIONS,
+    SettingsSection.SUBSCRIPTIONS,
+    SettingsSection.WALLET_PAYMENT,
+  ])
+  const isSettings = currentSection
+    ? settingsSections.has(currentSection as string)
+    : false
+
+  // NavMenu only accepts EditMode; when in settings we hide NavMenu, so safe to pass undefined
+  const navSection: EditMode | undefined = !isSettings
+    ? (currentSection as EditMode | undefined)
+    : undefined
 
   const renderSelected = () => {
+    if (currentSection && settingsSections.has(currentSection as string)) {
+      return <Settings currentAccount={currentAccount!} />
+    }
     switch (currentSection) {
       case EditMode.MEETINGS:
         return <Meetings currentAccount={currentAccount!} />
@@ -41,14 +58,8 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         return <Contact currentAccount={currentAccount!} />
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig currentAccount={currentAccount!} />
-      case EditMode.DETAILS:
-        return <Settings currentAccount={currentAccount!} />
       case EditMode.MEETING_SETTINGS:
         return <MeetingSettings currentAccount={currentAccount!} />
-      case EditMode.CALENDARS:
-        return <ConnectCalendar currentAccount={currentAccount!} />
-      case EditMode.NOTIFICATIONS:
-        return <NotificationsConfig currentAccount={currentAccount!} />
       case EditMode.WALLET:
         return (
           <WalletProvider>
@@ -88,7 +99,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
             zIndex={10}
           >
             <NavMenu
-              currentSection={currentSection}
+              currentSection={navSection}
               isOpened={isOpened}
               toggleSidebar={() => setIsOpened(!isOpened)}
             />

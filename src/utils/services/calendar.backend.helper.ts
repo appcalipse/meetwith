@@ -70,9 +70,7 @@ export const CalendarBackendHelper = {
     }
 
     const getIntegratedCalendarEvents = async () => {
-      const calendars = await getConnectedCalendars(account_address, {
-        activeOnly: true,
-      })
+      const calendars = await getConnectedCalendars(account_address)
       await Promise.all(
         calendars.map(async calendar => {
           const integration = getConnectedCalendarIntegration(

@@ -116,7 +116,7 @@ const DiscordNotificationConfig: React.FC<Props> = ({
           {!loading && !discordConnected && (
             <Text>
               (Please first{' '}
-              <Link href="/dashboard/details#connected-accounts" passHref>
+              <Link href="/dashboard/settings/connected-accounts" passHref>
                 <Text
                   as="span"
                   color="primary.200"

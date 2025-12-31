@@ -21,7 +21,11 @@ import {
   Plan,
   Subscription,
 } from '../types/Subscription'
-import { getSubscriptionByDomain } from './api_helper'
+import {
+  getActiveSubscription,
+  getSubscriptionByDomain,
+  syncSubscriptions,
+} from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
 import { parseUnits, zeroAddress } from './generic_utils'
 import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
@@ -30,7 +34,13 @@ import { thirdWebClient } from './user_manager'
 export const isProAccount = (
   account?: Pick<Account, 'subscriptions'> | null
 ): boolean => {
-  return Boolean(getActiveProSubscription(account))
+  // Check domain subscriptions
+  const domainSubscription = getActiveProSubscription(account)
+  if (domainSubscription) {
+    return true
+  }
+  // This sync version only checks domain subscriptions for backward compatibility
+  return false
 }
 
 export const getActiveProSubscription = (
@@ -39,6 +49,55 @@ export const getActiveProSubscription = (
   return account?.subscriptions?.find(
     sub => new Date(sub.expiry_time) > new Date()
   )
+}
+
+// Get the most recent active billing subscription from account subscriptions
+export const getActiveBillingSubscription = (
+  account?: Pick<Account, 'subscriptions'> | null
+): Subscription | null => {
+  if (!account?.subscriptions) return null
+
+  const now = new Date()
+  const billingSubs = account.subscriptions
+    .filter(sub => sub.billing_plan_id && new Date(sub.expiry_time) > now)
+    .sort(
+      (a, b) =>
+        new Date(b.expiry_time).getTime() - new Date(a.expiry_time).getTime()
+    )
+
+  return billingSubs.length > 0 ? billingSubs[0] : null
+}
+
+// checks both domain and billing subscriptions
+export const getActiveProSubscriptionAsync = async (
+  accountAddress: string
+): Promise<Subscription | null> => {
+  try {
+    const threeDaysAgo = new Date()
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+
+    const billingSubscription = await getActiveSubscription(accountAddress)
+    if (billingSubscription?.subscription) {
+      const expiresAt = billingSubscription.expires_at
+        ? new Date(billingSubscription.expires_at)
+        : null
+
+      if (expiresAt && expiresAt > threeDaysAgo) {
+        return null
+      }
+    }
+
+    // Fall back to domain subscriptions
+    const subscriptions = await syncSubscriptions()
+    const activeDomainSubscription = subscriptions.find(
+      sub => new Date(sub.expiry_time) > threeDaysAgo
+    )
+
+    return activeDomainSubscription || null
+  } catch (error) {
+    Sentry.captureException(error)
+    return null
+  }
 }
 
 export const checkAllowance = async (
