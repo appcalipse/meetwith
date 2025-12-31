@@ -473,7 +473,7 @@ export const updateMeetingAsGuest = async (
   }
 }
 
-export const updateMeeting = async (
+export const apiUpdateMeeting = async (
   slotId: string,
   meeting: MeetingUpdateRequest,
   signal?: AbortSignal
@@ -485,7 +485,7 @@ export const updateMeeting = async (
       meeting,
       { signal }
     )
-    await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
+
     return response
   } catch (e: unknown) {
     if (e instanceof ApiFetchError) {
@@ -518,7 +518,6 @@ export const apiUpdateMeetingInstance = async (
       meeting,
       { signal }
     )
-    await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
     return response
   } catch (e: unknown) {
     if (e instanceof ApiFetchError) {
@@ -988,11 +987,10 @@ export const getMeeting = async (
 export const getConferenceDataBySlotId = async (
   slotId: string
 ): Promise<ConferenceMeeting> => {
-  const response = await queryClient.fetchQuery(
-    QueryKeys.meeting(slotId),
-    () =>
-      internalFetch(`/meetings/guest/${slotId}`) as Promise<ConferenceMeeting>
+  const response = await internalFetch<ConferenceMeeting>(
+    `/meetings/guest/${slotId}`
   )
+
   return {
     ...response,
     start: new Date(response.start),
