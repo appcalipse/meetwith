@@ -182,7 +182,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
               </VStack>
             </GridItem>
           </PopoverTrigger>
-          <PopoverContent zIndex={1500} width="600px">
+          <PopoverContent zIndex={1500} width={{ base: '80vw', md: '600px' }}>
             <PopoverArrow />
             <PopoverCloseButton
               onClick={() => handleSelectEvent(onClose)}
