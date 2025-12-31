@@ -1236,7 +1236,7 @@ const getSlotsForDashboard = async (
     .select()
     .eq('account_address', account.address)
     .gte('end', _end)
-    .range(offset, offset + limit)
+    .range(offset, offset + limit - 1) // to account for supabase's inclusive ranges
     .order('start')
 
   if (error) {
@@ -1404,7 +1404,10 @@ const getMeetingsFromDB = async (slotIds: string[]): Promise<DBSlot[]> => {
   const { data, error } = await db.supabase
     .from('slots')
     .select()
-    .in('id', slotIds)
+    .in(
+      'id',
+      slotIds.map(id => id.split('_')[0])
+    )
 
   if (error) {
     throw new Error(error.message)
@@ -3886,8 +3889,9 @@ const updateMeeting = async (
   if (!options.force) {
     const everySlotId = meetingUpdateRequest.participants_mapping
       .filter(it => it.slot_id)
-      .map(it => it.slot_id) as string[]
+      .map(it => it.slot_id?.split('_')[0]) as string[]
     const everySlot = await getMeetingsFromDB(everySlotId)
+
     if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
       throw new MeetingChangeConflictError()
   }
