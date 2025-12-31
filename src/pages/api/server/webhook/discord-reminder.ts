@@ -82,7 +82,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         Promise.all(promises),
         new Promise(res =>
           // eslint-disable-next-line no-restricted-syntax
-          setTimeout(() => res(() => console.info('Time OUT')), 25000)
+          setTimeout(() => res(() => console.info('TIMEOUT')), 20000)
         ),
       ])
       return res.status(200).send('OK')

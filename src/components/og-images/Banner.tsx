@@ -11,7 +11,7 @@ interface UserBannerProps {
   description: string | null
   name: string | null
   calendar_url: string
-  banner_setting?: BannerSetting | null
+  banner_setting?: BannerSetting
 }
 const MAX_DESCRIPTION_LENGTH = 120
 const truncateText = (text: string | null, maxLength: number): string => {
