@@ -2,7 +2,6 @@ import {
   Button,
   Flex,
   Heading,
-  HStack,
   Tab,
   TabList,
   TabPanel,
@@ -34,11 +33,13 @@ const NavigationTab = () => (
       _selected={{
         bg: 'tab-button-bg',
       }}
+      flex={{ base: 1, md: 'auto' }}
     >
       <MdOutlineCalendarMonth size={24} />
       My Calendar
     </Tab>
     <Tab
+      flex={{ base: 1, md: 'auto' }}
       alignItems="center"
       gap={1}
       _selected={{
@@ -75,7 +76,19 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
       onChange={index => setCurrentTab(index)}
     >
       <Flex direction={'column'} w="100%">
-        <HStack justifyContent="space-between" alignItems="flex-start" mb={4}>
+        <Flex
+          flexDir={{
+            base: 'column',
+            md: 'row',
+          }}
+          justifyContent="space-between"
+          alignItems="flex-start"
+          mb={4}
+          gap={{
+            base: 4,
+            md: 0,
+          }}
+        >
           <Heading fontSize="2xl">
             My Meetings
             <Text fontSize="sm" fontWeight={100} mt={1}>
@@ -86,24 +99,14 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
           <Button
             onClick={() => push(`/dashboard/schedule`)}
             colorScheme="primary"
-            display={{ base: 'none', md: 'flex' }}
             mt={{ base: 4, md: 0 }}
-            mb={4}
+            mb={{ base: 4, md: 0 }}
             leftIcon={<FaPlus />}
+            width={{ base: '100%', md: 'auto' }}
           >
             New meeting
           </Button>
-        </HStack>
-        <Button
-          onClick={() => push(`/dashboard/schedule`)}
-          colorScheme="primary"
-          display={{ base: 'flex', md: 'none' }}
-          mb={8}
-          leftIcon={<FaPlus />}
-        >
-          New meeting
-        </Button>
-
+        </Flex>
         <TabPanels>
           <TabPanel p={0}>
             <CalendarView />
