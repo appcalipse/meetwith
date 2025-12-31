@@ -87,6 +87,8 @@ const InviteParticipants: FC<IProps> = ({
     allParticipants,
     removeParticipant,
     toggleAvailability,
+    groupMembersAvailabilities,
+    setGroupMembersAvailabilities,
   } = useParticipants()
   const [standAloneParticipants, setStandAloneParticipants] = useState<
     Array<ParticipantInfo>
@@ -307,6 +309,7 @@ const InviteParticipants: FC<IProps> = ({
     standAloneParticipants,
     groupParticipants,
     groupAvailability,
+    groupMembersAvailabilities,
     meetingMembers,
     meetingOwners,
     groups,
@@ -315,6 +318,7 @@ const InviteParticipants: FC<IProps> = ({
     setParticipants,
     setGroupParticipants,
     setGroupAvailability,
+    setGroupMembersAvailabilities,
     setMeetingMembers,
     setMeetingOwners,
     setIsGroupPrefetching,
