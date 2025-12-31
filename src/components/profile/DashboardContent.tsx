@@ -75,7 +75,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
           base: 0,
           lg: !isSettings ? (!isOpened ? '100px' : '23%') : 0,
         }}
-        pr={isSettings ? 0 : 8}
+        pr={isSettings ? 0 : { md: 8 }}
       >
         <RedirectHandler />
         {!isSettings && (
