@@ -1,4 +1,5 @@
-import { Box, HStack } from '@chakra-ui/layout'
+import { Flex } from '@chakra-ui/layout'
+import { useMediaQuery } from '@chakra-ui/media-query'
 import * as React from 'react'
 
 import { CalendarProvider } from '@/providers/calendar/CalendarContext'
@@ -9,6 +10,7 @@ import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
 
 import ActiveEvent from './ActiveEvent'
 import Calendar from './Calendar'
+import Header from './Header'
 import Sidebar from './Sidebar'
 
 interface CalendarViewProps {
@@ -16,23 +18,22 @@ interface CalendarViewProps {
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({}) => {
+  const [isLargerThan800] = useMediaQuery('(min-width: 800px)')
   return (
     <CalendarProvider>
-      <HStack
+      <Flex
+        flexDir={{
+          base: 'column',
+          md: 'row',
+        }}
         align="start"
         gap={0}
         w="100%"
         overflowX="clip"
-        mt={{
-          md: 0,
-          base: '100px',
-        }}
       >
-        <Box display={{ base: 'none', md: 'block' }} flexShrink={0}>
-          <Sidebar />
-        </Box>
+        {isLargerThan800 ? <Sidebar /> : <Header />}
         <Calendar />
-      </HStack>
+      </Flex>
       <PermissionsProvider>
         <NavigationProvider>
           <ParticipantsProvider>
