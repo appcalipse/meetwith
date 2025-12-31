@@ -520,23 +520,25 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
             }}
           />
         </FormControl>
-        <HStack w="100%" flexWrap="wrap">
-          <Button
-            w="100%"
-            py={3}
-            flex={1}
-            flexBasis="50%"
-            h={'auto'}
-            colorScheme="primary"
-            onClick={handleSchedule}
-            isLoading={isScheduling}
-            isDisabled={
-              !title || !duration || !pickedTime || !canEditMeetingDetails
-            }
-          >
-            Update Meeting
-          </Button>
-        </HStack>
+        <Button
+          w="100%"
+          py={3}
+          flex={1}
+          flexBasis="50%"
+          h={'auto'}
+          colorScheme="primary"
+          onClick={handleSchedule}
+          isLoading={isScheduling}
+          isDisabled={
+            !title ||
+            !duration ||
+            !pickedTime ||
+            !canEditMeetingDetails ||
+            isScheduling
+          }
+        >
+          Update Meeting
+        </Button>
       </VStack>
     </VStack>
   )
