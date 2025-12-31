@@ -1,5 +1,4 @@
-import { Button } from '@chakra-ui/button'
-import { Box, Heading, VStack } from '@chakra-ui/layout'
+import { Box } from '@chakra-ui/layout'
 import * as reactQuery from '@tanstack/react-query'
 import { DateTime } from 'luxon'
 import * as React from 'react'
@@ -10,9 +9,13 @@ import { getMeetings } from '@/utils/api_helper'
 import { decodeMeeting } from '@/utils/calendar_manager'
 
 import Loading from '../Loading'
-import UpComingEvent from './UpcomingEvent'
+import DesktopUpcomingEvents from './DesktopUpcomingEventsView'
+import MobileUpcomingEvents from './MobileUpcomingEventsView'
+interface UpComingEventsProps {
+  isMobile?: boolean
+}
 
-const UpComingEvents: React.FC = () => {
+const UpComingEvents: React.FC<UpComingEventsProps> = ({ isMobile }) => {
   const currentAccount = useAccountContext()
   const timezone =
     currentAccount?.preferences.timezone ||
@@ -56,20 +59,10 @@ const UpComingEvents: React.FC = () => {
     <Box w="100%" display="flex" justifyContent="center" mt={5}>
       <Loading />
     </Box>
+  ) : isMobile ? (
+    <MobileUpcomingEvents data={data} />
   ) : (
-    data && data.length > 0 && (
-      <VStack mt={5} alignItems="flex-start" w="100%" gap={2.5}>
-        <Heading fontSize={20}>Upcoming Events</Heading>
-        <>
-          {data.map(meeting => (
-            <UpComingEvent key={meeting.id} meeting={meeting} />
-          ))}
-          <Button variant="outline" colorScheme="primary" mt={2} mx="auto">
-            View All Meetings
-          </Button>
-        </>
-      </VStack>
-    )
+    <DesktopUpcomingEvents data={data} />
   )
 }
 
