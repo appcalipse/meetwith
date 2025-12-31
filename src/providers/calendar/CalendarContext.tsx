@@ -25,6 +25,7 @@ interface ICalendarContext {
   setSelectedSlot: React.Dispatch<
     React.SetStateAction<WithInterval<MeetingDecrypted> | null>
   >
+  isLoading: boolean
   setSelectedCalendars: React.Dispatch<React.SetStateAction<CalendarSyncInfo[]>>
   getSlotBgColor: (calId: string) => string
   eventIndex: {
@@ -53,6 +54,7 @@ export const CalendarContext = React.createContext<ICalendarContext>({
   selectedSlot: null,
   setSelectedSlot: () => {},
   eventIndex: { dayIndex: new Map(), hourIndex: new Map() },
+  isLoading: false,
 })
 export const createEventsQueryKey = (date: DateTime) => [
   'calendar-events',
@@ -77,7 +79,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   >([])
   const [selectedSlot, setSelectedSlot] =
     React.useState<WithInterval<MeetingDecrypted> | null>(null)
-  const { data: calendars } = useQuery({
+  const { data: calendars, isLoading: isCalendarLoading } = useQuery({
     queryKey: ['connected-calendars'],
     queryFn: () => listConnectedCalendars(false),
   })
@@ -115,7 +117,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     [currrentDate.year, currrentDate.month]
   )
 
-  const { data: events } = useQuery({
+  const { data: events, isLoading } = useQuery({
     queryKey: createEventsQueryKey(currentMonth),
     queryFn: () => fetchEventsForMonth(currentMonth),
     staleTime: 5 * 60 * 1000,
@@ -123,6 +125,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   })
 
   React.useEffect(() => {
+    if (isLoading) return
     const previousMonth = currrentDate.minus({ month: 1 })
     const nextMonth = currrentDate.plus({ month: 1 })
 
@@ -137,7 +140,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
       queryFn: () => fetchEventsForMonth(nextMonth),
       staleTime: 10 * 60 * 1000, // Keep prefetched data fresh for 10 minutes
     })
-  }, [currentMonth, queryClient, fetchEventsForMonth, createEventsQueryKey])
+  }, [currentMonth, queryClient, isLoading])
 
   React.useEffect(() => {
     const selectedCalendars = () => {
@@ -229,6 +232,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
       selectedSlot,
       setSelectedSlot,
       eventIndex,
+      isLoading: isCalendarLoading || isLoading,
     }),
     [
       calendars,
@@ -237,6 +241,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
       getSlotBgColor,
       selectedSlot,
       eventIndex,
+      isLoading,
     ]
   )
 
