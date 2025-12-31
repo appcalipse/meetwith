@@ -1,4 +1,3 @@
-import { AvailabilityBlock } from './availability'
 import { TimeSlot } from './Meeting'
 import { ParticipantInfo } from './ParticipantInfo'
 
@@ -21,5 +20,5 @@ export interface TimeSlotTooltipContentProps {
   currentUserEvent?: TimeSlot | null
   eventUrl?: string | null
   otherUserStates: Array<{ state: boolean; displayName: string }>
-  defaultAvailabilityBlock?: AvailabilityBlock
+  defaultBlockId?: string | null
 }

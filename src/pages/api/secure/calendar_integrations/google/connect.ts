@@ -18,26 +18,31 @@ export const googleScopes = [
 ]
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'GET') {
-    const { state } = req.query
-    // Get token from Google Calendar API
-    const { client_secret, client_id } = credentials
-    const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
-    const oAuth2Client = new google.auth.OAuth2(
-      client_id,
-      client_secret,
-      redirect_uri
-    )
+  try {
+    if (req.method === 'GET') {
+      const { state } = req.query
+      // Get token from Google Calendar API
+      const { client_secret, client_id } = credentials
+      const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
+      const oAuth2Client = new google.auth.OAuth2(
+        client_id,
+        client_secret,
+        redirect_uri
+      )
 
-    const authUrl = oAuth2Client.generateAuthUrl({
-      access_type: 'offline',
-      prompt: 'consent',
-      scope: googleScopes,
-      state: typeof state === 'string' ? state : undefined,
-    })
-
-    return res.status(200).json({ url: authUrl })
+      const authUrl = oAuth2Client.generateAuthUrl({
+        access_type: 'offline',
+        prompt: 'consent',
+        scope: googleScopes,
+        state: typeof state === 'string' ? state : undefined,
+      })
+      return res.status(200).json({ url: authUrl })
+    }
+  } catch (error) {
+    console.error('Error in Google Calendar connect handler:', error)
+    return res.status(500).json({ error: 'Internal Server Error' })
   }
+  return res.status(405).json({ error: 'Method Not Allowed' })
 }
 
 export default withSessionRoute(handler)

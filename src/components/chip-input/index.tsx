@@ -20,7 +20,7 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
-import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
+import { isGroupParticipant } from '@/types/schedule'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import { BadgeChip } from './chip'
@@ -30,7 +30,7 @@ const DEFAULT_STOP_KEYS = ['Tab', 'Space', 'Enter', 'Escape', 'Comma']
 interface ChipInputProps {
   onChange: (data: ParticipantInfo[]) => void
   isReadOnly?: boolean
-  currentItems: Array<ParticipantInfo | IGroupParticipant>
+  currentItems: Array<ParticipantInfo>
   renderItem: (item: ParticipantInfo) => string
   placeholder?: string
   // chakra props that we want to propagate
@@ -38,6 +38,7 @@ interface ChipInputProps {
   button?: ReactElement
   inputProps?: InputProps
   addDisabled?: boolean
+  renderBadge?: (item: ParticipantInfo, onRemove?: () => void) => ReactElement
 }
 
 export const ChipInput: React.FC<ChipInputProps> = ({
@@ -50,6 +51,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   placeholder = 'Type do add items',
   button,
   inputProps,
+  renderBadge,
 }) => {
   const [current, setCurrent] = useState('')
   const [focused, setFocused] = useState(false)
@@ -109,7 +111,9 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   }
 
   const badges = currentItems.map((it, idx) => {
-    return (
+    return renderBadge ? (
+      renderBadge(it, () => onRemoveItem(idx))
+    ) : (
       <Box key={`${idx}-${it}`}>
         <BadgeChip
           onRemove={() => onRemoveItem(idx)}
@@ -190,7 +194,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       width="100%"
     >
       {badges}
-      <Box flex={1} pos="relative">
+      <Box pos="relative">
         <Input
           size={size}
           display={'inline-block'}

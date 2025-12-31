@@ -72,20 +72,25 @@ interface Label {
 
 const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const defineLabel = (start: Date, end: Date): Label | null => {
-    const now = utcToZonedTime(new Date(), timezone)
+    try {
+      const now = utcToZonedTime(new Date(), timezone)
 
-    if (isWithinInterval(now, { start, end })) {
-      return {
-        color: 'yellow',
-        text: 'Ongoing',
+      if (isWithinInterval(now, { start, end })) {
+        return {
+          color: 'yellow',
+          text: 'Ongoing',
+        }
+      } else if (isAfter(now, end)) {
+        return {
+          color: 'gray',
+          text: 'Ended',
+        }
       }
-    } else if (isAfter(now, end)) {
-      return {
-        color: 'gray',
-        text: 'Ended',
-      }
+    } catch (error) {
+      console.error('Error defining label:', error)
+    } finally {
+      return null
     }
-    return null
   }
 
   const bgColor = useColorModeValue('white', 'neutral.900')
@@ -583,16 +588,16 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
         participants={decryptedMeeting?.participants || []}
         decryptedMeeting={decryptedMeeting}
       />
-      <CancelMeetingDialog
-        isOpen={isCancelOpen}
-        onClose={onCancelClose}
+      <DeleteMeetingDialog
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
         decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}
       />
-      <DeleteMeetingDialog
-        isOpen={isDeleteOpen}
-        onClose={onDeleteClose}
+      <CancelMeetingDialog
+        isOpen={isCancelOpen}
+        onClose={onCancelClose}
         decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}

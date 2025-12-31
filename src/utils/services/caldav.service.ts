@@ -1,7 +1,9 @@
 import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
+import ICAL from 'ical.js'
 import { Attendee } from 'ics'
+import { DateTime } from 'luxon'
 import {
   createAccount,
   createCalendarObject,
@@ -15,23 +17,27 @@ import {
 } from 'tsdav'
 import { v4 } from 'uuid'
 
+import { UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { Intents } from '@/types/Dashboard'
 import { MeetingChangeType } from '@/types/Meeting'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import {
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '@/types/Requests'
 
 import { appUrl } from '../constants'
 import { decryptContent } from '../cryptography'
 import { isValidEmail } from '../validations'
+import { WebDAVEvent, WebDAVEventMapper } from './caldav.mapper'
 import { generateIcsServer } from './calendar.backend.helper'
-import { ICaldavCalendarService } from './calendar.service.types'
+import { EventBusyDate, ICaldavCalendarService } from './calendar.service.types'
 
 // ical.js has no ts typing
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const ICAL = require('ical.js')
 export const TIMEZONE_FORMAT = 'YYYY-MM-DDTHH:mm:ss[Z]'
 const CALDAV_CALENDAR_TYPE = 'caldav'
 
@@ -55,8 +61,6 @@ export function handleErrorsJson(response: Response) {
   }
   return response.json()
 }
-
-export type EventBusyDate = Record<'start' | 'end', Date | string>
 
 export interface CaldavCredentials {
   url: string
@@ -226,7 +230,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
   async updateEvent(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
-    calendarId: string
+    _calendarId: string
   ): Promise<
     NewCalendarEventType & {
       attendees: Attendee[]
@@ -309,7 +313,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       throw reason
     }
   }
-  async deleteEvent(meeting_id: string, calendarId: string): Promise<void> {
+  async deleteEvent(meeting_id: string, _calendarId: string): Promise<void> {
     try {
       const events = await this.getEventsByUID(meeting_id)
       const eventsToDelete = events.filter(
@@ -346,7 +350,6 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
 
     const dateFromMs = new Date(dateFrom).getTime()
     const dateToMs = new Date(dateTo).getTime()
-    const totalRangeMs = dateToMs - dateFromMs
 
     const fetchEventsForCalendar = async (
       calendar: DAVCalendar,
@@ -370,6 +373,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
             const jcalData = ICAL.parse(object.data)
             const vcalendar = new ICAL.Component(jcalData)
             const vevent = vcalendar.getFirstSubcomponent('vevent')
+            if (!vevent) return null
             const event = new ICAL.Event(vevent)
 
             return {
@@ -384,6 +388,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
                 : undefined,
             }
           })
+          .filter(e => e !== null)
       } catch (error) {
         console.warn(
           `Failed to fetch events for calendar ${calendar.url} in range ${start} to ${end}`,
@@ -437,7 +442,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         : `${event.eventId || 'unknown'}_${new Date(event.start).getTime()}`
 
       if (!uniqueEventsMap.has(eventKey)) {
-        const { recurrenceId, ...eventWithoutRecurrenceId } =
+        const { recurrenceId: _, ...eventWithoutRecurrenceId } =
           eventWithRecurrence
         uniqueEventsMap.set(eventKey, eventWithoutRecurrenceId)
       }
@@ -472,7 +477,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     }
   }
 
-  private async getEvents(
+  private async getEventsResources(
     calId: string,
     dateFrom: string | null,
     dateTo: string | null,
@@ -502,12 +507,14 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
           const vcalendar = new ICAL.Component(jcalData)
 
           const vevent = vcalendar.getFirstSubcomponent('vevent')
+          if (!vevent) return null
           const event = new ICAL.Event(vevent)
-
           const calendarTimezone =
             vcalendar
               .getFirstSubcomponent('vtimezone')
-              ?.getFirstPropertyValue('tzid') || ''
+              ?.getFirstPropertyValue('tzid')
+              ?.toString() || ''
+          const rrule = vevent.getFirstPropertyValue('rrule')
 
           const startDate = calendarTimezone
             ? utcToZonedTime(event.startDate.toJSDate(), calendarTimezone)
@@ -536,11 +543,15 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
               isNegative: event.duration.isNegative,
             },
             organizer: event.organizer,
-            attendees: event.attendees.map((a: any) => a.getValues()),
-            recurrenceId: event.recurrenceId,
+            attendees: event.attendees.map(a => a.getValues()),
+            recurrenceId: event.recurrenceId
+              ? event.recurrenceId.toString()
+              : null,
+            rrule: rrule ? rrule.toString() : null,
             timezone: calendarTimezone,
           }
         })
+        .filter(e => e !== null)
 
       return events
     } catch (reason) {
@@ -554,7 +565,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
 
     const calendars = await this.listCalendars()
     for (const cal of calendars) {
-      const calEvents = await this.getEvents(cal.url, null, null, [
+      const calEvents = await this.getEventsResources(cal.url, null, null, [
         `${cal.url}${uid}.ics`,
       ])
 
@@ -575,5 +586,402 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       },
       headers: this.headers,
     })
+  }
+  async getEvents(
+    calendarIds: string[],
+    dateFrom: string,
+    dateTo: string
+  ): Promise<UnifiedEvent[]> {
+    const calendars = await this.listCalendars()
+
+    // CalDAV does not support pagination like Google Calendar (nextPageToken) or Office 365 (@odata.nextLink).
+    // Instead, we implement time-range filtering in chunks to ensure all events are retrieved.
+    const CHUNK_SIZE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+
+    const dateFromMs = new Date(dateFrom).getTime()
+    const dateToMs = new Date(dateTo).getTime()
+
+    const fetchEventsForCalendar = async (
+      calendar: DAVCalendar,
+      start: string,
+      end: string
+    ) => {
+      try {
+        const objects = await fetchCalendarObjects({
+          calendar,
+          headers: this.headers,
+          expand: true,
+          timeRange: {
+            start: new Date(start).toISOString(),
+            end: new Date(end).toISOString(),
+          },
+        })
+
+        return objects
+          .filter(e => !!e.data)
+          .map((object): WebDAVEvent | null => {
+            const jcalData = ICAL.parse(object.data)
+            const vcalendar = new ICAL.Component(jcalData)
+            const vevent = vcalendar.getFirstSubcomponent('vevent')
+            if (!vevent) return null
+            const event = new ICAL.Event(vevent)
+            const calendarTimezone =
+              vcalendar
+                .getFirstSubcomponent('vtimezone')
+                ?.getFirstPropertyValue('tzid')
+                ?.toString() || ''
+            const startDate = calendarTimezone
+              ? utcToZonedTime(event.startDate.toJSDate(), calendarTimezone)
+              : new Date(event.startDate.toUnixTime() * 1000)
+
+            const endDate = calendarTimezone
+              ? utcToZonedTime(event.endDate.toJSDate(), calendarTimezone)
+              : new Date(event.endDate.toUnixTime() * 1000)
+            const rrule = vevent.getFirstPropertyValue('rrule')
+
+            return {
+              uid: event.uid,
+              etag: object.etag,
+              url: object.url,
+              calId: calendar.url,
+              accountEmail: this.email,
+              providerId: vcalendar.getFirstPropertyValue('prodid')?.toString(),
+              status: vevent.getFirstPropertyValue('status')?.toString(),
+              summary: event.summary,
+              description: event.description,
+              location: event.location,
+              sequence: event.sequence,
+              startDate,
+              endDate,
+              organizer: event.organizer,
+              attendees: event.attendees.map(a => a.getValues()),
+              recurrenceId: event.recurrenceId
+                ? event.recurrenceId.toString()
+                : null,
+              rrule: rrule ? rrule.toString() : null,
+              created: vevent.getFirstPropertyValue('created')?.toString(),
+              timezone: calendarTimezone,
+              duration: {
+                weeks: event.duration.weeks,
+                days: event.duration.days,
+                hours: event.duration.hours,
+                minutes: event.duration.minutes,
+                seconds: event.duration.seconds,
+                isNegative: event.duration.isNegative,
+              },
+              lastModified: vevent
+                .getFirstPropertyValue('last-modified')
+                ?.toString(),
+              exdate: vevent
+                .getAllProperties('exdate')
+                .map(exdateProp => {
+                  const exdate = exdateProp.getFirstValue()?.toString()
+                  if (!exdate) return null
+                  return new Date(exdate)
+                })
+                .filter((ed): ed is Date => ed !== null),
+            }
+          })
+          .filter(e => e !== null)
+      } catch (error) {
+        console.warn(
+          `Failed to fetch events for calendar ${calendar.url} in range ${start} to ${end}`,
+          error
+        )
+        Sentry.captureException(error)
+        return []
+      }
+    }
+
+    // Split the time range into 7-day chunks and fetch events for each chunk
+    const chunks: Array<{ start: Date; end: Date }> = []
+    let currentStart = dateFromMs
+
+    while (currentStart < dateToMs) {
+      const chunkEnd = Math.min(currentStart + CHUNK_SIZE_MS, dateToMs)
+      chunks.push({
+        start: new Date(currentStart),
+        end: new Date(chunkEnd),
+      })
+      currentStart = chunkEnd
+    }
+
+    // Fetch events for each calendar and chunk in parallel
+    const allEventsPromises = calendars
+      .filter(cal => calendarIds.includes(cal.url!))
+      .map(async calendar => {
+        const chunkPromises = chunks.map(chunk =>
+          fetchEventsForCalendar(
+            calendar,
+            chunk.start.toISOString(),
+            chunk.end.toISOString()
+          )
+        )
+        const chunkResults = await Promise.all(chunkPromises)
+        return chunkResults.flat()
+      })
+
+    const allEventsArrays = await Promise.all(allEventsPromises)
+    const allEvents = allEventsArrays.flat()
+
+    // Deduplicate events using a composite key that includes recurrenceId for recurring events.
+    // This prevents filtering out recurring meeting instances, which share the same eventId (UID)
+    const uniqueEventsMap = new Map<string, WebDAVEvent>()
+    for (const event of allEvents) {
+      const eventKey = event.recurrenceId
+        ? `${event.uid || 'unknown'}_${event.recurrenceId}`
+        : `${event.uid || 'unknown'}_${new Date(event.startDate).getTime()}`
+
+      if (!uniqueEventsMap.has(eventKey)) {
+        uniqueEventsMap.set(eventKey, event)
+      }
+    }
+
+    return Array.from(uniqueEventsMap.values()).map(event =>
+      WebDAVEventMapper.toUnified(event, event.calId!, event.accountEmail!)
+    )
+  }
+
+  async updateEventInstance(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    calendarId: string
+  ): Promise<void> {
+    const eventUID = meetingDetails.meeting_id
+    const originalStartTime = meetingDetails.original_start_time
+
+    if (!originalStartTime) {
+      throw new Error(
+        'original_start_time is required for recurring instance updates'
+      )
+    }
+
+    // 1. Fetch all events with this UID (master + any existing exceptions)
+    const events = await this.getEventsByUID(eventUID)
+    const masterEvent = events.find(
+      event => event.uid === eventUID.replaceAll('-', '') && !event.recurrenceId
+    )
+
+    if (!masterEvent) {
+      throw new Error('Series master event not found')
+    }
+
+    // 2. Check if exception already exists for this recurrence
+    const originalStartTimeMs = new Date(originalStartTime).getTime()
+    const existingException = events.find(e => {
+      if (!e.recurrenceId) return false
+      try {
+        return new Date(e.recurrenceId).getTime() === originalStartTimeMs
+      } catch {
+        return false
+      }
+    })
+
+    // 3. Build the exception VEVENT
+    const veventData = await this.buildVEventWithRecurrenceId(
+      calendarOwnerAccountAddress,
+      meetingDetails,
+      originalStartTime
+    )
+
+    if (!veventData) {
+      throw new Error('Failed to build VEVENT data')
+    }
+
+    const calendars = await this.listCalendars()
+    const targetCalendar = calendarId
+      ? calendars.find(c => c.url === calendarId)
+      : calendars[0]
+
+    if (!targetCalendar) {
+      throw new Error('Target calendar not found')
+    }
+
+    // 4. Add EXDATE to master event (marks this occurrence as modified)
+    await this.addExdateToMaster(
+      masterEvent,
+      new Date(originalStartTime),
+      calendarId
+    )
+
+    // 5. Create or update the exception
+    if (existingException) {
+      // Update existing exception
+      await updateCalendarObject({
+        calendarObject: {
+          url: existingException.url,
+          data: veventData,
+          etag: existingException.etag,
+        },
+        headers: this.headers,
+      })
+    } else {
+      // Create new exception with unique filename
+      const filename = `${eventUID.replaceAll(
+        '-',
+        ''
+      )}-${originalStartTimeMs}.ics`
+
+      await createCalendarObject({
+        calendar: targetCalendar,
+        filename,
+        iCalString: veventData,
+        headers: this.headers,
+      })
+    }
+  }
+
+  private async buildVEventWithRecurrenceId(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    originalStartTime: Date
+  ): Promise<string> {
+    const start = DateTime.fromJSDate(new Date(meetingDetails.start))
+    const end = DateTime.fromJSDate(new Date(meetingDetails.end))
+
+    // Find existing event to get current attendees if needed
+    const events = await this.getEventsByUID(meetingDetails.meeting_id)
+    const masterEvent = events.find(
+      event =>
+        event.uid === meetingDetails.meeting_id.replaceAll('-', '') &&
+        !event.recurrenceId
+    )
+
+    const useParticipants =
+      masterEvent &&
+      masterEvent.attendees &&
+      masterEvent.attendees
+        .map((a: string[]) => a.map(val => val.replace(/^MAILTO:/i, '')))
+        .flat()
+        .filter(
+          (a: string) => isValidEmail(a) && a !== this.getConnectedEmail()
+        ).length > 0
+
+    const ics = await generateIcsServer(
+      meetingDetails,
+      calendarOwnerAccountAddress,
+      MeetingChangeType.UPDATE,
+      `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+      useParticipants,
+      {
+        accountAddress: calendarOwnerAccountAddress,
+        email: this.getConnectedEmail(),
+      }
+    )
+
+    if (!ics.value || ics.error) {
+      throw new Error('Error creating iCalString for instance')
+    }
+
+    // Parse the generated ICS and add RECURRENCE-ID
+    const jcalData = ICAL.parse(ics.value.toString())
+    const vcalendar = new ICAL.Component(jcalData)
+    const vevent = vcalendar.getFirstSubcomponent('vevent')
+
+    if (!vevent) {
+      throw new Error('No VEVENT component found')
+    }
+
+    // Add RECURRENCE-ID property to mark this as an exception
+    // Use UTC time (true parameter) for consistency
+    const recurrenceIdProperty = new ICAL.Property('recurrence-id')
+    recurrenceIdProperty.setValue(
+      ICAL.Time.fromJSDate(new Date(originalStartTime), true)
+    )
+    vevent.addProperty(recurrenceIdProperty)
+
+    // Update start and end times to the new values
+    const startProperty = vevent.getFirstProperty('dtstart')
+    if (startProperty) {
+      startProperty.setValue(ICAL.Time.fromJSDate(start.toJSDate(), true))
+    }
+
+    const endProperty = vevent.getFirstProperty('dtend')
+    if (endProperty) {
+      endProperty.setValue(ICAL.Time.fromJSDate(end.toJSDate(), true))
+    }
+
+    // Remove RRULE from the exception (exceptions don't have recurrence rules)
+    const rruleProperty = vevent.getFirstProperty('rrule')
+    if (rruleProperty) {
+      vevent.removeProperty(rruleProperty)
+    }
+
+    return vcalendar.toString()
+  }
+
+  private async addExdateToMaster(
+    masterEvent: WebDAVEvent,
+    originalStartTime: Date,
+    calendarId: string
+  ): Promise<void> {
+    try {
+      // Fetch the raw calendar object to get the data
+      const events = await this.getEventsByUID(masterEvent.uid)
+      const masterWithData = events.find(
+        e => e.uid === masterEvent.uid && !e.recurrenceId
+      )
+
+      if (!masterWithData) {
+        throw new Error('Master event data not found')
+      }
+
+      // Fetch the raw calendar object
+      const calendars = await this.listCalendars()
+      const targetCalendar = calendars.find(c => c.url === calendarId)
+      if (!targetCalendar) {
+        throw new Error('Calendar not found')
+      }
+
+      const objects = await fetchCalendarObjects({
+        calendar: targetCalendar,
+        headers: this.headers,
+        objectUrls: [masterEvent.url],
+      })
+
+      const masterObject = objects[0]
+      if (!masterObject || !masterObject.data) {
+        throw new Error('Master event object not found')
+      }
+
+      // Parse master event
+      const jcalData = ICAL.parse(masterObject.data)
+      const vcalendar = new ICAL.Component(jcalData)
+      const vevent = vcalendar.getFirstSubcomponent('vevent')
+
+      if (!vevent) return
+
+      // Check if EXDATE already exists for this date
+      const exdates = vevent.getAllProperties('exdate')
+      const originalStartTimeMs = originalStartTime.getTime()
+      const alreadyExcluded = exdates.some(exdate => {
+        const value = exdate.getFirstValue()
+        if (!value) return false
+        const exdateTime = new Date(value.toString()).getTime()
+        return exdateTime === originalStartTimeMs
+      })
+
+      if (!alreadyExcluded) {
+        // Add EXDATE to mark this occurrence as excluded from the series
+        const exdateProperty = new ICAL.Property('exdate')
+        exdateProperty.setValue(ICAL.Time.fromJSDate(originalStartTime, true))
+        vevent.addProperty(exdateProperty)
+
+        // Update master event
+        await updateCalendarObject({
+          calendarObject: {
+            url: masterEvent.url,
+            data: vcalendar.toString(),
+            etag: masterObject.etag,
+          },
+          headers: this.headers,
+        })
+      }
+    } catch (error) {
+      // Don't fail the whole operation if EXDATE update fails
+      // Some servers handle this automatically
+      console.warn('Failed to add EXDATE to master event:', error)
+      Sentry.captureException(error)
+    }
   }
 }
