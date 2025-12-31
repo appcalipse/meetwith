@@ -59,6 +59,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       return res.status(200).json(meetingResult)
     } catch (e) {
+      console.error(e)
       if (e instanceof TimeNotAvailableError) {
         return res.status(409).send(e)
       } else if (e instanceof MeetingCreationError) {
