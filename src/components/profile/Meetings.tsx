@@ -111,6 +111,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
           <TabPanel p={0}>
             <CalendarView />
           </TabPanel>
+
           <TabPanel p={0}>
             <MeetingBase currentAccount={currentAccount} />
           </TabPanel>
