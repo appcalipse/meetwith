@@ -1,12 +1,16 @@
 import { calendar_v3 } from 'googleapis'
 import { Attendee } from 'ics'
 
+import { UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MicrosoftGraphEvent } from '@/types/Office365'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import {
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '@/types/Requests'
 
 export type EventBusyDate = {
   start: Date | string
@@ -15,8 +19,8 @@ export type EventBusyDate = {
   eventId?: string
   webLink?: string
   email?: string
+  recurrenceId?: string
 }
-
 /**
  * Calendar Service  Contract
  */
@@ -76,6 +80,25 @@ export interface BaseCalendarService {
    * @param slot_id the event id to delete
    */
   deleteEvent(meeting_id: string, calendarId: string): Promise<void>
+
+  getEvents(
+    calendarIds: string[],
+    dateFrom: string,
+    dateTo: string
+  ): Promise<UnifiedEvent[]>
+
+  /**
+   * Updates a single instance of a recurring event
+   *
+   * @param calendarOwnerAccountAddress the owner account address
+   * @param meetingDetails meeting details including series_id and original start time
+   * @param calendarId the calendar ID
+   */
+  updateEventInstance(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    calendarId: string
+  ): Promise<void>
 }
 export interface IOffcie365CalendarService extends BaseCalendarService {
   /**
@@ -109,11 +132,7 @@ export interface IGoogleCalendarService extends BaseCalendarService {
    * @param dateFrom the start date to list events from
    * @param dateTo the end date to list events from
    */
-  listEvents(
-    calendarId: string,
-    dateFrom: Date,
-    dateTo: Date
-  ): Promise<calendar_v3.Schema$Event[]>
+  listEvents(calendarId: string, syncToken: string | null): Promise<EventList>
 
   /**
    * Updates the RSVP status of an attendee for a specific event
@@ -140,6 +159,12 @@ export interface IGoogleCalendarService extends BaseCalendarService {
     meeting_id: string,
     _calendarId?: string
   ): Promise<NewCalendarEventType>
+
+  initialSync(
+    calendarId: string,
+    dateFrom: string,
+    dateTo: string
+  ): Promise<string | null | undefined>
 
   /**
    * Sets up a webhook URL for calendar change notifications
@@ -213,7 +238,7 @@ export interface IGoogleCalendarService extends BaseCalendarService {
   ): Promise<NewCalendarEventType & calendar_v3.Schema$Event>
 }
 
-export interface ICaldavCalendarService {
+export interface ICaldavCalendarService extends BaseCalendarService {
   createEvent(
     owner: string,
     meetingDetails: MeetingCreationSyncRequest,
@@ -234,4 +259,9 @@ export interface ICaldavCalendarService {
       attendees: Attendee[]
     }
   >
+}
+
+export type EventList = {
+  events: calendar_v3.Schema$Event[]
+  nextSyncToken: string | null | undefined
 }

@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import React, { createContext, ReactNode, useContext, useState } from 'react'
 
 import { MeetingReminders } from '@/types/common'
@@ -13,7 +14,7 @@ interface IScheduleStateContext {
   content: string
   duration: number
   pickedTime: Date | null
-  currentSelectedDate: Date
+  currentSelectedDate: DateTime
   timezone: string
   meetingProvider: MeetingProvider
   meetingUrl: string
@@ -29,7 +30,7 @@ interface IScheduleStateContext {
   setContent: React.Dispatch<React.SetStateAction<string>>
   setDuration: React.Dispatch<React.SetStateAction<number>>
   setPickedTime: React.Dispatch<React.SetStateAction<Date | null>>
-  setCurrentSelectedDate: React.Dispatch<React.SetStateAction<Date>>
+  setCurrentSelectedDate: React.Dispatch<React.SetStateAction<DateTime>>
   setTimezone: React.Dispatch<React.SetStateAction<string>>
   setMeetingProvider: React.Dispatch<React.SetStateAction<MeetingProvider>>
   setMeetingUrl: React.Dispatch<React.SetStateAction<string>>
@@ -73,7 +74,9 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   const [content, setContent] = useState('')
   const [duration, setDuration] = useState(30)
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
-  const [currentSelectedDate, setCurrentSelectedDate] = useState(new Date())
+  const [currentSelectedDate, setCurrentSelectedDate] = useState<DateTime>(
+    DateTime.now()
+  )
   const [timezone, setTimezone] = useState<string>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )

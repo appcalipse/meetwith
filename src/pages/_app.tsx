@@ -1,4 +1,5 @@
 import '../styles/globals.css'
+import 'react-virtualized/styles.css'
 import '../styles/swipers.css'
 
 import { QueryClientProvider } from '@tanstack/react-query'

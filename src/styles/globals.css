@@ -58,7 +58,7 @@ a {
   border-left-color: currentcolor;
   border-color: inherit;
   background: inherit;
-  min-height: 200px;
+  min-height: 75x;
   overflow: scroll;
   resize: vertical;
 }
@@ -129,6 +129,7 @@ a {
   left: -7px;
 }
 
+.rsvp-select > div > div > hr,
 .timezone-select > div > div > hr,
 .custom-select > div > div > hr,
 .date-select > div > div > hr,
@@ -220,4 +221,53 @@ thead tr th {
   width: 35px;
   height: 35px;
   margin-right: 10px;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fadeOutScale {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(2px);
+  }
+}
+
+@keyframes slideFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rsvp-select {
+  max-width: 250px;
+}
+
+.rsvp-dropdown {
+  padding-inline: 0px !important;
+  margin-top: 1px !important;
+  padding-left: 4px !important;
+}
+
+.rsvp-select > div {
+  justify-content: center !important;
+  margin-inline: auto !important;
+  align-items: center !important;
+  border: none !important;
 }

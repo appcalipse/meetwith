@@ -9,7 +9,7 @@ import {
 } from '@chakra-ui/react'
 import { addMinutes, differenceInMinutes } from 'date-fns'
 import { useRouter } from 'next/router'
-import { FC, useContext, useEffect, useState } from 'react'
+import { FC, useContext, useEffect, useMemo, useState } from 'react'
 
 import Loading from '@/components/Loading'
 import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
@@ -175,8 +175,10 @@ const ScheduleMain: FC<IInitialProps> = ({
   const handleGroupPrefetch = async () => {
     if (!groupId) return
     try {
-      const group = await getGroup(groupId)
-      const fetchedGroupMembers = await getGroupsMembers(groupId)
+      const [group, fetchedGroupMembers] = await Promise.all([
+        getGroup(groupId),
+        getGroupsMembers(groupId),
+      ])
       const actualMembers = fetchedGroupMembers
         .filter(val => !val.invitePending)
         .filter(val => !!val.address)
@@ -274,12 +276,12 @@ const ScheduleMain: FC<IInitialProps> = ({
       if (meetingId) {
         const slot = await getMeeting(meetingId)
         decryptedMeeting = await decodeMeeting(slot, currentAccount!)
-        actor = slot.account_address
+        actor = slot.account_address!
       } else if (conferenceId) {
         const slot = await getSlotByMeetingId(conferenceId)
         if (slot?.user_type === 'account') {
           decryptedMeeting = await decodeMeeting(slot, currentAccount!)
-          actor = slot.account_address
+          actor = slot.account_address!
         } else if (slot?.user_type === 'guest') {
           decryptedMeeting = await decodeMeetingGuest(slot)
           actor = slot.guest_email || ''
@@ -700,20 +702,12 @@ const ScheduleMain: FC<IInitialProps> = ({
       }
 
       // Regular meeting scheduling flow
-      const isSchedulerOrOwner = [
-        ParticipantType.Scheduler,
-        ParticipantType.Owner,
-      ].includes(
-        decryptedMeeting?.participants?.find(
-          p => p.account_address === currentAccount?.address
-        )?.type || ParticipantType?.Invitee
+      const canViewParticipants = canAccountAccessPermission(
+        decryptedMeeting?.permissions,
+        decryptedMeeting?.participants || [],
+        currentAccount?.address,
+        MeetingPermissions.SEE_GUEST_LIST
       )
-      const canViewParticipants =
-        decryptedMeeting?.permissions?.includes(
-          MeetingPermissions.SEE_GUEST_LIST
-        ) ||
-        decryptedMeeting?.permissions === undefined ||
-        isSchedulerOrOwner
       const actualParticipants = canViewParticipants
         ? participants
         : participants
@@ -754,13 +748,12 @@ const ScheduleMain: FC<IInitialProps> = ({
       const start = new Date(pickedTime)
       const end = addMinutes(new Date(start), duration)
 
-      const canUpdateOtherGuests =
-        decryptedMeeting?.permissions === undefined ||
-        !!decryptedMeeting?.permissions?.includes(
-          MeetingPermissions.INVITE_GUESTS
-        ) ||
-        isSchedulerOrOwner
-
+      const canUpdateOtherGuests = canAccountAccessPermission(
+        decryptedMeeting?.permissions,
+        decryptedMeeting?.participants || [],
+        currentAccount?.address,
+        MeetingPermissions.INVITE_GUESTS
+      )
       if (
         !canUpdateOtherGuests &&
         decryptedMeeting?.participants?.length !== _participants.valid.length
@@ -936,8 +929,9 @@ const ScheduleMain: FC<IInitialProps> = ({
       } else {
         handleApiError('Error scheduling meeting', e as Error)
       }
+    } finally {
+      setIsScheduling(false)
     }
-    setIsScheduling(false)
   }
   const handleRedirect = () => push(`/dashboard/${EditMode.MEETINGS}`)
   const handleCancel = () => onOpen()
@@ -947,11 +941,31 @@ const ScheduleMain: FC<IInitialProps> = ({
     handleDelete,
     handleSchedule,
   }
+  const inviteKey = useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
+
   return (
     <ActionsContext.Provider value={context}>
       <InviteParticipants
+        key={inviteKey}
         isOpen={inviteModalOpen}
         onClose={() => setInviteModalOpen(false)}
+        groupAvailability={groupAvailability}
+        groupParticipants={groupParticipants}
+        participants={participants}
+        handleUpdateGroups={(
+          groupAvailability: Record<string, Array<string> | undefined>,
+          groupParticipants: Record<string, Array<string> | undefined>
+        ) => {
+          setGroupAvailability(groupAvailability)
+          setGroupParticipants(groupParticipants)
+        }}
+        handleUpdateParticipants={setParticipants}
       />
       <Container
         maxW={{

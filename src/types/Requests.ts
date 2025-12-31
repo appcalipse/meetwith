@@ -11,8 +11,7 @@ import { AcceptedToken, SupportedChain } from '@/types/chains'
 import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
-import { TimeRange } from './Account'
-import { Account } from './Account'
+import { Account, TimeRange } from './Account'
 import { MeetingReminders } from './common'
 import { MemberType } from './Group'
 import {
@@ -36,6 +35,15 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   slotsToRemove: string[]
   guestsToRemove: ParticipantInfo[]
   version: number
+  eventId?: string | null
+  calendar_id?: string | null
+}
+export interface MeetingInstanceUpdateRequest extends MeetingCreationRequest {
+  slotsToRemove: string[]
+  guestsToRemove: ParticipantInfo[]
+  version: number
+  eventId?: string | null
+  calendar_id?: string | null
 }
 
 export interface MeetingCreationRequest {
@@ -56,6 +64,8 @@ export interface MeetingCreationRequest {
   meetingPermissions?: Array<MeetingPermissions>
   ignoreOwnerAvailability?: boolean
   txHash?: Address | null
+  encrypted_metadata?: Encrypted
+  rrule: Array<string>
 }
 
 export interface UrlCreationRequest {
@@ -115,6 +125,15 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meetingReminders?: Array<MeetingReminders>
   meetingRepeat?: MeetingRepeat
   meetingPermissions?: Array<MeetingPermissions>
+  eventId?: string | null
+  notification_hash?: string
+  rrule?: Array<string>
+  skipCalendarSync?: boolean
+  skipNotify?: boolean
+}
+export interface MeetingInstanceCreationSyncRequest
+  extends Omit<MeetingCreationSyncRequest, 'meetingRepeat'> {
+  original_start_time: Date
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
@@ -126,6 +145,7 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   guestsToRemove: ParticipantInfo[]
   reason?: string
   title?: string
+  eventId?: string | null
 }
 
 export interface DiscordAccountInfoRequest {

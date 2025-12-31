@@ -39,10 +39,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     request.end = new Date(request.end)
     request.created_at = new Date(request.created_at)
 
-    try {
-      await notifyForOrUpdateNewMeeting(MeetingChangeType.UPDATE, request)
-    } catch (error) {
-      Sentry.captureException(error)
+    if (!request.skipNotify) {
+      try {
+        await notifyForOrUpdateNewMeeting(MeetingChangeType.UPDATE, request)
+      } catch (error) {
+        Sentry.captureException(error)
+      }
     }
 
     try {

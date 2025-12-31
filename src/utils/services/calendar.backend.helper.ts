@@ -12,14 +12,16 @@ import format from 'date-fns/format'
 import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
 import { DateTime } from 'luxon'
 
+import { UnifiedEvent } from '@/types/Calendar'
 import { ConditionRelation } from '@/types/common'
 import {
   MeetingChangeType,
+  MeetingProvider,
   MeetingRepeat,
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
-import { ParticipationStatus } from '@/types/ParticipantInfo'
+import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { QuickPollBusyParticipant } from '@/types/QuickPoll'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -294,15 +296,18 @@ export const CalendarBackendHelper = {
 
   mergeSlotsIntersection: (slots: TimeSlot[]): Interval[] => {
     slots.sort((a, b) => compareAsc(a.start, b.start))
-    const slotsByAccount = slots.reduce((memo: any, x) => {
-      if (!memo[x.account_address]) {
-        memo[x.account_address] = []
-      }
-      memo[x.account_address].push(x)
-      return memo
-    }, {})
+    const slotsByAccount = slots.reduce(
+      (memo: Record<string, TimeSlot[]>, x) => {
+        if (!memo[x.account_address]) {
+          memo[x.account_address] = []
+        }
+        memo[x.account_address].push(x)
+        return memo
+      },
+      {} as Record<string, TimeSlot[]>
+    )
 
-    const slotsByAccountArray = []
+    const slotsByAccountArray: Array<Array<TimeSlot>> = []
     for (const [_, value] of Object.entries(slotsByAccount)) {
       slotsByAccountArray.push(value)
     }
@@ -311,7 +316,7 @@ export const CalendarBackendHelper = {
       return []
     }
 
-    slotsByAccountArray.sort((a: any, b: any) => a.length - b.length)
+    slotsByAccountArray.sort((a, b) => a.length - b.length)
 
     const findOverlappingSlots = (
       slots1: Interval[],
@@ -353,6 +358,170 @@ export const CalendarBackendHelper = {
     }
 
     return overlaps
+  },
+  getCalendarEventsForAccount: async (
+    account_address: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<UnifiedEvent[]> => {
+    const calendars = await getConnectedCalendars(account_address)
+    const events = await Promise.all(
+      calendars.map(async calendar => {
+        const integration = getConnectedCalendarIntegration(
+          calendar.account_address,
+          calendar.email,
+          calendar.provider,
+          calendar.payload
+        )
+
+        const externalSlots = await integration.getEvents(
+          calendar.calendars!.filter(c => c.enabled).map(c => c.calendarId),
+          startDate.toISOString(),
+          endDate.toISOString()
+        )
+        return externalSlots
+      })
+    )
+    return events.flat()
+  },
+  updateCalendarEvent: async (
+    account_address: string,
+    unifiedEvent: UnifiedEvent
+  ): Promise<UnifiedEvent> => {
+    // Validate required fields
+    if (
+      !unifiedEvent.source ||
+      !unifiedEvent.calendarId ||
+      !unifiedEvent.sourceEventId
+    ) {
+      throw new Error(
+        'Missing required fields: source, calendarId, or sourceEventId'
+      )
+    }
+
+    // Find the calendar integration for this event
+    const calendars = await getConnectedCalendars(account_address)
+
+    const targetCalendar = calendars.find(
+      cal =>
+        cal.provider === unifiedEvent.source &&
+        cal.email === unifiedEvent.accountEmail &&
+        cal.calendars?.some(
+          c => c.calendarId === unifiedEvent.calendarId && c.enabled
+        )
+    )
+
+    if (!targetCalendar) {
+      throw new Error(
+        `Calendar not found or not enabled for source: ${unifiedEvent.source}, email: ${unifiedEvent.accountEmail}, calendarId: ${unifiedEvent.calendarId}`
+      )
+    }
+
+    const integration = getConnectedCalendarIntegration(
+      targetCalendar.account_address,
+      targetCalendar.email,
+      targetCalendar.provider,
+      targetCalendar.payload
+    )
+
+    // Map attendee status to participation status
+    const mapAttendeeStatusToParticipation = (
+      status: any
+    ): ParticipationStatus => {
+      switch (status) {
+        case 'accepted':
+          return ParticipationStatus.Accepted
+        case 'declined':
+          return ParticipationStatus.Rejected
+        case 'tentative':
+        case 'needsAction':
+        default:
+          return ParticipationStatus.Pending
+      }
+    }
+
+    // Convert UnifiedEvent to MeetingCreationSyncRequest format
+    const meetingRequest: MeetingCreationSyncRequest = {
+      meeting_id: unifiedEvent.id,
+      eventId: unifiedEvent.sourceEventId,
+      title: unifiedEvent.title,
+      content: unifiedEvent.description || '',
+      start: unifiedEvent.start,
+      end: unifiedEvent.end,
+      meeting_url: unifiedEvent.meeting_url || '',
+      participants: (unifiedEvent.attendees || []).map(attendee => ({
+        account_address: attendee.email, // Use email as identifier for external events
+        name: attendee.name || attendee.email,
+        guest_email: attendee.email,
+        status: mapAttendeeStatusToParticipation(attendee.status),
+        type: attendee.isOrganizer
+          ? ParticipantType.Owner
+          : ParticipantType.Invitee,
+        meeting_id: unifiedEvent.id,
+        privateInfo: { ciphertext: '', ephemPublicKey: '', iv: '', mac: '' }, // Placeholder for external events
+        privateInfoHash: '',
+        timeZone: 'UTC',
+        slot_id: unifiedEvent.sourceEventId,
+      })),
+      created_at: unifiedEvent.lastModified,
+      meetingReminders: [],
+      meetingPermissions: [],
+      meetingRepeat: MeetingRepeat.NO_REPEAT,
+      meetingProvider: MeetingProvider.CUSTOM,
+      participantActing: {
+        account_address,
+        name: account_address,
+      },
+      timezone: 'UTC',
+    }
+
+    try {
+      // Update the event via the provider's integration
+      await integration.updateEvent(
+        account_address,
+        meetingRequest,
+        unifiedEvent.calendarId,
+        true // useParticipants
+      )
+
+      // Re-fetch the updated event to ensure we have the latest data
+      // We use a small time window around the event time to find it
+      const startWindow = new Date(unifiedEvent.start)
+      startWindow.setHours(startWindow.getHours() - 1)
+      const endWindow = new Date(unifiedEvent.end)
+      endWindow.setHours(endWindow.getHours() + 1)
+
+      const updatedEvents = await integration.getEvents(
+        [unifiedEvent.calendarId],
+        startWindow.toISOString(),
+        endWindow.toISOString()
+      )
+
+      const updatedEvent = updatedEvents.find(
+        e => e.sourceEventId === unifiedEvent.sourceEventId
+      )
+
+      if (!updatedEvent) {
+        throw new Error(
+          `Failed to retrieve updated event with sourceEventId: ${unifiedEvent.sourceEventId}`
+        )
+      }
+
+      return updatedEvent
+    } catch (error: any) {
+      Sentry.captureException(error, {
+        extra: {
+          account_address,
+          eventId: unifiedEvent.id,
+          sourceEventId: unifiedEvent.sourceEventId,
+          source: unifiedEvent.source,
+          calendarId: unifiedEvent.calendarId,
+        },
+      })
+      throw new Error(
+        `Failed to update calendar event: ${error.message || error}`
+      )
+    }
   },
 }
 

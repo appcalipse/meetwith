@@ -1,5 +1,6 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
 import React, { useContext } from 'react'
+import { useLocalStorage } from 'usehooks-ts'
 
 import NotFound from '@/pages/404'
 import { AccountContext } from '@/providers/AccountProvider'
@@ -26,6 +27,7 @@ const DashboardContent: React.FC<{
   currentSection?: EditMode | string
 }> = ({ currentSection }) => {
   const { currentAccount } = useContext(AccountContext)
+  const [isOpened, setIsOpened] = useLocalStorage('SIDEBAR::OPENED', true)
   const settingsSections = new Set<string>([
     SettingsSection.DETAILS,
     SettingsSection.CONNECTED_CALENDARS,
@@ -80,7 +82,11 @@ const DashboardContent: React.FC<{
         width="100%"
         maxWidth="100%"
         justifyContent="space-between"
-        pl={{ base: 0, lg: !isSettings ? '302px' : 0 }}
+        pl={{
+          base: 0,
+          lg: !isSettings ? (!isOpened ? '100px' : '23%') : 0,
+        }}
+        pr={isSettings ? 0 : { md: 8 }}
       >
         <RedirectHandler />
         {!isSettings && (
@@ -92,7 +98,11 @@ const DashboardContent: React.FC<{
             top={0}
             zIndex={10}
           >
-            <NavMenu currentSection={navSection} />
+            <NavMenu
+              currentSection={navSection}
+              isOpened={isOpened}
+              toggleSidebar={() => setIsOpened(!isOpened)}
+            />
           </Box>
         )}
         <Box

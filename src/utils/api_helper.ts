@@ -6,6 +6,7 @@ import {
   Transaction,
 } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
+import { DateTime } from 'luxon'
 import { DAVCalendar } from 'tsdav'
 
 import {
@@ -30,6 +31,7 @@ import {
   SubscribeResponseCrypto,
   TrialEligibilityResponse,
 } from '@/types/Billing'
+import { CalendarEvents } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -67,6 +69,7 @@ import {
   GuestSlot,
   MeetingDecrypted,
   MeetingInfo,
+  SlotInstance,
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -94,6 +97,7 @@ import {
   MeetingCancelRequest,
   MeetingCheckoutRequest,
   MeetingCreationRequest,
+  MeetingInstanceUpdateRequest,
   MeetingUpdateRequest,
   RequestInvoiceRequest,
   UpdateAvailabilityBlockMeetingTypesRequest,
@@ -156,7 +160,9 @@ import { queryClient } from './react_query'
 import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
-
+type RequestOption = {
+  signal?: AbortSignal
+}
 export const internalFetch = async <T>(
   path: string,
   method = 'GET',
@@ -291,16 +297,22 @@ export const getExistingAccountsSimple = async (
 
 export const getExistingAccounts = async (
   addresses: string[],
-  fullInformation = true
+  fullInformation = true,
+  options?: RequestOption
 ): Promise<Account[]> => {
   try {
     return await queryClient.fetchQuery(
       QueryKeys.existingAccounts(addresses, fullInformation),
       () =>
-        internalFetch(`/accounts/existing`, 'POST', {
-          addresses,
-          fullInformation,
-        }) as Promise<Account[]>
+        internalFetch(
+          `/accounts/existing`,
+          'POST',
+          {
+            addresses,
+            fullInformation,
+          },
+          options
+        ) as Promise<Account[]>
     )
   } catch (e: unknown) {
     throw e
@@ -475,17 +487,51 @@ export const updateMeetingAsGuest = async (
   }
 }
 
-export const updateMeeting = async (
+export const apiUpdateMeeting = async (
   slotId: string,
-  meeting: MeetingUpdateRequest
+  meeting: MeetingUpdateRequest,
+  signal?: AbortSignal
 ): Promise<DBSlot> => {
   try {
     const response = await internalFetch<DBSlot>(
       `/secure/meetings/${slotId}`,
       'POST',
-      meeting
+      meeting,
+      { signal }
     )
-    await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
+
+    return response
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status === 404) {
+        throw new MeetingNotFoundError(slotId)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      }
+    }
+    throw e
+  }
+}
+export const apiUpdateMeetingInstance = async (
+  slotId: string,
+  meeting: MeetingInstanceUpdateRequest,
+  signal?: AbortSignal
+): Promise<DBSlot> => {
+  try {
+    const response = await internalFetch<DBSlot>(
+      `/secure/meetings/instances/${slotId}`,
+      'POST',
+      meeting,
+      { signal }
+    )
     return response
   } catch (e: unknown) {
     if (e instanceof ApiFetchError) {
@@ -707,16 +753,24 @@ export const fetchBusySlotsRawForMultipleAccounts = async (
   start: Date,
   end: Date,
   limit?: number,
-  offset?: number
+  offset?: number,
+  signal?: AbortSignal
 ): Promise<TimeSlot[]> => {
-  const response = (await internalFetch(`/meetings/busy/team`, 'POST', {
-    addresses,
-    start,
-    end,
-    limit,
-    offset,
-    isRaw: true,
-  })) as TimeSlot[]
+  const response = (await internalFetch(
+    `/meetings/busy/team`,
+    'POST',
+    {
+      addresses,
+      start,
+      end,
+      limit,
+      offset,
+      isRaw: true,
+    },
+    {
+      signal,
+    }
+  )) as TimeSlot[]
 
   return response.map(slot => ({
     ...slot,
@@ -944,8 +998,16 @@ export const subscribeToWaitlist = async (
   return !!result?.success
 }
 
-export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
-  const response = await internalFetch<DBSlot>(`/meetings/meeting/${slot_id}`)
+export const getMeeting = async (
+  slot_id: string,
+  signal?: AbortSignal
+): Promise<DBSlot> => {
+  const response = await internalFetch<DBSlot>(
+    `/meetings/meeting/${slot_id}`,
+    'GET',
+    null,
+    { signal }
+  )
   return {
     ...response,
     start: new Date(response.start),
@@ -956,11 +1018,10 @@ export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
 export const getConferenceDataBySlotId = async (
   slotId: string
 ): Promise<ConferenceMeeting> => {
-  const response = await queryClient.fetchQuery(
-    QueryKeys.meeting(slotId),
-    () =>
-      internalFetch(`/meetings/guest/${slotId}`) as Promise<ConferenceMeeting>
+  const response = await internalFetch<ConferenceMeeting>(
+    `/meetings/guest/${slotId}`
   )
+
   return {
     ...response,
     start: new Date(response.start),
@@ -1762,8 +1823,12 @@ export const getContacts = async (limit = 10, offset = 0, query = '') => {
   )
 }
 export const getContactsLean = async (limit = 10, offset = 0, query = '') => {
-  return await internalFetch<Array<LeanContact>>(
-    `/secure/contact?type=lean&limit=${limit}&offset=${offset}&q=${query}`
+  return await queryClient.fetchQuery(
+    QueryKeys.groupFull(limit, offset, query),
+    () =>
+      internalFetch<Array<LeanContact>>(
+        `/secure/contact?type=lean&limit=${limit}&offset=${offset}&q=${query}`
+      )
   )
 }
 
@@ -2499,5 +2564,40 @@ export const getGuestSlotById = async (slotId: string) => {
     ...response,
     start: new Date(response.start),
     end: new Date(response.end),
+  }
+}
+
+export const getEvents = async (
+  referenceDate: DateTime
+): Promise<CalendarEvents> => {
+  return await internalFetch<CalendarEvents>(
+    `/secure/calendar_events?startDate=${encodeURIComponent(
+      referenceDate.startOf('month').startOf('week').toISO() || ''
+    )}&endDate=${encodeURIComponent(
+      referenceDate.endOf('month').endOf('week').toISO() || ''
+    )}`
+  )
+}
+
+export const getSlotInstanceById = async (
+  slotId: string,
+  signal?: AbortSignal
+): Promise<SlotInstance | null> => {
+  try {
+    return await internalFetch<SlotInstance>(
+      `/meetings/slot/instance/${slotId}`,
+      'GET',
+      undefined,
+      { signal }
+    ).then(slot => ({
+      ...slot,
+      start: new Date(slot.start),
+      end: new Date(slot.end),
+    }))
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
   }
 }
