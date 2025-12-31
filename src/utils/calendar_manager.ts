@@ -48,6 +48,7 @@ import {
 } from '@/types/Requests'
 import { Address } from '@/types/Transactions'
 import {
+  apiUpdateMeeting,
   apiUpdateMeetingInstance,
   cancelMeeting as apiCancelMeeting,
   conferenceGuestMeetingCancel,
@@ -67,7 +68,6 @@ import {
   scheduleMeetingAsGuest,
   scheduleMeetingFromServer,
   syncMeeting,
-  updateMeeting as apiUpdateMeeting,
   updateMeetingAsGuest as apiUpdateMeetingAsGuest,
 } from '@/utils/api_helper'
 
@@ -623,6 +623,7 @@ const updateMeeting = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
+  console.trace(decryptedMeeting)
   // Sanity check
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
@@ -815,11 +816,9 @@ const updateMeeting = async (
     ignoreOwnerAvailability: true,
   }
 
+  const slotId = decryptedMeeting.id.split('_')[0]
   if (decryptedMeeting.user_type === 'guest') {
-    const slot: DBSlot = await apiUpdateMeetingAsGuest(
-      decryptedMeeting?.id,
-      payload
-    )
+    const slot: DBSlot = await apiUpdateMeetingAsGuest(slotId, payload)
     return {
       id: slot.id!,
       meeting_id: slot.id!,
@@ -835,11 +834,12 @@ const updateMeeting = async (
       meeting_info_encrypted: slot.meeting_info_encrypted,
     }
   } else {
-    const slot: DBSlot = await apiUpdateMeeting(decryptedMeeting.id, payload)
+    const slot: DBSlot = await apiUpdateMeeting(slotId, payload)
     return (await decryptMeeting(slot, currentAccount))!
   }
 }
 
+// TODO: MAKE SURE TO HANDLE ALL EDGE CASES
 const updateMeetingInstance = async (
   ignoreAvailabilities: boolean,
   currentAccountAddress: string,
