@@ -127,7 +127,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   }
   const [MeetingDialog, openMeetingDialog] = useMeetingDialog()
   const { CancelDialog, openCancelDialog } = useCancelDialog()
-  const afterClose = (
+  const afterClose = async (
     changeType: MeetingChangeType,
     meeting?: ExtendedDBSlot,
     removedSlots?: string[],
@@ -137,7 +137,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
     history.pushState(null, '', window.location.pathname)
 
     if (meeting || removedSlots) {
-      void queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: ['meetings', currentAccount.address],
       })
 

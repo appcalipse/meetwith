@@ -22,7 +22,7 @@ interface CancelMeetingDialogProps {
   decryptedMeeting?: MeetingDecrypted | MeetingDecrypted<DateTime>
   currentAccount?: Account | null
   onCancelChange?: (isCancelling: boolean) => void
-  afterCancel?: (slotsRemoved: string[]) => void
+  afterCancel?: (slotsRemoved: string[]) => void | Promise<unknown>
   isOpen: boolean
   onClose: () => void
 }
@@ -105,12 +105,12 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
 
                 cancelMeeting(currentAccount!.address, meetingInfo)
                   .then(async ({ removed }) => {
-                    setCancelling(false)
                     try {
                       afterCancel && (await afterCancel(removed))
                     } catch (err) {
                       console.error('Error in afterCancel:', err)
                     }
+                    setCancelling(false)
                     onClose()
                   })
                   .catch(error => {

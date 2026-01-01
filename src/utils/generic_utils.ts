@@ -67,10 +67,11 @@ export const canAccountAccessPermission = (
     | MeetingPermissions
     | MeetingPermissions[] = MeetingPermissions.SEE_GUEST_LIST
 ) =>
-  (permissions &&
-    (permission instanceof Array
+  (permissions
+    ? permission instanceof Array
       ? permission.some(perm => permissions?.includes(perm))
-      : !!permissions?.includes(permission))) ||
+      : !!permissions?.includes(permission)
+    : true) || // if no permissions are set, allow by default
   isAccountSchedulerOrOwner(participants, identifier)
 
 export function formatUnits(value: bigint, decimals: number) {
