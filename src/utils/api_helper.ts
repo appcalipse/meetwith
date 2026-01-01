@@ -961,14 +961,64 @@ export const removeGroupMember = async (
 export const editGroup = async (
   group_id: string,
   name?: string,
-  slug?: string
+  slug?: string,
+  avatar_url?: string,
+  description?: string
 ) => {
   const response = await internalFetch<{ success: true }>(
     `/secure/group/${group_id}`,
     'PUT',
-    { name, slug }
+    { name, slug, avatar_url, description }
   )
   return response?.success
+}
+
+export const uploadGroupAvatar = async (
+  groupId: string,
+  formData: FormData
+): Promise<string> => {
+  const response = await internalFetch<string>(
+    `/secure/group/${groupId}/avatar`,
+    'POST',
+    formData,
+    {},
+    {
+      'Content-Type': 'multipart/form-data',
+    },
+    true
+  )
+  return response
+}
+
+export const getGroupMemberAvailabilities = async (
+  groupId: string,
+  memberAddress: string
+): Promise<AvailabilityBlock[]> => {
+  const response = await internalFetch<AvailabilityBlock[]>(
+    `/secure/group/${groupId}/member/${memberAddress}/availabilities`
+  )
+  return response || []
+}
+
+export const updateGroupMemberAvailabilities = async (
+  groupId: string,
+  memberAddress: string,
+  availabilityIds: string[]
+): Promise<void> => {
+  await internalFetch<{ success: true }>(
+    `/secure/group/${groupId}/member/${memberAddress}/availabilities`,
+    'PUT',
+    { availability_ids: availabilityIds }
+  )
+}
+
+export const getGroupMembersAvailabilities = async (
+  groupId: string
+): Promise<Record<string, AvailabilityBlock[]>> => {
+  const response = await internalFetch<Record<string, AvailabilityBlock[]>>(
+    `/secure/group/${groupId}/members/availabilities`
+  )
+  return response || {}
 }
 export const deleteGroup = async (group_id: string) => {
   const response = await internalFetch<{ success: true }>(
