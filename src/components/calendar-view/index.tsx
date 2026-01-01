@@ -18,7 +18,13 @@ interface CalendarViewProps {
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({}) => {
+  const [mounted, setMounted] = React.useState(false)
   const [isLargerThan800] = useMediaQuery('(min-width: 800px)')
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <CalendarProvider>
       <Flex
@@ -31,7 +37,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({}) => {
         w="100%"
         overflowX="clip"
       >
-        {isLargerThan800 ? <Sidebar /> : <Header />}
+        {mounted && (isLargerThan800 ? <Sidebar /> : <Header />)}
         <Calendar />
       </Flex>
       <PermissionsProvider>
