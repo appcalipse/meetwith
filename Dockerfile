@@ -32,6 +32,7 @@ COPY --from=deps /app/.yarnrc.yml ./
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN yarn build
 
 
@@ -76,15 +77,18 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=prod-deps --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=prod-deps --chown=nextjs:nodejs /app/package.json ./
+COPY --from=prod-deps --chown=nextjs:nodejs /app/.yarnrc.yml ./
+COPY --from=prod-deps --chown=nextjs:nodejs /app/.yarn ./.yarn
 
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/zoom-token.json ./zoom-token.json
 COPY --from=builder --chown=nextjs:nodejs /app/credentials.json ./credentials.json
 COPY --from=builder --chown=nextjs:nodejs /app/google-master-token.json ./google-master-token.json
-COPY --from=builder /app/src/emails ./src/emails
-COPY --from=builder /app/.yarnrc.yml ./
+COPY --from=builder --chown=nextjs:nodejs /app/src/emails ./src/emails
+COPY --from=builder --chown=nextjs:nodejs /app/.yarnrc.yml ./
+COPY --from=builder --chown=nextjs:nodejs /app/yarn.lock ./
 
 USER nextjs
 
