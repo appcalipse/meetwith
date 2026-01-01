@@ -22,7 +22,7 @@ interface CancelMeetingDialogProps {
   decryptedMeeting?: MeetingDecrypted | MeetingDecrypted<DateTime>
   currentAccount?: Account | null
   onCancelChange?: (isCancelling: boolean) => void
-  afterCancel?: (slotsRemoved: string[]) => Promise<void>
+  afterCancel?: (slotsRemoved: string[]) => void | Promise<void>
   isOpen: boolean
   onClose: () => void
 }
