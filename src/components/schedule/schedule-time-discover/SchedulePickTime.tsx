@@ -41,6 +41,7 @@ import {
   getExistingAccounts,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
@@ -50,6 +51,10 @@ import {
 } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
+import {
+  getMergedParticipants,
+  mergeAvailabilityBlocks,
+} from '@/utils/schedule.helper'
 import { getEmptySlots, suggestBestSlots } from '@/utils/slots.helper'
 import { getAccountDisplayName } from '@/utils/user_manager'
 interface AccountAddressRecord extends ParticipantInfo {
@@ -128,7 +133,8 @@ export function SchedulePickTime({
 
   const { canEditMeetingDetails, isUpdatingMeeting } =
     useParticipantPermissions()
-  const { allAvailaibility } = useParticipants()
+  const { allAvailaibility, groupAvailability, groupMembersAvailabilities } =
+    useParticipants()
   const currentAccount = useAccountContext()
   const toast = useToast()
 
@@ -238,19 +244,53 @@ export function SchedulePickTime({
       Interval[]
     >()
 
+    // Check if we're scheduling for a group
+    const groupAvailabilityKeys = Object.keys(groupAvailability || {}).filter(
+      key => key !== NO_GROUP_KEY
+    )
+    const isGroupScheduling = groupAvailabilityKeys.length > 0
+
+    // Use group-specific availabilities from context (prefetched in ScheduleMain)
+    const groupMemberAvailabilities: Record<string, Interval[]> = {}
+
+    if (isGroupScheduling) {
+      // Get the single group ID
+      const groupId = groupAvailabilityKeys[0]
+
+      // Get group members availabilities from context
+      const groupBlocksData = groupMembersAvailabilities?.[groupId]
+
+      if (groupBlocksData) {
+        // Convert availability blocks to intervals for each member
+        for (const [memberAddress, blocks] of Object.entries(groupBlocksData)) {
+          if (blocks && blocks.length > 0) {
+            groupMemberAvailabilities[memberAddress.toLowerCase()] =
+              mergeAvailabilityBlocks(blocks, monthStart, monthEnd)
+          }
+        }
+      }
+    }
+
     for (const memberAccount of meetingMembers) {
       if (!memberAccount.address) continue
       try {
-        const availabilities = parseMonthAvailabilitiesToDate(
-          memberAccount?.preferences?.availabilities || [],
-          monthStart,
-          monthEnd,
-          memberAccount?.preferences?.timezone || 'UTC'
-        )
-        availableSlotsMap.set(
-          memberAccount.address.toLowerCase(),
-          availabilities
-        )
+        const memberAddressLower = memberAccount.address.toLowerCase()
+
+        // Use group-specific availability if available, otherwise fallback to default
+        const groupSpecificAvailability =
+          groupMemberAvailabilities[memberAddressLower]
+
+        const availabilities =
+          groupSpecificAvailability && groupSpecificAvailability.length > 0
+            ? groupSpecificAvailability
+            : parseMonthAvailabilitiesToDate(
+                memberAccount?.preferences?.availabilities || [],
+                monthStart,
+                monthEnd,
+                memberAccount?.preferences?.timezone || 'UTC'
+              )
+
+        availableSlotsMap.set(memberAddressLower, availabilities)
       } catch (error) {
         console.warn(
           'Failed to parse availability for member:',
@@ -260,7 +300,13 @@ export function SchedulePickTime({
       }
     }
     return availableSlotsMap
-  }, [meetingMembers, monthStart, monthEnd])
+  }, [
+    meetingMembers,
+    monthStart,
+    monthEnd,
+    groupAvailability,
+    groupMembersAvailabilities,
+  ])
 
   const suggestedTimes = useMemo(() => {
     if (!meetingMembers || !busySlotsRaw) return []
@@ -443,7 +489,6 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
-
   const handleScheduledTimeBack = () => {
     const currentDate = currentSelectedDate.setZone(timezone).startOf('day')
     let newDate = currentDate.minus({ days: SLOT_LENGTH })

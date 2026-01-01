@@ -10,7 +10,10 @@ RETURNS TABLE(
     id UUID,
     name TEXT,
     slug TEXT,
-    members JSONB
+    avatar_url TEXT,
+    description TEXT,
+    members JSONB,
+    member_availabilities JSONB
 )
 LANGUAGE plpgsql
 AS $$
@@ -21,7 +24,9 @@ BEGIN
       gm.role,
       g.id,
       g.name,
-      g.slug
+      g.slug,
+      g.avatar_url,
+      g.description
     FROM group_members gm
     JOIN groups g ON gm.group_id = g.id
     WHERE gm.member_id = LOWER(user_address)
@@ -91,14 +96,39 @@ BEGIN
     FROM user_groups ug
     LEFT JOIN group_members_data gmd ON gmd.group_id = ug.id
     LEFT JOIN group_invites_data gid ON gid.group_id = ug.id
+  ),
+  group_member_availabilities_data AS (
+    SELECT 
+      ug.id as group_id,
+      COALESCE(
+        JSONB_AGG(
+          JSONB_BUILD_OBJECT(
+            'id', a.id,
+            'title', a.title,
+            'timezone', a.timezone,
+            'weekly_availability', a.weekly_availability,
+            'account_owner_address', a.account_owner_address,
+            'created_at', a.created_at
+          )
+        ) FILTER (WHERE a.id IS NOT NULL),
+        '[]'::JSONB
+      ) as availabilities
+    FROM user_groups ug
+    LEFT JOIN group_availabilities ga ON ga.group_id = ug.id AND ga.member_id = LOWER(user_address)
+    LEFT JOIN availabilities a ON a.id = ga.availability_id
+    GROUP BY ug.id
   )
   SELECT 
     ug.role::TEXT,
     ug.id,
     ug.name,
     ug.slug,
-    COALESCE(cd.all_members, '[]'::JSONB) as members
+    ug.avatar_url,
+    ug.description,
+    COALESCE(cd.all_members, '[]'::JSONB) as members,
+    COALESCE(gmad.availabilities, '[]'::JSONB) as member_availabilities
   FROM user_groups ug
-  LEFT JOIN combined_data cd ON cd.group_id = ug.id;
+  LEFT JOIN combined_data cd ON cd.group_id = ug.id
+  LEFT JOIN group_member_availabilities_data gmad ON gmad.group_id = ug.id;
 END;
 $$;
