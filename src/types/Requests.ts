@@ -289,3 +289,8 @@ export interface MeetingCheckoutRequest {
   amount: number
   redirectUrl: string
 }
+
+export interface WebcalRequestBody {
+  url?: string
+  email?: string
+}
