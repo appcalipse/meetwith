@@ -215,7 +215,7 @@ export const parseMonthAvailabilitiesToDate = (
     currentWeek = currentWeek.plus({ weeks: 1 }) // Move to next week
   }
 
-  return slots
+  return slots.filter(slot => slot.isValid)
 }
 
 export const isBeginningOfHour = (dateTime: DateTime): boolean => {
