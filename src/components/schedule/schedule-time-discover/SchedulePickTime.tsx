@@ -54,7 +54,7 @@ import { deduplicateArray } from '@/utils/generic_utils'
 import { mergeAvailabilityBlocks } from '@/utils/schedule.helper'
 import { getEmptySlots } from '@/utils/slots.helper'
 import { getAccountDisplayName } from '@/utils/user_manager'
-interface AccountAddressRecord extends ParticipantInfo {
+export interface AccountAddressRecord extends ParticipantInfo {
   account_address: string
 }
 
