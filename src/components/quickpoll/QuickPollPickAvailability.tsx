@@ -70,6 +70,7 @@ import { getEmptySlots } from '@/utils/slots.helper'
 
 import { useAvailabilityTracker } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
+import { AccountAddressRecord } from '../schedule/schedule-time-discover/SchedulePickTime'
 import { QuickPollParticipationInstructions } from './QuickPollParticipationInstructions'
 
 export enum State {
@@ -228,6 +229,26 @@ export function QuickPollPickAvailability({
   const isEditAvailabilityIntent =
     currentIntent === QuickPollIntent.EDIT_AVAILABILITY ||
     (!currentIntent && !isSchedulingIntent)
+
+  const {
+    groupAvailability,
+    setGroupAvailability,
+    setGroupParticipants,
+    meetingMembers,
+    setMeetingMembers,
+    participants,
+    groups,
+    allAvailaibility,
+  } = useParticipants()
+
+  const addresses = useMemo(
+    () =>
+      allAvailaibility
+        .filter((val): val is AccountAddressRecord => !!val.account_address)
+        .map(val => val.account_address)
+        .sort(),
+    [allAvailaibility]
+  )
   const { mutateAsync: fetchBestSlot, isLoading: isBestSlotLoading } =
     useMutation({
       mutationKey: ['busySlots', addresses.join(','), duration],
@@ -276,15 +297,6 @@ export function QuickPollPickAvailability({
     return () => clearTimeout(timer)
   }, [])
 
-  const {
-    groupAvailability,
-    setGroupAvailability,
-    setGroupParticipants,
-    meetingMembers,
-    setMeetingMembers,
-    participants,
-    groups,
-  } = useParticipants()
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
   useEffect(() => {
