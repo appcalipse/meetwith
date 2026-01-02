@@ -91,9 +91,7 @@ describe('Unified Calendar Event Update', () => {
         mockEvent
       )
 
-      expect(getConnectedCalendars).toHaveBeenCalledWith(mockAccountAddress, {
-        activeOnly: true,
-      })
+      expect(getConnectedCalendars).toHaveBeenCalledWith(mockAccountAddress)
       expect(mockIntegration.updateEvent).toHaveBeenCalled()
       expect(result).toEqual(updatedMockEvent)
     })
@@ -364,10 +362,10 @@ describe('Unified Calendar Event Update', () => {
       const updateCall = mockIntegration.updateEvent.mock.calls[0]
       const participants = updateCall[1].participants
 
-      expect(participants[0].status).toBe('Accepted')
-      expect(participants[1].status).toBe('Rejected')
-      expect(participants[2].status).toBe('Pending')
-      expect(participants[3].status).toBe('Pending')
+      expect(participants[0].status).toBe('accepted')
+      expect(participants[1].status).toBe('rejected')
+      expect(participants[2].status).toBe('pending')
+      expect(participants[3].status).toBe('pending')
     })
 
     it('should set organizer participant type correctly', async () => {
