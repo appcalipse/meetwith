@@ -16,7 +16,7 @@ import { BaseCalendarService, EventBusyDate } from './calendar.service.types'
  * Webcal/ICS Feed Service
  * Read-only calendar integration for static ICS URLs (webcal://, http://, https://)
  */
-export default class WebcalFeedService implements BaseCalendarService {
+export default class WebCalService implements BaseCalendarService {
   private feedUrl: string
   private email: string
 
