@@ -12,6 +12,7 @@ import {
 import GoogleCalendarService from './google.service'
 import { O365AuthCredentials } from './office365.credential'
 import { Office365CalendarService } from './office365.service'
+import WebcalFeedService from './webcal.service'
 
 // Overload for Google
 function getConnectedCalendarIntegration(
@@ -91,6 +92,8 @@ function getConnectedCalendarIntegration(
         email,
         credentials as CaldavCredentials
       )
+    case TimeSlotSource.WEBCAL:
+      return new WebcalFeedService(address, email, credentials as string)
     default:
       throw new Error(`Unsupported calendar provider: ${provider}`)
   }
