@@ -14,7 +14,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Select, SingleValue } from 'chakra-react-select'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
@@ -47,6 +47,7 @@ import {
   fetchBusySlotsRawForQuickPollParticipants,
   getExistingAccounts,
   getPollParticipantCalendars,
+  getSuggestedSlots,
 } from '@/utils/api_helper'
 import { customSelectComponents, Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
@@ -59,17 +60,17 @@ import {
   createMockMeetingMembers,
   extractOverrideIntervals,
   generateFullDayBlocks,
-  generateQuickPollBestSlots,
   mergeLuxonIntervals,
   processPollParticipantAvailabilities,
   subtractBusyTimesFromBlocks,
   subtractRemovalIntervals,
 } from '@/utils/quickpoll_helper'
 import { getMergedParticipants } from '@/utils/schedule.helper'
-import { getEmptySlots, suggestBestSlots } from '@/utils/slots.helper'
+import { getEmptySlots } from '@/utils/slots.helper'
 
 import { useAvailabilityTracker } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
+import { AccountAddressRecord } from '../schedule/schedule-time-discover/SchedulePickTime'
 import { QuickPollParticipationInstructions } from './QuickPollParticipationInstructions'
 
 export enum State {
@@ -229,7 +230,46 @@ export function QuickPollPickAvailability({
     currentIntent === QuickPollIntent.EDIT_AVAILABILITY ||
     (!currentIntent && !isSchedulingIntent)
 
-  const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
+  const {
+    groupAvailability,
+    setGroupAvailability,
+    setGroupParticipants,
+    meetingMembers,
+    setMeetingMembers,
+    participants,
+    groups,
+    allAvailaibility,
+  } = useParticipants()
+
+  const addresses = useMemo(
+    () =>
+      allAvailaibility
+        .filter((val): val is AccountAddressRecord => !!val.account_address)
+        .map(val => val.account_address)
+        .sort(),
+    [allAvailaibility]
+  )
+  const { mutateAsync: fetchBestSlot, isLoading: isBestSlotLoading } =
+    useMutation({
+      mutationKey: ['busySlots', addresses.join(','), duration],
+      mutationFn: ({
+        endDate,
+        startDate,
+      }: {
+        startDate: Date
+        endDate: Date
+      }) => getSuggestedSlots(addresses, startDate, endDate, duration),
+      onError: () =>
+        toast({
+          title: 'Error fetching suggested slots',
+          description: `There was an error fetching suggested slots`,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        }),
+    })
+
   const toast = useToast()
   const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
   const [hasLoadedInitialSlots, setHasLoadedInitialSlots] = useState(false)
@@ -257,15 +297,6 @@ export function QuickPollPickAvailability({
     return () => clearTimeout(timer)
   }, [])
 
-  const {
-    groupAvailability,
-    setGroupAvailability,
-    setGroupParticipants,
-    meetingMembers,
-    setMeetingMembers,
-    participants,
-    groups,
-  } = useParticipants()
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
   useEffect(() => {
@@ -787,18 +818,9 @@ export function QuickPollPickAvailability({
           quickPollAccountDetails
         )
 
-        const suggestedSlots = generateQuickPollBestSlots(
-          monthStart,
-          monthEnd,
-          duration,
-          timezone,
-          freeSlotsMap
-        )
-
         setAvailableSlots(freeSlotsMap)
         setBusySlots(busySlotsMap)
         setDates(getDates(duration))
-        setSuggestedTimes(suggestedSlots)
         setMeetingMembers(mockMeetingMembers)
         setIsLoading(false)
         return
@@ -888,20 +910,11 @@ export function QuickPollPickAvailability({
           busySlots
         )
       }
-      const suggestedSlots = suggestBestSlots(
-        monthStart,
-        duration,
-        monthEnd,
-        timezone,
-        busySlots.map(slot => slot.interval).filter(slot => slot.isValid),
-        meetingMembers
-      )
 
       setBusySlots(busySlotsMap)
       setMeetingMembers(meetingMembers)
       setAvailableSlots(availableSlotsMap)
       setDates(getDates(duration))
-      setSuggestedTimes(suggestedSlots)
     } catch (error: unknown) {
       handleApiError('Error merging availabilities', error)
     } finally {
@@ -1033,24 +1046,30 @@ export function QuickPollPickAvailability({
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
 
-  const handleJumpToBestSlot = () => {
+  const handleJumpToBestSlot = async () => {
+    const suggestedTimes = await fetchBestSlot({
+      startDate: currentSelectedDate.toJSDate(),
+      endDate: currentSelectedDate.plus({ months: 1 }).toJSDate(),
+    })
     if (suggestedTimes.length === 0) {
       toast({
-        title: 'No suggested slots available',
+        title: 'No Matching Times',
         description:
-          'There are no available time slots that fit all participants schedules in the selected month. Please try changing the month or duration.',
-        status: 'warning',
+          'No slots in the next 30 days work for all participants. Choose a time from the calendar grid that works best.',
+        status: 'info',
         duration: 5000,
         isClosable: true,
-        position: 'top',
       })
       return
     }
-    const bestSlot = suggestedTimes[0]
-    setPickedTime(bestSlot.start.toJSDate())
+    const bestSlotStart = new Date(suggestedTimes[0].start)
+    setPickedTime(bestSlotStart)
+    setCurrentSelectedDate(
+      DateTime.fromJSDate(bestSlotStart).setZone(timezone).startOf('day')
+    )
+
     handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
-
   const handleTimeSelection = (time: Date) => {
     React.startTransition(() => {
       setPickedTime(time)
@@ -1330,6 +1349,7 @@ export function QuickPollPickAvailability({
               colorScheme="primary"
               onClick={handleJumpToBestSlot}
               w="100%"
+              isLoading={isBestSlotLoading}
               py={3}
               fontSize="16px"
               fontWeight="600"
@@ -1473,6 +1493,7 @@ export function QuickPollPickAvailability({
                     colorScheme="primary"
                     onClick={handleJumpToBestSlot}
                     display={{ lg: 'block', base: 'none' }}
+                    isLoading={isBestSlotLoading}
                   >
                     Jump to Best Slot
                   </Button>

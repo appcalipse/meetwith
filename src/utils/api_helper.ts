@@ -1564,10 +1564,12 @@ export const getSuggestedSlots = async (
         endDate,
         duration,
       })
-    ).map(slot => ({
-      start: new Date(slot.start),
-      end: new Date(slot.end),
-    })) as Interval[]
+    )
+      .map(slot => ({
+        start: new Date(slot.start),
+        end: new Date(slot.end),
+      }))
+      .sort((a, b) => a.start.getTime() - b.start.getTime()) as Interval[]
   } catch (e) {
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
