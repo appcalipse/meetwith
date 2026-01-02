@@ -24,6 +24,7 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { Credentials } from 'google-auth-library'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
 import { rrulestr } from 'rrule'
@@ -286,9 +287,11 @@ import {
 } from './email_helper'
 import { deduplicateArray, deduplicateMembers } from './generic_utils'
 import PostHogClient from './posthog'
+import { CaldavCredentials } from './services/caldav.service'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { IGoogleCalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
+import { O365AuthCredentials } from './services/office365.credential'
 import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
@@ -3521,6 +3524,26 @@ const addOrUpdateConnectedCalendar = async (
     throw new Error(error.message)
   }
   const calendar = data[0] as ConnectedCalendar
+  // run this as a background operation so it doesn't block the main flow as they'll be added anyways via cron jobs if this fails
+  void handleCalendarConnectionCleanups(
+    address,
+    email,
+    provider,
+    payload,
+    calendars,
+    calendar
+  )
+  return calendar
+}
+
+const handleCalendarConnectionCleanups = async (
+  address: string,
+  email: string,
+  provider: TimeSlotSource,
+  payload: Credentials,
+  calendars: CalendarSyncInfo[],
+  calendar: ConnectedCalendar
+) => {
   try {
     await addNewCalendarToAllExistingMeetingTypes(address, calendar)
   } catch (e) {
@@ -3556,9 +3579,7 @@ const addOrUpdateConnectedCalendar = async (
       console.error('Error adding new calendar to existing meeting types:', e)
     }
   }
-  return calendar
 }
-
 const addNewCalendarToAllExistingMeetingTypes = async (
   account_address: string,
   calendar: ConnectedCalendar

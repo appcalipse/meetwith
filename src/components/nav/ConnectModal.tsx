@@ -64,7 +64,6 @@ export const ConnectModal: React.FC = ({}) => {
     createWallet('com.coinbase.wallet'),
     createWallet('me.rainbow'),
     createWallet('walletConnect'),
-    // createWallet(''),
   ]
 
   const doLogin = async (wallet: Wallet) => {
