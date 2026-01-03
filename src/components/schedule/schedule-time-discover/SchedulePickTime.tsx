@@ -17,7 +17,6 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { isProduction } from '@utils/constants'
 import { Select, SingleValue } from 'chakra-react-select'
 import { DateTime, Interval } from 'luxon'
 import { useEffect, useMemo, useState } from 'react'
@@ -39,8 +38,10 @@ import { TimeSlot } from '@/types/Meeting'
 import {
   fetchBusySlotsRawForMultipleAccounts,
   getExistingAccounts,
+  getSuggestedSlots,
 } from '@/utils/api_helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
@@ -50,13 +51,14 @@ import {
 } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
-import { getEmptySlots, suggestBestSlots } from '@/utils/slots.helper'
+import { mergeAvailabilityBlocks } from '@/utils/schedule.helper'
+import { getEmptySlots } from '@/utils/slots.helper'
 import { getAccountDisplayName } from '@/utils/user_manager'
-interface AccountAddressRecord extends ParticipantInfo {
+export interface AccountAddressRecord extends ParticipantInfo {
   account_address: string
 }
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import useSlotCache from '@/hooks/useSlotCache'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
@@ -128,7 +130,8 @@ export function SchedulePickTime({
 
   const { canEditMeetingDetails, isUpdatingMeeting } =
     useParticipantPermissions()
-  const { allAvailaibility } = useParticipants()
+  const { allAvailaibility, groupAvailability, groupMembersAvailabilities } =
+    useParticipants()
   const currentAccount = useAccountContext()
   const toast = useToast()
 
@@ -175,6 +178,26 @@ export function SchedulePickTime({
         signal
       ),
   })
+  const { mutateAsync: fetchBestSlot, isLoading: isBestSlotLoading } =
+    useMutation({
+      mutationKey: ['busySlots', addresses.join(','), duration],
+      mutationFn: ({
+        endDate,
+        startDate,
+      }: {
+        startDate: Date
+        endDate: Date
+      }) => getSuggestedSlots(addresses, startDate, endDate, duration),
+      onError: () =>
+        toast({
+          title: 'Error fetching suggested slots',
+          description: `There was an error fetching suggested slots`,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        }),
+    })
 
   const { data: meetingMembers, isLoading: isMeetingMembersLoading } = useQuery(
     {
@@ -238,19 +261,53 @@ export function SchedulePickTime({
       Interval[]
     >()
 
+    // Check if we're scheduling for a group
+    const groupAvailabilityKeys = Object.keys(groupAvailability || {}).filter(
+      key => key !== NO_GROUP_KEY
+    )
+    const isGroupScheduling = groupAvailabilityKeys.length > 0
+
+    // Use group-specific availabilities from context (prefetched in ScheduleMain)
+    const groupMemberAvailabilities: Record<string, Interval[]> = {}
+
+    if (isGroupScheduling) {
+      // Get the single group ID
+      const groupId = groupAvailabilityKeys[0]
+
+      // Get group members availabilities from context
+      const groupBlocksData = groupMembersAvailabilities?.[groupId]
+
+      if (groupBlocksData) {
+        // Convert availability blocks to intervals for each member
+        for (const [memberAddress, blocks] of Object.entries(groupBlocksData)) {
+          if (blocks && blocks.length > 0) {
+            groupMemberAvailabilities[memberAddress.toLowerCase()] =
+              mergeAvailabilityBlocks(blocks, monthStart, monthEnd)
+          }
+        }
+      }
+    }
+
     for (const memberAccount of meetingMembers) {
       if (!memberAccount.address) continue
       try {
-        const availabilities = parseMonthAvailabilitiesToDate(
-          memberAccount?.preferences?.availabilities || [],
-          monthStart,
-          monthEnd,
-          memberAccount?.preferences?.timezone || 'UTC'
-        )
-        availableSlotsMap.set(
-          memberAccount.address.toLowerCase(),
-          availabilities
-        )
+        const memberAddressLower = memberAccount.address.toLowerCase()
+
+        // Use group-specific availability if available, otherwise fallback to default
+        const groupSpecificAvailability =
+          groupMemberAvailabilities[memberAddressLower]
+
+        const availabilities =
+          groupSpecificAvailability && groupSpecificAvailability.length > 0
+            ? groupSpecificAvailability
+            : parseMonthAvailabilitiesToDate(
+                memberAccount?.preferences?.availabilities || [],
+                monthStart,
+                monthEnd,
+                memberAccount?.preferences?.timezone || 'UTC'
+              )
+
+        availableSlotsMap.set(memberAddressLower, availabilities)
       } catch (error) {
         console.warn(
           'Failed to parse availability for member:',
@@ -260,26 +317,14 @@ export function SchedulePickTime({
       }
     }
     return availableSlotsMap
-  }, [meetingMembers, monthStart, monthEnd])
+  }, [
+    meetingMembers,
+    monthStart,
+    monthEnd,
+    groupAvailability,
+    groupMembersAvailabilities,
+  ])
 
-  const suggestedTimes = useMemo(() => {
-    if (!meetingMembers || !busySlotsRaw) return []
-    const busySlotsData = busySlotsRaw.map(busySlot => ({
-      account_address: busySlot.account_address,
-      interval: Interval.fromDateTimes(
-        new Date(busySlot.start),
-        new Date(busySlot.end)
-      ),
-    }))
-    return suggestBestSlots(
-      monthStart,
-      duration,
-      monthEnd,
-      timezone,
-      busySlotsData.map(slot => slot.interval).filter(slot => slot.isValid),
-      meetingMembers || []
-    )
-  }, [busySlotsRaw, meetingMembers, duration])
   const isLoading = isBusySlotsLoading || isMeetingMembersLoading
 
   useEffect(() => {
@@ -443,7 +488,6 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
-
   const handleScheduledTimeBack = () => {
     const currentDate = currentSelectedDate.setZone(timezone).startOf('day')
     let newDate = currentDate.minus({ days: SLOT_LENGTH })
@@ -499,21 +543,28 @@ export function SchedulePickTime({
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
 
-  const handleJumpToBestSlot = () => {
+  const handleJumpToBestSlot = async () => {
+    const suggestedTimes = await fetchBestSlot({
+      startDate: currentSelectedDate.toJSDate(),
+      endDate: currentSelectedDate.plus({ months: 1 }).toJSDate(),
+    })
     if (suggestedTimes.length === 0) {
       toast({
-        title: 'No suggested slots available',
+        title: 'No Matching Times',
         description:
-          'There are no available time slots that fit all participants schedules in the selected month. Please try changing the month or duration.',
-        status: 'warning',
+          'No slots in the next 30 days work for all participants. Choose a time from the calendar grid that works best.',
+        status: 'info',
         duration: 5000,
         isClosable: true,
-        position: 'top',
       })
       return
     }
-    const bestSlot = suggestedTimes[0]
-    setPickedTime(bestSlot.start.toJSDate())
+    const bestSlotStart = new Date(suggestedTimes[0].start)
+    setPickedTime(bestSlotStart)
+    setCurrentSelectedDate(
+      DateTime.fromJSDate(bestSlotStart).setZone(timezone).startOf('day')
+    )
+
     handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
 
@@ -650,18 +701,20 @@ export function SchedulePickTime({
           </HStack>
         </HStack>
 
-        {!isProduction && (
-          <VStack
-            gap={4}
-            w="100%"
-            alignItems={{ base: 'flex-start', md: 'center' }}
-            display={{ base: 'flex', lg: 'none' }}
+        <VStack
+          gap={4}
+          w="100%"
+          alignItems={{ base: 'flex-start', md: 'center' }}
+          display={{ base: 'flex', lg: 'none' }}
+        >
+          <Button
+            isLoading={isBestSlotLoading}
+            colorScheme="primary"
+            onClick={handleJumpToBestSlot}
           >
-            <Button colorScheme="primary" onClick={handleJumpToBestSlot}>
-              Jump to Best Slot
-            </Button>
-          </VStack>
-        )}
+            Jump to Best Slot
+          </Button>
+        </VStack>
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
           <VStack
@@ -693,29 +746,9 @@ export function SchedulePickTime({
               <Button
                 colorScheme="primary"
                 onClick={handleJumpToBestSlot}
-                display={{ lg: 'block', base: 'none' }}
-                bg={'transparent'}
-                color={'transparent'}
-                cursor={isProduction ? 'default' : 'pointer'}
-                isDisabled={isProduction}
-                _disabled={
-                  isProduction
-                    ? {
-                        cursor: 'default',
-                        bg: 'transparent',
-                        color: 'transparent',
-                      }
-                    : undefined
-                }
-                _hover={
-                  isProduction
-                    ? {
-                        cursor: 'default',
-                        bg: 'transparent',
-                        color: 'transparent',
-                      }
-                    : undefined
-                }
+                display={{ lg: 'flex', base: 'none' }}
+                cursor={'pointer'}
+                isLoading={isBestSlotLoading}
               >
                 Jump to Best Slot
               </Button>

@@ -38,6 +38,7 @@ import {
   ConnectedCalendarCore,
   ConnectResponse,
   GetCalendarIntegrationsResponse,
+  WebCalResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
 import {
@@ -2681,4 +2682,16 @@ export const getSlotInstanceById = async (
     }
     throw e
   }
+}
+
+export const addOrUpdateWebcal = async (
+  url: string
+): Promise<WebCalResponse> => {
+  return await internalFetch<WebCalResponse>(
+    `/secure/calendar_integrations/webcal`,
+    'POST',
+    {
+      url,
+    }
+  )
 }

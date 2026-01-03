@@ -24,6 +24,7 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { Credentials } from 'google-auth-library'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
 import { rrulestr } from 'rrule'
@@ -286,9 +287,11 @@ import {
 } from './email_helper'
 import { deduplicateArray, deduplicateMembers } from './generic_utils'
 import PostHogClient from './posthog'
+import { CaldavCredentials } from './services/caldav.service'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { IGoogleCalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
+import { O365AuthCredentials } from './services/office365.credential'
 import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
@@ -709,6 +712,200 @@ const updatePreferenceBanner = async (
 
   return publicUrl
 }
+
+const updateGroupAvatar = async (
+  group_id: string,
+  filename: string,
+  buffer: Buffer,
+  mimeType: string
+) => {
+  const contentType = mimeType
+  const file = `uploads/groups/${Date.now()}-${filename}`
+  const { error } = await db.supabase.storage
+    .from('avatars')
+    .upload(file, buffer, {
+      contentType,
+      upsert: true,
+    })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new UploadError(
+      'Unable to upload avatar. Please try again or contact support if the problem persists.'
+    )
+  }
+
+  const { data } = db.supabase.storage.from('avatars').getPublicUrl(file)
+
+  const publicUrl = data?.publicURL
+  if (!publicUrl) {
+    Sentry.captureException(new Error('Public URL is undefined after upload'))
+    throw new UploadError(
+      "Avatar upload completed but couldn't generate preview URL. Please refresh and try again."
+    )
+  }
+
+  const { error: updateError } = await db.supabase
+    .from('groups')
+    .update({ avatar_url: publicUrl })
+    .eq('id', group_id)
+  if (updateError) {
+    Sentry.captureException(updateError)
+    throw new UploadError(
+      "Avatar uploaded successfully but couldn't update the group. Please refresh and try again."
+    )
+  }
+
+  return publicUrl
+}
+
+const getGroupMemberAvailabilities = async (
+  groupId: string,
+  memberAddress: string
+): Promise<AvailabilityBlock[]> => {
+  const { data, error } = await db.supabase
+    .from('group_availabilities')
+    .select(
+      `
+      availabilities (
+        id,
+        title,
+        timezone,
+        weekly_availability,
+        account_owner_address,
+        created_at
+      )
+    `
+    )
+    .eq('group_id', groupId)
+    .eq('member_id', memberAddress.toLowerCase())
+
+  if (error) {
+    throw new Error(
+      `Failed to fetch group member availabilities: ${error.message}`
+    )
+  }
+
+  if (!data) {
+    return []
+  }
+
+  // Transform the data to match AvailabilityBlock interface
+  return data.map((item: { availabilities: AvailabilityBlock }) => ({
+    ...item.availabilities,
+    isDefault: false,
+  }))
+}
+
+const updateGroupMemberAvailabilities = async (
+  groupId: string,
+  memberAddress: string,
+  availabilityIds: string[]
+): Promise<void> => {
+  const normalizedMemberAddress = memberAddress.toLowerCase()
+
+  // Get current associations for this group member
+  const { data: current, error: currentError } = await db.supabase
+    .from('group_availabilities')
+    .select('availability_id')
+    .eq('group_id', groupId)
+    .eq('member_id', normalizedMemberAddress)
+
+  if (currentError) {
+    throw new Error(
+      `Failed to fetch current availabilities: ${currentError.message}`
+    )
+  }
+
+  const currentIds = current?.map(c => c.availability_id) || []
+  const newIds = availabilityIds
+
+  const toDelete = currentIds.filter(id => !newIds.includes(id))
+  const toInsert = newIds.filter(id => !currentIds.includes(id))
+
+  // Delete removed associations
+  if (toDelete.length > 0) {
+    const { error: deleteError } = await db.supabase
+      .from('group_availabilities')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('member_id', normalizedMemberAddress)
+      .in('availability_id', toDelete)
+
+    if (deleteError) {
+      throw new Error('Failed to remove availability associations')
+    }
+  }
+
+  // Insert new associations
+  if (toInsert.length > 0) {
+    const { error: insertError } = await db.supabase
+      .from('group_availabilities')
+      .insert(
+        toInsert.map(availabilityId => ({
+          group_id: groupId,
+          member_id: normalizedMemberAddress,
+          availability_id: availabilityId,
+        }))
+      )
+
+    if (insertError) {
+      throw new Error('Failed to add availability associations')
+    }
+  }
+}
+
+const getGroupMembersAvailabilities = async (
+  groupId: string
+): Promise<Record<string, AvailabilityBlock[]>> => {
+  const { data, error } = await db.supabase
+    .from('group_availabilities')
+    .select(
+      `
+      member_id,
+      availabilities (
+        id,
+        title,
+        timezone,
+        weekly_availability,
+        account_owner_address,
+        created_at
+      )
+    `
+    )
+    .eq('group_id', groupId)
+
+  if (error) {
+    throw new Error(
+      `Failed to fetch group members availabilities: ${error.message}`
+    )
+  }
+
+  if (!data) {
+    return {}
+  }
+
+  // Group by member_id and transform to AvailabilityBlock[]
+  const result: Record<string, AvailabilityBlock[]> = {}
+
+  for (const item of data) {
+    const memberId = item.member_id as string
+    const availability = (item as { availabilities: AvailabilityBlock })
+      .availabilities
+
+    if (!result[memberId]) {
+      result[memberId] = []
+    }
+
+    result[memberId].push({
+      ...availability,
+      isDefault: false,
+    })
+  }
+
+  return result
+}
+
 const getAccountAvatarUrl = async (address: string): Promise<string | null> => {
   const { data, error } = await db.supabase
     .from('account_preferences')
@@ -2335,10 +2532,21 @@ const getGroupsAndMembers = async (
   }
 
   return data.map(group => {
+    const memberAvailabilities: AvailabilityBlock[] = Array.isArray(
+      group.member_availabilities
+    )
+      ? group.member_availabilities.map((avail: any) => ({
+          ...avail,
+          isDefault: false,
+        }))
+      : []
+
     return {
       id: group.id,
       name: group.name,
       slug: group.slug,
+      avatar_url: group.avatar_url ?? null,
+      description: group.description ?? null,
       members: deduplicateMembers(
         group.members.filter(member => {
           if (includeInvites) {
@@ -2347,6 +2555,7 @@ const getGroupsAndMembers = async (
           return !member.invitePending
         }) || []
       ),
+      member_availabilities: memberAvailabilities,
     }
   }) as GetGroupsFullResponse[]
 }
@@ -2827,7 +3036,9 @@ const getGroupInternal = async (group_id: string) => {
       `
     name,
     id,
-    slug
+    slug,
+    avatar_url,
+    description
     `
     )
     .eq('id', group_id)
@@ -2855,7 +3066,9 @@ const editGroup = async (
   group_id: string,
   address: string,
   name?: string,
-  slug?: string
+  slug?: string,
+  avatar_url?: string,
+  description?: string
 ): Promise<void> => {
   await isGroupExists(group_id)
   const checkAdmin = await isGroupAdmin(group_id, address)
@@ -2868,6 +3081,12 @@ const editGroup = async (
   }
   if (slug) {
     data.slug = slug
+  }
+  if (avatar_url !== undefined) {
+    data.avatar_url = avatar_url
+  }
+  if (description !== undefined) {
+    data.description = description
   }
   const { error } = await db.supabase
     .from('groups')
@@ -3305,6 +3524,26 @@ const addOrUpdateConnectedCalendar = async (
     throw new Error(error.message)
   }
   const calendar = data[0] as ConnectedCalendar
+  // run this as a background operation so it doesn't block the main flow as they'll be added anyways via cron jobs if this fails
+  void handleCalendarConnectionCleanups(
+    address,
+    email,
+    provider,
+    payload,
+    calendars,
+    calendar
+  )
+  return calendar
+}
+
+const handleCalendarConnectionCleanups = async (
+  address: string,
+  email: string,
+  provider: TimeSlotSource,
+  payload: Credentials,
+  calendars: CalendarSyncInfo[],
+  calendar: ConnectedCalendar
+) => {
   try {
     await addNewCalendarToAllExistingMeetingTypes(address, calendar)
   } catch (e) {
@@ -3340,9 +3579,7 @@ const addOrUpdateConnectedCalendar = async (
       console.error('Error adding new calendar to existing meeting types:', e)
     }
   }
-  return calendar
 }
-
 const addNewCalendarToAllExistingMeetingTypes = async (
   account_address: string,
   calendar: ConnectedCalendar
@@ -9716,6 +9953,8 @@ export {
   getGroupInternal,
   getGroupInvites,
   getGroupInvitesCount,
+  getGroupMemberAvailabilities,
+  getGroupMembersAvailabilities,
   getGroupMembersOrInvite,
   getGroupName,
   getGroupsAndMembers,
@@ -9803,6 +10042,8 @@ export {
   updateAvailabilityBlockMeetingTypes,
   updateContactInviteCooldown,
   updateCustomSubscriptionDomain,
+  updateGroupAvatar,
+  updateGroupMemberAvailabilities,
   updateMeeting,
   updateMeetingInstance,
   updateMeetingType,

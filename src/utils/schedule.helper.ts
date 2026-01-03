@@ -2,7 +2,9 @@ import { Account } from '@meta/Account'
 import { getAccount } from '@utils/api_helper'
 import { getAddressFromDomain } from '@utils/rpc_helper_front'
 import { isValidEmail, isValidEVMAddress } from '@utils/validations'
+import { Interval } from 'luxon'
 
+import { AvailabilityBlock } from '@/types/availability'
 import { GetGroupsFullResponse } from '@/types/Group'
 import {
   ParticipantInfo,
@@ -10,6 +12,9 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { isGroupParticipant, Participant } from '@/types/schedule'
+
+import { parseMonthAvailabilitiesToDate } from './date_helper'
+import { mergeLuxonIntervals } from './quickpoll_helper'
 
 export const getMergedParticipants = (
   participants: Array<Participant>,
@@ -103,4 +108,39 @@ export const parseAccounts = async (
     }
   }
   return { valid, invalid }
+}
+
+/**
+ * Merges multiple availability blocks into a single array of intervals.
+ * Used when a group member has multiple availability blocks configured for a group.
+ * Each block may have a different timezone, which is handled during parsing.
+ */
+export const mergeAvailabilityBlocks = (
+  blocks: AvailabilityBlock[],
+  monthStart: Date,
+  monthEnd: Date
+): Interval[] => {
+  if (!blocks || blocks.length === 0) {
+    return []
+  }
+
+  const allIntervals: Interval[] = []
+
+  for (const block of blocks) {
+    if (!block.weekly_availability || block.weekly_availability.length === 0) {
+      continue
+    }
+
+    const blockIntervals = parseMonthAvailabilitiesToDate(
+      block.weekly_availability,
+      monthStart,
+      monthEnd,
+      block.timezone || 'UTC'
+    )
+
+    allIntervals.push(...blockIntervals)
+  }
+
+  // Merge overlapping intervals to avoid duplicates
+  return mergeLuxonIntervals(allIntervals)
 }

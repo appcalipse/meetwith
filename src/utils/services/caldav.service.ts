@@ -960,8 +960,17 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       const alreadyExcluded = exdates.some(exdate => {
         const value = exdate.getFirstValue()
         if (!value) return false
-        const exdateTime = new Date(value.toString()).getTime()
-        return exdateTime === originalStartTimeMs
+        let date: Date | null = null
+        if (exdate instanceof ICAL.Time) {
+          date = exdate.toJSDate()
+        } else if (typeof exdate === 'string') {
+          date = new Date(exdate)
+        } else {
+          const dateTemp = new Date(exdate.toString())
+          date = dateTemp.getTime() ? dateTemp : null
+        }
+        if (!date) return false
+        return date.getTime() === originalStartTimeMs
       })
 
       if (!alreadyExcluded) {

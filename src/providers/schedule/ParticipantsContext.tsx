@@ -9,6 +9,7 @@ import React, {
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { Account } from '@/types/Account'
+import { AvailabilityBlock } from '@/types/availability'
 import { LeanContact } from '@/types/Contacts'
 import { GetGroupsFullResponse } from '@/types/Group'
 import {
@@ -27,6 +28,10 @@ export interface IParticipantsContext {
   standAloneParticipants: Array<ParticipantInfo>
   groupParticipants: Record<string, Array<string> | undefined>
   groupAvailability: Record<string, Array<string> | undefined>
+  groupMembersAvailabilities: Record<
+    string,
+    Record<string, AvailabilityBlock[]>
+  >
   meetingMembers: Array<Account>
   meetingOwners: Array<ParticipantInfo>
   groups: Array<GetGroupsFullResponse>
@@ -45,6 +50,9 @@ export interface IParticipantsContext {
   >
   setGroupAvailability: React.Dispatch<
     React.SetStateAction<Record<string, Array<string> | undefined>>
+  >
+  setGroupMembersAvailabilities: React.Dispatch<
+    React.SetStateAction<Record<string, Record<string, AvailabilityBlock[]>>>
   >
   setMeetingMembers: React.Dispatch<React.SetStateAction<Array<Account>>>
   setMeetingOwners: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
@@ -107,6 +115,9 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   >({
     [NO_GROUP_KEY]: [currentAccount?.address || ''],
   })
+  const [groupMembersAvailabilities, setGroupMembersAvailabilities] = useState<
+    Record<string, Record<string, AvailabilityBlock[]>>
+  >({})
   const [meetingMembers, setMeetingMembers] = useState<Array<Account>>([])
   const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
   const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
@@ -148,6 +159,12 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
       const newGroupParticipants = { ...prev }
       delete newGroupParticipants[groupId]
       return newGroupParticipants
+    })
+
+    setGroupMembersAvailabilities(prev => {
+      const newGroupMembersAvailabilities = { ...prev }
+      delete newGroupMembersAvailabilities[groupId]
+      return newGroupMembersAvailabilities
     })
   }
   const fetchGroups = async () => {
@@ -283,6 +300,7 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     standAloneParticipants,
     groupParticipants,
     groupAvailability,
+    groupMembersAvailabilities,
     meetingMembers,
     meetingOwners,
     groups,
@@ -291,6 +309,7 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     setParticipants,
     setGroupParticipants,
     setGroupAvailability,
+    setGroupMembersAvailabilities,
     setMeetingMembers,
     setMeetingOwners,
     setIsGroupPrefetching,

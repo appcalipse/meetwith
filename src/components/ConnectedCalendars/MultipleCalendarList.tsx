@@ -113,7 +113,9 @@ const MultipleCalendarList: React.FC<MultipleCalendarListProps> = props => {
                 mr="4"
                 isChecked={calendar.enabled && calendar.sync}
                 onChange={() => toggleAddMeetingsToCalendar(calendar)}
-                isDisabled={!calendar.enabled || calendar.loading}
+                isDisabled={
+                  !calendar.enabled || calendar.loading || calendar.isReadOnly
+                }
               />
             </Flex>
             {!!calendar.loading && (
