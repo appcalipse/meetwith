@@ -2347,31 +2347,31 @@ const meetWithSeriesPreprocessors = (
     const rule = rrulestr(slotSerie.rrule[0], {
       dtstart: new Date(slotSerie.start), // The original start time of the series
     })
-    const ghostStartTimes = rule.between(
-      startDate.toJSDate(),
-      endDate.toJSDate(),
-      true
-    )
+    const ghostStartTimes = rule
+      .between(startDate.toJSDate(), endDate.toJSDate(), true)
+      .map(date => DateTime.fromJSDate(date))
     for (const ghostStartTime of ghostStartTimes) {
-      const ghostEndTime = new Date(
-        ghostStartTime.getTime() +
-          (new Date(slotSerie.end).getTime() -
-            new Date(slotSerie.start).getTime())
-      )
+      const difference =
+        DateTime.fromJSDate(new Date(slotSerie.end))
+          .diff(DateTime.fromJSDate(new Date(slotSerie.start)), 'minutes')
+          .toObject().minutes || 0
+      const ghostEndTime = ghostStartTime.plus({ minutes: difference })
+
       // Check if an instance already exists for this occurrence
       const instanceExists = slotInstances.some(
         instance =>
           instance.series_id === slotSerie.id &&
-          new Date(instance.start).getTime() === ghostStartTime.getTime()
+          new Date(instance.start).getTime() ===
+            ghostStartTime.toJSDate().getTime()
       )
       if (!instanceExists) {
         const slotInstance: SlotInstance = {
           ...slotSerie,
           status: RecurringStatus.CONFIRMED,
-          id: `${slotSerie.id}_instance_${ghostStartTime.getTime()}`, // Unique ID for the ghost instance
+          id: `${slotSerie.id}_instance_${ghostStartTime.toJSDate().getTime()}`, // Unique ID for the ghost instance
           series_id: slotSerie.id!,
-          start: ghostStartTime,
-          end: ghostEndTime,
+          start: ghostStartTime.toJSDate(),
+          end: ghostEndTime.toJSDate(),
         }
         slots.push(slotInstance)
       }
@@ -2406,6 +2406,7 @@ const calendarEventsPreprocessors = (
         bysetpos: recurrence.weekOfMonth ? [recurrence.weekOfMonth] : undefined,
         until: recurrence.endDate || undefined,
         count: recurrence.occurrenceCount || undefined,
+        dtstart: new Date(event.start),
       })
       const ghostStartTimes = rrule
         .between(startDate.toJSDate(), endDate.toJSDate(), true)
@@ -2413,8 +2414,8 @@ const calendarEventsPreprocessors = (
 
       for (const ghostStartTime of ghostStartTimes) {
         const difference =
-          DateTime.fromJSDate(event.end)
-            .diff(DateTime.fromJSDate(event.start))
+          DateTime.fromJSDate(new Date(event.end))
+            .diff(DateTime.fromJSDate(new Date(event.start)), 'minutes')
             .toObject().minutes || 0
         const ghostEndTime = ghostStartTime.plus({ minutes: difference })
 
