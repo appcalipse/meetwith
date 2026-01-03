@@ -590,7 +590,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
   async getEvents(
     calendarIds: string[],
     dateFrom: string,
-    dateTo: string
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
   ): Promise<UnifiedEvent[]> {
     const calendars = await this.listCalendars()
 
@@ -638,7 +639,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
               ? utcToZonedTime(event.endDate.toJSDate(), calendarTimezone)
               : new Date(event.endDate.toUnixTime() * 1000)
             const rrule = vevent.getFirstPropertyValue('rrule')
-
+            if (onlyWithMeetingLinks && !event.location) {
+              return null
+            }
             return {
               uid: event.uid,
               etag: object.etag,
