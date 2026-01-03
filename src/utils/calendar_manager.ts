@@ -2315,10 +2315,9 @@ const getMeetingRepeatFromRule = (rule: RRule): MeetingRepeat => {
 }
 const meetWithSeriesPreprocessors = (
   meetings: Array<ExtendedDBSlot | ExtendedSlotInstance | ExtendedSlotSeries>,
-  referenceDate: DateTime
+  startDate: DateTime,
+  endDate: DateTime
 ): Array<ExtendedDBSlot | ExtendedSlotInstance> => {
-  const start = referenceDate.startOf('month').startOf('week').toJSDate()
-  const end = referenceDate.endOf('month').endOf('week').toJSDate()
   const dbSlots = meetings.filter((slot): slot is DBSlot => isDBSlot(slot))
   const slotSeries = meetings.filter((slot): slot is SlotSeries =>
     isSlotSeries(slot)
@@ -2348,7 +2347,11 @@ const meetWithSeriesPreprocessors = (
     const rule = rrulestr(slotSerie.rrule[0], {
       dtstart: new Date(slotSerie.start), // The original start time of the series
     })
-    const ghostStartTimes = rule.between(start, end, true)
+    const ghostStartTimes = rule.between(
+      startDate.toJSDate(),
+      endDate.toJSDate(),
+      true
+    )
     for (const ghostStartTime of ghostStartTimes) {
       const ghostEndTime = new Date(
         ghostStartTime.getTime() +
@@ -2388,7 +2391,8 @@ const meetWithSeriesPreprocessors = (
 }
 const calendarEventsPreprocessors = (
   events: Array<UnifiedEvent>,
-  referenceDate: DateTime
+  startDate: DateTime,
+  endDate: DateTime
 ) => {
   const instances: Array<UnifiedEvent> = []
   for (const event of events) {
@@ -2404,11 +2408,7 @@ const calendarEventsPreprocessors = (
         count: recurrence.occurrenceCount || undefined,
       })
       const ghostStartTimes = rrule
-        .between(
-          referenceDate.startOf('month').startOf('week').toJSDate(),
-          referenceDate.endOf('month').endOf('week').toJSDate(),
-          true
-        )
+        .between(startDate.toJSDate(), endDate.toJSDate(), true)
         .map(date => DateTime.fromJSDate(date))
 
       for (const ghostStartTime of ghostStartTimes) {
