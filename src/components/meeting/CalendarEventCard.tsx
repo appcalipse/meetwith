@@ -203,6 +203,7 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({ event, timezone }) => {
                   aria-label="delete"
                   icon={<FaTrash size={16} />}
                   onClick={handleDelete}
+                  display="none"
                 />
               </Tooltip>
             </HStack>
