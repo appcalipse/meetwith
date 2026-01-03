@@ -1,6 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { Interval as DateFnsInterval } from 'date-fns'
-import { DateTime, Interval } from 'luxon'
+import { Interval } from 'luxon'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { Account } from '@/types/Account'
@@ -61,7 +60,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         busySlots,
         accounts
       )
-      return res.status(200).json(suggestedTimes)
+      return res.status(200).json(
+        suggestedTimes.map(slot => ({
+          start: slot.start.toJSDate(),
+          end: slot.end.toJSDate(),
+        }))
+      )
     } catch (e) {
       Sentry.captureException(e, {
         extra: {

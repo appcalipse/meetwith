@@ -66,6 +66,7 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@utils/errors'
+import { mergeLuxonIntervals } from '@utils/quickpoll_helper'
 import { getSignature, saveMeetingsScheduled } from '@utils/storage'
 import { getAccountDisplayName } from '@utils/user_manager'
 import { addMinutes } from 'date-fns'
@@ -997,16 +998,7 @@ const PublicPage: FC<IProps> = props => {
         )
       ) || []
 
-    const deduplicatedAvailabilities = availabilities.reduce<Interval[]>(
-      (acc, current) => {
-        const hasOverlap = acc.some(existing => current.overlaps(existing))
-        if (!hasOverlap) {
-          acc.push(current)
-        }
-        return acc
-      },
-      []
-    )
+    const deduplicatedAvailabilities = mergeLuxonIntervals(availabilities)
 
     setBusySlots(busySlots)
     setAvailableSlots(deduplicatedAvailabilities)

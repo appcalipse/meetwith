@@ -4,6 +4,7 @@ const SIGNATURE_KEY = 'current_user_sig'
 const SCHEDULES = 'meetings_scheduled'
 const NOTIFICATION = 'group_notifications'
 const GUEST_POLL_DETAILS = 'quickpoll_guest_details'
+const HIDE_GROUP_AVAILABILITY_LABELS = 'hide_group_availability_labels'
 const ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
@@ -116,8 +117,28 @@ const removeGuestPollDetails = (pollId: string) => {
   window.localStorage.removeItem(`${GUEST_POLL_DETAILS}:${pollId}`)
 }
 
+const getHideGroupAvailabilityLabels = (account_address: string): boolean => {
+  if (typeof window === 'undefined' || !account_address) return false
+  const stored = window.localStorage.getItem(
+    `${HIDE_GROUP_AVAILABILITY_LABELS}:${account_address.toLowerCase()}`
+  )
+  return stored === 'true'
+}
+
+const setHideGroupAvailabilityLabels = (
+  account_address: string,
+  value: boolean
+): void => {
+  if (typeof window === 'undefined' || !account_address) return
+  window.localStorage.setItem(
+    `${HIDE_GROUP_AVAILABILITY_LABELS}:${account_address.toLowerCase()}`,
+    String(value)
+  )
+}
+
 export {
   getGuestPollDetails,
+  getHideGroupAvailabilityLabels,
   getMeetingsScheduled,
   getNotificationTime,
   getSignature,
@@ -128,4 +149,5 @@ export {
   saveMeetingsScheduled,
   saveNotificationTime,
   saveSignature,
+  setHideGroupAvailabilityLabels,
 }

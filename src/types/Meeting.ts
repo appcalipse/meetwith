@@ -25,6 +25,7 @@ export enum TimeSlotSource {
   ICLOUD = 'iCloud',
   OFFICE = 'Office 365',
   WEBDAV = 'Webdav',
+  WEBCAL = 'Webcal', // read-only streams
 }
 export interface ExistingMeetingData {
   title?: string

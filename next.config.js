@@ -86,61 +86,68 @@ const moduleExports = {
   // },
 
   webpack: (config, { dev }) => {
-    // Split your bundles more aggressively
-    config.optimization.splitChunks = {
-      chunks: 'all',
-      maxInitialRequests: 25,
-      minSize: 20000,
-      cacheGroups: {
-        default: false,
-        vendors: false,
-        framework: {
-          name: 'framework',
-          chunks: 'all',
-          test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
-          priority: 40,
-          enforce: true,
-        },
-        commons: {
-          name: 'commons',
-          chunks: 'all',
-          minChunks: 2,
-          priority: 20,
-          reuseExistingChunk: true,
-        },
-        lib: {
-          test(module) {
-            return (
-              module.size() > 160000 &&
-              /node_modules[/\\]/.test(module.identifier())
-            )
-          },
-          name(module) {
-            const hash = crypto.createHash('sha1')
-            if (module.identifier) {
-              hash.update(module.identifier())
-            }
-            return hash.digest('hex').substring(0, 8)
-          },
-          chunks: 'all',
-          priority: 30,
-          minChunks: 1,
-          reuseExistingChunk: true,
-        },
-        chakra: {
-          test: /[\\/]node_modules[\\/](@chakra-ui|@emotion)[\\/]/,
-          name: 'chakra-ui',
-          chunks: 'all',
-          priority: 35,
-          enforce: true,
-        },
-      },
-    }
-
     if (!dev) {
+      // Split your bundles more aggressively
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        maxInitialRequests: 25,
+        minSize: 20000,
+        cacheGroups: {
+          default: false,
+          vendors: false,
+          framework: {
+            name: 'framework',
+            chunks: 'all',
+            test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+            priority: 40,
+            enforce: true,
+          },
+          commons: {
+            name: 'commons',
+            chunks: 'all',
+            minChunks: 2,
+            priority: 20,
+            reuseExistingChunk: true,
+          },
+          lib: {
+            test(module) {
+              return (
+                module.size() > 160000 &&
+                /node_modules[/\\]/.test(module.identifier())
+              )
+            },
+            name(module) {
+              const hash = crypto.createHash('sha1')
+              if (module.identifier) {
+                hash.update(module.identifier())
+              }
+              return hash.digest('hex').substring(0, 8)
+            },
+            chunks: 'all',
+            priority: 30,
+            minChunks: 1,
+            reuseExistingChunk: true,
+          },
+          chakra: {
+            test: /[\\/]node_modules[\\/](@chakra-ui|@emotion)[\\/]/,
+            name: 'chakra-ui',
+            chunks: 'all',
+            priority: 35,
+            enforce: true,
+          },
+        },
+      }
+
       // Production optimizations
       config.optimization.moduleIds = 'deterministic'
       config.optimization.chunkIds = 'deterministic'
+    } else {
+      config.optimization.splitChunks = {
+        chunks: 'async',
+        cacheGroups: {
+          default: false,
+        },
+      }
     }
 
     return config

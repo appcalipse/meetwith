@@ -1,3 +1,4 @@
+import { AvailabilityBlock } from './availability'
 import { Subscription } from './Subscription'
 
 export enum MemberType {
@@ -16,7 +17,10 @@ export interface GetGroupsFullResponse {
   id: string
   name: string
   slug: string
+  avatar_url?: string | null
+  description?: string | null
   members: Array<GroupMember>
+  member_availabilities?: AvailabilityBlock[]
 }
 
 export interface CreateGroupsResponse {
@@ -37,6 +41,8 @@ export interface Group {
   id: string
   name: string
   slug: string
+  avatar_url?: string | null
+  description?: string | null
 }
 export interface GroupMember {
   displayName: string
@@ -53,6 +59,8 @@ export interface GroupMember {
 export interface UpdateGroupPayload {
   name?: string
   slug?: string
+  avatar_url?: string
+  description?: string
 }
 
 export interface RemoveGroupMemberPayload {
@@ -154,4 +162,10 @@ export interface GetGroupsFullResponseWithMetadata {
   total: number
   hidden: number
   upgradeRequired: boolean
+}
+
+export interface GroupMemberAvailability {
+  groupId: string
+  memberAddress: string
+  availabilityBlocks: AvailabilityBlock[]
 }
