@@ -1,4 +1,5 @@
 import { calendar_v3 } from 'googleapis'
+import { DateTime } from 'luxon'
 import { Frequency, RRule, RRuleSet, rrulestr } from 'rrule'
 
 import {
@@ -14,6 +15,10 @@ import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 
 import { getBaseEventId } from '../calendar_sync_helpers'
 import { isJson } from '../generic_utils'
+interface DateTimeTimeZone {
+  dateTime: string
+  timeZone: string
+}
 
 export class GoogleEventMapper {
   /**
@@ -28,7 +33,7 @@ export class GoogleEventMapper {
       id: this.generateInternalId(googleEvent),
       title: googleEvent.summary || '(No title)',
       description: googleEvent.description,
-      start: this.parseDateTime(googleEvent.start!),
+      start: this.parseDateTime(googleEvent.start!, true),
       end: this.parseDateTime(googleEvent.end!),
       isAllDay: !googleEvent.start?.dateTime, // If no dateTime, it's all-day
 
@@ -127,14 +132,29 @@ export class GoogleEventMapper {
       ? extendedProperties.meetingId || getBaseEventId(googleEvent.id!)
       : googleEvent.id!
   }
+  private static parseCalendarDateTime(dto: DateTimeTimeZone): DateTime {
+    const parsed = DateTime.fromISO(dto.dateTime, { setZone: true })
 
+    return parsed.setZone(dto.timeZone, { keepLocalTime: false })
+  }
   private static parseDateTime(
-    dateTime: calendar_v3.Schema$EventDateTime
+    dateTime: calendar_v3.Schema$EventDateTime,
+    isStart?: boolean
   ): Date {
     if (dateTime.dateTime) {
-      return new Date(dateTime.dateTime)
+      return this.parseCalendarDateTime({
+        dateTime: dateTime.dateTime,
+        timeZone: dateTime.timeZone || 'UTC',
+      }).toJSDate()
     } else if (dateTime.date) {
-      return new Date(dateTime.date)
+      const date = DateTime.fromISO(dateTime.date, {
+        zone: dateTime.timeZone || 'UTC',
+      })
+      if (isStart) {
+        return date.startOf('day').toJSDate()
+      } else {
+        return date.endOf('day').toJSDate()
+      }
     }
     return new Date()
   }
