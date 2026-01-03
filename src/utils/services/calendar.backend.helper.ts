@@ -362,7 +362,8 @@ export const CalendarBackendHelper = {
   getCalendarEventsForAccount: async (
     account_address: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    onlyWithMeetingLinks?: boolean
   ): Promise<UnifiedEvent[]> => {
     const calendars = await getConnectedCalendars(account_address)
     const events = await Promise.all(
@@ -377,7 +378,8 @@ export const CalendarBackendHelper = {
         const externalSlots = await integration.getEvents(
           calendar.calendars!.filter(c => c.enabled).map(c => c.calendarId),
           startDate.toISOString(),
-          endDate.toISOString()
+          endDate.toISOString(),
+          onlyWithMeetingLinks
         )
         return externalSlots
       })
