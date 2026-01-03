@@ -22,6 +22,7 @@ import { FaRegCopy } from 'react-icons/fa6'
 import { MdCancel } from 'react-icons/md'
 
 import useAccountContext from '@/hooks/useAccountContext'
+import useClipboard from '@/hooks/useClipboard'
 import {
   CalendarEventsData,
   createEventsQueryKey,
@@ -69,8 +70,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
 
   const { currrentDate } = useCalendarContext()
   const currentAccount = useAccountContext()
-  const [copyFeedbackOpen, setCopyFeedbackOpen] = React.useState(false)
-
+  const { copyFeedbackOpen, handleCopy } = useClipboard()
   const isSchedulerOrOwner =
     !isCalendarEvent(slot) &&
     isAccountSchedulerOrOwner(slot?.participants, currentAccount?.address)
@@ -118,22 +118,6 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
       )
     }
   }, [slot, currentAccount])
-  const handleCopy = async () => {
-    try {
-      if ('clipboard' in navigator) {
-        await navigator.clipboard.writeText(slot?.meeting_url || '')
-      } else {
-        document.execCommand('copy', true, slot?.meeting_url || '')
-      }
-    } catch (err) {
-      document.execCommand('copy', true, slot?.meeting_url || '')
-    }
-    logEvent('Copied link from Calendar', { url: slot?.meeting_url || '' })
-    setCopyFeedbackOpen(true)
-    setTimeout(() => {
-      setCopyFeedbackOpen(false)
-    }, 2000)
-  }
   const handleRSVP = async (status: ParticipationStatus) => {
     if (isCalendarEvent(slot) || !actor || !currentAccount) return
     if (status === actor.status) return
@@ -249,7 +233,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                   w={4}
                   colorScheme="white"
                   variant="link"
-                  onClick={handleCopy}
+                  onClick={() => handleCopy(slot.meeting_url || '')}
                   leftIcon={<FaRegCopy />}
                 />
               </Tooltip>
