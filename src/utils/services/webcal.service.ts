@@ -95,7 +95,8 @@ export default class WebCalService implements BaseCalendarService {
   async getEvents(
     calendarIds: string[],
     dateFrom: string,
-    dateTo: string
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
   ): Promise<UnifiedEvent[]> {
     try {
       const icsData = await this.fetchIcsData()
@@ -129,7 +130,9 @@ export default class WebCalService implements BaseCalendarService {
           const eventEndMs = endDate.getTime()
 
           const rrule = vevent.getFirstPropertyValue('rrule')
-
+          if (onlyWithMeetingLinks && !event.location) {
+            return null
+          }
           const exdates = vevent
             .getAllProperties('exdate')
             .map(exdateProp => {

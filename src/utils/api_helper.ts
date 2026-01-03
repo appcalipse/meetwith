@@ -111,6 +111,11 @@ import { TelegramConnection, TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import {
+  calendarEventsPreprocessors,
+  decodeMeeting,
+  meetWithSeriesPreprocessors,
+} from './calendar_manager'
+import {
   apiUrl,
   QUICKPOLL_DEFAULT_LIMIT,
   QUICKPOLL_DEFAULT_OFFSET,
@@ -2630,6 +2635,30 @@ export const getEvents = async (
       referenceDate.endOf('month').endOf('week').toISO() || ''
     )}`
   )
+}
+export const getCalendarEvents = async (
+  startDate: DateTime,
+  endDate: DateTime,
+  onlyMeetings = true
+): Promise<CalendarEvents> => {
+  const events = await internalFetch<CalendarEvents>(
+    `/secure/calendar_events?startDate=${encodeURIComponent(
+      startDate.toISO() || ''
+    )}&endDate=${encodeURIComponent(
+      endDate.toISO() || ''
+    )}&onlyMeetings=${onlyMeetings}`
+  )
+
+  return {
+    calendarEvents: calendarEventsPreprocessors(
+      events.calendarEvents,
+      startDate,
+      endDate
+    ),
+    mwwEvents: await Promise.all(
+      meetWithSeriesPreprocessors(events.mwwEvents, startDate, endDate)
+    ),
+  }
 }
 
 export const getSlotInstanceById = async (

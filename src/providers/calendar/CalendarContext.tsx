@@ -90,23 +90,29 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     async (date: DateTime): Promise<CalendarEventsData> => {
       const res = await getEvents(date)
       return {
-        calendarEvents: calendarEventsPreprocessors(res.calendarEvents, date),
+        calendarEvents: calendarEventsPreprocessors(
+          res.calendarEvents,
+          date.startOf('month').startOf('week'),
+          date.endOf('month').endOf('week')
+        ),
         mwwEvents: await Promise.all(
-          meetWithSeriesPreprocessors(res.mwwEvents, date).map(
-            async meeting => {
-              // TODO: Pass all events through a preprocessor first before mapping this prepropcesssor shopuld get all the meeting sereis and check if all single instance of that meeting is already included in the events, if yes it returns all the events and discard the mastyer event otherwise it takes the availaible events and adds the master events to it.
-              try {
-                const decodedMeeting = await decodeMeeting(
-                  meeting as DBSlot,
-                  currentAccount!
-                )
-                return decodedMeeting
-              } catch (e) {
-                console.error('Error decoding meeting in calendar provider:', e)
-                return null
-              }
+          meetWithSeriesPreprocessors(
+            res.mwwEvents,
+            date.startOf('month').startOf('week'),
+            date.endOf('month').endOf('week')
+          ).map(async meeting => {
+            // TODO: Pass all events through a preprocessor first before mapping this prepropcesssor shopuld get all the meeting sereis and check if all single instance of that meeting is already included in the events, if yes it returns all the events and discard the mastyer event otherwise it takes the availaible events and adds the master events to it.
+            try {
+              const decodedMeeting = await decodeMeeting(
+                meeting as DBSlot,
+                currentAccount!
+              )
+              return decodedMeeting
+            } catch (e) {
+              console.error('Error decoding meeting in calendar provider:', e)
+              return null
             }
-          )
+          })
         ).then(meetings => meetings.filter(m => m !== null)),
       }
     },

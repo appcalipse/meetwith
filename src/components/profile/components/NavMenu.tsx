@@ -132,6 +132,7 @@ export const NavMenu: React.FC<{
     return tabs.filter(item => !item.isDisabled)
   }, [groupInvitesCount, contactsRequestCount])
   const handleEmptyGroupCheck = async () => {
+    return
     const emptyGroups = await getGroupsEmpty()
     emptyGroups?.forEach((data, index) => {
       if (!toast.isActive(data.id)) {

@@ -11,10 +11,11 @@ import {
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
-import { FC, ReactNode, useEffect, useRef } from 'react'
+import { FC, ReactNode, useEffect, useMemo, useRef } from 'react'
 
 import { ActionsContext } from '@/providers/schedule/ActionsContext'
 import { Account } from '@/types/Account'
+import { UnifiedEvent } from '@/types/Calendar'
 import { Intents } from '@/types/Dashboard'
 import {
   ExtendedDBSlot,
@@ -22,9 +23,8 @@ import {
   MeetingDecrypted,
 } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { getMeeting, getMeetingsForDashboard } from '@/utils/api_helper'
+import { getCalendarEvents, getMeeting } from '@/utils/api_helper'
 import { decodeMeeting, deleteMeeting } from '@/utils/calendar_manager'
-import { MEETING_PAGE_SIZE } from '@/utils/constants/meeting'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
 import {
@@ -44,38 +44,49 @@ import { getSignature } from '@/utils/storage'
 
 import { useCancelDialog } from '../schedule/cancel.dialog.hook'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
+import CalendarEventCard from './CalendarEventCard'
 import MeetingCard from './MeetingCard'
 
 interface MeetingBaseProps {
   currentAccount: Account
 }
+type DashboardEvent = ExtendedDBSlot | UnifiedEvent
+
+const isCalendarEvent = (event: DashboardEvent): event is UnifiedEvent => {
+  return 'calendarId' in event
+}
 
 interface MeetingsQueryConfig {
   accountAddress: string
-  startDate: Date
+  timeWindow: {
+    start: DateTime
+    end: DateTime
+  }
 }
-
+const WEEKS_TO_LOAD = 1
 const createMeetingsQueryConfig = ({
   accountAddress,
-  startDate,
+  timeWindow,
 }: MeetingsQueryConfig) => ({
-  queryKey: ['meetings', accountAddress, startDate.toISOString()],
+  queryKey: [
+    'meetings',
+    accountAddress,
+    timeWindow.start.toISO(),
+    timeWindow.end.toISO(),
+  ],
   queryFn: async ({ pageParam: offset = 0 }) => {
-    const meetings = (await getMeetingsForDashboard(
-      accountAddress,
-      startDate,
-      MEETING_PAGE_SIZE,
-      offset
-    )) as ExtendedDBSlot[]
+    const meetings = await getCalendarEvents(
+      timeWindow.start.plus({ weeks: offset }),
+      timeWindow.end.plus({ weeks: offset }),
+      true
+    )
 
     return {
       meetings,
-      nextOffset: offset + meetings.length,
-      hasMore: meetings.length >= MEETING_PAGE_SIZE,
+      nextOffset: WEEKS_TO_LOAD,
     }
   },
-  getNextPageParam: (lastPage: { hasMore: boolean; nextOffset: number }) =>
-    lastPage.hasMore ? lastPage.nextOffset : undefined,
+  getNextPageParam: (lastPage: { nextOffset: number }) => lastPage.nextOffset,
   staleTime: 30_000,
   refetchOnWindowFocus: true,
 })
@@ -83,13 +94,16 @@ const createMeetingsQueryConfig = ({
 const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const queryClient = useQueryClient()
-  const startDate = DateTime.now()
-    .minus({ hours: 1 })
-    .startOf('hour')
-    .toJSDate()
+  const startWindow = useMemo(
+    () => ({
+      start: DateTime.now().minus({ hours: 1 }).startOf('hour'),
+      end: DateTime.now().plus({ weeks: WEEKS_TO_LOAD }),
+    }),
+    []
+  )
   const queryConfig = createMeetingsQueryConfig({
     accountAddress: currentAccount.address,
-    startDate,
+    timeWindow: startWindow,
   })
   const {
     data,
@@ -115,7 +129,16 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
     }
   }, [hasNextPage, isFetchingNextPage, isLoading, queryClient])
 
-  const meetings = data?.pages.flatMap(page => page.meetings) ?? []
+  const meetings = useMemo(() => {
+    if (!data) return []
+
+    const allEvents: DashboardEvent[] = data.pages
+      .flatMap(page => page.meetings)
+      .flatMap(data => [...data.mwwEvents, ...data.calendarEvents])
+      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+
+    return allEvents
+  }, [data])
   const toast = useToast()
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
@@ -391,21 +414,33 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   } else {
     content = (
       <VStack mb={8}>
-        {meetings.map(meeting => (
-          <MeetingCard
-            key={meeting.id}
-            meeting={meeting}
-            timezone={timezone}
-            onCancel={(removed: string[], skipToast?: boolean) =>
-              afterClose(
-                MeetingChangeType.DELETE,
-                undefined,
-                removed,
-                skipToast
-              )
-            }
-          />
-        ))}
+        {meetings.map(event => {
+          if (isCalendarEvent(event)) {
+            return (
+              <CalendarEventCard
+                key={event.sourceEventId}
+                event={event}
+                timezone={timezone}
+              />
+            )
+          } else {
+            return (
+              <MeetingCard
+                key={event.id}
+                meeting={event}
+                timezone={timezone}
+                onCancel={(removed: string[], skipToast?: boolean) =>
+                  afterClose(
+                    MeetingChangeType.DELETE,
+                    undefined,
+                    removed,
+                    skipToast
+                  )
+                }
+              />
+            )
+          }
+        })}
         {hasNextPage && (
           <Box
             ref={loadMoreRef}
