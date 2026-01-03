@@ -1196,7 +1196,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
   private async getEventsCalendarId(
     calendarId: string,
     dateFrom: string,
-    dateTo: string
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
   ): Promise<UnifiedEvent[]> {
     const myGoogleAuth = await this.auth.getToken()
     const calendar = google.calendar({
@@ -1211,6 +1212,9 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         timeMin: dateFrom,
         timeMax: dateTo,
         pageToken: token,
+        ...(onlyWithMeetingLinks && {
+          q: 'hangoutLink location conferenceData',
+        }),
       })
       aggregatedEvents.push(...(response.data.items || []))
       token = response.data.nextPageToken || undefined
