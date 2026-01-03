@@ -76,8 +76,8 @@ const createMeetingsQueryConfig = ({
   ],
   queryFn: async ({ pageParam: offset = 0 }) => {
     const meetings = await getCalendarEvents(
-      timeWindow.start.plus({ weeks: offset }).toJSDate(),
-      timeWindow.end.plus({ weeks: offset }).toJSDate(),
+      timeWindow.start.plus({ weeks: offset }),
+      timeWindow.end.plus({ weeks: offset }),
       true
     )
 
