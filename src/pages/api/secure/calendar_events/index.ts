@@ -15,6 +15,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       const start = extractQuery(req.query, 'startDate')
       const end = extractQuery(req.query, 'endDate')
+      const onlyMeetings = extractQuery(req.query, 'onlyMeetings') === 'true'
 
       const startDate = new Date(
         start ? start : DateTime.now().startOf('month').toISO()
@@ -28,7 +29,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         CalendarBackendHelper.getCalendarEventsForAccount(
           account_address,
           startDate,
-          endDate
+          endDate,
+          onlyMeetings
         ),
       ])
 
