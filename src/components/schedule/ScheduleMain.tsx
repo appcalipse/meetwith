@@ -354,10 +354,12 @@ const ScheduleMain: FC<IInitialProps> = ({
         setCanCancel(false)
       }
       if (decryptedMeeting.permissions) {
-        const canEditMeetingDetails =
-          !!decryptedMeeting?.permissions?.includes(
-            MeetingPermissions.EDIT_MEETING
-          ) || isSchedulerOrOwner
+        const canEditMeetingDetails = canAccountAccessPermission(
+          decryptedMeeting?.permissions,
+          decryptedMeeting?.participants || [],
+          currentAccount?.address,
+          MeetingPermissions.EDIT_MEETING
+        )
         setCanEditMeetingDetails(canEditMeetingDetails)
         const canViewParticipants = canAccountAccessPermission(
           decryptedMeeting?.permissions,

@@ -286,13 +286,19 @@ export class Office365CalendarService implements IOffcie365CalendarService {
   async getEventsCalendarId(
     calendarId: string,
     dateFrom: string,
-    dateTo: string
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
   ): Promise<UnifiedEvent[]> {
     const dateFromParsed = new Date(dateFrom)
     const dateToParsed = new Date(dateTo)
 
     const events: MicrosoftGraphEvent[] = []
     let nextLink: string | undefined
+    let filter = "type ne 'occurrence'"
+    if (onlyWithMeetingLinks) {
+      filter +=
+        ' and (isOnlineMeeting eq true or onlineMeetingUrl ne null or locations/any())'
+    }
 
     let response = await this.graphClient
       .api(`/me/calendars/${calendarId}/calendarView`)
@@ -300,7 +306,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         startdatetime: dateFromParsed.toISOString(),
         enddatetime: dateToParsed.toISOString(),
         $top: '500',
-        $filter: "type ne 'occurrence'",
+        $filter: filter,
       })
       .get()
 

@@ -10,7 +10,7 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 import { LuCalendarCheck2 } from 'react-icons/lu'
 import { MdOutlineCalendarMonth } from 'react-icons/md'
@@ -55,18 +55,9 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const [currentTab, setCurrentTab] = useState(0)
-  const { push, query } = useRouter()
-  const { slotId } = query as {
-    slotId: string
-  }
-  useEffect(() => {
-    if (slotId) {
-      setCurrentTab(1)
-    } else {
-      setCurrentTab(0)
-    }
-  }, [slotId])
+  const [currentTab, setCurrentTab] = useState(1)
+  const { push } = useRouter()
+
   return (
     <Tabs
       w="100%"

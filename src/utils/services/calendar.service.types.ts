@@ -84,7 +84,8 @@ export interface BaseCalendarService {
   getEvents(
     calendarIds: string[],
     dateFrom: string,
-    dateTo: string
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
   ): Promise<UnifiedEvent[]>
 
   /**
