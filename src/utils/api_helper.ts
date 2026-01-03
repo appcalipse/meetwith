@@ -110,6 +110,11 @@ import { TelegramConnection, TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import {
+  calendarEventsPreprocessors,
+  decodeMeeting,
+  meetWithSeriesPreprocessors,
+} from './calendar_manager'
+import {
   apiUrl,
   QUICKPOLL_DEFAULT_LIMIT,
   QUICKPOLL_DEFAULT_OFFSET,
@@ -961,14 +966,64 @@ export const removeGroupMember = async (
 export const editGroup = async (
   group_id: string,
   name?: string,
-  slug?: string
+  slug?: string,
+  avatar_url?: string,
+  description?: string
 ) => {
   const response = await internalFetch<{ success: true }>(
     `/secure/group/${group_id}`,
     'PUT',
-    { name, slug }
+    { name, slug, avatar_url, description }
   )
   return response?.success
+}
+
+export const uploadGroupAvatar = async (
+  groupId: string,
+  formData: FormData
+): Promise<string> => {
+  const response = await internalFetch<string>(
+    `/secure/group/${groupId}/avatar`,
+    'POST',
+    formData,
+    {},
+    {
+      'Content-Type': 'multipart/form-data',
+    },
+    true
+  )
+  return response
+}
+
+export const getGroupMemberAvailabilities = async (
+  groupId: string,
+  memberAddress: string
+): Promise<AvailabilityBlock[]> => {
+  const response = await internalFetch<AvailabilityBlock[]>(
+    `/secure/group/${groupId}/member/${memberAddress}/availabilities`
+  )
+  return response || []
+}
+
+export const updateGroupMemberAvailabilities = async (
+  groupId: string,
+  memberAddress: string,
+  availabilityIds: string[]
+): Promise<void> => {
+  await internalFetch<{ success: true }>(
+    `/secure/group/${groupId}/member/${memberAddress}/availabilities`,
+    'PUT',
+    { availability_ids: availabilityIds }
+  )
+}
+
+export const getGroupMembersAvailabilities = async (
+  groupId: string
+): Promise<Record<string, AvailabilityBlock[]>> => {
+  const response = await internalFetch<Record<string, AvailabilityBlock[]>>(
+    `/secure/group/${groupId}/members/availabilities`
+  )
+  return response || {}
 }
 export const deleteGroup = async (group_id: string) => {
   const response = await internalFetch<{ success: true }>(
@@ -1514,10 +1569,12 @@ export const getSuggestedSlots = async (
         endDate,
         duration,
       })
-    ).map(slot => ({
-      start: new Date(slot.start),
-      end: new Date(slot.end),
-    })) as Interval[]
+    )
+      .map(slot => ({
+        start: new Date(slot.start),
+        end: new Date(slot.end),
+      }))
+      .sort((a, b) => a.start.getTime() - b.start.getTime()) as Interval[]
   } catch (e) {
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
@@ -2577,6 +2634,30 @@ export const getEvents = async (
       referenceDate.endOf('month').endOf('week').toISO() || ''
     )}`
   )
+}
+export const getCalendarEvents = async (
+  startDate: DateTime,
+  endDate: DateTime,
+  onlyMeetings = true
+): Promise<CalendarEvents> => {
+  const events = await internalFetch<CalendarEvents>(
+    `/secure/calendar_events?startDate=${encodeURIComponent(
+      startDate.toISO() || ''
+    )}&endDate=${encodeURIComponent(
+      endDate.toISO() || ''
+    )}&onlyMeetings=${onlyMeetings}`
+  )
+
+  return {
+    calendarEvents: calendarEventsPreprocessors(
+      events.calendarEvents,
+      startDate,
+      endDate
+    ),
+    mwwEvents: await Promise.all(
+      meetWithSeriesPreprocessors(events.mwwEvents, startDate, endDate)
+    ),
+  }
 }
 
 export const getSlotInstanceById = async (
