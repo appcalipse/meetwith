@@ -53,3 +53,6 @@ zoom-token.json
 .qodo
 .nvmrc
 .github/rules/commit-message.mdx
+
+# Sentry Config File
+.env.sentry-build-plugin
