@@ -453,4 +453,13 @@ export default class WebCalService implements BaseCalendarService {
       return null
     }
   }
+  updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: string
+  ): Promise<void> {
+    console.warn('ICS feeds are read-only. Cannot update RSVP status.')
+    return Promise.resolve()
+  }
 }

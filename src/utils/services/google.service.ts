@@ -1058,7 +1058,9 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           return myGoogleAuth
         })
         .catch(err => {
-          Sentry.captureException(err)
+          if (err.message !== 'invalid_grant') {
+            Sentry.captureException(err)
+          }
           return myGoogleAuth
         })
 
@@ -1361,6 +1363,63 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       payload.attendees = attendees
     }
     return payload
+  }
+  async updateExternalEvent(event: calendar_v3.Schema$Event) {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    if (!event.id || !event.extendedProperties?.private?.meetingId) {
+      throw new Error('Event ID or meeting ID is missing')
+    }
+    await calendar.events.update({
+      calendarId: 'primary',
+      eventId: event.id,
+      requestBody: event,
+    })
+  }
+  async updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: string
+  ) {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    // First, get the current event
+    const event = await this.getEventById(eventId, calendarId)
+    if (!event) {
+      throw new Error(`Event ${eventId} not found`)
+    }
+
+    // Update only the specific attendee's response status
+    const updatedAttendees = (event.attendees || []).map(attendee => {
+      if (attendee.email?.toLowerCase() === attendeeEmail.toLowerCase()) {
+        return {
+          ...attendee,
+          responseStatus,
+        }
+      }
+      return attendee
+    })
+    // Create minimal payload with only attendees
+    // This is used to update the RSVP status of an external event
+    const payload: calendar_v3.Schema$Event = {
+      attendees: updatedAttendees,
+    }
+
+    // Update the event with only the RSVP change
+    // No need to send notifications for external events
+    await calendar.events.patch({
+      auth: myGoogleAuth,
+      calendarId,
+      eventId,
+      requestBody: payload,
+    })
   }
 }
 
