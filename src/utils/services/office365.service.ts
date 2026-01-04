@@ -564,4 +564,45 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         )
       )
   }
+  async updateExternalEvent(event: Partial<MicrosoftGraphEvent>) {
+    if (!event.id) {
+      throw new Error('Event ID is required for update')
+    }
+    await this.graphClient.api(`/me/events/${event.id}`).patch(event)
+  }
+  async updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: string
+  ) {
+    const event = await this.getEvent(eventId, calendarId)
+    if (!event.attendees) {
+      throw new Error('No attendees found for the event')
+    }
+    const attendee = event.attendees.find(
+      att =>
+        att.emailAddress.address.toLowerCase() === attendeeEmail.toLowerCase()
+    )
+    if (!attendee) {
+      throw new Error('Attendee not found in the event')
+    }
+    attendee.status = {
+      response:
+        responseStatus === ParticipationStatus.Accepted
+          ? 'accepted'
+          : responseStatus === ParticipationStatus.Rejected
+          ? 'declined'
+          : 'notResponded',
+      time: new Date().toISOString(),
+    }
+
+    await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${eventId}`)
+      .header(
+        'Prefer',
+        'outlook.send-meeting-invitations="sendToAllAndSaveCopy"'
+      )
+      .patch({ attendees: event.attendees })
+  }
 }
