@@ -264,7 +264,14 @@ export default class CaldavCalendarService
   ): Promise<NewCalendarEventType> {
     try {
       const events = await this.getEventsByUID(meeting_id)
-
+      if (events.length === 0) {
+        return this.createEvent(
+          calendarOwnerAccountAddress,
+          meetingDetails,
+          new Date(),
+          calendarId
+        )
+      }
       const participantsInfo: ParticipantInfo[] =
         meetingDetails.participants.map(participant => ({
           type: participant.type,

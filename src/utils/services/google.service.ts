@@ -379,6 +379,16 @@ export default class GoogleCalendarService
           meeting_id,
         }))
       const event = await this.getEventById(meeting_id, _calendarId)
+      if (!event) {
+        return resolve(
+          this.createEvent(
+            calendarOwnerAccountAddress,
+            meetingDetails,
+            new Date(),
+            _calendarId
+          )
+        )
+      }
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
@@ -478,6 +488,43 @@ export default class GoogleCalendarService
               'There was an error contacting google calendar service: ',
               err
             )
+
+            if (err instanceof GaxiosError && err.code === 404) {
+              calendar.events.insert(
+                {
+                  auth: myGoogleAuth,
+                  calendarId,
+                  sendNotifications: true,
+                  sendUpdates: 'all',
+                  requestBody: {
+                    ...payload,
+                    id: meeting_id.replaceAll('-', ''), // Set the ID explicitly
+                  },
+                },
+                function (err, event) {
+                  if (err || !event?.data) {
+                    console.error(
+                      'Fallback Update:>> There was an error contacting google calendar service: ',
+                      err
+                    )
+                    console.error(err)
+                    return reject(err)
+                  }
+
+                  return resolve({
+                    uid: meetingDetails.meeting_id,
+                    ...event.data,
+                    id: meetingDetails.meeting_id,
+                    additionalInfo: {
+                      hangoutLink: event.data.hangoutLink || '',
+                    },
+                    type: 'google_calendar',
+                    password: '',
+                    url: '',
+                  })
+                }
+              )
+            }
 
             return reject(err)
           }
