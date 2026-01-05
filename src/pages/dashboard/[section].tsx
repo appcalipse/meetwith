@@ -2,6 +2,8 @@ import { Container } from '@chakra-ui/layout'
 import TawkMessengerReact from '@tawk.to/tawk-messenger-react'
 import { NextPage } from 'next'
 
+import { isProduction } from '@/utils/constants'
+
 import DashboardContent from '../../components/profile/DashboardContent'
 import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
 import { withLoginRedirect } from '../../session/requireAuthentication'
@@ -20,10 +22,12 @@ const Dashboard: NextPage<DashboardProps> = props => {
       flex={1}
       px={{ base: 5, md: 8 }}
     >
-      <TawkMessengerReact
-        propertyId={process.env.NEXT_PUBLIC_TAWK_PROPERTY_ID!}
-        widgetId={process.env.NEXT_PUBLIC_TAWK_WIDGET_ID!}
-      />
+      {isProduction && (
+        <TawkMessengerReact
+          propertyId={process.env.NEXT_PUBLIC_TAWK_PROPERTY_ID!}
+          widgetId={process.env.NEXT_PUBLIC_TAWK_WIDGET_ID!}
+        />
+      )}
       <DashboardContent currentSection={props.section} />
     </Container>
   )
