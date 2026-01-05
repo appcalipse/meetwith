@@ -506,6 +506,40 @@ export const CalendarBackendHelper = {
       )
     }
   },
+  updateCalendaRsvpStatus: async (
+    account_address: string,
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    status: AttendeeStatus
+  ): Promise<void> => {
+    const calendars = await getConnectedCalendars(account_address)
+    const targetCalendar = calendars.find(
+      cal =>
+        cal.calendars?.some(c => c.calendarId === calendarId && c.enabled) &&
+        cal.calendars?.some(c => c.calendarId === calendarId)
+    )
+
+    if (!targetCalendar) {
+      throw new Error(
+        `Calendar not found or not enabled for calendarId: ${calendarId}`
+      )
+    }
+
+    const integration = getConnectedCalendarIntegration(
+      targetCalendar.account_address,
+      targetCalendar.email,
+      targetCalendar.provider,
+      targetCalendar.payload
+    )
+
+    await integration.updateEventRsvpForExternalEvent(
+      calendarId,
+      eventId,
+      attendeeEmail,
+      status
+    )
+  },
 }
 
 export const generateIcsServer = async (
