@@ -93,7 +93,7 @@ export default class WebCalService implements BaseCalendarService {
    * Fetches all events from the ICS feed (for unified calendar view)
    */
   async getEvents(
-    calendarIds: string[],
+    _calendarIds: string[],
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -452,5 +452,14 @@ export default class WebCalService implements BaseCalendarService {
     } catch {
       return null
     }
+  }
+  updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: string
+  ): Promise<void> {
+    console.warn('ICS feeds are read-only. Cannot update RSVP status.')
+    return Promise.resolve()
   }
 }

@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import ICAL from 'ical.js'
-import { Attendee } from 'ics'
+import { Attendee, ParticipationStatus } from 'ics'
 import { DateTime } from 'luxon'
 import {
   createAccount,
@@ -311,6 +311,134 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     } catch (reason) {
       Sentry.captureException(reason)
       throw reason
+    }
+  }
+
+  /**
+   * Updates an existing CalDAV event by modifying the existing VEVENT in-place
+   * This preserves provider-specific properties unlike the generateIcsServer approach
+   */
+  async updateEventFromUnified(
+    sourceEventId: string,
+    calendarId: string,
+    updatedProps: {
+      summary?: string
+      description?: string
+      dtstart?: Date
+      dtend?: Date
+      location?: string
+      attendees?: Array<{ email: string; name?: string; status?: string }>
+    }
+  ): Promise<void> {
+    try {
+      // Fetch the existing event metadata
+      const events = await this.getEventsByUID(sourceEventId)
+      const eventToUpdate = events.find(
+        event => event.uid === sourceEventId.replaceAll('-', '')
+      )
+
+      if (!eventToUpdate) {
+        throw new Error(`Event not found: ${sourceEventId}`)
+      }
+
+      // Fetch the raw calendar object to get the actual iCalendar data
+      const objects = await fetchCalendarObjects({
+        calendar: {
+          url: calendarId,
+        },
+        objectUrls: [eventToUpdate.url],
+        headers: this.headers,
+      })
+
+      if (!objects || objects.length === 0 || !objects[0].data) {
+        throw new Error('Failed to fetch calendar object data')
+      }
+
+      // Parse the existing iCalendar data
+      const jcalData = ICAL.parse(objects[0].data)
+      const vcalendar = new ICAL.Component(jcalData)
+      const vevent = vcalendar.getFirstSubcomponent('vevent')
+
+      if (!vevent) {
+        throw new Error('No VEVENT found in calendar data')
+      }
+
+      // Update SUMMARY
+      if (updatedProps.summary !== undefined) {
+        vevent.updatePropertyWithValue('summary', updatedProps.summary)
+      }
+
+      // Update DESCRIPTION
+      if (updatedProps.description !== undefined) {
+        vevent.updatePropertyWithValue('description', updatedProps.description)
+      }
+
+      // Update LOCATION
+      if (updatedProps.location !== undefined) {
+        vevent.updatePropertyWithValue('location', updatedProps.location)
+      }
+
+      // Update DTSTART
+      if (updatedProps.dtstart) {
+        const icalTime = ICAL.Time.fromJSDate(updatedProps.dtstart, true)
+        vevent.updatePropertyWithValue('dtstart', icalTime)
+      }
+
+      // Update DTEND
+      if (updatedProps.dtend) {
+        const icalTime = ICAL.Time.fromJSDate(updatedProps.dtend, true)
+        vevent.updatePropertyWithValue('dtend', icalTime)
+      }
+
+      // Update ATTENDEES (replace all)
+      if (updatedProps.attendees) {
+        // Remove existing attendees
+        const existingAttendees = vevent.getAllProperties('attendee')
+        existingAttendees.forEach(prop => vevent.removeProperty(prop))
+
+        // Add updated attendees
+        updatedProps.attendees.forEach(attendee => {
+          const attendeeProp = vevent.addPropertyWithValue(
+            'attendee',
+            `mailto:${attendee.email}`
+          )
+          if (attendee.name) {
+            attendeeProp.setParameter('cn', attendee.name)
+          }
+          if (attendee.status) {
+            attendeeProp.setParameter('partstat', attendee.status)
+          }
+          attendeeProp.setParameter('role', 'REQ-PARTICIPANT')
+        })
+      }
+
+      // Update LAST-MODIFIED
+      const now = ICAL.Time.now()
+      vevent.updatePropertyWithValue('last-modified', now)
+
+      // Increment SEQUENCE
+      const currentSequence = vevent.getFirstPropertyValue('sequence') || 0
+      const sequenceNumber =
+        typeof currentSequence === 'number'
+          ? currentSequence
+          : parseInt(String(currentSequence), 10) || 0
+      vevent.updatePropertyWithValue('sequence', sequenceNumber + 1)
+
+      // Update DTSTAMP
+      vevent.updatePropertyWithValue('dtstamp', now)
+
+      // Update the calendar object on the server
+      await updateCalendarObject({
+        calendarObject: {
+          url: eventToUpdate.url,
+          data: vcalendar.toString(),
+          etag: eventToUpdate.etag,
+        },
+        headers: this.headers,
+      })
+    } catch (error) {
+      Sentry.captureException(error)
+      throw new Error(`Failed to update CalDAV event: ${error}`)
     }
   }
   async deleteEvent(meeting_id: string, _calendarId: string): Promise<void> {
@@ -994,6 +1122,133 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       // Some servers handle this automatically
       console.warn('Failed to add EXDATE to master event:', error)
       Sentry.captureException(error)
+    }
+  }
+  /**
+   * Updates the RSVP status (PARTSTAT) of a single attendee in a CalDAV event.
+   *
+   * This method performs an in-place modification of the existing VEVENT component,
+   * updating only the specified attendee's PARTSTAT parameter while preserving:
+   * - All other attendees and their statuses
+   * - Event metadata (EXDATE, RRULE, VTIMEZONE, etc.)
+   * - Custom properties (X-*, VALARM, etc.)
+   *
+   * The SEQUENCE number is automatically incremented and LAST-MODIFIED/DTSTAMP are updated.
+   *
+   * @param calendarId - CalDAV calendar URL (e.g., "https://caldav.example.com/calendars/user/home/")
+   * @param eventId - Event UID (unique identifier, typically without dashes)
+   * @param attendeeEmail - Email of the attendee whose status to update (case-insensitive)
+   * @param responseStatus - New PARTSTAT value (e.g., "ACCEPTED", "DECLINED", "TENTATIVE", "NEEDS-ACTION")
+   *                        Will be automatically converted to uppercase for iCalendar compliance
+   *
+   * @throws {Error} If event not found
+   * @throws {Error} If attendee not found in event
+   * @throws {Error} If calendar object cannot be fetched or updated
+   *
+   * @example
+   * await caldavService.updateEventRsvpForExternalEvent(
+   *   'https://caldav.icloud.com/1234/calendars/home/',
+   *   'recurring-meeting-uid',
+   *   'alice@example.com',
+   *   'ACCEPTED'
+   * )
+   */
+  async updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: ParticipationStatus
+  ): Promise<void> {
+    try {
+      // Fetch the existing event metadata
+      const events = await this.getEventsByUID(eventId)
+      const eventToUpdate = events.find(event => event.uid === eventId)
+
+      if (!eventToUpdate) {
+        throw new Error(`Event with ID ${eventId} not found`)
+      }
+
+      // Verify attendee exists
+      const attendeeExists = eventToUpdate.attendees.some(att => {
+        const email = att[1]?.toString().replace(/^MAILTO:/i, '')
+        return email?.toLowerCase() === attendeeEmail.toLowerCase()
+      })
+
+      if (!attendeeExists) {
+        throw new Error(
+          `Attendee with email ${attendeeEmail} not found in event ${eventId}`
+        )
+      }
+
+      // Fetch the raw calendar object to get the actual iCalendar data
+      const objects = await fetchCalendarObjects({
+        calendar: {
+          url: calendarId,
+        },
+        objectUrls: [eventToUpdate.url],
+        headers: this.headers,
+      })
+
+      if (!objects || objects.length === 0 || !objects[0].data) {
+        throw new Error('Failed to fetch calendar object data')
+      }
+
+      // Parse the existing iCalendar data
+      const jcalData = ICAL.parse(objects[0].data)
+      const vcalendar = new ICAL.Component(jcalData)
+      const vevent = vcalendar.getFirstSubcomponent('vevent')
+
+      if (!vevent) {
+        throw new Error('No VEVENT found in calendar data')
+      }
+
+      // Find and update the specific attendee's PARTSTAT
+      const attendees = vevent.getAllProperties('attendee')
+      let attendeeFound = false
+
+      attendees.forEach(attendeeProp => {
+        const calAddress = attendeeProp.getFirstValue()
+        if (
+          calAddress &&
+          calAddress.toString().toLowerCase() ===
+            `mailto:${attendeeEmail.toLowerCase()}`
+        ) {
+          attendeeProp.setParameter('partstat', responseStatus.toUpperCase())
+          attendeeFound = true
+        }
+      })
+
+      if (!attendeeFound) {
+        throw new Error('Attendee not found in event for RSVP update')
+      }
+
+      // Update LAST-MODIFIED
+      const now = ICAL.Time.now()
+      vevent.updatePropertyWithValue('last-modified', now)
+
+      // Increment SEQUENCE
+      const currentSequence = vevent.getFirstPropertyValue('sequence') || 0
+      const sequenceNumber =
+        typeof currentSequence === 'number'
+          ? currentSequence
+          : parseInt(String(currentSequence), 10) || 0
+      vevent.updatePropertyWithValue('sequence', sequenceNumber + 1)
+
+      // Update DTSTAMP
+      vevent.updatePropertyWithValue('dtstamp', now)
+
+      // Update the calendar object on the server
+      await updateCalendarObject({
+        calendarObject: {
+          url: eventToUpdate.url,
+          data: vcalendar.toString(),
+          etag: eventToUpdate.etag,
+        },
+        headers: this.headers,
+      })
+    } catch (error) {
+      Sentry.captureException(error)
+      throw new Error(`Failed to update RSVP for CalDAV event: ${error}`)
     }
   }
 }

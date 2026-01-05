@@ -12,7 +12,7 @@ import format from 'date-fns/format'
 import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
 import { DateTime } from 'luxon'
 
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import { ConditionRelation } from '@/types/common'
 import {
   MeetingChangeType,
@@ -39,6 +39,8 @@ import { getCalendarPrimaryEmail } from '../sync_helper'
 import { isValidEmail, isValidUrl } from '../validations'
 import { CalendarServiceHelper } from './calendar.helper'
 import { getConnectedCalendarIntegration } from './connected_calendars.factory'
+import { GoogleEventMapper } from './google.mapper'
+import { Office365EventMapper } from './office.mapper'
 
 export const CalendarBackendHelper = {
   getBusySlotsForAccount: async (
@@ -389,127 +391,106 @@ export const CalendarBackendHelper = {
   updateCalendarEvent: async (
     account_address: string,
     unifiedEvent: UnifiedEvent
-  ): Promise<UnifiedEvent> => {
-    // Validate required fields
-    if (
-      !unifiedEvent.source ||
-      !unifiedEvent.calendarId ||
-      !unifiedEvent.sourceEventId
-    ) {
-      throw new Error(
-        'Missing required fields: source, calendarId, or sourceEventId'
-      )
-    }
-
-    // Find the calendar integration for this event
-    const calendars = await getConnectedCalendars(account_address)
-
-    const targetCalendar = calendars.find(
-      cal =>
-        cal.provider === unifiedEvent.source &&
-        cal.email === unifiedEvent.accountEmail &&
-        cal.calendars?.some(
-          c => c.calendarId === unifiedEvent.calendarId && c.enabled
-        )
-    )
-
-    if (!targetCalendar) {
-      throw new Error(
-        `Calendar not found or not enabled for source: ${unifiedEvent.source}, email: ${unifiedEvent.accountEmail}, calendarId: ${unifiedEvent.calendarId}`
-      )
-    }
-
-    const integration = getConnectedCalendarIntegration(
-      targetCalendar.account_address,
-      targetCalendar.email,
-      targetCalendar.provider,
-      targetCalendar.payload
-    )
-
-    // Map attendee status to participation status
-    const mapAttendeeStatusToParticipation = (
-      status: any
-    ): ParticipationStatus => {
-      switch (status) {
-        case 'accepted':
-          return ParticipationStatus.Accepted
-        case 'declined':
-          return ParticipationStatus.Rejected
-        case 'tentative':
-        case 'needsAction':
-        default:
-          return ParticipationStatus.Pending
-      }
-    }
-
-    // Convert UnifiedEvent to MeetingCreationSyncRequest format
-    const meetingRequest: MeetingCreationSyncRequest = {
-      meeting_id: unifiedEvent.id,
-      eventId: unifiedEvent.sourceEventId,
-      title: unifiedEvent.title,
-      content: unifiedEvent.description || '',
-      start: unifiedEvent.start,
-      end: unifiedEvent.end,
-      meeting_url: unifiedEvent.meeting_url || '',
-      participants: (unifiedEvent.attendees || []).map(attendee => ({
-        account_address: attendee.email, // Use email as identifier for external events
-        name: attendee.name || attendee.email,
-        guest_email: attendee.email,
-        status: mapAttendeeStatusToParticipation(attendee.status),
-        type: attendee.isOrganizer
-          ? ParticipantType.Owner
-          : ParticipantType.Invitee,
-        meeting_id: unifiedEvent.id,
-        privateInfo: { ciphertext: '', ephemPublicKey: '', iv: '', mac: '' }, // Placeholder for external events
-        privateInfoHash: '',
-        timeZone: 'UTC',
-        slot_id: unifiedEvent.sourceEventId,
-      })),
-      created_at: unifiedEvent.lastModified,
-      meetingReminders: [],
-      meetingPermissions: [],
-      meetingRepeat: MeetingRepeat.NO_REPEAT,
-      meetingProvider: MeetingProvider.CUSTOM,
-      participantActing: {
-        account_address,
-        name: account_address,
-      },
-      timezone: 'UTC',
-    }
-
+  ): Promise<void> => {
     try {
-      // Update the event via the provider's integration
-      await integration.updateEvent(
-        account_address,
-        meetingRequest,
-        unifiedEvent.calendarId,
-        true // useParticipants
-      )
-
-      // Re-fetch the updated event to ensure we have the latest data
-      // We use a small time window around the event time to find it
-      const startWindow = new Date(unifiedEvent.start)
-      startWindow.setHours(startWindow.getHours() - 1)
-      const endWindow = new Date(unifiedEvent.end)
-      endWindow.setHours(endWindow.getHours() + 1)
-
-      const updatedEvents = await integration.getEvents(
-        [unifiedEvent.calendarId],
-        startWindow.toISOString(),
-        endWindow.toISOString()
-      )
-
-      const updatedEvent = updatedEvents.find(
-        e => e.sourceEventId === unifiedEvent.sourceEventId
-      )
-
-      if (!updatedEvent) {
+      // Validate required fields
+      if (
+        !unifiedEvent.source ||
+        !unifiedEvent.calendarId ||
+        !unifiedEvent.sourceEventId
+      ) {
         throw new Error(
-          `Failed to retrieve updated event with sourceEventId: ${unifiedEvent.sourceEventId}`
+          'Missing required fields: source, calendarId, or sourceEventId'
         )
       }
 
-      return updatedEvent
+      // Find the calendar integration for this event
+      const calendars = await getConnectedCalendars(account_address)
+
+      const targetCalendar = calendars.find(
+        cal =>
+          cal.provider === unifiedEvent.source &&
+          cal.email === unifiedEvent.accountEmail &&
+          cal.calendars?.some(
+            c => c.calendarId === unifiedEvent.calendarId && c.enabled
+          )
+      )
+
+      if (!targetCalendar) {
+        throw new Error(
+          `Calendar not found or not enabled for source: ${unifiedEvent.source}, email: ${unifiedEvent.accountEmail}, calendarId: ${unifiedEvent.calendarId}`
+        )
+      }
+
+      // Map attendee status to participation status
+      const mapAttendeeStatusToParticipation = (
+        status: AttendeeStatus
+      ): ParticipationStatus => {
+        switch (status) {
+          case AttendeeStatus.ACCEPTED:
+          case AttendeeStatus.COMPLETED:
+            return ParticipationStatus.Accepted
+          case AttendeeStatus.DECLINED:
+            return ParticipationStatus.Rejected
+          case AttendeeStatus.DELEGATED:
+          case AttendeeStatus.TENTATIVE:
+          default:
+            return ParticipationStatus.Pending
+        }
+      }
+
+      switch (targetCalendar.provider) {
+        case TimeSlotSource.GOOGLE: {
+          const integration = getConnectedCalendarIntegration(
+            targetCalendar.account_address,
+            targetCalendar.email,
+            targetCalendar.provider,
+            targetCalendar.payload
+          )
+          await integration.updateExternalEvent(
+            GoogleEventMapper.fromUnified(unifiedEvent)
+          )
+          break
+        }
+        case TimeSlotSource.OFFICE: {
+          const integration = getConnectedCalendarIntegration(
+            targetCalendar.account_address,
+            targetCalendar.email,
+            targetCalendar.provider,
+            targetCalendar.payload
+          )
+          await integration.updateExternalEvent(
+            Office365EventMapper.fromUnified(unifiedEvent)
+          )
+          break
+        }
+        case TimeSlotSource.WEBDAV:
+        case TimeSlotSource.ICLOUD: {
+          const integration = getConnectedCalendarIntegration(
+            targetCalendar.account_address,
+            targetCalendar.email,
+            targetCalendar.provider,
+            targetCalendar.payload
+          )
+          await integration.updateEventFromUnified(
+            unifiedEvent.sourceEventId,
+            unifiedEvent.calendarId,
+            {
+              summary: unifiedEvent.title,
+              description: unifiedEvent.description || '',
+              dtstart: unifiedEvent.start,
+              dtend: unifiedEvent.end,
+              location: unifiedEvent.meeting_url || '',
+              attendees: (unifiedEvent.attendees || []).map(att => ({
+                email: att.email,
+                name: att.name || '',
+                status: mapAttendeeStatusToParticipation(att.status),
+              })),
+            }
+          )
+          break
+        }
+      }
     } catch (error: any) {
       Sentry.captureException(error, {
         extra: {
@@ -524,6 +505,40 @@ export const CalendarBackendHelper = {
         `Failed to update calendar event: ${error.message || error}`
       )
     }
+  },
+  updateCalendaRsvpStatus: async (
+    account_address: string,
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    status: AttendeeStatus
+  ): Promise<void> => {
+    const calendars = await getConnectedCalendars(account_address)
+    const targetCalendar = calendars.find(
+      cal =>
+        cal.calendars?.some(c => c.calendarId === calendarId && c.enabled) &&
+        cal.calendars?.some(c => c.calendarId === calendarId)
+    )
+
+    if (!targetCalendar) {
+      throw new Error(
+        `Calendar not found or not enabled for calendarId: ${calendarId}`
+      )
+    }
+
+    const integration = getConnectedCalendarIntegration(
+      targetCalendar.account_address,
+      targetCalendar.email,
+      targetCalendar.provider,
+      targetCalendar.payload
+    )
+
+    await integration.updateEventRsvpForExternalEvent(
+      calendarId,
+      eventId,
+      attendeeEmail,
+      status
+    )
   },
 }
 

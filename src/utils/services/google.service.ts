@@ -3,7 +3,7 @@ import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
 import { DateTime } from 'luxon'
 
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -1006,7 +1006,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           pageToken: token,
           timeMin: dateFrom,
           timeMax: dateTo,
-          singleEvents: true,
           showDeleted: true,
         })
         token = response.data.nextPageToken!
@@ -1058,7 +1057,9 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           return myGoogleAuth
         })
         .catch(err => {
-          Sentry.captureException(err)
+          if (err.message !== 'invalid_grant') {
+            Sentry.captureException(err)
+          }
           return myGoogleAuth
         })
 
@@ -1212,14 +1213,32 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         timeMin: dateFrom,
         timeMax: dateTo,
         pageToken: token,
-        ...(onlyWithMeetingLinks && {
-          q: 'hangoutLink location conferenceData',
-        }),
+        singleEvents: true,
+        orderBy: 'startTime',
       })
       aggregatedEvents.push(...(response.data.items || []))
       token = response.data.nextPageToken || undefined
     } while (token)
-    return aggregatedEvents.map(event =>
+
+    const filteredEvents = onlyWithMeetingLinks
+      ? aggregatedEvents.filter(event => {
+          const hasHangout = !!event.hangoutLink
+          const hasConferenceData = !!event.conferenceData?.entryPoints?.some(
+            ep => ep.uri || ep.label
+          )
+          const hasLocationUrl = !!(
+            event.location &&
+            (event.location.includes('http://') ||
+              event.location.includes('https://') ||
+              event.location.includes('zoom.us') ||
+              event.location.includes('meet.google.com') ||
+              event.location.includes('teams.microsoft.com'))
+          )
+          return hasHangout || hasConferenceData || hasLocationUrl
+        })
+      : aggregatedEvents
+
+    return filteredEvents.map(event =>
       GoogleEventMapper.toUnified(event, calendarId, this.email)
     )
   }
@@ -1361,6 +1380,68 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       payload.attendees = attendees
     }
     return payload
+  }
+  async updateExternalEvent(event: calendar_v3.Schema$Event) {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    if (!event.id || !event.extendedProperties?.private?.meetingId) {
+      throw new Error('Event ID or meeting ID is missing')
+    }
+    await calendar.events.update({
+      calendarId: 'primary',
+      eventId: event.id,
+      requestBody: event,
+    })
+  }
+  async updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: AttendeeStatus
+  ) {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    // First, get the current event
+    const event = await this.getEventById(eventId, calendarId)
+    if (!event) {
+      throw new Error(`Event ${eventId} not found`)
+    }
+
+    // Update only the specific attendee's response status
+    const updatedAttendees = (event.attendees || []).map(attendee => {
+      if (attendee.email?.toLowerCase() === attendeeEmail.toLowerCase()) {
+        return {
+          ...attendee,
+          responseStatus:
+            responseStatus === AttendeeStatus.ACCEPTED
+              ? 'accepted'
+              : responseStatus === AttendeeStatus.DECLINED
+              ? 'declined'
+              : 'needsAction',
+        }
+      }
+      return attendee
+    })
+    // Create minimal payload with only attendees
+    // This is used to update the RSVP status of an external event
+    const payload: calendar_v3.Schema$Event = {
+      attendees: updatedAttendees,
+    }
+
+    // Update the event with only the RSVP change
+    // No need to send notifications for external events
+    await calendar.events.patch({
+      auth: myGoogleAuth,
+      calendarId,
+      eventId,
+      requestBody: payload,
+    })
   }
 }
 

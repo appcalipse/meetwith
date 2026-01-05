@@ -100,6 +100,13 @@ export interface BaseCalendarService {
     meetingDetails: MeetingInstanceCreationSyncRequest,
     calendarId: string
   ): Promise<void>
+
+  updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: string
+  ): Promise<void>
 }
 export interface IOffcie365CalendarService extends BaseCalendarService {
   /**
@@ -125,6 +132,8 @@ export interface IOffcie365CalendarService extends BaseCalendarService {
     calendarId: string,
     useParticipants?: boolean
   ): Promise<Partial<NewCalendarEventType> & MicrosoftGraphEvent>
+
+  updateExternalEvent(event: Partial<MicrosoftGraphEvent>): Promise<void>
 }
 export interface IGoogleCalendarService extends BaseCalendarService {
   /**
@@ -237,6 +246,8 @@ export interface IGoogleCalendarService extends BaseCalendarService {
     meetingDetails: MeetingCreationSyncRequest,
     calendarId: string
   ): Promise<NewCalendarEventType & calendar_v3.Schema$Event>
+
+  updateExternalEvent(event: calendar_v3.Schema$Event): Promise<void>
 }
 
 export interface ICaldavCalendarService extends BaseCalendarService {
@@ -260,6 +271,18 @@ export interface ICaldavCalendarService extends BaseCalendarService {
       attendees: Attendee[]
     }
   >
+  updateEventFromUnified(
+    sourceEventId: string,
+    calendarId: string,
+    updatedProps: {
+      summary?: string
+      description?: string
+      dtstart?: Date
+      dtend?: Date
+      location?: string
+      attendees?: Array<{ email: string; name?: string; status?: string }>
+    }
+  ): Promise<void>
 }
 
 export type EventList = {

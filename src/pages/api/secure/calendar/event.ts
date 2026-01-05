@@ -7,7 +7,7 @@ import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    if (req.method === 'PUT' || req.method === 'PATCH') {
+    if (req.method === 'PATCH') {
       const account_address = req.session.account?.address
       if (!account_address) {
         return res.status(401).send('Unauthorized')
@@ -95,7 +95,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       .status(500)
       .send(`Internal server error: ${error.message || error}`)
   }
-  return res.status(405).send('Method not allowed. Use PUT or PATCH.')
+  return res.status(405).send('Method not allowed.')
 }
 
 export default withSessionRoute(handler)
