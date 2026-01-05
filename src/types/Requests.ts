@@ -12,6 +12,7 @@ import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 import { Account, TimeRange } from './Account'
+import { AttendeeStatus } from './Calendar'
 import { MeetingReminders } from './common'
 import { MemberType } from './Group'
 import {
@@ -293,4 +294,9 @@ export interface MeetingCheckoutRequest {
 export interface WebcalRequestBody {
   url?: string
   email?: string
+}
+
+export interface UpdateCalendarEventRequest {
+  rsvp_status: AttendeeStatus
+  attendee_email: string
 }
