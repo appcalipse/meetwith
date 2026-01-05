@@ -265,7 +265,7 @@ export default class CaldavCalendarService
     try {
       const events = await this.getEventsByUID(meeting_id)
       if (events.length === 0) {
-        return this.createEvent(
+        return await this.createEvent(
           calendarOwnerAccountAddress,
           meetingDetails,
           new Date(),

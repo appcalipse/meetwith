@@ -219,9 +219,12 @@ export default class Office365CalendarService
       const accessToken = await this.auth.getToken()
       const officeId = await getOfficeEventMappingId(meeting_id)
       if (!officeId) {
-        Sentry.captureException("Can't find office event mapping")
-        // event was never created
-        return this.createEvent(owner, meetingDetails, new Date(), calendarId)
+        return await this.createEvent(
+          owner,
+          meetingDetails,
+          new Date(),
+          calendarId
+        )
       }
       const body = JSON.stringify({
         ...this.translateEvent(owner, meetingDetails, meeting_id, new Date()),

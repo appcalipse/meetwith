@@ -380,14 +380,13 @@ export default class GoogleCalendarService
         }))
       const event = await this.getEventById(meeting_id, _calendarId)
       if (!event) {
-        return resolve(
-          this.createEvent(
-            calendarOwnerAccountAddress,
-            meetingDetails,
-            new Date(),
-            _calendarId
-          )
+        const createdEvent = await this.createEvent(
+          calendarOwnerAccountAddress,
+          meetingDetails,
+          new Date(),
+          _calendarId
         )
+        return resolve(createdEvent)
       }
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self

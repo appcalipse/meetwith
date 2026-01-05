@@ -248,7 +248,7 @@ const AccountCard: FC<IProps> = props => {
           QueryKeys.connectedAccounts(currentAccount?.address)
         )
 
-        if (props.account != ConnectedAccount.DISCORD) {
+        if (props.account !== ConnectedAccount.DISCORD) {
           showSuccessToast(
             `${props.account} Connected`,
             `Your ${props.account} account has been connected`
