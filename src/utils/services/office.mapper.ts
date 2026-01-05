@@ -145,10 +145,10 @@ export class Office365EventMapper {
     o365Event: MicrosoftGraphEvent
   ): string | undefined {
     return (
-      o365Event.onlineMeeting?.joinUrl ||
-      o365Event.onlineMeetingUrl ||
-      o365Event.location.displayName ||
-      o365Event.locations.find(
+      o365Event?.onlineMeeting?.joinUrl ||
+      o365Event?.onlineMeetingUrl ||
+      o365Event?.location?.displayName ||
+      o365Event?.locations?.find(
         loc =>
           loc.displayName &&
           (loc.displayName.includes('http://') ||
