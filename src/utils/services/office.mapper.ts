@@ -44,7 +44,7 @@ export class Office365EventMapper {
       calendarId,
       accountEmail,
 
-      meeting_url: this.mapLocation(o365Event.location),
+      meeting_url: this.mapLocation(o365Event) || undefined,
       webLink: o365Event.webLink,
       attendees: this.mapAttendees(o365Event.attendees || []),
       recurrence: this.mapRecurrence(o365Event.recurrence),
@@ -141,25 +141,24 @@ export class Office365EventMapper {
     return new Date(dateTime.dateTime)
   }
 
-  private static mapLocation(location?: O365Location): string | undefined {
-    if (!location) return undefined
-
-    if (location.displayName) return location.displayName
-
-    // Build location string from address components
-    if (location.address) {
-      const parts = [
-        location.address.street,
-        location.address.city,
-        location.address.state,
-        location.address.postalCode,
-        location.address.countryOrRegion,
-      ].filter(Boolean)
-
-      return parts.join(', ') || undefined
-    }
-
-    return undefined
+  private static mapLocation(
+    o365Event: MicrosoftGraphEvent
+  ): string | undefined {
+    return (
+      o365Event?.onlineMeeting?.joinUrl ||
+      o365Event?.onlineMeetingUrl ||
+      o365Event?.location?.displayName ||
+      o365Event?.locations?.find(
+        loc =>
+          loc.displayName &&
+          (loc.displayName.includes('http://') ||
+            loc.displayName.includes('https://') ||
+            loc.displayName.includes('zoom.us') ||
+            loc.displayName.includes('teams.microsoft.com') ||
+            loc.displayName.includes('meet.google.com'))
+      )?.displayName ||
+      undefined
+    )
   }
 
   private static mapAttendees(

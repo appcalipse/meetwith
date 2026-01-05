@@ -56,12 +56,13 @@ const MyError = ({ statusCode, hasGetInitialPropsRun, err }) => {
   )
 }
 
-MyError.getInitialProps = async ({ res, err, asPath }) => {
+MyError.getInitialProps = async contextData => {
+  const { res, err, asPath } = contextData
   const errorInitialProps = await NextErrorComponent.getInitialProps({
     res,
     err,
   })
-
+  await Sentry.captureUnderscoreErrorException(contextData)
   // Workaround for https://github.com/vercel/next.js/issues/8592, mark when
   // getInitialProps has run
   errorInitialProps.hasGetInitialPropsRun = true
@@ -80,7 +81,6 @@ MyError.getInitialProps = async ({ res, err, asPath }) => {
   //    Boundaries: https://reactjs.org/docs/error-boundaries.html
 
   if (err) {
-    Sentry.captureException(err)
     posthog.captureException(err)
 
     // Flushing before returning is necessary if deploying to Vercel, see
