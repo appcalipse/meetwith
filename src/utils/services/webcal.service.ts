@@ -93,7 +93,7 @@ export default class WebCalService implements BaseCalendarService {
    * Fetches all events from the ICS feed (for unified calendar view)
    */
   async getEvents(
-    calendarIds: string[],
+    _calendarIds: string[],
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
