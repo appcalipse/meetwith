@@ -1,0 +1,26 @@
+{
+  "lsp": {
+    "typescript-language-server": {
+      "initialization_options": {
+        "maxTsServerMemory": 6144,
+        "tsserver": {
+          "logDirectory": ".zed/tsserver-logs",
+          "logVerbosity": "off",
+          "maxFileSize": 4194304,
+          "useSyntaxServer": "auto"
+        },
+        "preferences": {
+          "disableSuggestions": false,
+          "includeCompletionsForModuleExports": true,
+          "includeCompletionsWithInsertText": true,
+          "autoImportFileExcludePatterns": [
+            "node_modules",
+            ".next",
+            "dist",
+            "coverage"
+          ]
+        }
+      }
+    }
+  }
+}
