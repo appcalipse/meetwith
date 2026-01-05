@@ -31,7 +31,7 @@ import {
   SubscribeResponseCrypto,
   TrialEligibilityResponse,
 } from '@/types/Billing'
-import { CalendarEvents } from '@/types/Calendar'
+import { AttendeeStatus, CalendarEvents } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -110,6 +110,7 @@ import { Coupon, Subscription } from '@/types/Subscription'
 import { TelegramConnection, TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
+import { UpdateCalendarEventRequest } from '../types/Requests'
 import {
   calendarEventsPreprocessors,
   decodeMeeting,
@@ -2650,13 +2651,15 @@ export const getCalendarEvents = async (
   )
 
   return {
-    calendarEvents: calendarEventsPreprocessors(
-      events.calendarEvents,
+    calendarEvents: events.calendarEvents.map(event => ({
+      ...event,
+      start: new Date(event.start),
+      end: new Date(event.end),
+    })),
+    mwwEvents: meetWithSeriesPreprocessors(
+      events.mwwEvents,
       startDate,
       endDate
-    ),
-    mwwEvents: await Promise.all(
-      meetWithSeriesPreprocessors(events.mwwEvents, startDate, endDate)
     ),
   }
 }
@@ -2692,6 +2695,26 @@ export const addOrUpdateWebcal = async (
     'POST',
     {
       url,
+    }
+  )
+}
+
+export const updateCalendarRsvpStatus = async (
+  calendarId: string,
+  eventId: string,
+  rsvpStatus: AttendeeStatus,
+  attendeeEmail?: string,
+  abortSignal?: AbortSignal
+) => {
+  return await internalFetch(
+    `/secure/calendar/${calendarId}/${eventId}/rsvp`,
+    'PATCH',
+    {
+      rsvp_status: rsvpStatus,
+      attendee_email: attendeeEmail,
+    } as UpdateCalendarEventRequest,
+    {
+      signal: abortSignal,
     }
   )
 }
