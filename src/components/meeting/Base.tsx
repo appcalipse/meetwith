@@ -96,11 +96,12 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   const queryClient = useQueryClient()
   const startWindow = useMemo(
     () => ({
-      start: DateTime.now().minus({ hours: 1 }).startOf('hour'),
+      start: DateTime.now().startOf('hour'),
       end: DateTime.now().plus({ weeks: WEEKS_TO_LOAD }),
     }),
     []
   )
+
   const queryConfig = createMeetingsQueryConfig({
     accountAddress: currentAccount.address,
     timeWindow: startWindow,
@@ -131,10 +132,11 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
 
   const meetings = useMemo(() => {
     if (!data) return []
-
+    const now = DateTime.now()
     const allEvents: DashboardEvent[] = data.pages
       .flatMap(page => page.meetings)
       .flatMap(data => [...data.mwwEvents, ...data.calendarEvents])
+      .filter(event => DateTime.fromJSDate(new Date(event.start)) >= now) // ← Add this
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
 
     return allEvents
