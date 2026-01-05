@@ -3,7 +3,7 @@ import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
 import { DateTime } from 'luxon'
 
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -1006,7 +1006,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           pageToken: token,
           timeMin: dateFrom,
           timeMax: dateTo,
-          singleEvents: true,
           showDeleted: true,
         })
         token = response.data.nextPageToken!
@@ -1214,14 +1213,32 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         timeMin: dateFrom,
         timeMax: dateTo,
         pageToken: token,
-        ...(onlyWithMeetingLinks && {
-          q: 'hangoutLink location conferenceData',
-        }),
+        singleEvents: true,
+        orderBy: 'startTime',
       })
       aggregatedEvents.push(...(response.data.items || []))
       token = response.data.nextPageToken || undefined
     } while (token)
-    return aggregatedEvents.map(event =>
+
+    const filteredEvents = onlyWithMeetingLinks
+      ? aggregatedEvents.filter(event => {
+          const hasHangout = !!event.hangoutLink
+          const hasConferenceData = !!event.conferenceData?.entryPoints?.some(
+            ep => ep.uri || ep.label
+          )
+          const hasLocationUrl = !!(
+            event.location &&
+            (event.location.includes('http://') ||
+              event.location.includes('https://') ||
+              event.location.includes('zoom.us') ||
+              event.location.includes('meet.google.com') ||
+              event.location.includes('teams.microsoft.com'))
+          )
+          return hasHangout || hasConferenceData || hasLocationUrl
+        })
+      : aggregatedEvents
+
+    return filteredEvents.map(event =>
       GoogleEventMapper.toUnified(event, calendarId, this.email)
     )
   }
@@ -1383,7 +1400,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
     calendarId: string,
     eventId: string,
     attendeeEmail: string,
-    responseStatus: string
+    responseStatus: AttendeeStatus
   ) {
     const myGoogleAuth = await this.auth.getToken()
     const calendar = google.calendar({
@@ -1401,7 +1418,12 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       if (attendee.email?.toLowerCase() === attendeeEmail.toLowerCase()) {
         return {
           ...attendee,
-          responseStatus,
+          responseStatus:
+            responseStatus === AttendeeStatus.ACCEPTED
+              ? 'accepted'
+              : responseStatus === AttendeeStatus.DECLINED
+              ? 'declined'
+              : 'needsAction',
         }
       }
       return attendee
