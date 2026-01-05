@@ -42,7 +42,11 @@ export class GoogleEventMapper {
       calendarId,
       accountEmail,
 
-      meeting_url: googleEvent.location,
+      meeting_url:
+        googleEvent.location ||
+        googleEvent.hangoutLink ||
+        googleEvent.conferenceData?.entryPoints?.[0]?.uri ||
+        '',
       webLink: googleEvent.htmlLink,
       attendees: this.mapAttendees(googleEvent.attendees || []),
       recurrence: this.mapRecurrence(googleEvent.recurrence),
