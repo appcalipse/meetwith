@@ -11,7 +11,6 @@ import {
 import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
 import { getEvents, listConnectedCalendars } from '@/utils/api_helper'
 import {
-  calendarEventsPreprocessors,
   decodeMeeting,
   meetWithSeriesPreprocessors,
 } from '@/utils/calendar_manager'
@@ -90,11 +89,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     async (date: DateTime): Promise<CalendarEventsData> => {
       const res = await getEvents(date)
       return {
-        calendarEvents: calendarEventsPreprocessors(
-          res.calendarEvents,
-          date.startOf('month').startOf('week'),
-          date.endOf('month').endOf('week')
-        ),
+        calendarEvents: res.calendarEvents,
         mwwEvents: await Promise.all(
           meetWithSeriesPreprocessors(
             res.mwwEvents,
