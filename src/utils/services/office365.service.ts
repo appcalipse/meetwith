@@ -294,11 +294,6 @@ export class Office365CalendarService implements IOffcie365CalendarService {
 
     const events: MicrosoftGraphEvent[] = []
     let nextLink: string | undefined
-    let filter = "type ne 'occurrence'"
-    if (onlyWithMeetingLinks) {
-      filter +=
-        ' and (isOnlineMeeting eq true or onlineMeetingUrl ne null or locations/any())'
-    }
 
     let response = await this.graphClient
       .api(`/me/calendars/${calendarId}/calendarView`)
@@ -306,7 +301,6 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         startdatetime: dateFromParsed.toISOString(),
         enddatetime: dateToParsed.toISOString(),
         $top: '500',
-        $filter: filter,
       })
       .get()
 
@@ -322,9 +316,44 @@ export class Office365CalendarService implements IOffcie365CalendarService {
 
       nextLink = response['@odata.nextLink']
     }
+    const filteredEvents = onlyWithMeetingLinks
+      ? events.filter(event => {
+          const hasOnlineMeeting = event.isOnlineMeeting === true
+          const hasOnlineMeetingInfo = !!(
+            event.onlineMeeting?.joinUrl || event.onlineMeeting?.conferenceId
+          )
+          const hasDeprecatedUrl = !!event.onlineMeetingUrl
+
+          const locationHasUrl =
+            event.location?.displayName &&
+            (event.location.displayName.includes('http://') ||
+              event.location.displayName.includes('https://') ||
+              event.location.displayName.includes('zoom.us') ||
+              event.location.displayName.includes('teams.microsoft.com') ||
+              event.location.displayName.includes('meet.google.com'))
+
+          const locationsHaveUrl = event.locations?.some(
+            loc =>
+              loc.displayName &&
+              (loc.displayName.includes('http://') ||
+                loc.displayName.includes('https://') ||
+                loc.displayName.includes('zoom.us') ||
+                loc.displayName.includes('teams.microsoft.com') ||
+                loc.displayName.includes('meet.google.com'))
+          )
+
+          return (
+            hasOnlineMeeting ||
+            hasOnlineMeetingInfo ||
+            hasDeprecatedUrl ||
+            locationHasUrl ||
+            locationsHaveUrl
+          )
+        })
+      : events
 
     return Promise.all(
-      events.map(
+      filteredEvents.map(
         async event =>
           await Office365EventMapper.toUnified(
             event,
