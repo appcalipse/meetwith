@@ -74,7 +74,7 @@ export default function LogoutPage() {
             height="auto"
           />
           <Heading size="md" maxW="450px" textAlign="center">
-            Hey there! You’ve been invited to join {group.name}!
+            Hey there! You’ve been invited to join {group?.name}!
           </Heading>
           <Button
             onClick={() => {
