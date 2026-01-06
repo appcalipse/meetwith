@@ -41,7 +41,7 @@ const BasePage: FC = () => {
     return { twitter, telegram, discord }
   }, [social])
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
-  console.log(account.preferences)
+
   const copyDiscord = async () => {
     if ('clipboard' in navigator) {
       await navigator.clipboard.writeText(discord)

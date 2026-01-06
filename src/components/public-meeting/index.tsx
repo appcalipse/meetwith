@@ -47,7 +47,7 @@ import {
   PublicSchedulingSteps,
   SessionType,
 } from '@utils/constants/meeting-types'
-import { Option, type TimeZoneOption } from '@utils/constants/select'
+import { type TimeZoneOption, Option } from '@utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@utils/date_helper'
 import {
   AllMeetingSlotsUsedError,
@@ -74,8 +74,8 @@ import { v4 } from 'uuid'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import {
-  AcceptedToken,
   type SupportedChain,
+  AcceptedToken,
   supportedChains,
 } from '@/types/chains'
 import type { Address, Transaction } from '@/types/Transactions'
