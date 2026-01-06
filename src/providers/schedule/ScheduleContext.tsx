@@ -1,8 +1,9 @@
-import React, { createContext, ReactNode, useContext, useState } from 'react'
+import type React from 'react'
+import { createContext, type ReactNode, useContext, useState } from 'react'
 
 import { MeetingReminders } from '@/types/common'
 import {
-  MeetingDecrypted,
+  type MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
 } from '@/types/Meeting'
@@ -101,7 +102,11 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   })
   const [selectedPermissions, setSelectedPermissions] = useState<
     Array<MeetingPermissions> | undefined
-  >([MeetingPermissions.SEE_GUEST_LIST, MeetingPermissions.EDIT_MEETING])
+  >([
+    MeetingPermissions.SEE_GUEST_LIST,
+    MeetingPermissions.INVITE_GUESTS,
+    MeetingPermissions.EDIT_MEETING,
+  ])
   const [isScheduling, setIsScheduling] = useState(false)
 
   const value: IScheduleStateContext = {
