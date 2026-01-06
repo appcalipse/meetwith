@@ -132,7 +132,6 @@ export const NavMenu: React.FC<{
     return tabs.filter(item => !item.isDisabled)
   }, [groupInvitesCount, contactsRequestCount])
   const handleEmptyGroupCheck = async () => {
-    return
     const emptyGroups = await getGroupsEmpty()
     emptyGroups?.forEach((data, index) => {
       if (!toast.isActive(data.id)) {
@@ -273,15 +272,14 @@ export const NavMenu: React.FC<{
           <VStack width="100%" gap={6} px={5} py={8} flexShrink={0}>
             <Box
               cursor="pointer"
-              mb={4}
               onClick={toggleSidebar}
               color="sidebar-inverted-subtle"
               alignSelf={isOpened ? 'flex-end' : 'center'}
             >
               {isOpened ? (
-                <TbLayoutSidebarRightExpand size={40} />
+                <TbLayoutSidebarRightExpand size={30} />
               ) : (
-                <TbLayoutSidebarLeftExpand size={40} />
+                <TbLayoutSidebarLeftExpand size={30} />
               )}
             </Box>
             <HStack width="100%" textAlign="center">
