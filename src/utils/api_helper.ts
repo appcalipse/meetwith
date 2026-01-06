@@ -111,11 +111,7 @@ import { TelegramConnection, TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { UpdateCalendarEventRequest } from '../types/Requests'
-import {
-  calendarEventsPreprocessors,
-  decodeMeeting,
-  meetWithSeriesPreprocessors,
-} from './calendar_manager'
+import { decodeMeeting, meetWithSeriesPreprocessors } from './calendar_manager'
 import {
   apiUrl,
   QUICKPOLL_DEFAULT_LIMIT,
