@@ -15,6 +15,7 @@ import { CiStreamOn } from 'react-icons/ci'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
 import { TimeSlotSource } from '@/types/Meeting'
+import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
@@ -24,7 +25,6 @@ import {
 import { isProduction } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
-
 import WebCalDetail from './WebCalDetail'
 import WebDavDetailsPanel from './WebDavCalendarDetail'
 
@@ -35,7 +35,7 @@ interface ConnectCalendarProps {
   refetch?: () => Promise<void>
   isQuickPoll?: boolean
   participantId?: string
-  pollData?: any
+  pollData?: QuickPollBySlugResponse
   pollSlug?: string
 }
 

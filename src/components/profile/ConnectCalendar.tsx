@@ -25,10 +25,9 @@ import { SettingsSection } from '@/types/Dashboard'
 import {
   deleteConnectedCalendar,
   getCalendarIntegrationsWithMetadata,
-  listConnectedCalendars,
 } from '@/utils/api_helper'
-import { isProAccount } from '@/utils/subscription_manager'
 
+// biome-ignore lint/correctness/noUnusedVariables: No unused vars
 const GoProCTA = () => (
   <VStack>
     <Text py="6">

@@ -23,7 +23,7 @@ export const chipStyles = {
 export interface BadgeChipProps {
   onRemove?: () => void
   allowRemove?: boolean
-  children: any
+  children: React.ReactNode
   size?: InputProps['size']
 }
 

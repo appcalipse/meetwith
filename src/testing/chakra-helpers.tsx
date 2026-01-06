@@ -3,7 +3,7 @@ import React from 'react'
 
 import customTheme from '../styles/theme'
 
-export const ChakraTestWrapper: React.FC<{ children: any }> = ({
+export const ChakraTestWrapper: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => (
   <ChakraProvider

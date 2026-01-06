@@ -58,7 +58,7 @@ const MeetingMenu: FC<MeetingMenuProps> = ({ slot, currentAccount }) => {
           'Downloaded calendar invite',
           'Ics file downloaded successfully'
         )
-      } catch (e) {
+      } catch (_e) {
         showErrorToast(
           'Download failed',
           'There was an error downloading the ics file. Please try again.'

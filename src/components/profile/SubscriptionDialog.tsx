@@ -61,7 +61,7 @@ import {
 interface IProps {
   currentSubscription?: Subscription
   isDialogOpen: boolean
-  cancelDialogRef: React.MutableRefObject<any>
+  cancelDialogRef: React.MutableRefObject<HTMLButtonElement | null>
   onDialogClose: () => void
   onSuccessPurchase?: (sub: Subscription, couponCode?: string) => void
   defaultCoupon?: string
@@ -143,15 +143,17 @@ const SubscriptionDialog: React.FC<IProps> = ({
         if (neededApproval != 0n) {
           setNeedsApproval(true)
         }
-      } catch (e: any) {
-        toast({
-          title: 'Error',
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          toast({
+            title: 'Error',
+            description: e.message,
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        }
       }
       setCheckingCanSubscribe(false)
     }
@@ -350,19 +352,21 @@ const SubscriptionDialog: React.FC<IProps> = ({
       onSuccessPurchase && onSuccessPurchase(sub!)
       logEvent('Subscription', { currentChain, currentToken, domain })
       onDialogClose()
-    } catch (e: any) {
+    } catch (e: unknown) {
       setTxRunning(false)
       setWaitingConfirmation(false)
       setNeedsApproval(false)
       setCheckingCanSubscribe(false)
-      toast({
-        title: 'Error',
-        description: e.message,
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      if (e instanceof Error) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
       updateSubscriptionDetails()
     }
   }

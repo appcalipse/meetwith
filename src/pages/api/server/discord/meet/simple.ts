@@ -11,6 +11,7 @@ import {
 } from '@/utils/calendar_manager'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import { getAccountFromDiscordId } from '@/utils/database'
+import { ApiFetchError } from '@/utils/errors'
 import { findStartDateForNotBefore } from '@/utils/time.helper'
 
 export default async function simpleDiscordMeet(
@@ -116,8 +117,16 @@ export default async function simpleDiscordMeet(
       )
 
       return res.status(200).json(meeting)
-    } catch (e: any) {
-      return res.status(e.status).send(e.message)
+    } catch (e: unknown) {
+      if (e instanceof ApiFetchError) {
+        return res.status(e.status).send(e.message)
+      } else {
+        return res
+          .status(500)
+          .send(
+            e instanceof Error ? e.message : 'An unexpected error occurred.'
+          )
+      }
     }
   }
 

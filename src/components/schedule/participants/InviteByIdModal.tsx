@@ -19,7 +19,10 @@ import { ChipInput } from '@/components/chip-input'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { QuickPollParticipantType } from '@/types/QuickPoll'
+import {
+  QuickPollBySlugResponse,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
 import { updateQuickPoll } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { useToastHelpers } from '@/utils/toasts'
@@ -28,7 +31,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 interface IProps {
   isOpen: boolean
   onClose: () => void
-  pollData?: any
+  pollData?: QuickPollBySlugResponse
   onInviteSuccess?: () => void
 }
 

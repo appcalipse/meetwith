@@ -29,8 +29,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
-import React, { useEffect, useRef, useState } from 'react'
-import { useContext } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
 
 import CustomLoading from '@/components/CustomLoading'
@@ -77,7 +76,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   const { intent, coupon, checkout, portal_success } = query
   const { updateUser } = useContext(AccountContext)
 
-  const subsRef = useRef<any>(null)
+  const subsRef = useRef<HTMLHeadingElement>(null)
   const processedCheckoutRef = useRef<string | undefined>(undefined)
   const [manageSubscriptionLoading, setManageSubscriptionLoading] =
     useState(false)

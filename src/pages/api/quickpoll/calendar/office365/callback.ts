@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
+import { CalendarInfo } from '@/types/Office365'
 import {
   OAuthCallbackQuery,
   PollVisibility,
@@ -109,12 +110,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const calendarsData = await calendarsResponse.json()
 
   const calendars: Array<CalendarSyncInfo> =
-    calendarsData.value?.map((c: any) => ({
+    calendarsData.value?.map((c: CalendarInfo) => ({
       calendarId: c.id,
       name: c.name,
       color: c.color,
       sync: true,
       enabled: true,
+      isReadOnly: !c.canEdit,
     })) || []
 
   let participantId = stateObject?.participantId
@@ -140,7 +142,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         guestEmail.toLowerCase()
       )
       participantExists = true
-    } catch (error) {
+    } catch (_error) {
       participantExists = false
     }
 
