@@ -116,16 +116,21 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
     )
   }, [event])
   const handleRSVP = async (status: AttendeeStatus) => {
-    const abortController = new AbortController()
-    rsvpAbortControllerRef.current = abortController
-    updateAttendeeStatus(event.id, event.accountEmail, status)
-    await updateCalendarRsvpStatus(
-      event.calendarId,
-      event.sourceEventId,
-      status,
-      event.accountEmail,
-      abortController.signal
-    )
+    try {
+      const abortController = new AbortController()
+      rsvpAbortControllerRef.current = abortController
+      updateAttendeeStatus(event.id, event.accountEmail, status)
+      await updateCalendarRsvpStatus(
+        event.calendarId,
+        event.sourceEventId,
+        status,
+        event.accountEmail,
+        abortController.signal
+      )
+    } catch (e) {
+    } finally {
+      rsvpAbortControllerRef.current = null
+    }
   }
   return (
     <Box
