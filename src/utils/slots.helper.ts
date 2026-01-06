@@ -170,6 +170,37 @@ export const suggestBestSlots = (
   })
 }
 
+export const isTimeWithinTimeRange = (
+  dateTime: DateTime,
+  timeRange: TimeRangeFilter,
+  timezone: string
+): boolean => {
+  const timeInTimezone = dateTime.setZone(timezone)
+  const timeHour = timeInTimezone.hour
+  const timeMinute = timeInTimezone.minute
+  const timeTotalMinutes = timeHour * 60 + timeMinute
+
+  const [startHour, startMinute] = timeRange.startTime.split(':').map(Number)
+  const [endHour, endMinute] = timeRange.endTime.split(':').map(Number)
+  const startTotalMinutes = startHour * 60 + startMinute
+  const endTotalMinutes = endHour * 60 + endMinute
+
+  // Check if time falls within the time range
+  if (endTotalMinutes >= startTotalMinutes) {
+    // Normal same-day range
+    return (
+      timeTotalMinutes >= startTotalMinutes &&
+      timeTotalMinutes < endTotalMinutes
+    )
+  } else {
+    // Handle case where time range spans midnight
+    return (
+      timeTotalMinutes >= startTotalMinutes ||
+      timeTotalMinutes < endTotalMinutes
+    )
+  }
+}
+
 export const filterSlotsByTimeRange = (
   slots: Array<LuxonInterval<true>>,
   timeRange: TimeRangeFilter,
