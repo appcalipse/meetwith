@@ -2389,61 +2389,6 @@ const meetWithSeriesPreprocessors = (
         isDBSlot(slot)
     )
 }
-const calendarEventsPreprocessors = (
-  events: Array<UnifiedEvent>,
-  startDate: DateTime,
-  endDate: DateTime
-) => {
-  const instances: Array<UnifiedEvent> = []
-  for (const event of events) {
-    const recurrence = event.recurrence
-    if (recurrence) {
-      const rrule = new RRule({
-        freq: recurrence.frequency,
-        interval: recurrence.interval || 1,
-        byweekday: recurrence.daysOfWeek,
-        bymonthday: recurrence.dayOfMonth ? [recurrence.dayOfMonth] : undefined,
-        bysetpos: recurrence.weekOfMonth ? [recurrence.weekOfMonth] : undefined,
-        until: recurrence.endDate || undefined,
-        count: recurrence.occurrenceCount || undefined,
-        dtstart: new Date(event.start),
-      })
-      const ghostStartTimes = rrule
-        .between(startDate.toJSDate(), endDate.toJSDate(), true)
-        .map(date => DateTime.fromJSDate(date))
-
-      for (const ghostStartTime of ghostStartTimes) {
-        const difference =
-          DateTime.fromJSDate(new Date(event.end))
-            .diff(DateTime.fromJSDate(new Date(event.start)), 'minutes')
-            .toObject().minutes || 0
-        const ghostEndTime = ghostStartTime.plus({ minutes: difference })
-
-        // Check if an instance already exists for this occurrence
-        const instanceExists = instances.some(
-          instance =>
-            instance.sourceEventId === event.id &&
-            instance.start.getTime() === ghostStartTime.toJSDate().getTime()
-        )
-        if (!instanceExists) {
-          const eventInstance: UnifiedEvent = {
-            ...event,
-            id: `${event.sourceEventId}_${ghostStartTime.toFormat(
-              "yyyyMMdd'T'HHmmss"
-            )}`,
-            start: ghostStartTime.toJSDate(),
-            end: ghostEndTime.toJSDate(),
-          }
-          instances.push(eventInstance)
-        }
-      }
-    } else {
-      instances.push(event)
-    }
-  }
-  return instances
-}
-
 const rsvpMeeting = async (
   eventId: string,
   accountAddress: string,
@@ -2573,7 +2518,6 @@ const rsvpMeeting = async (
 export {
   allSlots,
   buildMeetingData,
-  calendarEventsPreprocessors,
   cancelMeeting,
   cancelMeetingGuest,
   dateToHumanReadable,
