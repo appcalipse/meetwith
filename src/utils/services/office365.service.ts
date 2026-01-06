@@ -451,7 +451,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       attendees: [],
       singleValueExtendedProperties: [
         {
-          id: `meeting_id`,
+          id: 'String {00020329-0000-0000-C000-000000000046} Name meeting_id',
           value: meeting_id,
         },
       ],
