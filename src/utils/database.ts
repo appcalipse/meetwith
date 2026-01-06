@@ -1286,65 +1286,136 @@ const updateRecurringSlots = async (identifier: string) => {
   }
 }
 const updateAllRecurringSlots = async () => {
+  const BATCH_SIZE = 50
   const now = new Date()
   const { data: allSlotSeries, error } = await db.supabase
     .from<Tables<'slot_series'>>('slot_series')
     .select()
     .neq('recurrence', MeetingRepeat.NO_REPEAT)
   if (error || !allSlotSeries?.length) return
-  if (allSlotSeries) {
-    const toUpdate = []
-    for (const slotSeries of allSlotSeries) {
-      const { data: slot, error } = await db.supabase
-        .from<Tables<'slots'>>('slots')
-        .select()
-        .eq('id', slotSeries.slot_id)
-        .maybeSingle()
-      if (error || (slot && new Date(slot.start) > now)) {
-        continue
-      }
+  const slotIds = allSlotSeries.map(s => s.slot_id).filter(Boolean)
+  const { data: slots, error: slotsError } = await db.supabase
+    .from<Tables<'slots'>>('slots')
+    .select()
+    .in('id', slotIds)
+  if (slotsError) {
+    console.error(
+      '[updateAllRecurringSlots]: Failed to fetch slots',
+      slotsError
+    )
+    throw slotsError
+  }
 
-      const interval = addRecurrence(
-        new Date(slotSeries?.original_start),
-        new Date(slotSeries?.original_end),
-        slotSeries.recurrence as MeetingRepeat
-      )
-      const { data: slotInstance, error: slotInstanceError } = await db.supabase
-        .from<Tables<'slot_instance'>>('slot_instance')
-        .select()
-        .eq('id', `${slotSeries.slot_id}_${interval.start.getTime()}`)
-        .maybeSingle()
-      if (slotInstanceError) {
-        continue
-      }
-      if (slotInstance) {
-        if (slotInstance.status === RecurringStatus.CANCELLED) {
-          continue
-        }
-        const newSlot: TablesInsert<'slots'> = {
-          id: slotSeries.slot_id!,
-          account_address: slotSeries.account_address,
-          meeting_info_encrypted:
-            slotInstance.override_meeting_info_encrypted ||
-            slotSeries.default_meeting_info_encrypted,
-          start: slotInstance.start,
-          end: slotInstance.end,
-          recurrence: slotSeries.recurrence,
-          created_at: new Date(
-            slotSeries.created_at || new Date()
-          ).toISOString(),
-          role: slotInstance.role,
-          version: slotInstance.version,
-        }
-        toUpdate.push(newSlot)
-      }
+  const slotMap = new Map(slots?.map(s => [s.id, s]) || [])
+
+  const toUpdate: TablesInsert<'slots'>[] = []
+  let processed = 0
+  let skipped = 0
+
+  const batchIds = []
+  for (const slotSeries of allSlotSeries) {
+    const slot = slotMap.get(slotSeries.slot_id!)
+    if (!slot || new Date(slot.start) > now) {
+      continue
     }
-    if (toUpdate.length > 0) {
-      await db.supabase.from('slots').upsert(toUpdate)
+    const interval = addRecurrence(
+      new Date(slotSeries?.original_start),
+      new Date(slotSeries?.original_end),
+      slotSeries.recurrence as MeetingRepeat
+    )
+    batchIds.push(`${slotSeries.slot_id!}_${interval.start.getTime()}`)
+  }
+  const { data: slotInstances, error: slotInstancesError } = await db.supabase
+    .from<Tables<'slot_instance'>>('slot_instance')
+    .select()
+    .in('id', batchIds)
+
+  if (slotInstancesError) {
+    console.error(
+      '[updateAllRecurringSlots]: Failed to fetch slot instances',
+      slotInstancesError
+    )
+    throw slotInstancesError
+  }
+  const slotInstanceMap = new Map(slotInstances?.map(s => [s.id, s]) || [])
+  for (const slotSeries of allSlotSeries) {
+    const slot = slotMap.get(slotSeries.slot_id!)
+    if (!slot || new Date(slot.start) > now) {
+      skipped++
+      continue
+    }
+    const interval = addRecurrence(
+      new Date(slotSeries?.original_start),
+      new Date(slotSeries?.original_end),
+      slotSeries.recurrence as MeetingRepeat
+    )
+    const slotInstance = slotInstanceMap.get(
+      `${slotSeries.slot_id!}_${interval.start.getTime()}`
+    )
+
+    if (!slotInstance) {
+      skipped++
+      continue
+    }
+
+    if (slotInstance.status === RecurringStatus.CANCELLED) {
+      continue
+    }
+
+    const newSlot: TablesInsert<'slots'> = {
+      id: slotSeries.slot_id!,
+      account_address: slotSeries.account_address,
+      meeting_info_encrypted:
+        slotInstance.override_meeting_info_encrypted ||
+        slotSeries.default_meeting_info_encrypted,
+      start: slotInstance.start,
+      end: slotInstance.end,
+      recurrence: slotSeries.recurrence,
+      created_at: new Date(slotSeries.created_at || new Date()).toISOString(),
+      role: slotInstance.role,
+      version: slotInstance.version,
+    }
+    toUpdate.push(newSlot)
+
+    processed++
+
+    // update batch all at once to avoid a huge memory spike when all data has been processed
+    if (toUpdate.length >= BATCH_SIZE) {
+      const { error: upsertError } = await db.supabase
+        .from('slots')
+        .upsert(toUpdate)
+      if (upsertError) {
+        console.error(
+          '[updateAllRecurringSlots] Batch upsert failed',
+          upsertError
+        )
+        throw upsertError
+      }
+      toUpdate.length = 0
     }
   }
+  if (toUpdate.length > 0) {
+    const { error: upsertError } = await db.supabase
+      .from('slots')
+      .upsert(toUpdate)
+    if (upsertError) {
+      console.error(
+        '[updateAllRecurringSlots] Final upsert failed',
+        upsertError
+      )
+      throw upsertError
+    }
+  }
+
+  // eslint-disable-next-line no-restricted-syntax
+  console.info('[updateAllRecurringSlots] Complete', {
+    processed,
+    skipped,
+    total: allSlotSeries.length,
+  })
 }
 const syncAllSeries = async () => {
+  const BATCH_SIZE = 100
   const now = new Date()
 
   const { data: allSlots } = await db.supabase
@@ -1355,28 +1426,45 @@ const syncAllSeries = async () => {
   const seriesToAddPromises = []
   const instancesToInsert: Array<TablesInsert<'slot_instance'>> = []
 
+  const { data: slotSeries, error } = await db.supabase
+    .from<Tables<'slot_series'>>('slot_series')
+    .select()
+    .in(
+      'slot_id',
+      (allSlots || []).map(slot => slot.id)
+    )
+  const slotSeriesMap = new Map<string, Tables<'slot_series'>>(
+    (slotSeries || []).map(series => [series.slot_id, series])
+  )
+  const { data: latestInstances, error: instancesError } =
+    await db.supabase.rpc<Tables<'slot_instance'>>(
+      'get_latest_instances_per_series',
+      {
+        series_ids: (slotSeries || []).map(s => s.id).filter(Boolean),
+      }
+    )
+
+  if (instancesError) {
+    console.error('[syncAllSeries] Failed to fetch instances', instancesError)
+    throw instancesError
+  }
+
+  // O(n) map creation - one instance per series guaranteed
+  const instancesBySeriesMap = new Map<string, Tables<'slot_instance'>>(
+    (latestInstances || []).map(instance => [instance.series_id, instance])
+  )
   for (const slot of allSlots || []) {
-    const { data: slotSeries, error } = await db.supabase
-      .from<Tables<'slot_series'>>('slot_series')
-      .select()
-      .eq('slot_id', slot.id)
-      .maybeSingle()
+    const slotSeries = slotSeriesMap.get(slot.id!)
     if (error || !slotSeries) {
       seriesToAddPromises.push(saveRecurringMeetings([slot], slot.recurrence))
       continue
     }
-    const { data: slotInstance, error: slotInstanceError } = await db.supabase
-      .from<Tables<'slot_instance'>>('slot_instance')
-      .select()
-      .eq('series_id', slotSeries.id)
-      .order('start', { ascending: false })
-      .limit(1)
-    const lastInstance = slotInstance?.[0]
-    if (slotInstanceError || !lastInstance) {
-      console.error(slotInstanceError)
-      // TODO: handle error for the slim chance this happens
+    const slotInstance = instancesBySeriesMap.get(slotSeries.id!)
+    if (!slotInstance) {
+      console.error('No slot instance found for series:', slotSeries.id)
       continue
     }
+
     if (!slotSeries.rrule || slotSeries.rrule.length === 0) {
       continue
     }
@@ -1385,47 +1473,48 @@ const syncAllSeries = async () => {
     })
 
     const differenceToAMonth = DateTime.fromJSDate(now).diff(
-      DateTime.fromISO(lastInstance.end),
+      DateTime.fromISO(slotInstance?.start),
       'months'
     ).months
     if (differenceToAMonth <= 1) {
-      const { data: confirmedSlotInstance, error: confirmedSlotInstanceError } =
-        await db.supabase
-          .from<Tables<'slot_instance'>>('slot_instance')
-          .select()
-          .eq('series_id', slotSeries.id)
-          .eq('status', RecurringStatus.CONFIRMED)
-          .limit(1)
-      const lastConfirmedInstance = confirmedSlotInstance?.[0]
-      if (!lastConfirmedInstance || confirmedSlotInstanceError) {
-        console.error(confirmedSlotInstanceError)
-        continue
-      }
-      const timeStamp = lastConfirmedInstance.id.split('_')[1]
+      const timeStamp = slotInstance.id.split('_')[1]
       const lastInstanceDate = new Date(parseInt(timeStamp))
+      const lastInstanceDateTime = DateTime.fromJSDate(lastInstanceDate)
+
+      const templateTime = {
+        hour: lastInstanceDateTime.hour,
+        minute: lastInstanceDateTime.minute,
+        second: lastInstanceDateTime.second,
+        millisecond: lastInstanceDateTime.millisecond,
+      }
       const start = DateTime.fromJSDate(lastInstanceDate)
-      const maxLimit = start.plus({ months: 6 })
+      const maxLimit = start.plus({ months: 3 })
       const ghostStartTimes = rule.between(
         start.toJSDate(),
         maxLimit.toJSDate(),
         true
       )
-      const duration_minutes = start.diff(
-        DateTime.fromJSDate(new Date(slot.end)),
+      const duration_minutes = DateTime.fromJSDate(new Date(slot.end)).diff(
+        DateTime.fromJSDate(new Date(slot.start)),
         'minutes'
       ).minutes
-      const toInsert = ghostStartTimes.map(ghostStart => {
-        const start = DateTime.fromJSDate(ghostStart)
-        const end = start.plus({ minutes: Math.abs(duration_minutes) })
+      const toInsert = ghostStartTimes.map(ghostStartRaw => {
+        const ghostStartDate = DateTime.fromJSDate(ghostStartRaw)
+        const startDateTime = ghostStartDate.set(templateTime) // Force same hour/minute
+        const endDateTime = startDateTime.plus({ minutes: duration_minutes })
+
+        const startMillis = startDateTime.toMillis()
+        const startISO = startDateTime.toISO()
+        const endISO = endDateTime.toISO()
         const newSlot: TablesInsert<'slot_instance'> = {
           account_address: slot.account_address || null,
           override_meeting_info_encrypted: null,
           role: slot.role!,
-          id: `${slot.id}_${ghostStart.getTime()}`,
+          id: `${slot.id}_${startMillis}`,
           created_at: new Date().toISOString(),
           version: slot.version!,
-          start: ghostStart.toISOString(),
-          end: end.toJSDate().toISOString(),
+          start: startISO!,
+          end: endISO!,
           status: RecurringStatus.CONFIRMED,
           series_id: slotSeries.id,
           guest_email: slot.guest_email || null,
@@ -1434,12 +1523,32 @@ const syncAllSeries = async () => {
       })
       instancesToInsert.push(...toInsert)
     }
+
+    if (instancesToInsert.length >= BATCH_SIZE) {
+      const batchToInsert = instancesToInsert.splice(0, BATCH_SIZE)
+      const { error: insertError } = await db.supabase
+        .from('slot_instance')
+        .insert(batchToInsert)
+
+      if (insertError) {
+        console.error('[syncAllSeries] Batch insert failed', insertError)
+      }
+    }
+  }
+  if (instancesToInsert.length > 0) {
+    const { error: insertError } = await db.supabase
+      .from('slot_instance')
+      .insert(instancesToInsert)
+
+    if (insertError) {
+      console.error('[syncAllSeries] Final insert failed', insertError)
+    }
   }
 
-  await Promise.all([
-    await db.supabase.from('slot_instance').insert(instancesToInsert),
-    ...seriesToAddPromises,
-  ])
+  // Process series additions
+  if (seriesToAddPromises.length > 0) {
+    await Promise.allSettled(seriesToAddPromises)
+  }
 }
 
 const getSlotsForDashboard = async (
@@ -1995,8 +2104,8 @@ const upsertRecurringInstances = async (
         maxLimit.toJSDate(),
         true
       )
-      const duration_minutes = start.diff(
-        DateTime.fromJSDate(new Date(slot.end)),
+      const duration_minutes = DateTime.fromJSDate(new Date(slot.end)).diff(
+        DateTime.fromJSDate(new Date(slot.start)),
         'minutes'
       ).minutes
       const toInsert = ghostStartTimes.map(ghostStart => {
@@ -2384,8 +2493,8 @@ const saveRecurringMeetings = async (
       maxLimit.toJSDate(),
       true
     )
-    const duration_minutes = start.diff(
-      DateTime.fromJSDate(new Date(slot.end)),
+    const duration_minutes = DateTime.fromJSDate(new Date(slot.end)).diff(
+      start,
       'minutes'
     ).minutes
     const toInsert = ghostStartTimes.map(ghostStart => {

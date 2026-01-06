@@ -75,7 +75,9 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({ event, timezone }) => {
   const handleDelete = () => {}
   const participants = useMemo(() => {
     const result: string[] = []
-    for (const attendee of event.attendees || []) {
+    for (const attendee of event.attendees || [
+      { email: event.accountEmail, name: 'You', isOrganizer: true },
+    ]) {
       let display = ''
       if (attendee.email === event.accountEmail) {
         display = 'You'
@@ -266,7 +268,7 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({ event, timezone }) => {
                   whiteSpace="pre-wrap"
                   suppressHydrationWarning
                   dangerouslySetInnerHTML={{
-                    __html: sanitizeHtml(event.description, {
+                    __html: sanitizeHtml(event.description.trim(), {
                       allowedAttributes: false,
                       allowVulnerableTags: false,
                     }),
