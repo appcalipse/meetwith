@@ -29,15 +29,19 @@ import {
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
 import {
+  AttendeeStatus,
   isAccepted,
   isDeclined,
   isPendingAction,
+  mapParticipationStatusToAttendeeStatus,
   UnifiedEvent,
   WithInterval,
 } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
+import { Attendee } from '@/types/Office365'
 import { ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
+import { updateCalendarRsvpStatus } from '@/utils/api_helper'
 import { dateToLocalizedRange, rsvpMeeting } from '@/utils/calendar_manager'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
@@ -61,6 +65,7 @@ const isCalendarEvent = (
 ): slot is WithInterval<UnifiedEvent<DateTime>> => {
   return 'calendarId' in slot
 }
+
 const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
   slot,
   onSelectEvent,
@@ -119,9 +124,13 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
     }
   }, [slot, currentAccount])
   const handleRSVP = async (status: ParticipationStatus) => {
-    if (isCalendarEvent(slot) || !actor || !currentAccount) return
-    if (status === actor.status) return
-    // cancel any in-flight rsvp request
+    if (!actor || !currentAccount) return
+    if (
+      status === actor.status ||
+      actor.status === mapParticipationStatusToAttendeeStatus(status)
+    )
+      return
+
     if (rsvpAbortControllerRef.current) {
       rsvpAbortControllerRef.current.abort()
     }
@@ -130,35 +139,66 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
     rsvpAbortControllerRef.current = abortController
 
     logEvent(`Clicked RSVP ${status} from Event Details PopOver`)
-
-    queryClient.setQueryData<CalendarEventsData>(
-      createEventsQueryKey(currrentDate),
-      old => {
-        if (!old?.mwwEvents) return old
-        return {
-          ...old,
-          mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
-            if (event.id !== slot.id) return event
-            return {
-              ...event,
-              participants: event.participants.map(p =>
-                p.account_address === currentAccount?.address
-                  ? { ...p, status }
-                  : p
-              ),
-            }
-          }),
-        }
-      }
-    )
-
     try {
-      await rsvpMeeting(
-        slot.id,
-        currentAccount.address,
-        status,
-        abortController.signal
-      )
+      if (!isCalendarEvent(slot)) {
+        queryClient.setQueryData<CalendarEventsData>(
+          createEventsQueryKey(currrentDate),
+          old => {
+            if (!old?.mwwEvents) return old
+            return {
+              ...old,
+              mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
+                if (event.id !== slot.id) return event
+                return {
+                  ...event,
+                  participants: event.participants.map(p =>
+                    p.account_address === currentAccount?.address
+                      ? { ...p, status }
+                      : p
+                  ),
+                }
+              }),
+            }
+          }
+        )
+
+        await rsvpMeeting(
+          slot.id,
+          currentAccount.address,
+          status,
+          abortController.signal
+        )
+      } else {
+        const attendeeStatus = mapParticipationStatusToAttendeeStatus(status)
+        queryClient.setQueryData<CalendarEventsData>(
+          createEventsQueryKey(currrentDate),
+          old => {
+            if (!old?.calendarEvents) return old
+            return {
+              ...old,
+              calendarEvents: old.calendarEvents.map((event: UnifiedEvent) => {
+                if (event.id !== slot.id) return event
+                return {
+                  ...event,
+                  attendees: event.attendees?.map(attendee =>
+                    attendee.email === slot.accountEmail
+                      ? { ...attendee, status: attendeeStatus }
+                      : attendee
+                  ),
+                }
+              }),
+            }
+          }
+        )
+
+        await updateCalendarRsvpStatus(
+          slot.calendarId,
+          slot.sourceEventId,
+          attendeeStatus,
+          slot.accountEmail,
+          abortController.signal
+        )
+      }
     } catch (error) {
       console.error('Failed to update RSVP:', error)
       if (error instanceof Error && error.name === 'AbortError') {

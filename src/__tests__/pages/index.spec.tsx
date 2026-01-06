@@ -4,14 +4,28 @@ import * as react from 'react'
 
 import Home from '@/pages'
 import { ChakraTestWrapper } from '@/testing/chakra-helpers'
-// jest.mock('react')
+
+// Mock Sentry BEFORE any imports that use it
+jest.mock('@sentry/nextjs', () => ({
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  withScope: jest.fn(callback => callback({ setTag: jest.fn() })),
+  init: jest.fn(),
+  BrowserTracing: jest.fn(),
+  Replay: jest.fn(),
+}))
+
 jest.mock('thirdweb/react', () => ({
   __esModule: true,
   default: jest.fn(),
 }))
+
 jest.mock('next/router', () => ({
   useRouter: () => ({
     push: jest.fn(),
+    pathname: '/',
+    query: {},
+    asPath: '/',
     events: {
       on: jest.fn(),
       off: jest.fn(),
@@ -20,21 +34,15 @@ jest.mock('next/router', () => ({
     isFallback: false,
   }),
 }))
+
 describe('ThemeSwitcher', () => {
   it('should react to theme mode switch', async () => {
-    // givens
-    // mock forwardRef and display name
-    // jest.spyOn(react, 'forwardRef').mockImplementation((props, ref) => {
-    //   return <div ref={ref}>{props.children}</div>
-    // })
-
     const rawComponent = <Home />
-    // when
+
     await act(async () => {
       render(rawComponent, { wrapper: ChakraTestWrapper })
     })
 
-    // then
     expect(screen.getByTestId('main-container')).toBeInTheDocument()
   })
 })

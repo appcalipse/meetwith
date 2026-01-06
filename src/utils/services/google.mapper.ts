@@ -15,6 +15,7 @@ import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 
 import { getBaseEventId } from '../calendar_sync_helpers'
 import { isJson } from '../generic_utils'
+
 interface DateTimeTimeZone {
   dateTime: string
   timeZone: string
@@ -45,7 +46,7 @@ export class GoogleEventMapper {
       meeting_url:
         googleEvent.location ||
         googleEvent.hangoutLink ||
-        googleEvent.conferenceData?.entryPoints?.[0]?.uri ||
+        googleEvent.conferenceData?.entryPoints?.find(ep => ep.uri)?.uri ||
         '',
       webLink: googleEvent.htmlLink,
       attendees: this.mapAttendees(googleEvent.attendees || []),

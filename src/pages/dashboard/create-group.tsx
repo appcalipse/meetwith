@@ -43,12 +43,10 @@ const CreateGroupPage = () => {
           groupId: newGroupId,
         },
       })
-    } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      const isJsonErr = isJson(message)
+      const errorMessage = isJsonErr ? JSON.parse(message)?.error : message
       toast({
         title: 'Error',
         description:

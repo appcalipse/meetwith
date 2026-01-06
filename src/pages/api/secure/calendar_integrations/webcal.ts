@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 import * as Sentry from '@sentry/nextjs'
 import ICAL from 'ical.js'
 import type { NextApiRequest, NextApiResponse } from 'next'

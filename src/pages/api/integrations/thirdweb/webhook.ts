@@ -153,7 +153,7 @@ export default async function handler(
               ? payload.data.id
               : /*cast type as this is not added on the package yet*/
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
+                // @ts-expect-error
                 payload.data?.transactionId || payload.data?.paymentId
 
           let fee_breakdown

@@ -8,22 +8,20 @@ import {
 } from '@utils/constants/meeting-types'
 import {
   confirmFiatTransaction,
-  createSubscriptionTransaction,
-  getPaymentAccountByProviderId,
-  handleUpdateTransactionStatus,
-  updatePaymentAccount,
-} from '@utils/database'
-import {
   createStripeSubscription,
   createSubscriptionPeriod,
+  createSubscriptionTransaction,
   findSubscriptionPeriodByPlanAndExpiry,
   getActiveSubscriptionPeriod,
   getBillingEmailAccountInfo,
   getBillingPlanById,
   getBillingPlanIdFromStripeProduct,
+  getPaymentAccountByProviderId,
   getStripeSubscriptionById,
   getSubscriptionPeriodsByAccount,
+  handleUpdateTransactionStatus,
   linkTransactionToStripeSubscription,
+  updatePaymentAccount,
   updateStripeSubscription,
   updateSubscriptionPeriodStatus,
   updateSubscriptionPeriodTransaction,
@@ -949,14 +947,18 @@ export const handleInvoicePaymentSucceeded = async (
       return undefined
     }
 
-    const topLevel = (subscriptionObj as any)?.current_period_end
+    const topLevel =
+      subscriptionObj?.pending_update?.subscription_items
+        ?.sort((a, b) => a.current_period_end - b.current_period_end)
+        .at(-1)?.current_period_end ||
+      subscriptionObj?.pending_update?.expires_at
     if (typeof topLevel === 'number') {
       return topLevel
     }
 
-    const items = (subscriptionObj as any)?.items?.data
+    const items = subscriptionObj?.items?.data
     if (Array.isArray(items) && items.length > 0) {
-      const first = items[0] as any
+      const first = items[0]
       if (typeof first?.current_period_end === 'number') {
         return first.current_period_end
       }
@@ -970,7 +972,8 @@ export const handleInvoicePaymentSucceeded = async (
       let fullSubscription: Stripe.Subscription | null = null
 
       // Try to use expanded subscription on invoice first
-      const invoiceSubscription = (invoice as any).subscription
+      const invoiceSubscription =
+        invoice.parent?.subscription_details?.subscription
       if (invoiceSubscription && typeof invoiceSubscription !== 'string') {
         fullSubscription = invoiceSubscription as Stripe.Subscription
       }

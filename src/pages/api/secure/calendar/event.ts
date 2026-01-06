@@ -56,7 +56,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           unifiedEvent
         )
         return res.status(200).json(updatedEvent)
-      } catch (error: any) {
+      } catch (error: unknown) {
         Sentry.captureException(error, {
           extra: {
             account_address,
@@ -67,33 +67,46 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           },
         })
 
-        if (
-          error.message?.includes('not found') ||
-          error.message?.includes('not enabled')
-        ) {
-          return res.status(404).send(error.message)
+        if (error instanceof Error) {
+          if (
+            error.message?.includes('not found') ||
+            error.message?.includes('not enabled')
+          ) {
+            return res.status(404).send(error.message)
+          }
+          if (
+            error.message?.includes('Unauthorized') ||
+            error.message?.includes('permission') ||
+            error.message?.includes('403')
+          ) {
+            return res.status(403).send(error.message)
+          }
+          if (
+            error.message?.includes('conflict') ||
+            error.message?.includes('409')
+          ) {
+            return res.status(409).send(error.message)
+          }
         }
-        if (
-          error.message?.includes('Unauthorized') ||
-          error.message?.includes('permission') ||
-          error.message?.includes('403')
-        ) {
-          return res.status(403).send(error.message)
-        }
-        if (
-          error.message?.includes('conflict') ||
-          error.message?.includes('409')
-        ) {
-          return res.status(409).send(error.message)
-        }
-        return res.status(500).send(`Failed to update event: ${error.message}`)
+
+        return res
+          .status(500)
+          .send(
+            `Failed to update event: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          )
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     Sentry.captureException(error)
     return res
       .status(500)
-      .send(`Internal server error: ${error.message || error}`)
+      .send(
+        `Internal server error: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      )
   }
   return res.status(405).send('Method not allowed.')
 }

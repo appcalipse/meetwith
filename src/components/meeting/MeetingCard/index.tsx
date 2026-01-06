@@ -64,6 +64,7 @@ import {
 import { addUTMParams } from '@/utils/huddle.helper'
 import { useToastHelpers } from '@/utils/toasts'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
+
 interface MeetingCardProps {
   meeting: ExtendedDBSlot
   timezone: string
@@ -223,7 +224,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
         'Downloaded calendar invite',
         'Ics file downloaded successfully'
       )
-    } catch (e) {
+    } catch (_e) {
       showErrorToast(
         'Download failed',
         'There was an error downloading the ics file. Please try again.'

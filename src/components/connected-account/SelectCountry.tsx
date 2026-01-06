@@ -19,6 +19,7 @@ import { Select } from 'chakra-react-select'
 import React, { FC, useContext, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
+
 interface IProps {
   isOpen: boolean
   onClose: () => void
@@ -48,7 +49,7 @@ const SelectCountry: FC<IProps> = props => {
       await queryClient.invalidateQueries(
         QueryKeys.connectedAccounts(currentAccount?.address)
       )
-    } catch (e) {
+    } catch (_e) {
       showErrorToast('Error', 'Failed to initiate Stripe onboarding.')
     } finally {
       setIsConnecting(false)

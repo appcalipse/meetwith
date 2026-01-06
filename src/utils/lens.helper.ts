@@ -1,4 +1,4 @@
-import { LensClient, production } from '@lens-protocol/client'
+import { LensClient, ProfileFragment, production } from '@lens-protocol/client'
 
 import handle from '@/pages/api/server/meetings'
 
@@ -13,12 +13,12 @@ export interface LensProfile {
   picture?: string
 }
 
-const convertLensProfile = (profile: any): LensProfile => {
+const convertLensProfile = (profile: ProfileFragment): LensProfile => {
   return {
-    handle: `${profile.handle.localName}.${profile.handle.namespace}`,
-    name: profile.metadata?.displayName,
-    ownedBy: profile.handle.ownedBy,
-    picture: profile.metadata?.coverPicture?.optimized?.url,
+    handle: `${profile.handle?.localName}.${profile.handle?.namespace}`,
+    name: profile.metadata?.displayName || '',
+    ownedBy: profile.handle?.ownedBy || '',
+    picture: profile.metadata?.coverPicture?.optimized?.uri,
   }
 }
 

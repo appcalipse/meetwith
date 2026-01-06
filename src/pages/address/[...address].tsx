@@ -18,9 +18,11 @@ const Schedule: NextPage<ScheduleProps> = ({ currentUrl, ...rest }) => (
   <PublicPage {...rest} url={currentUrl} />
 )
 
-const EnhancedSchedule: NextPage = forceAuthenticationCheck(Schedule)
-
-EnhancedSchedule.getInitialProps = async ctx => {
+const EnhancedSchedule: NextPage<ScheduleProps, ScheduleProps | object> =
+  forceAuthenticationCheck<ScheduleProps>(Schedule)
+EnhancedSchedule.getInitialProps = async (
+  ctx
+): Promise<ScheduleProps | object> => {
   const address = ctx.query.address
 
   if (!address || !address[0]) {

@@ -5,11 +5,11 @@ import {
   PaymentProvider,
 } from '@meta/PaymentAccount'
 import * as Sentry from '@sentry/nextjs'
-import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getDiscordInfoForAddress } from '@utils/services/discord.helper'
 import {
-  currenciesMap,
   Currency,
+  currenciesMap,
   extractOnRampStatus,
   getChainIdFromOnrampMoneyNetwork,
   getOnrampMoneyTokenAddress,
@@ -62,11 +62,6 @@ import {
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
 import {
-  getChainInfo,
-  resolveTokenSymbolFromAddress,
-  SupportedChain,
-} from '@/types/chains'
-import {
   ContactSearch,
   DBContact,
   DBContactInvite,
@@ -74,6 +69,11 @@ import {
   SingleDBContact,
   SingleDBContactInvite,
 } from '@/types/Contacts'
+import {
+  getChainInfo,
+  resolveTokenSymbolFromAddress,
+  SupportedChain,
+} from '@/types/chains'
 import { DiscordAccount, DiscordAccountInfo } from '@/types/Discord'
 import {
   CreateGroupsResponse,
@@ -239,9 +239,9 @@ import {
   SubscriptionPeriodCreationError,
   SubscriptionPeriodFetchError,
   SubscriptionPeriodFindError,
+  SubscriptionPeriodStatusUpdateError,
   SubscriptionPeriodsExpirationError,
   SubscriptionPeriodsFetchError,
-  SubscriptionPeriodStatusUpdateError,
   SubscriptionPeriodTransactionUpdateError,
   SubscriptionTransactionCreationError,
   TimeNotAvailableError,
@@ -338,7 +338,7 @@ const initAccountDBForWallet = async (
       return account
     }
     return await updateAccountFromInvite(address, signature, timezone, nonce)
-  } catch (error) {}
+  } catch (_error) {}
 
   const newIdentity = EthCrypto.createIdentity()
 
@@ -484,7 +484,7 @@ const updateAccountFromInvite = async (
       if (error) {
         throw new Error(error.message)
       }
-    } catch (err) {
+    } catch (_err) {
       //if any fail, don't fail them all
     }
   }
@@ -2037,6 +2037,7 @@ const deleteRecurringSlotInstances = async (slotIds: string[]) => {
     await db.supabase.from('slot_instance').delete().in('series_id', seriesIds)
   }
 }
+// biome-ignore lint/correctness/noUnusedVariables: The function is intended to be ised for future side effects
 const upsertRecurringInstances = async (
   slots: Array<TablesInsert<'slots'>>,
   recurrence: MeetingRepeat,
@@ -2644,7 +2645,7 @@ const getGroupsAndMembers = async (
     const memberAvailabilities: AvailabilityBlock[] = Array.isArray(
       group.member_availabilities
     )
-      ? group.member_availabilities.map((avail: any) => ({
+      ? group.member_availabilities.map((avail: AvailabilityBlock) => ({
           ...avail,
           isDefault: false,
         }))
@@ -3470,7 +3471,7 @@ const getQuickPollCalendars = async (
     account_address: '',
     email: calendar.email,
     provider: calendar.provider as TimeSlotSource,
-    payload: calendar.payload,
+    payload: calendar.payload as Credentials,
     calendars: calendar.calendars || [],
     enabled: true,
     created: new Date(calendar.created_at) || new Date(),
@@ -3638,7 +3639,7 @@ const addOrUpdateConnectedCalendar = async (
     address,
     email,
     provider,
-    payload,
+    payload as Credentials,
     calendars,
     calendar
   )
@@ -4689,7 +4690,7 @@ const insertGoogleEventMapping = async (
     .delete()
     .eq('mww_id', mww_id)
     .eq('calendar_id', calendar_id)
-  const { error, body } = await db.supabase
+  const { error } = await db.supabase
     .from('google_events_mapping')
     .upsert({ event_id, mww_id, calendar_id })
 
@@ -7145,7 +7146,6 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
       calendar.account_address,
       calendar.email,
       TimeSlotSource.GOOGLE,
-
       calendar.payload
     )
     for (const cal of calendar.calendars.filter(c => c.enabled && c.sync)) {
@@ -7203,7 +7203,7 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
         if (updateError) {
           console.error(updateError)
         }
-      } catch (e) {}
+      } catch (_e) {}
     }
   }
 }
