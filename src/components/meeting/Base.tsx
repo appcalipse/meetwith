@@ -8,14 +8,19 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  InfiniteData,
+  useInfiniteQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
-import { FC, ReactNode, useEffect, useMemo, useRef } from 'react'
+import { FC, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { ActionsContext } from '@/providers/schedule/ActionsContext'
 import { Account } from '@/types/Account'
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, CalendarEvents, UnifiedEvent } from '@/types/Calendar'
 import { Intents } from '@/types/Dashboard'
 import {
   ExtendedDBSlot,
@@ -81,12 +86,9 @@ const createMeetingsQueryConfig = ({
       true
     )
 
-    return {
-      meetings,
-      nextOffset: WEEKS_TO_LOAD,
-    }
+    return meetings
   },
-  getNextPageParam: (lastPage: { nextOffset: number }) => lastPage.nextOffset,
+  getNextPageParam: () => WEEKS_TO_LOAD,
   staleTime: 30_000,
   refetchOnWindowFocus: true,
 })
@@ -113,7 +115,43 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
     isFetchingNextPage,
     isLoading,
     isError,
-  } = useInfiniteQuery(queryConfig)
+  } = useInfiniteQuery<CalendarEvents>(queryConfig)
+  const updateAttendeeStatus = useCallback(
+    (eventId: string, accountEmail: string, status: AttendeeStatus) => {
+      queryClient.setQueryData<InfiniteData<CalendarEvents>>(
+        queryConfig.queryKey,
+        old => {
+          if (!old?.pages) return old
+
+          return {
+            ...old,
+            pages: old.pages.map(page => {
+              if (!page?.calendarEvents) return page
+
+              return {
+                ...page,
+                calendarEvents: page.calendarEvents.map(
+                  (event: UnifiedEvent) => {
+                    if (event.id !== eventId) return event
+
+                    return {
+                      ...event,
+                      attendees: event.attendees?.map(attendee =>
+                        attendee.email === accountEmail
+                          ? { ...attendee, status }
+                          : attendee
+                      ),
+                    }
+                  }
+                ),
+              }
+            }),
+          }
+        }
+      )
+    },
+    [queryClient, queryConfig.queryKey]
+  )
   useEffect(() => {
     if (hasNextPage && !isFetchingNextPage && !isLoading) {
       const prefetch = () => {
@@ -129,12 +167,10 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
       }
     }
   }, [hasNextPage, isFetchingNextPage, isLoading, queryClient])
-
-  const meetings = useMemo(() => {
+  const meetings: DashboardEvent[] = useMemo(() => {
     if (!data) return []
     const now = DateTime.now()
     const allEvents: DashboardEvent[] = data.pages
-      .flatMap(page => page.meetings)
       .flatMap(data => [...data.mwwEvents, ...data.calendarEvents])
       .filter(event => DateTime.fromJSDate(new Date(event.start)) >= now) // ← Add this
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
@@ -201,7 +237,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
       try {
         const meeting = await getMeeting(slotId)
         const decodedMeeting = await decodeMeeting(meeting, currentAccount)
-
+        if (!decodedMeeting) return
         if (intent === Intents.CANCEL_MEETING) {
           openCancelDialog(
             meeting,
@@ -423,6 +459,9 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
                 key={event.sourceEventId}
                 event={event}
                 timezone={timezone}
+                timeWindow={startWindow}
+                updateAttendeeStatus={updateAttendeeStatus}
+                currentAccountAddress={currentAccount.address}
               />
             )
           } else {

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/** biome-ignore-all lint/suspicious/noExplicitAny: Readonly calendar handler, any used to allow for catch all types */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import * as Sentry from '@sentry/nextjs'
 import { utcToZonedTime } from 'date-fns-tz'

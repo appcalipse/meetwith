@@ -1,5 +1,7 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+
 jest.setTimeout(30000)
 // Setup Virtual D.O.M for Tests To Stop Potential Errors
 export class ClipboardDataMock {
@@ -43,6 +45,7 @@ export class DragEventMock extends Event {
     this.dataTransfer = new DataTransferMock()
   }
 }
+
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 ;(global as any).ClipboardEvent = ClipboardEventMock
 ;(global as any).DragEvent = DragEventMock

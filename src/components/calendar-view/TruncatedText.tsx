@@ -5,7 +5,7 @@ import sanitizeHtml from 'sanitize-html'
 interface TruncatedTextProps {
   content: string
   maxHeight: string
-  [key: string]: any // For other props
+  [key: string]: unknown // For other props
 }
 
 export const TruncatedText: React.FC<TruncatedTextProps> = ({

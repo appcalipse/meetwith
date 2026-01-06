@@ -14,13 +14,13 @@ import { useContext, useEffect, useState } from 'react'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { EditMode, Intents } from '@/types/Dashboard'
+import { Group } from '@/types/Group'
 import { getGroupExternal } from '@/utils/api_helper'
-
 import Loading from '../components/Loading'
 
 export default function LogoutPage() {
   const bgColor = useColorModeValue('white', 'neutral.800')
-  const [group, setGroup] = useState<any>()
+  const [group, setGroup] = useState<Group>()
   const [loading, setLoading] = useState(true)
   const { openConnection } = useContext(OnboardingModalContext)
   const { query, push } = useRouter()

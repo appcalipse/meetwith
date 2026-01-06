@@ -234,10 +234,12 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         'Calendar Link Updated',
         'Your calendar link has been changed successfully'
       )
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e)
       setLoading(false)
-      showErrorToast('Domain Change Failed', `${e.message}`)
+      if (e instanceof Error) {
+        showErrorToast('Domain Change Failed', `${e.message}`)
+      }
     }
 
     setLoading(false)

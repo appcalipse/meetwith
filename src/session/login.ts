@@ -112,7 +112,7 @@ export const useLogin = () => {
           return
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof InvalidSessionError) {
         await router.push(`/logout?redirect=${asPath}`)
         return
@@ -120,13 +120,12 @@ export const useLogin = () => {
       Sentry.captureException(error)
       toast({
         title: 'Error',
-        description: error.message || error,
+        description: error instanceof Error ? error.message : String(error),
         status: 'error',
         duration: 7000,
         position: 'top',
         isClosable: true,
       })
-      logEvent('Failed to sign in', error)
     }
   }
 

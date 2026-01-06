@@ -77,7 +77,7 @@ const MultipleCalendarList: React.FC<MultipleCalendarListProps> = props => {
               flex={1}
               colorScheme="primary"
               isChecked={calendar.enabled}
-              onChange={e => toggleCalendar(calendar)}
+              onChange={() => toggleCalendar(calendar)}
               mb={{ base: 4, md: 0 }}
             >
               <HStack>

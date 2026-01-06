@@ -25,8 +25,8 @@ export const useMeetingDialog = () => {
   })
 
   const openMeetingDialog = (
-    meeting: any,
-    decryptedMeeting: any,
+    meeting: DBSlot,
+    decryptedMeeting: MeetingDecrypted<Date>,
     timezone: string,
     afterClose?: (
       changeType: MeetingChangeType,
@@ -70,5 +70,5 @@ export const useMeetingDialog = () => {
     )
   }
 
-  return [MeetingDialog as any, openMeetingDialog]
+  return [MeetingDialog, openMeetingDialog]
 }

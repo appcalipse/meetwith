@@ -27,6 +27,7 @@ import {
   syncSubscriptions,
 } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
+import { ApiFetchError } from './errors'
 import { parseUnits, zeroAddress } from './generic_utils'
 import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
 import { thirdWebClient } from './user_manager'
@@ -222,11 +223,11 @@ export const getNativePriceForDuration = async (
       abi: Abi.parse(MWWRegister),
     })
 
-    const result = (await readContract({
+    const result = await readContract({
       contract,
       method: 'function getNativeConvertedValue(uint8 price)',
       params: [planInfo.usdPrice],
-    })) as any
+    })
     const value =
       (BigInt(result[0]) * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
 
@@ -250,8 +251,8 @@ export const subscribeToPlan = async (
     if (subExists && subExists!.owner_account !== accountAddress) {
       throw Error('Domain already registered')
     }
-  } catch (e: any) {
-    if (e.status !== 404) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status !== 404) {
       throw e
     }
   }
@@ -348,12 +349,12 @@ export const subscribeToPlan = async (
         throw Error('Plan does not exists')
       }
 
-      const readResult = (await readContract({
+      const readResult = await readContract({
         contract,
         method:
           'function getNativeConvertedValue(uint256 usdPrice) public view returns (uint256 amountInNative, uint256 timestamp)',
         params: [BigInt(planInfo.usdPrice)],
-      })) as any
+      })
 
       const value =
         (BigInt(readResult[0]) * BigInt(duration)) /
@@ -427,13 +428,13 @@ export const changeDomainOnChain = async (
     if (subExists) {
       throw Error('Domain already registered')
     }
-  } catch (e: any) {
-    if (e.status !== 404) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status !== 404) {
       throw e
     }
   }
 
-  let chain: any
+  let chain: SupportedChain | null = null
   try {
     const subExists = await getSubscriptionByDomain(domain)
     if (subExists && subExists!.owner_account !== accountAddress) {
@@ -441,7 +442,7 @@ export const changeDomainOnChain = async (
     } else {
       chain = subExists!.chain
     }
-  } catch (e: any) {
+  } catch (_e: unknown) {
     throw Error('Your current domain is not registered. Please contact us')
   }
 
@@ -449,7 +450,7 @@ export const changeDomainOnChain = async (
 
   try {
     await validateChainToActOn(chain!, wallet)
-  } catch (e) {
+  } catch (_e) {
     throw Error(
       'Please connect to the ${chain} network. (consider you must unlock your wallet and also reload the page after that)'
     )
@@ -479,7 +480,7 @@ export const changeDomainOnChain = async (
       chain: chainInfo!.thirdwebChain,
       transactionHash,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     Sentry.captureException(error)
     throw Error(checkTransactionError(error))
   }
