@@ -350,6 +350,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       )
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['quickpolls-check'] })
       void fetchPollCounts()
 
       // Reset form state
@@ -388,6 +389,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['quickpoll', pollSlug] })
+      queryClient.invalidateQueries({ queryKey: ['quickpolls-check'] })
       void fetchPollCounts()
       router.push('/dashboard/quickpoll')
     },
@@ -409,6 +411,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       )
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['quickpolls-check'] })
       void fetchPollCounts()
       closeCancelModal()
       router.push('/dashboard/quickpoll')

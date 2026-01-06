@@ -251,6 +251,8 @@ const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
     if (hasAvailabilityChanged) {
       await updateAvailabilityMutation.mutateAsync(newAvailabilityIds)
     }
+
+    onClose()
   }
 
   // Avatar upload handlers
