@@ -3,6 +3,7 @@ import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime, Interval as LuxonInterval } from 'luxon'
 
 import { Account, DayAvailability } from '@/types/Account'
+import { TimeRangeFilter } from '@/types/schedule'
 
 import { parseMonthAvailabilitiesToDate } from './date_helper'
 
@@ -169,10 +170,54 @@ export const suggestBestSlots = (
   })
 }
 
+export const filterSlotsByTimeRange = (
+  slots: Array<LuxonInterval<true>>,
+  timeRange: TimeRangeFilter,
+  timezone: string
+): Array<LuxonInterval<true>> => {
+  if (slots.length === 0) return slots
+
+  // Get a reference day from the first slot
+  const referenceSlot = slots[0]
+  const referenceDay = referenceSlot.start.setZone(timezone).startOf('day')
+
+  // Parse time range
+  const [startHour, startMinute] = timeRange.startTime.split(':').map(Number)
+  const [endHour, endMinute] = timeRange.endTime.split(':').map(Number)
+
+  // Create DateTime objects for start and end times on the reference day
+  const rangeStart = referenceDay
+    .set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 })
+    .setZone(timezone)
+  const rangeEnd = referenceDay
+    .set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 })
+    .setZone(timezone)
+
+  // Handle case where end time is next day
+  const actualRangeEnd =
+    rangeEnd <= rangeStart ? rangeEnd.plus({ days: 1 }) : rangeEnd
+
+  // Filter slots that overlap with the time range
+  return slots.filter(slot => {
+    const slotStart = slot.start.setZone(timezone)
+    const slotEnd = slot.end.setZone(timezone)
+
+    // Check if slot overlaps with time range
+    if (rangeEnd > rangeStart) {
+      // Normal same-day range
+      return slotStart < actualRangeEnd && slotEnd > rangeStart
+    } else {
+      // Overnight range (e.g., 22:00 - 02:00)
+      return slotStart < actualRangeEnd || slotEnd > rangeStart
+    }
+  })
+}
+
 export const getEmptySlots = (
   time: DateTime,
   scheduleDuration: number,
-  timezone = 'UTC'
+  timezone = 'UTC',
+  timeRange?: TimeRangeFilter
 ): Array<LuxonInterval<true>> => {
   const slots: Array<LuxonInterval<true>> = []
   const slotsPerHour = 60 / (scheduleDuration || 30)
@@ -185,6 +230,10 @@ export const getEmptySlots = (
     const start = dayStart.plus({ minutes: minutesFromStart })
     const slot = LuxonInterval.after(start, { minutes: scheduleDuration || 30 })
     if (slot.isValid) slots.push(slot)
+  }
+
+  if (timeRange) {
+    return filterSlotsByTimeRange(slots, timeRange, timezone)
   }
 
   return slots

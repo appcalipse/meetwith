@@ -1,8 +1,15 @@
 import { DateTime, Interval } from 'luxon'
 import { useMemo } from 'react'
 
+import { TimeRangeFilter } from '@/types/schedule'
+import { filterSlotsByTimeRange } from '@/utils/slots.helper'
+
 // Cache slots by duration+timezone
-const useSlotCache = (duration: number, timezone: string) => {
+const useSlotCache = (
+  duration: number,
+  timezone: string,
+  timeRangeFilter?: TimeRangeFilter | null
+) => {
   return useMemo(() => {
     const slots: Array<Interval<true>> = []
     const slotsPerHour = 60 / (duration || 30)
@@ -21,8 +28,12 @@ const useSlotCache = (duration: number, timezone: string) => {
       if (slot.isValid) slots.push(slot)
     }
 
+    if (timeRangeFilter) {
+      return filterSlotsByTimeRange(slots, timeRangeFilter, timezone)
+    }
+
     return slots
-  }, [duration, timezone])
+  }, [duration, timezone, timeRangeFilter])
 }
 
 export default useSlotCache
