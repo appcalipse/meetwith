@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
+/** biome-ignore-all lint/suspicious/noExplicitAny: Implicit typing */
 import { Frequency, RRule, RRuleSet, rrulestr } from 'rrule'
 
 import {
