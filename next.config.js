@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+/** biome-ignore-all lint/style/noCommonJs: commonjs is the default module type for this config file */
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { withSentryConfig } = require('@sentry/nextjs')
@@ -21,7 +22,7 @@ const withMDX = require('@next/mdx')({
 /** @type {import('next').NextConfig} */
 const moduleExports = {
   reactStrictMode: true,
-  eslint: { dirs: ['src'] },
+  eslint: { ignoreDuringBuilds: true },
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   compress: true,
   poweredByHeader: false,
