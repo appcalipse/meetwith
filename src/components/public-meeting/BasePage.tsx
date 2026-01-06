@@ -12,7 +12,7 @@ import { Avatar } from '@components/profile/components/Avatar'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import SessionTypeCard from '@components/public-meeting/SessionTypeCard'
 import { getAccountDisplayName } from '@utils/user_manager'
-import React, { FC, useContext, useState } from 'react'
+import React, { type FC, useContext, useMemo, useState } from 'react'
 import { FaDiscord, FaTelegram } from 'react-icons/fa'
 import { FaXTwitter } from 'react-icons/fa6'
 
@@ -30,15 +30,18 @@ const BasePage: FC = () => {
   const { openConnection } = useContext(OnboardingModalContext)
   const borderColor = useColorModeValue('neutral.200', 'neutral.800')
   const social = account.preferences?.socialLinks
-  let [twitter, telegram, discord] = ['', '', '']
   const iconColor = useColorModeValue('gray.600', 'white')
-
-  if (social) {
-    twitter = social.filter(s => s.type === SocialLinkType.TWITTER)[0]?.url
-    discord = social.filter(s => s.type === SocialLinkType.DISCORD)[0]?.url
-    telegram = social.filter(s => s.type === SocialLinkType.TELEGRAM)[0]?.url
-  }
+  const { twitter, telegram, discord } = useMemo(() => {
+    let [twitter, telegram, discord] = ['', '', '']
+    if (social) {
+      twitter = social.filter(s => s.type === SocialLinkType.TWITTER)[0]?.url
+      discord = social.filter(s => s.type === SocialLinkType.DISCORD)[0]?.url
+      telegram = social.filter(s => s.type === SocialLinkType.TELEGRAM)[0]?.url
+    }
+    return { twitter, telegram, discord }
+  }, [social])
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
+  console.log(account.preferences)
   const copyDiscord = async () => {
     if ('clipboard' in navigator) {
       await navigator.clipboard.writeText(discord)
@@ -73,13 +76,17 @@ const BasePage: FC = () => {
           borderColor={borderColor}
           borderRadius="md"
           p={4}
-          w="max-content"
-          minW={{ base: '100%', md: '40%' }}
+          minW={'40%'}
           display="flex"
           flexDirection="column"
           gap={2}
         >
-          <HStack gap={{ md: 4, base: 2 }} alignItems="center">
+          <HStack
+            gap={{ md: 4, base: 2 }}
+            alignItems="center"
+            maxW="100%"
+            w="100%"
+          >
             <Box w={10} h={10}>
               <Avatar
                 address={account.address}
@@ -92,7 +99,7 @@ const BasePage: FC = () => {
             </Text>
           </HStack>
           {account.preferences?.description && (
-            <Text fontWeight="700" w={{ base: '80%', lg: '100%' }}>
+            <Text fontWeight="700" w={'100%'}>
               {account.preferences.description}
             </Text>
           )}

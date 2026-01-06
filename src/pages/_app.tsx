@@ -20,7 +20,7 @@ import { BaseLayout } from '@/layouts/Base'
 import { AccountProvider } from '@/providers/AccountProvider'
 import { OnboardingModalProvider } from '@/providers/OnboardingModalProvider'
 import { validateAuthenticationApp } from '@/session/core'
-import { Account } from '@/types/Account'
+import type { Account } from '@/types/Account'
 import { initAnalytics, pageView } from '@/utils/analytics'
 import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
@@ -114,10 +114,6 @@ MyApp.getInitialProps = async (appContext: AppContext) => {
 
     return { ...appProps, consentCookie, currentAccount, checkAuthOnClient }
   } catch (e) {
-    if (appContext.ctx.res) {
-      appContext.ctx.res.writeHead(302, { Location: '/error' })
-      appContext.ctx.res.end()
-    }
     return {}
   }
 }

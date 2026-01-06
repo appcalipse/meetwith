@@ -15,20 +15,20 @@ import BasePage from '@components/public-meeting/BasePage'
 import BookingComponent from '@components/public-meeting/BookingComponent'
 import HeadMeta from '@components/public-meeting/HeadMeta'
 import PaymentComponent from '@components/public-meeting/PaymentComponent'
-import { MeetingType, PublicAccount } from '@meta/Account'
-import { AccountNotifications } from '@meta/AccountNotifications'
-import { ConnectedCalendarCore } from '@meta/CalendarConnections'
-import { MeetingReminders } from '@meta/common'
+import type { MeetingType, PublicAccount } from '@meta/Account'
+import type { AccountNotifications } from '@meta/AccountNotifications'
+import type { ConnectedCalendarCore } from '@meta/CalendarConnections'
+import type { MeetingReminders } from '@meta/common'
 import {
-  ConferenceMeeting,
-  MeetingDecrypted,
+  type ConferenceMeeting,
+  type MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
   TimeSlotSource,
 } from '@meta/Meeting'
 import {
-  ParticipantInfo,
+  type ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
 } from '@meta/ParticipantInfo'
@@ -47,7 +47,7 @@ import {
   PublicSchedulingSteps,
   SessionType,
 } from '@utils/constants/meeting-types'
-import { Option, TimeZoneOption } from '@utils/constants/select'
+import { Option, type TimeZoneOption } from '@utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@utils/date_helper'
 import {
   AllMeetingSlotsUsedError,
@@ -69,12 +69,16 @@ import { getAccountDisplayName } from '@utils/user_manager'
 import { addMinutes } from 'date-fns'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react'
+import React, { type FC, useEffect, useMemo, useRef, useState } from 'react'
 import { v4 } from 'uuid'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
-import { Address, Transaction } from '@/types/Transactions'
+import {
+  AcceptedToken,
+  type SupportedChain,
+  supportedChains,
+} from '@/types/chains'
+import type { Address, Transaction } from '@/types/Transactions'
 import {
   getAccountDomainUrl,
   scheduleMeeting,
@@ -87,7 +91,7 @@ import {
 } from '@/utils/constants/schedule'
 import { decryptContent } from '@/utils/cryptography'
 import { isJson } from '@/utils/generic_utils'
-import { ParticipantInfoForNotification } from '@/utils/notification_helper'
+import type { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 import Loading from '../Loading'
@@ -698,7 +702,7 @@ const PublicPage: FC<IProps> = props => {
           MeetingRepeatOptions.find(option => option.value == repeatValue) || {
             value: repeatValue,
             label:
-              repeatValue == MeetingRepeat.NO_REPEAT
+              repeatValue === MeetingRepeat.NO_REPEAT
                 ? 'Does not repeat'
                 : repeatValue,
           }
@@ -813,7 +817,9 @@ const PublicPage: FC<IProps> = props => {
   const _onClose = async () => {
     await getAvailableSlots(true)
     await push({
-      pathname: `/${getAccountDomainUrl(props.account!)}/${selectedType?.slug}`,
+      pathname: `/${getAccountDomainUrl(props.account || '')}/${
+        selectedType?.slug
+      }`,
     })
     resetState()
   }
