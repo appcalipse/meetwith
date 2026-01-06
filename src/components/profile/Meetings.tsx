@@ -16,6 +16,7 @@ import { LuCalendarCheck2 } from 'react-icons/lu'
 import { MdOutlineCalendarMonth } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
+import { isProduction } from '@/utils/constants'
 
 import CalendarView from '../calendar-view'
 import MeetingBase from '../meeting/Base'
@@ -34,6 +35,7 @@ const NavigationTab = () => (
         bg: 'tab-button-bg',
       }}
       flex={{ base: 1, md: 'auto' }}
+      display={isProduction ? 'none' : 'flex'}
     >
       <MdOutlineCalendarMonth size={24} />
       My Calendar
