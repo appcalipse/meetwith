@@ -1,5 +1,6 @@
 import {
   FormControl,
+  FormHelperText,
   FormLabel,
   Select as ChakraSelect,
   Text,
@@ -93,6 +94,19 @@ const DurationModeSelector: React.FC<DurationModeSelectorProps> = ({
     }
   }
 
+  const getModeHelperText = () => {
+    switch (mode) {
+      case DurationMode.PRESET:
+        return 'Standard meeting durations'
+      case DurationMode.CUSTOM:
+        return 'Enter any duration in minutes or hours (5-480 minutes)'
+      case DurationMode.TIME_RANGE:
+        return 'Find availability within a specific time window (00:00 AM - 11:45 PM)'
+      default:
+        return ''
+    }
+  }
+
   return (
     <VStack align="stretch" spacing={3} width="100%">
       <FormControl w={'fit-content'} isDisabled={isDisabled}>
@@ -125,6 +139,11 @@ const DurationModeSelector: React.FC<DurationModeSelectorProps> = ({
 
           <option value={DurationMode.TIME_RANGE}>Time range</option>
         </ChakraSelect>
+        {getModeHelperText() && (
+          <FormHelperText color="neutral.400" mt={1} fontSize="sm">
+            {getModeHelperText()}
+          </FormHelperText>
+        )}
       </FormControl>
 
       {/* Conditional rendering based on mode */}

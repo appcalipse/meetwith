@@ -1017,6 +1017,34 @@ export function SchedulePickTime({
                   />
                 )
               })}
+              {durationMode === DurationMode.TIME_RANGE &&
+                datesSlotsWithAvailability &&
+                datesSlotsWithAvailability.length > 0 &&
+                datesSlotsWithAvailability.every(
+                  date =>
+                    date.slots.length === 0 ||
+                    date.slots.every(
+                      slot => slot.state === State.NONE_AVAILABLE
+                    )
+                ) && (
+                  <Box
+                    px={4}
+                    py={3}
+                    bg="blue.50"
+                    borderRadius="md"
+                    borderWidth="1px"
+                    borderColor="blue.200"
+                    mt={4}
+                    mx={4}
+                  >
+                    <Text fontSize="sm" color="blue.800">
+                      No overlapping availability found in the selected time
+                      range. The grid shows availability states for each
+                      participant. Try adjusting the time range or date to find
+                      better availability.
+                    </Text>
+                  </Box>
+                )}
             </HStack>
           )}
         </VStack>
