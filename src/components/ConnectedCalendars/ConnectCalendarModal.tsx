@@ -21,6 +21,7 @@ import {
   getQuickPollGoogleAuthConnectUrl,
   getQuickPollOffice365ConnectUrl,
 } from '@/utils/api_helper'
+import { isProduction } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 
@@ -168,19 +169,21 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 >
                   Webdav
                 </Button>
-                <Button
-                  onClick={selectOption(TimeSlotSource.WEBCAL)}
-                  leftIcon={<CiStreamOn />}
-                  variant={
-                    selectedProvider === TimeSlotSource.WEBCAL
-                      ? 'solid'
-                      : 'outline'
-                  }
-                  display={isQuickPoll ? 'none' : undefined}
-                  isLoading={loading === TimeSlotSource.WEBCAL}
-                >
-                  Webcal
-                </Button>
+                {!isProduction && (
+                  <Button
+                    onClick={selectOption(TimeSlotSource.WEBCAL)}
+                    leftIcon={<CiStreamOn />}
+                    variant={
+                      selectedProvider === TimeSlotSource.WEBCAL
+                        ? 'solid'
+                        : 'outline'
+                    }
+                    display={isQuickPoll ? 'none' : undefined}
+                    isLoading={loading === TimeSlotSource.WEBCAL}
+                  >
+                    Webcal
+                  </Button>
+                )}
               </HStack>
               <VStack
                 hidden={selectedProvider !== TimeSlotSource.ICLOUD}
