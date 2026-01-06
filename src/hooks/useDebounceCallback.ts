@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/** biome-ignore-all lint/suspicious/noExplicitAny: Allow any as debounces should be catch all argument */
 import debounce from 'lodash.debounce'
 import { useEffect, useMemo, useRef } from 'react'
 
@@ -16,14 +17,16 @@ type ControlFunctions = {
   isPending: () => boolean
 }
 
-export type DebouncedState<T extends (...args: unknown[]) => ReturnType<T>> = ((
+export type DebouncedState<T extends (...args: any) => ReturnType<T>> = ((
   ...args: Parameters<T>
 ) => ReturnType<T> | undefined) &
   ControlFunctions
 
-export function useDebounceCallback<
-  T extends (...args: unknown[]) => ReturnType<T>
->(func: T, delay = 500, options?: DebounceOptions): DebouncedState<T> {
+export function useDebounceCallback<T extends (...args: any) => ReturnType<T>>(
+  func: T,
+  delay = 500,
+  options?: DebounceOptions
+): DebouncedState<T> {
   const debouncedFunc = useRef<ReturnType<typeof debounce>>()
 
   useUnmount(() => {
