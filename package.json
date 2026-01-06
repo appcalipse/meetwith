@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "dev-doppler": "doppler run --config dev next dev",
-    "build": "biome lint src --max-diagnostics 200 &&  next build",
+    "build": "biome lint src --max-diagnostics 200 &&  doppler run next build",
     "build:local": "biome lint src --max-diagnostics 200 && next build",
     "static": "biome lint src --max-diagnostics 200 &&  next build && next export",
     "start": "next start",
