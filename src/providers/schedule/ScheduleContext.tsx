@@ -7,6 +7,7 @@ import {
   MeetingProvider,
   MeetingRepeat,
 } from '@/types/Meeting'
+import { DurationMode, TimeRangeFilter } from '@/types/schedule'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 interface IScheduleStateContext {
@@ -26,6 +27,8 @@ interface IScheduleStateContext {
   isScheduling: boolean
   selectedPermissions: Array<MeetingPermissions> | undefined
   decryptedMeeting: MeetingDecrypted | undefined
+  durationMode: DurationMode
+  timeRangeFilter: TimeRangeFilter | null
   setTitle: React.Dispatch<React.SetStateAction<string>>
   setContent: React.Dispatch<React.SetStateAction<string>>
   setDuration: React.Dispatch<React.SetStateAction<number>>
@@ -46,6 +49,10 @@ interface IScheduleStateContext {
   setIsScheduling: React.Dispatch<React.SetStateAction<boolean>>
   setDecryptedMeeting: React.Dispatch<
     React.SetStateAction<MeetingDecrypted | undefined>
+  >
+  setDurationMode: React.Dispatch<React.SetStateAction<DurationMode>>
+  setTimeRangeFilter: React.Dispatch<
+    React.SetStateAction<TimeRangeFilter | null>
   >
 }
 
@@ -106,6 +113,11 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     Array<MeetingPermissions> | undefined
   >([MeetingPermissions.SEE_GUEST_LIST, MeetingPermissions.EDIT_MEETING])
   const [isScheduling, setIsScheduling] = useState(false)
+  const [durationMode, setDurationMode] = useState<DurationMode>(
+    DurationMode.PRESET
+  )
+  const [timeRangeFilter, setTimeRangeFilter] =
+    useState<TimeRangeFilter | null>(null)
 
   const value: IScheduleStateContext = {
     title,
@@ -120,6 +132,8 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     meetingRepeat,
     isScheduling,
     selectedPermissions,
+    durationMode,
+    timeRangeFilter,
     setTitle,
     setContent,
     setDuration,
@@ -134,6 +148,8 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     setIsScheduling,
     decryptedMeeting,
     setDecryptedMeeting,
+    setDurationMode,
+    setTimeRangeFilter,
   }
 
   return (

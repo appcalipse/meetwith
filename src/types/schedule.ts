@@ -22,3 +22,27 @@ export interface TimeSlotTooltipContentProps {
   otherUserStates: Array<{ state: boolean; displayName: string }>
   defaultBlockId?: string | null
 }
+
+export enum DurationMode {
+  PRESET = 'preset',
+  CUSTOM = 'custom',
+  TIME_RANGE = 'time_range',
+}
+
+export interface TimeRangeFilter {
+  startTime: string
+  endTime: string
+}
+
+export interface CustomDurationInput {
+  hours?: number
+  minutes?: number
+  totalMinutes: number
+}
+
+export interface DurationConfig {
+  mode: DurationMode
+  presetDuration?: number
+  customDuration?: CustomDurationInput
+  timeRange?: TimeRangeFilter
+}
