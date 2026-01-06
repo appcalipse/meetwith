@@ -41,7 +41,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const busySlots: Interval[] =
         await CalendarBackendHelper.getMergedBusySlotsForMultipleAccounts(
           accounts.map(account => account.address),
-          ConditionRelation.AND,
+          ConditionRelation.OR,
           startDate,
           endDate
         ).then(busySlots =>
