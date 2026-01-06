@@ -8101,6 +8101,9 @@ const checkPollSlugExists = async (slug: string): Promise<boolean> => {
       .maybeSingle()
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        return false
+      }
       throw error
     }
 
