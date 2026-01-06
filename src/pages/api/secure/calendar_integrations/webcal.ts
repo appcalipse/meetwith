@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
+/** biome-ignore-all lint/suspicious/noExplicitAny: Implicit typing for Unknown calendar types */
 import * as Sentry from '@sentry/nextjs'
 import ICAL from 'ical.js'
 import type { NextApiRequest, NextApiResponse } from 'next'
