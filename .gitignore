@@ -56,3 +56,4 @@ zoom-token.json
 
 # Sentry Config File
 .env.sentry-build-plugin
+.github/rules/peer-architect.md
