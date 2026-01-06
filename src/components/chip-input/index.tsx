@@ -194,7 +194,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       width="100%"
     >
       {badges}
-      <Box pos="relative">
+      <Box flex={1} pos="relative">
         <Input
           size={size}
           display={'inline-block'}
