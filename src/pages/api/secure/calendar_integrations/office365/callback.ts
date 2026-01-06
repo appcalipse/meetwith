@@ -9,9 +9,12 @@ import { TimeSlotSource } from '@/types/Meeting'
 import { apiUrl, OnboardingSubject } from '@/utils/constants'
 import {
   addOrUpdateConnectedCalendar,
+  connectedCalendarExists,
+  countCalendarIntegrations,
   getAccountNotificationSubscriptions,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
+import { isProAccountAsync } from '@/utils/database'
 
 const credentials = {
   client_id: process.env.MS_GRAPH_CLIENT_ID!,
@@ -33,11 +36,17 @@ async function handler(
 
   try {
     if (typeof code !== 'string') {
-      return res.status(400).json({ message: 'No code returned' })
+      res.redirect(
+        `/dashboard/settings/connected-calendars?calendarResult=error&error=NO_CODE`
+      )
+      return
     }
 
     if (!req.session.account) {
-      return res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
+      res.redirect(
+        `/dashboard/settings/connected-calendars?calendarResult=error&error=NOT_LOGGED_IN`
+      )
+      return
     }
 
     const toUrlEncoded = (payload: Record<string, string>) =>
@@ -69,9 +78,9 @@ async function handler(
 
     if (!response.ok) {
       res.redirect(
-        `/dashboard/details?calendarResult=error&error=
-          ${JSON.stringify(responseBody)}
-      #connected-calendars`
+        `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
+          JSON.stringify(responseBody)
+        )}`
       )
       return
     }
@@ -100,8 +109,34 @@ async function handler(
     ) // set expiry date in seconds
     delete responseBody.expires_in
 
+    // Check subscription status for feature limits
+    const accountAddress = req.session.account.address
+    const isPro = await isProAccountAsync(accountAddress)
+
+    if (!isPro) {
+      // Check if this is a new integration (not updating existing)
+      const existingIntegration = await connectedCalendarExists(
+        accountAddress,
+        responseBody.email,
+        TimeSlotSource.OFFICE
+      )
+
+      // If it's a new integration, check the limit
+      if (!existingIntegration) {
+        const integrationCount = await countCalendarIntegrations(accountAddress)
+        if (integrationCount >= 1) {
+          res.redirect(
+            `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
+              'Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.'
+            )}`
+          )
+          return
+        }
+      }
+    }
+
     await addOrUpdateConnectedCalendar(
-      req.session.account.address,
+      accountAddress,
       responseBody.email,
       TimeSlotSource.OFFICE,
       calendars.value.map((c: any) => {
@@ -148,9 +183,9 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/details?calendarResult=success${
+      `/dashboard/settings/connected-calendars?calendarResult=success${
         newState64 ? `&state=${newState64}` : ''
-      }#connected-calendars`
+      }`
     )
   } catch (e) {
     console.error(e)
@@ -175,9 +210,9 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/details?calendarResult=success${
+      `/dashboard/settings/connected-calendars?calendarResult=success${
         newState64 ? `&state=${newState64}` : ''
-      }#connected-calendars`
+      }`
     )
   }
 }

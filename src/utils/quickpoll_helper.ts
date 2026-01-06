@@ -917,7 +917,7 @@ export const convertAvailabilityToSelectedSlots = (
 
 export const mergeLuxonIntervals = (intervals: Interval[]): Interval[] => {
   const normalised = intervals.reduce<
-    Array<{ start: DateTime; end: DateTime }>
+    Array<{ start: DateTime; end: DateTime; interval: Interval }>
   >((accumulator, interval) => {
     if (!interval || !interval.isValid || !interval.start || !interval.end) {
       return accumulator
@@ -926,6 +926,7 @@ export const mergeLuxonIntervals = (intervals: Interval[]): Interval[] => {
     accumulator.push({
       start: interval.start,
       end: interval.end,
+      interval,
     })
 
     return accumulator
@@ -935,12 +936,37 @@ export const mergeLuxonIntervals = (intervals: Interval[]): Interval[] => {
     return []
   }
 
-  normalised.sort((a, b) => a.start.toMillis() - b.start.toMillis())
+  const deduplicated: Array<{
+    start: DateTime
+    end: DateTime
+    interval: Interval
+  }> = []
+  for (const current of normalised) {
+    const currentInterval = Interval.fromDateTimes(current.start, current.end)
+    const hasOverlap = deduplicated.some(existing => {
+      const existingInterval = Interval.fromDateTimes(
+        existing.start,
+        existing.end
+      )
+      return currentInterval.overlaps(existingInterval)
+    })
+    if (!hasOverlap) {
+      deduplicated.push(current)
+    }
+  }
 
-  const merged: Array<{ start: DateTime; end: DateTime }> = [normalised[0]]
+  if (!deduplicated.length) {
+    return []
+  }
 
-  for (let i = 1; i < normalised.length; i++) {
-    const current = normalised[i]
+  deduplicated.sort((a, b) => a.start.toMillis() - b.start.toMillis())
+
+  const merged: Array<{ start: DateTime; end: DateTime }> = [
+    { start: deduplicated[0].start, end: deduplicated[0].end },
+  ]
+
+  for (let i = 1; i < deduplicated.length; i++) {
+    const current = deduplicated[i]
     const last = merged[merged.length - 1]
 
     if (last.end.toMillis() >= current.start.toMillis()) {
@@ -948,7 +974,7 @@ export const mergeLuxonIntervals = (intervals: Interval[]): Interval[] => {
         last.end = current.end
       }
     } else {
-      merged.push(current)
+      merged.push({ start: current.start, end: current.end })
     }
   }
 

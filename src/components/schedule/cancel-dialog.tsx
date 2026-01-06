@@ -3,15 +3,14 @@ import {
   AlertDialogBody,
   AlertDialogContent,
   AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogOverlay,
-  Box,
   Button,
   Text,
   useToast,
   VStack,
 } from '@chakra-ui/react'
 import { differenceInMinutes } from 'date-fns'
+import { DateTime } from 'luxon'
 import React, { useState } from 'react'
 
 import { Account } from '@/types/Account'
@@ -20,10 +19,10 @@ import { cancelMeeting } from '@/utils/calendar_manager'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 interface CancelMeetingDialogProps {
-  decryptedMeeting?: MeetingDecrypted
+  decryptedMeeting?: MeetingDecrypted | MeetingDecrypted<DateTime>
   currentAccount?: Account | null
   onCancelChange?: (isCancelling: boolean) => void
-  afterCancel?: (slotsRemoved: string[]) => void
+  afterCancel?: (slotsRemoved: string[]) => void | Promise<unknown>
   isOpen: boolean
   onClose: () => void
 }
@@ -42,6 +41,19 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
     onCancelChange && onCancelChange(isCancelling)
     _setCancelling(isCancelling)
   }
+  const meetingInfo = decryptedMeeting
+    ? {
+        ...decryptedMeeting,
+        start:
+          decryptedMeeting.start instanceof DateTime
+            ? decryptedMeeting?.start.toJSDate()
+            : decryptedMeeting?.start,
+        end:
+          decryptedMeeting.end instanceof DateTime
+            ? decryptedMeeting.end.toJSDate()
+            : decryptedMeeting.end,
+      }
+    : undefined
   const toast = useToast()
   const getNamesDisplay = (meeting: MeetingDecrypted) => {
     return getAllParticipantsDisplayName(
@@ -49,7 +61,7 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
       currentAccount!.address
     )
   }
-
+  if (!meetingInfo) return null
   return (
     <AlertDialog
       isOpen={isOpen}
@@ -63,20 +75,17 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
               <strong> Meeting Title:</strong>{' '}
               {decryptedMeeting?.title || 'No Title'}
             </Text>
-            {decryptedMeeting?.end && (
+            {meetingInfo?.end && (
               <Text>
                 <strong>Meeting Duration: </strong>
-                {differenceInMinutes(
-                  decryptedMeeting?.end,
-                  decryptedMeeting?.start
-                )}{' '}
+                {differenceInMinutes(meetingInfo?.end, meetingInfo?.start)}{' '}
                 Minutes
               </Text>
             )}
             {decryptedMeeting && (
               <Text display="inline" width="100%" whiteSpace="balance">
                 <strong>Participants: </strong>
-                {getNamesDisplay(decryptedMeeting)}
+                {getNamesDisplay(meetingInfo)}
               </Text>
             )}
           </VStack>
@@ -91,11 +100,17 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
             <Button
               colorScheme="red"
               onClick={() => {
+                if (!decryptedMeeting) return
                 setCancelling(true)
-                cancelMeeting(currentAccount!.address, decryptedMeeting!)
-                  .then(({ removed }) => {
+
+                cancelMeeting(currentAccount!.address, meetingInfo)
+                  .then(async ({ removed }) => {
+                    try {
+                      afterCancel && (await afterCancel(removed))
+                    } catch (err) {
+                      console.error('Error in afterCancel:', err)
+                    }
                     setCancelling(false)
-                    afterCancel && afterCancel(removed)
                     onClose()
                   })
                   .catch(error => {

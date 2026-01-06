@@ -1,4 +1,3 @@
-/* eslint-disable tailwindcss/no-custom-classname */
 import { Text } from '@chakra-ui/layout'
 import {
   Button,
@@ -18,7 +17,7 @@ import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { FaCalendar, FaClock } from 'react-icons/fa'
 import { FaArrowLeft, FaUserGroup } from 'react-icons/fa6'
 import { IoMdTimer } from 'react-icons/io'

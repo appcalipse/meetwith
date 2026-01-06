@@ -455,7 +455,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                     variant="link"
                     colorScheme="primary"
                     px={0}
-                    onClick={() => push('/dashboard/details#subscriptions')}
+                    onClick={() => push('/dashboard/settings/subscriptions')}
                     textDecoration="underline"
                   >
                     here

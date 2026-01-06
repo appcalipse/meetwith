@@ -14,12 +14,16 @@ const DEFAULT_MESSAGE = (nonce: number) =>
 
 const YEAR_DURATION_IN_SECONDS = 31536000
 
+// Platform wallet address for receiving subscription payments
+export const SUBSCRIPTION_PAYMENT_RECEIVER_ADDRESS =
+  '0x91836F34a46a4b804744010EC81bF6648fEF4A25' as const
+
 const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 
-const discordRedirectUrl = `${baseURL}/dashboard/details#connected-accounts`
+const discordRedirectUrl = `${baseURL}/dashboard/settings/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwith.xyz'
-
+const MODIFIED_BY_APP_TIMEOUT = 8 // in seconds
 const WEBHOOK_URL = `${apiUrl}/server/webhook/calendar/sync`
 
 const EMAIL_CHANGE_TOKEN_EXPIRY = '5m'
@@ -55,7 +59,7 @@ const QUICKPOLL_EXPIRY_BUFFER_HOURS = 1 // Minimum hours before expiry
 // Event title truncation constants
 
 const DASHBOARD_ROUTE_PREFIX = '/dashboard'
-const SETTINGS_ROUTE_PREFIX = `${DASHBOARD_ROUTE_PREFIX}/details`
+const SETTINGS_ROUTE_PREFIX = `${DASHBOARD_ROUTE_PREFIX}/settings`
 const DASHBOARD_SCHEDULE_ROUTE = `${DASHBOARD_ROUTE_PREFIX}/schedule`
 const PUBLIC_USERNAME_ROUTE = '/[...address]'
 const PUBLIC_ADDRESS_ROUTE = `/address${PUBLIC_USERNAME_ROUTE}`
@@ -121,6 +125,7 @@ export {
   EMAIL_CHANGE_TOKEN_EXPIRY,
   isProduction,
   MAX_DAILY_NOTIFICATIONS_LOOKUPS,
+  MODIFIED_BY_APP_TIMEOUT,
   MWW_DISCORD_SERVER,
   NO_REPLY_EMAIL,
   PIN_ENABLE_TOKEN_EXPIRY,

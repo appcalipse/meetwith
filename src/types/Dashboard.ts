@@ -29,3 +29,12 @@ export enum InviteType {
   PUBLIC = 'public',
   PRIVATE = 'private',
 }
+
+export enum SettingsSection {
+  DETAILS = 'details',
+  CONNECTED_CALENDARS = 'connected-calendars',
+  CONNECTED_ACCOUNTS = 'connected-accounts',
+  NOTIFICATIONS = 'notifications',
+  SUBSCRIPTIONS = 'subscriptions',
+  WALLET_PAYMENT = 'wallet-payment',
+}

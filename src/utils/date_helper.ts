@@ -1,16 +1,10 @@
 import * as ct from 'countries-and-timezones'
 import {
-  add,
   addDays,
-  differenceInMinutes,
-  endOfMonth,
   endOfWeek,
-  getWeekOfMonth,
-  isBefore,
   setDay,
   setHours,
   setMinutes,
-  startOfMonth,
   startOfWeek,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
@@ -124,43 +118,51 @@ export const convertTimeRangesToDate = (
 export const addRecurrence = (
   start: Date,
   end: Date,
-  recurrence: MeetingRepeat
+  recurrence: MeetingRepeat,
+  minDate = new Date()
 ) => {
-  const diffMinutes = differenceInMinutes(end, start)
-  let newStart: Date = start
-  while (isBefore(newStart, new Date())) {
+  const startDate = DateTime.fromJSDate(start)
+  const diffMinutes = startDate.diff(
+    DateTime.fromJSDate(end),
+    'minutes'
+  ).minutes
+  let newStart: DateTime<true> = startDate.isValid ? startDate : DateTime.now()
+  const now = DateTime.fromJSDate(minDate)
+
+  do {
     switch (recurrence) {
       case MeetingRepeat.DAILY:
-        newStart = add(newStart, { days: 1 })
+        newStart = newStart.plus({ days: 1 })
         break
 
       case MeetingRepeat.WEEKLY:
-        newStart = add(newStart, { weeks: 1 })
+        newStart = newStart.plus({ weeks: 1 })
         break
+
       case MeetingRepeat.MONTHLY:
-        const dayOfWeek = new Date(newStart).getDay()
-        const weekOfMonth = getWeekOfMonth(newStart)
+        const dayOfWeek = newStart.weekday
+        const originalWeekOfMonth = Math.ceil(newStart.day / 7) // ✓ Calculate BEFORE advancing
 
-        const nextMonth = add(newStart, { months: 1 })
-        const monthStart = startOfMonth(nextMonth)
+        const nextMonth = newStart.plus({ months: 1 })
+        const monthStart = nextMonth.startOf('month')
+        newStart = monthStart.set({ weekday: dayOfWeek })
 
-        newStart = setDay(monthStart, dayOfWeek)
-
-        for (let i = 1; i < weekOfMonth; i++) {
-          newStart = add(newStart, { weeks: 1 })
-          if (newStart > endOfMonth(nextMonth)) {
-            newStart = add(newStart, { weeks: -1 })
+        for (let i = 1; i < originalWeekOfMonth; i++) {
+          newStart = newStart.plus({ weeks: 1 })
+          if (newStart.month !== nextMonth.month) {
+            newStart = newStart.minus({ weeks: 1 })
             break
           }
         }
         break
+
       default:
-        newStart = add(newStart, { days: 1 })
+        newStart = newStart.plus({ days: 1 })
         break
     }
-  }
-  const newEnd = add(newStart, { minutes: diffMinutes })
-  return { start: newStart, end: newEnd }
+  } while (newStart < now)
+  const newEnd = newStart.plus({ minutes: diffMinutes }).toJSDate()
+  return { start: newStart.toJSDate(), end: newEnd }
 }
 
 export const parseMonthAvailabilitiesToDate = (
@@ -213,7 +215,7 @@ export const parseMonthAvailabilitiesToDate = (
     currentWeek = currentWeek.plus({ weeks: 1 }) // Move to next week
   }
 
-  return slots
+  return slots.filter(slot => slot.isValid)
 }
 
 export const isBeginningOfHour = (dateTime: DateTime): boolean => {
@@ -400,4 +402,17 @@ export const createLocalDate = (date: Date): string => {
   const localDate = new Date(year, month, day, 0, 0, 0)
 
   return localDate.toISOString()
+}
+
+export const checkHasSameScheduleTime = (date: Date, date2: Date): boolean => {
+  const instance = DateTime.fromJSDate(date)
+  const instance2 = DateTime.fromJSDate(date2)
+  return (
+    instance.hasSame(instance2, 'hour') && instance.hasSame(instance2, 'minute')
+  )
+}
+export const checkIsSameDay = (date: Date, date2: Date): boolean => {
+  const instance = DateTime.fromJSDate(date)
+  const instance2 = DateTime.fromJSDate(date2)
+  return instance.hasSame(instance2, 'day')
 }

@@ -7,7 +7,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useCallback, useMemo } from 'react'
+import { FC, useCallback, useMemo } from 'react'
 
 import { Avatar } from '@/components/profile/components/Avatar'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
@@ -37,6 +37,7 @@ const ContactMemberItem: FC<IContactMemberItem> = props => {
     setParticipants,
     groups,
     groupParticipants,
+    groupAvailability,
   } = useParticipants()
   const participantAddressesSet = useMemo(() => {
     return new Set(
@@ -90,19 +91,25 @@ const ContactMemberItem: FC<IContactMemberItem> = props => {
       )
     )
 
-    setGroupParticipants(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: prev[NO_GROUP_KEY]?.filter(
-        address => address !== props.address
-      ),
-    }))
+    setGroupAvailability(prev => {
+      const updated = { ...prev }
+      Object.keys(updated).forEach(key => {
+        if (updated[key]?.includes(props.address)) {
+          updated[key] = updated[key].filter(val => val !== props.address)
+        }
+      })
+      return updated
+    })
 
-    setGroupAvailability(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: prev[NO_GROUP_KEY]?.filter(
-        address => address !== props.address
-      ),
-    }))
+    setGroupParticipants(prev => {
+      const updated = { ...prev }
+      Object.keys(updated).forEach(key => {
+        if (updated[key]?.includes(props.address)) {
+          updated[key] = updated[key].filter(val => val !== props.address)
+        }
+      })
+      return updated
+    })
   }
   const handleParticipantsChange = () => {
     if (isContactAlreadyAdded()) {

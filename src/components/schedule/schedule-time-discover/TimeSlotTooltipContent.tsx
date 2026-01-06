@@ -10,15 +10,13 @@ export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
   currentUserEvent,
   eventUrl,
   otherUserStates,
-  defaultAvailabilityBlock,
+  defaultBlockId,
 }) => {
   const router = useRouter()
 
   const handleOpenAvailabilityBlock = () => {
-    if (defaultAvailabilityBlock) {
-      router.push(
-        `/dashboard/availability?editBlock=${defaultAvailabilityBlock.id}`
-      )
+    if (defaultBlockId) {
+      router.push(`/dashboard/availability?editBlock=${defaultBlockId}`)
     }
   }
 
@@ -113,7 +111,7 @@ export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
                 availability block settings. You can update it to make this time
                 slot available.
               </Text>
-              {defaultAvailabilityBlock && (
+              {defaultBlockId && (
                 <HStack gap={1}>
                   <Link
                     as="button"

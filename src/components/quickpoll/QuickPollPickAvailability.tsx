@@ -1,16 +1,12 @@
-/* eslint-disable tailwindcss/no-custom-classname */
 import { InfoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
   Flex,
-  FormControl,
-  FormLabel,
   Grid,
   Heading,
   HStack,
   IconButton,
-  Select as ChakraSelect,
   SlideFade,
   Text,
   useBreakpointValue,
@@ -18,19 +14,13 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Select, SingleValue } from 'chakra-react-select'
-import { addDays, isSameMonth } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { useEffect, useMemo, useState } from 'react'
-import {
-  FaArrowRight,
-  FaChevronLeft,
-  FaChevronRight,
-  FaShare,
-} from 'react-icons/fa'
+import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
 import { MdShare } from 'react-icons/md'
 
@@ -57,9 +47,8 @@ import {
   fetchBusySlotsRawForQuickPollParticipants,
   getExistingAccounts,
   getPollParticipantCalendars,
+  getSuggestedSlots,
 } from '@/utils/api_helper'
-import { durationToHumanReadable } from '@/utils/calendar_manager'
-import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import { customSelectComponents, Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
@@ -71,20 +60,17 @@ import {
   createMockMeetingMembers,
   extractOverrideIntervals,
   generateFullDayBlocks,
-  generateQuickPollBestSlots,
   mergeLuxonIntervals,
   processPollParticipantAvailabilities,
   subtractBusyTimesFromBlocks,
   subtractRemovalIntervals,
 } from '@/utils/quickpoll_helper'
 import { getMergedParticipants } from '@/utils/schedule.helper'
-import { suggestBestSlots } from '@/utils/slots.helper'
+import { getEmptySlots } from '@/utils/slots.helper'
 
-import {
-  SelectedTimeSlot,
-  useAvailabilityTracker,
-} from '../schedule/schedule-time-discover/AvailabilityTracker'
+import { useAvailabilityTracker } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
+import { AccountAddressRecord } from '../schedule/schedule-time-discover/SchedulePickTime'
 import { QuickPollParticipationInstructions } from './QuickPollParticipationInstructions'
 
 export enum State {
@@ -164,10 +150,8 @@ export function QuickPollPickAvailability({
     pickedTime,
     duration,
     setDuration,
-    isScheduling,
   } = useScheduleState()
-  const { canEditMeetingDetails, isUpdatingMeeting } =
-    useParticipantPermissions()
+  const { isUpdatingMeeting } = useParticipantPermissions()
   const currentAccount = useAccountContext()
   const { currentGuestEmail, currentParticipantId } = useQuickPollAvailability()
   const { loadSlots } = useAvailabilityTracker()
@@ -246,7 +230,46 @@ export function QuickPollPickAvailability({
     currentIntent === QuickPollIntent.EDIT_AVAILABILITY ||
     (!currentIntent && !isSchedulingIntent)
 
-  const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
+  const {
+    groupAvailability,
+    setGroupAvailability,
+    setGroupParticipants,
+    meetingMembers,
+    setMeetingMembers,
+    participants,
+    groups,
+    allAvailaibility,
+  } = useParticipants()
+
+  const addresses = useMemo(
+    () =>
+      allAvailaibility
+        .filter((val): val is AccountAddressRecord => !!val.account_address)
+        .map(val => val.account_address)
+        .sort(),
+    [allAvailaibility]
+  )
+  const { mutateAsync: fetchBestSlot, isLoading: isBestSlotLoading } =
+    useMutation({
+      mutationKey: ['busySlots', addresses.join(','), duration],
+      mutationFn: ({
+        endDate,
+        startDate,
+      }: {
+        startDate: Date
+        endDate: Date
+      }) => getSuggestedSlots(addresses, startDate, endDate, duration),
+      onError: () =>
+        toast({
+          title: 'Error fetching suggested slots',
+          description: `There was an error fetching suggested slots`,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        }),
+    })
+
   const toast = useToast()
   const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
   const [hasLoadedInitialSlots, setHasLoadedInitialSlots] = useState(false)
@@ -274,16 +297,6 @@ export function QuickPollPickAvailability({
     return () => clearTimeout(timer)
   }, [])
 
-  const {
-    groupAvailability,
-    setGroupAvailability,
-    groupParticipants,
-    setGroupParticipants,
-    meetingMembers,
-    setMeetingMembers,
-    participants,
-    groups,
-  } = useParticipants()
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
   useEffect(() => {
@@ -341,26 +354,6 @@ export function QuickPollPickAvailability({
     return Array.from(participantsSet)
   }, [pollData, groupAvailability])
 
-  const getEmptySlots = (
-    time: Date,
-    scheduleDuration = duration
-  ): Array<Interval<true>> => {
-    const slots: Array<Interval<true>> = []
-    const slotsPerHour = 60 / (scheduleDuration || 30)
-    const totalSlots = 24 * slotsPerHour
-
-    for (let i = 0; i < totalSlots; i++) {
-      const minutesFromStart = i * (scheduleDuration || 30)
-      const start = DateTime.fromJSDate(time)
-        .setZone(timezone)
-        .startOf('day')
-        .plus({ minutes: minutesFromStart })
-      const slot = Interval.after(start, { minute: scheduleDuration || 30 })
-      if (slot.isValid) slots.push(slot)
-    }
-    return slots
-  }
-
   const months = useMemo(() => {
     const monthsArray = []
     let currentDateInTimezone = DateTime.now().setZone(timezone)
@@ -372,7 +365,7 @@ export function QuickPollPickAvailability({
       currentDateInTimezone = currentDateInTimezone.plus({ months: 1 })
     }
     return monthsArray
-  }, [currentSelectedDate.getFullYear(), timezone])
+  }, [currentSelectedDate.year, timezone])
 
   const [dates, setDates] = useState<Array<Dates>>([])
 
@@ -474,9 +467,11 @@ export function QuickPollPickAvailability({
     if (!newMonth) {
       const year = month.label.split(' ')[1]
       setCurrentSelectedDate(
-        DateTime.now()
-          .set({ month: Number(month.value), day: 1, year: Number(year) })
-          .toJSDate()
+        DateTime.now().set({
+          month: Number(month.value),
+          day: 1,
+          year: Number(year),
+        })
       )
     }
   }
@@ -528,25 +523,22 @@ export function QuickPollPickAvailability({
 
   const getDates = (scheduleDuration = duration) => {
     const days = Array.from({ length: SLOT_LENGTH }, (v, k) => k)
-      .map(k => addDays(currentSelectedDate, k))
+      .map(k =>
+        currentSelectedDate.plus({
+          days: k,
+        })
+      )
       .filter(val =>
-        isSameMonth(
-          val,
-          DateTime.fromJSDate(currentSelectedDate)
-            .setZone(timezone)
-            .startOf('month')
-            .toJSDate()
-        )
+        currentSelectedDate
+          .setZone(timezone)
+          .startOf('month')
+          .hasSame(val, 'month')
       )
     return days.map(date => {
-      const slots = getEmptySlots(date, scheduleDuration)
-      date = DateTime.fromJSDate(date)
-        .setZone(timezone)
-        .startOf('day')
-        .toJSDate()
+      const slots = getEmptySlots(date, scheduleDuration, timezone)
 
       return {
-        date,
+        date: date.setZone(timezone).startOf('day').toJSDate(),
         slots,
       }
     })
@@ -558,11 +550,11 @@ export function QuickPollPickAvailability({
     try {
       setAvailableSlots(new Map())
       setBusySlots(new Map())
-      const monthStart = DateTime.fromJSDate(currentSelectedDate)
+      const monthStart = currentSelectedDate
         .setZone(timezone)
         .startOf('month')
         .toJSDate()
-      const monthEnd = DateTime.fromJSDate(currentSelectedDate)
+      const monthEnd = currentSelectedDate
         .setZone(timezone)
         .endOf('month')
         .toJSDate()
@@ -826,18 +818,9 @@ export function QuickPollPickAvailability({
           quickPollAccountDetails
         )
 
-        const suggestedSlots = generateQuickPollBestSlots(
-          monthStart,
-          monthEnd,
-          duration,
-          timezone,
-          freeSlotsMap
-        )
-
         setAvailableSlots(freeSlotsMap)
         setBusySlots(busySlotsMap)
         setDates(getDates(duration))
-        setSuggestedTimes(suggestedSlots)
         setMeetingMembers(mockMeetingMembers)
         setIsLoading(false)
         return
@@ -927,20 +910,11 @@ export function QuickPollPickAvailability({
           busySlots
         )
       }
-      const suggestedSlots = suggestBestSlots(
-        monthStart,
-        duration,
-        monthEnd,
-        timezone,
-        busySlots.map(slot => slot.interval).filter(slot => slot.isValid),
-        meetingMembers
-      )
 
       setBusySlots(busySlotsMap)
       setMeetingMembers(meetingMembers)
       setAvailableSlots(availableSlotsMap)
       setDates(getDates(duration))
-      setSuggestedTimes(suggestedSlots)
     } catch (error: unknown) {
       handleApiError('Error merging availabilities', error)
     } finally {
@@ -955,7 +929,7 @@ export function QuickPollPickAvailability({
     debouncedHandleSlotLoad()
   }, [
     groupAvailability,
-    currentSelectedDate.getMonth(),
+    currentSelectedDate.month,
     duration,
     inviteModalOpen,
     isBreakpointResolved,
@@ -1020,9 +994,7 @@ export function QuickPollPickAvailability({
   ])
 
   const handleScheduledTimeBack = () => {
-    const currentDate = DateTime.fromJSDate(currentSelectedDate)
-      .setZone(timezone)
-      .startOf('day')
+    const currentDate = currentSelectedDate.setZone(timezone).startOf('day')
     let newDate = currentDate.minus({ days: SLOT_LENGTH })
     const differenceInDays = currentDate
       .diff(currentDate.startOf('month'), 'days')
@@ -1040,13 +1012,11 @@ export function QuickPollPickAvailability({
         newDate.toJSDate()
       )
     }
-    setCurrentSelectedDate(newDate.toJSDate())
+    setCurrentSelectedDate(newDate)
   }
 
   const handleScheduledTimeNext = () => {
-    const currentDate = DateTime.fromJSDate(currentSelectedDate)
-      .setZone(timezone)
-      .startOf('day')
+    const currentDate = currentSelectedDate.setZone(timezone).startOf('day')
     let newDate = currentDate.plus({ days: SLOT_LENGTH })
     if (!newDate.hasSame(currentDate, 'month')) {
       newDate = newDate.startOf('month')
@@ -1059,11 +1029,11 @@ export function QuickPollPickAvailability({
       )
     }
 
-    setCurrentSelectedDate(newDate.toJSDate())
+    setCurrentSelectedDate(newDate)
   }
 
   const HOURS_SLOTS = useMemo(() => {
-    const slots = getEmptySlots(new Date(), duration >= 45 ? duration : 60)
+    const slots = getEmptySlots(DateTime.now(), duration >= 45 ? duration : 60)
     return slots.map(val => {
       const zonedTime = val.start.setZone(timezone)
       return zonedTime.toFormat(zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a')
@@ -1071,39 +1041,35 @@ export function QuickPollPickAvailability({
   }, [duration, timezone])
 
   const isBackDisabled = useMemo(() => {
-    const selectedDate =
-      DateTime.fromJSDate(currentSelectedDate).setZone(timezone)
+    const selectedDate = currentSelectedDate.setZone(timezone)
     const currentDate = DateTime.now().setZone(timezone)
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
 
-  const durationOptions = useMemo(
-    () =>
-      DEFAULT_GROUP_SCHEDULING_DURATION.map(type => ({
-        value: type.duration,
-        label: durationToHumanReadable(type.duration),
-      })),
-    []
-  )
-
-  const handleJumpToBestSlot = () => {
+  const handleJumpToBestSlot = async () => {
+    const suggestedTimes = await fetchBestSlot({
+      startDate: currentSelectedDate.toJSDate(),
+      endDate: currentSelectedDate.plus({ months: 1 }).toJSDate(),
+    })
     if (suggestedTimes.length === 0) {
       toast({
-        title: 'No suggested slots available',
+        title: 'No Matching Times',
         description:
-          'There are no available time slots that fit all participants schedules in the selected month. Please try changing the month or duration.',
-        status: 'warning',
+          'No slots in the next 30 days work for all participants. Choose a time from the calendar grid that works best.',
+        status: 'info',
         duration: 5000,
         isClosable: true,
-        position: 'top',
       })
       return
     }
-    const bestSlot = suggestedTimes[0]
-    setPickedTime(bestSlot.start.toJSDate())
+    const bestSlotStart = new Date(suggestedTimes[0].start)
+    setPickedTime(bestSlotStart)
+    setCurrentSelectedDate(
+      DateTime.fromJSDate(bestSlotStart).setZone(timezone).startOf('day')
+    )
+
     handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
-
   const handleTimeSelection = (time: Date) => {
     React.startTransition(() => {
       setPickedTime(time)
@@ -1383,6 +1349,7 @@ export function QuickPollPickAvailability({
               colorScheme="primary"
               onClick={handleJumpToBestSlot}
               w="100%"
+              isLoading={isBestSlotLoading}
               py={3}
               fontSize="16px"
               fontWeight="600"
@@ -1526,6 +1493,7 @@ export function QuickPollPickAvailability({
                     colorScheme="primary"
                     onClick={handleJumpToBestSlot}
                     display={{ lg: 'block', base: 'none' }}
+                    isLoading={isBestSlotLoading}
                   >
                     Jump to Best Slot
                   </Button>

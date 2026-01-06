@@ -68,7 +68,7 @@ const ConnectedAccounts: React.FC = () => {
         window.history.replaceState({}, document.title, clean_uri)
       }
       try {
-        await generateDiscordAccount(code as string).then(console.log)
+        await generateDiscordAccount(code as string)
         await queryClient.invalidateQueries(
           QueryKeys.account(currentAccount?.address?.toLowerCase())
         )

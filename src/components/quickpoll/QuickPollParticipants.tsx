@@ -10,7 +10,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useCallback, useContext, useMemo, useState } from 'react'
+import { useCallback, useContext, useMemo, useState } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
@@ -74,17 +74,19 @@ export function QuickPollParticipants({
 }: QuickPollParticipantsProps) {
   const { currentAccount } = useContext(AccountContext)
   const router = useRouter()
-  const {
-    groupAvailability,
-    setGroupAvailability,
-    setGroupParticipants,
-    groupParticipants,
-  } = useParticipants()
+
   const { setCurrentParticipantId } = useQuickPollAvailability()
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isInviteByIdModalOpen, setIsInviteByIdModalOpen] = useState(false)
-  const { setParticipants } = useParticipants()
+  const {
+    setParticipants,
+    groupAvailability,
+    setGroupAvailability,
+    setGroupParticipants,
+    groupParticipants,
+    participants,
+  } = useParticipants()
 
   const handleParticipantAdded = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
@@ -101,7 +103,13 @@ export function QuickPollParticipants({
     }
     setIsInviteModalOpen(true)
   }, [pollData, setParticipants])
-
+  const inviteKey = useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
   const host = pollData?.poll.participants.find(
     p => p.participant_type === QuickPollParticipantType.SCHEDULER
   )
@@ -427,10 +435,22 @@ export function QuickPollParticipants({
       )}
 
       <InviteParticipants
+        key={inviteKey}
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
         isQuickPoll={true}
         pollData={pollData}
+        groupAvailability={groupAvailability}
+        groupParticipants={groupParticipants}
+        participants={participants}
+        handleUpdateParticipants={setParticipants}
+        handleUpdateGroups={(
+          groupAvailability: Record<string, Array<string> | undefined>,
+          groupParticipants: Record<string, Array<string> | undefined>
+        ) => {
+          setGroupAvailability(groupAvailability)
+          setGroupParticipants(groupParticipants)
+        }}
         onInviteSuccess={() => {
           handleParticipantAdded()
           setIsInviteModalOpen(false)

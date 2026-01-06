@@ -19,6 +19,11 @@ export interface AuthToken {
   token_type: string
   refresh_token: string
 }
+export interface LeanAccountInfo {
+  name?: string
+  address: string
+  avatar_url?: string
+}
 
 export interface Account {
   id: string
@@ -161,6 +166,14 @@ export interface TgConnectedAccounts extends BaseConnectedAccounts {
 
 export interface DiscordConnectedAccounts extends BaseConnectedAccounts {
   discord_id: string
+}
+
+export interface GetMeetingTypesResponseWithMetadata {
+  meetingTypes: MeetingType[]
+  total: number
+  hidden: number
+  paidHidden: number
+  upgradeRequired: boolean
 }
 
 export interface PaidMeetingTypes extends MeetingType {

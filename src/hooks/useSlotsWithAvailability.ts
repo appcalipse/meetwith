@@ -9,7 +9,40 @@ import { Account } from '@/types/Account'
 import { TimeSlot } from '@/types/Meeting'
 import { generateCalendarEventUrl } from '@/utils/calendar_event_url'
 import { getAccountDisplayName } from '@/utils/user_manager'
+const hasOverlap = (
+  slot: Interval<true>,
+  sortedIntervals: Array<{ start: number; end: number }>
+) => {
+  const slotStart = slot.start.toMillis()
+  const slotEnd = slot.end.toMillis()
 
+  // Binary search for first interval that could overlap
+  let left = 0
+  let right = sortedIntervals.length
+
+  while (left < right) {
+    const mid = Math.floor((left + right) / 2)
+    if (sortedIntervals[mid].end <= slotStart) {
+      left = mid + 1
+    } else {
+      right = mid
+    }
+  }
+
+  // Check if any interval starting from 'left' overlaps
+  for (let i = left; i < sortedIntervals.length; i++) {
+    const interval = sortedIntervals[i]
+    if (interval.start >= slotEnd) break // No more possible overlaps
+    if (interval.end > slotStart && interval.start < slotEnd) return true
+  }
+
+  return false
+}
+const createIntervalLookup = (intervals: Interval<true>[]) => {
+  return intervals
+    .map(i => ({ start: i.start.toMillis(), end: i.end.toMillis() }))
+    .sort((a, b) => a.start - b.start)
+}
 const useSlotsWithAvailability = (
   dates: Array<Dates>,
   busySlots: Map<string, Interval<true>[]>,
@@ -21,9 +54,53 @@ const useSlotsWithAvailability = (
   currentAccountAddress?: string,
   ignoreBusyOverlaps = false
 ) => {
-  return useMemo(() => {
-    const now = DateTime.now().setZone(timezone)
+  const busyLookupsMap = useMemo(() => {
+    const map = new Map<string, Array<{ start: number; end: number }>>()
+    busySlots.forEach((intervals, account) => {
+      map.set(account, createIntervalLookup(intervals))
+    })
+    return map
+  }, [busySlots])
 
+  const availableLookupsMap = useMemo(() => {
+    const map = new Map<string, Array<{ start: number; end: number }>>()
+    availableSlots.forEach((intervals, account) => {
+      map.set(account, createIntervalLookup(intervals))
+    })
+    return map
+  }, [availableSlots])
+
+  const processedUserBusySlots = useMemo(() => {
+    if (!currentAccountAddress || !busySlotsWithDetails) return null
+
+    const userBusySlots = busySlotsWithDetails.get(
+      currentAccountAddress.toLowerCase()
+    )
+
+    if (!userBusySlots || userBusySlots.length === 0) return null
+
+    // Filter and convert to milliseconds once
+    return userBusySlots
+      .filter(slot => slot.eventTitle || slot.eventId || slot.eventWebLink)
+      .map(slot => ({
+        start:
+          slot.start instanceof Date
+            ? slot.start.getTime()
+            : new Date(slot.start).getTime(),
+        end:
+          slot.end instanceof Date
+            ? slot.end.getTime()
+            : new Date(slot.end).getTime(),
+        timeSlot: slot,
+      }))
+      .sort((a, b) => a.start - b.start)
+  }, [currentAccountAddress, busySlotsWithDetails])
+  const nowMillis = useMemo(
+    () => DateTime.now().setZone(timezone).toMillis(),
+    [timezone]
+  )
+
+  return useMemo(() => {
     const accountDisplayNames = new Map<string, string>()
     meetingMembers.forEach(member => {
       accountDisplayNames.set(member.address, getAccountDisplayName(member))
@@ -32,40 +109,40 @@ const useSlotsWithAvailability = (
     return dates.map(dateData => ({
       ...dateData,
       slots: dateData.slots.map(slot => {
-        const userStates: Array<{ state: boolean; displayName: string }> = []
+        const slotStart = slot.start.toMillis()
+        const slotEnd = slot.end.toMillis()
+        const isAfterNow = slotStart >= nowMillis
+
         const isSlotAvailable: boolean[] = []
+        let numberOfAvailable = 0
+        const userStates: Array<{ state: boolean; displayName: string }> =
+          participantAvailabilities.map(account => {
+            const busyLookup = busyLookupsMap.get(account) || []
+            const availableLookup = availableLookupsMap.get(account) || []
 
-        for (const account of participantAvailabilities) {
-          const accountSlots = availableSlots.get(account) || []
-          const accountBusySlots = busySlots.get(account) || []
+            const isBusy = hasOverlap(slot, busyLookup)
+            const hasAvailability = hasOverlap(slot, availableLookup)
 
-          const isBusy = accountBusySlots.some(busySlot =>
-            busySlot.overlaps(slot)
-          )
-
-          const hasOverlap = accountSlots.some(availableSlot =>
-            availableSlot.overlaps(slot)
-          )
-
-          const isUserAvailable = ignoreBusyOverlaps
-            ? hasOverlap
-            : !isBusy && hasOverlap
-
-          isSlotAvailable.push(isUserAvailable)
-          userStates.push({
-            state: isUserAvailable,
-            displayName: accountDisplayNames.get(account) || '',
+            const isUserAvailable = ignoreBusyOverlaps
+              ? hasAvailability
+              : !isBusy && hasAvailability
+            if (isUserAvailable && isAfterNow) {
+              numberOfAvailable++
+            }
+            return {
+              state: isUserAvailable,
+              displayName: accountDisplayNames.get(account) || '',
+            }
           })
-        }
 
-        const numberOfAvailable = isSlotAvailable.filter(Boolean).length
+        const totalParticipants = participantAvailabilities.length
         let state: State
 
         if (numberOfAvailable === 0) {
           state = State.NONE_AVAILABLE
-        } else if (numberOfAvailable === isSlotAvailable.length) {
+        } else if (numberOfAvailable === totalParticipants) {
           state = State.ALL_AVAILABLE
-        } else if (numberOfAvailable >= isSlotAvailable.length / 2) {
+        } else if (numberOfAvailable >= totalParticipants / 2) {
           state = State.MOST_AVAILABLE
         } else {
           state = State.SOME_AVAILABLE
@@ -74,41 +151,18 @@ const useSlotsWithAvailability = (
         // Find overlapping event for current user if available
         let currentUserEvent: TimeSlot | null = null
         let eventUrl: string | null = null
-        if (currentAccountAddress && busySlotsWithDetails) {
-          const userBusySlots = busySlotsWithDetails.get(
-            currentAccountAddress.toLowerCase()
-          )
-          if (userBusySlots && userBusySlots.length > 0) {
-            const overlappingEvent = userBusySlots.find(busySlot => {
-              const busyStart =
-                busySlot.start instanceof Date
-                  ? busySlot.start
-                  : new Date(busySlot.start)
-              const busyEnd =
-                busySlot.end instanceof Date
-                  ? busySlot.end
-                  : new Date(busySlot.end)
-              const busyInterval = Interval.fromDateTimes(
-                DateTime.fromJSDate(busyStart),
-                DateTime.fromJSDate(busyEnd)
-              )
-              return busyInterval.overlaps(slot)
-            })
-
-            // Only include event if it has event information
-            if (
-              overlappingEvent &&
-              (overlappingEvent.eventTitle ||
-                overlappingEvent.eventId ||
-                overlappingEvent.eventWebLink)
-            ) {
-              currentUserEvent = overlappingEvent
-              // Generate calendar URL for the event
+        if (processedUserBusySlots && isAfterNow) {
+          // Binary search for overlapping event
+          for (const processed of processedUserBusySlots) {
+            if (processed.start >= slotEnd) break
+            if (processed.end > slotStart && processed.start < slotEnd) {
+              currentUserEvent = processed.timeSlot
               eventUrl = generateCalendarEventUrl(
-                overlappingEvent.source,
-                overlappingEvent.eventId,
-                overlappingEvent.eventWebLink
+                processed.timeSlot.source,
+                processed.timeSlot.eventId,
+                processed.timeSlot.eventWebLink
               )
+              break
             }
           }
         }
@@ -127,8 +181,6 @@ const useSlotsWithAvailability = (
     dates,
     busySlots,
     availableSlots,
-    meetingMembers,
-    participantAvailabilities,
     timezone,
     busySlotsWithDetails,
     currentAccountAddress,

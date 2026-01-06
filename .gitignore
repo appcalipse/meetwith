@@ -51,4 +51,8 @@ package-lock.json
 # Zoom
 zoom-token.json
 .qodo
-test.http
+.nvmrc
+.github/rules/commit-message.mdx
+
+# Sentry Config File
+.env.sentry-build-plugin

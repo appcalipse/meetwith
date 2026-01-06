@@ -15,6 +15,8 @@ import {
   MenuList,
   Portal,
   Spinner,
+  Tag,
+  TagLabel,
   Text,
   Tooltip,
   useColorModeValue,
@@ -25,8 +27,7 @@ import {
 import { isAfter, isWithinInterval } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useMemo, useState } from 'react'
-import React from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { FaEdit, FaEllipsisV, FaRegCopy, FaTrash } from 'react-icons/fa'
 import { MdCancel } from 'react-icons/md'
 import sanitizeHtml from 'sanitize-html'
@@ -34,7 +35,9 @@ import sanitizeHtml from 'sanitize-html'
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import { DeleteMeetingDialog } from '@/components/schedule/delete-dialog'
 import ScheduleParticipantsSchedulerModal from '@/components/schedule/ScheduleParticipantsSchedulerModal'
+import useClipboard from '@/hooks/useClipboard'
 import { AccountContext } from '@/providers/AccountProvider'
+import { isAccepted, isDeclined, isPendingAction } from '@/types/Calendar'
 import { Intents } from '@/types/Dashboard'
 import {
   ExtendedDBSlot,
@@ -42,7 +45,7 @@ import {
   MeetingDecrypted,
   MeetingRepeat,
 } from '@/types/Meeting'
-import { ParticipantType } from '@/types/ParticipantInfo'
+import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
   dateToLocalizedRange,
@@ -50,6 +53,7 @@ import {
   generateGoogleCalendarUrl,
   generateIcs,
   generateOffice365CalendarUrl,
+  rsvpMeeting,
 } from '@/utils/calendar_manager'
 import { appUrl, isProduction } from '@/utils/constants'
 import { MeetingPermissions } from '@/utils/constants/schedule'
@@ -58,11 +62,12 @@ import {
   isAccountSchedulerOrOwner,
 } from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
+import { useToastHelpers } from '@/utils/toasts'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 interface MeetingCardProps {
   meeting: ExtendedDBSlot
   timezone: string
-  onCancel: (removed: string[], skipToast?: boolean) => void
+  onCancel: (removed: string[], skipToast?: boolean) => Promise<void>
 }
 
 interface Label {
@@ -70,8 +75,12 @@ interface Label {
   text: string
 }
 
-const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
-  const defineLabel = (start: Date, end: Date): Label | null => {
+export const defineLabel = (
+  start: Date,
+  end: Date,
+  timezone: string
+): Label | null => {
+  try {
     const now = utcToZonedTime(new Date(), timezone)
 
     if (isWithinInterval(now, { start, end })) {
@@ -85,12 +94,20 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
         text: 'Ended',
       }
     }
+  } catch (error) {
+    console.error('Error defining label:', error)
+  } finally {
     return null
   }
-
+}
+const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const bgColor = useColorModeValue('white', 'neutral.900')
 
-  const label = defineLabel(meeting.start as Date, meeting.end as Date)
+  const label = defineLabel(
+    meeting.start as Date,
+    meeting.end as Date,
+    timezone
+  )
   const toast = useToast()
 
   const {
@@ -108,12 +125,15 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
     onOpen: onEditSchedulerOpen,
     onClose: onEditSchedulerClose,
   } = useDisclosure()
+  const { showSuccessToast, showInfoToast, showErrorToast } = useToastHelpers()
 
   const [decryptedMeeting, setDecryptedMeeting] = useState(
     undefined as MeetingDecrypted | undefined
   )
   const [loading, setLoading] = useState(true)
-  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
+  const rsvpAbortControllerRef = useRef<AbortController | null>(null)
+
+  const { copyFeedbackOpen, handleCopy } = useClipboard()
   const { push } = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const decodeData = async () => {
@@ -137,30 +157,78 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   useEffect(() => {
     decodeData()
   }, [meeting])
-
+  const actor = useMemo(() => {
+    if (!decryptedMeeting) return undefined
+    return decryptedMeeting.participants.find(
+      participant => participant.account_address === currentAccount?.address
+    )
+  }, [decodeData, currentAccount])
   const iconColor = useColorModeValue('gray.500', 'gray.200')
+  const handleRSVP = async (status: ParticipationStatus) => {
+    if (!actor || !currentAccount) return
+    if (status === actor.status || !decryptedMeeting?.id) return
+    // cancel any in-flight rsvp request
+    if (rsvpAbortControllerRef.current) {
+      rsvpAbortControllerRef.current.abort()
+    }
 
-  const downloadIcs = (
+    const abortController = new AbortController()
+    rsvpAbortControllerRef.current = abortController
+
+    logEvent(`Clicked RSVP ${status} from Event Details PopOver`)
+
+    try {
+      await rsvpMeeting(
+        decryptedMeeting!.id,
+        currentAccount.address,
+        status,
+        abortController.signal
+      )
+    } catch (error) {
+      console.error('Failed to update RSVP:', error)
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Request was cancelled, ignore
+        return
+      }
+    }
+  }
+
+  const downloadIcs = async (
     info: MeetingDecrypted,
     currentConnectedAccountAddress: string
   ) => {
-    const icsFile = generateIcs(
-      info,
-      currentConnectedAccountAddress,
-      MeetingChangeType.CREATE,
-      `${appUrl}/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
-    )
+    try {
+      showInfoToast(
+        'Downloading calendar invite',
+        'Your download will begin shortly. Please check your downloads folder.'
+      )
+      const icsFile = await generateIcs(
+        info,
+        currentConnectedAccountAddress,
+        MeetingChangeType.CREATE,
+        `${appUrl}/dashboard/schedule?conferenceId=${meeting.conferenceData?.id}&intent=${Intents.UPDATE_MEETING}`
+      )
 
-    const url = window.URL.createObjectURL(
-      new Blob([icsFile.value!], { type: 'text/plain' })
-    )
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `meeting_${decryptedMeeting!.id}.ics`)
+      const url = window.URL.createObjectURL(
+        new Blob([icsFile.value!], { type: 'text/plain' })
+      )
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `meeting_${decryptedMeeting!.id}.ics`)
 
-    document.body.appendChild(link)
-    link.click()
-    link.parentNode!.removeChild(link)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode!.removeChild(link)
+      showSuccessToast(
+        'Downloaded calendar invite',
+        'Ics file downloaded successfully'
+      )
+    } catch (e) {
+      showErrorToast(
+        'Download failed',
+        'There was an error downloading the ics file. Please try again.'
+      )
+    }
   }
 
   const getNamesDisplay = (
@@ -182,32 +250,58 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
     () => [
       {
         label: 'Add to Google Calendar',
-        link: generateGoogleCalendarUrl(
-          decryptedMeeting?.id || '',
-          decryptedMeeting?.start,
-          decryptedMeeting?.end,
-          decryptedMeeting?.title || 'No Title',
-          decryptedMeeting?.content,
-          decryptedMeeting?.meeting_url,
-          timezone,
-          decryptedMeeting?.participants
-        ),
+        onClick: async () => {
+          showInfoToast(
+            'Opening Google Calendar',
+            'A new tab will open with your Google Calendar invite.'
+          )
+          const url = await generateGoogleCalendarUrl(
+            decryptedMeeting?.meeting_id || '',
+            currentAccount!.address,
+            decryptedMeeting?.start,
+            decryptedMeeting?.end,
+            decryptedMeeting?.title || 'No Title',
+            decryptedMeeting?.content,
+            decryptedMeeting?.meeting_url,
+            timezone,
+            decryptedMeeting?.participants,
+            meeting.recurrence
+          )
+          showSuccessToast(
+            'Opening Link',
+            'A new tab has been opened with your Google Calendar invite.'
+          )
+          window.open(url, '_blank', 'noopener noreferrer')
+        },
       },
       {
         label: 'Add to Office 365 Calendar',
-        link: generateOffice365CalendarUrl(
-          decryptedMeeting?.id || '',
-          decryptedMeeting?.start,
-          decryptedMeeting?.end,
-          decryptedMeeting?.title || 'No Title',
-          decryptedMeeting?.content,
-          decryptedMeeting?.meeting_url,
-          timezone,
-          decryptedMeeting?.participants
-        ),
+        onClick: async () => {
+          showInfoToast(
+            'Generating Link',
+            'A new tab will open with your Office 365 calendar invite.'
+          )
+          const url = await generateOffice365CalendarUrl(
+            decryptedMeeting?.meeting_id || '',
+            currentAccount!.address,
+            decryptedMeeting?.start,
+            decryptedMeeting?.end,
+            decryptedMeeting?.title || 'No Title',
+            decryptedMeeting?.content,
+            decryptedMeeting?.meeting_url,
+            timezone,
+            decryptedMeeting?.participants
+          )
+          showSuccessToast(
+            'Opening Link',
+            'A new tab has been opened with your Office 365 calendar invite.'
+          )
+          window.open(url, '_blank', 'noopener noreferrer')
+        },
       },
       {
-        label: 'Download. ics ',
+        label: 'Download calendar invite',
+        isAsync: true,
         onClick: () => {
           downloadIcs(decryptedMeeting!, currentAccount!.address)
         },
@@ -216,22 +310,6 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
     [decryptedMeeting, currentAccount, timezone]
   )
 
-  const handleCopy = async () => {
-    try {
-      if ('clipboard' in navigator) {
-        await navigator.clipboard.writeText(decryptedMeeting?.meeting_url || '')
-      } else {
-        document.execCommand('copy', true, decryptedMeeting?.meeting_url || '')
-      }
-    } catch (err) {
-      document.execCommand('copy', true, decryptedMeeting?.meeting_url || '')
-    }
-    logEvent('Copied link', { url: decryptedMeeting?.meeting_url || '' })
-    setCopyFeedbackOpen(true)
-    setTimeout(() => {
-      setCopyFeedbackOpen(false)
-    }, 2000)
-  }
   const handleDelete = () => {
     if (
       isAccountSchedulerOrOwner(
@@ -258,7 +336,9 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
     if (decryptedMeeting) {
       try {
         await push(
-          `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
+          `/dashboard/schedule?meetingId=${
+            meeting.id?.split('_')?.[0]
+          }&intent=${Intents.UPDATE_MEETING}`
         )
       } catch (error) {
         toast({
@@ -282,7 +362,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   return (
     <>
       {loading ? (
-        <HStack>
+        <HStack mt={3}>
           <Text>Decoding meeting info...</Text>{' '}
           <Spinner size="sm" colorScheme="gray" />
         </HStack>
@@ -292,28 +372,32 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
           width="100%"
           borderRadius="lg"
           position="relative"
+          mt={3}
           bgColor={bgColor}
           pt={{
             base: label ? 3 : 0,
             md: label ? 1.5 : 0,
           }}
         >
-          {label ? (
-            <Badge
-              borderRadius={0}
-              borderBottomRightRadius={4}
-              px={2}
-              py={1}
-              colorScheme={label.color}
-              alignSelf="flex-end"
-              position="absolute"
-              left={0}
-              top={0}
-            >
-              {label.text}
-            </Badge>
-          ) : (
-            isRecurring && (
+          <HStack
+            position="absolute"
+            right={0}
+            top={0}
+            display={label || isRecurring ? 'flex' : 'none'}
+          >
+            {label && (
+              <Badge
+                borderRadius={0}
+                borderBottomRightRadius={4}
+                px={2}
+                py={1}
+                colorScheme={label.color}
+                alignSelf="flex-end"
+              >
+                {label.text}
+              </Badge>
+            )}
+            {isRecurring && (
               <Badge
                 borderRadius={0}
                 borderBottomRightRadius={4}
@@ -321,14 +405,11 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                 py={1}
                 colorScheme={'gray'}
                 alignSelf="flex-end"
-                position="absolute"
-                right={0}
-                top={0}
               >
                 Recurrence: {meeting?.recurrence}
               </Badge>
-            )
-          )}
+            )}
+          </HStack>
           <Box p={6} pt={isRecurring ? 8 : 6} maxWidth="100%">
             <VStack alignItems="start" position="relative" gap={6}>
               <Flex
@@ -425,29 +506,17 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                     <Portal>
                       <MenuList backgroundColor={menuBgColor}>
                         {menuItems.map((val, index, arr) => [
-                          val.link ? (
-                            <MenuItem
-                              as="a"
-                              href={val.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              key={`${val.label}-${meeting?.id}`}
-                              backgroundColor={menuBgColor}
-                            >
-                              {val.label}
-                            </MenuItem>
-                          ) : (
-                            <MenuItem
-                              onClick={val.onClick}
-                              backgroundColor={menuBgColor}
-                              key={`${val.label}-${meeting?.id}`}
-                            >
-                              {val.label}
-                            </MenuItem>
-                          ),
+                          <MenuItem
+                            onClick={val.onClick}
+                            backgroundColor={menuBgColor}
+                            key={`${val.label}-${meeting?.id}`}
+                            aria-busy
+                          >
+                            {val.label}
+                          </MenuItem>,
                           index !== arr.length - 1 && (
                             <MenuDivider
-                              key="divider"
+                              key={`divider-${index}-${meeting?.id}`}
                               borderColor="neutral.600"
                             />
                           ),
@@ -511,7 +580,9 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                         w={4}
                         colorScheme="primary"
                         variant="link"
-                        onClick={handleCopy}
+                        onClick={() =>
+                          handleCopy(decryptedMeeting.meeting_url || '')
+                        }
                         leftIcon={<FaRegCopy />}
                       />
 
@@ -538,6 +609,80 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                     />
                   </HStack>
                 )}
+                <HStack alignItems="center" gap={3.5} display="none">
+                  <Text fontWeight={700}>RSVP:</Text>
+                  <HStack alignItems="center" gap={2}>
+                    <Tag
+                      bg={
+                        isAccepted(actor?.status) ? 'green.500' : 'transparent'
+                      }
+                      borderWidth={1}
+                      borderColor={'green.500'}
+                      rounded="full"
+                      px={3}
+                      fontSize={{
+                        lg: '16px',
+                        md: '14px',
+                        base: '12px',
+                      }}
+                      onClick={() => handleRSVP(ParticipationStatus.Accepted)}
+                    >
+                      <TagLabel
+                        color={
+                          isAccepted(actor?.status) ? 'white' : 'green.500'
+                        }
+                      >
+                        Yes
+                      </TagLabel>
+                    </Tag>
+                    <Tag
+                      bg={isDeclined(actor?.status) ? 'red.250' : 'transparent'}
+                      borderWidth={1}
+                      borderColor={'red.250'}
+                      rounded="full"
+                      px={3}
+                      fontSize={{
+                        lg: '16px',
+                        md: '14px',
+                        base: '12px',
+                      }}
+                      onClick={() => handleRSVP(ParticipationStatus.Rejected)}
+                    >
+                      <TagLabel
+                        color={isDeclined(actor?.status) ? 'white' : 'red.250'}
+                      >
+                        No
+                      </TagLabel>
+                    </Tag>
+                    <Tag
+                      bg={
+                        isPendingAction(actor?.status)
+                          ? 'primary.300'
+                          : 'transparent'
+                      }
+                      borderWidth={1}
+                      borderColor={'primary.300'}
+                      rounded="full"
+                      px={3}
+                      fontSize={{
+                        lg: '16px',
+                        md: '14px',
+                        base: '12px',
+                      }}
+                      onClick={() => handleRSVP(ParticipationStatus.Pending)}
+                    >
+                      <TagLabel
+                        color={
+                          isPendingAction(actor?.status)
+                            ? 'white'
+                            : 'primary.300'
+                        }
+                      >
+                        Maybe
+                      </TagLabel>
+                    </Tag>
+                  </HStack>
+                </HStack>
               </VStack>
             </VStack>
           </Box>
@@ -554,16 +699,16 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
         participants={decryptedMeeting?.participants || []}
         decryptedMeeting={decryptedMeeting}
       />
-      <CancelMeetingDialog
-        isOpen={isCancelOpen}
-        onClose={onCancelClose}
+      <DeleteMeetingDialog
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
         decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}
       />
-      <DeleteMeetingDialog
-        isOpen={isDeleteOpen}
-        onClose={onDeleteClose}
+      <CancelMeetingDialog
+        isOpen={isCancelOpen}
+        onClose={onCancelClose}
         decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}

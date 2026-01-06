@@ -223,14 +223,7 @@ describe('calendar manager', () => {
 
     const mockedContent: MeetingInfo = {
       created_at: new Date(),
-      participants: participants.map(val =>
-        val.slot_id === 'wathevs1'
-          ? {
-              ...val,
-              slot_id: random_slot_id,
-            }
-          : val
-      ),
+      participants: participants,
       meeting_url: '',
       meeting_id: randomUUID(),
       change_history_paths: [],
@@ -251,6 +244,7 @@ describe('calendar manager', () => {
       meetingContent,
       meetingUrl
     )
+
     expect(result).toMatchObject({
       start: startTime,
       participants: [

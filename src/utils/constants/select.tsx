@@ -33,6 +33,23 @@ export const noClearCustomSelectComponent: Props['components'] = {
     </chakraComponents.DropdownIndicator>
   ),
 }
+export const rsvpSelectComponent: Props['components'] = {
+  ClearIndicator: () => null,
+  ValueContainer: props => (
+    <chakraComponents.ValueContainer
+      {...props}
+      className="rsvp-value-container"
+    />
+  ),
+  DropdownIndicator: props => (
+    <chakraComponents.DropdownIndicator
+      className="noBg rsvp-dropdown"
+      {...props}
+    >
+      <Icon as={FaChevronDown} w={3} h={3} />
+    </chakraComponents.DropdownIndicator>
+  ),
+}
 
 export type Option<T, J = string> = {
   value: T // The actual value of the option
@@ -71,7 +88,7 @@ export const fullWidthStyle:
   | undefined = {
   container: provided => ({
     ...provided,
-    borderColor: '´∑inherit',
+    borderColor: 'inherit',
     borderRadius: 'md',
     maxW: '100%',
     display: 'block',

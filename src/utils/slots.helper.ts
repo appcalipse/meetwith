@@ -1,12 +1,4 @@
-import {
-  addMinutes,
-  compareAsc,
-  format,
-  getDay,
-  getHours,
-  Interval,
-  isAfter,
-} from 'date-fns'
+import { addMinutes, compareAsc, getDay, Interval, isAfter } from 'date-fns'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime, Interval as LuxonInterval } from 'luxon'
 
@@ -166,15 +158,69 @@ export const suggestBestSlots = (
     true,
     timezone,
     endDate
-  ).filter(slot => slot.isValid)
-  return allSlots
-    .filter(slot => slot.start >= now)
-    .filter(slot => {
-      return accountAvailabilities.every(({ availabilities }) =>
-        availabilities.some(availability => availability.overlaps(slot))
-      )
-    })
-    .filter(slot => {
-      return !sortedBusySlots.some(busySlot => busySlot.overlaps(slot))
-    })
+  ).filter(slot => slot.isValid && slot.start >= now)
+
+  return allSlots.filter(slot => {
+    const hasAvailability = accountAvailabilities.every(({ availabilities }) =>
+      hasOverlapBinary(slot, availabilities)
+    )
+
+    return hasAvailability && !hasOverlapBinary(slot, sortedBusySlots)
+  })
+}
+
+export const getEmptySlots = (
+  time: DateTime,
+  scheduleDuration: number,
+  timezone = 'UTC'
+): Array<LuxonInterval<true>> => {
+  const slots: Array<LuxonInterval<true>> = []
+  const slotsPerHour = 60 / (scheduleDuration || 30)
+  const totalSlots = 24 * slotsPerHour
+
+  const dayStart = time.setZone(timezone).startOf('day')
+
+  for (let i = 0; i < totalSlots; i++) {
+    const minutesFromStart = i * (scheduleDuration || 30)
+    const start = dayStart.plus({ minutes: minutesFromStart })
+    const slot = LuxonInterval.after(start, { minutes: scheduleDuration || 30 })
+    if (slot.isValid) slots.push(slot)
+  }
+
+  return slots
+}
+
+function hasOverlapBinary(
+  slot: LuxonInterval<true>,
+  sortedIntervals: LuxonInterval<true>[]
+): boolean {
+  if (sortedIntervals.length === 0) return false
+
+  let left = 0
+  let right = sortedIntervals.length - 1
+
+  // Find the first interval that might overlap
+  // We need to check intervals where interval.end > slot.start
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2)
+    const interval = sortedIntervals[mid]
+
+    // Check for overlap
+    if (interval.overlaps(slot)) {
+      return true
+    }
+
+    // If slot is completely before this interval, search left
+    if (slot.end <= interval.start) {
+      right = mid - 1
+    }
+    // If slot is completely after this interval, search right
+    else if (slot.start >= interval.end) {
+      left = mid + 1
+    } else {
+      return interval.overlaps(slot)
+    }
+  }
+
+  return false
 }

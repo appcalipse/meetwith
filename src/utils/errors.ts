@@ -244,6 +244,218 @@ export class SubscriptionNotCustom extends Error {
   }
 }
 
+export class MissingSubscriptionMetadataError extends Error {
+  constructor() {
+    super(
+      'Missing required subscription metadata: billing_plan_id or account_address'
+    )
+    this.name = 'MissingSubscriptionMetadataError'
+  }
+}
+
+export class BillingPlanNotFoundError extends Error {
+  constructor(billing_plan_id: string) {
+    super(`Billing plan not found: ${billing_plan_id}`)
+    this.name = 'BillingPlanNotFoundError'
+  }
+}
+
+// Billing Plan Errors
+export class BillingPlansFetchError extends Error {
+  constructor(message?: string) {
+    super(message || 'Failed to fetch billing plans')
+    this.name = 'BillingPlansFetchError'
+  }
+}
+
+export class BillingPlanFetchError extends Error {
+  constructor(planId?: string, message?: string) {
+    super(
+      message || `Failed to fetch billing plan${planId ? `: ${planId}` : ''}`
+    )
+    this.name = 'BillingPlanFetchError'
+  }
+}
+
+export class BillingPlanProvidersFetchError extends Error {
+  constructor(message?: string) {
+    super(message || 'Failed to fetch billing plan providers')
+    this.name = 'BillingPlanProvidersFetchError'
+  }
+}
+
+export class BillingPlanProviderFetchError extends Error {
+  constructor(planId?: string, provider?: string, message?: string) {
+    super(
+      message ||
+        `Failed to fetch billing plan provider${
+          planId ? ` for plan ${planId}` : ''
+        }${provider ? ` and provider ${provider}` : ''}`
+    )
+    this.name = 'BillingPlanProviderFetchError'
+  }
+}
+
+export class BillingPlanFromStripeProductError extends Error {
+  constructor(stripeProductId?: string, message?: string) {
+    super(
+      message ||
+        `Failed to fetch billing plan from Stripe product${
+          stripeProductId ? `: ${stripeProductId}` : ''
+        }`
+    )
+    this.name = 'BillingPlanFromStripeProductError'
+  }
+}
+
+// Stripe Subscription Errors
+export class StripeSubscriptionCreationError extends Error {
+  constructor(message?: string) {
+    super(message || 'Failed to create Stripe subscription')
+    this.name = 'StripeSubscriptionCreationError'
+  }
+}
+
+export class StripeSubscriptionFetchError extends Error {
+  constructor(identifier?: string, message?: string) {
+    super(
+      message ||
+        `Failed to fetch Stripe subscription${
+          identifier ? `: ${identifier}` : ''
+        }`
+    )
+    this.name = 'StripeSubscriptionFetchError'
+  }
+}
+
+export class StripeSubscriptionUpdateError extends Error {
+  constructor(stripeSubscriptionId?: string, message?: string) {
+    super(
+      message ||
+        `Failed to update Stripe subscription${
+          stripeSubscriptionId ? `: ${stripeSubscriptionId}` : ''
+        }`
+    )
+    this.name = 'StripeSubscriptionUpdateError'
+  }
+}
+
+export class StripeSubscriptionTransactionLinkError extends Error {
+  constructor(message?: string) {
+    super(message || 'Failed to link transaction to Stripe subscription')
+    this.name = 'StripeSubscriptionTransactionLinkError'
+  }
+}
+
+// Subscription Transaction Errors
+export class SubscriptionTransactionCreationError extends Error {
+  constructor(message?: string) {
+    super(message || 'Failed to create subscription transaction')
+    this.name = 'SubscriptionTransactionCreationError'
+  }
+}
+
+// Subscription Period Errors
+export class SubscriptionPeriodCreationError extends Error {
+  constructor(message?: string) {
+    super(message || 'Failed to create subscription period')
+    this.name = 'SubscriptionPeriodCreationError'
+  }
+}
+
+export class SubscriptionPeriodFetchError extends Error {
+  constructor(accountAddress?: string, message?: string) {
+    super(
+      message ||
+        `Failed to fetch subscription period${
+          accountAddress ? ` for account ${accountAddress}` : ''
+        }`
+    )
+    this.name = 'SubscriptionPeriodFetchError'
+  }
+}
+
+export class SubscriptionHistoryCheckError extends Error {
+  constructor(accountAddress?: string, message?: string) {
+    super(
+      message ||
+        `Failed to check subscription history${
+          accountAddress ? ` for account ${accountAddress}` : ''
+        }`
+    )
+    this.name = 'SubscriptionHistoryCheckError'
+  }
+}
+
+export class SubscriptionPeriodsFetchError extends Error {
+  constructor(accountAddress?: string, message?: string) {
+    super(
+      message ||
+        `Failed to fetch subscription periods${
+          accountAddress ? ` for account ${accountAddress}` : ''
+        }`
+    )
+    this.name = 'SubscriptionPeriodsFetchError'
+  }
+}
+
+export class SubscriptionHistoryFetchError extends Error {
+  constructor(accountAddress?: string, message?: string) {
+    super(
+      message ||
+        `Failed to fetch subscription history${
+          accountAddress ? ` for account ${accountAddress}` : ''
+        }`
+    )
+    this.name = 'SubscriptionHistoryFetchError'
+  }
+}
+
+export class BillingPeriodsFetchError extends Error {
+  constructor(message?: string) {
+    super(message || 'Failed to fetch billing periods by expiry window')
+    this.name = 'BillingPeriodsFetchError'
+  }
+}
+
+export class SubscriptionPeriodsExpirationError extends Error {
+  constructor(message?: string) {
+    super(message || 'Failed to expire subscription periods')
+    this.name = 'SubscriptionPeriodsExpirationError'
+  }
+}
+
+export class SubscriptionPeriodStatusUpdateError extends Error {
+  constructor(subscriptionId?: string, message?: string) {
+    super(
+      message ||
+        `Failed to update subscription period status${
+          subscriptionId ? `: ${subscriptionId}` : ''
+        }`
+    )
+    this.name = 'SubscriptionPeriodStatusUpdateError'
+  }
+}
+
+export class SubscriptionPeriodTransactionUpdateError extends Error {
+  constructor(subscriptionId?: string, message?: string) {
+    super(
+      message ||
+        `Failed to update subscription period transaction${
+          subscriptionId ? `: ${subscriptionId}` : ''
+        }`
+    )
+    this.name = 'SubscriptionPeriodTransactionUpdateError'
+  }
+}
+
+export class SubscriptionPeriodFindError extends Error {
+  constructor(message?: string) {
+    super(message || 'Failed to find subscription period')
+    this.name = 'SubscriptionPeriodFindError'
+  }
+}
+
 export class ContactAlreadyExists extends Error {
   constructor() {
     super(`Contact already exists`)
@@ -346,6 +558,60 @@ export class LastMeetingTypeError extends Error {
       `You cannot delete your last meeting type, please create a new one first`
     )
     this.name = 'LastMeetingTypeError'
+  }
+}
+
+export class MeetingTypeLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 1 meeting type. Upgrade to Pro for unlimited meeting types.`
+    )
+    this.name = 'MeetingTypeLimitExceededError'
+  }
+}
+
+export class PaidMeetingTypeNotAllowedError extends Error {
+  constructor() {
+    super(
+      `Free tier only allows FREE meeting types. Upgrade to Pro to create paid meeting types.`
+    )
+    this.name = 'PaidMeetingTypeNotAllowedError'
+  }
+}
+
+export class SchedulingGroupLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 5 scheduling groups. Upgrade to Pro for unlimited scheduling groups.`
+    )
+    this.name = 'SchedulingGroupLimitExceededError'
+  }
+}
+
+export class CalendarIntegrationLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.`
+    )
+    this.name = 'CalendarIntegrationLimitExceededError'
+  }
+}
+
+export class QuickPollLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 2 active polls. Upgrade to Pro for unlimited active polls.`
+    )
+    this.name = 'QuickPollLimitExceededError'
+  }
+}
+
+export class CalendarSyncLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 1 calendar sync. Upgrade to Pro for unlimited calendar syncs.`
+    )
+    this.name = 'CalendarSyncLimitExceededError'
   }
 }
 
@@ -545,5 +811,12 @@ export class QuickPollAlreadyCompletedError extends Error {
   constructor() {
     super('This poll has already been completed')
     this.name = 'QuickPollAlreadyCompletedError'
+  }
+}
+
+export class DecryptionFailedError extends Error {
+  constructor() {
+    super('Failed to decrypt the data')
+    this.name = 'DecryptionFailedError'
   }
 }

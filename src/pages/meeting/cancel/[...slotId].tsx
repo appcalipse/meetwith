@@ -15,7 +15,7 @@ import {
 import * as Sentry from '@sentry/nextjs'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { FaBell } from 'react-icons/fa'
 
 import Loading from '@/components/Loading'
@@ -23,9 +23,19 @@ import { RescheduleConferenceData } from '@/components/public-meeting'
 import CancelComponent from '@/components/public-meeting/CancelComponent'
 import useAccountContext from '@/hooks/useAccountContext'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { MeetingDecrypted } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
-import { getMeetingGuest, guestMeetingCancel } from '@/utils/api_helper'
-import { dateToHumanReadable } from '@/utils/calendar_manager'
+import {
+  decodeMeetingGuest,
+  getMeetingGuest,
+  getSlotByMeetingId,
+  guestMeetingCancel,
+} from '@/utils/api_helper'
+import {
+  cancelMeetingGuest,
+  dateToHumanReadable,
+  decodeMeeting,
+} from '@/utils/calendar_manager'
 import { decryptContent } from '@/utils/cryptography'
 import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
 import { isJson } from '@/utils/generic_utils'
@@ -33,9 +43,11 @@ import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
 const CancelMeetingPage: NextPage = () => {
   const router = useRouter()
-  const { slotId, metadata } = router.query
+  const { slotId, metadata, type } = router.query
   const [loading, setLoading] = useState(true)
-  const [meeting, setMeeting] = useState<RescheduleConferenceData>()
+  const [meeting, setMeeting] = useState<RescheduleConferenceData | undefined>(
+    undefined
+  )
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelled, setCancelled] = useState(false)
   const [timezone, setTimezone] = useState(
@@ -53,10 +65,9 @@ const CancelMeetingPage: NextPage = () => {
   const loadMeetingData = async () => {
     try {
       setLoading(true)
-      const data: RescheduleConferenceData = await getMeetingGuest(
-        slotId as string
-      )
-      if (metadata) {
+      let data: RescheduleConferenceData | undefined = undefined
+      if (metadata && type !== 'conference') {
+        data = await getMeetingGuest(slotId as string)
         const guestParticipants = decryptContent(
           process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
           Array.isArray(metadata) ? metadata[0] : metadata
@@ -74,6 +85,26 @@ const CancelMeetingPage: NextPage = () => {
             actor.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
           )
         }
+      } else if (slotId) {
+        let decryptedMeeting: MeetingDecrypted | null = null
+        const slot = await getSlotByMeetingId(
+          Array.isArray(slotId) ? slotId[0] : slotId
+        )
+        if (slot?.user_type === 'account') {
+          decryptedMeeting = await decodeMeeting(slot, currentAccount!)
+        } else if (slot?.user_type === 'guest') {
+          decryptedMeeting = await decodeMeetingGuest(slot)
+        }
+        if (!decryptedMeeting) {
+          toast({
+            title: 'Unable to load meeting details',
+            status: 'error',
+            description:
+              'The meeting information could not be retrieved. Please try again.',
+          })
+          return
+        }
+        data = decryptedMeeting
       }
       setMeeting(data)
     } catch (error) {
@@ -99,12 +130,22 @@ const CancelMeetingPage: NextPage = () => {
   const handleCancelMeeting = async () => {
     setIsCancelling(true)
     try {
-      const response = await guestMeetingCancel(slotId as string, {
-        metadata: metadata as string,
-        currentTimezone: timezone,
-        reason,
-      })
-      if (response?.success) {
+      let response
+      if (type === 'conference') {
+        response = await cancelMeetingGuest(meeting as MeetingDecrypted, reason)
+      } else {
+        response = await guestMeetingCancel(
+          ((Array.isArray(slotId) ? slotId[0] : slotId) ||
+            meeting?.id ||
+            '') as string,
+          {
+            metadata: metadata as string,
+            currentTimezone: timezone,
+            reason,
+          }
+        )
+      }
+      if (response) {
         setCancelled(true)
         toast({
           title: 'Meeting cancelled',

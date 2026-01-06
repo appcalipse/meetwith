@@ -1,4 +1,3 @@
-/* eslint-disable tailwindcss/no-custom-classname */
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons'
 import {
   Button,
@@ -77,7 +76,7 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import { AcceptedToken, getSupportedChainFromId } from '@/types/chains'
-import { EditMode } from '@/types/Dashboard'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
 import { MeetingProvider } from '@/types/Meeting'
 import { PaymentAccountStatus } from '@/types/PaymentAccount'
 
@@ -597,7 +596,6 @@ const MeetingTypeModal: FC<IProps> = props => {
                 value={sessionType}
                 colorScheme="primary"
                 onChange={handleSessionChange}
-                // eslint-disable-next-line tailwindcss/no-custom-classname
                 className="noLeftBorder timezone-select"
                 options={SessionTypeOptions}
                 components={noClearCustomSelectComponent}
@@ -731,7 +729,6 @@ const MeetingTypeModal: FC<IProps> = props => {
                 <ChakraSelect
                   value={availabilityBlock}
                   onChange={handleAvailabilityBlockChangeChange}
-                  // eslint-disable-next-line tailwindcss/no-custom-classname
                   className="noLeftBorder timezone-select"
                   options={
                     props?.availabilityBlocks?.map(availability => ({
@@ -793,7 +790,6 @@ const MeetingTypeModal: FC<IProps> = props => {
                 <ChakraSelect
                   value={calendars}
                   onChange={handleCalendarChange}
-                  // eslint-disable-next-line tailwindcss/no-custom-classname
                   className="noLeftBorder timezone-select"
                   options={
                     props?.calendarOptions?.map(calendar => ({
@@ -883,7 +879,6 @@ const MeetingTypeModal: FC<IProps> = props => {
                       colorScheme="primary"
                       onChange={handleMinNoticeTypeChange}
                       options={MinNoticeTimeOptions}
-                      // eslint-disable-next-line tailwindcss/no-custom-classname
                       className="date-select"
                       components={noClearCustomSelectComponent}
                       chakraStyles={{
@@ -1202,7 +1197,6 @@ const MeetingTypeModal: FC<IProps> = props => {
                     value={paymentChannel}
                     colorScheme="primary"
                     onChange={handlePaymentChannelChange}
-                    // eslint-disable-next-line tailwindcss/no-custom-classname
                     className="noLeftBorder timezone-select"
                     options={PaymentChannelOptions(
                       currentAccount?.address || ''
@@ -1406,7 +1400,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                     Please connect your Stripe account.{' '}
                     {/* TODO make the connection from this section */}
                     <Link
-                      href="/dashboard/details#connected-accounts"
+                      href="/dashboard/settings/connected-accounts"
                       color="primary.200"
                       textDecor="underline"
                     >
@@ -1427,7 +1421,6 @@ const MeetingTypeModal: FC<IProps> = props => {
                     value={cryptoNetwork}
                     colorScheme="primary"
                     onChange={handleCryptoNetworkChange}
-                    // eslint-disable-next-line tailwindcss/no-custom-classname
                     className="noLeftBorder timezone-select"
                     options={CryptoNetworkForCardSettlementOptions}
                     components={noClearCustomSelectComponent}
@@ -1460,7 +1453,6 @@ const MeetingTypeModal: FC<IProps> = props => {
                     value={defaultToken}
                     colorScheme="primary"
                     onChange={handleDefaultTokenChange}
-                    // eslint-disable-next-line tailwindcss/no-custom-classname
                     className="noLeftBorder timezone-select"
                     options={TokenOptions}
                     components={noClearCustomSelectComponent}

@@ -12,22 +12,24 @@ import {
   ModalContent,
   ModalOverlay,
   Text,
-  VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import PublicGroupLink from '@/components/group/PublicGroupLink'
-import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
-import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import {
+  IParticipantsContext,
+  ParticipantsContext,
+  useParticipants,
+} from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
   QuickPollParticipantStatus,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
-import { isGroupParticipant } from '@/types/schedule'
+import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
 import { updateQuickPoll } from '@/utils/api_helper'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { handleApiError } from '@/utils/error_helper'
@@ -45,6 +47,17 @@ interface IProps {
   isQuickPoll?: boolean
   pollData?: any
   onInviteSuccess?: () => void
+  participants: Array<ParticipantInfo | IGroupParticipant>
+  groupParticipants: Record<string, Array<string> | undefined>
+  groupAvailability: Record<string, Array<string> | undefined>
+
+  handleUpdateParticipants: (
+    participants: Array<ParticipantInfo | IGroupParticipant>
+  ) => void
+  handleUpdateGroups: (
+    groupAvailability: Record<string, Array<string> | undefined>,
+    groupParticipants: Record<string, Array<string> | undefined>
+  ) => void
 }
 
 const InviteParticipants: FC<IProps> = ({
@@ -53,18 +66,42 @@ const InviteParticipants: FC<IProps> = ({
   isQuickPoll,
   pollData,
   onInviteSuccess,
+  handleUpdateParticipants,
+  handleUpdateGroups,
+  participants: defaultParticipantsInfo,
+  groupParticipants: defaultGroupParticipants,
+  groupAvailability: defaultGroupAvailability,
 }) => {
   const {
     groups,
+    setGroups,
     isGroupPrefetching,
-    setParticipants,
-    setGroupAvailability,
-    setGroupParticipants,
-    setStandAloneParticipants,
-    standAloneParticipants,
-    participants: contextParticipants,
-    groupParticipants: contextGroupParticipants,
+    setIsGroupPrefetching,
+    contacts,
+    isContactsPrefetching,
+    meetingMembers,
+    meetingOwners,
+    setMeetingMembers,
+    setMeetingOwners,
+    allAvailaibility,
+    allParticipants,
+    removeParticipant,
+    toggleAvailability,
+    groupMembersAvailabilities,
+    setGroupMembersAvailabilities,
   } = useParticipants()
+  const [standAloneParticipants, setStandAloneParticipants] = useState<
+    Array<ParticipantInfo>
+  >([])
+  const [groupParticipants, setGroupParticipants] = useState<
+    Record<string, Array<string> | undefined>
+  >(defaultGroupParticipants)
+  const [participants, setParticipants] = useState<
+    Array<ParticipantInfo | IGroupParticipant>
+  >(defaultParticipantsInfo)
+  const [groupAvailability, setGroupAvailability] = useState<
+    Record<string, Array<string> | undefined>
+  >(defaultGroupAvailability)
   const groupId = useRouter().query.groupId as string | undefined
   const [isLoading, setIsLoading] = React.useState(false)
   const { showSuccessToast } = useToastHelpers()
@@ -75,19 +112,14 @@ const InviteParticipants: FC<IProps> = ({
 
   const combinedSelection = useMemo(() => {
     const merged = getMergedParticipants(
-      contextParticipants ?? [],
+      participants ?? [],
       groups,
-      contextGroupParticipants ?? {},
+      groupParticipants ?? {},
       undefined
     )
     const fromContext = merged.filter(p => !!p.account_address)
     return [...fromContext, ...standAloneParticipants]
-  }, [
-    contextParticipants,
-    groups,
-    contextGroupParticipants,
-    standAloneParticipants,
-  ])
+  }, [groupParticipants, groups, standAloneParticipants])
 
   const newInvitees = useMemo(() => {
     if (!baselineIds) return combinedSelection
@@ -110,6 +142,43 @@ const InviteParticipants: FC<IProps> = ({
     }
   }, [isOpen])
 
+  const addGroup = (group: IGroupParticipant) => {
+    setParticipants(prev => {
+      const groupAdded = prev.some(val => {
+        if (isGroupParticipant(val)) {
+          return val.isGroup && val.id === group.id
+        }
+        return false
+      })
+      if (groupAdded) {
+        return prev
+      }
+      return [...prev, group]
+    })
+  }
+
+  const removeGroup = (groupId: string) => {
+    setParticipants(prev =>
+      prev.filter(val => {
+        if (isGroupParticipant(val)) {
+          return val.id !== groupId
+        }
+        return true
+      })
+    )
+    setGroupAvailability(prev => {
+      const newGroupAvailability = { ...prev }
+      delete newGroupAvailability[groupId]
+      return newGroupAvailability
+    })
+
+    setGroupParticipants(prev => {
+      const newGroupParticipants = { ...prev }
+      delete newGroupParticipants[groupId]
+      return newGroupParticipants
+    })
+  }
+
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
       const addressesToAdd = _participants
@@ -122,7 +191,7 @@ const InviteParticipants: FC<IProps> = ({
           if (isGroupParticipant(user) || user.isHidden) return true
           // Check if this participant is from contacts
           if (user.account_address) {
-            return Object.values(contextGroupParticipants ?? {}).some(
+            return Object.values(groupParticipants ?? {}).some(
               addresses =>
                 addresses && addresses.includes(user.account_address!)
             )
@@ -137,7 +206,7 @@ const InviteParticipants: FC<IProps> = ({
           if (isGroupParticipant(user) || user.isHidden) return true
           // Check if this participant is from contacts
           if (user.account_address) {
-            return Object.values(contextGroupParticipants ?? {}).some(
+            return Object.values(groupParticipants ?? {}).some(
               addresses =>
                 addresses && addresses.includes(user.account_address!)
             )
@@ -170,7 +239,7 @@ const InviteParticipants: FC<IProps> = ({
       setParticipants,
       setGroupAvailability,
       setGroupParticipants,
-      contextGroupParticipants,
+      groupParticipants,
     ]
   )
 
@@ -181,7 +250,7 @@ const InviteParticipants: FC<IProps> = ({
     try {
       if (newInvitees.length === 0) {
         setIsLoading(false)
-        onClose()
+        hanleClose()
         return
       }
 
@@ -205,21 +274,25 @@ const InviteParticipants: FC<IProps> = ({
       )
 
       onInviteSuccess?.()
-      onClose()
+      hanleClose()
     } catch (error) {
       handleApiError('Failed to add participants', error)
     } finally {
       setIsLoading(false)
     }
-  }, [pollData, newInvitees, onInviteSuccess, onClose, showSuccessToast])
-
+  }, [pollData, newInvitees, onInviteSuccess, showSuccessToast])
+  const hanleClose = () => {
+    handleUpdateParticipants(participants)
+    handleUpdateGroups(groupAvailability, groupParticipants)
+    onClose()
+  }
   const handleSaveChangesClick = useCallback(() => {
     if (isQuickPoll) {
       void handleQuickPollSaveChanges()
     } else {
-      onClose()
+      hanleClose()
     }
-  }, [isQuickPoll, handleQuickPollSaveChanges, onClose])
+  }, [isQuickPoll, handleQuickPollSaveChanges, hanleClose])
   const renderParticipantItem = useCallback((p: ParticipantInfo) => {
     if (p.account_address) {
       return p.name || ellipsizeAddress(p.account_address)
@@ -231,88 +304,112 @@ const InviteParticipants: FC<IProps> = ({
       return p.guest_email!
     }
   }, [])
+  const context: IParticipantsContext = {
+    participants,
+    standAloneParticipants,
+    groupParticipants,
+    groupAvailability,
+    groupMembersAvailabilities,
+    meetingMembers,
+    meetingOwners,
+    groups,
+    setGroups,
+    isGroupPrefetching,
+    setParticipants,
+    setGroupParticipants,
+    setGroupAvailability,
+    setGroupMembersAvailabilities,
+    setMeetingMembers,
+    setMeetingOwners,
+    setIsGroupPrefetching,
+    addGroup,
+    removeGroup,
+    contacts,
+    isContactsPrefetching,
+    setStandAloneParticipants,
+    allAvailaibility,
+    allParticipants,
+    removeParticipant,
+    toggleAvailability,
+  }
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
-      <ModalContent
-        maxWidth={{ base: '100%', md: '500px' }}
-        width={{ base: '100%', md: '500px' }}
-        borderWidth={1}
-        bg="bg-surface"
-        borderColor="border-default"
-        py={6}
-        shadow="none"
-        height={{ base: '100vh', md: 'auto' }}
-        minH={{ base: '100vh', md: 'auto' }}
-        borderRadius={{ base: 0, md: 'md' }}
-      >
-        <ModalCloseButton />
-        <ModalBody>
-          <Heading fontSize="22px" pb={2} mb={4}>
-            Meeting participants
-          </Heading>
-          <AllMeetingParticipants />
-          <Divider my={6} borderColor="neutral.400" />
-          <Heading fontSize="22px" pb={2} mb={4}>
-            Add participants from groups/contacts
-          </Heading>
-          {isGroupPrefetching ? (
-            <VStack mb={6} w="100%" justifyContent="center">
-              <Loading />
-            </VStack>
-          ) : groups.length > 0 ? (
+    <ParticipantsContext.Provider value={context}>
+      <Modal isOpen={isOpen} onClose={hanleClose} isCentered>
+        <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
+        <ModalContent
+          maxWidth={{ base: '100%', md: '500px' }}
+          width={{ base: '100%', md: '500px' }}
+          borderWidth={1}
+          bg="bg-surface"
+          borderColor="border-default"
+          py={6}
+          shadow="none"
+          height={{ base: '100vh', md: 'auto' }}
+          minH={{ base: '100vh', md: 'auto' }}
+          maxH={{ base: '100vh', md: '95vh' }}
+          borderRadius={{ base: 0, md: 'md' }}
+          overflowY="scroll"
+        >
+          <ModalCloseButton />
+          <ModalBody>
+            <Heading fontSize="22px" pb={2} mb={4}>
+              Meeting participants
+            </Heading>
+            <AllMeetingParticipants />
+            <Divider my={6} borderColor="neutral.400" />
+            <Heading fontSize="22px" pb={2} mb={4}>
+              Add participants from groups/contacts
+            </Heading>
             <AddFromGroups />
-          ) : (
-            <Text>No groups available. Please create a group first.</Text>
-          )}
-          <Divider my={6} borderColor="neutral.400" />
-          <AddFromContact />
+            <Divider my={6} borderColor="neutral.400" />
+            <AddFromContact />
 
-          {!isQuickPoll && (
-            <>
-              <Divider my={6} borderColor="neutral.400" />
-              <FormControl w="100%" maxW="100%">
-                <FormLabel htmlFor="participants">
-                  Invite participants by their ID (Cc)
-                  <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
-                </FormLabel>
-                <Box w="100%" maxW="100%">
-                  <ChipInput
-                    currentItems={standAloneParticipants}
-                    placeholder="Enter email, wallet address or ENS of user"
-                    onChange={onParticipantsChange}
-                    renderItem={renderParticipantItem}
-                  />
-                </Box>
-                <FormHelperText mt={1}>
-                  <Text fontSize="12px" color="neutral.400">
-                    Separate participants by comma. You will be added
-                    automatically, no need to insert yourself
-                  </Text>
-                </FormHelperText>
-              </FormControl>
-            </>
-          )}
+            {!isQuickPoll && (
+              <>
+                <Divider my={6} borderColor="neutral.400" />
+                <FormControl w="100%" maxW="100%">
+                  <FormLabel htmlFor="participants">
+                    Invite participants by their ID (Cc)
+                    <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
+                  </FormLabel>
+                  <Box w="100%" maxW="100%">
+                    <ChipInput
+                      currentItems={standAloneParticipants}
+                      placeholder="Enter email, wallet address or ENS of user"
+                      onChange={onParticipantsChange}
+                      renderItem={renderParticipantItem}
+                    />
+                  </Box>
+                  <FormHelperText mt={1}>
+                    <Text fontSize="12px" color="neutral.400">
+                      Separate participants by comma. You will be added
+                      automatically, no need to insert yourself
+                    </Text>
+                  </FormHelperText>
+                </FormControl>
+              </>
+            )}
 
-          <Button
-            mt={6}
-            w="fit-content"
-            colorScheme="primary"
-            onClick={handleSaveChangesClick}
-            isLoading={isQuickPoll ? isLoading : false}
-            isDisabled={isQuickPoll ? isLoading : false}
-          >
-            Save Changes
-          </Button>
+            <Button
+              mt={6}
+              w="fit-content"
+              colorScheme="primary"
+              onClick={handleSaveChangesClick}
+              isLoading={isQuickPoll ? isLoading : false}
+              isDisabled={isQuickPoll ? isLoading : false}
+            >
+              Save Changes
+            </Button>
 
-          {groupId && (
-            <Box mt={6}>
-              <PublicGroupLink groupId={groupId} />
-            </Box>
-          )}
-        </ModalBody>
-      </ModalContent>
-    </Modal>
+            {groupId && (
+              <Box mt={6}>
+                <PublicGroupLink groupId={groupId} />
+              </Box>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+    </ParticipantsContext.Provider>
   )
 }
 

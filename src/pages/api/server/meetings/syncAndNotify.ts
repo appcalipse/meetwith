@@ -20,23 +20,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     request.end = new Date(request.end)
     request.created_at = new Date(request.created_at)
     try {
-      await notifyForOrUpdateNewMeeting(
-        MeetingChangeType.CREATE,
-        request.participantActing,
-        request.participants,
-        request.start,
-        request.end,
-        request.created_at,
-        request.meeting_url,
-        request.title,
-        request.content,
-        undefined,
-        request.meetingProvider,
-        request.meetingReminders,
-        request.meetingRepeat,
-        request.meetingPermissions,
-        request.meeting_type_id
-      )
+      await notifyForOrUpdateNewMeeting(MeetingChangeType.CREATE, request)
     } catch (error) {
       Sentry.captureException(error)
     }
@@ -55,26 +39,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     request.end = new Date(request.end)
     request.created_at = new Date(request.created_at)
 
-    try {
-      await notifyForOrUpdateNewMeeting(
-        MeetingChangeType.UPDATE,
-        request.participantActing,
-        request.participants,
-        request.start,
-        request.end,
-        request.created_at,
-        request.meeting_url,
-        request.title,
-        request.content,
-        request.changes,
-        request.meetingProvider,
-        request.meetingReminders,
-        request.meetingRepeat,
-        request.meetingPermissions,
-        request.meeting_type_id
-      )
-    } catch (error) {
-      Sentry.captureException(error)
+    if (!request.skipNotify) {
+      try {
+        await notifyForOrUpdateNewMeeting(MeetingChangeType.UPDATE, request)
+      } catch (error) {
+        Sentry.captureException(error)
+      }
     }
 
     try {
@@ -85,18 +55,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     return res.status(200).send(true)
   } else if (req.method === 'DELETE') {
-    const {
-      participantActing,
-      addressesToRemove,
-      guestsToRemove,
-      meeting_id,
-      start,
-      end,
-      created_at,
-      timezone,
-      reason,
-      title,
-    } = req.body as MeetingCancelSyncRequest
+    const request = req.body as MeetingCancelSyncRequest
+    const { addressesToRemove, meeting_id } = request
 
     for (const address of addressesToRemove) {
       try {
@@ -107,18 +67,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      await notifyForMeetingCancellation(
-        participantActing,
-        guestsToRemove,
-        addressesToRemove,
-        meeting_id,
-        new Date(start),
-        new Date(end),
-        new Date(created_at),
-        timezone,
-        reason,
-        title
-      )
+      await notifyForMeetingCancellation(request)
     } catch (error) {
       Sentry.captureException(error)
     }

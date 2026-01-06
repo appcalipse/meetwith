@@ -59,7 +59,6 @@ import {
   QuickPollBySlugResponse,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
-  QuickPollWithParticipants,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
@@ -144,6 +143,13 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     setGroupParticipants,
     groups: allGroups,
   } = useParticipants()
+  const inviteKey = useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
   const { currentAccount } = useContext(AccountContext)
   const { fetchPollCounts } = useContext(MetricStateContext)
 
@@ -1108,8 +1114,20 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
         {/* Invite Participants Modal */}
         <InviteParticipants
+          key={inviteKey}
           isOpen={isInviteModalOpen}
           onClose={closeInviteModal}
+          groupAvailability={groupAvailability}
+          groupParticipants={groupParticipants}
+          participants={participants}
+          handleUpdateParticipants={setParticipants}
+          handleUpdateGroups={(
+            groupAvailability: Record<string, string[] | undefined>,
+            groupParticipants: Record<string, string[] | undefined>
+          ) => {
+            setGroupAvailability(groupAvailability)
+            setGroupParticipants(groupParticipants)
+          }}
         />
 
         {/* Cancel Poll Confirmation Modal */}

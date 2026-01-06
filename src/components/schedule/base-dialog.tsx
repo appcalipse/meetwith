@@ -44,6 +44,7 @@ import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MeetingReminders } from '@/types/common'
+import { SettingsSection } from '@/types/Dashboard'
 import {
   DBSlot,
   MeetingChangeType,
@@ -199,8 +200,10 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     if (!isProAccount(currentAccount!) && _participants.length > 1) {
       setInputError(
         <Text>
-          <Link href="/dashboard/details#subscriptions">Go PRO</Link> to be able
-          to schedule meetings with more than one invitee
+          <Link href={`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`}>
+            Go PRO
+          </Link>{' '}
+          to be able to schedule meetings with more than one invitee
         </Text>
       )
       participants.length == 0 && setParticipants([_participants[0]])

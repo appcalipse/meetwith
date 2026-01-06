@@ -9,13 +9,12 @@ on:
 
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
         with:
-          fetch-depth: 0  # Fetch complete history
+          fetch-depth: 0 # Fetch complete history
 
       - name: Install AWS Copilot
         run: sudo curl -Lo /usr/local/bin/copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux && sudo chmod +x /usr/local/bin/copilot && copilot --help
@@ -51,7 +50,7 @@ jobs:
           echo "CHANGES_SUMMARY<<EOF" >> $GITHUB_ENV
           echo "## 📋 What Changed in This Deployment:" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          
+
           # Get last 5 commits with enhanced descriptions
           git --no-pager log --pretty=format:"%s%n%b" -5 | while IFS= read -r commit; do
             # Convert technical terms to user-friendly language
@@ -70,12 +69,12 @@ jobs:
               sed -E 's/database/data storage/gi' | \
               sed -E 's/optimize/improve speed of/gi' | \
               sed -E 's/refactor/reorganize and improve/gi')
-            
+
             # If no conventional commit format detected, add default emoji
             if [[ ! "$enhanced_commit" =~ ^[🐛✨🧹📚💄♻️🧪⚡] ]]; then
               enhanced_commit="🔧 **Update:** $enhanced_commit"
             fi
-            
+
             echo "• $enhanced_commit" >> $GITHUB_ENV
           done
           echo "" >> $GITHUB_ENV
@@ -96,21 +95,21 @@ jobs:
         uses: Ilshidur/action-discord@master
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          DISCORD_AVATAR: "https://res.cloudinary.com/dun8bju7q/image/upload/v1753807987/mw-socials_3_evlwta.png"
+          DISCORD_AVATAR: 'https://res.cloudinary.com/dun8bju7q/image/upload/v1753807987/mw-socials_3_evlwta.png'
           DISCORD_MENTIONS: '{ "users": ["976068042318569482", "615959113586835476"] }'
         with:
           args: |
             <@976068042318569482> <@615959113586835476>
             🚀 **Meet With Wallet - Deployment Completed**
-            
+
             **Environment:** ${{ github.ref == 'refs/heads/main' && '🌟 Production' || github.ref == 'refs/heads/develop' && '🧪 Preview' || github.ref == 'refs/heads/pre-prod' && '🎯 Pre-Production' || '❓ Unknown' }}
             **Status:** ${{ job.status == 'success' && '✅ Successful' || '❌ Failed' }}
             **Deployed by:** ${{ github.actor }}
-            
+
             ${{ env.CHANGES_SUMMARY }}
-            
+
             ${{ env.TECH_DETAILS }}
-            
+
             **🔗 Links:**
             • [View Deployment Details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             • [Browse Code Changes](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})

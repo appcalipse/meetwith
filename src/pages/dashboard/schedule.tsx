@@ -1,9 +1,5 @@
-import { Box } from '@chakra-ui/layout'
 import { NextPage } from 'next'
-import { useRouter } from 'next/router'
-import React from 'react'
 
-import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
 import { AvailabilityTrackerProvider } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import ScheduleMain from '@/components/schedule/ScheduleMain'
 import { NavigationProvider } from '@/providers/schedule/NavigationContext'
@@ -15,11 +11,12 @@ import { withLoginRedirect } from '@/session/requireAuthentication'
 import { Intents } from '@/types/Dashboard'
 
 interface IInitialProps {
-  groupId: string
-  intent: Intents
-  meetingId: string
-  contactId: string
-  pollId: string
+  groupId?: string
+  intent?: Intents
+  meetingId?: string
+  contactId?: string
+  pollId?: string
+  conferenceId?: string
 }
 
 const Schedule: NextPage<IInitialProps> = ({
@@ -28,6 +25,7 @@ const Schedule: NextPage<IInitialProps> = ({
   meetingId,
   contactId,
   pollId,
+  conferenceId,
 }) => {
   return (
     <ScheduleStateProvider>
@@ -41,6 +39,7 @@ const Schedule: NextPage<IInitialProps> = ({
                 meetingId={meetingId}
                 contactId={contactId}
                 pollId={pollId}
+                conferenceId={conferenceId}
               />
             </PermissionsProvider>
           </NavigationProvider>
@@ -55,8 +54,9 @@ const EnhancedSchedule: NextPage = withLoginRedirect(
 )
 
 EnhancedSchedule.getInitialProps = async ctx => {
-  const { groupId, intent, meetingId, contactId, pollId } = ctx.query
-  return { groupId, intent, meetingId, contactId, pollId }
+  const { groupId, intent, meetingId, contactId, pollId, conferenceId } =
+    ctx.query
+  return { groupId, intent, meetingId, contactId, pollId, conferenceId }
 }
 
 export default withLoginRedirect(EnhancedSchedule)

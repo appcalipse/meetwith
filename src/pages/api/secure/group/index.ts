@@ -2,8 +2,13 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { CreateGroupPayload, CreateGroupsResponse } from '@/types/Group'
-import { createGroupInDB } from '@/utils/database'
-import { AccountNotFoundError, GroupCreationError } from '@/utils/errors'
+import { countGroups, createGroupInDB } from '@/utils/database'
+import { isProAccountAsync } from '@/utils/database'
+import {
+  AccountNotFoundError,
+  GroupCreationError,
+  SchedulingGroupLimitExceededError,
+} from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -23,6 +28,17 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
+    // Check subscription status
+    const isPro = await isProAccountAsync(account_address)
+
+    if (!isPro) {
+      // Free tier restriction: Maximum 5 scheduling groups
+      const groupCount = await countGroups(account_address)
+      if (groupCount >= 5) {
+        throw new SchedulingGroupLimitExceededError()
+      }
+    }
+
     const newGroupData: CreateGroupsResponse = await createGroupInDB(
       name,
       account_address,
@@ -32,6 +48,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   } catch (error) {
     if (error instanceof AccountNotFoundError) {
       return res.status(404).json({ error: 'User account not found' })
+    } else if (error instanceof SchedulingGroupLimitExceededError) {
+      return res.status(403).json({ error: error.message })
     } else if (error instanceof GroupCreationError) {
       return res
         .status(500)

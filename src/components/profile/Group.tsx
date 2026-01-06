@@ -2,10 +2,10 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Flex,
   Heading,
   HStack,
-  Link,
   Tab,
   TabList,
   TabPanel,
@@ -14,21 +14,25 @@ import {
   Text,
   useDisclosure,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
-import { FaArrowRight } from 'react-icons/fa'
 
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
 import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
-import { useAvailabilityBlock } from '@/hooks/availability'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
-import { EditMode, Intents, InviteType } from '@/types/Dashboard'
+import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
 import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
+import { getGroupsFullWithMetadata } from '@/utils/api_helper'
+import {
+  getHideGroupAvailabilityLabels,
+  setHideGroupAvailabilityLabels,
+} from '@/utils/storage'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
 import Groups, { GroupRef } from '../group/Groups'
@@ -44,10 +48,24 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const groupRef = useRef<GroupRef>(null)
   const groupInviteRef = useRef<GroupInvitesRef>(null)
 
-  const {
-    block: defaultAvailabilityBlock,
-    isLoading: isLoadingAvailabilityBlocks,
-  } = useAvailabilityBlock(currentAccount?.preferences?.availaibility_id)
+  // Fetch metadata to get upgradeRequired status
+  const { data: groupsMetadata } = useQuery({
+    queryKey: ['groupsMetadata', currentAccount?.address],
+    queryFn: () => getGroupsFullWithMetadata(1, 0, '', true),
+    enabled: !!currentAccount?.address,
+    staleTime: 30000,
+  })
+  const canCreateGroup = !groupsMetadata?.upgradeRequired
+
+  // Preference to hide availability block labels in group cards
+  const [hideAvailabilityLabels, setHideAvailabilityLabels] = useState(() =>
+    getHideGroupAvailabilityLabels(currentAccount?.address || '')
+  )
+
+  const handleToggleHideLabels = (checked: boolean) => {
+    setHideAvailabilityLabels(checked)
+    setHideGroupAvailabilityLabels(currentAccount?.address || '', checked)
+  }
 
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
@@ -101,13 +119,6 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setInviteDataIsLoading(false)
   }
 
-  const handleViewAvailabilityBlock = () => {
-    if (defaultAvailabilityBlock) {
-      router.push(
-        `/dashboard/availability?editBlock=${defaultAvailabilityBlock.id}`
-      )
-    }
-  }
   useEffect(() => {
     if (join) {
       void fetchGroup(join as string)
@@ -180,6 +191,12 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             mb={4}
             leftIcon={<FaPlus />}
             w={'100%'}
+            isDisabled={!canCreateGroup}
+            title={
+              !canCreateGroup
+                ? 'Upgrade to Pro to create more groups'
+                : undefined
+            }
           >
             Create new group
           </Button>
@@ -236,61 +253,49 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             colorScheme="primary"
             display={{ base: 'none', md: 'flex' }}
             leftIcon={<FaPlus />}
+            isDisabled={!canCreateGroup}
+            title={
+              !canCreateGroup
+                ? 'Upgrade to Pro to create more groups'
+                : undefined
+            }
           >
             Create new group
           </Button>
         </HStack>
 
-        {/* Availability Block Banner */}
-        {currentAccount?.preferences?.availaibility_id && (
-          <Box
-            bg="neutral.700"
-            borderRadius="8px"
-            px={3}
-            py={1}
-            mb={4}
-            width="max-content"
+        {/* Hide availability labels checkbox */}
+        <HStack mb={4}>
+          <Checkbox
+            isChecked={hideAvailabilityLabels}
+            onChange={e => handleToggleHideLabels(e.target.checked)}
+            size="md"
+            sx={{
+              '.chakra-checkbox__control': {
+                bg: 'transparent',
+                borderColor: 'border-subtle',
+                _checked: {
+                  bg: 'primary.200',
+                  borderColor: 'primary.200',
+                  color: 'neutral.900',
+                },
+              },
+              '.chakra-checkbox__label': {
+                color: 'text-primary',
+                fontSize: 'sm',
+              },
+            }}
           >
-            <Text color="white" fontSize="sm">
-              Availability block used for groups:{' '}
-              {isLoadingAvailabilityBlocks ? (
-                <Text as="span" fontWeight="700" color="primary.200">
-                  Loading...
-                </Text>
-              ) : defaultAvailabilityBlock ? (
-                <Text
-                  as="button"
-                  onClick={handleViewAvailabilityBlock}
-                  color="primary.200"
-                  fontWeight="700"
-                  cursor="pointer"
-                  textDecoration="underline"
-                  bg="transparent"
-                  border="none"
-                  p={0}
-                  m={0}
-                  fontSize="inherit"
-                  lineHeight="inherit"
-                  _hover={{
-                    color: 'primary.300',
-                  }}
-                >
-                  {defaultAvailabilityBlock.title}
-                </Text>
-              ) : (
-                <Text as="span" fontWeight="700" color="red.300">
-                  Not found
-                </Text>
-              )}
-            </Text>
-          </Box>
-        )}
+            Hide the availability block labels for groups
+          </Checkbox>
+        </HStack>
 
         <TabPanels p={0}>
           <TabPanel p={0}>
             <Groups
               currentAccount={currentAccount}
               search={debouncedValue}
+              hideAvailabilityLabels={hideAvailabilityLabels}
               ref={groupRef}
             />
           </TabPanel>

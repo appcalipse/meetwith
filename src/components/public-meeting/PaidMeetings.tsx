@@ -1,7 +1,7 @@
 import { Box, Heading, HStack, VStack } from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { useQuery } from '@tanstack/react-query'
-import React, { FC, useContext, useEffect } from 'react'
+import { FC, useContext, useEffect } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { getPaidSessions } from '@/utils/api_helper'

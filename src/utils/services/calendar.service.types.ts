@@ -1,11 +1,16 @@
 import { calendar_v3 } from 'googleapis'
+import { Attendee } from 'ics'
 
+import { UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
-import { TimeSlotSource } from '@/types/Meeting'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import { MicrosoftGraphEvent } from '@/types/Office365'
+import {
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '@/types/Requests'
 
 export type EventBusyDate = {
   start: Date | string
@@ -14,64 +19,18 @@ export type EventBusyDate = {
   eventId?: string
   webLink?: string
   email?: string
+  recurrenceId?: string
 }
-
 /**
  * Calendar Service  Contract
  */
-export interface CalendarService<T extends TimeSlotSource> {
+export interface BaseCalendarService {
   /** which email is the calendar owner */
   getConnectedEmail: () => string
   /**
    * Refreshes the calendar connection, fetching the external calendar(s) info again
    */
   refreshConnection(): Promise<CalendarSyncInfo[]>
-
-  /**
-   * Lists events over a specific date range on target calendar
-   * @param calendarId the calendar ID to list events from
-   * @param dateFrom the start date to list events from
-   * @param dateTo the end date to list events from
-   */
-  listEvents?: T extends TimeSlotSource.GOOGLE
-    ? (
-        calendarId: string,
-        dateFrom: Date,
-        dateTo: Date
-      ) => Promise<calendar_v3.Schema$Event[]>
-    : never
-
-  /**
-   * Updates the RSVP status of an attendee for a specific event
-   * @param meeting_id
-   * @param attendeeEmail
-   * @param responseStatus
-   * @param _calendarId
-   */
-
-  updateEventRSVP?: T extends TimeSlotSource.GOOGLE
-    ? (
-        meeting_id: string,
-        attendeeEmail: string,
-        responseStatus: string,
-        _calendarId?: string
-      ) => Promise<NewCalendarEventType>
-    : never
-
-  /**
-   * Updates the extended properties of an event
-   * This is used to update the meeting link or other custom properties
-   * Only available for Google Calendar service
-   * @param meeting_id the event ID to update
-   * @param _calendarId the calendar ID to update the event in (optional)
-   */
-
-  updateEventExtendedProperties?: T extends TimeSlotSource.GOOGLE
-    ? (
-        meeting_id: string,
-        _calendarId?: string
-      ) => Promise<NewCalendarEventType>
-    : never
 
   /**
    * Creates a new event on target external calendar
@@ -88,7 +47,7 @@ export interface CalendarService<T extends TimeSlotSource> {
     meeting_creation_time: Date,
     calendarId: string,
     shouldGenerateLink?: boolean
-  ): Promise<NewCalendarEventType>
+  ): Promise<Partial<NewCalendarEventType>>
   /**
    * List user availability on target external calendar
    *
@@ -110,10 +69,10 @@ export interface CalendarService<T extends TimeSlotSource> {
    */
   updateEvent(
     calendarOwnerAccountAddress: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
-    calendarId: string
-  ): Promise<NewCalendarEventType>
+    calendarId: string,
+    useParticipants?: boolean
+  ): Promise<Partial<NewCalendarEventType>>
 
   /**
    * Deletes an previously created event on target external calendar
@@ -122,6 +81,101 @@ export interface CalendarService<T extends TimeSlotSource> {
    */
   deleteEvent(meeting_id: string, calendarId: string): Promise<void>
 
+  getEvents(
+    calendarIds: string[],
+    dateFrom: string,
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
+  ): Promise<UnifiedEvent[]>
+
+  /**
+   * Updates a single instance of a recurring event
+   *
+   * @param calendarOwnerAccountAddress the owner account address
+   * @param meetingDetails meeting details including series_id and original start time
+   * @param calendarId the calendar ID
+   */
+  updateEventInstance(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    calendarId: string
+  ): Promise<void>
+
+  updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: string
+  ): Promise<void>
+}
+export interface IOffcie365CalendarService extends BaseCalendarService {
+  /**
+   * Creates a new event on target external calendar
+   *
+   * @param owner the owner address
+   * @param meetingDetails details if the event
+   * @param meeting_creation_time the time when the event was created
+   * @param calendarId the calendar ID to create the event in
+   * @param shouldGenerateLink whether to generate a meeting link (default: false)
+   */
+  createEvent(
+    owner: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_creation_time: Date,
+    calendarId: string,
+    shouldGenerateLink?: boolean
+  ): Promise<Partial<NewCalendarEventType> & MicrosoftGraphEvent>
+
+  updateEvent(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId: string,
+    useParticipants?: boolean
+  ): Promise<Partial<NewCalendarEventType> & MicrosoftGraphEvent>
+
+  updateExternalEvent(event: Partial<MicrosoftGraphEvent>): Promise<void>
+}
+export interface IGoogleCalendarService extends BaseCalendarService {
+  /**
+   * Lists events over a specific date range on target calendar
+   * @param calendarId the calendar ID to list events from
+   * @param dateFrom the start date to list events from
+   * @param dateTo the end date to list events from
+   */
+  listEvents(calendarId: string, syncToken: string | null): Promise<EventList>
+
+  /**
+   * Updates the RSVP status of an attendee for a specific event
+   * @param meeting_id
+   * @param attendeeEmail
+   * @param responseStatus
+   * @param _calendarId
+   */
+  updateEventRSVP(
+    meeting_id: string,
+    attendeeEmail: string,
+    responseStatus: string,
+    _calendarId?: string
+  ): Promise<NewCalendarEventType>
+
+  /**
+   * Updates the extended properties of an event
+   * This is used to update the meeting link or other custom properties
+   * Only available for Google Calendar service
+   * @param meeting_id the event ID to update
+   * @param _calendarId the calendar ID to update the event in (optional)
+   */
+  updateEventExtendedProperties(
+    meeting_id: string,
+    _calendarId?: string
+  ): Promise<NewCalendarEventType>
+
+  initialSync(
+    calendarId: string,
+    dateFrom: string,
+    dateTo: string
+  ): Promise<string | null | undefined>
+
   /**
    * Sets up a webhook URL for calendar change notifications
    * Only available for Google Calendar service
@@ -129,18 +183,16 @@ export interface CalendarService<T extends TimeSlotSource> {
    * @param webhookUrl the URL to receive webhook notifications
    * @param calendarId the calendar ID to watch (defaults to 'primary')
    */
-  setWebhookUrl?: T extends TimeSlotSource.GOOGLE
-    ? (
-        webhookUrl: string,
-        calendarId?: string
-      ) => Promise<{
-        channelId: string | null | undefined
-        resourceId: string | null | undefined
-        expiration: string | null | undefined
-        calendarId: string
-        webhookUrl: string
-      }>
-    : never
+  setWebhookUrl(
+    webhookUrl: string,
+    calendarId?: string
+  ): Promise<{
+    channelId: string | null | undefined
+    resourceId: string | null | undefined
+    expiration: string | null | undefined
+    calendarId: string
+    webhookUrl: string
+  }>
 
   /**
    * Stops an active webhook subscription
@@ -149,9 +201,7 @@ export interface CalendarService<T extends TimeSlotSource> {
    * @param channelId the channel ID of the webhook to stop
    * @param resourceId the resource ID of the webhook to stop
    */
-  stopWebhook?: T extends TimeSlotSource.GOOGLE
-    ? (channelId: string, resourceId: string) => Promise<void>
-    : never
+  stopWebhook(channelId: string, resourceId: string): Promise<void>
 
   /**
    * Refreshes an existing webhook subscription
@@ -161,18 +211,81 @@ export interface CalendarService<T extends TimeSlotSource> {
    * @param webhookUrl the webhook URL
    * @param calendarId the calendar ID
    */
-  refreshWebhook?: T extends TimeSlotSource.GOOGLE
-    ? (
-        oldChannelId: string,
-        oldResourceId: string,
-        webhookUrl: string,
-        calendarId?: string
-      ) => Promise<{
-        channelId: string | null | undefined
-        resourceId: string | null | undefined
-        expiration: string | null | undefined
-        calendarId: string
-        webhookUrl: string
-      }>
-    : never
+  refreshWebhook(
+    oldChannelId: string,
+    oldResourceId: string,
+    webhookUrl: string,
+    calendarId?: string
+  ): Promise<{
+    channelId: string | null | undefined
+    resourceId: string | null | undefined
+    expiration: string | null | undefined
+    calendarId: string
+    webhookUrl: string
+  }>
+
+  /**
+   * Creates a new event on target external calendar
+   *
+   * @param owner the owner address
+   * @param meetingDetails details if the event
+   * @param meeting_creation_time the time when the event was created
+   * @param calendarId the calendar ID to create the event in
+   * @param shouldGenerateLink whether to generate a meeting link (default: false)
+   */
+  createEvent(
+    owner: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_creation_time: Date,
+    calendarId: string,
+    shouldGenerateLink?: boolean
+  ): Promise<NewCalendarEventType & calendar_v3.Schema$Event>
+
+  updateEvent(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId: string
+  ): Promise<NewCalendarEventType & calendar_v3.Schema$Event>
+
+  updateExternalEvent(event: calendar_v3.Schema$Event): Promise<void>
+}
+
+export interface ICaldavCalendarService extends BaseCalendarService {
+  createEvent(
+    owner: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_creation_time: Date,
+    calendarId: string,
+    shouldGenerateLink?: boolean
+  ): Promise<
+    Partial<NewCalendarEventType> & {
+      attendees: Attendee[]
+    }
+  >
+  updateEvent(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId: string
+  ): Promise<
+    Partial<NewCalendarEventType> & {
+      attendees: Attendee[]
+    }
+  >
+  updateEventFromUnified(
+    sourceEventId: string,
+    calendarId: string,
+    updatedProps: {
+      summary?: string
+      description?: string
+      dtstart?: Date
+      dtend?: Date
+      location?: string
+      attendees?: Array<{ email: string; name?: string; status?: string }>
+    }
+  ): Promise<void>
+}
+
+export type EventList = {
+  events: calendar_v3.Schema$Event[]
+  nextSyncToken: string | null | undefined
 }

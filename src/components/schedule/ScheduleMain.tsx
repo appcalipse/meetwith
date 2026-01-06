@@ -8,9 +8,8 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { addMinutes, differenceInMinutes } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
 import { useRouter } from 'next/router'
-import { FC, useContext, useEffect, useState } from 'react'
+import { FC, useContext, useEffect, useMemo, useState } from 'react'
 
 import Loading from '@/components/Loading'
 import QuickPollAvailabilityDiscover from '@/components/quickpoll/QuickPollAvailabilityDiscover'
@@ -31,7 +30,12 @@ import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode, Intents } from '@/types/Dashboard'
-import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
+import {
+  MeetingDecrypted,
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+} from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -46,11 +50,14 @@ import {
 import { isGroupParticipant } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
+  decodeMeetingGuest,
   getContactById,
   getGroup,
+  getGroupMembersAvailabilities,
   getGroupsMembers,
   getMeeting,
   getQuickPollById,
+  getSlotByMeetingId,
   updateQuickPoll,
 } from '@/utils/api_helper'
 import {
@@ -96,10 +103,11 @@ export enum Page {
   COMPLETED,
 }
 interface IInitialProps {
-  groupId: string
-  intent: Intents
-  meetingId: string
-  contactId: string
+  groupId?: string
+  intent?: Intents
+  meetingId?: string
+  conferenceId?: string
+  contactId?: string
   pollId?: string
 }
 
@@ -108,6 +116,7 @@ const ScheduleMain: FC<IInitialProps> = ({
   intent,
   meetingId,
   contactId,
+  conferenceId,
   pollId,
 }) => {
   const { currentAccount } = useContext(AccountContext)
@@ -117,7 +126,6 @@ const ScheduleMain: FC<IInitialProps> = ({
     content,
     duration,
     pickedTime,
-    timezone,
     meetingProvider,
     meetingUrl,
     meetingNotification,
@@ -144,6 +152,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     meetingOwners,
     participants,
     setGroupAvailability,
+    setGroupMembersAvailabilities,
     setGroupParticipants,
     setMeetingOwners,
     setParticipants,
@@ -168,8 +177,12 @@ const ScheduleMain: FC<IInitialProps> = ({
   const handleGroupPrefetch = async () => {
     if (!groupId) return
     try {
-      const group = await getGroup(groupId)
-      const fetchedGroupMembers = await getGroupsMembers(groupId)
+      const [group, fetchedGroupMembers, groupMembersAvailabilitiesData] =
+        await Promise.all([
+          getGroup(groupId),
+          getGroupsMembers(groupId),
+          getGroupMembersAvailabilities(groupId),
+        ])
       const actualMembers = fetchedGroupMembers
         .filter(val => !val.invitePending)
         .filter(val => !!val.address)
@@ -184,6 +197,10 @@ const ScheduleMain: FC<IInitialProps> = ({
         setGroupParticipants(prev => ({
           ...prev,
           [groupId]: allAddresses,
+        }))
+        setGroupMembersAvailabilities(prev => ({
+          ...prev,
+          [groupId]: groupMembersAvailabilitiesData,
         }))
         addGroup({
           isGroup: true,
@@ -260,14 +277,28 @@ const ScheduleMain: FC<IInitialProps> = ({
   }
 
   const handleFetchMeetingInformation = async () => {
-    if (!meetingId) return
+    if (!meetingId && !conferenceId) return
     try {
-      const meeting = await getMeeting(meetingId)
-      const decryptedMeeting = await decodeMeeting(meeting, currentAccount!)
+      let decryptedMeeting: MeetingDecrypted | null = null
+      let actor = ''
+      if (meetingId) {
+        const slot = await getMeeting(meetingId)
+        decryptedMeeting = await decodeMeeting(slot, currentAccount!)
+        actor = slot.account_address!
+      } else if (conferenceId) {
+        const slot = await getSlotByMeetingId(conferenceId)
+        if (slot?.user_type === 'account') {
+          decryptedMeeting = await decodeMeeting(slot, currentAccount!)
+          actor = slot.account_address!
+        } else if (slot?.user_type === 'guest') {
+          decryptedMeeting = await decodeMeetingGuest(slot)
+          actor = slot.guest_email || ''
+        }
+      }
       if (!decryptedMeeting) {
         toast({
           title: 'Meeting Access Denied',
-          description: `You don't have permission to view this meeting. Please log in with account ${meeting?.account_address} or ask the meeting organizer to grant you access.`,
+          description: `You don't have permission to view this meeting. Please log in with account ${actor} or ask the meeting organizer to grant you access.`,
           status: 'error',
           duration: 15000,
           position: 'top',
@@ -296,15 +327,16 @@ const ScheduleMain: FC<IInitialProps> = ({
       setGroupAvailability({
         [NO_GROUP_KEY]: allAddresses,
       })
-      const start = utcToZonedTime(meeting.start, timezone)
-      const end = utcToZonedTime(meeting.end, timezone)
-      const diffInMinutes = differenceInMinutes(end, start)
+      const diffInMinutes = differenceInMinutes(
+        decryptedMeeting.end,
+        decryptedMeeting.start
+      )
       setParticipants(participants)
 
       setTitle(decryptedMeeting.title || '')
       setContent(decryptedMeeting.content || '')
       setDuration(diffInMinutes)
-      setPickedTime(start)
+      setPickedTime(decryptedMeeting.start)
       setMeetingProvider(
         decryptedMeeting.provider ||
           selectDefaultProvider(currentAccount?.preferences.meetingProviders)
@@ -322,10 +354,12 @@ const ScheduleMain: FC<IInitialProps> = ({
         setCanCancel(false)
       }
       if (decryptedMeeting.permissions) {
-        const canEditMeetingDetails =
-          !!decryptedMeeting?.permissions?.includes(
-            MeetingPermissions.EDIT_MEETING
-          ) || isSchedulerOrOwner
+        const canEditMeetingDetails = canAccountAccessPermission(
+          decryptedMeeting?.permissions,
+          decryptedMeeting?.participants || [],
+          currentAccount?.address,
+          MeetingPermissions.EDIT_MEETING
+        )
         setCanEditMeetingDetails(canEditMeetingDetails)
         const canViewParticipants = canAccountAccessPermission(
           decryptedMeeting?.permissions,
@@ -394,6 +428,9 @@ const ScheduleMain: FC<IInitialProps> = ({
               label: 'Does not repeat',
             }
       )
+      if (intent === Intents.CANCEL_MEETING) {
+        onOpen()
+      }
       handlePageSwitch(Page.SCHEDULE_DETAILS)
     } catch (error: unknown) {
       handleApiError('Error fetching meeting information.', error)
@@ -411,7 +448,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     if (pollId) {
       promises.push(handlePollPrefetch())
     }
-    if (intent === Intents.UPDATE_MEETING && meetingId) {
+    if (meetingId || conferenceId) {
       promises.push(handleFetchMeetingInformation())
     }
     if (promises.length === 0) {
@@ -429,7 +466,14 @@ const ScheduleMain: FC<IInitialProps> = ({
   }
   useEffect(() => {
     void handlePrefetch()
-  }, [groupId, contactId, intent, meetingId, currentAccount?.address])
+  }, [
+    groupId,
+    contactId,
+    intent,
+    meetingId,
+    conferenceId,
+    currentAccount?.address,
+  ])
 
   useEffect(() => {
     const selectedTimeParam = query.selectedTime as string
@@ -668,20 +712,12 @@ const ScheduleMain: FC<IInitialProps> = ({
       }
 
       // Regular meeting scheduling flow
-      const isSchedulerOrOwner = [
-        ParticipantType.Scheduler,
-        ParticipantType.Owner,
-      ].includes(
-        decryptedMeeting?.participants?.find(
-          p => p.account_address === currentAccount?.address
-        )?.type || ParticipantType?.Invitee
+      const canViewParticipants = canAccountAccessPermission(
+        decryptedMeeting?.permissions,
+        decryptedMeeting?.participants || [],
+        currentAccount?.address,
+        MeetingPermissions.SEE_GUEST_LIST
       )
-      const canViewParticipants =
-        decryptedMeeting?.permissions?.includes(
-          MeetingPermissions.SEE_GUEST_LIST
-        ) ||
-        decryptedMeeting?.permissions === undefined ||
-        isSchedulerOrOwner
       const actualParticipants = canViewParticipants
         ? participants
         : participants
@@ -722,13 +758,12 @@ const ScheduleMain: FC<IInitialProps> = ({
       const start = new Date(pickedTime)
       const end = addMinutes(new Date(start), duration)
 
-      const canUpdateOtherGuests =
-        decryptedMeeting?.permissions === undefined ||
-        !!decryptedMeeting?.permissions?.includes(
-          MeetingPermissions.INVITE_GUESTS
-        ) ||
-        isSchedulerOrOwner
-
+      const canUpdateOtherGuests = canAccountAccessPermission(
+        decryptedMeeting?.permissions,
+        decryptedMeeting?.participants || [],
+        currentAccount?.address,
+        MeetingPermissions.INVITE_GUESTS
+      )
       if (
         !canUpdateOtherGuests &&
         decryptedMeeting?.participants?.length !== _participants.valid.length
@@ -744,7 +779,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         setIsScheduling(false)
         return
       }
-      if (meetingId && intent === Intents.UPDATE_MEETING) {
+      if ((meetingId || conferenceId) && intent === Intents.UPDATE_MEETING) {
         await updateMeeting(
           true,
           currentAccount!.address,
@@ -904,8 +939,9 @@ const ScheduleMain: FC<IInitialProps> = ({
       } else {
         handleApiError('Error scheduling meeting', e as Error)
       }
+    } finally {
+      setIsScheduling(false)
     }
-    setIsScheduling(false)
   }
   const handleRedirect = () => push(`/dashboard/${EditMode.MEETINGS}`)
   const handleCancel = () => onOpen()
@@ -915,11 +951,31 @@ const ScheduleMain: FC<IInitialProps> = ({
     handleDelete,
     handleSchedule,
   }
+  const inviteKey = useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
+
   return (
     <ActionsContext.Provider value={context}>
       <InviteParticipants
+        key={inviteKey}
         isOpen={inviteModalOpen}
         onClose={() => setInviteModalOpen(false)}
+        groupAvailability={groupAvailability}
+        groupParticipants={groupParticipants}
+        participants={participants}
+        handleUpdateGroups={(
+          groupAvailability: Record<string, Array<string> | undefined>,
+          groupParticipants: Record<string, Array<string> | undefined>
+        ) => {
+          setGroupAvailability(groupAvailability)
+          setGroupParticipants(groupParticipants)
+        }}
+        handleUpdateParticipants={setParticipants}
       />
       <Container
         maxW={{

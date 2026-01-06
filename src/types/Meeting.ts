@@ -1,7 +1,7 @@
 import { Interval } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 
-import { ConditionRelation } from '@/types/common'
+import { ConditionRelation, RecurringStatus } from '@/types/common'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 import { MeetingReminders } from './common'
@@ -25,6 +25,7 @@ export enum TimeSlotSource {
   ICLOUD = 'iCloud',
   OFFICE = 'Office 365',
   WEBDAV = 'Webdav',
+  WEBCAL = 'Webcal', // read-only streams
 }
 export interface ExistingMeetingData {
   title?: string
@@ -36,25 +37,72 @@ export interface ExistingMeetingData {
 }
 export interface TimeSlot extends Interval {
   source?: string
-  account_address: string
   eventTitle?: string
   eventId?: string
   eventWebLink?: string
   eventEmail?: string
+  account_address: string
 }
-
-export interface DBSlot extends TimeSlot {
+export interface DBSlot extends Interval {
   id?: string
+  account_address?: string | null
   created_at?: Date
+  guest_email?: string | null
+  role?: ParticipantType
+  source?: string
   version: number
   meeting_info_encrypted: Encrypted
   recurrence: MeetingRepeat
   public_decrypted_data?: MeetingDecrypted
-  role?: ParticipantType
+}
+export interface SlotInstance extends DBSlot {
+  series_id: string
+  status: RecurringStatus
+  slot_id: string
+}
+export interface SlotSeries extends DBSlot {
+  rrule: string[]
+  slot_id: string
+}
+export interface AccountSlot extends DBSlot {
+  priority: 1
+  user_type: 'account'
+}
+export interface GuestSlot extends DBSlot {
+  priority: 2 | 3
+  user_type: 'guest'
 }
 export interface ExtendedDBSlot extends DBSlot {
   conferenceData?: ConferenceMeeting
 }
+export interface ExtendedEventDBSlot extends DBSlot {
+  meeting_id?: string
+}
+export interface ExtendedSlotInstance extends SlotInstance {
+  meeting_id: string
+}
+export interface ExtendedSlotSeries extends SlotInstance {
+  meeting_id: string
+}
+export const isSlotInstance = (
+  slot: DBSlot | SlotInstance | SlotSeries
+): slot is SlotInstance => {
+  return (slot as SlotInstance).series_id !== undefined
+}
+export const isSlotSeries = (
+  slot: DBSlot | SlotInstance | SlotSeries
+): slot is SlotSeries => {
+  return (slot as SlotSeries).slot_id !== undefined
+}
+export const isDBSlot = (
+  slot: DBSlot | SlotInstance | SlotSeries
+): slot is DBSlot => {
+  return (
+    (slot as SlotInstance).series_id === undefined &&
+    (slot as SlotSeries).slot_id === undefined
+  )
+}
+
 /**
  * Meetings providers list
  */
@@ -97,6 +145,7 @@ export enum MeetingAccessType {
 export enum MeetingVersion {
   V1 = 'V1',
   V2 = 'V2',
+  V3 = 'V3',
 }
 export interface ConferenceMeeting {
   id: string
@@ -112,6 +161,7 @@ export interface ConferenceMeeting {
   slots: Array<string>
   version: MeetingVersion
   permissions?: Array<MeetingPermissions>
+  encrypted_metadata?: Encrypted
 }
 
 export interface MeetingInfo {
@@ -129,12 +179,13 @@ export interface MeetingInfo {
   permissions?: Array<MeetingPermissions>
 }
 
-export interface MeetingDecrypted extends MeetingInfo {
+export interface MeetingDecrypted<T = Date> extends MeetingInfo {
   id: string
-  start: Date
-  end: Date
+  start: T
+  end: T
   version: DBSlot['version']
   meeting_info_encrypted: Encrypted
+  user_type?: 'account' | 'guest'
 }
 
 export interface ExistingMeetingData {

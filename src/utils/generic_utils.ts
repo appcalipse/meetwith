@@ -1,8 +1,9 @@
+import { DateTime } from 'luxon'
 import { useEffect, useState } from 'react'
 import slugify from 'slugify'
 
 import { GroupMember } from '@/types/Group'
-import { MeetingProvider } from '@/types/Meeting'
+import { DBSlot, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 
 import { MeetingPermissions } from './constants/schedule'
@@ -47,24 +48,31 @@ export function parseUnits(value: `${number}`, decimals: number) {
   return BigInt(`${negative ? '-' : ''}${integer}${fraction}`)
 }
 export const isAccountSchedulerOrOwner = (
-  participants?: ParticipantInfo[],
-  address?: string,
+  participants?: ParticipantInfo[] | DBSlot[],
+  identifier?: string,
   participantsType = [ParticipantType.Scheduler, ParticipantType.Owner]
-) =>
-  participantsType.includes(
-    participants?.find(p => p.account_address === address)?.type ||
-      ParticipantType?.Invitee
+) => {
+  const actor = participants?.find(p => p.account_address === identifier)
+  if (!actor) return false
+  return participantsType.includes(
+    ('type' in actor ? actor.type : actor.role) || ParticipantType.Invitee
   )
+}
 
 export const canAccountAccessPermission = (
   permissions?: MeetingPermissions[],
-  participants?: ParticipantInfo[],
-  address?: string,
-  permission = MeetingPermissions.SEE_GUEST_LIST
+  participants?: ParticipantInfo[] | DBSlot[],
+  identifier?: string,
+  permission:
+    | MeetingPermissions
+    | MeetingPermissions[] = MeetingPermissions.SEE_GUEST_LIST
 ) =>
-  permissions === undefined ||
-  !!permissions?.includes(permission) ||
-  isAccountSchedulerOrOwner(participants, address)
+  (permissions
+    ? permission instanceof Array
+      ? permission.some(perm => permissions?.includes(perm))
+      : !!permissions?.includes(permission)
+    : true) || // if no permissions are set, allow by default
+  isAccountSchedulerOrOwner(participants, identifier)
 
 export function formatUnits(value: bigint, decimals: number) {
   let display = value.toString()
@@ -112,7 +120,7 @@ export const getSlugFromText = (text: string) =>
     strict: true,
   })
 
-export const useDebounce = (value: any, delay: number) => {
+export const useDebounce = (value: unknown, delay: number) => {
   // State and setters for debounced value
   const [debouncedValue, setDebouncedValue] = useState(value)
   useEffect(
@@ -241,6 +249,50 @@ export const deduplicateMembers = (members: GroupMember[]): GroupMember[] => {
   }
   return Array.from(seen.values())
 }
+
+export const groupByFields = <T extends object>(
+  items: T[],
+  fieldsToCompare: (keyof T | 'end.dateTime' | 'start.dateTime')[]
+): T[][] => {
+  const groupMap = new Map<string, T[]>()
+  for (const item of items) {
+    // Create a unique key from the specified fields
+    const key = fieldsToCompare
+      .map(field => {
+        let value: unknown
+        if (
+          typeof field === 'string' &&
+          field.includes('.') &&
+          ['start.dateTime', 'end.dateTime'].includes(field)
+        ) {
+          const rawValue = field.split('.').reduce<unknown>((acc, curr) => {
+            if (acc && typeof acc === 'object') {
+              return (acc as Record<string, unknown>)[curr]
+            }
+            return undefined
+          }, item)
+          value =
+            typeof rawValue === 'string'
+              ? DateTime.fromISO(rawValue).toFormat('HH:mm')
+              : undefined
+        } else {
+          value = item[field as keyof T]
+        }
+
+        return value !== undefined ? JSON.stringify(value) : 'undefined'
+      })
+      .join('|')
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, [])
+    }
+
+    groupMap.get(key)!.push(item)
+  }
+
+  return Array.from(groupMap.values()).sort((a, b) => a.length - b.length)
+}
+
 /**
  * Creates a handler function to clear a specific validation error on blur
  * @param setErrors - The setState function for validation errors
@@ -254,7 +306,7 @@ export const deduplicateMembers = (members: GroupMember[]): GroupMember[] => {
  * />
  * ```
  */
-export const clearValidationError = <T extends Record<string, any>>(
+export const clearValidationError = <T extends Record<string, unknown>>(
   setErrors: React.Dispatch<React.SetStateAction<T>>,
   fieldName: keyof T
 ) => {

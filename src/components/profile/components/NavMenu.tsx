@@ -27,17 +27,19 @@ import {
   FaWallet,
 } from 'react-icons/fa'
 import { FaUserGroup, FaUsers } from 'react-icons/fa6'
+import {
+  TbLayoutSidebarLeftExpand,
+  TbLayoutSidebarRightExpand,
+} from 'react-icons/tb'
 
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
-import { OnboardingContext } from '@/providers/OnboardingProvider'
-import { EditMode } from '@/types/Dashboard'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
-import { isProduction } from '@/utils/constants'
 import {
   getNotificationTime,
   incrementNotificationLookup,
@@ -70,7 +72,9 @@ export const NavMenu: React.FC<{
   currentSection?: EditMode
   isMenuOpen?: boolean
   closeMenu?: () => void
-}> = ({ currentSection, isMenuOpen, closeMenu }) => {
+  toggleSidebar?: () => void
+  isOpened?: boolean
+}> = ({ currentSection, isMenuOpen, closeMenu, isOpened, toggleSidebar }) => {
   const { currentAccount } = useContext(AccountContext)
   const { toggleColorMode } = useColorMode()
   const router = useRouter()
@@ -87,7 +91,7 @@ export const NavMenu: React.FC<{
 
   const LinkItems: Array<LinkItemProps> = useMemo(() => {
     const tabs: Array<LinkItemProps> = [
-      { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
+      { name: 'My Schedule', icon: FaCalendarDay, mode: EditMode.MEETINGS },
       {
         name: 'My Groups',
         icon: FaUserGroup,
@@ -123,7 +127,6 @@ export const NavMenu: React.FC<{
         icon: FaCalendarAlt,
         mode: EditMode.AVAILABILITY,
       },
-
       { name: 'Settings', icon: FaCog, mode: EditMode.DETAILS },
     ]
     return tabs.filter(item => !item.isDisabled)
@@ -231,7 +234,11 @@ export const NavMenu: React.FC<{
 
   const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })
-    await router.push(`/dashboard/${mode}`)
+    const path =
+      mode === EditMode.DETAILS
+        ? `/dashboard/settings/${SettingsSection.DETAILS}`
+        : `/dashboard/${mode}`
+    await router.push(path)
     isMenuOpen && closeMenu!()
   }
 
@@ -243,7 +250,7 @@ export const NavMenu: React.FC<{
     <Box
       bgColor={menuBg}
       zIndex="10"
-      width={{ base: '100vw', lg: '21%' }}
+      width={{ base: '100vw', lg: isOpened ? '21%' : '100px' }}
       height="100vh"
       position="fixed"
       left={0}
@@ -251,6 +258,7 @@ export const NavMenu: React.FC<{
       display={isMenuOpen ? 'flex' : { base: 'none', lg: 'flex' }}
       flexDirection="column"
       borderRadius={12}
+      transition="width 0.2s ease-in-out"
     >
       {!isMenuOpen ? (
         <VStack
@@ -262,8 +270,20 @@ export const NavMenu: React.FC<{
           backgroundColor={'transparent'}
         >
           <VStack width="100%" gap={6} px={5} py={8} flexShrink={0}>
+            <Box
+              cursor="pointer"
+              onClick={toggleSidebar}
+              color="sidebar-inverted-subtle"
+              alignSelf={isOpened ? 'flex-end' : 'center'}
+            >
+              {isOpened ? (
+                <TbLayoutSidebarRightExpand size={30} />
+              ) : (
+                <TbLayoutSidebarLeftExpand size={30} />
+              )}
+            </Box>
             <HStack width="100%" textAlign="center">
-              <Box width="64px" height="64px">
+              <Box width="64px" height="64px" display="block">
                 <Avatar
                   address={currentAccount.address}
                   avatar_url={currentAccount.preferences?.avatar_url || ''}
@@ -271,18 +291,20 @@ export const NavMenu: React.FC<{
                 />
               </Box>
 
-              <VStack ml={2} flex={1} alignItems="flex-start">
-                <Text fontSize="lg" fontWeight={500}>
-                  {getAccountDisplayName(currentAccount)}
-                </Text>
-                <CopyLinkButton
-                  url={accountUrl}
-                  size="md"
-                  design_type="link"
-                  label="Share my calendar"
-                  withIcon
-                />
-              </VStack>
+              {isOpened && (
+                <VStack ml={2} flex={1} alignItems="flex-start">
+                  <Text fontSize="lg" fontWeight={500}>
+                    {getAccountDisplayName(currentAccount)}
+                  </Text>
+                  <CopyLinkButton
+                    url={accountUrl}
+                    size="md"
+                    design_type="link"
+                    label="Share my calendar"
+                    withIcon
+                  />
+                </VStack>
+              )}
             </HStack>
 
             <DashboardOnboardingGauge />
@@ -320,6 +342,7 @@ export const NavMenu: React.FC<{
                   subItems={link.subItems || []}
                   changeMode={menuClicked}
                   currentSection={currentSection}
+                  isOpened={isOpened}
                 />
               ) : (
                 <NavItem
@@ -332,6 +355,7 @@ export const NavMenu: React.FC<{
                   locked={link.locked || false}
                   changeMode={menuClicked}
                   isBeta={link.isBeta}
+                  isOpened={isOpened}
                 />
               )
             )}
@@ -340,26 +364,35 @@ export const NavMenu: React.FC<{
           <VStack width="100%" spacing={4} py={8} flexShrink={0}>
             <Divider borderColor={dividerColor} />
 
-            <HStack width="100%" justify="space-between" px={8}>
+            <HStack
+              width="100%"
+              justify="space-between"
+              px={8}
+              flexDirection={!isOpened ? 'column' : undefined}
+            >
               <HStack spacing={3} cursor="pointer" onClick={handleSignOut}>
                 <Box color="primary.500">
-                  <FaSignOutAlt size={16} />
+                  <FaSignOutAlt size={isOpened ? 16 : 24} />
                 </Box>
-                <Text fontSize="sm" fontWeight={500} color="primary.500">
-                  Sign out
-                </Text>
+                {isOpened && (
+                  <Text fontSize="sm" fontWeight={500} color="primary.500">
+                    Sign out
+                  </Text>
+                )}
               </HStack>
 
               <HStack spacing={1}>
-                <IconButton
-                  aria-label="Settings"
-                  icon={<FaCog />}
-                  size="sm"
-                  variant="ghost"
-                  color="neutral.300"
-                  _hover={{ bg: 'whiteAlpha.100' }}
-                  onClick={() => menuClicked(EditMode.DETAILS)}
-                />
+                {isOpened && (
+                  <IconButton
+                    aria-label="Settings"
+                    icon={<FaCog />}
+                    size="sm"
+                    variant="ghost"
+                    color="neutral.300"
+                    _hover={{ bg: 'whiteAlpha.100' }}
+                    onClick={() => menuClicked(EditMode.DETAILS)}
+                  />
+                )}
                 <ThemeSwitcher />
               </HStack>
             </HStack>

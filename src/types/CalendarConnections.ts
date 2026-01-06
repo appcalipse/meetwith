@@ -1,3 +1,4 @@
+import { CiStreamOn } from 'react-icons/ci'
 import {
   FaApple,
   FaCalendar,
@@ -18,6 +19,7 @@ export const ConnectedCalendarIcons = {
   [TimeSlotSource.OFFICE]: FaMicrosoft,
   [TimeSlotSource.WEBDAV]: FaCalendarAlt,
   [TimeSlotSource.MWW]: FaCalendar,
+  [TimeSlotSource.WEBCAL]: CiStreamOn,
 }
 
 export interface CalendarSyncInfo {
@@ -26,6 +28,7 @@ export interface CalendarSyncInfo {
   sync: boolean
   enabled: boolean
   color?: string
+  isReadOnly?: boolean
 }
 export interface ConnectedCalendarCore {
   id: number
@@ -45,6 +48,14 @@ export interface ConnectedCalendar extends ConnectedCalendarCore {
   payload: any
 }
 
+// Response type for calendar integrations API
+export interface GetCalendarIntegrationsResponse {
+  calendars: ConnectedCalendarCore[]
+  total: number
+  hidden: number
+  upgradeRequired: boolean
+}
+
 export type NewCalendarEventType = {
   uid: string
   id: string
@@ -61,4 +72,11 @@ export enum Office365RecurrenceType {
   RELATIVE_MONTHLY = 'relativeMonthly',
   ABSOLUTE_YEARLY = 'absoluteYearly',
   RELATIVE_YEARLY = 'relativeYearly',
+}
+
+export interface WebCalResponse {
+  connected: boolean
+  email: string
+  calendarName: string
+  eventCount: string
 }
