@@ -1,5 +1,7 @@
+import { Auth } from 'googleapis'
 import { MeetingPermissions } from '@/utils/constants/schedule'
-
+import { CaldavCredentials } from '@/utils/services/caldav.service'
+import { O365AuthCredentials } from '@/utils/services/office365.credential'
 import { CalendarSyncInfo } from './CalendarConnections'
 
 // Enums
@@ -68,6 +70,7 @@ export interface QuickPollParticipant {
   poll_id: string
   account_address?: string
   guest_name?: string
+  account_name?: string
   guest_email: string
   status: QuickPollParticipantStatus
   available_slots: AvailabilitySlot[]
@@ -82,7 +85,7 @@ export interface QuickPollCalendar {
   participant_id: string
   email: string
   provider: string
-  payload?: Record<string, unknown>
+  payload?: string | Auth.Credentials | O365AuthCredentials | CaldavCredentials
   calendars: CalendarSyncInfo[]
 }
 

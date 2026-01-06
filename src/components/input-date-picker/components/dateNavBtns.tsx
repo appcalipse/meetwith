@@ -4,7 +4,7 @@ import React, { Fragment } from 'react'
 
 export interface DatepickerBackBtnsProps {
   calendars: Calendar[]
-  getBackProps: (data: GetBackForwardPropsOptions) => Record<string, any>
+  getBackProps: (data: GetBackForwardPropsOptions) => Record<string, string>
 }
 
 const DefaultBtnStyle: ButtonProps = {
@@ -34,7 +34,7 @@ export const DatepickerBackBtns: React.FC<DatepickerBackBtnsProps> = props => {
 
 export interface DatepickerForwardBtnsProps {
   calendars: Calendar[]
-  getForwardProps: (data: GetBackForwardPropsOptions) => Record<string, any>
+  getForwardProps: (data: GetBackForwardPropsOptions) => Record<string, string>
 }
 
 export const DatepickerForwardBtns: React.FC<

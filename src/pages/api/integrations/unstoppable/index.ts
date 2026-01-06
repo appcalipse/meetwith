@@ -21,7 +21,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         const domains = await response.json()
 
         return res.status(200).json(
-          domains.data.map((domain: any) => {
+          domains.data.map((domain: { id: string }) => {
             return { name: domain.id }
           })
         )

@@ -8,11 +8,14 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { FC } from 'react'
+
+import { IconType } from 'react-icons'
 import { FaCalendarAlt, FaClock, FaLink } from 'react-icons/fa'
 import { FaUsers } from 'react-icons/fa6'
 
 interface FeatureCard {
-  icon: any
+  icon: IconType
   title: string
   description: string
 }
@@ -21,7 +24,7 @@ interface FeatureCardsProps {
   cards: FeatureCard[]
 }
 
-const FeatureCards = ({ cards }: FeatureCardsProps) => {
+const FeatureCards: FC<FeatureCardsProps> = ({ cards }) => {
   return (
     <Grid
       templateColumns={{ base: '1fr', md: 'repeat(2, 300px)' }}

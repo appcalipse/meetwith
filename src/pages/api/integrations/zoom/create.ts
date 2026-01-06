@@ -54,8 +54,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           account => account.address === owner?.account_address
         ) || meeting.accounts?.[0]
       const numberRegex = /\d+/g
+      type Json =
+        | string
+        | number
+        | Date
+        | undefined
+        | boolean
+        | null
+        | { [key: string]: Json | undefined }
+        | Json[]
       const code = meeting.meeting_id.match(numberRegex)?.join('') || Date.now()
-      const payload: Record<string, any> = {
+      const payload: Record<string, Json> = {
         agenda: meeting.content || meeting.title,
         created_at: new Date(),
         duration,

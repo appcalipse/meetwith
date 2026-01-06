@@ -24,6 +24,7 @@ import {
 } from '@/types/ParticipantInfo'
 import {
   QuickPollBySlugResponse,
+  QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
@@ -45,7 +46,9 @@ interface QuickPollParticipantsProps {
   onParticipantRemoved?: (participantId: string) => void
 }
 
-const convertQuickPollParticipant = (participant: any): ParticipantInfo => {
+const convertQuickPollParticipant = (
+  participant: QuickPollParticipant
+): ParticipantInfo => {
   return {
     account_address: participant.account_address,
     name: participant.account_name || participant.guest_name || '',
@@ -97,7 +100,7 @@ export function QuickPollParticipants({
   const handleOpenInviteModal = useCallback(() => {
     if (pollData?.poll?.participants) {
       const convertedParticipants = pollData.poll.participants.map(
-        convertQuickPollParticipant
+        participant => convertQuickPollParticipant(participant)
       )
       setParticipants(convertedParticipants)
     }
@@ -124,8 +127,8 @@ export function QuickPollParticipants({
   const meetingMembers = useMemo(() => {
     if (!pollData) return []
 
-    const allParticipants = pollData.poll.participants.map(
-      convertQuickPollParticipant
+    const allParticipants = pollData.poll.participants.map(participant =>
+      convertQuickPollParticipant(participant)
     )
 
     const currentGroupParticipants = groupParticipants[groupKey] || []

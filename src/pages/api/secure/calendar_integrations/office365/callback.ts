@@ -6,15 +6,16 @@ import {
   NotificationChannel,
 } from '@/types/AccountNotifications'
 import { TimeSlotSource } from '@/types/Meeting'
+import { CalendarInfo } from '@/types/Office365'
 import { apiUrl, OnboardingSubject } from '@/utils/constants'
 import {
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
   countCalendarIntegrations,
   getAccountNotificationSubscriptions,
+  isProAccountAsync,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/database'
 
 const credentials = {
   client_id: process.env.MS_GRAPH_CLIENT_ID!,
@@ -139,13 +140,14 @@ async function handler(
       accountAddress,
       responseBody.email,
       TimeSlotSource.OFFICE,
-      calendars.value.map((c: any) => {
+      calendars.value.map((c: CalendarInfo) => {
         return {
           calendarId: c.id,
           name: c.name,
           sync: true,
           enabled: c.isDefaultCalendar,
           color: c.hexColor,
+          isReadOnly: !c.canEdit,
         }
       }),
       responseBody

@@ -20,6 +20,7 @@ import {
 } from '@/types/QuickPoll'
 import { getQuickPollBySlug } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
+import { ApiFetchError } from '@/utils/errors'
 import { isJson } from '@/utils/generic_utils'
 
 const PollPage = () => {
@@ -51,7 +52,7 @@ const PollPage = () => {
   }
 
   if (error) {
-    const errorObj = error as any
+    const errorObj = error instanceof ApiFetchError ? error : undefined
     let title = 'Failed to load poll'
     let description =
       "We couldn't load this poll. Please check the link and try again."

@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 import { Frequency, RRule, RRuleSet, rrulestr } from 'rrule'
 
 import {

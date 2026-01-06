@@ -16,6 +16,7 @@ import { v4 } from 'uuid'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
+import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
   addOrUpdateICloud,
   addOrUpdateWebdav,
@@ -36,7 +37,7 @@ interface WebDavDetailsPanelProps {
   onSuccess: () => Promise<void>
   isQuickPoll?: boolean
   participantId?: string
-  pollData?: any
+  pollData?: QuickPollBySlugResponse
 }
 
 const APPLE_DISCLAIMER = (

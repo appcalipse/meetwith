@@ -40,7 +40,6 @@ const GroupAvatarUpload: React.FC<IGroupAvatarUploadProps> = props => {
   const [croppedImage, setCroppedImage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [isCropping, setIsCropping] = useState(false)
-  const toast = useToast()
 
   const showCroppedImage = async () => {
     setIsCropping(true)

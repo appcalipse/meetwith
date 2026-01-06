@@ -19,7 +19,11 @@ function getConnectedCalendarIntegration(
   address: string,
   email: string,
   provider: TimeSlotSource.GOOGLE,
-  credentials: string | Auth.Credentials
+  credentials:
+    | string
+    | Auth.Credentials
+    | O365AuthCredentials
+    | CaldavCredentials
 ): IGoogleCalendarService
 
 // Overload for Office365

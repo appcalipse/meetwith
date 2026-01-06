@@ -18,11 +18,11 @@ import {
   TimeSlotSource,
 } from './Meeting'
 import {
-  Attendee as Office365Attendee,
   EventImportance,
   EventSensitivity,
   FreeBusyStatus,
   Location,
+  Attendee as Office365Attendee,
   OnlineMeetingInfo,
   OnlineMeetingProviderType,
   RecurrencePattern,
@@ -192,9 +192,7 @@ const includesStatus = (
   statuses: readonly (ParticipationStatus | AttendeeStatus)[],
   status: AttendeeStatusType
 ): boolean => {
-  return (
-    status != null && status != undefined && statuses.includes(status as any)
-  )
+  return status != null && status != undefined && statuses.includes(status)
 }
 
 export const isDeclined = (status: AttendeeStatusType): boolean => {
@@ -207,4 +205,18 @@ export const isPendingAction = (status: AttendeeStatusType): boolean => {
 
 export const isAccepted = (status: AttendeeStatusType): boolean => {
   return includesStatus(ACCEPTED_STATUSES, status)
+}
+
+export const mapParticipationStatusToAttendeeStatus = (
+  status: ParticipationStatus
+): AttendeeStatus => {
+  switch (status) {
+    case ParticipationStatus.Accepted:
+      return AttendeeStatus.ACCEPTED
+    case ParticipationStatus.Rejected:
+      return AttendeeStatus.DECLINED
+    case ParticipationStatus.Pending:
+    default:
+      return AttendeeStatus.NEEDS_ACTION
+  }
 }
