@@ -62,7 +62,6 @@ MyError.getInitialProps = async contextData => {
     res,
     err,
   })
-  await Sentry.captureUnderscoreErrorException(contextData)
   // Workaround for https://github.com/vercel/next.js/issues/8592, mark when
   // getInitialProps has run
   errorInitialProps.hasGetInitialPropsRun = true
@@ -82,6 +81,7 @@ MyError.getInitialProps = async contextData => {
 
   if (err) {
     posthog.captureException(err)
+    Sentry.captureException(err)
 
     // Flushing before returning is necessary if deploying to Vercel, see
     // https://vercel.com/docs/platform/limits#streaming-responses
