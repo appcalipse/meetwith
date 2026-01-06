@@ -15,7 +15,8 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { FC, useMemo } from 'react'
+import { DateTime } from 'luxon'
+import { FC, useMemo, useRef } from 'react'
 import { FaRegCopy, FaTrash } from 'react-icons/fa6'
 import { Frequency } from 'rrule'
 import sanitizeHtml from 'sanitize-html'
@@ -23,20 +24,30 @@ import sanitizeHtml from 'sanitize-html'
 import useClipboard from '@/hooks/useClipboard'
 import {
   AttendeeStatus,
+  CalendarEvents,
   isAccepted,
   isDeclined,
   isPendingAction,
   UnifiedEvent,
 } from '@/types/Calendar'
 import { logEvent } from '@/utils/analytics'
+import { updateCalendarRsvpStatus } from '@/utils/api_helper'
 import { dateToLocalizedRange } from '@/utils/calendar_manager'
 import { addUTMParams } from '@/utils/huddle.helper'
+import { queryClient } from '@/utils/react_query'
 
 import { defineLabel } from './MeetingCard'
 
 interface CalendarEventCardProps {
   event: UnifiedEvent
   timezone: string
+  timeWindow: { start: DateTime; end: DateTime }
+  currentAccountAddress?: string
+  updateAttendeeStatus: (
+    eventId: string,
+    accountEmail: string,
+    status: AttendeeStatus
+  ) => void
 }
 const getRecurrenceLabel = (freq?: Frequency) => {
   switch (freq) {
@@ -53,12 +64,19 @@ const getRecurrenceLabel = (freq?: Frequency) => {
   }
 }
 
-const CalendarEventCard: FC<CalendarEventCardProps> = ({ event, timezone }) => {
+const CalendarEventCard: FC<CalendarEventCardProps> = ({
+  event,
+  timezone,
+  updateAttendeeStatus,
+  currentAccountAddress,
+  timeWindow,
+}) => {
   const borderColor = useColorModeValue('gray.200', 'neutral.700')
   const textColor = useColorModeValue('gray.600', 'gray.400')
   const labelBgColor = useColorModeValue('blue.50', 'blue.900')
   const label = defineLabel(event.start as Date, event.end as Date, timezone)
   const { copyFeedbackOpen, handleCopy } = useClipboard()
+  const rsvpAbortControllerRef = useRef<AbortController | null>(null)
 
   const getUserStatus = () => {
     const userAttendee = event.attendees?.find(
@@ -97,7 +115,23 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({ event, timezone }) => {
       attendee => attendee.email === event.accountEmail
     )
   }, [event])
-  const handleRSVP = (status: AttendeeStatus) => {}
+  const handleRSVP = async (status: AttendeeStatus) => {
+    try {
+      const abortController = new AbortController()
+      rsvpAbortControllerRef.current = abortController
+      updateAttendeeStatus(event.id, event.accountEmail, status)
+      await updateCalendarRsvpStatus(
+        event.calendarId,
+        event.sourceEventId,
+        status,
+        event.accountEmail,
+        abortController.signal
+      )
+    } catch (e) {
+    } finally {
+      rsvpAbortControllerRef.current = null
+    }
+  }
   return (
     <Box
       shadow="sm"

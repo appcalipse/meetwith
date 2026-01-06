@@ -26,6 +26,7 @@ import {
 } from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
+  QuickPollBySlugResponse,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
@@ -41,11 +42,12 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 import AddFromContact from './AddFromContact'
 import AddFromGroups from './AddFromGroups'
 import AllMeetingParticipants from './AllMeetingParticipants'
+
 interface IProps {
   isOpen: boolean
   onClose: () => void
   isQuickPoll?: boolean
-  pollData?: any
+  pollData?: QuickPollBySlugResponse
   onInviteSuccess?: () => void
   participants: Array<ParticipantInfo | IGroupParticipant>
   groupParticipants: Record<string, Array<string> | undefined>

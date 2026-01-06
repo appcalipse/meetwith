@@ -155,7 +155,7 @@ const plansCards: PlansCard[] = [
 ]
 
 export function Plans() {
-  const { currentAccount, login, setLoginIn } = useContext(AccountContext)
+  const { currentAccount } = useContext(AccountContext)
 
   const [selectedPlan, setSelectedPlan] = useState(
     undefined as string | undefined

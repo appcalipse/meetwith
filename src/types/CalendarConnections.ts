@@ -1,3 +1,4 @@
+import { Auth } from 'googleapis'
 import { CiStreamOn } from 'react-icons/ci'
 import {
   FaApple,
@@ -6,7 +7,8 @@ import {
   FaGoogle,
   FaMicrosoft,
 } from 'react-icons/fa'
-
+import { CaldavCredentials } from '@/utils/services/caldav.service'
+import { O365AuthCredentials } from '@/utils/services/office365.credential'
 import { TimeSlotSource } from './Meeting'
 
 export interface ConnectResponse {
@@ -45,7 +47,7 @@ export interface ConnectedCalendar extends ConnectedCalendarCore {
   calendarId?: string
   enabled: boolean
   created: Date
-  payload: any
+  payload: string | Auth.Credentials | O365AuthCredentials | CaldavCredentials
 }
 
 // Response type for calendar integrations API
@@ -62,7 +64,7 @@ export type NewCalendarEventType = {
   type: string
   password: string
   url: string
-  additionalInfo: Record<string, any>
+  additionalInfo: Record<string, string | number | boolean>
 }
 
 export enum Office365RecurrenceType {

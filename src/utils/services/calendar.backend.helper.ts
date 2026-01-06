@@ -13,6 +13,7 @@ import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
 import { DateTime } from 'luxon'
 
 import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
+import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
 import {
   MeetingChangeType,
@@ -24,7 +25,6 @@ import {
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { QuickPollBusyParticipant } from '@/types/QuickPoll'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
-
 import {
   createAlarm,
   getCalendarRegularUrl,
@@ -100,7 +100,7 @@ export const CalendarBackendHelper = {
                 eventEmail: it.email,
               }))
             )
-          } catch (e: any) {
+          } catch (e: unknown) {
             Sentry.captureException(e)
           }
         })
@@ -156,8 +156,8 @@ export const CalendarBackendHelper = {
               try {
                 const externalSlots = await integration.getAvailability(
                   calendar.calendars
-                    ?.filter((c: any) => c.enabled)
-                    .map((c: any) => c.calendarId) || [],
+                    ?.filter((c: CalendarSyncInfo) => c.enabled)
+                    .map((c: CalendarSyncInfo) => c.calendarId) || [],
                   startDate.toISOString(),
                   endDate.toISOString()
                 )
@@ -169,7 +169,7 @@ export const CalendarBackendHelper = {
                     account_address: `quickpoll_${participant.participant_id}`,
                   }))
                 )
-              } catch (e: any) {
+              } catch (e: unknown) {
                 Sentry.captureException(e)
               }
             })
@@ -491,7 +491,7 @@ export const CalendarBackendHelper = {
           break
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       Sentry.captureException(error, {
         extra: {
           account_address,
@@ -502,7 +502,9 @@ export const CalendarBackendHelper = {
         },
       })
       throw new Error(
-        `Failed to update calendar event: ${error.message || error}`
+        `Failed to update calendar event: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       )
     }
   },

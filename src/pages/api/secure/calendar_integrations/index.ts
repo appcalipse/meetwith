@@ -10,9 +10,9 @@ import {
   countCalendarIntegrations,
   countCalendarSyncs,
   getConnectedCalendars,
+  isProAccountAsync,
   removeConnectedCalendar,
 } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/database'
 import { CalendarSyncLimitExceededError } from '@/utils/errors'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 
@@ -69,7 +69,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           it.payload &&
           [TimeSlotSource.GOOGLE, TimeSlotSource.OFFICE].includes(it.provider)
         ) {
-          const payload = JSON.parse(it.payload)
+          const payload =
+            typeof it.payload === 'string'
+              ? JSON.parse(it.payload)
+              : JSON.parse(it.payload.toString())
           const permissions = payload.scope
             .split(' ')
             .filter(

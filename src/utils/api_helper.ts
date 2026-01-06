@@ -40,7 +40,6 @@ import {
   GetCalendarIntegrationsResponse,
   WebCalResponse,
 } from '@/types/CalendarConnections'
-import { ConditionRelation, SuccessResponse } from '@/types/common'
 import {
   Contact,
   ContactInvite,
@@ -48,6 +47,7 @@ import {
   InviteGroupMember,
   LeanContact,
 } from '@/types/Contacts'
+import { ConditionRelation, SuccessResponse } from '@/types/common'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount, DiscordUserInfo } from '@/types/Discord'
 import {
@@ -163,6 +163,7 @@ import { queryClient } from './react_query'
 import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
+
 type RequestOption = {
   signal?: AbortSignal
 }
@@ -836,7 +837,7 @@ export const syncMeeting = async (
       decryptedMeetingData,
       slotId,
     })
-  } catch (e) {}
+  } catch (_e) {}
 }
 
 export const getGroupsFull = async (
@@ -2572,7 +2573,7 @@ export const getAccountPrimaryCalendarEmail = async (targetAccount: string) => {
     return await internalFetch<{ email: string }>(
       `/accounts/calendar/primary?targetAccount=${targetAccount}`
     ).then(account => account.email)
-  } catch (e) {
+  } catch (_e) {
     return undefined
   }
 }
@@ -2605,7 +2606,7 @@ export const decodeMeetingGuest = async (
       end: new Date(res.end),
       created_at: new Date(res.created_at),
     }))
-  } catch (e) {
+  } catch (_e) {
     return null
   }
 }
@@ -2699,7 +2700,7 @@ export const updateCalendarRsvpStatus = async (
   calendarId: string,
   eventId: string,
   rsvpStatus: AttendeeStatus,
-  attendeeEmail?: string,
+  attendeeEmail: string,
   abortSignal?: AbortSignal
 ) => {
   return await internalFetch(

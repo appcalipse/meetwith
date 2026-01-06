@@ -26,11 +26,13 @@ const Settings: NextPage<SettingsProps> = props => {
   )
 }
 
-const EnhancedSettings: NextPage = forceAuthenticationCheck(Settings)
+const EnhancedSettings: NextPage<SettingsProps> =
+  forceAuthenticationCheck<SettingsProps>(Settings)
 
 EnhancedSettings.getInitialProps = async ctx => {
   const { section } = ctx.query
-  return { section }
+  const singleSection = Array.isArray(section) ? section[0] : section
+  return { section: singleSection as SettingsSection }
 }
 
 export default withLoginRedirect(EnhancedSettings)

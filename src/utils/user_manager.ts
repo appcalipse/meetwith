@@ -253,7 +253,7 @@ export const validateUserPermissions = (
   },
   groupInvites: GroupInvitesResponse[]
 ) => {
-  const { group_id, user_id, email, discord_id } = params
+  const { user_id, email, discord_id } = params
 
   if (user_id && user_id !== user.id) {
     return false

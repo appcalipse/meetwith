@@ -8,6 +8,7 @@ import DashboardContent from '../../components/profile/DashboardContent'
 import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
 import { withLoginRedirect } from '../../session/requireAuthentication'
 import { EditMode } from '../../types/Dashboard'
+
 interface DashboardProps {
   section: EditMode
 }
@@ -33,11 +34,13 @@ const Dashboard: NextPage<DashboardProps> = props => {
   )
 }
 
-const EnhancedDashboard: NextPage = forceAuthenticationCheck(Dashboard)
+const EnhancedDashboard: NextPage<DashboardProps> =
+  forceAuthenticationCheck<DashboardProps>(Dashboard)
 
 EnhancedDashboard.getInitialProps = async ctx => {
   const { section } = ctx.query
-  return { section }
+  const singleSection = Array.isArray(section) ? section[0] : section
+  return { section: singleSection as EditMode }
 }
 
 export default withLoginRedirect(EnhancedDashboard)

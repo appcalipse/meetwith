@@ -1,7 +1,13 @@
 /* eslint-disable no-restricted-syntax */
 import { DiscordUserInfo } from '@meta/Discord'
 import * as Sentry from '@sentry/nextjs'
-import { Client, GatewayIntentBits } from 'discord.js'
+import {
+  Client,
+  DiscordAPIError,
+  DiscordjsError,
+  DiscordjsErrorCodes,
+  GatewayIntentBits,
+} from 'discord.js'
 
 import { AuthToken } from '@/types/Account'
 import {
@@ -17,6 +23,7 @@ import {
   getDiscordAccount,
   setAccountNotificationSubscriptions,
 } from '../database'
+
 let ready = false
 const client = new Client({
   intents: [
@@ -250,27 +257,28 @@ export const dmAccount = async (
     console.log(`Message sent successfully: ${sentMessage.id}`)
 
     return true
-  } catch (error: any) {
+  } catch (error: unknown) {
     let context
-    console.error('Discord DM Error:', {
-      error: error.message,
-      code: error.code,
-      userId: discord_user_id,
-      accountAddress,
-    })
+    if (error instanceof DiscordAPIError) {
+      console.error('Discord DM Error:', {
+        error: error.message,
+        code: error.code,
+        userId: discord_user_id,
+        accountAddress,
+      })
 
-    // Handle specific Discord errors
-    if (error.code === 50007) {
-      console.log('Cannot send messages to this user (privacy settings)')
-      context = 'Cannot send messages to this user (privacy settings)'
-    } else if (error.code === 10013) {
-      console.log('Unknown user')
-      context = 'Unknown user'
-    } else if (error.code === 50001) {
-      console.log('Missing access')
-      context = 'Missing access'
+      // Handle specific Discord errors
+      if (error.code === 50007) {
+        console.log('Cannot send messages to this user (privacy settings)')
+        context = 'Cannot send messages to this user (privacy settings)'
+      } else if (error.code === 10013) {
+        console.log('Unknown user')
+        context = 'Unknown user'
+      } else if (error.code === 50001) {
+        console.log('Missing access')
+        context = 'Missing access'
+      }
     }
-
     const notifications = await getAccountNotificationSubscriptions(
       accountAddress
     )

@@ -11,6 +11,7 @@ import { decodeMeeting } from '@/utils/calendar_manager'
 import Loading from '../Loading'
 import DesktopUpcomingEvents from './DesktopUpcomingEventsView'
 import MobileUpcomingEvents from './MobileUpcomingEventsView'
+
 interface UpComingEventsProps {
   isMobile?: boolean
 }
@@ -43,7 +44,7 @@ const UpComingEvents: React.FC<UpComingEventsProps> = ({ isMobile }) => {
                   currentAccount!
                 )
                 return decodedMeeting
-              } catch (e) {
+              } catch (_) {
                 return null
               }
             })

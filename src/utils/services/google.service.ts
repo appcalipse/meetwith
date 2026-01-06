@@ -1224,7 +1224,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       ? aggregatedEvents.filter(event => {
           const hasHangout = !!event.hangoutLink
           const hasConferenceData = !!event.conferenceData?.entryPoints?.some(
-            ep => ep.uri || ep.label
+            ep => ep.uri
           )
           const hasLocationUrl = !!(
             event.location &&

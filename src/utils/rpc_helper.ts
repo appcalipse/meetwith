@@ -18,7 +18,7 @@ import { thirdWebClient } from './user_manager'
 export const getBlockchainSubscriptionsForAccount = async (
   accountAddress: string
 ): Promise<BlockchainSubscription[]> => {
-  const subscriptions: any[] = []
+  const subscriptions = []
 
   const chainsToCheck: ChainInfo[] = isProduction
     ? getMainnetChains()
@@ -42,10 +42,10 @@ export const getBlockchainSubscriptionsForAccount = async (
           ...info,
           functionName: 'domains',
           args: [domain],
-        })) as any[]
+        })) as unknown[]
 
         subscriptions.push({
-          ...subs,
+          subs,
           chain: chain.chain,
         })
       }
@@ -56,12 +56,12 @@ export const getBlockchainSubscriptionsForAccount = async (
 
   return subscriptions.map(sub => {
     return {
-      planId: sub[1],
-      owner: sub[0],
-      expiryTime: sub[2],
-      domain: sub[3],
-      configIpfsHash: sub[4],
-      registeredAt: sub[5],
+      planId: sub.subs[1],
+      owner: sub.subs[0],
+      expiryTime: sub.subs[2],
+      domain: sub.subs[3],
+      configIpfsHash: sub.subs[4],
+      registeredAt: sub.subs[5],
       chain: sub.chain,
     }
   }) as BlockchainSubscription[]
@@ -70,7 +70,7 @@ export const getBlockchainSubscriptionsForAccount = async (
 export const getDomainInfo = async (
   domain: string
 ): Promise<BlockchainSubscription[]> => {
-  const subscriptions: any[] = []
+  const subscriptions = []
 
   const chainsToCheck: ChainInfo[] = isProduction
     ? getMainnetChains()
