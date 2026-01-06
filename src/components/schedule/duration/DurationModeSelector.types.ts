@@ -14,7 +14,6 @@ export interface TimeRangePickerProps {
   endTime: string
   onStartTimeChange: (startTime: string) => void
   onEndTimeChange: (endTime: string) => void
-  timezone: string
   isInvalid?: boolean
   errorMessage?: string
   isDisabled?: boolean
