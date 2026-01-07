@@ -48,7 +48,7 @@ interface EventProps {
 
 const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
   const currentAccount = useAccountContext()
-  const { setSelectedSlot, currrentDate } = useCalendarContext()
+  const { setSelectedSlot, currentDate } = useCalendarContext()
   const {
     isOpen: isCancelOpen,
     onOpen: onCancelOpen,
@@ -98,12 +98,12 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
   )
   const handleCleanup = async (close: () => void) => {
     await Promise.all([
-      queryClient.invalidateQueries(createEventsQueryKey(currrentDate)),
+      queryClient.invalidateQueries(createEventsQueryKey(currentDate)),
       queryClient.invalidateQueries(
-        createEventsQueryKey(currrentDate.minus({ month: 1 }))
+        createEventsQueryKey(currentDate.minus({ month: 1 }))
       ),
       queryClient.invalidateQueries(
-        createEventsQueryKey(currrentDate.plus({ month: 1 }))
+        createEventsQueryKey(currentDate.plus({ month: 1 }))
       ),
     ])
     close()
