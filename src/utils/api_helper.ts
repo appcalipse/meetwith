@@ -31,7 +31,12 @@ import {
   SubscribeResponseCrypto,
   TrialEligibilityResponse,
 } from '@/types/Billing'
-import { AttendeeStatus, CalendarEvents } from '@/types/Calendar'
+import {
+  AttendeeStatus,
+  CalendarEvents,
+  DashBoardMwwEvents,
+  ExtendedCalendarEvents,
+} from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -2637,8 +2642,9 @@ export const getEvents = async (
 export const getCalendarEvents = async (
   startDate: DateTime,
   endDate: DateTime,
+  currentAccount: Account,
   onlyMeetings = true
-): Promise<CalendarEvents> => {
+): Promise<ExtendedCalendarEvents> => {
   const events = await internalFetch<CalendarEvents>(
     `/secure/calendar_events?startDate=${encodeURIComponent(
       startDate.toISO() || ''
@@ -2646,17 +2652,29 @@ export const getCalendarEvents = async (
       endDate.toISO() || ''
     )}&onlyMeetings=${onlyMeetings}`
   )
-
+  const preProcessedMeetWithEvents = meetWithSeriesPreprocessors(
+    events.mwwEvents,
+    startDate,
+    endDate
+  )
+  const decryptedMwwEvents = await Promise.all(
+    preProcessedMeetWithEvents.map(async slot => {
+      try {
+        const decrypted = await decodeMeeting(slot, currentAccount)
+        return { ...slot, decrypted }
+      } catch (_e) {
+        return { ...slot, decrypted: null }
+      }
+    })
+  )
   return {
     calendarEvents: events.calendarEvents.map(event => ({
       ...event,
       start: new Date(event.start),
       end: new Date(event.end),
     })),
-    mwwEvents: meetWithSeriesPreprocessors(
-      events.mwwEvents,
-      startDate,
-      endDate
+    mwwEvents: decryptedMwwEvents.filter(
+      (event): event is DashBoardMwwEvents => event.decrypted !== null
     ),
   }
 }
@@ -2713,5 +2731,16 @@ export const updateCalendarRsvpStatus = async (
     {
       signal: abortSignal,
     }
+  )
+}
+
+export const deleteCalendarEvent = async (
+  calendarId: string,
+  eventId: string
+) => {
+  return await internalFetch(
+    `/secure/calendar/${calendarId}/${eventId}`,
+    'DELETE',
+    undefined
   )
 }
