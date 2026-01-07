@@ -144,7 +144,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
     MeetingPermissions.EDIT_MEETING
   )
 
-  const { setSelectedSlot, currrentDate } = useCalendarContext()
+  const { setSelectedSlot, currentDate } = useCalendarContext()
   const iconColor = useColorModeValue('gray.500', 'gray.200')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const actor = slot.participants.find(
@@ -172,7 +172,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
     logEvent(`Clicked RSVP ${status} from Event Details PopOver`)
 
     queryClient.setQueryData<CalendarEventsData>(
-      createEventsQueryKey(currrentDate),
+      createEventsQueryKey(currentDate),
       old => {
         if (!old?.mwwEvents) return old
         return {
@@ -205,7 +205,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
         // Request was cancelled, ignore
         return
       }
-      queryClient.invalidateQueries(createEventsQueryKey(currrentDate))
+      queryClient.invalidateQueries(createEventsQueryKey(currentDate))
     }
   }
   const _onChange = (newValue: RSVPOption) => {
