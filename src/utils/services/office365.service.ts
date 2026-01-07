@@ -634,4 +634,13 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       )
       .patch({ attendees: event.attendees })
   }
+
+  async deleteExternalEvent(
+    calendarId: string,
+    eventId: string
+  ): Promise<void> {
+    return await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${eventId}`)
+      .delete()
+  }
 }
