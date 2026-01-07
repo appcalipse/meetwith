@@ -463,4 +463,8 @@ export default class WebCalService implements BaseCalendarService {
     console.warn('ICS feeds are read-only. Cannot update RSVP status.')
     return Promise.resolve()
   }
+  deleteExternalEvent(calendarId: string, eventId: string): Promise<void> {
+    console.warn('ICS feeds are read-only. Cannot delete external events.')
+    return Promise.resolve()
+  }
 }
