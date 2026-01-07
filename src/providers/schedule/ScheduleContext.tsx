@@ -7,6 +7,7 @@ import {
   MeetingProvider,
   MeetingRepeat,
 } from '@/types/Meeting'
+import { UpdateMode } from '@/utils/constants/meeting'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 interface IScheduleStateContext {
@@ -23,6 +24,7 @@ interface IScheduleStateContext {
     label?: string
   }>
   meetingRepeat: { value: MeetingRepeat; label?: string }
+  editMode: UpdateMode
   isScheduling: boolean
   selectedPermissions: Array<MeetingPermissions> | undefined
   decryptedMeeting: MeetingDecrypted | undefined
@@ -47,6 +49,7 @@ interface IScheduleStateContext {
   setDecryptedMeeting: React.Dispatch<
     React.SetStateAction<MeetingDecrypted | undefined>
   >
+  setEditMode: React.Dispatch<React.SetStateAction<UpdateMode>>
 }
 
 const ScheduleStateContext = createContext<IScheduleStateContext | undefined>(
@@ -77,6 +80,7 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   const [currentSelectedDate, setCurrentSelectedDate] = useState<DateTime>(
     DateTime.now()
   )
+  const [editMode, setEditMode] = useState<UpdateMode>(UpdateMode.SINGLE_EVENT)
   const [timezone, setTimezone] = useState<string>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
@@ -134,6 +138,8 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     setIsScheduling,
     decryptedMeeting,
     setDecryptedMeeting,
+    editMode,
+    setEditMode,
   }
 
   return (
