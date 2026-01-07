@@ -48,9 +48,11 @@ import {
 } from '@/types/Requests'
 import { Address } from '@/types/Transactions'
 import {
-  apiUpdateMeeting,
-  apiUpdateMeetingInstance,
   cancelMeeting as apiCancelMeeting,
+  scheduleMeeting as apiScheduleMeeting,
+  apiUpdateMeeting,
+  updateMeetingAsGuest as apiUpdateMeetingAsGuest,
+  apiUpdateMeetingInstance,
   conferenceGuestMeetingCancel,
   decodeMeetingGuest,
   generateMeetingUrl,
@@ -64,11 +66,9 @@ import {
   getSlotInstanceById,
   getSlotsByIds,
   isSlotFreeApiCall,
-  scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
   scheduleMeetingFromServer,
   syncMeeting,
-  updateMeetingAsGuest as apiUpdateMeetingAsGuest,
 } from '@/utils/api_helper'
 
 import { diff, intersec } from './collections'
@@ -1040,6 +1040,7 @@ const updateMeetingInstance = async (
   )
   return (await decryptMeeting(slot, currentAccount))!
 }
+const updateMeetingSeries = async () => {}
 const updateMeetingConferenceGuest = async (
   ignoreAvailabilities: boolean,
   meetingTypeId: string,
