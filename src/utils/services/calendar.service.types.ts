@@ -107,6 +107,8 @@ export interface BaseCalendarService {
     attendeeEmail: string,
     responseStatus: string
   ): Promise<void>
+
+  deleteExternalEvent(calendarId: string, eventId: string): Promise<void>
 }
 export interface IOffcie365CalendarService extends BaseCalendarService {
   /**

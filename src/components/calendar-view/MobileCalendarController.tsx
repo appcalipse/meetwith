@@ -9,7 +9,7 @@ import MobileControllerModal from './MobileControllerModal'
 
 const MobileCalendarController: FC = ({}) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const { currrentDate } = useCalendarContext()
+  const { currentDate } = useCalendarContext()
   return (
     <Box
       role="button"
@@ -24,7 +24,7 @@ const MobileCalendarController: FC = ({}) => {
       onClick={isOpen ? onClose : onOpen}
     >
       <HStack justifyContent="space-between" w="full">
-        <Heading fontSize={16}>{currrentDate.toFormat('MMMM')}</Heading>
+        <Heading fontSize={16}>{currentDate.toFormat('MMMM')}</Heading>
         {isOpen ? <FaChevronDown size={15} /> : <FaChevronRight size={15} />}
       </HStack>
       <MobileControllerModal isOpen={isOpen} onClose={onClose} />

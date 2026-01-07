@@ -4,6 +4,7 @@ import 'isomorphic-fetch'
 import { Crypto } from '@peculiar/webcrypto'
 import { ReadableStream } from 'stream/web'
 import { TextDecoder, TextEncoder } from 'util'
+
 global.TextDecoder = TextDecoder
 global.TextEncoder = TextEncoder
 global.ReadableStream = ReadableStream

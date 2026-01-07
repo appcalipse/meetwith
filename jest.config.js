@@ -1,4 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
+/** biome-ignore-all lint/style/noCommonJs: config file */
 const nextJest = require('next/jest')
 
 const createJestConfig = nextJest({

@@ -28,18 +28,20 @@ import {
   createEventsQueryKey,
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
+import { Account } from '@/types/Account'
 import {
   AttendeeStatus,
   isAccepted,
   isDeclined,
   isPendingAction,
   mapParticipationStatusToAttendeeStatus,
+  UnifiedAttendee,
   UnifiedEvent,
   WithInterval,
 } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
 import { Attendee } from '@/types/Office365'
-import { ParticipationStatus } from '@/types/ParticipantInfo'
+import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import { updateCalendarRsvpStatus } from '@/utils/api_helper'
 import { dateToLocalizedRange, rsvpMeeting } from '@/utils/calendar_manager'
@@ -51,7 +53,7 @@ import {
 import { addUTMParams } from '@/utils/huddle.helper'
 import { queryClient } from '@/utils/react_query'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
-
+import { rsvpQueue } from '@/utils/workers/rsvp.queue'
 import { TruncatedText } from './TruncatedText'
 
 interface EventDetailsPopOverProps {
@@ -65,7 +67,20 @@ const isCalendarEvent = (
 ): slot is WithInterval<UnifiedEvent<DateTime>> => {
   return 'calendarId' in slot
 }
-
+const getActor = (
+  slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>,
+  currentAccount: Account
+) => {
+  if (isCalendarEvent(slot)) {
+    return slot.attendees?.find(
+      attendee => attendee.email === slot.accountEmail
+    )
+  } else {
+    return slot.participants.find(
+      participant => participant.account_address === currentAccount?.address
+    )
+  }
+}
 const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
   slot,
   onSelectEvent,
@@ -73,7 +88,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
 }) => {
   const rsvpAbortControllerRef = React.useRef<AbortController | null>(null)
 
-  const { currrentDate } = useCalendarContext()
+  const { currentDate } = useCalendarContext()
   const currentAccount = useAccountContext()
   const { copyFeedbackOpen, handleCopy } = useClipboard()
   const isSchedulerOrOwner =
@@ -112,17 +127,14 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
       )
     }
   }, [currentAccount])
-  const actor = React.useMemo(() => {
-    if (isCalendarEvent(slot)) {
-      return slot.attendees?.find(
-        attendee => attendee.email === slot.accountEmail
-      )
-    } else {
-      return slot.participants.find(
-        participant => participant.account_address === currentAccount?.address
-      )
-    }
+  const [actor, setActor] = React.useState<
+    UnifiedAttendee | ParticipantInfo | undefined
+  >(getActor(slot, currentAccount!))
+
+  React.useEffect(() => {
+    setActor(getActor(slot, currentAccount!))
   }, [slot, currentAccount])
+
   const handleRSVP = async (status: ParticipationStatus) => {
     if (!actor || !currentAccount) return
     if (
@@ -130,6 +142,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
       actor.status === mapParticipationStatusToAttendeeStatus(status)
     )
       return
+    const previousStatus = actor.status
 
     if (rsvpAbortControllerRef.current) {
       rsvpAbortControllerRef.current.abort()
@@ -139,10 +152,32 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
     rsvpAbortControllerRef.current = abortController
 
     logEvent(`Clicked RSVP ${status} from Event Details PopOver`)
+    setActor(prev => {
+      if (!prev) return prev
+      if (!isCalendarEvent(slot)) {
+        const participantInfo = prev as ParticipantInfo
+        return previousStatus ? { ...participantInfo, status: status } : prev
+      } else {
+        const unifiedAttendee = prev as UnifiedAttendee
+        return previousStatus
+          ? {
+              ...unifiedAttendee,
+              status: mapParticipationStatusToAttendeeStatus(status),
+            }
+          : prev
+      }
+    })
     try {
       if (!isCalendarEvent(slot)) {
+        await rsvpMeeting(
+          slot.id,
+          currentAccount.address,
+          status,
+          abortController.signal
+        )
+        // Success: update global cache
         queryClient.setQueryData<CalendarEventsData>(
-          createEventsQueryKey(currrentDate),
+          createEventsQueryKey(currentDate),
           old => {
             if (!old?.mwwEvents) return old
             return {
@@ -161,17 +196,10 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
             }
           }
         )
-
-        await rsvpMeeting(
-          slot.id,
-          currentAccount.address,
-          status,
-          abortController.signal
-        )
       } else {
         const attendeeStatus = mapParticipationStatusToAttendeeStatus(status)
         queryClient.setQueryData<CalendarEventsData>(
-          createEventsQueryKey(currrentDate),
+          createEventsQueryKey(currentDate),
           old => {
             if (!old?.calendarEvents) return old
             return {
@@ -190,8 +218,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
             }
           }
         )
-
-        await updateCalendarRsvpStatus(
+        await rsvpQueue.enqueue(
           slot.calendarId,
           slot.sourceEventId,
           attendeeStatus,
@@ -205,7 +232,24 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
         // Request was cancelled, ignore
         return
       }
-      queryClient.invalidateQueries(createEventsQueryKey(currrentDate))
+      // Revert UI change
+      setActor(prev => {
+        if (!prev) return prev
+        if (!isCalendarEvent(slot)) {
+          const participantInfo = prev as ParticipantInfo
+          return previousStatus
+            ? {
+                ...participantInfo,
+                status: previousStatus as ParticipationStatus,
+              }
+            : prev
+        } else {
+          const unifiedAttendee = prev as UnifiedAttendee
+          return previousStatus
+            ? { ...unifiedAttendee, status: previousStatus as AttendeeStatus }
+            : prev
+        }
+      })
     }
   }
 

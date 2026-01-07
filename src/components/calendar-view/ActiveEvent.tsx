@@ -58,8 +58,9 @@ import InviteParticipants from '../schedule/participants/InviteParticipants'
 import ScheduleTimeDiscover from '../schedule/ScheduleTimeDiscover'
 import ActiveCalendarEvent from './ActiveCalendarEvent'
 import ActiveMeetwithEvent from './ActiveMeetwithEvent'
+
 const ActiveEvent: React.FC = ({}) => {
-  const { selectedSlot, setSelectedSlot, currrentDate } = useCalendarContext()
+  const { selectedSlot, setSelectedSlot, currentDate } = useCalendarContext()
   const currentAccount = useAccountContext()
   const toast = useToast()
   const {
@@ -140,7 +141,7 @@ const ActiveEvent: React.FC = ({}) => {
       setCurrentSelectedDate(
         selectedSlot.start
           ? DateTime.fromJSDate(selectedSlot.start)
-          : currrentDate
+          : currentDate
       )
       const participants = selectedSlot.participants || []
       const participantsMap: Record<string, string[] | undefined> = {
@@ -312,17 +313,17 @@ const ActiveEvent: React.FC = ({}) => {
   )
   const handleCleanup = React.useCallback(async () => {
     // fetch only the current month events immediately
-    await queryClient.invalidateQueries(createEventsQueryKey(currrentDate))
+    await queryClient.invalidateQueries(createEventsQueryKey(currentDate))
     Promise.all([
       queryClient.invalidateQueries(
-        createEventsQueryKey(currrentDate.minus({ month: 1 }))
+        createEventsQueryKey(currentDate.minus({ month: 1 }))
       ),
       queryClient.invalidateQueries(
-        createEventsQueryKey(currrentDate.plus({ month: 1 }))
+        createEventsQueryKey(currentDate.plus({ month: 1 }))
       ),
     ])
     setSelectedSlot(null)
-  }, [currrentDate, setSelectedSlot])
+  }, [currentDate, setSelectedSlot])
   const handleUpdate = React.useCallback(async () => {
     try {
       if (
@@ -577,7 +578,7 @@ const ActiveEvent: React.FC = ({}) => {
     toast,
     setIsScheduling,
     setSelectedSlot,
-    currrentDate,
+    currentDate,
   ])
 
   const context = React.useMemo(

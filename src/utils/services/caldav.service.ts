@@ -1251,4 +1251,22 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       throw new Error(`Failed to update RSVP for CalDAV event: ${error}`)
     }
   }
+  async deleteExternalEvent(
+    calendarId: string,
+    eventId: string
+  ): Promise<void> {
+    const events = await this.getEventsByUID(eventId)
+    const eventsToDelete = events.filter(event => event.uid === eventId)
+    await Promise.all(
+      eventsToDelete.map(event => {
+        return deleteCalendarObject({
+          calendarObject: {
+            url: event.url,
+            etag: event?.etag,
+          },
+          headers: this.headers,
+        })
+      })
+    )
+  }
 }

@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { GaxiosError } from 'gaxios'
+import { GaxiosError, RetryConfig } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
 import { DateTime } from 'luxon'
 
@@ -34,7 +34,7 @@ import { getCalendarPrimaryEmail } from '../sync_helper'
 import { CalendarServiceHelper } from './calendar.helper'
 import { EventList, IGoogleCalendarService } from './calendar.service.types'
 import { GoogleEventMapper } from './google.mapper'
-import { withRetry } from './retry.service'
+import { RetryOptions, withRetry } from './retry.service'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
@@ -1381,7 +1381,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
     }
     return payload
   }
-  async updateExternalEvent(event: calendar_v3.Schema$Event) {
+  async _updateExternalEvent(event: calendar_v3.Schema$Event) {
     const myGoogleAuth = await this.auth.getToken()
     const calendar = google.calendar({
       version: 'v3',
@@ -1396,7 +1396,16 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       requestBody: event,
     })
   }
-  async updateEventRsvpForExternalEvent(
+  async updateExternalEvent(event: calendar_v3.Schema$Event): Promise<void> {
+    return withRetry<void>(async () => this._updateExternalEvent(event), {
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 30000,
+      retryCondition,
+    })
+  }
+
+  async _updateEventRsvpForExternalEvent(
     calendarId: string,
     eventId: string,
     attendeeEmail: string,
@@ -1442,6 +1451,58 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       eventId,
       requestBody: payload,
     })
+  }
+  async updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: AttendeeStatus
+  ): Promise<void> {
+    return withRetry<void>(
+      async () =>
+        this._updateEventRsvpForExternalEvent(
+          calendarId,
+          eventId,
+          attendeeEmail,
+          responseStatus
+        ),
+      {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 30000,
+        retryCondition,
+      }
+    )
+  }
+  async _deleteExternalEvent(
+    calendarId: string,
+    eventId: string
+  ): Promise<void> {
+    const auth = this.auth
+    const myGoogleAuth = await auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    await calendar.events.delete({
+      auth: myGoogleAuth,
+      calendarId,
+      eventId,
+    })
+  }
+  async deleteExternalEvent(
+    calendarId: string,
+    eventId: string
+  ): Promise<void> {
+    return withRetry<void>(
+      async () => this._deleteExternalEvent(calendarId, eventId),
+      {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 30000,
+        retryCondition,
+      }
+    )
   }
 }
 

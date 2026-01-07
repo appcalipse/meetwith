@@ -1,6 +1,6 @@
 import { GaxiosError } from 'gaxios'
 
-interface RetryOptions {
+export interface RetryOptions {
   maxRetries?: number
   baseDelay?: number
   maxDelay?: number

@@ -13,10 +13,11 @@ import {
   Text,
   Tooltip,
   useColorModeValue,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
 import { DateTime } from 'luxon'
-import { FC, useMemo, useRef } from 'react'
+import { FC, useEffect, useMemo, useRef, useState } from 'react'
 import { FaRegCopy, FaTrash } from 'react-icons/fa6'
 import { Frequency } from 'rrule'
 import sanitizeHtml from 'sanitize-html'
@@ -28,6 +29,7 @@ import {
   isAccepted,
   isDeclined,
   isPendingAction,
+  UnifiedAttendee,
   UnifiedEvent,
 } from '@/types/Calendar'
 import { logEvent } from '@/utils/analytics'
@@ -35,14 +37,15 @@ import { updateCalendarRsvpStatus } from '@/utils/api_helper'
 import { dateToLocalizedRange } from '@/utils/calendar_manager'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { queryClient } from '@/utils/react_query'
-
+import { useToastHelpers } from '@/utils/toasts'
+import { rsvpQueue } from '@/utils/workers/rsvp.queue'
+import { DeleteEventDialog } from '../schedule/delete-event-dialog'
 import { defineLabel } from './MeetingCard'
 
 interface CalendarEventCardProps {
   event: UnifiedEvent
   timezone: string
-  timeWindow: { start: DateTime; end: DateTime }
-  currentAccountAddress?: string
+  removeEventFromCache: (eventId: string) => void
   updateAttendeeStatus: (
     eventId: string,
     accountEmail: string,
@@ -63,39 +66,42 @@ const getRecurrenceLabel = (freq?: Frequency) => {
       return null
   }
 }
+const getActors = (event: UnifiedEvent) =>
+  event.attendees?.find(attendee => attendee.email === event.accountEmail)
 
 const CalendarEventCard: FC<CalendarEventCardProps> = ({
   event,
   timezone,
   updateAttendeeStatus,
-  currentAccountAddress,
-  timeWindow,
+  removeEventFromCache,
 }) => {
-  const borderColor = useColorModeValue('gray.200', 'neutral.700')
-  const textColor = useColorModeValue('gray.600', 'gray.400')
-  const labelBgColor = useColorModeValue('blue.50', 'blue.900')
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const label = defineLabel(event.start as Date, event.end as Date, timezone)
   const { copyFeedbackOpen, handleCopy } = useClipboard()
   const rsvpAbortControllerRef = useRef<AbortController | null>(null)
-
-  const getUserStatus = () => {
-    const userAttendee = event.attendees?.find(
-      a => a.email === event.accountEmail
-    )
-    return userAttendee?.status
-  }
+  const { showErrorToast } = useToastHelpers()
   const bgColor = useColorModeValue('white', 'neutral.900')
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
   const isRecurring =
     event?.recurrence && Object.values(event?.recurrence).length > 0
   const recurrenceLabel = getRecurrenceLabel(event?.recurrence?.frequency)
-  const handleDelete = () => {}
   const participants = useMemo(() => {
     const result: string[] = []
-    for (const attendee of event.attendees || [
-      { email: event.accountEmail, name: 'You', isOrganizer: true },
-    ]) {
+    const attendees: UnifiedAttendee[] =
+      event?.attendees && event?.attendees.length > 0
+        ? event.attendees
+        : [
+            {
+              email: event.accountEmail,
+              name: 'You',
+              isOrganizer: true,
+              providerData: {},
+              status: AttendeeStatus.ACCEPTED,
+            },
+          ]
+
+    for (const attendee of attendees) {
       let display = ''
       if (attendee.email === event.accountEmail) {
         display = 'You'
@@ -107,27 +113,60 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
       if (attendee.isOrganizer) {
         display = `${display} (Organizer)`
       }
+      result.push(display)
     }
     return result.join(', ')
   }, [event])
-  const actor = useMemo(() => {
-    return event.attendees?.find(
-      attendee => attendee.email === event.accountEmail
-    )
+
+  const [actor, setActor] = useState(getActors(event))
+  useEffect(() => {
+    setActor(getActors(event))
   }, [event])
   const handleRSVP = async (status: AttendeeStatus) => {
+    const previousStatus = actor?.status
+
+    if (rsvpAbortControllerRef.current) {
+      rsvpAbortControllerRef.current.abort()
+    }
+    const abortController = new AbortController()
+    rsvpAbortControllerRef.current = abortController
+
+    setActor(prev => {
+      if (prev) {
+        return { ...prev, status }
+      }
+      return prev
+    })
+
     try {
-      const abortController = new AbortController()
-      rsvpAbortControllerRef.current = abortController
-      updateAttendeeStatus(event.id, event.accountEmail, status)
-      await updateCalendarRsvpStatus(
+      await rsvpQueue.enqueue(
         event.calendarId,
         event.sourceEventId,
         status,
         event.accountEmail,
         abortController.signal
       )
-    } catch (e) {
+
+      updateAttendeeStatus(event.sourceEventId, event.accountEmail, status)
+    } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        (error.message === 'Aborted' || error.message === 'Superseded')
+      ) {
+        // Intentionally cancelled, local state already updated by new request
+        return
+      }
+
+      setActor(prev => {
+        if (prev && previousStatus) {
+          return { ...prev, status: previousStatus }
+        }
+        return prev
+      })
+      showErrorToast(
+        'RSVP Update Failed',
+        'There was an error updating your RSVP status. Please try again.'
+      )
     } finally {
       rsvpAbortControllerRef.current = null
     }
@@ -141,8 +180,8 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
       bgColor={bgColor}
       mt={3}
       pt={{
-        base: label ? 3 : 0,
-        md: label ? 1.5 : 0,
+        base: 3,
+        md: 2,
       }}
     >
       <HStack position="absolute" right={0} top={0}>
@@ -233,13 +272,12 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
               >
                 <Button colorScheme="primary">Join meeting</Button>
               </Link>
-              <Tooltip label="Delete meeting" placement="top" display="none">
+              <Tooltip label="Delete meeting" placement="top">
                 <IconButton
                   color={iconColor}
                   aria-label="delete"
                   icon={<FaTrash size={16} />}
-                  onClick={handleDelete}
-                  display="none"
+                  onClick={onOpen}
                 />
               </Tooltip>
             </HStack>
@@ -284,10 +322,10 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
                     colorScheme="primary"
                     variant="link"
                     onClick={() => handleCopy(event.meeting_url || '')}
-                    leftIcon={<FaRegCopy />}
+                    leftIcon={
+                      <FaRegCopy size={16} display="block" cursor="pointer" />
+                    }
                   />
-
-                  {/* <FaRegCopy size={16} display="block" cursor="pointer" /> */}
                 </Tooltip>
               </Flex>
             </HStack>
@@ -311,7 +349,7 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
               </HStack>
             )}
           </VStack>
-          <HStack alignItems="center" gap={3.5} display="none">
+          <HStack alignItems="center" gap={3.5}>
             <Text fontWeight={700}>RSVP:</Text>
             <HStack alignItems="center" gap={2}>
               <Tag
@@ -326,6 +364,7 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
                   base: '12px',
                 }}
                 onClick={() => handleRSVP(AttendeeStatus.ACCEPTED)}
+                cursor="pointer"
               >
                 <TagLabel
                   color={isAccepted(actor?.status) ? 'white' : 'green.500'}
@@ -345,6 +384,7 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
                   base: '12px',
                 }}
                 onClick={() => handleRSVP(AttendeeStatus.DECLINED)}
+                cursor="pointer"
               >
                 <TagLabel
                   color={isDeclined(actor?.status) ? 'white' : 'red.250'}
@@ -366,6 +406,7 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
                   base: '12px',
                 }}
                 onClick={() => handleRSVP(AttendeeStatus.NEEDS_ACTION)}
+                cursor="pointer"
               >
                 <TagLabel
                   color={
@@ -379,6 +420,13 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
           </HStack>
         </VStack>
       </Box>
+      <DeleteEventDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        event={event}
+        afterCancel={() => removeEventFromCache(event.sourceEventId)}
+        participants={participants}
+      />
     </Box>
   )
 }

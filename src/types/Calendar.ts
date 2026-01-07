@@ -149,6 +149,14 @@ export interface CalendarEvents {
   mwwEvents: Array<ExtendedDBSlot | ExtendedSlotInstance | ExtendedSlotSeries>
   calendarEvents: Array<UnifiedEvent>
 }
+export type DashBoardMwwEvents = (ExtendedDBSlot | ExtendedSlotInstance) & {
+  decrypted: MeetingDecrypted
+}
+
+export interface ExtendedCalendarEvents {
+  mwwEvents: Array<DashBoardMwwEvents>
+  calendarEvents: Array<UnifiedEvent>
+}
 export type WithInterval<T> = T & {
   interval: Interval
 }

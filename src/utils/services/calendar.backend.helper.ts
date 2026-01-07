@@ -508,7 +508,7 @@ export const CalendarBackendHelper = {
       )
     }
   },
-  updateCalendaRsvpStatus: async (
+  updateCalendarRsvpStatus: async (
     account_address: string,
     calendarId: string,
     eventId: string,
@@ -541,6 +541,33 @@ export const CalendarBackendHelper = {
       attendeeEmail,
       status
     )
+  },
+  deleteEventFromCalendar: async (
+    account_address: string,
+    calendarId: string,
+    eventId: string
+  ): Promise<void> => {
+    const calendars = await getConnectedCalendars(account_address)
+    const targetCalendar = calendars.find(
+      cal =>
+        cal.calendars?.some(c => c.calendarId === calendarId && c.enabled) &&
+        cal.calendars?.some(c => c.calendarId === calendarId)
+    )
+
+    if (!targetCalendar) {
+      throw new Error(
+        `Calendar not found or not enabled for calendarId: ${calendarId}`
+      )
+    }
+
+    const integration = getConnectedCalendarIntegration(
+      targetCalendar.account_address,
+      targetCalendar.email,
+      targetCalendar.provider,
+      targetCalendar.payload
+    )
+
+    await integration.deleteExternalEvent(calendarId, eventId)
   },
 }
 

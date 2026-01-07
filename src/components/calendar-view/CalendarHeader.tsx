@@ -6,9 +6,9 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 
 const CalendarHeader: React.FC = ({}) => {
-  const { currrentDate } = useCalendarContext()
+  const { currentDate } = useCalendarContext()
   const currentAccount = useAccountContext()
-  const startOfWeek = currrentDate.startOf('week')
+  const startOfWeek = currentDate.startOf('week')
   const days = Array.from({
     length: 7,
   }).map((_, index) => {

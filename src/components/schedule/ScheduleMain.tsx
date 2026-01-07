@@ -18,6 +18,7 @@ import InviteParticipants from '@/components/schedule/participants/InvitePartici
 import ScheduleBase from '@/components/schedule/ScheduleBase'
 import ScheduleCompleted from '@/components/schedule/ScheduleCompleted'
 import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
+import { IInitialProps } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { QuickPollAvailabilityProvider } from '@/providers/quickpoll/QuickPollAvailabilityContext'
@@ -31,10 +32,12 @@ import { useParticipantPermissions } from '@/providers/schedule/PermissionsConte
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode, Intents } from '@/types/Dashboard'
 import {
+  DBSlot,
   MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
+  SlotInstance,
 } from '@/types/Meeting'
 import {
   ParticipantInfo,
@@ -58,6 +61,7 @@ import {
   getMeeting,
   getQuickPollById,
   getSlotByMeetingId,
+  getSlotInstanceById,
   updateQuickPoll,
 } from '@/utils/api_helper'
 import {
@@ -102,14 +106,6 @@ export enum Page {
   SCHEDULE_DETAILS,
   COMPLETED,
 }
-interface IInitialProps {
-  groupId?: string
-  intent?: Intents
-  meetingId?: string
-  conferenceId?: string
-  contactId?: string
-  pollId?: string
-}
 
 const ScheduleMain: FC<IInitialProps> = ({
   groupId,
@@ -118,6 +114,7 @@ const ScheduleMain: FC<IInitialProps> = ({
   contactId,
   conferenceId,
   pollId,
+  seriesId,
 }) => {
   const { currentAccount } = useContext(AccountContext)
   const { fetchPollCounts } = useContext(MetricStateContext)
@@ -282,9 +279,26 @@ const ScheduleMain: FC<IInitialProps> = ({
       let decryptedMeeting: MeetingDecrypted | null = null
       let actor = ''
       if (meetingId) {
-        const slot = await getMeeting(meetingId)
+        let slot: DBSlot | SlotInstance | null
+        if (meetingId.includes('_')) {
+          slot = await getSlotInstanceById(meetingId)
+        } else {
+          slot = await getMeeting(meetingId)
+        }
+        if (!slot) {
+          toast({
+            title: 'Meeting Not Found',
+            description: `The meeting you are trying to access does not exist or has been deleted.`,
+            status: 'error',
+            duration: 15000,
+            position: 'top',
+            isClosable: true,
+            onCloseComplete: () => push(`/dashboard/${EditMode.MEETINGS}`),
+          })
+          return
+        }
         decryptedMeeting = await decodeMeeting(slot, currentAccount!)
-        actor = slot.account_address!
+        actor = slot.account_address || ''
       } else if (conferenceId) {
         const slot = await getSlotByMeetingId(conferenceId)
         if (slot?.user_type === 'account') {
