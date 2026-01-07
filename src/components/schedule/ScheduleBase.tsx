@@ -45,6 +45,7 @@ import { InputTimePicker } from '@/components/input-time-picker'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal'
+import { IInitialProps } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import {
@@ -80,6 +81,7 @@ import {
 
 const ScheduleBase = () => {
   const { query } = useRouter()
+  const { seriesId, meetingId } = query as IInitialProps
   const { currentAccount } = useContext(AccountContext)
   const [isTitleValid, setIsTitleValid] = useState(true)
   const toast = useToast()
@@ -129,6 +131,11 @@ const ScheduleBase = () => {
     setGroupAvailability,
   } = useParticipants()
   const { handleCancel, handleSchedule } = useScheduleActions()
+  const {
+    isOpen: isOpenEditModeConfirm,
+    onOpen: onOpenEditModeConfirm,
+    onClose: onCloseEditModeConfirm,
+  } = useDisclosure()
   const {
     isDeleting,
     canDelete,
@@ -346,6 +353,27 @@ const ScheduleBase = () => {
     },
     [canManageParticipants, displayParticipants]
   )
+  const handleDeleteMeeting = useCallback(() => {
+    if (seriesId || meetingId?.includes('_')) {
+      onOpenEditModeConfirm()
+    } else {
+      onDeleteOpen()
+    }
+  }, [onOpenEditModeConfirm, onDeleteOpen, seriesId, meetingId])
+  const handleScheduleMeeting = useCallback(() => {
+    if (seriesId || meetingId?.includes('_')) {
+      onOpenEditModeConfirm()
+    } else {
+      handleSchedule()
+    }
+  }, [handleSchedule, onOpenEditModeConfirm, seriesId, meetingId])
+  const handleCancelMeeting = useCallback(() => {
+    if (seriesId || meetingId?.includes('_')) {
+      onOpenEditModeConfirm()
+    } else {
+      handleCancel()
+    }
+  }, [handleCancel, onOpenEditModeConfirm, seriesId, meetingId])
   return (
     <Box w="100%">
       <DiscoverATimeInfoModal
@@ -827,7 +855,7 @@ const ScheduleBase = () => {
                 flexBasis="50%"
                 h={'auto'}
                 colorScheme="primary"
-                onClick={handleSchedule}
+                onClick={handleScheduleMeeting}
                 isLoading={isScheduling}
                 isDisabled={
                   participants.length === 0 ||
@@ -850,7 +878,7 @@ const ScheduleBase = () => {
                   borderWidth={1}
                   color="red.500"
                   bg="transparent"
-                  onClick={handleCancel}
+                  onClick={handleCancelMeeting}
                   variant="outline"
                   flex={1}
                   flexBasis="40%"
@@ -867,7 +895,7 @@ const ScheduleBase = () => {
                   w="100%"
                   py={3}
                   h={'auto'}
-                  onClick={onDeleteOpen}
+                  onClick={handleDeleteMeeting}
                   color={'white'}
                   bg={'orangeButton.800'}
                   _hover={{
