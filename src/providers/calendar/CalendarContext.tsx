@@ -17,7 +17,7 @@ import {
 
 interface ICalendarContext {
   calendars: undefined | ConnectedCalendarCore[]
-  currrentDate: DateTime
+  currentDate: DateTime
   setCurrentDate: (date: DateTime) => void
   selectedCalendars: CalendarSyncInfo[]
   selectedSlot: WithInterval<MeetingDecrypted> | null
@@ -45,7 +45,7 @@ export type CalendarEventsData = {
 
 export const CalendarContext = React.createContext<ICalendarContext>({
   calendars: undefined,
-  currrentDate: DateTime.now(),
+  currentDate: DateTime.now(),
   setCurrentDate: () => {},
   selectedCalendars: [],
   setSelectedCalendars: () => {},
@@ -70,9 +70,7 @@ export const useCalendarContext = () => {
 export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   children,
 }) => {
-  const [currrentDate, setCurrentDate] = React.useState<DateTime>(
-    DateTime.now()
-  )
+  const [currentDate, setCurrentDate] = React.useState<DateTime>(DateTime.now())
   const [selectedCalendars, setSelectedCalendars] = React.useState<
     CalendarSyncInfo[]
   >([])
@@ -114,8 +112,8 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     [currentAccount]
   )
   const currentMonth = React.useMemo(
-    () => currrentDate.startOf('month'),
-    [currrentDate.year, currrentDate.month]
+    () => currentDate.startOf('month'),
+    [currentDate.year, currentDate.month]
   )
 
   const { data: events, isLoading } = useQuery({
@@ -127,8 +125,8 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
 
   React.useEffect(() => {
     if (isLoading) return
-    const previousMonth = currrentDate.minus({ month: 1 })
-    const nextMonth = currrentDate.plus({ month: 1 })
+    const previousMonth = currentDate.minus({ month: 1 })
+    const nextMonth = currentDate.plus({ month: 1 })
 
     queryClient.prefetchQuery({
       queryKey: createEventsQueryKey(previousMonth),
@@ -225,7 +223,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   const context: ICalendarContext = React.useMemo(
     () => ({
       calendars,
-      currrentDate,
+      currentDate,
       setCurrentDate,
       selectedCalendars,
       setSelectedCalendars,
@@ -237,7 +235,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     }),
     [
       calendars,
-      currrentDate,
+      currentDate,
       selectedCalendars,
       getSlotBgColor,
       selectedSlot,
