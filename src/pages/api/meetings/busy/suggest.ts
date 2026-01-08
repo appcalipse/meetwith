@@ -61,7 +61,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         busySlots,
         accounts
       )
-      return res.status(200).json(suggestedTimes)
+      return res.status(200).json(
+        suggestedTimes.map(slot => ({
+          start: slot.start.toJSDate(),
+          end: slot.end.toJSDate(),
+        }))
+      )
     } catch (e) {
       Sentry.captureException(e, {
         extra: {
