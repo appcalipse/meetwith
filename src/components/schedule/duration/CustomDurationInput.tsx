@@ -1,5 +1,5 @@
 import { FormControl, FormLabel, HStack, Input, VStack } from '@chakra-ui/react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { useDebounceCallback } from '@/hooks/useDebounceCallback'
@@ -12,6 +12,7 @@ import {
 import { CustomDurationInputProps } from './DurationModeSelector.types'
 
 const DEFAULT_DURATION = 60
+const DEBOUNCE_DELAY = 500
 
 const CustomDurationInput: React.FC<CustomDurationInputProps> = ({
   value,
@@ -24,36 +25,48 @@ const CustomDurationInput: React.FC<CustomDurationInputProps> = ({
     formatDurationValue(value > 0 ? value : DEFAULT_DURATION)
   )
   const [localError, setLocalError] = useState<string | undefined>()
-  const [isFocused, setIsFocused] = useState(false)
+  const isFocusedRef = useRef(false)
+  const lastValidValueRef = useRef(value > 0 ? value : DEFAULT_DURATION)
 
-  const debouncedOnChange = useDebounceCallback(onChange, 300)
+  const commitChange = useCallback(
+    (minutes: number) => {
+      lastValidValueRef.current = minutes
+      onChange(minutes)
+    },
+    [onChange]
+  )
+
+  const debouncedCommit = useDebounceCallback(commitChange, DEBOUNCE_DELAY)
 
   useEffect(() => {
-    if (!isFocused && value > 0) {
+    if (!isFocusedRef.current && value > 0) {
       setInputValue(formatDurationValue(value))
+      lastValidValueRef.current = value
     }
-  }, [value, isFocused])
+  }, [value])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInput = e.target.value
     setInputValue(newInput)
 
-    const parsedMinutes = parseDurationInput(newInput)
-    const validation = validateDuration(parsedMinutes)
+    if (newInput.trim() !== '') {
+      const parsedMinutes = parseDurationInput(newInput)
+      const validation = validateDuration(parsedMinutes)
 
-    if (!validation.isValid) {
-      setLocalError(validation.errorMessage)
+      if (validation.isValid && parsedMinutes !== null) {
+        setLocalError(undefined)
+        debouncedCommit(parsedMinutes)
+      } else {
+        setLocalError(validation.errorMessage)
+      }
     } else {
       setLocalError(undefined)
-      if (parsedMinutes !== null) {
-        debouncedOnChange(parsedMinutes)
-      }
     }
   }
 
   const handleBlur = () => {
-    setIsFocused(false)
-    debouncedOnChange.cancel()
+    isFocusedRef.current = false
+    debouncedCommit.cancel()
 
     if (onBlur) {
       onBlur()
@@ -69,15 +82,15 @@ const CustomDurationInput: React.FC<CustomDurationInputProps> = ({
     ) {
       setInputValue(formatDurationValue(DEFAULT_DURATION))
       setLocalError(undefined)
-      onChange(DEFAULT_DURATION)
+      commitChange(DEFAULT_DURATION)
     } else {
-      onChange(parsedMinutes)
+      commitChange(parsedMinutes)
       setInputValue(formatDurationValue(parsedMinutes))
     }
   }
 
   const handleFocus = () => {
-    setIsFocused(true)
+    isFocusedRef.current = true
   }
 
   const hasError = externalIsInvalid || !!localError
