@@ -60,6 +60,7 @@ import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { isGroupParticipant, Participant } from '@/types/schedule'
+import { MeetingAction } from '@/utils/constants/meeting'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -78,6 +79,7 @@ import {
   ellipsizeAddress,
   getAllParticipantsDisplayName,
 } from '@/utils/user_manager'
+import ConfirmEditModeModal from './ConfirmEditMode'
 
 const ScheduleBase = () => {
   const { query } = useRouter()
@@ -131,6 +133,9 @@ const ScheduleBase = () => {
     setGroupAvailability,
   } = useParticipants()
   const { handleCancel, handleSchedule } = useScheduleActions()
+  const [currentMeetingAction, setCurrentMeetingAction] = useState<
+    MeetingAction | undefined
+  >(undefined)
   const {
     isOpen: isOpenEditModeConfirm,
     onOpen: onOpenEditModeConfirm,
@@ -355,6 +360,7 @@ const ScheduleBase = () => {
   )
   const handleDeleteMeeting = useCallback(() => {
     if (seriesId || meetingId?.includes('_')) {
+      setCurrentMeetingAction(MeetingAction.DELETE_MEETING)
       onOpenEditModeConfirm()
     } else {
       onDeleteOpen()
@@ -362,6 +368,7 @@ const ScheduleBase = () => {
   }, [onOpenEditModeConfirm, onDeleteOpen, seriesId, meetingId])
   const handleScheduleMeeting = useCallback(() => {
     if (seriesId || meetingId?.includes('_')) {
+      setCurrentMeetingAction(MeetingAction.SCHEDULE_MEETING)
       onOpenEditModeConfirm()
     } else {
       handleSchedule()
@@ -369,11 +376,23 @@ const ScheduleBase = () => {
   }, [handleSchedule, onOpenEditModeConfirm, seriesId, meetingId])
   const handleCancelMeeting = useCallback(() => {
     if (seriesId || meetingId?.includes('_')) {
+      setCurrentMeetingAction(MeetingAction.CANCEL_MEETING)
       onOpenEditModeConfirm()
     } else {
       handleCancel()
     }
   }, [handleCancel, onOpenEditModeConfirm, seriesId, meetingId])
+  const handleActionAfterEditModeConfirm = useCallback(() => {
+    if (currentMeetingAction === MeetingAction.SCHEDULE_MEETING) {
+      handleSchedule()
+    } else if (currentMeetingAction === MeetingAction.CANCEL_MEETING) {
+      handleCancel()
+    } else if (currentMeetingAction === MeetingAction.DELETE_MEETING) {
+      onDeleteOpen()
+    }
+    setCurrentMeetingAction(undefined)
+  }, [currentMeetingAction, handleSchedule, handleCancel, onDeleteOpen])
+
   return (
     <Box w="100%">
       <DiscoverATimeInfoModal
@@ -398,7 +417,11 @@ const ScheduleBase = () => {
         isScheduler={isScheduler}
         openSchedulerModal={onSchedulerDeleteOpen}
       />
-
+      <ConfirmEditModeModal
+        isOpen={isOpenEditModeConfirm}
+        onClose={onCloseEditModeConfirm}
+        afterClose={handleActionAfterEditModeConfirm}
+      />
       <VStack
         gap={6}
         w={{
