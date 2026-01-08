@@ -1,35 +1,36 @@
-import { Box, FormHelperText, Input, VStack } from '@chakra-ui/react'
+import { FormControl, FormLabel, HStack, Input, VStack } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 
-import { durationToHumanReadable } from '@/utils/calendar_manager'
-import { parseDurationInput, validateDuration } from '@/utils/duration.helper'
+import InfoTooltip from '@/components/profile/components/Tooltip'
+import { useDebounceCallback } from '@/hooks/useDebounceCallback'
+import {
+  formatDurationValue,
+  parseDurationInput,
+  validateDuration,
+} from '@/utils/duration.helper'
 
 import { CustomDurationInputProps } from './DurationModeSelector.types'
+
+const DEFAULT_DURATION = 60
 
 const CustomDurationInput: React.FC<CustomDurationInputProps> = ({
   value,
   onChange,
   isInvalid: externalIsInvalid,
-  errorMessage: externalErrorMessage,
   onBlur,
   isDisabled,
 }) => {
-  const [inputValue, setInputValue] = useState('')
+  const [inputValue, setInputValue] = useState(() =>
+    formatDurationValue(value > 0 ? value : DEFAULT_DURATION)
+  )
   const [localError, setLocalError] = useState<string | undefined>()
   const [isFocused, setIsFocused] = useState(false)
 
+  const debouncedOnChange = useDebounceCallback(onChange, 300)
+
   useEffect(() => {
     if (!isFocused && value > 0) {
-      const hours = Math.floor(value / 60)
-      const minutes = value % 60
-
-      if (hours > 0 && minutes > 0) {
-        setInputValue(`${hours}h ${minutes}m`)
-      } else if (hours > 0) {
-        setInputValue(`${hours}h`)
-      } else {
-        setInputValue(String(value))
-      }
+      setInputValue(formatDurationValue(value))
     }
   }, [value, isFocused])
 
@@ -38,7 +39,6 @@ const CustomDurationInput: React.FC<CustomDurationInputProps> = ({
     setInputValue(newInput)
 
     const parsedMinutes = parseDurationInput(newInput)
-
     const validation = validateDuration(parsedMinutes)
 
     if (!validation.isValid) {
@@ -46,13 +46,15 @@ const CustomDurationInput: React.FC<CustomDurationInputProps> = ({
     } else {
       setLocalError(undefined)
       if (parsedMinutes !== null) {
-        onChange(parsedMinutes)
+        debouncedOnChange(parsedMinutes)
       }
     }
   }
 
   const handleBlur = () => {
     setIsFocused(false)
+    debouncedOnChange.cancel()
+
     if (onBlur) {
       onBlur()
     }
@@ -60,77 +62,62 @@ const CustomDurationInput: React.FC<CustomDurationInputProps> = ({
     const parsedMinutes = parseDurationInput(inputValue)
     const validation = validateDuration(parsedMinutes)
 
-    if (!validation.isValid && value > 0) {
-      // Reset to last valid value
-      const hours = Math.floor(value / 60)
-      const minutes = value % 60
-      if (hours > 0 && minutes > 0) {
-        setInputValue(`${hours}h ${minutes}m`)
-      } else if (hours > 0) {
-        setInputValue(`${hours}h`)
-      } else {
-        setInputValue(String(value))
-      }
+    if (
+      !validation.isValid ||
+      parsedMinutes === null ||
+      inputValue.trim() === ''
+    ) {
+      setInputValue(formatDurationValue(DEFAULT_DURATION))
       setLocalError(undefined)
+      onChange(DEFAULT_DURATION)
+    } else {
+      onChange(parsedMinutes)
+      setInputValue(formatDurationValue(parsedMinutes))
     }
   }
 
   const handleFocus = () => {
     setIsFocused(true)
-    if (value > 0) {
-      const hours = Math.floor(value / 60)
-      const minutes = value % 60
-      if (hours > 0 && minutes > 0) {
-        setInputValue(`${hours}h${minutes}m`)
-      } else if (hours > 0) {
-        setInputValue(`${hours}h`)
-      } else {
-        setInputValue(String(value))
-      }
-    }
   }
 
   const hasError = externalIsInvalid || !!localError
-  const displayError = externalErrorMessage || localError
 
   return (
-    <VStack align="stretch" spacing={1} width="100%">
-      <Input
-        type="text"
-        value={inputValue}
-        onChange={handleInputChange}
-        onBlur={handleBlur}
-        onFocus={handleFocus}
-        placeholder="e.g., 90, 1h 30m, or 2:30"
+    <VStack gap={2} alignItems={'flex-start'} width="fit-content" minW={'10px'}>
+      <FormControl
         isInvalid={hasError}
-        errorBorderColor="red.500"
-        borderColor="input-border"
-        bg="select-bg"
-        width={'max-content'}
-        maxW="350px"
         isDisabled={isDisabled}
-        _placeholder={{
-          color: 'neutral.400',
-        }}
-      />
-      <Box minH="20px">
-        {displayError && (
-          <FormHelperText color="red.500" mt={1} fontSize="sm">
-            {displayError}
-          </FormHelperText>
-        )}
-        {!displayError && value > 0 && !isFocused && (
-          <FormHelperText color="neutral.400" mt={1} fontSize="sm">
-            {durationToHumanReadable(value)}
-          </FormHelperText>
-        )}
-        {!displayError && !value && (
-          <FormHelperText color="neutral.400" mt={1} fontSize="sm">
-            Enter duration in minutes (e.g., 90) or hours and minutes (e.g., 1h
-            30m)
-          </FormHelperText>
-        )}
-      </Box>
+        w={'fit-content'}
+      >
+        <HStack width="fit-content" gap={0}>
+          <FormLabel htmlFor="custom-duration" mb={0} mr={0}>
+            Duration
+          </FormLabel>
+          <InfoTooltip
+            text="Enter any custom duration between 5-480 minutes. Supports formats like '90' (minutes) or '1:30' (hours:minutes)."
+            ml={1}
+          />
+        </HStack>
+        <Input
+          id="custom-duration"
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onBlur={handleBlur}
+          onFocus={handleFocus}
+          placeholder="e.g., 90 or 1:30"
+          isInvalid={hasError}
+          errorBorderColor="red.500"
+          borderColor="input-border"
+          bg="select-bg"
+          width={'max-content'}
+          maxW="350px"
+          isDisabled={isDisabled}
+          _placeholder={{
+            color: 'neutral.400',
+          }}
+        />
+      </FormControl>
     </VStack>
   )
 }

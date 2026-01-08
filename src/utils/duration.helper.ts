@@ -4,14 +4,14 @@ import { DURATION_CONFIG } from '@/utils/constants/schedule'
 export const parseDurationInput = (input: string): number | null => {
   if (!input || input.trim() === '') return null
 
-  const trimmed = input.trim().toLowerCase()
+  const trimmed = input.trim()
 
   const pureNumber = parseInt(trimmed)
   if (!isNaN(pureNumber) && trimmed === String(pureNumber)) {
     return pureNumber
   }
 
-  // Match HH:MM or H:MM format first (e.g., "1:30" → 1 hour 30 minutes)
+  // Then try HH:MM or H:MM format (e.g., "1:30" → 1 hour 30 minutes)
   const colonMatch = trimmed.match(/^(\d+):(\d+)$/)
   if (colonMatch) {
     const hours = parseInt(colonMatch[1])
@@ -21,31 +21,7 @@ export const parseDurationInput = (input: string): number | null => {
     }
   }
 
-  // Parse hours and minutes formats
-  let totalMinutes = 0
-  let foundAny = false
-
-  // Match hours: "2h", "2 hours", "2 hour", etc.
-  const hourMatches = trimmed.match(/(\d+)\s*h(?:ou)?r(?:s)?/i)
-  if (hourMatches) {
-    const hours = parseInt(hourMatches[1])
-    if (!isNaN(hours)) {
-      totalMinutes += hours * 60
-      foundAny = true
-    }
-  }
-
-  // Match minutes: "30m", "30 min", "30 minutes", etc.
-  const minuteMatches = trimmed.match(/(\d+)\s*m(?:in(?:ute)?(?:s)?)?/i)
-  if (minuteMatches) {
-    const minutes = parseInt(minuteMatches[1])
-    if (!isNaN(minutes)) {
-      totalMinutes += minutes
-      foundAny = true
-    }
-  }
-
-  return foundAny && totalMinutes > 0 ? totalMinutes : null
+  return null
 }
 
 export const validateDuration = (
@@ -75,4 +51,16 @@ export const validateDuration = (
   }
 
   return { isValid: true }
+}
+
+export const formatDurationValue = (minutes: number): string => {
+  if (minutes <= 0) return ''
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (hours > 0 && mins > 0) {
+    return `${hours}:${String(mins).padStart(2, '0')}`
+  } else if (hours > 0) {
+    return `${hours}:00`
+  }
+  return String(minutes)
 }

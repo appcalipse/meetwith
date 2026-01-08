@@ -25,6 +25,7 @@ import { FaAnglesRight } from 'react-icons/fa6'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import { DurationModeInputs } from '@/components/schedule/duration/DurationModeInputs'
 import DurationModeSelector from '@/components/schedule/duration/DurationModeSelector'
 import useAccountContext from '@/hooks/useAccountContext'
 import useSlotsWithAvailability from '@/hooks/useSlotsWithAvailability'
@@ -550,9 +551,16 @@ export function SchedulePickTime({
     setCurrentSelectedDate(newDate)
   }
   const HOURS_SLOTS = useMemo(() => {
+    const hourLabelDuration =
+      durationMode === DurationMode.TIME_RANGE
+        ? slotDuration
+        : duration >= 45
+        ? duration
+        : 60
+
     const slots = getEmptySlots(
       DateTime.now(),
-      slotDuration,
+      hourLabelDuration,
       timezone,
       durationMode === DurationMode.TIME_RANGE
         ? timeRangeFilter ?? undefined
@@ -562,7 +570,7 @@ export function SchedulePickTime({
       const zonedTime = val.start.setZone(timezone)
       return zonedTime.toFormat(zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a')
     })
-  }, [slotDuration, timezone, durationMode, timeRangeFilter])
+  }, [slotDuration, duration, timezone, durationMode, timeRangeFilter])
 
   const isBackDisabled = useMemo(() => {
     const selectedDate = currentSelectedDate.setZone(timezone)
@@ -707,6 +715,19 @@ export function SchedulePickTime({
             timezone={timezone}
             isDisabled={!canEditMeetingDetails || isScheduling}
           />
+          {(durationMode === DurationMode.CUSTOM ||
+            durationMode === DurationMode.TIME_RANGE) && (
+            <DurationModeInputs
+              mode={durationMode}
+              duration={duration}
+              timeRange={timeRangeFilter}
+              onModeChange={setDurationMode}
+              onDurationChange={setDuration}
+              onTimeRangeChange={setTimeRangeFilter}
+              timezone={timezone}
+              isDisabled={!canEditMeetingDetails || isScheduling}
+            />
+          )}
           {isUpdatingMeeting && (
             <Button
               rightIcon={<FaArrowRight />}

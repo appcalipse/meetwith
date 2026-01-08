@@ -1,5 +1,4 @@
 import {
-  Box,
   FormControl,
   FormHelperText,
   FormLabel,
@@ -10,6 +9,7 @@ import {
 } from '@chakra-ui/react'
 import { useEffect, useMemo, useState } from 'react'
 
+import InfoTooltip from '@/components/profile/components/Tooltip'
 import {
   convertTime12To24,
   convertTime24To12,
@@ -90,23 +90,21 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
   }
 
   const hasError = externalIsInvalid || !!localError
-  const displayError = externalErrorMessage || localError
 
   return (
-    <VStack align="stretch" spacing={2} width="100%">
-      <HStack spacing={4} align="flex-start" flexWrap="wrap">
+    <>
+      <VStack
+        gap={2}
+        alignItems={'flex-start'}
+        width="fit-content"
+        minW={'10px'}
+      >
         <FormControl
           w={'fit-content'}
           isInvalid={hasError}
           isDisabled={isDisabled}
         >
-          <FormLabel htmlFor="start-time">
-            Start time
-            <Text color="red.500" display="inline">
-              {' '}
-              *
-            </Text>
-          </FormLabel>
+          <FormLabel htmlFor="start-time">Start time</FormLabel>
           <ChakraSelect
             id="start-time"
             value={startTime12}
@@ -126,19 +124,20 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
             ))}
           </ChakraSelect>
         </FormControl>
+      </VStack>
 
+      <VStack
+        gap={2}
+        alignItems={'flex-start'}
+        width="fit-content"
+        minW={'10px'}
+      >
         <FormControl
           w={'fit-content'}
           isInvalid={hasError}
           isDisabled={isDisabled}
         >
-          <FormLabel htmlFor="end-time">
-            End time
-            <Text color="red.500" display="inline">
-              {' '}
-              *
-            </Text>
-          </FormLabel>
+          <FormLabel htmlFor="end-time">End time</FormLabel>
           <ChakraSelect
             id="end-time"
             value={endTime12}
@@ -158,21 +157,8 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
             ))}
           </ChakraSelect>
         </FormControl>
-      </HStack>
-
-      <Box minH="20px">
-        {displayError && (
-          <FormHelperText color="red.500" mt={1} fontSize="sm">
-            {displayError}
-          </FormHelperText>
-        )}
-        {!displayError && (
-          <FormHelperText color="neutral.400" mt={1} fontSize="sm">
-            Select a time window between 00:00 AM - 11:45 PM
-          </FormHelperText>
-        )}
-      </Box>
-    </VStack>
+      </VStack>
+    </>
   )
 }
 
