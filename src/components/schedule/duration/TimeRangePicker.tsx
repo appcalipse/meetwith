@@ -23,7 +23,6 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
   onStartTimeChange,
   onEndTimeChange,
   isInvalid: externalIsInvalid,
-  errorMessage: externalErrorMessage,
   isDisabled,
 }) => {
   const [localError, setLocalError] = useState<string | undefined>()

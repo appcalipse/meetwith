@@ -3,7 +3,6 @@ import {
   FormLabel,
   HStack,
   Select as ChakraSelect,
-  Text,
   VStack,
 } from '@chakra-ui/react'
 import { useMemo } from 'react'
@@ -12,6 +11,7 @@ import InfoTooltip from '@/components/profile/components/Tooltip'
 import { DurationMode } from '@/types/schedule'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
+import { calculateDurationFromTimeRange } from '@/utils/duration.helper'
 
 import { DurationModeSelectorProps } from './DurationModeSelector.types'
 
@@ -31,19 +31,6 @@ const DurationModeSelector: React.FC<DurationModeSelectorProps> = ({
     return preset ? preset.duration : null
   }, [duration])
 
-  const getDurationTooltipText = () => {
-    switch (mode) {
-      case DurationMode.PRESET:
-        return 'Select from standard meeting durations (15, 30, 45, 60, 90, 120, 150, or 180 minutes).'
-      case DurationMode.CUSTOM:
-        return 'Enter any custom duration between 5-480 minutes. Supports formats like "90", "1h 30m", or "2:30".'
-      case DurationMode.TIME_RANGE:
-        return 'Select a time window (start and end time) to find availability within that range. The meeting duration will equal the selected time range.'
-      default:
-        return ''
-    }
-  }
-
   // Handle mode dropdown change
   const handleModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedMode = e.target.value as DurationMode
@@ -61,17 +48,12 @@ const DurationModeSelector: React.FC<DurationModeSelectorProps> = ({
         endTime: '17:00',
       }
       onTimeRangeChange(defaultTimeRange)
-      // Calculate duration from default time range
-      const [startHours, startMinutes] = defaultTimeRange.startTime
-        .split(':')
-        .map(Number)
-      const [endHours, endMinutes] = defaultTimeRange.endTime
-        .split(':')
-        .map(Number)
-      const startTotalMinutes = startHours * 60 + startMinutes
-      const endTotalMinutes = endHours * 60 + endMinutes
-      const durationMinutes = endTotalMinutes - startTotalMinutes
-      onDurationChange(durationMinutes)
+      onDurationChange(
+        calculateDurationFromTimeRange(
+          defaultTimeRange.startTime,
+          defaultTimeRange.endTime
+        )
+      )
     } else if (selectedMode === DurationMode.PRESET) {
       // Switch to preset mode
       onModeChange(DurationMode.PRESET)
@@ -132,7 +114,10 @@ const DurationModeSelector: React.FC<DurationModeSelectorProps> = ({
               <FormLabel htmlFor="preset-duration" mb={0} mr={0}>
                 Duration
               </FormLabel>
-              <InfoTooltip text={getDurationTooltipText()} ml={1} />
+              <InfoTooltip
+                text="Select from standard meeting durations (15, 30, 45, 60, 90, 120, 150, or 180 minutes)."
+                ml={1}
+              />
             </HStack>
             <ChakraSelect
               id="preset-duration"

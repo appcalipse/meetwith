@@ -64,3 +64,19 @@ export const formatDurationValue = (minutes: number): string => {
   }
   return String(minutes)
 }
+
+export const calculateDurationFromTimeRange = (
+  startTime: string,
+  endTime: string
+): number => {
+  const [startHours, startMinutes] = startTime.split(':').map(Number)
+  const [endHours, endMinutes] = endTime.split(':').map(Number)
+
+  const startTotalMinutes = startHours * 60 + startMinutes
+  const endTotalMinutes = endHours * 60 + endMinutes
+
+  // Handle overnight ranges (e.g., 22:00 - 02:00)
+  return endTotalMinutes >= startTotalMinutes
+    ? endTotalMinutes - startTotalMinutes
+    : 24 * 60 - startTotalMinutes + endTotalMinutes
+}

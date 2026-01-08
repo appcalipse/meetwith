@@ -1,7 +1,7 @@
-import { VStack } from '@chakra-ui/react'
 import React from 'react'
 
 import { DurationMode } from '@/types/schedule'
+import { calculateDurationFromTimeRange } from '@/utils/duration.helper'
 
 import CustomDurationInput from './CustomDurationInput'
 import { DurationModeSelectorProps } from './DurationModeSelector.types'
@@ -21,20 +21,12 @@ export const DurationModeInputs: React.FC<DurationModeSelectorProps> = ({
     onTimeRangeChange(newTimeRange)
 
     if (newTimeRange) {
-      const [startHours, startMinutes] = newTimeRange.startTime
-        .split(':')
-        .map(Number)
-      const [endHours, endMinutes] = newTimeRange.endTime.split(':').map(Number)
-
-      const startTotalMinutes = startHours * 60 + startMinutes
-      const endTotalMinutes = endHours * 60 + endMinutes
-
-      const durationMinutes =
-        endTotalMinutes >= startTotalMinutes
-          ? endTotalMinutes - startTotalMinutes
-          : 24 * 60 - startTotalMinutes + endTotalMinutes
-
-      onDurationChange(durationMinutes)
+      onDurationChange(
+        calculateDurationFromTimeRange(
+          newTimeRange.startTime,
+          newTimeRange.endTime
+        )
+      )
     }
   }
 

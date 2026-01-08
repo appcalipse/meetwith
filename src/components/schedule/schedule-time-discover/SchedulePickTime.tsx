@@ -3,13 +3,10 @@ import {
   Box,
   Button,
   Flex,
-  FormControl,
-  FormLabel,
   Grid,
   Heading,
   HStack,
   IconButton,
-  Select as ChakraSelect,
   SlideFade,
   Text,
   useBreakpointValue,
@@ -712,7 +709,6 @@ export function SchedulePickTime({
             onModeChange={setDurationMode}
             onDurationChange={setDuration}
             onTimeRangeChange={setTimeRangeFilter}
-            timezone={timezone}
             isDisabled={!canEditMeetingDetails || isScheduling}
           />
           {(durationMode === DurationMode.CUSTOM ||
@@ -724,7 +720,6 @@ export function SchedulePickTime({
               onModeChange={setDurationMode}
               onDurationChange={setDuration}
               onTimeRangeChange={setTimeRangeFilter}
-              timezone={timezone}
               isDisabled={!canEditMeetingDetails || isScheduling}
             />
           )}
