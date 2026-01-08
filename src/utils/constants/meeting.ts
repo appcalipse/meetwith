@@ -7,11 +7,17 @@ export enum UpdateMode {
 
 export const updateModes = [
   {
-    label: 'All events',
-    value: UpdateMode.ALL_EVENTS,
-  },
-  {
     label: 'This event',
     value: UpdateMode.SINGLE_EVENT,
   },
+  {
+    label: 'All events',
+    value: UpdateMode.ALL_EVENTS,
+  },
 ]
+
+export enum MeetingAction {
+  SCHEDULE_MEETING = 'schedule_meeting',
+  CANCEL_MEETING = 'cancel_meeting',
+  DELETE_MEETING = 'delete_meeting',
+}
