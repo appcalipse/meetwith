@@ -907,6 +907,8 @@ const updateMeetingInstance = async (
     signature
   )
 
+  // We need to offset every participants slots to that of this instance of the inserted
+
   //TODO: anyone can update a meeting, but we might need to change the participants statuses
 
   // make sure that we are trying to update the latest version of the meeting,
@@ -935,6 +937,13 @@ const updateMeetingInstance = async (
       .filter(p => p.account_address)
       .map(p => p.account_address!.toLowerCase()),
   ])
+
+  const toAdd = diff(
+    participants
+      .filter(p => p.account_address)
+      .map(p => p.account_address!.toLowerCase()),
+    existingMeetingAccounts
+  )
 
   // Prevent non-schedulers from changing the number of participants:
   // If the acting user is NOT the scheduler and the number of participants has changed,
@@ -971,6 +980,10 @@ const updateMeetingInstance = async (
 
   const guestsToRemove = oldGuests.filter(p =>
     guestsToRemoveEmails.includes(p.guest_email!)
+  )
+  const guestsToAddEmails = diff(
+    guests,
+    oldGuests.map(p => p.guest_email!)
   )
 
   const rootMeetingId = existingMeeting?.meeting_id
@@ -1032,6 +1045,8 @@ const updateMeetingInstance = async (
     guestsToRemove,
     version: decryptedMeeting.version + 1,
     ignoreOwnerAvailability: true,
+    toAdd,
+    guestsToAdd: guestsToAddEmails,
   }
 
   const slot: DBSlot = await apiUpdateMeetingInstance(
@@ -2555,4 +2570,5 @@ export {
   updateMeetingAsGuest,
   updateMeetingConferenceGuest,
   updateMeetingInstance,
+  updateMeetingSeries,
 }
