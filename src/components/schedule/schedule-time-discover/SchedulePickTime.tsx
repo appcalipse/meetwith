@@ -3,13 +3,10 @@ import {
   Box,
   Button,
   Flex,
-  FormControl,
-  FormLabel,
   Grid,
   Heading,
   HStack,
   IconButton,
-  Select as ChakraSelect,
   SlideFade,
   Text,
   useBreakpointValue,
@@ -25,6 +22,8 @@ import { FaAnglesRight } from 'react-icons/fa6'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import { DurationModeInputs } from '@/components/schedule/duration/DurationModeInputs'
+import DurationModeSelector from '@/components/schedule/duration/DurationModeSelector'
 import useAccountContext from '@/hooks/useAccountContext'
 import useSlotsWithAvailability from '@/hooks/useSlotsWithAvailability'
 import {
@@ -35,14 +34,14 @@ import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { TimeSlot } from '@/types/Meeting'
+import { DurationMode } from '@/types/schedule'
 import {
   fetchBusySlotsRawForMultipleAccounts,
   getExistingAccounts,
   getSuggestedSlots,
 } from '@/utils/api_helper'
-import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
-import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
+import { DURATION_CONFIG } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
   getCustomSelectComponents,
@@ -52,7 +51,7 @@ import {
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { mergeAvailabilityBlocks } from '@/utils/schedule.helper'
-import { getEmptySlots } from '@/utils/slots.helper'
+import { getEmptySlots, isTimeWithinTimeRange } from '@/utils/slots.helper'
 import { getAccountDisplayName } from '@/utils/user_manager'
 export interface AccountAddressRecord extends ParticipantInfo {
   account_address: string
@@ -126,6 +125,10 @@ export function SchedulePickTime({
     isScheduling,
     currentSelectedDate,
     setCurrentSelectedDate,
+    durationMode,
+    setDurationMode,
+    timeRangeFilter,
+    setTimeRangeFilter,
   } = useScheduleState()
 
   const { canEditMeetingDetails, isUpdatingMeeting } =
@@ -367,7 +370,18 @@ export function SchedulePickTime({
   ])
 
   const { handlePageSwitch } = useScheduleNavigation()
-  const slotTemplate = useSlotCache(duration, timezone)
+
+  const slotDuration = useMemo(() => {
+    return durationMode === DurationMode.TIME_RANGE
+      ? DURATION_CONFIG.DEFAULT_TIME_RANGE_SLOT_SIZE
+      : duration
+  }, [durationMode, duration])
+
+  const slotTemplate = useSlotCache(
+    slotDuration,
+    timezone,
+    durationMode === DurationMode.TIME_RANGE ? timeRangeFilter : null
+  )
 
   const dates = useMemo(() => {
     const baseDate = currentSelectedDate.setZone(timezone).startOf('day')
@@ -383,6 +397,14 @@ export function SchedulePickTime({
 
     return days.map(date => {
       const dateStart = date.startOf('day')
+
+      if (slotTemplate.length === 0) {
+        return {
+          date: date.toJSDate(),
+          slots: [] as Interval<true>[],
+        }
+      }
+
       const templateStart = slotTemplate[0].start.startOf('day')
       const offsetMillis = dateStart.toMillis() - templateStart.toMillis()
 
@@ -526,16 +548,26 @@ export function SchedulePickTime({
     setCurrentSelectedDate(newDate)
   }
   const HOURS_SLOTS = useMemo(() => {
+    const hourLabelDuration =
+      durationMode === DurationMode.TIME_RANGE
+        ? slotDuration
+        : duration >= 45
+        ? duration
+        : 60
+
     const slots = getEmptySlots(
       DateTime.now(),
-      duration >= 45 ? duration : 60,
-      timezone
+      hourLabelDuration,
+      timezone,
+      durationMode === DurationMode.TIME_RANGE
+        ? timeRangeFilter ?? undefined
+        : undefined
     )
     return slots.map(val => {
       const zonedTime = val.start.setZone(timezone)
       return zonedTime.toFormat(zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a')
     })
-  }, [duration, timezone])
+  }, [slotDuration, duration, timezone, durationMode, timeRangeFilter])
 
   const isBackDisabled = useMemo(() => {
     const selectedDate = currentSelectedDate.setZone(timezone)
@@ -548,18 +580,33 @@ export function SchedulePickTime({
       startDate: currentSelectedDate.toJSDate(),
       endDate: currentSelectedDate.plus({ months: 1 }).toJSDate(),
     })
-    if (suggestedTimes.length === 0) {
+
+    let filteredSuggestedTimes = suggestedTimes
+    if (
+      durationMode === DurationMode.TIME_RANGE &&
+      timeRangeFilter &&
+      filteredSuggestedTimes.length > 0
+    ) {
+      filteredSuggestedTimes = filteredSuggestedTimes.filter(slot => {
+        const slotDate = DateTime.fromJSDate(new Date(slot.start))
+        return isTimeWithinTimeRange(slotDate, timeRangeFilter, timezone)
+      })
+    }
+
+    if (filteredSuggestedTimes.length === 0) {
       toast({
         title: 'No Matching Times',
         description:
-          'No slots in the next 30 days work for all participants. Choose a time from the calendar grid that works best.',
+          durationMode === DurationMode.TIME_RANGE
+            ? 'No slots in the selected time range work for all participants. Choose a time from the calendar grid that works best.'
+            : 'No slots in the next 30 days work for all participants. Choose a time from the calendar grid that works best.',
         status: 'info',
         duration: 5000,
         isClosable: true,
       })
       return
     }
-    const bestSlotStart = new Date(suggestedTimes[0].start)
+    const bestSlotStart = new Date(filteredSuggestedTimes[0].start)
     setPickedTime(bestSlotStart)
     setCurrentSelectedDate(
       DateTime.fromJSDate(bestSlotStart).setZone(timezone).startOf('day')
@@ -569,6 +616,26 @@ export function SchedulePickTime({
   }
 
   const handleTimeSelection = (time: Date) => {
+    if (durationMode === DurationMode.TIME_RANGE && timeRangeFilter) {
+      const timeInTimezone = DateTime.fromJSDate(time)
+      const isValidTime = isTimeWithinTimeRange(
+        timeInTimezone,
+        timeRangeFilter,
+        timezone
+      )
+
+      if (!isValidTime) {
+        toast({
+          title: 'Invalid Time Selection',
+          description: 'Selected time is outside the specified time range.',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        })
+        return
+      }
+    }
+
     setPickedTime(time)
     handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
@@ -635,37 +702,27 @@ export function SchedulePickTime({
               }}
             />
           </VStack>
-          <FormControl
-            w={'fit-content'}
+          <DurationModeSelector
+            mode={durationMode}
+            duration={duration}
+            timeRange={timeRangeFilter}
+            onModeChange={setDurationMode}
+            onDurationChange={setDuration}
+            onTimeRangeChange={setTimeRangeFilter}
             isDisabled={!canEditMeetingDetails || isScheduling}
-          >
-            <FormLabel htmlFor="date">
-              Duration
-              <Text color="red.500" display="inline">
-                *
-              </Text>
-            </FormLabel>
-
-            <ChakraSelect
-              id="duration"
-              placeholder="Duration"
-              onChange={e =>
-                Number(e.target.value) && setDuration(Number(e.target.value))
-              }
-              value={duration}
-              borderColor="input-border"
-              width={'max-content'}
-              maxW="350px"
-              errorBorderColor="red.500"
-              bg="select-bg"
-            >
-              {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                <option key={type.id} value={type.duration}>
-                  {durationToHumanReadable(type.duration)}
-                </option>
-              ))}
-            </ChakraSelect>
-          </FormControl>
+          />
+          {(durationMode === DurationMode.CUSTOM ||
+            durationMode === DurationMode.TIME_RANGE) && (
+            <DurationModeInputs
+              mode={durationMode}
+              duration={duration}
+              timeRange={timeRangeFilter}
+              onModeChange={setDurationMode}
+              onDurationChange={setDuration}
+              onTimeRangeChange={setTimeRangeFilter}
+              isDisabled={!canEditMeetingDetails || isScheduling}
+            />
+          )}
           {isUpdatingMeeting && (
             <Button
               rightIcon={<FaArrowRight />}
@@ -976,6 +1033,34 @@ export function SchedulePickTime({
                   />
                 )
               })}
+              {durationMode === DurationMode.TIME_RANGE &&
+                datesSlotsWithAvailability &&
+                datesSlotsWithAvailability.length > 0 &&
+                datesSlotsWithAvailability.every(
+                  date =>
+                    date.slots.length === 0 ||
+                    date.slots.every(
+                      slot => slot.state === State.NONE_AVAILABLE
+                    )
+                ) && (
+                  <Box
+                    px={4}
+                    py={3}
+                    bg="blue.50"
+                    borderRadius="md"
+                    borderWidth="1px"
+                    borderColor="blue.200"
+                    mt={4}
+                    mx={4}
+                  >
+                    <Text fontSize="sm" color="blue.800">
+                      No overlapping availability found in the selected time
+                      range. The grid shows availability states for each
+                      participant. Try adjusting the time range or date to find
+                      better availability.
+                    </Text>
+                  </Box>
+                )}
             </HStack>
           )}
         </VStack>

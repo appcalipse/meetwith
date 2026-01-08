@@ -152,3 +152,9 @@ export enum CalendarType {
   REGULAR,
   TEAM,
 }
+
+export const DURATION_CONFIG = {
+  MIN_CUSTOM_DURATION: 5,
+  MAX_CUSTOM_DURATION: 480,
+  DEFAULT_TIME_RANGE_SLOT_SIZE: 60,
+} as const

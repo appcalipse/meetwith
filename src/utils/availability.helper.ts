@@ -35,6 +35,45 @@ export const formatTime = (time: string | undefined): string => {
   })
 }
 
+export const convertTime24To12 = (time24: string): string => {
+  if (time24 === '24:00') return '12:00 AM'
+  const [hours, minutes] = time24.split(':').map(Number)
+  const date = new Date()
+  date.setHours(hours, minutes, 0, 0)
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
+export const convertTime12To24 = (time12: string): string => {
+  const match = time12.match(/(\d+):(\d+)\s*(AM|PM)/i)
+  if (!match) {
+    const [hours, minutes] = time12.split(':').map(Number)
+    if (!isNaN(hours) && !isNaN(minutes)) {
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(
+        2,
+        '0'
+      )}`
+    }
+    return '00:00'
+  }
+
+  let hours = parseInt(match[1])
+  const minutes = parseInt(match[2])
+  const period = match[3].toUpperCase()
+
+  // Convert to 24-hour format
+  if (period === 'PM' && hours !== 12) {
+    hours += 12
+  } else if (period === 'AM' && hours === 12) {
+    hours = 0
+  }
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
 export const getFormattedSchedule = (
   availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
 ): Array<{ weekdays: string; timeRange: string }> => {
