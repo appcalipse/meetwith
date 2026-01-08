@@ -13,23 +13,18 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { useContext } from 'react'
+import React from 'react'
 
-import { useScheduleActions } from '@/providers/schedule/ActionsContext'
-import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { UpdateMode, updateModes } from '@/utils/constants/meeting'
-import { renderProviderName } from '@/utils/generic_utils'
 
-export interface IGroupInviteCardModal {
+export interface IConfirmEditModeModal {
   onClose: () => void
   afterClose: () => void
   isOpen: boolean
-  isScheduler: boolean
-  openSchedulerModal: () => void
 }
 
-const DeleteMeetingModal: React.FC<IGroupInviteCardModal> = props => {
+const ConfirmEditModeModal: React.FC<IConfirmEditModeModal> = props => {
   const { editMode, setEditMode } = useScheduleState()
 
   const handleClose = () => {
@@ -98,4 +93,4 @@ const DeleteMeetingModal: React.FC<IGroupInviteCardModal> = props => {
   )
 }
 
-export default DeleteMeetingModal
+export default ConfirmEditModeModal
