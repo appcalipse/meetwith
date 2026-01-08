@@ -1,10 +1,8 @@
 import {
   FormControl,
-  FormHelperText,
   FormLabel,
   HStack,
   Select as ChakraSelect,
-  Text,
   VStack,
 } from '@chakra-ui/react'
 import { useEffect, useMemo, useState } from 'react'
@@ -104,7 +102,15 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
           isInvalid={hasError}
           isDisabled={isDisabled}
         >
-          <FormLabel htmlFor="start-time">Start time</FormLabel>
+          <HStack width="fit-content" gap={0}>
+            <FormLabel htmlFor="start-time" mb={0} mr={0}>
+              Start time
+            </FormLabel>
+            <InfoTooltip
+              text="The earliest time the meeting can begin. Only time slots starting at or after this time will be shown."
+              ml={1}
+            />
+          </HStack>
           <ChakraSelect
             id="start-time"
             value={startTime12}
@@ -137,7 +143,15 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
           isInvalid={hasError}
           isDisabled={isDisabled}
         >
-          <FormLabel htmlFor="end-time">End time</FormLabel>
+          <HStack width="fit-content" gap={0}>
+            <FormLabel htmlFor="end-time" mb={0} mr={0}>
+              End time
+            </FormLabel>
+            <InfoTooltip
+              text="The latest time the meeting should end. The meeting duration equals the time between start and end."
+              ml={1}
+            />
+          </HStack>
           <ChakraSelect
             id="end-time"
             value={endTime12}
