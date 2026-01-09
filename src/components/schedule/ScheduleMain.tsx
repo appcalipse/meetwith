@@ -70,8 +70,11 @@ import {
   scheduleMeeting,
   selectDefaultProvider,
   updateMeeting,
+  updateMeetingInstance,
+  updateMeetingSeries,
 } from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
+import { UpdateMode } from '@/utils/constants/meeting'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -140,6 +143,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     setIsScheduling,
     decryptedMeeting,
     setDecryptedMeeting,
+    editMode,
   } = useScheduleState()
   const {
     addGroup,
@@ -794,27 +798,63 @@ const ScheduleMain: FC<IInitialProps> = ({
         return
       }
       if ((meetingId || conferenceId) && intent === Intents.UPDATE_MEETING) {
-        await updateMeeting(
-          true,
-          currentAccount!.address,
-          NO_MEETING_TYPE,
-          start,
-          end,
-          decryptedMeeting!,
-          getSignature(currentAccount!.address) || '',
-          _participants.valid,
-          content,
-          meetingUrl,
-          meetingProvider,
-          title,
-          meetingNotification.map(mn => mn.value),
-          meetingRepeat.value,
-          selectedPermissions
-        )
-        logEvent('Updated a meeting', {
-          fromDashboard: true,
-          participantsSize: _participants.valid.length,
-        })
+        if (seriesId) {
+          if (editMode === UpdateMode.SINGLE_EVENT) {
+            return await updateMeetingInstance(
+              true,
+              currentAccount!.address,
+              start,
+              end,
+              decryptedMeeting!,
+              getSignature(currentAccount!.address) || '',
+              _participants.valid,
+              content,
+              meetingUrl,
+              meetingProvider,
+              title,
+              meetingNotification.map(mn => mn.value),
+              selectedPermissions
+            )
+          } else {
+            return await updateMeetingSeries(
+              true,
+              currentAccount!.address,
+              start,
+              end,
+              decryptedMeeting!,
+              getSignature(currentAccount!.address) || '',
+              _participants.valid,
+              content,
+              meetingUrl,
+              meetingProvider,
+              title,
+              meetingNotification.map(mn => mn.value),
+              selectedPermissions
+            )
+          }
+        } else {
+          await updateMeeting(
+            true,
+            currentAccount!.address,
+            NO_MEETING_TYPE,
+            start,
+            end,
+            decryptedMeeting!,
+            getSignature(currentAccount!.address) || '',
+            _participants.valid,
+            content,
+            meetingUrl,
+            meetingProvider,
+            title,
+            meetingNotification.map(mn => mn.value),
+            meetingRepeat.value,
+            selectedPermissions
+          )
+          logEvent('Updated a meeting', {
+            fromDashboard: true,
+            participantsSize: _participants.valid.length,
+          })
+        }
       } else {
         await scheduleMeeting(
           true,
