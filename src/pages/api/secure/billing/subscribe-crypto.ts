@@ -33,7 +33,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const accountAddress = req.session.account.address.toLowerCase()
 
       // Validate request body
-      const { billing_plan_id, is_trial } = req.body as SubscribeRequestCrypto
+      const { billing_plan_id, is_trial, handle } =
+        req.body as SubscribeRequestCrypto
 
       if (!billing_plan_id) {
         return res.status(400).json({ error: 'billing_plan_id is required' })
@@ -61,7 +62,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           billing_plan_id,
           'active',
           trialExpiry.toISOString(),
-          null
+          null,
+          handle
         )
 
         // Send trial started email (non-blocking, queued)
@@ -138,6 +140,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         billing_plan_id,
         account_address: accountAddress,
         subscription_channel: subscriptionChannel,
+        handle,
       }
 
       const response: SubscribeResponseCrypto = {

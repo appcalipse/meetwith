@@ -56,6 +56,7 @@ export const handleCryptoSubscriptionPayment = async (
     subscription_type,
     account_address,
     subscription_channel,
+    handle,
   } = subscriptionData
 
   // Validate required subscription metadata
@@ -255,7 +256,8 @@ export const handleCryptoSubscriptionPayment = async (
       billing_plan_id,
       'active',
       calculatedExpiryTime.toISOString(),
-      transaction.id
+      transaction.id,
+      handle
     )
   } catch (error) {
     Sentry.captureException(error, {
