@@ -137,6 +137,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         } else {
           paymentProvider = PaymentProvider.CRYPTO
         }
+      } else {
+        paymentProvider = PaymentProvider.CRYPTO
       }
 
       // Check if subscription is actually active
