@@ -36,6 +36,7 @@ import { sendSubscriptionConfirmationEmailForAccount } from '@/utils/email_helpe
 import { EmailQueue } from '@/utils/workers/email.queue'
 
 const emailQueue = new EmailQueue()
+
 import {
   BillingPlanNotFoundError,
   MissingSubscriptionMetadataError,
@@ -176,31 +177,23 @@ export const handleCryptoSubscriptionPayment = async (
     }
   }
 
-  // Extension Logic
   const existingSubscription = await getActiveSubscriptionPeriod(
     account_address.toLowerCase()
   )
   let calculatedExpiryTime: Date
 
-  if (
-    existingSubscription &&
-    subscription_type === SubscriptionType.EXTENSION
-  ) {
-    // Extension: Add duration to existing farthest expiry
+  if (existingSubscription) {
     const existingExpiry = new Date(existingSubscription.expiry_time)
     if (billingPlan.billing_cycle === 'monthly') {
       calculatedExpiryTime = addMonths(existingExpiry, 1)
     } else {
-      // yearly
       calculatedExpiryTime = addYears(existingExpiry, 1)
     }
   } else {
-    // First-time subscription: Add duration from now
     const now = new Date()
     if (billingPlan.billing_cycle === 'monthly') {
       calculatedExpiryTime = addMonths(now, 1)
     } else {
-      // yearly
       calculatedExpiryTime = addYears(now, 1)
     }
   }
