@@ -44,6 +44,7 @@ import {
 } from '@/types/ParticipantInfo'
 import {
   MeetingCreationRequest,
+  MeetingInstanceUpdateRequest,
   RequestParticipantMapping,
 } from '@/types/Requests'
 import { Address } from '@/types/Transactions'
@@ -841,6 +842,7 @@ const updateMeeting = async (
 
 // TODO: MAKE SURE TO HANDLE ALL EDGE CASES
 const updateMeetingInstance = async (
+  instanceId: string,
   ignoreAvailabilities: boolean,
   currentAccountAddress: string,
   startTime: Date,
@@ -896,7 +898,7 @@ const updateMeetingInstance = async (
 
   const [currentAccount, existingDBSlot] = await Promise.all([
     getAccount(currentAccountAddress),
-    getSlotInstanceById(decryptedMeeting.id),
+    getSlotInstanceById(instanceId),
   ])
   if (!existingDBSlot) {
     throw new MeetingChangeConflictError()
@@ -908,6 +910,31 @@ const updateMeetingInstance = async (
   )
 
   // We need to offset every participants slots to that of this instance of the inserted
+  if (existingMeeting) {
+    const currentOffset = instanceId.split('_')[1]
+    existingMeeting.participants = existingMeeting.participants.map(p => {
+      if (!p.slot_id) return p
+      const [slot_id, _slot_offset] = p.slot_id.split('_')
+      return {
+        ...p,
+        slot_id: `${slot_id}_${currentOffset}`,
+      }
+    })
+    participants = participants.map(p => {
+      const existingParticipant = existingMeeting.participants.find(
+        ep =>
+          ep.account_address?.toLowerCase() ===
+            p.account_address?.toLowerCase() || ep.guest_email === p.guest_email
+      )
+      if (existingParticipant) {
+        return {
+          ...p,
+          slot_id: existingParticipant.slot_id,
+        }
+      }
+      return p
+    })
+  }
 
   //TODO: anyone can update a meeting, but we might need to change the participants statuses
 
@@ -1037,7 +1064,7 @@ const updateMeetingInstance = async (
     MeetingRepeat.NO_REPEAT,
     selectedPermissions
   )
-  const payload = {
+  const payload: MeetingInstanceUpdateRequest = {
     ...meetingData,
     slotsToRemove: toRemove
       .map(it => accountSlotMap[it])
@@ -1045,7 +1072,7 @@ const updateMeetingInstance = async (
     guestsToRemove,
     version: decryptedMeeting.version + 1,
     ignoreOwnerAvailability: true,
-    toAdd,
+    accountsToAdd: toAdd,
     guestsToAdd: guestsToAddEmails,
   }
 
@@ -2507,12 +2534,14 @@ const rsvpMeeting = async (
     decryptedMeeting.permissions,
     null
   )
-  const payload = {
+  const payload: MeetingInstanceUpdateRequest = {
     ...meetingData,
     version: decryptedMeeting.version + 1,
     slotsToRemove: [],
     guestsToRemove: [],
     ignoreOwnerAvailability: true,
+    guestsToAdd: [],
+    accountsToAdd: [],
   }
   if (isRecurringMeeting) {
     const slot: DBSlot = await apiUpdateMeetingInstance(
