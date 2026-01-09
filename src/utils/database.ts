@@ -4537,6 +4537,22 @@ const updateMeeting = async (
     role: meetingResponse.role as ParticipantType,
   }
 }
+const getSeriesIdMapping = async (slot_id: string[]) => {
+  const { data, error } = await db.supabase
+    .from<Tables<'slot_series'>>('slot_series')
+    .select('id, slot_id')
+    .in(
+      'slot_id',
+      slot_id.map(id => id.split('_')[0])
+    )
+  if (error) {
+    throw new Error(error.message)
+  }
+  const map = new Map<string, string>(
+    data?.map(item => [item.slot_id, item.id]) || []
+  )
+  return map
+}
 const updateMeetingInstance = async (
   participantActing: ParticipantBaseInfo,
   meetingUpdateRequest: MeetingInstanceUpdateRequest
@@ -4548,14 +4564,19 @@ const updateMeetingInstance = async (
     changingTime,
     timezone,
   } = await parseParticipantSlots(participantActing, meetingUpdateRequest)
-  const slots: Array<TablesInsert<'slot_instance'>> = await Promise.all(
-    dbSlots.map(async slot => {
-      const slotInstance = await getSlotInstance(slot.id!)
-      return {
+  const seriesMapping = await getSeriesIdMapping(
+    dbSlots.map(slot => slot.id.split('_')[0])
+  )
+  const slotInstances: Array<TablesInsert<'slot_instance'>> = []
+  const slots: Array<TablesInsert<'slots'>> = []
+  for (const slot of dbSlots) {
+    const seriesId = seriesMapping.get(slot.id.split('_')[0])
+    if (seriesId) {
+      slotInstances.push({
         id: slot.id,
         override_meeting_info_encrypted: slot.meeting_info_encrypted,
         status: RecurringStatus.MODIFIED,
-        series_id: slotInstance.series_id,
+        series_id: seriesId,
         start: slot.start,
         role: slot.role || ParticipantType.Invitee,
         end: slot.end,
@@ -4563,18 +4584,39 @@ const updateMeetingInstance = async (
         created_at: slot.created_at,
         guest_email: slot.guest_email,
         version: slot.version,
-      }
-    })
-  )
+      })
+    } else {
+      // never had a series so we create a slot for this new participant
+      slots.push({
+        id: slot.id.split('_')[0],
+        start: slot.start,
+        role: slot.role || ParticipantType.Invitee,
+        end: slot.end,
+        account_address: slot.account_address,
+        created_at: slot.created_at,
+        guest_email: slot.guest_email,
+        version: slot.version,
+        meeting_info_encrypted: slot.meeting_info_encrypted,
+      })
+    }
+  }
 
   const query = await db.supabase
     .from('slot_instance')
-    .upsert(slots, { onConflict: 'id' })
+    .upsert(slotInstances, { onConflict: 'id' })
+  if (slots.length > 0) {
+    await db.supabase.from('slots').upsert(
+      slots.map(slot => ({ ...slot, id: slot.id.split('_')[0] })),
+      { onConflict: 'id' }
+    )
+  }
 
-  await db.supabase
-    .from('slot_instance')
-    .update({ status: RecurringStatus.CANCELLED })
-    .in('id', meetingUpdateRequest.slotsToRemove)
+  await Promise.all([
+    db.supabase
+      .from('slot_instance')
+      .update({ status: RecurringStatus.CANCELLED })
+      .in('id', meetingUpdateRequest.slotsToRemove),
+  ])
 
   const { data, error } = query
   if (error) {
@@ -4585,7 +4627,7 @@ const updateMeetingInstance = async (
   const { data: slotSerie } = await db.supabase
     .from<Tables<'slot_series'>>('slot_series')
     .select()
-    .eq('id', data[0].series_id)
+    .eq('id', data[0]?.series_id)
     .maybeSingle()
   if (slotSerie) {
     const newDate = DateTime.fromJSDate(new Date(meetingUpdateRequest.start))
@@ -4631,6 +4673,7 @@ const updateMeetingInstance = async (
     meetingUpdateRequest.slotsToRemove.length > 0 ||
     meetingUpdateRequest.guestsToRemove.length > 0
   )
+    // TODO: create a new hanbdler for deletying slots from recurring Instance, I.e deleteRecurringMeetingInstanceFromDB
     await deleteMeetingFromDB(
       participantActing,
       meetingUpdateRequest.slotsToRemove,
