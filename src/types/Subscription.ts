@@ -53,6 +53,7 @@ export interface Coupon extends Tables<'coupons'> {
 // Subscription plan benefits
 export const PRO_PLAN_BENEFITS: string[] = [
   'Everything in Free plus (+)',
+  'Custom account handle',
   'Unlimited scheduling groups',
   'Payments & Invoicing',
   'Unlimited integrations (Google calendar, iCloud, Office 365 and WebDAV)',
@@ -64,7 +65,6 @@ export const PRO_PLAN_BENEFITS: string[] = [
 export const FREE_PLAN_BENEFITS: string[] = [
   'Personal scheduling page',
   '1 Meeting type - FREE meetings',
-  'Custom account handle',
   '5 scheduling groups',
   'Limited QuickPolls (max. 2 active polls per time)',
   'Basic calendar sync - 1 calendar sync only',

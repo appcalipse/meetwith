@@ -11,7 +11,6 @@ const FREE_FEATURES = [
   'Personal scheduling page',
   '1 Meeting type - FREE meetings',
   'Custom availability settings',
-  'Custom account handle',
   '5 scheduling groups',
   'Single integration with Google calendar, iCloud, Office 365 or WebDAV',
   'Fixed booking link with wallet address',
@@ -24,6 +23,7 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   'Everything in Free plus (+)',
+  'Custom account handle',
   'Unlimited scheduling groups',
   'Payments & Invoicing',
   'Unlimited integrations (Google calendar, iCloud, Office 365 and WebDAV)',

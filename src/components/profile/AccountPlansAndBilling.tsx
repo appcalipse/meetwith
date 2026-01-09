@@ -310,13 +310,15 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
 
   const isProCardActive = hasActiveSubscription || currentPlan === Plan.PRO
 
-  const activeBadge =
+  const proCardBadge =
     isCryptoTrial && hasActiveSubscription
       ? 'Trial'
       : hasActiveSubscription &&
         (billingStatus === 'active' || billingStatus === 'cancelled')
       ? 'Active'
       : undefined
+
+  const freeCardBadge = !hasActiveSubscription ? 'Active' : undefined
 
   const currentExpiryText = billingExpiry
     ? `Your current plan is valid until ${billingExpiry} (${
@@ -421,7 +423,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
               planInfo={getPlanInfo(Plan.PRO)}
               active={isProCardActive}
               benefits={PRO_PLAN_BENEFITS}
-              badge={activeBadge}
+              badge={proCardBadge}
               expiryText={currentExpiryText}
               onClick={handlePrimaryButtonClick}
               {...proCardCtaProps}
@@ -430,6 +432,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
               onClick={goToBilling}
               active={!isProCardActive}
               benefits={FREE_PLAN_BENEFITS}
+              badge={freeCardBadge}
             />
           </Flex>
         )}
@@ -441,8 +444,8 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
           onDialogClose={onClose}
         />
 
-        {/* Payment History - Show if user has subscription history */}
-        {!billingFetching && (subscriptionHistory?.total ?? 0) > 0 && (
+        {/* Payment History */}
+        {!billingFetching && !historyLoading && (
           <Accordion allowToggle mt={10} borderColor="neutral.700">
             <AccordionItem
               border="1px solid"
