@@ -39,12 +39,9 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   eventId?: string | null
   calendar_id?: string | null
 }
-export interface MeetingInstanceUpdateRequest extends MeetingCreationRequest {
-  slotsToRemove: string[]
-  guestsToRemove: ParticipantInfo[]
-  version: number
-  eventId?: string | null
-  calendar_id?: string | null
+export interface MeetingInstanceUpdateRequest extends MeetingUpdateRequest {
+  accountsToAdd: string[] // participants who were not originally part of the meeting
+  guestsToAdd: string[]
 }
 
 export interface MeetingCreationRequest {
