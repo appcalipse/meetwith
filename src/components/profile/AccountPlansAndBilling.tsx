@@ -31,7 +31,7 @@ import { format } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
-
+import CustomHandleSelectionModal from '@/components/billing/CustomHandleSelectionModal'
 import CustomLoading from '@/components/CustomLoading'
 import Pagination from '@/components/profile/Pagination'
 import { AccountContext } from '@/providers/AccountProvider'
@@ -82,6 +82,11 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     isOpen: isCancelModalOpen,
     onOpen: onCancelModalOpen,
     onClose: onCancelModalClose,
+  } = useDisclosure()
+  const {
+    isOpen: isHandleModalOpen,
+    onOpen: onHandleModalOpen,
+    onClose: onHandleModalClose,
   } = useDisclosure()
   const [couponCode, setCouponCode] = useState('')
   const [couponDuration, setCouponDuration] = useState(0)
@@ -275,7 +280,8 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   }
 
   const handlePrimaryButtonClick = () => {
-    goToBilling()
+    // Open handle selection modal for new subscriptions
+    onHandleModalOpen()
   }
 
   const handleManageSubscription = async () => {
@@ -579,6 +585,13 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         onCancel={handleCancelSubscription}
         isLoading={cancelSubscriptionMutation.isLoading}
         expiryDate={billingExpiry || undefined}
+      />
+
+      {/* Handle Selection Modal */}
+      <CustomHandleSelectionModal
+        isOpen={isHandleModalOpen}
+        onClose={onHandleModalClose}
+        currentAccountAddress={currentAccount.address}
       />
     </VStack>
   )

@@ -25,8 +25,8 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { PaymentStep, PaymentType } from '@utils/constants/meeting-types'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
-import { useRef, useState } from 'react'
-import { FaArrowLeft } from 'react-icons/fa'
+import { useEffect, useRef, useState } from 'react'
+import { FaArrowLeft, FaEdit } from 'react-icons/fa'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
@@ -45,6 +45,7 @@ import {
   getSupportedChainFromId,
   supportedChains,
 } from '@/types/chains'
+import { SettingsSection } from '@/types/Dashboard'
 import {
   getActiveSubscription,
   getBillingPlans,
@@ -52,10 +53,14 @@ import {
   subscribeToBillingPlan,
   subscribeToBillingPlanCrypto,
 } from '@/utils/api_helper'
+import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
 
 const BillingCheckout = () => {
   const router = useRouter()
+  const { handle: handleParam } = router.query
+  const handle = typeof handleParam === 'string' ? handleParam : undefined
+
   const currentAccount = useAccountContext()
   const [isYearly, setIsYearly] = useState(false)
   const {
@@ -99,12 +104,13 @@ const BillingCheckout = () => {
 
   const isTrialEligible = trialEligibility?.eligible === true
 
-  const { data: currentSubscription } = useQuery({
-    queryKey: ['currentSubscription', currentAccount?.address],
-    queryFn: () => getActiveSubscription(currentAccount!.address),
-    enabled: !!currentAccount?.address,
-    staleTime: 30000,
-  })
+  const { data: currentSubscription, isLoading: isLoadingSubscription } =
+    useQuery({
+      queryKey: ['currentSubscription', currentAccount?.address],
+      queryFn: () => getActiveSubscription(currentAccount!.address),
+      enabled: !!currentAccount?.address,
+      staleTime: 30000,
+    })
 
   const hasActiveSubscription = Boolean(
     currentSubscription?.is_active === true &&
@@ -186,6 +192,7 @@ const BillingCheckout = () => {
     const request: SubscribeRequest = {
       billing_plan_id: selectedPlan.billing_cycle,
       payment_method: 'stripe',
+      handle,
     }
 
     try {
@@ -215,6 +222,7 @@ const BillingCheckout = () => {
     const request: SubscribeRequestCrypto = {
       billing_plan_id: selectedPlan.billing_cycle,
       subscription_type: SubscriptionType.INITIAL,
+      handle,
     }
 
     try {
@@ -243,6 +251,7 @@ const BillingCheckout = () => {
       billing_plan_id: selectedPlan.billing_cycle,
       subscription_type: SubscriptionType.INITIAL,
       is_trial: true,
+      handle,
     }
 
     try {
@@ -256,6 +265,21 @@ const BillingCheckout = () => {
     await handleStartCryptoTrial()
     onTrialDialogClose()
   }
+
+  const handleChangeHandle = () => {
+    router.push(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`)
+  }
+
+  useEffect(() => {
+    if (
+      router.isReady &&
+      !isLoadingSubscription &&
+      !handle &&
+      !hasActiveSubscription
+    ) {
+      router.replace(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`)
+    }
+  }, [router.isReady, isLoadingSubscription, handle, hasActiveSubscription])
 
   const handleCryptoPaymentSuccess = () => {
     // Redirect to subscriptions page with success message
@@ -376,6 +400,44 @@ const BillingCheckout = () => {
             </VStack>
           </Stack>
         </VStack>
+
+        <Divider borderColor="neutral.700" />
+
+        {/* Handle Display Section */}
+        {handle && (
+          <VStack align="flex-start" spacing={0} width="100%">
+            <Text fontSize="16px" fontWeight="700" color="text-primary">
+              Your booking link
+            </Text>
+            <HStack
+              width="100%"
+              justify="space-between"
+              bg="bg-surface-secondary"
+              p={4}
+              px={0}
+              borderRadius="md"
+            >
+              <VStack align="flex-start" spacing={0}>
+                <Text fontSize="sm" color="text-secondary">
+                  Your calendar will be available at:
+                </Text>
+                <Text fontSize="md" fontWeight="600" color="primary.300">
+                  {appUrl}/{handle}
+                </Text>
+              </VStack>
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<FaEdit />}
+                color="text-secondary"
+                onClick={handleChangeHandle}
+                _hover={{ color: 'text-primary' }}
+              >
+                Change
+              </Button>
+            </HStack>
+          </VStack>
+        )}
 
         <Divider borderColor="neutral.700" />
 

@@ -159,6 +159,8 @@ export const handleSubscriptionCreated = async (
   )?.toLowerCase()
   const billingPlanId =
     (subscription.metadata?.billing_plan_id as string | undefined) || null
+  const handle =
+    (subscription.metadata?.handle as string | undefined) || undefined
 
   if (!accountAddress || !billingPlanId) {
     return
@@ -207,7 +209,8 @@ export const handleSubscriptionCreated = async (
         billingPlanId,
         'active',
         new Date(trialEnd * 1000).toISOString(),
-        null
+        null,
+        handle
       )
 
       // Send trial started email (non-blocking, queued)
@@ -794,11 +797,16 @@ export const handleInvoicePaymentSucceeded = async (
     // We need to get the actual subscription's current_period_end from Stripe API
     let calculatedExpiryTime: Date
 
+    let handle: string | undefined
+
     try {
       const stripe = new StripeService()
       const fullSubscription = await stripe.subscriptions.retrieve(
         stripeSubscriptionId
       )
+
+      handle =
+        (fullSubscription.metadata?.handle as string | undefined) || undefined
 
       // Get current_period_end from subscription (not invoice)
       // For flexible billing mode, period info is in items.data[0]
@@ -853,7 +861,8 @@ export const handleInvoicePaymentSucceeded = async (
         billingPlanId,
         'active',
         calculatedExpiryTime.toISOString(),
-        transactionId
+        transactionId,
+        handle
       )
 
       // Send subscription confirmation email (non-blocking, queued)
@@ -1031,6 +1040,7 @@ export const handleInvoicePaymentSucceeded = async (
 
   // For subscription_cycle (renewals) or fallback: Create new subscription period
   let calculatedExpiryTime: Date
+  let existingDomain: string | null | undefined
 
   if (invoiceBillingReason === 'subscription_cycle') {
     // Renewal flow - use extension logic
@@ -1047,6 +1057,7 @@ export const handleInvoicePaymentSucceeded = async (
         // yearly
         calculatedExpiryTime = addYears(existingExpiry, 1)
       }
+      existingDomain = existingSubscription.domain
     } else {
       // No existing subscription - use invoice period_end
       calculatedExpiryTime = new Date(invoice.period_end * 1000)
@@ -1063,7 +1074,8 @@ export const handleInvoicePaymentSucceeded = async (
       billingPlanId,
       'active',
       calculatedExpiryTime.toISOString(),
-      transactionId
+      transactionId,
+      existingDomain
     )
   } catch (error) {
     Sentry.captureException(error)

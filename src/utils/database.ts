@@ -9625,7 +9625,8 @@ const createSubscriptionPeriod = async (
   billingPlanId: string,
   status: 'active' | 'cancelled' | 'expired',
   expiryTime: string,
-  transactionId: string | null
+  transactionId: string | null,
+  domain?: string | null
 ): Promise<Tables<'subscriptions'>> => {
   const { data, error } = await db.supabase
     .from('subscriptions')
@@ -9637,6 +9638,7 @@ const createSubscriptionPeriod = async (
         expiry_time: expiryTime,
         transaction_id: transactionId,
         registered_at: new Date().toISOString(),
+        ...(domain && { domain }),
       },
     ])
     .select()
