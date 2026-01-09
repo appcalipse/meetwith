@@ -101,7 +101,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     )
   }, [billingSubscription, currentAccount?.subscriptions])
 
-  // Fetch billing plan details only if we have a billing subscription
+  // Fetch subscription details
   const {
     data: billingSubscriptionDetails,
     isFetching: billingFetching,
@@ -112,12 +112,14 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       'billingSubscriptionDetails',
       currentAccount?.address,
       billingSubscription?.billing_plan_id,
+      blockchainSubscription?.expiry_time,
     ],
     queryFn: async () => {
       return await getActiveSubscription(currentAccount!.address)
     },
     enabled:
-      !!currentAccount?.address && !!billingSubscription?.billing_plan_id,
+      !!currentAccount?.address &&
+      (!!billingSubscription?.billing_plan_id || !!blockchainSubscription),
     staleTime: 30000, // 30 seconds
     onError: (err: unknown) => {
       handleApiError('Failed to load subscription details', err)
@@ -304,29 +306,36 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   }
 
   // Check if user has an active subscription
-  const hasActiveSubscription =
+  const hasActiveBillingSubscription =
     billingSubscription &&
     new Date(billingSubscription.expiry_time) > new Date()
+
+  const hasActiveBlockchainSubscription =
+    blockchainSubscription &&
+    new Date(blockchainSubscription.expiry_time) > new Date()
+
+  const hasActiveSubscription =
+    hasActiveBillingSubscription || hasActiveBlockchainSubscription
 
   const isProCardActive = hasActiveSubscription || currentPlan === Plan.PRO
 
   const proCardBadge =
-    isCryptoTrial && hasActiveSubscription
+    isCryptoTrial && hasActiveBillingSubscription
       ? 'Trial'
-      : hasActiveSubscription &&
-        (billingStatus === 'active' || billingStatus === 'cancelled')
+      : hasActiveSubscription
       ? 'Active'
       : undefined
 
   const freeCardBadge = !hasActiveSubscription ? 'Active' : undefined
 
-  const currentExpiryText = billingExpiry
-    ? `Your current plan is valid until ${billingExpiry} (${
-        billingPlanLabel.toLowerCase().includes('year')
-          ? 'Yearly Plan'
-          : 'Monthly Plan'
-      })`
-    : undefined
+  const blockchainExpiry = blockchainSubscription?.expiry_time
+    ? format(new Date(blockchainSubscription.expiry_time), 'PPP')
+    : null
+
+  const currentExpiryText =
+    billingExpiry || blockchainExpiry
+      ? `Your current plan is valid until ${billingExpiry || blockchainExpiry}`
+      : undefined
 
   // Compute CTA props for SubscriptionCard
   const proCardCtaProps = React.useMemo(() => {
@@ -344,10 +353,14 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         ? () => void handleManageSubscription()
         : undefined
 
+    const isBlockchainSubscription =
+      hasActiveSubscription && !billingSubscription?.billing_plan_id
+
     const tertiaryCtaLabel =
       hasActiveSubscription &&
       paymentProvider !== PaymentProvider.STRIPE &&
-      billingStatus !== 'cancelled'
+      billingStatus !== 'cancelled' &&
+      !isBlockchainSubscription
         ? isCryptoTrial
           ? 'Cancel Trial'
           : 'Cancel Subscription'
@@ -356,7 +369,8 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     const onTertiaryCta =
       hasActiveSubscription &&
       paymentProvider !== PaymentProvider.STRIPE &&
-      billingStatus !== 'cancelled'
+      billingStatus !== 'cancelled' &&
+      !isBlockchainSubscription
         ? onCancelModalOpen
         : undefined
 
