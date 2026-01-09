@@ -36,11 +36,7 @@ import CustomLoading from '@/components/CustomLoading'
 import Pagination from '@/components/profile/Pagination'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account } from '@/types/Account'
-import {
-  BillingMode,
-  PaymentProvider,
-  SubscriptionHistoryItem,
-} from '@/types/Billing'
+import { PaymentProvider, SubscriptionHistoryItem } from '@/types/Billing'
 import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import {
   FREE_PLAN_BENEFITS,
@@ -272,26 +268,12 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     staleTime: 60000, // 1 minute
   })
 
-  const goToBilling = (mode?: BillingMode, planName?: string) => {
-    const queryParams = new URLSearchParams()
-    if (mode) queryParams.set('mode', mode)
-    if (planName) queryParams.set('plan', planName)
-    const queryString = queryParams.toString()
-    void push(
-      `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}/billing${
-        queryString ? `?${queryString}` : ''
-      }`
-    )
+  const goToBilling = () => {
+    void push(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}/billing`)
   }
 
   const handlePrimaryButtonClick = () => {
-    if (hasActiveSubscription) {
-      if (paymentProvider !== PaymentProvider.STRIPE) {
-        goToBilling(BillingMode.EXTEND, billingPlanLabel)
-      }
-    } else {
-      goToBilling(BillingMode.SUBSCRIBE, getPlanInfo(Plan.PRO)?.name ?? 'Plan')
-    }
+    goToBilling()
   }
 
   const handleManageSubscription = async () => {
@@ -347,9 +329,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   // Compute CTA props for SubscriptionCard
   const proCardCtaProps = React.useMemo(() => {
     const primaryCtaLabel = hasActiveSubscription
-      ? paymentProvider === PaymentProvider.STRIPE
-        ? undefined
-        : 'Extend Plan'
+      ? undefined
       : 'Subscribe to Pro'
 
     const secondaryCtaLabel =
@@ -363,14 +343,18 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         : undefined
 
     const tertiaryCtaLabel =
-      hasActiveSubscription && paymentProvider !== PaymentProvider.STRIPE
+      hasActiveSubscription &&
+      paymentProvider !== PaymentProvider.STRIPE &&
+      billingStatus !== 'cancelled'
         ? isCryptoTrial
           ? 'Cancel Trial'
           : 'Cancel Subscription'
         : undefined
 
     const onTertiaryCta =
-      hasActiveSubscription && paymentProvider !== PaymentProvider.STRIPE
+      hasActiveSubscription &&
+      paymentProvider !== PaymentProvider.STRIPE &&
+      billingStatus !== 'cancelled'
         ? onCancelModalOpen
         : undefined
 
@@ -443,12 +427,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
               {...proCardCtaProps}
             />
             <SubscriptionCard
-              onClick={() =>
-                goToBilling(
-                  BillingMode.SUBSCRIBE,
-                  getPlanInfo(Plan.PRO)?.name ?? 'Plan'
-                )
-              }
+              onClick={goToBilling}
               active={!isProCardActive}
               benefits={FREE_PLAN_BENEFITS}
             />

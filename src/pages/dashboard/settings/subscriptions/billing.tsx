@@ -33,7 +33,7 @@ import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import {
   BillingCycle,
-  BillingMode,
+  PaymentProvider,
   SubscribeRequest,
   SubscribeRequestCrypto,
   SubscribeResponseCrypto,
@@ -46,6 +46,7 @@ import {
   supportedChains,
 } from '@/types/chains'
 import {
+  getActiveSubscription,
   getBillingPlans,
   getTrialEligibility,
   subscribeToBillingPlan,
@@ -57,7 +58,6 @@ const BillingCheckout = () => {
   const router = useRouter()
   const currentAccount = useAccountContext()
   const [isYearly, setIsYearly] = useState(false)
-  const { mode, plan } = router.query
   const {
     isOpen: isCryptoModalOpen,
     onOpen: onCryptoModalOpen,
@@ -74,12 +74,8 @@ const BillingCheckout = () => {
   const yearlyPrice = 80
   const subtotal = isYearly ? yearlyPrice : monthlyPrice
 
-  const planName =
-    typeof plan === 'string' && plan.length > 0 ? plan : 'Meetwith PRO'
-  const heading =
-    mode === BillingMode.EXTEND
-      ? `Extend my ${planName}`
-      : 'Subscribe to Meetwith Premium'
+  const planName = 'Meetwith PRO'
+  const heading = 'Subscribe to Meetwith Premium'
 
   // Get default chain and token from user preferences or use defaults
   const defaultChainId =
@@ -102,6 +98,23 @@ const BillingCheckout = () => {
   })
 
   const isTrialEligible = trialEligibility?.eligible === true
+
+  const { data: currentSubscription } = useQuery({
+    queryKey: ['currentSubscription', currentAccount?.address],
+    queryFn: () => getActiveSubscription(currentAccount!.address),
+    enabled: !!currentAccount?.address,
+    staleTime: 30000,
+  })
+
+  const hasActiveSubscription = Boolean(
+    currentSubscription?.is_active === true &&
+      currentSubscription?.expires_at &&
+      new Date(currentSubscription.expires_at) > new Date()
+  )
+
+  const isActiveStripeSubscription =
+    hasActiveSubscription &&
+    currentSubscription?.payment_provider === PaymentProvider.STRIPE
 
   // Fetch billing plans
   const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
@@ -198,16 +211,10 @@ const BillingCheckout = () => {
       return
     }
 
-    // Determine subscription type based on mode
-    const subscriptionType =
-      mode === BillingMode.EXTEND
-        ? SubscriptionType.EXTENSION
-        : SubscriptionType.INITIAL
-
-    // Trigger the mutation
+    // Trigger the mutation (always INITIAL for crypto - no extension flow)
     const request: SubscribeRequestCrypto = {
       billing_plan_id: selectedPlan.billing_cycle,
-      subscription_type: subscriptionType,
+      subscription_type: SubscriptionType.INITIAL,
     }
 
     try {
@@ -396,7 +403,11 @@ const BillingCheckout = () => {
               step={PaymentStep.SELECT_PAYMENT_METHOD}
               icon={FiatLogo}
               type={PaymentType.FIAT}
-              disabled={isLoadingPlans || subscribeMutation.isLoading}
+              disabled={
+                isLoadingPlans ||
+                subscribeMutation.isLoading ||
+                isActiveStripeSubscription
+              }
               onClick={handlePayWithCard}
             />
             <PaymentMethod
