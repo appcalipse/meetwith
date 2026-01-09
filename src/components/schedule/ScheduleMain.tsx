@@ -797,10 +797,15 @@ const ScheduleMain: FC<IInitialProps> = ({
         setIsScheduling(false)
         return
       }
-      if ((meetingId || conferenceId) && intent === Intents.UPDATE_MEETING) {
+      if (
+        (meetingId || conferenceId) &&
+        intent === Intents.UPDATE_MEETING &&
+        decryptedMeeting
+      ) {
         if (seriesId) {
           if (editMode === UpdateMode.SINGLE_EVENT) {
             return await updateMeetingInstance(
+              decryptedMeeting.id,
               true,
               currentAccount!.address,
               start,
@@ -816,21 +821,21 @@ const ScheduleMain: FC<IInitialProps> = ({
               selectedPermissions
             )
           } else {
-            return await updateMeetingSeries(
-              true,
-              currentAccount!.address,
-              start,
-              end,
-              decryptedMeeting!,
-              getSignature(currentAccount!.address) || '',
-              _participants.valid,
-              content,
-              meetingUrl,
-              meetingProvider,
-              title,
-              meetingNotification.map(mn => mn.value),
-              selectedPermissions
-            )
+            // return await updateMeetingSeries(
+            //   true,
+            //   currentAccount!.address,
+            //   start,
+            //   end,
+            //   decryptedMeeting!,
+            //   getSignature(currentAccount!.address) || '',
+            //   _participants.valid,
+            //   content,
+            //   meetingUrl,
+            //   meetingProvider,
+            //   title,
+            //   meetingNotification.map(mn => mn.value),
+            //   selectedPermissions
+            // )
           }
         } else {
           await updateMeeting(
