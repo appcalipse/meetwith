@@ -2156,7 +2156,6 @@ const deleteMeetingFromDB = async (
   if (!slotIds?.length) throw new Error('No slot ids provided')
   const instanceSlotIds = slotIds.filter(slot => slot.includes('_'))
   const compositeSlots = slotIds.filter(slot => !slot.includes('_'))
-  const cleanedSlotIds = slotIds.map(id => id.split('_')[0])
   const toDeleteSlotInstances: TablesInsert<'slot_instance'>[] = []
   let addresses: string[] = []
   let start: Date = new Date()
