@@ -804,7 +804,7 @@ const ScheduleMain: FC<IInitialProps> = ({
       ) {
         if (seriesId) {
           if (editMode === UpdateMode.SINGLE_EVENT) {
-            return await updateMeetingInstance(
+            await updateMeetingInstance(
               decryptedMeeting.id,
               true,
               currentAccount!.address,
