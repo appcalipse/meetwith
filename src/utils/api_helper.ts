@@ -105,6 +105,8 @@ import {
   MeetingCreationRequest,
   MeetingInstanceUpdateRequest,
   MeetingUpdateRequest,
+  ParseParticipantInfo,
+  ParseParticipantsRequest,
   RequestInvoiceRequest,
   UpdateAvailabilityBlockMeetingTypesRequest,
   UpdateAvailabilityBlockRequest,
@@ -172,10 +174,11 @@ import { safeConvertConditionFromAPI } from './token.gate.service'
 type RequestOption = {
   signal?: AbortSignal
 }
-export const internalFetch = async <T>(
+type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+export const internalFetch = async <T, J = unknown>(
   path: string,
-  method = 'GET',
-  body?: unknown,
+  method: Method = 'GET',
+  body?: J,
   options: RequestInit = {},
   headers = {},
   isFormData = false,
@@ -2742,5 +2745,16 @@ export const deleteCalendarEvent = async (
     `/secure/calendar/${calendarId}/${eventId}`,
     'DELETE',
     undefined
+  )
+}
+
+export const parsedDecryptedParticipants = async (
+  instance_id: string,
+  participants: ParseParticipantInfo[]
+) => {
+  return internalFetch<ParseParticipantInfo[], ParseParticipantsRequest>(
+    `/secure/meetings/instance/${instance_id}/participants`,
+    'POST',
+    { participants }
   )
 }
