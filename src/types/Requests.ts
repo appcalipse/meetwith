@@ -39,10 +39,7 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   eventId?: string | null
   calendar_id?: string | null
 }
-export interface MeetingInstanceUpdateRequest extends MeetingUpdateRequest {
-  accountsToAdd: string[] // participants who were not originally part of the meeting
-  guestsToAdd: string[]
-}
+export interface MeetingInstanceUpdateRequest extends MeetingUpdateRequest {}
 
 export interface MeetingCreationRequest {
   type: SchedulingType
@@ -296,4 +293,13 @@ export interface WebcalRequestBody {
 export interface UpdateCalendarEventRequest {
   rsvp_status: AttendeeStatus
   attendee_email: string
+}
+export interface ParseParticipantInfo {
+  account_address?: string
+  guest_email?: string
+  slot_id: string
+}
+
+export interface ParseParticipantsRequest {
+  participants: ParseParticipantInfo[]
 }
