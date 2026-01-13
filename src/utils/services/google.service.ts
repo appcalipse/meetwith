@@ -17,6 +17,7 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import {
+  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -1302,6 +1303,40 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         meetingDetails,
         instance
       ),
+    })
+  }
+  async deleteEventInstance(
+    calendarId: string,
+    meetingDetails: MeetingCancelSyncRequest
+  ): Promise<void> {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+    const seriesMasterId = meetingDetails.meeting_id.replaceAll('-', '')
+    const originalStartTime = meetingDetails.start
+    const dateFrom = DateTime.fromJSDate(new Date(originalStartTime))
+      .startOf('day')
+      .toISO()
+    const dateTo = DateTime.fromJSDate(new Date(originalStartTime))
+      .endOf('day')
+      .toISO()
+    const instances = await calendar.events.instances({
+      calendarId,
+      eventId: seriesMasterId,
+      timeMin: dateFrom!,
+      timeMax: dateTo!,
+    })
+
+    const instance = instances.data.items?.[0]
+    if (!instance?.id) {
+      throw new Error('Instance not found')
+    }
+
+    await calendar.events.delete({
+      calendarId,
+      eventId: instance.id,
     })
   }
   async buildEventUpdatePayload(

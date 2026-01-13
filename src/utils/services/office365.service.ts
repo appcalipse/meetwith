@@ -22,6 +22,7 @@ import {
 } from '@/types/Office365'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import {
+  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -592,6 +593,42 @@ export class Office365CalendarService implements IOffcie365CalendarService {
           useParticipants
         )
       )
+  }
+  async deleteEventInstance(
+    calendarId: string,
+    meetingDetails: MeetingCancelSyncRequest
+  ): Promise<void> {
+    const meeting_id = meetingDetails.meeting_id
+    const original_start_time = meetingDetails.start
+    const officeId = await getOfficeEventMappingId(meeting_id)
+
+    if (!officeId) {
+      Sentry.captureException("Can't find office event mapping")
+      throw new Error("Can't find office event mapping")
+    }
+    const dateFrom = encodeURIComponent(
+      DateTime.fromJSDate(new Date(original_start_time)).startOf('day').toISO()!
+    )
+    const dateTo = encodeURIComponent(
+      DateTime.fromJSDate(new Date(original_start_time)).endOf('day').toISO()!
+    )
+    const instances = await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${officeId}/instances`)
+      .query({
+        startDateTime: dateFrom!,
+        endDateTime: dateTo!,
+      })
+      .get()
+
+    const instance: MicrosoftGraphEvent | null = instances.value[0]
+
+    if (!instance || !instance?.id) {
+      throw new Error('Instance not found')
+    }
+
+    await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${instance.id}`)
+      .delete()
   }
   async updateExternalEvent(event: Partial<MicrosoftGraphEvent>) {
     if (!event.id) {
