@@ -8,8 +8,8 @@ import {
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
   countCalendarIntegrations,
+  isProAccountAsync,
 } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/database'
 import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
 import CaldavCalendarService from '@/utils/services/caldav.service'
 
@@ -54,7 +54,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // If it's a new integration, check the limit
       if (!existingIntegration) {
         const integrationCount = await countCalendarIntegrations(accountAddress)
-        if (integrationCount >= 1) {
+        if (integrationCount >= 2) {
           throw new CalendarIntegrationLimitExceededError()
         }
       }

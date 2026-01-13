@@ -4,9 +4,11 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { InviteContact } from '@/types/Contacts'
 import { appUrl } from '@/utils/constants'
 import {
+  countContactsAddedThisMonth,
   getAccountNotificationSubscriptionEmail,
   getOrCreateContactInvite,
   initDB,
+  isProAccountAsync,
   isUserContact,
   updateContactInviteCooldown,
 } from '@/utils/database'
@@ -15,6 +17,7 @@ import {
   CantInviteYourself,
   ContactAlreadyExists,
   ContactInviteAlreadySent,
+  ContactLimitExceededError,
 } from '@/utils/errors'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -29,6 +32,17 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const { address, email } = req.body as InviteContact
       if (address === account_address) {
         throw new CantInviteYourself()
+      }
+
+      const isPro = await isProAccountAsync(account_address)
+
+      if (!isPro) {
+        const contactsAddedThisMonth = await countContactsAddedThisMonth(
+          account_address
+        )
+        if (contactsAddedThisMonth >= 3) {
+          throw new ContactLimitExceededError()
+        }
       }
       let userEmail = email
       if (address) {
@@ -85,6 +99,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       if (e instanceof ContactInviteAlreadySent) {
         return res.status(409).send(e.message)
+      }
+      if (e instanceof ContactLimitExceededError) {
+        return res.status(403).send(e.message)
       }
 
       console.error('Error sending contact invite:', e)
