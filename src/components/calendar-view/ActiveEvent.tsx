@@ -1,3 +1,4 @@
+import { ALL } from 'node:dns'
 import {
   Box,
   Drawer,
@@ -10,7 +11,6 @@ import {
 import { addMinutes } from 'date-fns'
 import { DateTime } from 'luxon'
 import * as React from 'react'
-
 import useAccountContext from '@/hooks/useAccountContext'
 import {
   createEventsQueryKey,
@@ -21,7 +21,11 @@ import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
-import { isCalendarEventWithoutDateTime } from '@/types/Calendar'
+import {
+  isCalendarEvent,
+  isCalendarEventWithoutDateTime,
+  mapAttendeeStatusToParticipationStatus,
+} from '@/types/Calendar'
 import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
@@ -52,14 +56,13 @@ import { canAccountAccessPermission } from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
-
 import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import InviteParticipants from '../schedule/participants/InviteParticipants'
 import ScheduleTimeDiscover from '../schedule/ScheduleTimeDiscover'
 import ActiveCalendarEvent from './ActiveCalendarEvent'
 import ActiveMeetwithEvent from './ActiveMeetwithEvent'
 
-const ActiveEvent: React.FC = ({}) => {
+const ActiveEvent: React.FC = () => {
   const { selectedSlot, setSelectedSlot, currentDate } = useCalendarContext()
   const currentAccount = useAccountContext()
   const toast = useToast()
@@ -94,11 +97,12 @@ const ActiveEvent: React.FC = ({}) => {
     onClose: onDiscoverTimeClose,
   } = useDisclosure()
   const decryptedMeeting: MeetingDecrypted | undefined = React.useMemo(() => {
-    if (!selectedSlot || isCalendarEventWithoutDateTime(selectedSlot))
-      return undefined
+    if (!selectedSlot || isCalendarEvent(selectedSlot)) return undefined
     return {
       ...selectedSlot,
       id: selectedSlot.id.split('_')[0],
+      start: selectedSlot.start.toJSDate(),
+      end: selectedSlot.end.toJSDate(),
     }
   }, [selectedSlot])
   const {
@@ -116,19 +120,16 @@ const ActiveEvent: React.FC = ({}) => {
     useParticipantPermissions()
   React.useEffect(() => {
     if (!selectedSlot) return
-    if (!isCalendarEventWithoutDateTime(selectedSlot)) {
+    if (!isCalendarEvent(selectedSlot)) {
       setTitle(selectedSlot.title || 'No Title')
       setContent(selectedSlot.content || '')
       setDuration(
-        DateTime.fromJSDate(selectedSlot.end).diff(
-          DateTime.fromJSDate(selectedSlot.start),
-          'minutes'
-        ).minutes || 30
+        selectedSlot.end.diff(selectedSlot.start, 'minutes').minutes || 30
       )
       setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
       setMeetingProvider(selectedSlot.provider || MeetingProvider.GOOGLE_MEET)
       setMeetingUrl(selectedSlot.meeting_url || '')
-      setPickedTime(new Date(selectedSlot.start))
+      setPickedTime(selectedSlot.start.toJSDate())
       const reminders = selectedSlot.reminders || []
       setMeetingNotification(
         MeetingNotificationOptions.filter(option =>
@@ -137,11 +138,8 @@ const ActiveEvent: React.FC = ({}) => {
       )
       setSelectedPermissions(selectedSlot.permissions)
       setIsScheduling(false)
-      setDecryptedMeeting(selectedSlot)
       setCurrentSelectedDate(
-        selectedSlot.start
-          ? DateTime.fromJSDate(selectedSlot.start)
-          : currentDate
+        selectedSlot.start ? selectedSlot.start : currentDate
       )
       const participants = selectedSlot.participants || []
       const participantsMap: Record<string, string[] | undefined> = {
@@ -161,6 +159,51 @@ const ActiveEvent: React.FC = ({}) => {
       const canEditMeetingParticipants = canAccountAccessPermission(
         selectedSlot?.permissions,
         selectedSlot?.participants || [],
+        currentAccount?.address,
+        [MeetingPermissions.INVITE_GUESTS, MeetingPermissions.EDIT_MEETING]
+      )
+      setCanEditMeetingDetails(canEditMeetingDetails)
+      setCanEditMeetingParticipants(canEditMeetingParticipants)
+    } else {
+      setTitle(selectedSlot.title || 'No Title')
+      setContent(selectedSlot.description || '')
+      setDuration(
+        selectedSlot.end.diff(selectedSlot.start, 'minutes').minutes || 30
+      )
+      setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+      setMeetingProvider(MeetingProvider.CUSTOM)
+      setMeetingUrl(selectedSlot.meeting_url || '')
+      setPickedTime(selectedSlot.start.toJSDate())
+      setIsScheduling(false)
+      setDecryptedMeeting(undefined)
+      setCurrentSelectedDate(
+        selectedSlot.start ? selectedSlot.start : currentDate
+      )
+      const participants =
+        selectedSlot.attendees?.map(attendee => ({
+          id: attendee.email || '',
+          guest_email: attendee.email || '',
+          name: attendee.name || '',
+          type: attendee.isOrganizer
+            ? ParticipantType.Scheduler
+            : ParticipantType.Invitee,
+          status: mapAttendeeStatusToParticipationStatus(attendee.status),
+          meeting_id: '',
+          account_address:
+            attendee.email === selectedSlot.accountEmail
+              ? currentAccount?.address || ''
+              : undefined,
+        })) || []
+      setParticipants(participants)
+      const canEditMeetingDetails = canAccountAccessPermission(
+        selectedSlot?.permissions,
+        participants,
+        currentAccount?.address,
+        MeetingPermissions.EDIT_MEETING
+      )
+      const canEditMeetingParticipants = canAccountAccessPermission(
+        selectedSlot?.permissions,
+        participants,
         currentAccount?.address,
         [MeetingPermissions.INVITE_GUESTS, MeetingPermissions.EDIT_MEETING]
       )
@@ -335,7 +378,7 @@ const ActiveEvent: React.FC = ({}) => {
         return
 
       setIsScheduling(true)
-      if (!isCalendarEventWithoutDateTime(selectedSlot)) {
+      if (!isCalendarEvent(selectedSlot)) {
         if (!pickedTime) return
         const start = new Date(pickedTime)
         const end = addMinutes(new Date(start), duration)
@@ -425,6 +468,7 @@ const ActiveEvent: React.FC = ({}) => {
           participantsSize: _participants.valid.length,
         })
         await handleCleanup()
+      } else {
       }
       toast({
         title: 'Meeting Updated',
@@ -602,7 +646,7 @@ const ActiveEvent: React.FC = ({}) => {
         <DrawerContent maxW="500px" bg="bg-event-alternate">
           <DrawerBody p={'30px'}>
             {selectedSlot &&
-              (isCalendarEventWithoutDateTime(selectedSlot) ? (
+              (isCalendarEvent(selectedSlot) ? (
                 <ActiveCalendarEvent slot={selectedSlot} />
               ) : (
                 <>
@@ -614,7 +658,11 @@ const ActiveEvent: React.FC = ({}) => {
                     afterCancel={handleCleanup}
                   />
                   <ActiveMeetwithEvent
-                    slot={selectedSlot}
+                    slot={{
+                      ...selectedSlot,
+                      start: selectedSlot.start.toJSDate(),
+                      end: selectedSlot.end.toJSDate(),
+                    }}
                     onDiscoverTimeOpen={onDiscoverTimeOpen}
                   />
                 </>
