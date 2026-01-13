@@ -15,8 +15,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const result = []
     for (const participant of participants) {
       const slot_id = participant.slot_id.split('_')[0]
-      const series_id = slotMap.get(participant.slot_id.split('_')[0])
-      if (series_id) {
+      const seriesInstance = slotMap.get(participant.slot_id.split('_')[0])
+      const seriesId = seriesInstance ? seriesInstance.id : null
+
+      if (seriesId) {
         result.push({
           ...participant,
           slot_id: `${slot_id}_${instance_id_parts}`,
