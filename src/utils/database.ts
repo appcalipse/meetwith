@@ -2154,94 +2154,141 @@ const deleteMeetingFromDB = async (
   skipRecurrenceUpdate = false
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
+
   const instanceSlotIds = slotIds.filter(slot => slot.includes('_'))
   const compositeSlots = slotIds.filter(slot => !slot.includes('_'))
-  const toDeleteSlotInstances: TablesInsert<'slot_instance'>[] = []
-  let addresses: string[] = []
-  let start: Date = new Date()
-  let end: Date = new Date()
-  let created_at: Date = new Date()
-  if (instanceSlotIds.length > 0) {
-    const { data: instanceSlots } = await db.supabase
-      .from<Tables<'slot_instance'>>('slot_instance')
-      .select()
-      .in('id', instanceSlotIds)
-    if (instanceSlots && instanceSlots.length > 0) {
-      addresses = addresses.concat(
-        instanceSlots
-          .map(s => s.account_address)
-          .filter((s): s is string => !!s)
-      )
-      start = new Date(instanceSlots[0].start)
-      end = new Date(instanceSlots[0].end)
-      created_at = new Date(instanceSlots[0].created_at || new Date())
-      for (const instance of instanceSlots) {
-        toDeleteSlotInstances.push({
-          ...instance,
-          status: RecurringStatus.CANCELLED,
-        })
-      }
-    }
-    if (toDeleteSlotInstances.length > 0) {
-      const { error } = await db.supabase
-        .from('slot_instance')
-        .upsert(toDeleteSlotInstances)
-      if (error) {
-        throw new Error(error.message)
-      }
-    }
-  }
-  if (compositeSlots.length > 0) {
-    const { data: compositeSlotsData } = await db.supabase
-      .from<DBSlot>('slots')
-      .select()
-      .in('id', compositeSlots)
-    if (compositeSlotsData && compositeSlotsData.length > 0) {
-      addresses = addresses.concat(
-        compositeSlotsData
-          .map(s => s.account_address)
-          .filter((s): s is string => !!s)
-      )
-      start = new Date(compositeSlotsData[0].start)
-      end = new Date(compositeSlotsData[0].end)
-      created_at = new Date(compositeSlotsData[0].created_at || new Date())
-    }
-    const { error } = await db.supabase
-      .from('slots')
-      .delete()
-      .in('id', compositeSlots)
-    if (error) {
-      throw new Error(error.message)
-    }
-  }
+  let start: Date | null = null
+  let end: Date | null = null
+  let created_at: Date | null = null
 
-  if (!skipRecurrenceUpdate) {
-    await deleteRecurringSlotInstances(compositeSlots)
-  }
+  await Promise.all([
+    // Cancel instance slots
+    instanceSlotIds.length > 0
+      ? (async () => {
+          const { data: instanceSlots } = await db.supabase
+            .from<Tables<'slot_instance'>>('slot_instance')
+            .select()
+            .in('id', instanceSlotIds)
 
-  const body: MeetingCancelSyncRequest = {
-    participantActing,
-    addressesToRemove: addresses,
-    guestsToRemove,
-    meeting_id,
-    start,
-    end,
-    created_at,
-    title,
-    timezone,
-    reason,
-    eventId,
-  }
+          if (!instanceSlots?.length) return
 
-  // Doing notifications and syncs asynchronously
-  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
-    method: 'DELETE',
-    body: JSON.stringify(body),
-    headers: {
-      'X-Server-Secret': process.env.SERVER_SECRET!,
-      'Content-Type': 'application/json',
-    },
-  })
+          const toDeleteSlotInstances = instanceSlots.map(instance => ({
+            ...instance,
+            status: RecurringStatus.CANCELLED,
+          }))
+
+          const { error } = await db.supabase
+            .from('slot_instance')
+            .upsert(toDeleteSlotInstances)
+          if (error) throw new Error(error.message)
+
+          start = new Date(instanceSlots[0].start)
+          end = new Date(instanceSlots[0].end)
+          created_at = new Date(instanceSlots[0].created_at || new Date())
+          const body: MeetingCancelSyncRequest = {
+            participantActing,
+            addressesToRemove: instanceSlots
+              .map(s => s.account_address)
+              .filter((s): s is string => !!s),
+            guestsToRemove: [],
+            meeting_id,
+            start: new Date(instanceSlots[0].start),
+            end: new Date(instanceSlots[0].end),
+            created_at: new Date(instanceSlots[0].created_at || new Date()),
+            title,
+            timezone,
+            reason,
+            eventId,
+          }
+
+          fetch(`${apiUrl}/server/meetings/instance/syncAndNotify`, {
+            method: 'DELETE',
+            body: JSON.stringify(body),
+            headers: {
+              'X-Server-Secret': process.env.SERVER_SECRET!,
+              'Content-Type': 'application/json',
+            },
+          })
+        })()
+      : Promise.resolve(),
+
+    // Delete composite slots and trigger sync
+    compositeSlots.length > 0
+      ? (async () => {
+          const { data: compositeSlotsData } = await db.supabase
+            .from<DBSlot>('slots')
+            .select()
+            .in('id', compositeSlots)
+
+          if (!compositeSlotsData?.length) return
+
+          const { error } = await db.supabase
+            .from('slots')
+            .delete()
+            .in('id', compositeSlots)
+
+          if (error) throw new Error(error.message)
+
+          if (!skipRecurrenceUpdate) {
+            await deleteRecurringSlotInstances(compositeSlots)
+          }
+
+          start = new Date(compositeSlotsData[0].start)
+          end = new Date(compositeSlotsData[0].end)
+          created_at = new Date(compositeSlotsData[0].created_at || new Date())
+          const body: MeetingCancelSyncRequest = {
+            participantActing,
+            addressesToRemove: compositeSlotsData
+              .map(s => s.account_address)
+              .filter((s): s is string => !!s),
+            guestsToRemove: [],
+            meeting_id,
+            start: new Date(compositeSlotsData[0].start),
+            end: new Date(compositeSlotsData[0].end),
+            created_at: new Date(
+              compositeSlotsData[0].created_at || new Date()
+            ),
+            title,
+            timezone,
+            reason,
+            eventId,
+          }
+
+          fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+            method: 'DELETE',
+            body: JSON.stringify(body),
+            headers: {
+              'X-Server-Secret': process.env.SERVER_SECRET!,
+              'Content-Type': 'application/json',
+            },
+          })
+        })()
+      : Promise.resolve(),
+  ])
+  if (guestsToRemove.length > 0 && start && end && created_at) {
+    const body: MeetingCancelSyncRequest = {
+      participantActing,
+      addressesToRemove: [],
+      guestsToRemove,
+      meeting_id,
+      start,
+      end,
+      created_at,
+      title,
+      timezone,
+      reason,
+      eventId,
+    }
+
+    fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+      method: 'DELETE',
+      body: JSON.stringify(body),
+      headers: {
+        'X-Server-Secret': process.env.SERVER_SECRET!,
+        'Content-Type': 'application/json',
+      },
+    })
+  }
 }
 
 const saveMeeting = async (
@@ -4138,7 +4185,6 @@ const updateRecurringSlotInstances = async (
   const rule = rrulestr(rrule[0], {
     dtstart: new Date(slots[0].start), // The original start time of the series
   })
-
   const updatePromises = slots.map(async (slot: TablesInsert<'slots'>) => {
     if (!slot.id) return
     const { data, error } = await db.supabase
@@ -4431,7 +4477,8 @@ const updateMeeting = async (
     )
     const slotInstanceToInsert: Array<TablesInsert<'slot_instance'>> = []
     for (const slot of slotInstances) {
-      const seriesId = seriesMapping.get(slot.id.split('_')[0])
+      const seriesInstance = seriesMapping.get(slot.id.split('_')[0])
+      const seriesId = seriesInstance?.id
       if (seriesId) {
         slotInstanceToInsert.push({
           id: slot.id,
@@ -4625,8 +4672,8 @@ const getSeriesIdMapping = async (slot_id: string[]) => {
   if (error) {
     throw new Error(error.message)
   }
-  const map = new Map<string, string>(
-    data?.map(item => [item.slot_id, item.id]) || []
+  const map = new Map<string, Tables<'slot_series'>>(
+    data?.map(item => [item.slot_id, item]) || []
   )
   return map
 }
@@ -4647,7 +4694,8 @@ const updateMeetingInstance = async (
   const slotInstances: Array<TablesInsert<'slot_instance'>> = []
   const slots: Array<TablesInsert<'slots'>> = []
   for (const slot of dbSlots) {
-    const seriesId = seriesMapping.get(slot.id.split('_')[0])
+    const seriesInstance = seriesMapping.get(slot.id.split('_')[0])
+    const seriesId = seriesInstance?.id
     if (seriesId) {
       slotInstances.push({
         id: slot.id,
@@ -7513,6 +7561,31 @@ const bulkUpdateSlotSeriesConfirmedSlots = async (
     console.error(error)
   }
 }
+
+const bulkupdateSlotInstancesConfirmedSlots = async (
+  series_id: string,
+  old_start_time: Date,
+  old_end_time: Date,
+  start_time: Date,
+  end_time: Date
+) => {
+  const start_offset = start_time.getTime() - old_start_time.getTime()
+  const end_offset = end_time.getTime() - old_end_time.getTime()
+
+  const { error } = await db.supabase.rpc<Database['public']['Functions']>(
+    'update_slot_instances_times',
+    {
+      p_series_id: series_id,
+      p_start_offset: `${start_offset} milliseconds`,
+      p_end_offset: `${end_offset} milliseconds`,
+    }
+  )
+
+  if (error) {
+    throw new Error(`Failed to update slot instances: ${error.message}`)
+  }
+}
+
 const handleSyncRecurringEvents = async (
   events: calendar_v3.Schema$Event[],
   calendar: ConnectedCalendar,
