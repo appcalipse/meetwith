@@ -534,4 +534,5 @@ export const ExternalCalendarSync = {
 
     await Promise.all([...promises, ...participantPromises])
   },
+  cancelInstance: async (targetAccount: Account['address']) => {},
 }
