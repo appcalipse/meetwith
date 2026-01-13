@@ -425,7 +425,6 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
         onClose={onClose}
         event={event}
         afterCancel={() => removeEventFromCache(event.sourceEventId)}
-        participants={participants}
       />
     </Box>
   )
