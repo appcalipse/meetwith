@@ -8,6 +8,7 @@ import {
 } from '@/types/CalendarConnections'
 import { MicrosoftGraphEvent } from '@/types/Office365'
 import {
+  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -99,6 +100,11 @@ export interface BaseCalendarService {
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingInstanceCreationSyncRequest,
     calendarId: string
+  ): Promise<void>
+
+  deleteEventInstance(
+    calendarId: string,
+    meetingDetails: MeetingCancelSyncRequest
   ): Promise<void>
 
   updateEventRsvpForExternalEvent(
