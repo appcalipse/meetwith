@@ -141,6 +141,7 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   reason?: string
   title?: string
   eventId?: string | null
+  original_start_time?: Date
 }
 
 export interface DiscordAccountInfoRequest {
