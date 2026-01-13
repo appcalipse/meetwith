@@ -631,41 +631,6 @@ const updateMeeting = async (
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
   }
-  const canUpdateOtherGuests = canAccountAccessPermission(
-    decryptedMeeting?.permissions,
-    decryptedMeeting?.participants,
-    currentAccountAddress,
-    MeetingPermissions.INVITE_GUESTS
-  )
-  if (
-    !canUpdateOtherGuests &&
-    decryptedMeeting?.participants?.length !== participants.length
-  ) {
-    throw new GuestListModificationDenied()
-  }
-
-  const canEditMeetingDetails = canAccountAccessPermission(
-    decryptedMeeting?.permissions,
-    decryptedMeeting?.participants,
-    currentAccountAddress,
-    MeetingPermissions.EDIT_MEETING
-  )
-
-  if (
-    !canEditMeetingDetails &&
-    (decryptedMeeting?.title !== meetingTitle ||
-      decryptedMeeting?.content !== content ||
-      decryptedMeeting?.meeting_url !== meetingUrl ||
-      decryptedMeeting?.provider !== meetingProvider ||
-      decryptedMeeting?.reminders?.length !== meetingReminders?.length ||
-      decryptedMeeting?.recurrence !== meetingRepeat ||
-      decryptedMeeting?.permissions?.length !== selectedPermissions?.length ||
-      new Date(decryptedMeeting?.start).getTime() !==
-        new Date(startTime).getTime() ||
-      new Date(decryptedMeeting?.end).getTime() !== new Date(endTime).getTime())
-  ) {
-    throw new MeetingDetailsModificationDenied()
-  }
 
   const currentAccount = await getAccount(currentAccountAddress)
   let existingMeeting: MeetingDecrypted | null = null
@@ -700,6 +665,45 @@ const updateMeeting = async (
     throw new MeetingChangeConflictError()
   }
 
+  const canEditMeetingDetails = canAccountAccessPermission(
+    existingMeeting?.permissions,
+    existingMeeting?.participants,
+    currentAccountAddress,
+    MeetingPermissions.EDIT_MEETING
+  )
+
+  if (!canEditMeetingDetails) {
+    const detailsChanged =
+      existingMeeting.title !== meetingTitle ||
+      existingMeeting.content !== content ||
+      existingMeeting.meeting_url !== meetingUrl ||
+      existingMeeting.provider !== meetingProvider ||
+      JSON.stringify(
+        existingMeeting.reminders?.slice().sort((a, b) => a - b)
+      ) !== JSON.stringify(meetingReminders?.slice().sort((a, b) => a - b)) ||
+      JSON.stringify(existingMeeting.permissions?.slice().sort()) !==
+        JSON.stringify(selectedPermissions?.slice().sort()) ||
+      new Date(existingMeeting.start).getTime() !==
+        new Date(startTime).getTime() ||
+      new Date(existingMeeting.end).getTime() !== new Date(endTime).getTime()
+
+    if (detailsChanged) {
+      throw new MeetingDetailsModificationDenied()
+    }
+  }
+  const canUpdateOtherGuests = canAccountAccessPermission(
+    existingMeeting?.permissions,
+    existingMeeting?.participants,
+    currentAccountAddress,
+    MeetingPermissions.INVITE_GUESTS
+  )
+
+  if (
+    !canUpdateOtherGuests &&
+    existingMeeting?.participants?.length !== participants.length
+  ) {
+    throw new GuestListModificationDenied()
+  }
   const existingMeetingAccounts = await loadMeetingAccountAddresses(
     existingMeeting!,
     currentAccount.address
@@ -1078,7 +1082,88 @@ const updateMeetingInstance = async (
   const slot: DBSlot = await apiUpdateMeetingInstance(instanceId, payload)
   return (await decryptMeeting(slot, currentAccount))!
 }
-const updateMeetingSeries = async () => {}
+const updateMeetingSeries = async (
+  currentInstanceId: string,
+  ignoreAvailabilities: boolean,
+  currentAccountAddress: string,
+  startTime: Date,
+  endTime: Date,
+  signature: string,
+  participants: ParticipantInfo[],
+  content: string,
+  meetingUrl: string,
+  meetingProvider: MeetingProvider,
+  meetingTitle?: string,
+  meetingReminders?: Array<MeetingReminders>,
+  selectedPermissions?: MeetingPermissions[]
+) => {
+  if (!currentInstanceId.includes('_')) {
+    throw new MeetingChangeConflictError()
+  }
+  const [slotId] = currentInstanceId.split('_')
+
+  const [currentAccount, existingDBSlot] = await Promise.all([
+    getAccount(currentAccountAddress),
+    getMeeting(slotId),
+  ])
+
+  if (!existingDBSlot) {
+    throw new MeetingNotFoundError(currentInstanceId)
+  }
+
+  const existingMeeting = await decryptMeeting(
+    existingDBSlot,
+    currentAccount,
+    signature
+  )
+
+  if (!existingMeeting) {
+    throw new MeetingNotFoundError(slotId)
+  }
+  const extendedStart = DateTime.fromJSDate(startTime)
+  const extendedEnd = DateTime.fromJSDate(endTime)
+
+  const newStartDate = DateTime.fromJSDate(existingMeeting.start)
+    .set({
+      hour: extendedStart.hour,
+      minute: extendedStart.minute,
+      second: extendedStart.second,
+      millisecond: extendedStart.millisecond,
+    })
+    .toJSDate()
+  const newEndDate = DateTime.fromJSDate(existingMeeting.end)
+    .set({
+      hour: extendedEnd.hour,
+      minute: extendedEnd.minute,
+      second: extendedEnd.second,
+      millisecond: extendedEnd.millisecond,
+    })
+    .toJSDate()
+
+  const parsedParticipants = participants.map(p => ({
+    ...p,
+    slot_id: p.slot_id?.split('_')[0],
+  }))
+
+  return updateMeeting(
+    ignoreAvailabilities,
+    currentAccountAddress,
+    NO_MEETING_TYPE,
+    newStartDate,
+    newEndDate,
+    existingMeeting,
+    signature,
+    parsedParticipants,
+    content,
+    meetingUrl,
+    meetingProvider,
+    meetingTitle,
+    meetingReminders,
+    existingMeeting.recurrence,
+    selectedPermissions
+  )
+}
+
 const updateMeetingConferenceGuest = async (
   ignoreAvailabilities: boolean,
   meetingTypeId: string,
@@ -1908,7 +1993,7 @@ export const participantStatusToICSStatus = (status: ParticipationStatus) => {
 }
 
 const decryptMeeting = async (
-  meeting: ExtendedDBSlot,
+  meeting: ExtendedDBSlot | ExtendedSlotInstance,
   account: Account,
   signature?: string
 ): Promise<MeetingDecrypted | null> => {
@@ -1920,7 +2005,9 @@ const decryptMeeting = async (
   if (!content) return null
 
   const meetingInfo = JSON.parse(content) as MeetingInfo
+
   if (
+    'conferenceData' in meeting &&
     meeting?.conferenceData &&
     meeting?.conferenceData.version !== MeetingVersion.V1
   ) {
@@ -1955,6 +2042,7 @@ const decryptMeeting = async (
     provider: meetingInfo?.provider,
     recurrence: meetingInfo?.recurrence,
     permissions: meetingInfo?.permissions,
+    series_id: 'series_id' in meeting ? meeting?.series_id : null,
   }
 }
 // This functions runtime is for the server side only
