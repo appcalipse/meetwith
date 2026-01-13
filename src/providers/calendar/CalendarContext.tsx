@@ -20,9 +20,16 @@ interface ICalendarContext {
   currentDate: DateTime
   setCurrentDate: (date: DateTime) => void
   selectedCalendars: CalendarSyncInfo[]
-  selectedSlot: WithInterval<MeetingDecrypted> | null
+  selectedSlot:
+    | WithInterval<UnifiedEvent<DateTime>>
+    | WithInterval<MeetingDecrypted<DateTime>>
+    | null
   setSelectedSlot: React.Dispatch<
-    React.SetStateAction<WithInterval<MeetingDecrypted> | null>
+    React.SetStateAction<
+      | WithInterval<UnifiedEvent<DateTime>>
+      | WithInterval<MeetingDecrypted<DateTime>>
+      | null
+    >
   >
   isLoading: boolean
   setSelectedCalendars: React.Dispatch<React.SetStateAction<CalendarSyncInfo[]>>
@@ -58,7 +65,7 @@ export const CalendarContext = React.createContext<ICalendarContext>({
 export const createEventsQueryKey = (date: DateTime) => [
   'calendar-events',
   date.startOf('month').startOf('week').toISODate() || '',
-  date.endOf('month').startOf('week').toISODate() || '',
+  date.endOf('month').endOf('week').toISODate() || '',
 ]
 export const useCalendarContext = () => {
   const context = React.useContext(CalendarContext)
@@ -74,8 +81,11 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   const [selectedCalendars, setSelectedCalendars] = React.useState<
     CalendarSyncInfo[]
   >([])
-  const [selectedSlot, setSelectedSlot] =
-    React.useState<WithInterval<MeetingDecrypted> | null>(null)
+  const [selectedSlot, setSelectedSlot] = React.useState<
+    | WithInterval<UnifiedEvent<DateTime>>
+    | WithInterval<MeetingDecrypted<DateTime>>
+    | null
+  >(null)
   const { data: calendars, isLoading: isCalendarLoading } = useQuery({
     queryKey: ['connected-calendars'],
     queryFn: () => listConnectedCalendars(false),
