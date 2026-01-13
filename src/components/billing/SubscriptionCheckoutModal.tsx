@@ -15,6 +15,7 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { ChainInfo, SupportedChain, supportedChains } from '@/types/chains'
 import { Address, ISubscriptionData, Transaction } from '@/types/Transactions'
 import { SUBSCRIPTION_PAYMENT_RECEIVER_ADDRESS } from '@/utils/constants'
+import { removeSubscriptionHandle } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { thirdWebClient } from '@/utils/user_manager'
 
@@ -77,6 +78,7 @@ const SubscriptionCheckoutModal = ({
       )
 
       if (transaction.transaction_hash) {
+        removeSubscriptionHandle()
         onSuccess()
         onClose()
         showSuccessToast(

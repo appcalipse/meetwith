@@ -149,6 +149,7 @@ import {
   NoActiveSubscription,
   OwnInviteError,
   ServiceUnavailableError,
+  SubscriptionDomainUpdateNotAllowed,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   TransactionCouldBeNotFoundError,
@@ -1801,7 +1802,10 @@ export const updateCustomSubscriptionDomain = async (
       if (e.status && e.status === 400) {
         throw new NoActiveSubscription()
       } else if (e.status && e.status === 410) {
-        throw new SubscriptionNotCustom()
+        if (e.message.includes('Subscription is not custom')) {
+          throw new SubscriptionNotCustom()
+        }
+        throw new SubscriptionDomainUpdateNotAllowed()
       }
     }
     throw e

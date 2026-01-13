@@ -233,6 +233,7 @@ import {
   StripeSubscriptionFetchError,
   StripeSubscriptionTransactionLinkError,
   StripeSubscriptionUpdateError,
+  SubscriptionDomainUpdateNotAllowed,
   SubscriptionHistoryCheckError,
   SubscriptionHistoryFetchError,
   SubscriptionNotCustom,
@@ -5040,9 +5041,13 @@ const updateCustomSubscriptionDomain = async (
   if (!subscription) {
     throw new NoActiveSubscription()
   }
-  if (subscription.chain !== SupportedChain.CUSTOM) {
-    throw new SubscriptionNotCustom()
+  const isCustomChain = subscription.chain === SupportedChain.CUSTOM
+  const isBillingSubscription = subscription.billing_plan_id !== null
+
+  if (!isCustomChain && !isBillingSubscription) {
+    throw new SubscriptionDomainUpdateNotAllowed()
   }
+
   const { error, data } = await db.supabase
     .from('subscriptions')
     .update({ domain })
@@ -9628,19 +9633,19 @@ const createSubscriptionPeriod = async (
   transactionId: string | null,
   domain?: string | null
 ): Promise<Tables<'subscriptions'>> => {
+  const insertData = {
+    owner_account: ownerAccount.toLowerCase(),
+    billing_plan_id: billingPlanId,
+    status,
+    expiry_time: expiryTime,
+    transaction_id: transactionId,
+    registered_at: new Date().toISOString(),
+    ...(domain && { domain }),
+  }
+
   const { data, error } = await db.supabase
     .from('subscriptions')
-    .insert([
-      {
-        owner_account: ownerAccount.toLowerCase(),
-        billing_plan_id: billingPlanId,
-        status,
-        expiry_time: expiryTime,
-        transaction_id: transactionId,
-        registered_at: new Date().toISOString(),
-        ...(domain && { domain }),
-      },
-    ])
+    .insert([insertData])
     .select()
     .single()
 

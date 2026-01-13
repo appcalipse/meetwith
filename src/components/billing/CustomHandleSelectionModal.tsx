@@ -26,6 +26,7 @@ import { HandleStatus } from '@/types/Billing'
 import { SettingsSection } from '@/types/Dashboard'
 import { getSubscriptionByDomain } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
+import { saveSubscriptionHandle } from '@/utils/storage'
 
 interface CustomHandleSelectionModalProps {
   isOpen: boolean
@@ -117,10 +118,10 @@ const CustomHandleSelectionModal: React.FC<CustomHandleSelectionModalProps> = ({
   const handleContinue = () => {
     if (status !== HandleStatus.AVAILABLE || !handle) return
 
+    saveSubscriptionHandle(handle)
+
     void router.push(
-      `/dashboard/settings/${
-        SettingsSection.SUBSCRIPTIONS
-      }/billing?handle=${encodeURIComponent(handle)}`
+      `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}/billing`
     )
     handleModalClose()
   }
