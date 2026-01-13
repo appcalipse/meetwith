@@ -344,17 +344,15 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
             <Button colorScheme="primary">Join meeting</Button>
           </Link>
         )}
-        {!isCalendarEvent(slot) && (
-          <Tooltip label="Edit meeting" placement="top">
-            <IconButton
-              color={iconColor}
-              aria-label="edit"
-              icon={<FaEdit size={16} />}
-              onClick={onSelectEvent}
-            />
-          </Tooltip>
-        )}
-        {isSchedulerOrOwner && !isCalendarEvent(slot) && (
+        <Tooltip label="Edit meeting" placement="top">
+          <IconButton
+            color={iconColor}
+            aria-label="edit"
+            icon={<FaEdit size={16} />}
+            onClick={onSelectEvent}
+          />
+        </Tooltip>
+        {isSchedulerOrOwner && (
           <Tooltip label="Cancel meeting" placement="top">
             <IconButton
               color={iconColor}
@@ -365,7 +363,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
           </Tooltip>
         )}
       </HStack>
-      {actor && !isCalendarEvent(slot) && (
+      {actor && (
         <HStack alignItems="center" gap={3.5}>
           <Text fontWeight={700}>RSVP:</Text>
           <HStack alignItems="center" gap={2}>
