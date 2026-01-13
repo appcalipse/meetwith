@@ -11,11 +11,11 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { differenceInMinutes } from 'date-fns'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import { Account } from '@/types/Account'
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, UnifiedAttendee, UnifiedEvent } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
 import { deleteCalendarEvent } from '@/utils/api_helper'
 import { MeetingPermissions } from '@/utils/constants/schedule'
@@ -23,7 +23,6 @@ import { canAccountAccessPermission } from '@/utils/generic_utils'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 interface DeleteMeetingDialogProps {
-  participants: string
   event: UnifiedEvent
   afterCancel?: () => void
   isOpen: boolean
@@ -32,7 +31,6 @@ interface DeleteMeetingDialogProps {
 
 export const DeleteEventDialog: React.FC<DeleteMeetingDialogProps> = ({
   event,
-  participants,
   isOpen,
   onClose,
   afterCancel,
@@ -42,6 +40,37 @@ export const DeleteEventDialog: React.FC<DeleteMeetingDialogProps> = ({
   const setIsDeleting = (isDeleting: boolean) => {
     _setIsDeleting(isDeleting)
   }
+  const participants = useMemo(() => {
+    const result: string[] = []
+    const attendees: UnifiedAttendee[] =
+      event?.attendees && event?.attendees.length > 0
+        ? event.attendees
+        : [
+            {
+              email: event.accountEmail,
+              name: 'You',
+              isOrganizer: true,
+              providerData: {},
+              status: AttendeeStatus.ACCEPTED,
+            },
+          ]
+
+    for (const attendee of attendees) {
+      let display = ''
+      if (attendee.email === event.accountEmail) {
+        display = 'You'
+      } else if (attendee.name) {
+        display = attendee.name
+      } else if (attendee.email) {
+        display = attendee.email
+      }
+      if (attendee.isOrganizer) {
+        display = `${display} (Organizer)`
+      }
+      result.push(display)
+    }
+    return result.join(', ')
+  }, [event])
   const toast = useToast()
   const handleDelete = async () => {
     setIsDeleting(true)
