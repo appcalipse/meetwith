@@ -47,7 +47,6 @@ import {
 } from '@/types/chains'
 import { SettingsSection } from '@/types/Dashboard'
 import {
-  getActiveSubscription,
   getBillingPlans,
   getTrialEligibility,
   subscribeToBillingPlan,
@@ -59,10 +58,14 @@ import {
   getSubscriptionHandle,
   removeSubscriptionHandle,
 } from '@/utils/storage'
+import {
+  getActiveBillingSubscription,
+  getActiveProSubscription,
+} from '@/utils/subscription_manager'
 
 const BillingCheckout = () => {
   const router = useRouter()
-  const handle = getSubscriptionHandle() || undefined
+  const handleFromStorage = getSubscriptionHandle() || undefined
 
   const currentAccount = useAccountContext()
   const [isYearly, setIsYearly] = useState(false)
@@ -78,7 +81,7 @@ const BillingCheckout = () => {
   } = useDisclosure()
   const trialCancelRef = useRef<HTMLButtonElement | null>(null)
 
-  const monthlyPrice = 8
+  const monthlyPrice = 1
   const yearlyPrice = 80
   const subtotal = isYearly ? yearlyPrice : monthlyPrice
 
@@ -107,23 +110,23 @@ const BillingCheckout = () => {
 
   const isTrialEligible = trialEligibility?.eligible === true
 
-  const { data: currentSubscription, isLoading: isLoadingSubscription } =
-    useQuery({
-      queryKey: ['currentSubscription', currentAccount?.address],
-      queryFn: () => getActiveSubscription(currentAccount!.address),
-      enabled: !!currentAccount?.address,
-      staleTime: 30000,
-    })
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const activeBillingSubscription = getActiveBillingSubscription(currentAccount)
 
   const hasActiveSubscription = Boolean(
-    currentSubscription?.is_active === true &&
-      currentSubscription?.expires_at &&
-      new Date(currentSubscription.expires_at) > new Date()
+    activeSubscription || activeBillingSubscription
   )
 
-  const isActiveStripeSubscription =
-    hasActiveSubscription &&
-    currentSubscription?.payment_provider === PaymentProvider.STRIPE
+  const isActiveStripeSubscription = Boolean(
+    activeBillingSubscription?.billing_plan_id &&
+      !activeBillingSubscription?.transaction_id
+  )
+
+  const handle =
+    handleFromStorage ||
+    activeSubscription?.domain ||
+    activeBillingSubscription?.domain ||
+    undefined
 
   // Fetch billing plans
   const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
@@ -278,13 +281,19 @@ const BillingCheckout = () => {
   useEffect(() => {
     if (
       router.isReady &&
-      !isLoadingSubscription &&
       !handle &&
-      !hasActiveSubscription
+      (!hasActiveSubscription ||
+        (!activeSubscription?.domain && !activeBillingSubscription?.domain))
     ) {
       router.replace(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`)
     }
-  }, [router.isReady, isLoadingSubscription, handle, hasActiveSubscription])
+  }, [
+    router.isReady,
+    handle,
+    hasActiveSubscription,
+    activeSubscription?.domain,
+    activeBillingSubscription?.domain,
+  ])
 
   const handleCryptoPaymentSuccess = () => {
     // Redirect to subscriptions page with success message

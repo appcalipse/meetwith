@@ -199,6 +199,8 @@ export const handleCryptoSubscriptionPayment = async (
     }
   }
 
+  const subscriptionHandle = handle || existingSubscription?.domain || undefined
+
   // Create transaction payload
   const transactionPayload: TablesInsert<'transactions'> = {
     method: PaymentType.CRYPTO,
@@ -257,7 +259,7 @@ export const handleCryptoSubscriptionPayment = async (
       'active',
       calculatedExpiryTime.toISOString(),
       transaction.id,
-      handle
+      subscriptionHandle
     )
   } catch (error) {
     Sentry.captureException(error, {

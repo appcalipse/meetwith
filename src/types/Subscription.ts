@@ -15,7 +15,7 @@ export enum Plan {
 export const existingPlans: PlanInfo[] = [
   {
     plan: Plan.PRO,
-    usdPrice: isProduction ? 8 : 1,
+    usdPrice: 8,
     name: 'Pro',
   },
 ]
