@@ -25,7 +25,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { PaymentStep, PaymentType } from '@utils/constants/meeting-types'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { FaArrowLeft, FaEdit } from 'react-icons/fa'
 
 import useAccountContext from '@/hooks/useAccountContext'
@@ -55,11 +55,14 @@ import {
 } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
+import {
+  getSubscriptionHandle,
+  removeSubscriptionHandle,
+} from '@/utils/storage'
 
 const BillingCheckout = () => {
   const router = useRouter()
-  const { handle: handleParam } = router.query
-  const handle = typeof handleParam === 'string' ? handleParam : undefined
+  const handle = getSubscriptionHandle() || undefined
 
   const currentAccount = useAccountContext()
   const [isYearly, setIsYearly] = useState(false)
@@ -161,6 +164,7 @@ const BillingCheckout = () => {
     onSuccess: (response, variables) => {
       // Trials: no payment modal; redirect to refresh subscription card
       if (variables?.is_trial || response.amount <= 0) {
+        removeSubscriptionHandle()
         router.push('/dashboard/settings/subscriptions?checkout=success')
         return
       }
@@ -267,6 +271,7 @@ const BillingCheckout = () => {
   }
 
   const handleChangeHandle = () => {
+    removeSubscriptionHandle()
     router.push(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`)
   }
 

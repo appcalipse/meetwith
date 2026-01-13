@@ -5,6 +5,7 @@ const SCHEDULES = 'meetings_scheduled'
 const NOTIFICATION = 'group_notifications'
 const GUEST_POLL_DETAILS = 'quickpoll_guest_details'
 const HIDE_GROUP_AVAILABILITY_LABELS = 'hide_group_availability_labels'
+const SUBSCRIPTION_HANDLE = 'subscription_handle'
 const ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
@@ -136,18 +137,36 @@ const setHideGroupAvailabilityLabels = (
   )
 }
 
+const saveSubscriptionHandle = (handle: string): void => {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(SUBSCRIPTION_HANDLE, handle)
+}
+
+const getSubscriptionHandle = (): string | null => {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(SUBSCRIPTION_HANDLE)
+}
+
+const removeSubscriptionHandle = (): void => {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(SUBSCRIPTION_HANDLE)
+}
+
 export {
   getGuestPollDetails,
   getHideGroupAvailabilityLabels,
   getMeetingsScheduled,
   getNotificationTime,
   getSignature,
+  getSubscriptionHandle,
   incrementNotificationLookup,
   removeGuestPollDetails,
   removeSignature,
+  removeSubscriptionHandle,
   saveGuestPollDetails,
   saveMeetingsScheduled,
   saveNotificationTime,
   saveSignature,
+  saveSubscriptionHandle,
   setHideGroupAvailabilityLabels,
 }

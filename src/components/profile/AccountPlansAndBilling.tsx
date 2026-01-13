@@ -54,6 +54,7 @@ import {
   syncSubscriptions,
 } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
+import { removeSubscriptionHandle } from '@/utils/storage'
 import { getActiveBillingSubscription } from '@/utils/subscription_manager'
 import { useToastHelpers } from '@/utils/toasts'
 
@@ -196,6 +197,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       if (checkoutValue === 'success') {
         showSuccessToast('Subscription successful!', 'Welcome to Pro!')
         void updateUser()
+        removeSubscriptionHandle()
         // Clean up query parameters
         const {
           checkout: _checkout,
@@ -212,6 +214,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         )
       } else if (checkoutValue === 'cancel') {
         showInfoToast('Payment cancelled', 'You can try again anytime.')
+        removeSubscriptionHandle()
         // Clean up query parameters
         const { checkout: _checkout, ...restQuery } = query
         void replace(

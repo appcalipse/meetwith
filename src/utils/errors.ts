@@ -244,6 +244,15 @@ export class SubscriptionNotCustom extends Error {
   }
 }
 
+export class SubscriptionDomainUpdateNotAllowed extends Error {
+  constructor() {
+    super(
+      'Domain can only be updated for billing subscriptions or custom subscriptions. Legacy blockchain subscriptions require on-chain transactions.'
+    )
+    this.name = 'SubscriptionDomainUpdateNotAllowed'
+  }
+}
+
 export class MissingSubscriptionMetadataError extends Error {
   constructor() {
     super(

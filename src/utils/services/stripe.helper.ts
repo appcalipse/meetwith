@@ -13,7 +13,6 @@ import {
   createSubscriptionTransaction,
   findSubscriptionPeriodByPlanAndExpiry,
   getActiveSubscriptionPeriod,
-  getBillingEmailAccountInfo,
   getBillingPlanById,
   getBillingPlanIdFromStripeProduct,
   getPaymentAccountByProviderId,
@@ -159,8 +158,6 @@ export const handleSubscriptionCreated = async (
   )?.toLowerCase()
   const billingPlanId =
     (subscription.metadata?.billing_plan_id as string | undefined) || null
-  const handle =
-    (subscription.metadata?.handle as string | undefined) || undefined
 
   if (!accountAddress || !billingPlanId) {
     return
@@ -190,64 +187,6 @@ export const handleSubscriptionCreated = async (
     )
   } catch (error) {
     Sentry.captureException(error)
-  }
-
-  // If this subscription starts with a trial, create a trial subscription period now
-  // so the user has access during the trial. When the first paid invoice succeeds,
-  // a new paid period will be created via invoice.payment_succeeded.
-  const trialEnd = subscription.trial_end
-  const isTrialingNow =
-    subscription.status === 'trialing' &&
-    trialEnd !== null &&
-    trialEnd !== undefined &&
-    trialEnd * 1000 > Date.now()
-
-  if (isTrialingNow) {
-    try {
-      const createdPeriod = await createSubscriptionPeriod(
-        accountAddress,
-        billingPlanId,
-        'active',
-        new Date(trialEnd * 1000).toISOString(),
-        null,
-        handle
-      )
-
-      // Send trial started email (non-blocking, queued)
-      try {
-        const billingPlan = await getBillingPlanById(billingPlanId)
-        if (billingPlan) {
-          const emailPlan: BillingEmailPlan = {
-            id: billingPlan.id,
-            name: billingPlan.name,
-            price: billingPlan.price,
-            billing_cycle: billingPlan.billing_cycle,
-          }
-
-          emailQueue.add(async () => {
-            try {
-              await sendSubscriptionConfirmationEmailForAccount(
-                accountAddress,
-                emailPlan,
-                createdPeriod.registered_at,
-                createdPeriod.expiry_time,
-                BillingPaymentProvider.STRIPE,
-                undefined,
-                true // isTrial
-              )
-              return true
-            } catch (error) {
-              Sentry.captureException(error)
-              return false
-            }
-          })
-        }
-      } catch (error) {
-        Sentry.captureException(error)
-      }
-    } catch (error) {
-      Sentry.captureException(error)
-    }
   }
 }
 
@@ -622,6 +561,8 @@ export const handleInvoicePaymentSucceeded = async (
   event: Stripe.InvoicePaymentSucceededEvent
 ) => {
   const invoice = event.data.object
+  const amountPaid = invoice.amount_paid / 100
+  const isTrialInvoice = amountPaid === 0
 
   // Get subscription ID from invoice
   const invoiceData = invoice as unknown as {
@@ -685,23 +626,23 @@ export const handleInvoicePaymentSucceeded = async (
     }
   }
 
-  // Final fallback: For subscription_update invoices, the subscription field might not be included
-  // Use customer ID to find the active subscription from Stripe
+  // Final fallback
   if (!stripeSubscriptionId) {
     const customerId = (invoice as unknown as { customer?: string }).customer
 
     if (customerId && typeof customerId === 'string') {
       try {
-        // Get customer's active subscriptions from Stripe
         const stripe = new StripeService()
-        const subscriptions = await stripe.subscriptions.list({
+        const allSubscriptions = await stripe.subscriptions.list({
           customer: customerId,
-          status: 'active',
-          limit: 1,
+          limit: 10,
         })
 
-        if (subscriptions.data && subscriptions.data.length > 0) {
-          stripeSubscriptionId = subscriptions.data[0].id
+        if (allSubscriptions.data && allSubscriptions.data.length > 0) {
+          const sortedSubs = allSubscriptions.data.sort(
+            (a, b) => b.created - a.created
+          )
+          stripeSubscriptionId = sortedSubs[0].id
         }
       } catch (error) {
         Sentry.captureException(error)
@@ -736,7 +677,6 @@ export const handleInvoicePaymentSucceeded = async (
   }
 
   // Create transaction record for the invoice payment (renewal)
-  const amountPaid = invoice.amount_paid / 100 // Convert from cents
   const currency = invoice.currency ? invoice.currency.toUpperCase() : null
 
   const transactionPayload: TablesInsert<'transactions'> = {
@@ -771,24 +711,22 @@ export const handleInvoicePaymentSucceeded = async (
     return
   }
 
-  // Link transaction to Stripe subscription
-  try {
-    await linkTransactionToStripeSubscription(
-      stripeSubscriptionId,
-      transactionId
-    )
-  } catch (error) {
-    Sentry.captureException(error)
-    // continue; not fatal for subsequent steps
-  }
-
-  // Check invoice billing_reason to determine the flow
   const invoiceBillingReason = (
     invoice as unknown as { billing_reason?: string }
   ).billing_reason
   const invoicePeriodEnd = new Date(invoice.period_end * 1000).toISOString()
 
-  // Handle subscription_create invoices: Create transaction and subscription period
+  if (!isTrialInvoice) {
+    try {
+      await linkTransactionToStripeSubscription(
+        stripeSubscriptionId,
+        transactionId
+      )
+    } catch (error) {
+      Sentry.captureException(error)
+    }
+  }
+
   // This is the authoritative event for new subscription payment confirmation
   // NOTE: handleSubscriptionCreated only creates the stripe_subscriptions record,
   // so we always create the transaction and subscription period here
@@ -807,6 +745,13 @@ export const handleInvoicePaymentSucceeded = async (
 
       handle =
         (fullSubscription.metadata?.handle as string | undefined) || undefined
+
+      if (!handle) {
+        const existingSubscription = await getActiveSubscriptionPeriod(
+          accountAddress
+        )
+        handle = existingSubscription?.domain || undefined
+      }
 
       // Get current_period_end from subscription (not invoice)
       // For flexible billing mode, period info is in items.data[0]
@@ -842,6 +787,10 @@ export const handleInvoicePaymentSucceeded = async (
       } else {
         calculatedExpiryTime = new Date(currentPeriodEnd * 1000)
       }
+
+      if (isTrialInvoice && fullSubscription.trial_end) {
+        calculatedExpiryTime = new Date(fullSubscription.trial_end * 1000)
+      }
     } catch (error) {
       Sentry.captureException(error)
 
@@ -861,7 +810,7 @@ export const handleInvoicePaymentSucceeded = async (
         billingPlanId,
         'active',
         calculatedExpiryTime.toISOString(),
-        transactionId,
+        isTrialInvoice ? null : transactionId,
         handle
       )
 
@@ -881,7 +830,10 @@ export const handleInvoicePaymentSucceeded = async (
             createdPeriod.registered_at,
             createdPeriod.expiry_time,
             BillingPaymentProvider.STRIPE,
-            { amount: amountPaid, currency: currency || 'USD' }
+            isTrialInvoice
+              ? undefined
+              : { amount: amountPaid, currency: currency || 'USD' },
+            isTrialInvoice
           )
           return true
         } catch (error) {
@@ -997,13 +949,22 @@ export const handleInvoicePaymentSucceeded = async (
       const currentPeriodEnd = deriveCurrentPeriodEnd(fullSubscription)
 
       if (currentPeriodEnd && typeof currentPeriodEnd === 'number') {
+        const existingSubscription = await getActiveSubscriptionPeriod(
+          accountAddress
+        )
+        const handle =
+          existingSubscription?.domain ||
+          (fullSubscription?.metadata?.handle as string | undefined) ||
+          undefined
+
         const calculatedExpiryTime = new Date(currentPeriodEnd * 1000)
         const createdPeriod = await createSubscriptionPeriod(
           accountAddress,
           billingPlanId,
           'active',
           calculatedExpiryTime.toISOString(),
-          transactionId
+          transactionId,
+          handle
         )
 
         // Send subscription confirmation email for plan update (non-blocking, queued)

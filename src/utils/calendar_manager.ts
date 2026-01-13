@@ -48,9 +48,11 @@ import {
 } from '@/types/Requests'
 import { Address } from '@/types/Transactions'
 import {
-  apiUpdateMeeting,
-  apiUpdateMeetingInstance,
   cancelMeeting as apiCancelMeeting,
+  scheduleMeeting as apiScheduleMeeting,
+  apiUpdateMeeting,
+  updateMeetingAsGuest as apiUpdateMeetingAsGuest,
+  apiUpdateMeetingInstance,
   conferenceGuestMeetingCancel,
   decodeMeetingGuest,
   generateMeetingUrl,
@@ -64,11 +66,9 @@ import {
   getSlotInstanceById,
   getSlotsByIds,
   isSlotFreeApiCall,
-  scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
   scheduleMeetingFromServer,
   syncMeeting,
-  updateMeetingAsGuest as apiUpdateMeetingAsGuest,
 } from '@/utils/api_helper'
 
 import { diff, intersec } from './collections'
@@ -2054,14 +2054,20 @@ const getAccountDomainUrl = (
   account?: Account | null,
   ellipsize?: boolean
 ): string => {
-  if (isProAccount(account!)) {
-    const domain = account?.subscriptions?.find(
-      sub => new Date(sub.expiry_time) > new Date()
-    )?.domain
-    if (domain) {
-      return domain
-    }
+  if (!account?.subscriptions) {
+    return `address/${
+      ellipsize ? ellipsizeAddress(account?.address) : account?.address
+    }`
   }
+
+  const activeSubscription = account.subscriptions.find(
+    sub => new Date(sub.expiry_time) > new Date() && sub.domain
+  )
+
+  if (activeSubscription?.domain) {
+    return activeSubscription.domain
+  }
+
   return `address/${
     ellipsize ? ellipsizeAddress(account?.address) : account?.address
   }`
