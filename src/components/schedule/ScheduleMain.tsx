@@ -821,21 +821,21 @@ const ScheduleMain: FC<IInitialProps> = ({
               selectedPermissions
             )
           } else {
-            // return await updateMeetingSeries(
-            //   true,
-            //   currentAccount!.address,
-            //   start,
-            //   end,
-            //   decryptedMeeting!,
-            //   getSignature(currentAccount!.address) || '',
-            //   _participants.valid,
-            //   content,
-            //   meetingUrl,
-            //   meetingProvider,
-            //   title,
-            //   meetingNotification.map(mn => mn.value),
-            //   selectedPermissions
-            // )
+            await updateMeetingSeries(
+              decryptedMeeting.id,
+              true,
+              currentAccount!.address,
+              start,
+              end,
+              getSignature(currentAccount!.address) || '',
+              _participants.valid,
+              content,
+              meetingUrl,
+              meetingProvider,
+              title,
+              meetingNotification.map(mn => mn.value),
+              selectedPermissions
+            )
           }
         } else {
           await updateMeeting(
