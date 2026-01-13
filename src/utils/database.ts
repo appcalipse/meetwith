@@ -3401,7 +3401,7 @@ const getConnectedCalendars = async (
   } = {}
 ): Promise<ConnectedCalendar[]> => {
   const isPro = await isProAccountAsync(address)
-  const effectiveLimit = !isPro ? 1 : limit !== undefined ? limit : undefined
+  const effectiveLimit = !isPro ? 2 : limit !== undefined ? limit : undefined
 
   const query = db.supabase
     .from('connected_calendars')
@@ -5467,6 +5467,36 @@ const acceptContactInvite = async (
     throw new Error(deleteError.message)
   }
 }
+const countContactsAddedThisMonth = async (
+  accountAddress: string
+): Promise<number> => {
+  const now = new Date()
+  const nowISO = now.toISOString()
+
+  const firstDayOfMonth = DateTime.now().startOf('month').toISO()
+
+  if (!firstDayOfMonth) {
+    throw new Error('Failed to calculate first day of month')
+  }
+
+  const { count, error } = await db.supabase
+    .from('contact')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_owner_address', accountAddress.toLowerCase())
+    .eq('status', ContactStatus.ACTIVE)
+    .gte('created_at', firstDayOfMonth)
+    .lte('created_at', nowISO)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to count contacts added this month: ${error.message}`
+    )
+  }
+
+  return count || 0
+}
+
 const addContactInvite = async (
   account_address: string,
   contact_address: string
@@ -8159,6 +8189,56 @@ const countActiveQuickPolls = async (
   return count || 0
 }
 
+const countActiveQuickPollsCreatedThisMonth = async (
+  account_address: string
+): Promise<number> => {
+  const now = new Date()
+  const nowISO = now.toISOString()
+
+  const firstDayOfMonth = DateTime.now().startOf('month').toISO()
+
+  if (!firstDayOfMonth) {
+    throw new Error('Failed to calculate first day of month')
+  }
+
+  const { data: participations, error: participationError } = await db.supabase
+    .from('quick_poll_participants')
+    .select('poll_id')
+    .eq('account_address', account_address.toLowerCase())
+    .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+
+  if (participationError) {
+    Sentry.captureException(participationError)
+    throw new Error(
+      `Failed to count active QuickPolls: ${participationError.message}`
+    )
+  }
+
+  if (!participations || participations.length === 0) {
+    return 0
+  }
+
+  const pollIds = participations.map(p => p.poll_id)
+
+  const { count, error } = await db.supabase
+    .from('quick_polls')
+    .select('*', { count: 'exact', head: true })
+    .in('id', pollIds)
+    .eq('status', PollStatus.ONGOING)
+    .gt('expires_at', nowISO)
+    .gte('created_at', firstDayOfMonth)
+    .lte('created_at', nowISO)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to count active QuickPolls created this month: ${error.message}`
+    )
+  }
+
+  return count || 0
+}
+
 const createQuickPoll = async (
   owner_address: string,
   pollData: CreateQuickPollRequest
@@ -9998,8 +10078,10 @@ export {
   connectedCalendarExists,
   contactInviteByEmailExists,
   countActiveQuickPolls,
+  countActiveQuickPollsCreatedThisMonth,
   countCalendarIntegrations,
   countCalendarSyncs,
+  countContactsAddedThisMonth,
   countGroups,
   countMeetingTypes,
   createCheckOutTransaction,

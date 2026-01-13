@@ -57,7 +57,9 @@ export const PRO_PLAN_BENEFITS: string[] = [
   'Unlimited scheduling groups',
   'Payments & Invoicing',
   'Unlimited integrations (Google calendar, iCloud, Office 365 and WebDAV)',
+  'Unlimited calendar connection',
   'Unlimited QuickPolls',
+  'Unlimited contact connection per month',
   'Unlimited meeting types - Free & Paid',
   '24/7 priority support',
 ]
@@ -66,9 +68,10 @@ export const FREE_PLAN_BENEFITS: string[] = [
   'Personal scheduling page',
   '1 Meeting type - FREE meetings',
   '5 scheduling groups',
-  'Limited QuickPolls (max. 2 active polls per time)',
-  'Basic calendar sync - 1 calendar sync only',
+  'Up to 2 calendar integrations (Google calendar, iCloud, Office 365 or WebDAV)',
+  'Limited QuickPolls (1 active poll per month)',
+  'Calendar sync - up to 2 calendars connected',
   'Smart notifications — Email, Discord, and Telegram let you set the cadence for each meeting type.',
-  'Unlimited contact connection',
+  'Add up to 3 new contacts per month',
   'Email support',
 ]

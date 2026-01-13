@@ -600,7 +600,7 @@ export class SchedulingGroupLimitExceededError extends Error {
 export class CalendarIntegrationLimitExceededError extends Error {
   constructor() {
     super(
-      `Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.`
+      `Free tier allows only 2 calendar integrations. Upgrade to Pro for unlimited calendar integrations.`
     )
     this.name = 'CalendarIntegrationLimitExceededError'
   }
@@ -609,7 +609,7 @@ export class CalendarIntegrationLimitExceededError extends Error {
 export class QuickPollLimitExceededError extends Error {
   constructor() {
     super(
-      `Free tier allows only 2 active polls. Upgrade to Pro for unlimited active polls.`
+      `Free tier allows only 1 active poll per month. Upgrade to Pro for unlimited active polls.`
     )
     this.name = 'QuickPollLimitExceededError'
   }
@@ -618,9 +618,18 @@ export class QuickPollLimitExceededError extends Error {
 export class CalendarSyncLimitExceededError extends Error {
   constructor() {
     super(
-      `Free tier allows only 1 calendar sync. Upgrade to Pro for unlimited calendar syncs.`
+      `Free tier allows only 2 calendar syncs. Upgrade to Pro for unlimited calendar syncs.`
     )
     this.name = 'CalendarSyncLimitExceededError'
+  }
+}
+
+export class ContactLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 3 new contacts per month. Upgrade to Pro for unlimited contacts.`
+    )
+    this.name = 'ContactLimitExceededError'
   }
 }
 
