@@ -13,6 +13,7 @@ import {
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 
 import { getBaseEventId } from '../calendar_sync_helpers'
+import { MeetingPermissions } from '../constants/schedule'
 import { isJson } from '../generic_utils'
 
 // Types for WebDAV/CalDAV events (based on your existing code)
@@ -59,6 +60,17 @@ export class WebDAVEventMapper {
     calendarId: string,
     accountEmail: string
   ): UnifiedEvent {
+    const isOrganizer = webdavEvent.organizer
+      ? webdavEvent.organizer.includes(accountEmail)
+      : false
+    const permissions: MeetingPermissions[] = [
+      MeetingPermissions.SEE_GUEST_LIST,
+    ]
+    if (isOrganizer) {
+      permissions.push(MeetingPermissions.INVITE_GUESTS)
+      permissions.push(MeetingPermissions.EDIT_MEETING)
+    }
+
     return {
       id: this.generateInternalId(webdavEvent),
       title: webdavEvent.summary || '(No title)',
@@ -77,9 +89,9 @@ export class WebDAVEventMapper {
       attendees: this.mapAttendees(webdavEvent.attendees || []),
       recurrence: this.mapRecurrence(webdavEvent),
       status: this.mapEventStatus(webdavEvent.status),
-
       lastModified: new Date(webdavEvent.lastModified || new Date()),
       etag: webdavEvent.etag || null,
+      permissions,
 
       providerData: {
         webdav: {

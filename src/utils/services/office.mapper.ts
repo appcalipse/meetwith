@@ -11,16 +11,17 @@ import {
 } from '@/types/Calendar'
 import { TimeSlotSource } from '@/types/Meeting'
 import {
-  Attendee as O365Attendee,
   DateTimeTimeZone,
   ItemBody,
-  Location as O365Location,
   MicrosoftGraphEvent,
+  Attendee as O365Attendee,
+  Location as O365Location,
   PatternedRecurrence,
   RecurrencePattern,
   RecurrenceRange,
   ResponseStatus,
 } from '@/types/Office365'
+import { MeetingPermissions } from '../constants/schedule'
 
 export class Office365EventMapper {
   /**
@@ -31,6 +32,20 @@ export class Office365EventMapper {
     calendarId: string,
     accountEmail: string
   ): Promise<UnifiedEvent> {
+    const permissions: MeetingPermissions[] = []
+    const isOrganizer =
+      o365Event.organizer?.emailAddress?.address?.toLowerCase() ===
+      accountEmail.toLowerCase()
+
+    if (!o365Event.hideAttendees || isOrganizer) {
+      permissions.push(MeetingPermissions.SEE_GUEST_LIST)
+    }
+    if (o365Event.allowNewTimeProposals || isOrganizer) {
+      permissions.push(MeetingPermissions.EDIT_MEETING)
+    }
+    if (isOrganizer) {
+      permissions.push(MeetingPermissions.INVITE_GUESTS)
+    }
     return {
       id: await this.generateInternalId(o365Event),
       title: o365Event.subject || '(No title)',
@@ -54,7 +69,7 @@ export class Office365EventMapper {
         ? new Date(o365Event.lastModifiedDateTime)
         : new Date(),
       etag: o365Event.changeKey,
-
+      permissions,
       providerData: {
         office365: {
           importance: o365Event.importance,
