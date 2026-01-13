@@ -442,7 +442,7 @@ export class GoogleEventMapper {
     })
 
     const ruleset = rrule.toString()
-    return isJson(ruleset) ? JSON.parse(ruleset) : ruleset
+    return isJson(ruleset) ? JSON.parse(ruleset) : [ruleset]
   }
 
   private static mapDayToGoogle(day: DayOfWeek): string {
