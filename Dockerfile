@@ -32,7 +32,7 @@ COPY --from=deps /app/.yarnrc.yml ./
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
-ENV NODE_OPTIONS="--max-old-space-size=8192"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN yarn build
 
 
