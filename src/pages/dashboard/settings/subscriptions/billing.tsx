@@ -81,7 +81,7 @@ const BillingCheckout = () => {
   } = useDisclosure()
   const trialCancelRef = useRef<HTMLButtonElement | null>(null)
 
-  const monthlyPrice = 1
+  const monthlyPrice = 8
   const yearlyPrice = 80
   const subtotal = isYearly ? yearlyPrice : monthlyPrice
 

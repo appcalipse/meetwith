@@ -9657,6 +9657,22 @@ const linkTransactionToStripeSubscription = async (
   stripeSubscriptionId: string,
   transactionId: string
 ): Promise<Tables<'stripe_subscription_transactions'>> => {
+  // Check if link already exists to prevent duplicates
+  const { data: existingLink, error: checkError } = await db.supabase
+    .from('stripe_subscription_transactions')
+    .select('*')
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .eq('transaction_id', transactionId)
+    .maybeSingle()
+
+  if (checkError) {
+    Sentry.captureException(checkError)
+  }
+
+  if (existingLink) {
+    return existingLink
+  }
+
   const { data, error } = await db.supabase
     .from('stripe_subscription_transactions')
     .insert([
@@ -9680,10 +9696,38 @@ const linkTransactionToStripeSubscription = async (
   return data
 }
 
+// Find existing transaction by provider_reference_id to prevent duplicates
+const findTransactionByProviderReference = async (
+  providerReferenceId: string
+): Promise<Tables<'transactions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('transactions')
+    .select('*')
+    .eq('provider_reference_id', providerReferenceId)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    return null
+  }
+
+  return data
+}
+
 // Create a subscription transaction (for billing subscriptions)
 const createSubscriptionTransaction = async (
   payload: TablesInsert<'transactions'>
 ): Promise<Tables<'transactions'>> => {
+  // Check for existing transaction by provider_reference_id to prevent duplicates
+  if (payload.provider_reference_id) {
+    const existingTransaction = await findTransactionByProviderReference(
+      payload.provider_reference_id
+    )
+    if (existingTransaction) {
+      return existingTransaction
+    }
+  }
+
   const { data, error } = await db.supabase
     .from('transactions')
     .insert([payload])
@@ -10004,17 +10048,52 @@ const updateSubscriptionPeriodTransaction = async (
   return data
 }
 
+const updateSubscriptionPeriodDomain = async (
+  subscriptionId: string,
+  domain: string
+): Promise<Tables<'subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .update({
+      domain: domain,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subscriptionId)
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to update subscription period domain: ${error.message}`
+    )
+  }
+
+  if (!data) {
+    throw new Error('No data returned when updating subscription period domain')
+  }
+
+  return data
+}
+
 const findSubscriptionPeriodByPlanAndExpiry = async (
   accountAddress: string,
   billingPlanId: string,
   expiryTime: string
 ): Promise<Tables<'subscriptions'> | null> => {
+  const expiryDate = new Date(expiryTime)
+  const toleranceMs = 60 * 1000 // 1 minute
+  const minExpiry = new Date(expiryDate.getTime() - toleranceMs).toISOString()
+  const maxExpiry = new Date(expiryDate.getTime() + toleranceMs).toISOString()
+
   const { data, error } = await db.supabase
     .from('subscriptions')
     .select('*')
     .eq('owner_account', accountAddress.toLowerCase())
     .eq('billing_plan_id', billingPlanId)
     .is('transaction_id', null)
+    .gte('expiry_time', minExpiry)
+    .lte('expiry_time', maxExpiry)
     .order('registered_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -10038,6 +10117,52 @@ const findRecentSubscriptionPeriodByPlan = async (
     .eq('owner_account', accountAddress.toLowerCase())
     .eq('billing_plan_id', billingPlanId)
     .gte('registered_at', createdAfter)
+    .order('registered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodFindError(error.message)
+  }
+
+  return data
+}
+
+// Check if a subscription period already exists
+const findExistingSubscriptionPeriod = async (
+  accountAddress: string,
+  billingPlanId: string,
+  expiryTime: string,
+  transactionId: string | null
+): Promise<Tables<'subscriptions'> | null> => {
+  // First check by transaction_id if provided
+  if (transactionId) {
+    const { data: byTransaction, error: txError } = await db.supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('owner_account', accountAddress.toLowerCase())
+      .eq('transaction_id', transactionId)
+      .maybeSingle()
+
+    if (!txError && byTransaction) {
+      return byTransaction
+    }
+  }
+
+  // Then check by billing_plan_id + expiry_time (with 1 minute tolerance)
+  const expiryDate = new Date(expiryTime)
+  const toleranceMs = 60 * 1000 // 1 minute
+  const minExpiry = new Date(expiryDate.getTime() - toleranceMs).toISOString()
+  const maxExpiry = new Date(expiryDate.getTime() + toleranceMs).toISOString()
+
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .eq('billing_plan_id', billingPlanId)
+    .gte('expiry_time', minExpiry)
+    .lte('expiry_time', maxExpiry)
     .order('registered_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -10111,6 +10236,7 @@ export {
   findAccountByIdentifier,
   findAccountsByEmails,
   findAccountsByText,
+  findExistingSubscriptionPeriod,
   findRecentSubscriptionPeriodByPlan,
   findSubscriptionPeriodByPlanAndExpiry,
   getAccountAvatarUrl,
@@ -10256,6 +10382,7 @@ export {
   updateQuickPollParticipantStatus,
   updateRecurringSlots,
   updateStripeSubscription,
+  updateSubscriptionPeriodDomain,
   updateSubscriptionPeriodStatus,
   updateSubscriptionPeriodTransaction,
   upsertGateCondition,
