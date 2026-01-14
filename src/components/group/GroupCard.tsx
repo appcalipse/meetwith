@@ -24,11 +24,12 @@ import {
   Text,
   Th,
   Thead,
+  Tooltip,
   Tr,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import * as Tooltip from '@radix-ui/react-tooltip'
+import * as RadixTooltip from '@radix-ui/react-tooltip'
 import { useRouter } from 'next/router'
 import React, { Fragment, useContext, useId, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
@@ -185,16 +186,19 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 boxSize={{ base: '40px', md: '48px' }}
                 flexShrink={0}
               />
-              <Heading
-                size={'lg'}
-                maxW={{ '2xl': '400px', lg: 270, xl: 300, base: 200 }}
-                w="fit-content"
-                whiteSpace="nowrap"
-                overflow="hidden"
-                textOverflow="ellipsis"
-              >
-                {props.name}
-              </Heading>
+              <Tooltip label={props.name}>
+                <Heading
+                  size={'lg'}
+                  maxW={{ '2xl': '400px', lg: 270, xl: 300, base: 200 }}
+                  w="fit-content"
+                  whiteSpace="nowrap"
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  cursor={'pointer'}
+                >
+                  {props.name}
+                </Heading>
+              </Tooltip>
             </HStack>
 
             {/* Desktop Layout */}
@@ -471,9 +475,9 @@ const GroupCard: React.FC<IGroupCard> = props => {
                           <Heading size="sm" fontWeight={800}>
                             Contact Connection{' '}
                           </Heading>
-                          <Tooltip.Provider delayDuration={400}>
-                            <Tooltip.Root>
-                              <Tooltip.Trigger>
+                          <RadixTooltip.Provider delayDuration={400}>
+                            <RadixTooltip.Root>
+                              <RadixTooltip.Trigger>
                                 <Flex
                                   w="16px"
                                   h="16px"
@@ -489,8 +493,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
                                     as={FaInfo}
                                   />
                                 </Flex>
-                              </Tooltip.Trigger>
-                              <Tooltip.Content>
+                              </RadixTooltip.Trigger>
+                              <RadixTooltip.Content>
                                 <Text
                                   fontSize="sm"
                                   p={4}
@@ -502,10 +506,10 @@ const GroupCard: React.FC<IGroupCard> = props => {
                                   contacts list or has already been sent a
                                   contact invite from you.
                                 </Text>
-                                <Tooltip.Arrow />
-                              </Tooltip.Content>
-                            </Tooltip.Root>
-                          </Tooltip.Provider>
+                                <RadixTooltip.Arrow />
+                              </RadixTooltip.Content>
+                            </RadixTooltip.Root>
+                          </RadixTooltip.Provider>
                         </Flex>
                       </Th>
                       <Th pl={0}>
@@ -513,9 +517,9 @@ const GroupCard: React.FC<IGroupCard> = props => {
                           <Heading size="sm" fontWeight={800}>
                             Role{' '}
                           </Heading>
-                          <Tooltip.Provider delayDuration={400}>
-                            <Tooltip.Root>
-                              <Tooltip.Trigger>
+                          <RadixTooltip.Provider delayDuration={400}>
+                            <RadixTooltip.Root>
+                              <RadixTooltip.Trigger>
                                 <Flex
                                   w="16px"
                                   h="16px"
@@ -531,8 +535,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
                                     as={FaInfo}
                                   />
                                 </Flex>
-                              </Tooltip.Trigger>
-                              <Tooltip.Content>
+                              </RadixTooltip.Trigger>
+                              <RadixTooltip.Content>
                                 <Text
                                   fontSize="sm"
                                   p={4}
@@ -544,10 +548,10 @@ const GroupCard: React.FC<IGroupCard> = props => {
                                   group, change the group&apos;s name, calendar
                                   link, and delete group.
                                 </Text>
-                                <Tooltip.Arrow />
-                              </Tooltip.Content>
-                            </Tooltip.Root>
-                          </Tooltip.Provider>
+                                <RadixTooltip.Arrow />
+                              </RadixTooltip.Content>
+                            </RadixTooltip.Root>
+                          </RadixTooltip.Provider>
                         </Flex>
                       </Th>
                       <Th pr={0}></Th>
