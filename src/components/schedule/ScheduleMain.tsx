@@ -67,6 +67,7 @@ import {
 import {
   decodeMeeting,
   deleteMeeting,
+  deleteMeetingInstance,
   scheduleMeeting,
   selectDefaultProvider,
   updateMeeting,
@@ -511,16 +512,26 @@ const ScheduleMain: FC<IInitialProps> = ({
     if (!decryptedMeeting) return
     setIsDeleting(true)
     try {
-      await deleteMeeting(
-        true,
-        currentAccount?.address || '',
-        NO_MEETING_TYPE,
-        decryptedMeeting?.start,
-        decryptedMeeting?.end,
-        decryptedMeeting,
-        getSignature(currentAccount?.address || '') || '',
-        actor
-      )
+      if (seriesId) {
+        if (editMode === UpdateMode.SINGLE_EVENT) {
+          deleteMeetingInstance(
+            decryptedMeeting.id,
+            true,
+            currentAccount?.address || '',
+            decryptedMeeting,
+            actor
+          )
+        } else {
+        }
+      } else {
+        await deleteMeeting(
+          true,
+          currentAccount?.address || '',
+          NO_MEETING_TYPE,
+          decryptedMeeting,
+          actor
+        )
+      }
       toast({
         title: 'Meeting Deleted',
         description: 'The meeting was deleted successfully',
