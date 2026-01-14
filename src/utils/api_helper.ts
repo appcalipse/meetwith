@@ -36,6 +36,7 @@ import {
   CalendarEvents,
   DashBoardMwwEvents,
   ExtendedCalendarEvents,
+  UnifiedEvent,
 } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
@@ -576,6 +577,29 @@ export const cancelMeeting = async (
   try {
     return (await internalFetch(
       `/secure/meetings/${meeting.id}`,
+      'DELETE',
+      body
+    )) as { removed: string[] }
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    }
+    throw e
+  }
+}
+export const cancelMeetingInstance = async (
+  meeting: MeetingDecrypted,
+  currentTimezone: string
+): Promise<{ removed: string[] }> => {
+  const body: MeetingCancelRequest = {
+    meeting,
+    currentTimezone,
+  }
+  try {
+    return (await internalFetch(
+      `/secure/meetings/instances/${meeting.id}`,
       'DELETE',
       body
     )) as { removed: string[] }
@@ -2734,6 +2758,16 @@ export const updateCalendarRsvpStatus = async (
     {
       signal: abortSignal,
     }
+  )
+}
+
+export const updateCalendarEvent = async (
+  event: UnifiedEvent
+): Promise<UnifiedEvent> => {
+  return await internalFetch<UnifiedEvent, UnifiedEvent>(
+    `/secure/calendar/event`,
+    'PATCH',
+    event
   )
 }
 
