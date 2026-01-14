@@ -51,7 +51,7 @@ export const getActiveProSubscription = (
 
   const now = new Date()
   const activeSubs = account.subscriptions
-    .filter(sub => new Date(sub.expiry_time) > now && sub.domain !== null)
+    .filter(sub => new Date(sub.expiry_time) > now)
     .sort(
       (a, b) =>
         new Date(b.expiry_time).getTime() - new Date(a.expiry_time).getTime()
