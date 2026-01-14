@@ -67,7 +67,7 @@ const isCalendarEvent = (
 ): slot is WithInterval<UnifiedEvent<DateTime>> => {
   return 'calendarId' in slot
 }
-const getActor = (
+export const getActor = (
   slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>,
   currentAccount: Account
 ) => {
