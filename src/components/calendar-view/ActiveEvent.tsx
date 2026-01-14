@@ -13,6 +13,7 @@ import { DateTime } from 'luxon'
 import * as React from 'react'
 import useAccountContext from '@/hooks/useAccountContext'
 import {
+  CalendarEventsData,
   createEventsQueryKey,
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
@@ -30,8 +31,10 @@ import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
+import { updateCalendarEvent } from '@/utils/api_helper'
 import { deleteMeeting, updateMeeting } from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
+import { MeetingAction, UpdateMode } from '@/utils/constants/meeting'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -56,7 +59,9 @@ import { canAccountAccessPermission } from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
+import ConfirmEditModeModal from '../schedule/ConfirmEditMode'
 import { CancelMeetingDialog } from '../schedule/cancel-dialog'
+import { DeleteEventDialog } from '../schedule/delete-event-dialog'
 import InviteParticipants from '../schedule/participants/InviteParticipants'
 import ScheduleTimeDiscover from '../schedule/ScheduleTimeDiscover'
 import ActiveCalendarEvent from './ActiveCalendarEvent'
@@ -89,13 +94,27 @@ const ActiveEvent: React.FC = () => {
     setIsScheduling,
     setTimezone,
     isScheduling,
+    editMode,
   } = useScheduleState()
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const {
+    isOpen: isDeleteEventOpen,
+    onOpen: onDeleteEventOpen,
+    onClose: onDeleteEventClose,
+  } = useDisclosure()
   const {
     isOpen: isDiscoverTimeOpen,
     onOpen: onDiscoverTimeOpen,
     onClose: onDiscoverTimeClose,
   } = useDisclosure()
+  const {
+    isOpen: isEditModeConfirmOpen,
+    onOpen: onEditModeConfirmOpen,
+    onClose: onEditModeConfirmClose,
+  } = useDisclosure()
+  const [currentAction, setCurrentAction] = React.useState<
+    MeetingAction | undefined
+  >(undefined)
   const decryptedMeeting: MeetingDecrypted | undefined = React.useMemo(() => {
     if (!selectedSlot || isCalendarEvent(selectedSlot)) return undefined
     return {
@@ -118,6 +137,14 @@ const ActiveEvent: React.FC = () => {
   const { setInviteModalOpen, inviteModalOpen } = useScheduleNavigation()
   const { setCanEditMeetingDetails, setCanEditMeetingParticipants } =
     useParticipantPermissions()
+  const handleOpenDeleteDialog = () => {
+    if (!selectedSlot) return
+    if (isCalendarEvent(selectedSlot)) {
+      onDeleteEventOpen()
+    } else {
+      onOpen()
+    }
+  }
   React.useEffect(() => {
     if (!selectedSlot) return
     if (!isCalendarEvent(selectedSlot)) {
@@ -226,10 +253,7 @@ const ActiveEvent: React.FC = () => {
           true,
           currentAccount?.address || '',
           NO_MEETING_TYPE,
-          decryptedMeeting?.start,
-          decryptedMeeting?.end,
           decryptedMeeting,
-          getSignature(currentAccount?.address || '') || '',
           actor
         )
         toast({
@@ -354,31 +378,63 @@ const ActiveEvent: React.FC = () => {
     },
     [currentAccount, toast]
   )
-  const handleCleanup = React.useCallback(async () => {
-    // fetch only the current month events immediately
-    await queryClient.invalidateQueries(createEventsQueryKey(currentDate))
-    Promise.all([
-      queryClient.invalidateQueries(
-        createEventsQueryKey(currentDate.minus({ month: 1 }))
-      ),
-      queryClient.invalidateQueries(
-        createEventsQueryKey(currentDate.plus({ month: 1 }))
-      ),
-    ])
-    setSelectedSlot(null)
-  }, [currentDate, setSelectedSlot])
-  const handleUpdate = React.useCallback(async () => {
+  const handleCleanup = React.useCallback(
+    async (slotsRemovedOrOperation?: string[] | 'delete' | 'update') => {
+      // fetch only the current month events immediately
+      if (!selectedSlot) return
+      const isCalEvent = isCalendarEvent(selectedSlot)
+
+      // Determine operation type
+      const operation =
+        !slotsRemovedOrOperation || Array.isArray(slotsRemovedOrOperation)
+          ? 'delete'
+          : slotsRemovedOrOperation
+
+      if (operation === 'delete') {
+        // For deletions, optimistically remove from cache
+        queryClient.setQueriesData<CalendarEventsData>(
+          { queryKey: ['calendar-events'] },
+          old => {
+            if (!old) return old
+
+            return {
+              calendarEvents: isCalEvent
+                ? old.calendarEvents?.filter(
+                    e => e.sourceEventId !== selectedSlot.sourceEventId
+                  ) ?? []
+                : old.calendarEvents ?? [],
+              mwwEvents: !isCalEvent
+                ? old.mwwEvents?.filter(e => e.id !== selectedSlot.id) ?? []
+                : old.mwwEvents ?? [],
+            }
+          }
+        )
+      } else {
+        // For updates, invalidate cache to refetch updated data
+        await queryClient.invalidateQueries({
+          queryKey: ['calendar-events'],
+        })
+      }
+
+      if (isCalEvent) {
+        onDeleteEventClose()
+      } else {
+        onClose()
+      }
+      setSelectedSlot(null)
+    },
+    [currentDate, setSelectedSlot, selectedSlot, onDeleteEventClose, onClose]
+  )
+  const handleUpdateEvent = React.useCallback(async () => {
     try {
-      if (
-        !selectedSlot ||
-        !currentAccount?.address ||
-        !decryptedMeeting ||
-        isScheduling
-      )
-        return
+      if (!selectedSlot || !currentAccount?.address || isScheduling) return
 
       setIsScheduling(true)
       if (!isCalendarEvent(selectedSlot)) {
+        if (!decryptedMeeting) {
+          setIsScheduling(false)
+          return
+        }
         if (!pickedTime) return
         const start = new Date(pickedTime)
         const end = addMinutes(new Date(start), duration)
@@ -467,8 +523,37 @@ const ActiveEvent: React.FC = () => {
           fromDashboard: true,
           participantsSize: _participants.valid.length,
         })
-        await handleCleanup()
+        await handleCleanup('update')
       } else {
+        // Handle calendar event update
+        if (!pickedTime) return
+        const start = new Date(pickedTime)
+        const end = addMinutes(new Date(start), duration)
+
+        // For single instance of recurring event, only update if mode is SINGLE_EVENT
+        const eventToUpdate = {
+          ...selectedSlot,
+          title,
+          description: content,
+          start,
+          end,
+          meeting_url: meetingUrl,
+          isAllDay: false,
+        }
+
+        // If updating single instance of a series, remove recurrence
+        if (selectedSlot.recurrence && editMode === UpdateMode.SINGLE_EVENT) {
+          eventToUpdate.recurrence = null
+        }
+
+        await updateCalendarEvent(eventToUpdate)
+
+        logEvent('Updated a calendar event from calendar view', {
+          source: selectedSlot.source,
+          calendarId: selectedSlot.calendarId,
+          updateMode: selectedSlot.recurrence ? editMode : 'single',
+        })
+        await handleCleanup('update')
       }
       toast({
         title: 'Meeting Updated',
@@ -625,13 +710,40 @@ const ActiveEvent: React.FC = () => {
     currentDate,
   ])
 
+  const handleUpdate = React.useCallback(async () => {
+    if (!selectedSlot) return
+
+    if (isCalendarEvent(selectedSlot)) {
+      await handleUpdateEvent()
+      return
+    }
+
+    // Check if this is a recurring calendar event
+    if (selectedSlot.id.includes('_')) {
+      setCurrentAction(MeetingAction.SCHEDULE_MEETING)
+      onEditModeConfirmOpen()
+    } else {
+      await handleUpdateEvent()
+    }
+  }, [selectedSlot, handleUpdateEvent, onEditModeConfirmOpen])
+
+  const handleActionAfterEditModeConfirm = React.useCallback(async () => {
+    if (currentAction === MeetingAction.SCHEDULE_MEETING) {
+      await handleUpdateEvent()
+    } else if (currentAction === MeetingAction.DELETE_MEETING) {
+      await handleDelete()
+    } else if (currentAction === MeetingAction.CANCEL_MEETING) {
+      handleOpenDeleteDialog()
+    }
+    setCurrentAction(undefined)
+  }, [currentAction, handleUpdateEvent])
   const context = React.useMemo(
     () => ({
       handleDelete,
       handleSchedule: handleUpdate,
-      handleCancel: onOpen,
+      handleCancel: handleOpenDeleteDialog,
     }),
-    [handleDelete, handleUpdate, onOpen]
+    [handleDelete, handleUpdate, handleOpenDeleteDialog]
   )
 
   return (
@@ -644,30 +756,38 @@ const ActiveEvent: React.FC = () => {
         closeOnEsc={!isDiscoverTimeOpen}
       >
         <DrawerContent maxW="500px" bg="bg-event-alternate">
-          <DrawerBody p={'30px'}>
-            {selectedSlot &&
-              (isCalendarEvent(selectedSlot) ? (
-                <ActiveCalendarEvent slot={selectedSlot} />
+          {selectedSlot && (
+            <DrawerBody p={'30px'}>
+              {!isCalendarEvent(selectedSlot) ? (
+                <CancelMeetingDialog
+                  isOpen={isOpen}
+                  onClose={onClose}
+                  decryptedMeeting={decryptedMeeting}
+                  currentAccount={currentAccount}
+                  afterCancel={handleCleanup}
+                />
               ) : (
-                <>
-                  <CancelMeetingDialog
-                    isOpen={isOpen}
-                    onClose={onClose}
-                    decryptedMeeting={decryptedMeeting}
-                    currentAccount={currentAccount}
-                    afterCancel={handleCleanup}
-                  />
-                  <ActiveMeetwithEvent
-                    slot={{
-                      ...selectedSlot,
-                      start: selectedSlot.start.toJSDate(),
-                      end: selectedSlot.end.toJSDate(),
-                    }}
-                    onDiscoverTimeOpen={onDiscoverTimeOpen}
-                  />
-                </>
-              ))}
-          </DrawerBody>
+                <DeleteEventDialog
+                  isOpen={isDeleteEventOpen}
+                  onClose={onDeleteEventClose}
+                  event={{
+                    ...selectedSlot,
+                    start: selectedSlot.start.toJSDate(),
+                    end: selectedSlot.end.toJSDate(),
+                  }}
+                  afterCancel={() => handleCleanup('delete')}
+                />
+              )}
+              {selectedSlot && (
+                <ActiveMeetwithEvent
+                  onEditModeConfirmOpen={onEditModeConfirmOpen}
+                  setCurrentAction={setCurrentAction}
+                  slot={selectedSlot}
+                  onDiscoverTimeOpen={onDiscoverTimeOpen}
+                />
+              )}
+            </DrawerBody>
+          )}
         </DrawerContent>
       </Drawer>
       <InviteParticipants
@@ -714,6 +834,11 @@ const ActiveEvent: React.FC = () => {
           </Box>
         </Portal>
       )}
+      <ConfirmEditModeModal
+        isOpen={isEditModeConfirmOpen}
+        onClose={onEditModeConfirmClose}
+        afterClose={handleActionAfterEditModeConfirm}
+      />
     </ActionsContext.Provider>
   )
 }
