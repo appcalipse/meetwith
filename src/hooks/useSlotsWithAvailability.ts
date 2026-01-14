@@ -9,6 +9,7 @@ import { Account } from '@/types/Account'
 import { TimeSlot } from '@/types/Meeting'
 import { generateCalendarEventUrl } from '@/utils/calendar_event_url'
 import { getAccountDisplayName } from '@/utils/user_manager'
+
 const hasOverlap = (
   slot: Interval<true>,
   sortedIntervals: Array<{ start: number; end: number }>
@@ -113,7 +114,6 @@ const useSlotsWithAvailability = (
         const slotEnd = slot.end.toMillis()
         const isAfterNow = slotStart >= nowMillis
 
-        const isSlotAvailable: boolean[] = []
         let numberOfAvailable = 0
         const userStates: Array<{ state: boolean; displayName: string }> =
           participantAvailabilities.map(account => {
