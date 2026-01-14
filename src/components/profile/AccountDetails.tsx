@@ -42,6 +42,7 @@ import {
 import { appUrl } from '@/utils/constants'
 import { getLensHandlesForAddress } from '@/utils/lens.helper'
 import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
+import { saveSubscriptionHandle } from '@/utils/storage'
 import {
   changeDomainOnChain,
   getActiveProSubscription,
@@ -201,7 +202,11 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       )
     }
 
-    setNewProDomain(getActiveProSubscription(currentAccount)?.domain ?? '')
+    const proDomain = getActiveProSubscription(currentAccount)?.domain ?? ''
+    setNewProDomain(proDomain)
+    if (proDomain) {
+      saveSubscriptionHandle(proDomain)
+    }
   }
 
   const updateAccountSubs = async () => {
@@ -214,6 +219,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     const updatedActiveSubscription = getActiveProSubscription(currentAccount)
     if (updatedActiveSubscription?.domain) {
       setProDomain(updatedActiveSubscription.domain)
+      saveSubscriptionHandle(updatedActiveSubscription.domain)
     }
   }
 
@@ -270,6 +276,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       }
       await updateAccountSubs()
       setProDomain(newProDomain)
+      saveSubscriptionHandle(newProDomain)
       showSuccessToast(
         'Calendar Link Updated',
         'Your calendar link has been changed successfully'

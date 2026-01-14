@@ -26,7 +26,7 @@ import { PaymentStep, PaymentType } from '@utils/constants/meeting-types'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
 import React, { useEffect, useRef, useState } from 'react'
-import { FaArrowLeft, FaEdit } from 'react-icons/fa'
+import { FaArrowLeft, FaArrowRight, FaEdit } from 'react-icons/fa'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
@@ -54,10 +54,7 @@ import {
 } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
-import {
-  getSubscriptionHandle,
-  removeSubscriptionHandle,
-} from '@/utils/storage'
+import { getSubscriptionHandle } from '@/utils/storage'
 import {
   getActiveBillingSubscription,
   getActiveProSubscription,
@@ -167,7 +164,6 @@ const BillingCheckout = () => {
     onSuccess: (response, variables) => {
       // Trials: no payment modal; redirect to refresh subscription card
       if (variables?.is_trial || response.amount <= 0) {
-        removeSubscriptionHandle()
         router.push('/dashboard/settings/subscriptions?checkout=success')
         return
       }
@@ -274,26 +270,12 @@ const BillingCheckout = () => {
   }
 
   const handleChangeHandle = () => {
-    removeSubscriptionHandle()
     router.push(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`)
   }
 
-  useEffect(() => {
-    if (
-      router.isReady &&
-      !handle &&
-      (!hasActiveSubscription ||
-        (!activeSubscription?.domain && !activeBillingSubscription?.domain))
-    ) {
-      router.replace(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`)
-    }
-  }, [
-    router.isReady,
-    handle,
-    hasActiveSubscription,
-    activeSubscription?.domain,
-    activeBillingSubscription?.domain,
-  ])
+  const handleChooseHandle = () => {
+    router.push(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`)
+  }
 
   const handleCryptoPaymentSuccess = () => {
     // Redirect to subscriptions page with success message
@@ -418,11 +400,11 @@ const BillingCheckout = () => {
         <Divider borderColor="neutral.700" />
 
         {/* Handle Display Section */}
-        {handle && (
-          <VStack align="flex-start" spacing={0} width="100%">
-            <Text fontSize="16px" fontWeight="700" color="text-primary">
-              Your booking link
-            </Text>
+        <VStack align="flex-start" spacing={0} width="100%">
+          <Text fontSize="16px" fontWeight="700" color="text-primary">
+            Your booking link
+          </Text>
+          {handle ? (
             <HStack
               width="100%"
               justify="space-between"
@@ -450,8 +432,44 @@ const BillingCheckout = () => {
                 Change
               </Button>
             </HStack>
-          </VStack>
-        )}
+          ) : (
+            <Box
+              mt={2}
+              width="100%"
+              bg="bg-surface-secondary"
+              p={4}
+              borderRadius="md"
+              borderWidth="1px"
+              borderColor="border-default"
+              borderStyle="dashed"
+            >
+              <HStack justify="space-between" align="center" width="100%">
+                <VStack align="flex-start" spacing={1} flex={1}>
+                  <Text fontSize="sm" color="text-secondary">
+                    Choose a custom handle for your calendar link
+                  </Text>
+                  <Button
+                    as="a"
+                    variant="link"
+                    colorScheme="primary"
+                    size="sm"
+                    onClick={e => {
+                      e.preventDefault()
+                      handleChooseHandle()
+                    }}
+                    px={0}
+                    fontSize="md"
+                    fontWeight="600"
+                    _hover={{ textDecoration: 'underline' }}
+                    cursor="pointer"
+                  >
+                    Choose a handle
+                  </Button>
+                </VStack>
+              </HStack>
+            </Box>
+          )}
+        </VStack>
 
         <Divider borderColor="neutral.700" />
 
@@ -480,10 +498,12 @@ const BillingCheckout = () => {
               icon={FiatLogo}
               type={PaymentType.FIAT}
               disabled={
+                !handle ||
                 isLoadingPlans ||
                 subscribeMutation.isLoading ||
                 isActiveStripeSubscription
               }
+              disabledText={!handle ? null : undefined}
               onClick={handlePayWithCard}
             />
             <PaymentMethod
@@ -497,10 +517,12 @@ const BillingCheckout = () => {
               icon={ChainLogo}
               type={PaymentType.CRYPTO}
               disabled={
+                !handle ||
                 isLoadingPlans ||
                 cryptoSubscribeMutation.isLoading ||
                 !defaultChain
               }
+              disabledText={!handle ? null : undefined}
               onClick={handleCryptoPaymentClick}
             />
           </Stack>

@@ -18,6 +18,7 @@ interface IProps {
   icon: ComponentWithAs<'svg', IconProps>
   type: PaymentType
   disabled?: boolean
+  disabledText?: string | null
   onClick?: () => Promise<void>
 }
 
@@ -76,7 +77,11 @@ const PaymentMethod: FC<IProps> = props => {
           isLoading={loading}
           isDisabled={props.disabled}
         >
-          {props.disabled ? 'Coming Soon' : props.name}
+          {props.disabled
+            ? props.disabledText !== undefined
+              ? props.disabledText || props.name
+              : 'Coming Soon'
+            : props.name}
         </Button>
       </VStack>
     </VStack>
