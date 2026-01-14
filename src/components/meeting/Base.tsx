@@ -351,10 +351,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
         true,
         currentAccount?.address || '',
         NO_MEETING_TYPE,
-        decryptedMeeting?.start,
-        decryptedMeeting?.end,
         decryptedMeeting,
-        getSignature(currentAccount?.address || '') || '',
         actor
       )
       toast({
