@@ -14,6 +14,7 @@ import {
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 
 import { getBaseEventId } from '../calendar_sync_helpers'
+import { MeetingPermissions } from '../constants/schedule'
 import { isJson } from '../generic_utils'
 
 interface DateTimeTimeZone {
@@ -30,6 +31,16 @@ export class GoogleEventMapper {
     calendarId: string,
     accountEmail: string
   ): UnifiedEvent {
+    const permissions: MeetingPermissions[] = []
+    if (googleEvent.guestsCanModify) {
+      permissions.push(MeetingPermissions.EDIT_MEETING)
+    }
+    if (googleEvent.guestsCanInviteOthers) {
+      permissions.push(MeetingPermissions.INVITE_GUESTS)
+    }
+    if (googleEvent.guestsCanSeeOtherGuests) {
+      permissions.push(MeetingPermissions.SEE_GUEST_LIST)
+    }
     return {
       id: this.generateInternalId(googleEvent),
       title: googleEvent.summary || '(No title)',
@@ -57,7 +68,7 @@ export class GoogleEventMapper {
         ? new Date(googleEvent.updated)
         : new Date(),
       etag: googleEvent.etag,
-
+      permissions,
       providerData: {
         google: {
           colorId: googleEvent.colorId,
@@ -431,7 +442,7 @@ export class GoogleEventMapper {
     })
 
     const ruleset = rrule.toString()
-    return isJson(ruleset) ? JSON.parse(ruleset) : ruleset
+    return isJson(ruleset) ? JSON.parse(ruleset) : [ruleset]
   }
 
   private static mapDayToGoogle(day: DayOfWeek): string {
