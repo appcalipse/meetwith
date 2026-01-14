@@ -16,6 +16,29 @@ jobs:
         with:
           fetch-depth: 0 # Fetch complete history
 
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          df -h
+
+      - name: Increase swap space
+        run: |
+          sudo swapoff -a
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          sudo swapon --show
+
+      - name: Configure Docker BuildKit
+        run: |
+          echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
+          echo "BUILDKIT_PROGRESS=plain" >> $GITHUB_ENV
+          mkdir -p ~/.docker
+          echo '{"experimental":true,"features":{"buildkit":true}}' > ~/.docker/config.json
+
       - name: Install AWS Copilot
         run: sudo curl -Lo /usr/local/bin/copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux && sudo chmod +x /usr/local/bin/copilot && copilot --help
 
@@ -31,18 +54,33 @@ jobs:
         run: copilot deploy -e preview --force
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
+          NEXT_TELEMETRY_DISABLED: 1
+          DOCKER_BUILDKIT: 1
+          BUILDKIT_STEP_LOG_MAX_SIZE: 10485760
+          BUILDKIT_STEP_LOG_MAX_SPEED: 10485760
 
       - name: Deploy in the Production env
         if: ${{ github.ref == 'refs/heads/main' }}
         run: copilot deploy -e production --force
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
+          NEXT_TELEMETRY_DISABLED: 1
+          DOCKER_BUILDKIT: 1
+          BUILDKIT_STEP_LOG_MAX_SIZE: 10485760
+          BUILDKIT_STEP_LOG_MAX_SPEED: 10485760
 
       - name: Deploy in the Pre-prod env
         if: ${{ github.ref == 'refs/heads/pre-prod' }}
         run: copilot deploy -e pre-prod --force
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
+          NEXT_TELEMETRY_DISABLED: 1
+          DOCKER_BUILDKIT: 1
+          BUILDKIT_STEP_LOG_MAX_SIZE: 10485760
+          BUILDKIT_STEP_LOG_MAX_SPEED: 10485760
 
       - name: Generate user-friendly changes summary
         id: changes_summary
