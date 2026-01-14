@@ -27,7 +27,6 @@ const moduleExports = {
   compress: true,
   poweredByHeader: false,
   experimental: {
-    // Reduce memory usage during build
     workerThreads: false,
     cpus: 1,
   },
