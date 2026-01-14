@@ -24,7 +24,11 @@ import {
 import DeleteMeetingModal from '@components/schedule/DeleteMeetingModal'
 import ScheduleParticipantsOwnersModal from '@components/schedule/ScheduleParticipantsOwnersModal'
 import ScheduleParticipantsSchedulerModal from '@components/schedule/ScheduleParticipantsSchedulerModal'
-import { Select as ChakraSelect } from 'chakra-react-select'
+import {
+  Select as ChakraSelect,
+  Select,
+  SingleValue,
+} from 'chakra-react-select'
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import {
@@ -68,7 +72,11 @@ import {
   MeetingRepeatOptions,
   MeetingSchedulePermissions,
 } from '@/utils/constants/schedule'
-import { noClearCustomSelectComponent } from '@/utils/constants/select'
+import {
+  getCustomSelectComponents,
+  noClearCustomSelectComponent,
+  Option,
+} from '@/utils/constants/select'
 import {
   canAccountAccessPermission,
   renderProviderName,
@@ -81,6 +89,12 @@ import {
 } from '@/utils/user_manager'
 import ConfirmEditModeModal from './ConfirmEditMode'
 
+const meetingProviders: Array<Option<MeetingProvider>> = BASE_PROVIDERS.concat(
+  MeetingProvider.CUSTOM
+).map(provider => ({
+  value: provider,
+  label: renderProviderName(provider),
+}))
 const ScheduleBase = () => {
   const { query } = useRouter()
   const { seriesId, meetingId } = query as IInitialProps
@@ -150,7 +164,6 @@ const ScheduleBase = () => {
     isUpdatingMeeting,
   } = useParticipantPermissions()
   const [hasPickedNewTime, setHasPickedNewTime] = useState(false)
-  const meetingProviders = BASE_PROVIDERS.concat(MeetingProvider.CUSTOM)
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
   const canManageParticipants = canEditMeetingDetails && !isScheduling
   const canViewParticipants = useMemo(
@@ -329,7 +342,10 @@ const ScheduleBase = () => {
     }
     setInviteModalOpen(true)
   }, [canManageParticipants, setInviteModalOpen])
-
+  const meetingProviderValue = useMemo(
+    () => meetingProviders.find(provider => provider.value === meetingProvider),
+    [meetingProvider]
+  )
   const renderParticipantChipLabel = useCallback(
     (participant: Participant) =>
       currentAccount?.address
@@ -392,7 +408,11 @@ const ScheduleBase = () => {
     }
     setCurrentMeetingAction(undefined)
   }, [currentMeetingAction, handleSchedule, handleCancel, onDeleteOpen])
-
+  const _onChangeProvider = (
+    newValue: SingleValue<Option<MeetingProvider>>
+  ) => {
+    setMeetingProvider(newValue?.value || MeetingProvider.CUSTOM)
+  }
   return (
     <Box w="100%">
       <DiscoverATimeInfoModal
@@ -649,33 +669,25 @@ const ScheduleBase = () => {
               <Text fontSize="18px" fontWeight={500}>
                 Location
               </Text>
-              <RadioGroup
-                onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-                value={meetingProvider}
-                w={'100%'}
-                isDisabled={!canEditMeetingDetails || isScheduling}
-              >
-                <VStack w={'100%'} gap={4}>
-                  {meetingProviders.map(provider => (
-                    <Radio
-                      flexDirection="row-reverse"
-                      justifyContent="space-between"
-                      w="100%"
-                      colorScheme="primary"
-                      value={provider}
-                      key={provider}
-                    >
-                      <Text
-                        fontWeight="600"
-                        color={'border-default-primary'}
-                        cursor="pointer"
-                      >
-                        {renderProviderName(provider)}
-                      </Text>
-                    </Radio>
-                  ))}
-                </VStack>
-              </RadioGroup>
+              <Select<Option<MeetingProvider>>
+                value={meetingProviderValue}
+                colorScheme="primary"
+                onChange={newValue => _onChangeProvider(newValue)}
+                onInputChange={console.log}
+                className="noLeftBorder timezone-select"
+                options={meetingProviders}
+                components={getCustomSelectComponents<
+                  Option<MeetingProvider>,
+                  false
+                >()}
+                chakraStyles={{
+                  container: provided => ({
+                    ...provided,
+                    borderColor: 'input-border',
+                    w: '100%',
+                  }),
+                }}
+              />
               {meetingProvider === MeetingProvider.CUSTOM && (
                 <Input
                   type="text"
