@@ -33,24 +33,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const accountAddress = req.session.account.address.toLowerCase()
 
       // Validate request body
-      const {
-        billing_plan_id,
-        subscription_type = SubscriptionType.INITIAL,
-        is_trial,
-      } = req.body as SubscribeRequestCrypto
+      const { billing_plan_id, is_trial, handle } =
+        req.body as SubscribeRequestCrypto
 
       if (!billing_plan_id) {
         return res.status(400).json({ error: 'billing_plan_id is required' })
-      }
-
-      if (
-        subscription_type &&
-        subscription_type !== SubscriptionType.INITIAL &&
-        subscription_type !== SubscriptionType.EXTENSION
-      ) {
-        return res.status(400).json({
-          error: 'subscription_type must be "initial" or "extension"',
-        })
       }
 
       // Get billing plan from database
@@ -75,7 +62,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           billing_plan_id,
           'active',
           trialExpiry.toISOString(),
-          null
+          null,
+          handle
         )
 
         // Send trial started email (non-blocking, queued)
@@ -120,17 +108,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(200).json(trialResponse)
       }
 
-      // Extension Logic: Check if user has existing active subscription
       const existingSubscription = await getActiveSubscriptionPeriod(
         accountAddress
       )
       let _calculatedExpiryTime: Date
 
-      if (
-        existingSubscription &&
-        subscription_type === SubscriptionType.EXTENSION
-      ) {
-        // Extension: Add duration to existing farthest expiry
+      if (existingSubscription) {
         const existingExpiry = DateTime.fromISO(
           existingSubscription.expiry_time
         )
@@ -141,7 +124,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           _calculatedExpiryTime = existingExpiry.plus({ years: 1 }).toJSDate()
         }
       } else {
-        // First-time subscription: Add duration from now
         const now = DateTime.now()
         if (billingPlan.billing_cycle === 'monthly') {
           _calculatedExpiryTime = now.plus({ months: 1 }).toJSDate()
@@ -156,10 +138,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       // Prepare subscription data for Thirdweb payment widget
       const subscriptionData: ISubscriptionData = {
+        subscription_type: SubscriptionType.INITIAL,
+        billing_plan_id,
         account_address: accountAddress,
         billing_plan_id,
         subscription_channel: subscriptionChannel,
-        subscription_type: subscription_type,
+        handle,
       }
 
       const response: SubscribeResponseCrypto = {

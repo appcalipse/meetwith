@@ -13,6 +13,7 @@ import {
   Tabs,
   Text,
   useDisclosure,
+  VStack,
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
@@ -185,24 +186,50 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             value={debouncedValue}
             placeholder="Search for group"
           />
-          <Button
-            onClick={() => router.push('/dashboard/create-group')}
-            flexShrink={0}
-            colorScheme="primary"
+          <VStack
+            align="stretch"
+            w="100%"
             display={{ base: 'flex', md: 'none' }}
-            mt={{ base: 4, md: 0 }}
+            mt={4}
             mb={4}
-            leftIcon={<FaPlus />}
-            w={'100%'}
-            isDisabled={!canCreateGroup}
-            title={
-              !canCreateGroup
-                ? 'Upgrade to Pro to create more groups'
-                : undefined
-            }
+            spacing={2}
           >
-            Create new group
-          </Button>
+            <Button
+              onClick={() => router.push('/dashboard/create-group')}
+              flexShrink={0}
+              colorScheme="primary"
+              leftIcon={<FaPlus />}
+              w={'100%'}
+              isDisabled={!canCreateGroup}
+              title={
+                !canCreateGroup
+                  ? 'Upgrade to Pro to create more groups'
+                  : undefined
+              }
+            >
+              Create new group
+            </Button>
+            {!canCreateGroup && (
+              <Text fontSize="14px" color="neutral.400">
+                Unlock unlimited groups with PRO{' '}
+                <Button
+                  variant="link"
+                  colorScheme="primary"
+                  px={0}
+                  onClick={() =>
+                    router.push('/dashboard/settings/subscriptions')
+                  }
+                  textDecoration="underline"
+                  fontSize="14px"
+                  height="auto"
+                  minW="auto"
+                >
+                  here
+                </Button>
+                .
+              </Text>
+            )}
+          </VStack>
           <TabList
             w={{ base: '100%', md: 'auto' }}
             bg="bg-surface-secondary"
@@ -250,21 +277,46 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               )}
             </Tab>
           </TabList>
-          <Button
-            onClick={() => router.push('/dashboard/create-group')}
-            flexShrink={0}
-            colorScheme="primary"
+          <VStack
+            align="flex-end"
             display={{ base: 'none', md: 'flex' }}
-            leftIcon={<FaPlus />}
-            isDisabled={!canCreateGroup}
-            title={
-              !canCreateGroup
-                ? 'Upgrade to Pro to create more groups'
-                : undefined
-            }
+            spacing={2}
           >
-            Create new group
-          </Button>
+            <Button
+              onClick={() => router.push('/dashboard/create-group')}
+              flexShrink={0}
+              colorScheme="primary"
+              leftIcon={<FaPlus />}
+              isDisabled={!canCreateGroup}
+              title={
+                !canCreateGroup
+                  ? 'Upgrade to Pro to create more groups'
+                  : undefined
+              }
+            >
+              Create new group
+            </Button>
+            {!canCreateGroup && (
+              <Text fontSize="14px" color="neutral.400" textAlign="right">
+                Unlock unlimited groups with PRO{' '}
+                <Button
+                  variant="link"
+                  colorScheme="primary"
+                  px={0}
+                  onClick={() =>
+                    router.push('/dashboard/settings/subscriptions')
+                  }
+                  textDecoration="underline"
+                  fontSize="14px"
+                  height="auto"
+                  minW="auto"
+                >
+                  here
+                </Button>
+                .
+              </Text>
+            )}
+          </VStack>
         </HStack>
 
         {/* Hide availability labels checkbox */}

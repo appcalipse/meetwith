@@ -134,8 +134,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           (cal: { sync: boolean }) => cal.sync === true
         ).length
 
-        // Free tier restriction: Maximum 1 calendar sync total
-        if (existingSyncCount + newSyncCount > 1) {
+        // Free tier restriction: Maximum 2 calendar syncs total
+        if (existingSyncCount + newSyncCount > 2) {
           throw new CalendarSyncLimitExceededError()
         }
       }

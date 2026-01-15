@@ -53,7 +53,7 @@ async function handler(
       // If it's a new integration, check the limit
       if (!existingIntegration) {
         const integrationCount = await countCalendarIntegrations(accountAddress)
-        if (integrationCount >= 1) {
+        if (integrationCount >= 2) {
           throw new CalendarIntegrationLimitExceededError()
         }
       }

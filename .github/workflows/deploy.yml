@@ -30,19 +30,19 @@ jobs:
         if: ${{ github.ref == 'refs/heads/develop' }}
         run: copilot deploy -e preview --force
         env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}''
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
 
       - name: Deploy in the Production env
         if: ${{ github.ref == 'refs/heads/main' }}
         run: copilot deploy -e production --force
         env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}''
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
 
       - name: Deploy in the Pre-prod env
         if: ${{ github.ref == 'refs/heads/pre-prod' }}
         run: copilot deploy -e pre-prod --force
         env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}''
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}
 
       - name: Generate user-friendly changes summary
         id: changes_summary

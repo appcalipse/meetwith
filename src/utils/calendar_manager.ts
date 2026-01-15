@@ -2542,14 +2542,20 @@ const getAccountDomainUrl = (
   account?: Account | null,
   ellipsize?: boolean
 ): string => {
-  if (isProAccount(account!)) {
-    const domain = account?.subscriptions?.find(
-      sub => new Date(sub.expiry_time) > new Date()
-    )?.domain
-    if (domain) {
-      return domain
-    }
+  if (!account?.subscriptions) {
+    return `address/${
+      ellipsize ? ellipsizeAddress(account?.address) : account?.address
+    }`
   }
+
+  const activeSubscription = account.subscriptions.find(
+    sub => new Date(sub.expiry_time) > new Date() && sub.domain
+  )
+
+  if (activeSubscription?.domain) {
+    return activeSubscription.domain
+  }
+
   return `address/${
     ellipsize ? ellipsizeAddress(account?.address) : account?.address
   }`

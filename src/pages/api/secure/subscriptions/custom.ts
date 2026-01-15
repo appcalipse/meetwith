@@ -14,6 +14,7 @@ import {
   CouponExpired,
   CouponNotValid,
   NoActiveSubscription,
+  SubscriptionDomainUpdateNotAllowed,
   SubscriptionNotCustom,
 } from '@/utils/errors'
 
@@ -52,6 +53,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     } catch (e: unknown) {
       if (e instanceof NoActiveSubscription) {
         return res.status(400).json({ error: e.message })
+      } else if (e instanceof SubscriptionDomainUpdateNotAllowed) {
+        return res.status(410).json({ error: e.message })
       } else if (e instanceof SubscriptionNotCustom) {
         return res.status(410).json({ error: e.message })
       } else if (e instanceof Error) {

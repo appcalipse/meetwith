@@ -31,16 +31,12 @@ import { format } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
-
+import CustomHandleSelectionModal from '@/components/billing/CustomHandleSelectionModal'
 import CustomLoading from '@/components/CustomLoading'
 import Pagination from '@/components/profile/Pagination'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account } from '@/types/Account'
-import {
-  BillingMode,
-  PaymentProvider,
-  SubscriptionHistoryItem,
-} from '@/types/Billing'
+import { PaymentProvider, SubscriptionHistoryItem } from '@/types/Billing'
 import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 import {
   FREE_PLAN_BENEFITS,
@@ -87,6 +83,11 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     onOpen: onCancelModalOpen,
     onClose: onCancelModalClose,
   } = useDisclosure()
+  const {
+    isOpen: isHandleModalOpen,
+    onOpen: onHandleModalOpen,
+    onClose: onHandleModalClose,
+  } = useDisclosure()
   const [couponCode, setCouponCode] = useState('')
   const [couponDuration, setCouponDuration] = useState(0)
   const [historyPage, setHistoryPage] = useState(1)
@@ -105,7 +106,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     )
   }, [billingSubscription, currentAccount?.subscriptions])
 
-  // Fetch billing plan details only if we have a billing subscription
+  // Fetch subscription details
   const {
     data: billingSubscriptionDetails,
     isFetching: billingFetching,
@@ -116,12 +117,14 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
       'billingSubscriptionDetails',
       currentAccount?.address,
       billingSubscription?.billing_plan_id,
+      blockchainSubscription?.expiry_time,
     ],
     queryFn: async () => {
       return await getActiveSubscription(currentAccount!.address)
     },
     enabled:
-      !!currentAccount?.address && !!billingSubscription?.billing_plan_id,
+      !!currentAccount?.address &&
+      (!!billingSubscription?.billing_plan_id || !!blockchainSubscription),
     staleTime: 30000, // 30 seconds
     onError: (err: unknown) => {
       handleApiError('Failed to load subscription details', err)
@@ -272,26 +275,13 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     staleTime: 60000, // 1 minute
   })
 
-  const goToBilling = (mode?: BillingMode, planName?: string) => {
-    const queryParams = new URLSearchParams()
-    if (mode) queryParams.set('mode', mode)
-    if (planName) queryParams.set('plan', planName)
-    const queryString = queryParams.toString()
-    void push(
-      `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}/billing${
-        queryString ? `?${queryString}` : ''
-      }`
-    )
+  const goToBilling = () => {
+    void push(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}/billing`)
   }
 
   const handlePrimaryButtonClick = () => {
-    if (hasActiveSubscription) {
-      if (paymentProvider !== PaymentProvider.STRIPE) {
-        goToBilling(BillingMode.EXTEND, billingPlanLabel)
-      }
-    } else {
-      goToBilling(BillingMode.SUBSCRIBE, getPlanInfo(Plan.PRO)?.name ?? 'Plan')
-    }
+    // Open handle selection modal for new subscriptions
+    onHandleModalOpen()
   }
 
   const handleManageSubscription = async () => {
@@ -322,34 +312,41 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   }
 
   // Check if user has an active subscription
-  const hasActiveSubscription =
+  const hasActiveBillingSubscription =
     billingSubscription &&
     new Date(billingSubscription.expiry_time) > new Date()
 
+  const hasActiveBlockchainSubscription =
+    blockchainSubscription &&
+    new Date(blockchainSubscription.expiry_time) > new Date()
+
+  const hasActiveSubscription =
+    hasActiveBillingSubscription || hasActiveBlockchainSubscription
+
   const isProCardActive = hasActiveSubscription || currentPlan === Plan.PRO
 
-  const activeBadge =
-    isCryptoTrial && hasActiveSubscription
+  const proCardBadge =
+    isCryptoTrial && hasActiveBillingSubscription
       ? 'Trial'
-      : hasActiveSubscription &&
-        (billingStatus === 'active' || billingStatus === 'cancelled')
+      : hasActiveSubscription
       ? 'Active'
       : undefined
 
-  const currentExpiryText = billingExpiry
-    ? `Your current plan is valid until ${billingExpiry} (${
-        billingPlanLabel.toLowerCase().includes('year')
-          ? 'Yearly Plan'
-          : 'Monthly Plan'
-      })`
-    : undefined
+  const freeCardBadge = !hasActiveSubscription ? 'Active' : undefined
+
+  const blockchainExpiry = blockchainSubscription?.expiry_time
+    ? format(new Date(blockchainSubscription.expiry_time), 'PPP')
+    : null
+
+  const currentExpiryText =
+    billingExpiry || blockchainExpiry
+      ? `Your current plan is valid until ${billingExpiry || blockchainExpiry}`
+      : undefined
 
   // Compute CTA props for SubscriptionCard
   const proCardCtaProps = React.useMemo(() => {
     const primaryCtaLabel = hasActiveSubscription
-      ? paymentProvider === PaymentProvider.STRIPE
-        ? undefined
-        : 'Extend Plan'
+      ? undefined
       : 'Subscribe to Pro'
 
     const secondaryCtaLabel =
@@ -362,15 +359,24 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         ? () => void handleManageSubscription()
         : undefined
 
+    const isBlockchainSubscription =
+      hasActiveSubscription && !billingSubscription?.billing_plan_id
+
     const tertiaryCtaLabel =
-      hasActiveSubscription && paymentProvider !== PaymentProvider.STRIPE
+      hasActiveSubscription &&
+      paymentProvider !== PaymentProvider.STRIPE &&
+      billingStatus !== 'cancelled' &&
+      !isBlockchainSubscription
         ? isCryptoTrial
           ? 'Cancel Trial'
           : 'Cancel Subscription'
         : undefined
 
     const onTertiaryCta =
-      hasActiveSubscription && paymentProvider !== PaymentProvider.STRIPE
+      hasActiveSubscription &&
+      paymentProvider !== PaymentProvider.STRIPE &&
+      billingStatus !== 'cancelled' &&
+      !isBlockchainSubscription
         ? onCancelModalOpen
         : undefined
 
@@ -437,20 +443,16 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
               planInfo={getPlanInfo(Plan.PRO)}
               active={isProCardActive}
               benefits={PRO_PLAN_BENEFITS}
-              badge={activeBadge}
+              badge={proCardBadge}
               expiryText={currentExpiryText}
               onClick={handlePrimaryButtonClick}
               {...proCardCtaProps}
             />
             <SubscriptionCard
-              onClick={() =>
-                goToBilling(
-                  BillingMode.SUBSCRIBE,
-                  getPlanInfo(Plan.PRO)?.name ?? 'Plan'
-                )
-              }
+              onClick={goToBilling}
               active={!isProCardActive}
               benefits={FREE_PLAN_BENEFITS}
+              badge={freeCardBadge}
             />
           </Flex>
         )}
@@ -462,8 +464,8 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
           onDialogClose={onClose}
         />
 
-        {/* Payment History - Show if user has subscription history */}
-        {!billingFetching && (subscriptionHistory?.total ?? 0) > 0 && (
+        {/* Payment History */}
+        {!billingFetching && !historyLoading && (
           <Accordion allowToggle mt={10} borderColor="neutral.700">
             <AccordionItem
               border="1px solid"
@@ -583,6 +585,13 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
         onCancel={handleCancelSubscription}
         isLoading={cancelSubscriptionMutation.isLoading}
         expiryDate={billingExpiry || undefined}
+      />
+
+      {/* Handle Selection Modal */}
+      <CustomHandleSelectionModal
+        isOpen={isHandleModalOpen}
+        onClose={onHandleModalClose}
+        currentAccountAddress={currentAccount.address}
       />
     </VStack>
   )

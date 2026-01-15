@@ -47,9 +47,17 @@ export const isProAccount = (
 export const getActiveProSubscription = (
   account?: Pick<Account, 'subscriptions'> | null
 ): Subscription | undefined => {
-  return account?.subscriptions?.find(
-    sub => new Date(sub.expiry_time) > new Date()
-  )
+  if (!account?.subscriptions) return undefined
+
+  const now = new Date()
+  const activeSubs = account.subscriptions
+    .filter(sub => new Date(sub.expiry_time) > now)
+    .sort(
+      (a, b) =>
+        new Date(b.expiry_time).getTime() - new Date(a.expiry_time).getTime()
+    )
+
+  return activeSubs[0]
 }
 
 // Get the most recent active billing subscription from account subscriptions
