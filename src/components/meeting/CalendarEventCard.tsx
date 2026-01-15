@@ -178,8 +178,7 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
       mt={3}
       position="relative"
       pt={{
-        base: 3,
-        md: 2,
+        base: 4,
       }}
       shadow="sm"
       width="100%"
@@ -218,6 +217,17 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
           py={1}
         >
           {event.source}
+        </Badge>
+        <Badge
+          borderBottomRightRadius={4}
+          borderRadius={0}
+          colorScheme={'primary'}
+          fontSize="xs"
+          px={2}
+          py={1}
+          textTransform="none"
+        >
+          {event.calendarId}
         </Badge>
       </HStack>
       <Box maxWidth="100%" p={6} pt={isRecurring ? 8 : 6}>
