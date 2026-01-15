@@ -94,12 +94,12 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
 
     this.url = url
     this.credentials = {
-      username,
       password: !encripted ? password : decryptContent(symmetricKey, password),
+      username,
     }
     this.headers = getBasicAuthHeaders({
-      username,
       password: this.credentials.password,
+      username,
     })
     this.email = email
   }
@@ -112,13 +112,13 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     return calendars.map((calendar, index: number) => {
       return {
         calendarId: calendar.url,
-        sync: false,
+        color: calendar.calendarColor && calendar.calendarColor._cdata,
         enabled: index === 0,
         name:
           typeof calendar.displayName === 'string'
             ? calendar.displayName
             : calendar.ctag || v4(),
-        color: calendar.calendarColor && calendar.calendarColor._cdata,
+        sync: false,
       }
     })
   }
@@ -169,9 +169,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         const response = await createCalendarObject({
           calendar: calendarToSync!,
           filename: `${meetingDetails.meeting_id}.ics`,
+          headers: this.headers,
           // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
           iCalString: ics.value!.toString(),
-          headers: this.headers,
         })
 
         if (!response.ok) {
@@ -200,9 +200,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         const response = await createCalendarObject({
           calendar: calendarToSync!,
           filename: `${meetingDetails.meeting_id}.ics`,
+          headers: this.headers,
           // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
           iCalString: ics.value!.toString(),
-          headers: this.headers,
         })
 
         if (!response.ok) {
@@ -214,13 +214,13 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         }
       }
       return {
-        uid: meetingDetails.meeting_id.replaceAll('-', ''),
-        id: meetingDetails.meeting_id,
-        type: 'Cal Dav',
-        password: '',
-        url: '',
         additionalInfo: {},
         attendees: ics.attendees,
+        id: meetingDetails.meeting_id,
+        password: '',
+        type: 'Cal Dav',
+        uid: meetingDetails.meeting_id.replaceAll('-', ''),
+        url: '',
       }
     } catch (reason) {
       Sentry.captureException(reason)
@@ -269,10 +269,10 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
 
       const response = await updateCalendarObject({
         calendarObject: {
-          url: eventToUpdate.url,
           // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
           data: ics.value!.toString(),
           etag: eventToUpdate?.etag,
+          url: eventToUpdate.url,
         },
         headers: this.headers,
       })
@@ -291,23 +291,23 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
 
         await updateCalendarObject({
           calendarObject: {
-            url: eventToUpdate.url,
             // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
             data: ics2.value!.toString(),
             etag: eventToUpdate?.etag,
+            url: eventToUpdate.url,
           },
           headers: this.headers,
         })
       }
 
       return {
-        uid: meeting_id.replaceAll('-', ''),
-        id: meeting_id,
-        type: 'Cal Dav',
-        password: '',
-        url: '',
         additionalInfo: {},
         attendees: ics.attendees,
+        id: meeting_id,
+        password: '',
+        type: 'Cal Dav',
+        uid: meeting_id.replaceAll('-', ''),
+        url: '',
       }
     } catch (reason) {
       Sentry.captureException(reason)
@@ -347,8 +347,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         calendar: {
           url: calendarId,
         },
-        objectUrls: [eventToUpdate.url],
         headers: this.headers,
+        objectUrls: [eventToUpdate.url],
       })
 
       if (!objects || objects.length === 0 || !objects[0].data) {
@@ -431,9 +431,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       // Update the calendar object on the server
       await updateCalendarObject({
         calendarObject: {
-          url: eventToUpdate.url,
           data: vcalendar.toString(),
           etag: eventToUpdate.etag,
+          url: eventToUpdate.url,
         },
         headers: this.headers,
       })
@@ -452,8 +452,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         eventsToDelete.map(event => {
           return deleteCalendarObject({
             calendarObject: {
-              url: event.url,
               etag: event?.etag,
+              url: event.url,
             },
             headers: this.headers,
           })
@@ -488,11 +488,11 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       try {
         const objects = await fetchCalendarObjects({
           calendar,
-          headers: this.headers,
           expand: true,
+          headers: this.headers,
           timeRange: {
-            start: new Date(start).toISOString(),
             end: new Date(end).toISOString(),
+            start: new Date(start).toISOString(),
           },
         })
 
@@ -506,15 +506,15 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
             const event = new ICAL.Event(vevent)
 
             return {
-              start: event.startDate.toJSDate().toISOString(),
-              end: event.endDate.toJSDate().toISOString(),
-              title: event.summary || '',
-              eventId: object.url || undefined,
               email: this.email,
-              webLink: object.url || undefined,
+              end: event.endDate.toJSDate().toISOString(),
+              eventId: object.url || undefined,
               recurrenceId: event.recurrenceId
                 ? event.recurrenceId.toString()
                 : undefined,
+              start: event.startDate.toJSDate().toISOString(),
+              title: event.summary || '',
+              webLink: object.url || undefined,
             }
           })
           .filter(e => e !== null)
@@ -535,8 +535,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     while (currentStart < dateToMs) {
       const chunkEnd = Math.min(currentStart + CHUNK_SIZE_MS, dateToMs)
       chunks.push({
-        start: new Date(currentStart),
         end: new Date(chunkEnd),
+        start: new Date(currentStart),
       })
       currentStart = chunkEnd
     }
@@ -617,15 +617,15 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         calendar: {
           url: calId,
         },
+        headers: this.headers,
         objectUrls: objectUrls ? objectUrls : undefined,
         timeRange:
           dateFrom && dateTo
             ? {
-                start: format(new Date(dateFrom), TIMEZONE_FORMAT),
                 end: format(new Date(dateTo), TIMEZONE_FORMAT),
+                start: format(new Date(dateFrom), TIMEZONE_FORMAT),
               }
             : undefined,
-        headers: this.headers,
       })
 
       const events = objects
@@ -654,30 +654,30 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
             : new Date(event.endDate.toUnixTime() * 1000)
 
           return {
-            uid: event.uid,
-            etag: object.etag,
-            url: object.url,
-            summary: event.summary,
+            attendees: event.attendees.map(a => a.getValues()),
             description: event.description,
-            location: event.location,
-            sequence: event.sequence,
-            startDate,
-            endDate,
             duration: {
-              weeks: event.duration.weeks,
               days: event.duration.days,
               hours: event.duration.hours,
+              isNegative: event.duration.isNegative,
               minutes: event.duration.minutes,
               seconds: event.duration.seconds,
-              isNegative: event.duration.isNegative,
+              weeks: event.duration.weeks,
             },
+            endDate,
+            etag: object.etag,
+            location: event.location,
             organizer: event.organizer,
-            attendees: event.attendees.map(a => a.getValues()),
             recurrenceId: event.recurrenceId
               ? event.recurrenceId.toString()
               : null,
             rrule: rrule ? rrule.toString() : null,
+            sequence: event.sequence,
+            startDate,
+            summary: event.summary,
             timezone: calendarTimezone,
+            uid: event.uid,
+            url: object.url,
           }
         })
         .filter(e => e !== null)
@@ -709,9 +709,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
   private async getAccount(): Promise<DAVAccount> {
     return createAccount({
       account: {
-        serverUrl: this.url,
         accountType: CALDAV_CALENDAR_TYPE,
         credentials: this.credentials,
+        serverUrl: this.url,
       },
       headers: this.headers,
     })
@@ -739,11 +739,11 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       try {
         const objects = await fetchCalendarObjects({
           calendar,
-          headers: this.headers,
           expand: true,
+          headers: this.headers,
           timeRange: {
-            start: new Date(start).toISOString(),
             end: new Date(end).toISOString(),
+            start: new Date(start).toISOString(),
           },
         })
 
@@ -772,38 +772,21 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
               return null
             }
             return {
-              uid: event.uid,
-              etag: object.etag,
-              url: object.url,
-              calId: calendar.url,
               accountEmail: this.email,
-              providerId: vcalendar.getFirstPropertyValue('prodid')?.toString(),
-              status: vevent.getFirstPropertyValue('status')?.toString(),
-              summary: event.summary,
-              description: event.description,
-              location: event.location,
-              sequence: event.sequence,
-              startDate,
-              endDate,
-              organizer: event.organizer,
               attendees: event.attendees.map(a => a.getValues()),
-              recurrenceId: event.recurrenceId
-                ? event.recurrenceId.toString()
-                : null,
-              rrule: rrule ? rrule.toString() : null,
+              calId: calendar.url,
               created: vevent.getFirstPropertyValue('created')?.toString(),
-              timezone: calendarTimezone,
+              description: event.description,
               duration: {
-                weeks: event.duration.weeks,
                 days: event.duration.days,
                 hours: event.duration.hours,
+                isNegative: event.duration.isNegative,
                 minutes: event.duration.minutes,
                 seconds: event.duration.seconds,
-                isNegative: event.duration.isNegative,
+                weeks: event.duration.weeks,
               },
-              lastModified: vevent
-                .getFirstPropertyValue('last-modified')
-                ?.toString(),
+              endDate,
+              etag: object.etag,
               exdate: vevent
                 .getAllProperties('exdate')
                 .map(exdateProp => {
@@ -812,6 +795,23 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
                   return new Date(exdate)
                 })
                 .filter((ed): ed is Date => ed !== null),
+              lastModified: vevent
+                .getFirstPropertyValue('last-modified')
+                ?.toString(),
+              location: event.location,
+              organizer: event.organizer,
+              providerId: vcalendar.getFirstPropertyValue('prodid')?.toString(),
+              recurrenceId: event.recurrenceId
+                ? event.recurrenceId.toString()
+                : null,
+              rrule: rrule ? rrule.toString() : null,
+              sequence: event.sequence,
+              startDate,
+              status: vevent.getFirstPropertyValue('status')?.toString(),
+              summary: event.summary,
+              timezone: calendarTimezone,
+              uid: event.uid,
+              url: object.url,
             }
           })
           .filter(e => e !== null)
@@ -832,8 +832,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     while (currentStart < dateToMs) {
       const chunkEnd = Math.min(currentStart + CHUNK_SIZE_MS, dateToMs)
       chunks.push({
-        start: new Date(currentStart),
         end: new Date(chunkEnd),
+        start: new Date(currentStart),
       })
       currentStart = chunkEnd
     }
@@ -941,9 +941,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       // Update existing exception
       await updateCalendarObject({
         calendarObject: {
-          url: existingException.url,
           data: veventData,
           etag: existingException.etag,
+          url: existingException.url,
         },
         headers: this.headers,
       })
@@ -957,8 +957,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       await createCalendarObject({
         calendar: targetCalendar,
         filename,
-        iCalString: veventData,
         headers: this.headers,
+        iCalString: veventData,
       })
     }
   }
@@ -1006,8 +1006,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     if (existingException) {
       await deleteCalendarObject({
         calendarObject: {
-          url: existingException.url,
           etag: existingException.etag,
+          url: existingException.url,
         },
         headers: this.headers,
       })
@@ -1162,9 +1162,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         // Update master event
         await updateCalendarObject({
           calendarObject: {
-            url: masterEvent.url,
             data: vcalendar.toString(),
             etag: masterObject.etag,
+            url: masterEvent.url,
           },
           headers: this.headers,
         })
@@ -1237,8 +1237,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         calendar: {
           url: calendarId,
         },
-        objectUrls: [eventToUpdate.url],
         headers: this.headers,
+        objectUrls: [eventToUpdate.url],
       })
 
       if (!objects || objects.length === 0 || !objects[0].data) {
@@ -1292,9 +1292,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       // Update the calendar object on the server
       await updateCalendarObject({
         calendarObject: {
-          url: eventToUpdate.url,
           data: vcalendar.toString(),
           etag: eventToUpdate.etag,
+          url: eventToUpdate.url,
         },
         headers: this.headers,
       })
@@ -1313,8 +1313,8 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       eventsToDelete.map(event => {
         return deleteCalendarObject({
           calendarObject: {
-            url: event.url,
             etag: event?.etag,
+            url: event.url,
           },
           headers: this.headers,
         })

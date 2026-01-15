@@ -16,17 +16,17 @@ interface IOnboardingModalContext {
 }
 
 const OnboardingModalContext = React.createContext<IOnboardingModalContext>({
-  isConnectionOpened: false,
-  openConnection: () => {},
   closeConnection: () => {},
-  isOnboardingOpened: false,
-  openOnboarding: () => {},
   closeOnboarding: () => {},
-  resetOnboarding: () => {},
-  onboardingStarted: () => {},
+  isConnectionOpened: false,
+  isOnboardingOpened: false,
   onboardingInit: false,
-  shouldRedirect: true,
+  onboardingStarted: () => {},
+  openConnection: () => {},
+  openOnboarding: () => {},
   redirectPath: '',
+  resetOnboarding: () => {},
+  shouldRedirect: true,
 })
 
 interface WalletModalProviderProps {
@@ -76,17 +76,17 @@ const OnboardingModalProvider: React.FC<WalletModalProviderProps> = ({
   }
 
   const context = {
-    isConnectionOpened: connectionOpened,
-    openConnection,
     closeConnection,
-    isOnboardingOpened: onboardingOpened,
-    openOnboarding,
     closeOnboarding,
-    resetOnboarding,
-    onboardingStarted,
+    isConnectionOpened: connectionOpened,
+    isOnboardingOpened: onboardingOpened,
     onboardingInit,
-    shouldRedirect,
+    onboardingStarted,
+    openConnection,
+    openOnboarding,
     redirectPath,
+    resetOnboarding,
+    shouldRedirect,
   }
   return (
     <OnboardingModalContext.Provider value={context}>

@@ -57,21 +57,21 @@ async function handler(
 
     const body = toUrlEncoded({
       client_id: credentials.client_id,
-      grant_type: 'authorization_code',
-      code,
-      scope: scopes.join(' '),
-      redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
       client_secret: credentials.client_secret,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
+      scope: scopes.join(' '),
     })
 
     const response = await fetch(
       'https://login.microsoftonline.com/common/oauth2/v2.0/token',
       {
-        method: 'POST',
+        body,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         },
-        body,
+        method: 'POST',
       }
     )
 
@@ -143,11 +143,11 @@ async function handler(
       calendars.value.map((c: CalendarInfo) => {
         return {
           calendarId: c.id,
+          color: c.hexColor,
+          enabled: c.isDefaultCalendar,
+          isReadOnly: !c.canEdit,
           name: c.name,
           sync: true,
-          enabled: c.isDefaultCalendar,
-          color: c.hexColor,
-          isReadOnly: !c.canEdit,
         }
       }),
       responseBody

@@ -61,7 +61,7 @@ export const TokenGateElementComponent = (
         (valueAsFloat * 10 ** (props.tokenInfo.decimals || 0)).toString()
       )
       props.onChange(info, props.position)
-    } catch (e) {}
+    } catch (_e) {}
     setMinimumBalance(value)
   }
 

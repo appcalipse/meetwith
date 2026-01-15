@@ -80,7 +80,7 @@ const ConnectedAccounts: React.FC = () => {
           'Discord Connected',
           'Your Discord account has been connected'
         )
-      } catch (error) {}
+      } catch (_error) {}
       setIsConnecting(false)
     }
   }

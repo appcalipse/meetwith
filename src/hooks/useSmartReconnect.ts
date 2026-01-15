@@ -53,15 +53,15 @@ export const useSmartReconnect = () => {
       })
       setNeedsReconnection(false)
       return wallet
-    } catch (error) {
+    } catch (_error) {
       return null
     }
   }
 
   return {
-    needsReconnection,
-    lastKnownWallet,
     attemptReconnection,
     clearReconnectionState: () => setNeedsReconnection(false),
+    lastKnownWallet,
+    needsReconnection,
   }
 }

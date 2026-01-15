@@ -183,7 +183,9 @@ export const getEmptySlots = (
   for (let i = 0; i < totalSlots; i++) {
     const minutesFromStart = i * (scheduleDuration || 30)
     const start = dayStart.plus({ minutes: minutesFromStart })
-    const slot = LuxonInterval.after(start, { minutes: scheduleDuration || 30 })
+    const slot = LuxonInterval.after(start, {
+      minutes: scheduleDuration || 30,
+    })
     if (slot.isValid) slots.push(slot)
   }
 

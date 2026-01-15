@@ -35,7 +35,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       ])
 
       return res.status(200).json({
-        mwwEvents: meetwithEvents,
         calendarEvents: unifiedEvents.filter(event => {
           const isMeetwithEvent = meetwithEvents.some(
             mwwEvent =>
@@ -46,6 +45,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           )
           return !isMeetwithEvent // we only want to display non-meetwith events from calendars on the client side
         }),
+        mwwEvents: meetwithEvents,
       })
     }
   } catch (error) {

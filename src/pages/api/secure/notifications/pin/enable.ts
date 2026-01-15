@@ -33,10 +33,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       .substr(2, 9)}`
 
     const payload = {
-      type: 'enable_pin',
       account_address,
       iat: Math.floor(Date.now() / 1000),
       jti,
+      type: 'enable_pin',
     }
 
     const enableToken = jwt.sign(payload, JWT_SECRET, {
@@ -68,8 +68,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await sendEnablePinEmail(email, enableUrl)
 
     return res.status(200).json({
-      success: true,
       message: 'Enable PIN email sent successfully',
+      success: true,
     })
   } catch (error) {
     Sentry.captureException(error)

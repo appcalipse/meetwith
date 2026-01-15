@@ -36,10 +36,9 @@ import React, {
 import { FaArrowLeft } from 'react-icons/fa'
 import { FiArrowLeft } from 'react-icons/fi'
 import { HiOutlineUserAdd } from 'react-icons/hi'
-
-import { ChipInput } from '@/components/chip-input'
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
+import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import InfoTooltip from '@/components/profile/components/Tooltip'

@@ -92,31 +92,34 @@ const BillingCheckout = () => {
 
   // Trial eligibility
   const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
-    queryKey: ['trialEligibility'],
-    queryFn: getTrialEligibility,
-    staleTime: 60000,
-    refetchOnMount: true,
     onError: (err: unknown) => {
       handleApiError('Failed to check trial eligibility', err)
     },
+    queryFn: getTrialEligibility,
+    queryKey: ['trialEligibility'],
+    refetchOnMount: true,
+    staleTime: 60000,
   })
 
   const isTrialEligible = trialEligibility?.eligible === true
 
   // Fetch billing plans
   const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
-    queryKey: ['billingPlans'],
-    queryFn: getBillingPlans,
-    staleTime: 300000,
-    refetchOnMount: true,
     onError: (err: unknown) => {
       handleApiError('Failed to load billing plans', err)
     },
+    queryFn: getBillingPlans,
+    queryKey: ['billingPlans'],
+    refetchOnMount: true,
+    staleTime: 300000,
   })
 
   // Stripe subscription mutation
   const subscribeMutation = useMutation({
     mutationFn: (request: SubscribeRequest) => subscribeToBillingPlan(request),
+    onError: (err: unknown) => {
+      handleApiError('Failed to create checkout session', err)
+    },
     onSuccess: response => {
       if (response.checkout_url) {
         window.open(response.checkout_url, '_blank', 'noopener,noreferrer')
@@ -127,9 +130,6 @@ const BillingCheckout = () => {
         )
       }
     },
-    onError: (err: unknown) => {
-      handleApiError('Failed to create checkout session', err)
-    },
   })
 
   // Crypto subscription mutation
@@ -139,6 +139,9 @@ const BillingCheckout = () => {
   const cryptoSubscribeMutation = useMutation({
     mutationFn: (request: SubscribeRequestCrypto) =>
       subscribeToBillingPlanCrypto(request),
+    onError: (err: unknown) => {
+      handleApiError('Failed to create crypto subscription config', err)
+    },
     onSuccess: (response, variables) => {
       // Trials: no payment modal; redirect to refresh subscription card
       if (variables?.is_trial || response.amount <= 0) {
@@ -147,9 +150,6 @@ const BillingCheckout = () => {
       }
       setCryptoPaymentConfig(response)
       onCryptoModalOpen()
-    },
-    onError: (err: unknown) => {
-      handleApiError('Failed to create crypto subscription config', err)
     },
   })
 
@@ -234,8 +234,8 @@ const BillingCheckout = () => {
 
     const request: SubscribeRequestCrypto = {
       billing_plan_id: selectedPlan.billing_cycle,
-      subscription_type: SubscriptionType.INITIAL,
       is_trial: true,
+      subscription_type: SubscriptionType.INITIAL,
     }
 
     try {
@@ -267,49 +267,49 @@ const BillingCheckout = () => {
     <Container maxW="622px" px={{ base: 4, md: 6 }} py={{ base: 10, md: 14 }}>
       <VStack align="flex-start" spacing={8} width="100%">
         <Button
-          variant="ghost"
+          _hover={{ bg: 'transparent', color: 'primary.300' }}
           color="primary.300"
           leftIcon={<FaArrowLeft />}
           onClick={() => router.back()}
           px={0}
-          _hover={{ bg: 'transparent', color: 'primary.300' }}
+          variant="ghost"
         >
           Back
         </Button>
         <VStack align="flex-start" spacing={1}>
-          <Text fontSize="20px" color="text-primary" fontWeight="700">
+          <Text color="text-primary" fontSize="20px" fontWeight="700">
             {heading}
           </Text>
-          <HStack spacing={2} align="baseline">
-            <Text fontSize="4xl" fontWeight="bold" color="text-primary">
+          <HStack align="baseline" spacing={2}>
+            <Text color="text-primary" fontSize="4xl" fontWeight="bold">
               ${subtotal}
             </Text>
-            <Text fontSize="md" color="text-primary">
+            <Text color="text-primary" fontSize="md">
               /{isYearly ? 'year' : 'month'}
             </Text>
           </HStack>
           <HStack spacing={3}>
             <Box
-              w="60px"
-              h="60px"
+              alignItems="center"
               bg="bg-surface-tertiary"
               borderRadius="5px"
               display="flex"
-              alignItems="center"
+              h="60px"
               justifyContent="center"
+              w="60px"
             >
               <Image
-                src="/assets/logo.svg"
                 alt="Meetwith logo"
-                width={32}
                 height={20}
+                src="/assets/logo.svg"
+                width={32}
               />
             </Box>
-            <VStack spacing={0} align="flex-start">
-              <Text fontSize="20px" fontWeight="700" color="text-primary">
+            <VStack align="flex-start" spacing={0}>
+              <Text color="text-primary" fontSize="20px" fontWeight="700">
                 {planName}
               </Text>
-              <Text fontSize="16px" color="text-secondary">
+              <Text color="text-secondary" fontSize="16px">
                 Billed {isYearly ? 'Yearly' : 'Monthly'}
               </Text>
             </VStack>
@@ -317,38 +317,38 @@ const BillingCheckout = () => {
         </VStack>
 
         <VStack align="flex-start" spacing={4} width="100%">
-          <Text fontSize="20px" fontWeight="700" color="text-primary">
+          <Text color="text-primary" fontSize="20px" fontWeight="700">
             Payment summary
           </Text>
           <Stack
-            direction={{ base: 'column', md: 'row' }}
-            width="100%"
-            spacing={8}
             color="text-primary"
+            direction={{ base: 'column', md: 'row' }}
             fontSize="sm"
+            spacing={8}
+            width="100%"
           >
-            <VStack align="flex-start" spacing={3} flex={1}>
+            <VStack align="flex-start" flex={1} spacing={3}>
               <HStack justify="space-between" width="100%">
-                <Text fontSize="16px" color="text-primary">
+                <Text color="text-primary" fontSize="16px">
                   Subtotal
                 </Text>
                 <HStack spacing={2}>
-                  <Text fontSize="16px" color="text-primary">
+                  <Text color="text-primary" fontSize="16px">
                     ${monthlyPrice} for a month
                   </Text>
-                  <Text fontSize="16px" color="text-primary">
+                  <Text color="text-primary" fontSize="16px">
                     or
                   </Text>
-                  <Text fontSize="16px" color="text-primary">
+                  <Text color="text-primary" fontSize="16px">
                     ${yearlyPrice} for a year
                   </Text>
                 </HStack>
               </HStack>
               <HStack justify="space-between" width="100%">
-                <Text fontSize="16px" color="text-primary">
+                <Text color="text-primary" fontSize="16px">
                   Total due
                 </Text>
-                <Text fontSize="16px" fontWeight="700" color="text-primary">
+                <Text color="text-primary" fontSize="16px" fontWeight="700">
                   ${subtotal}
                 </Text>
               </HStack>
@@ -359,10 +359,10 @@ const BillingCheckout = () => {
                   onChange={e => setIsYearly(e.target.checked)}
                   size="md"
                 />
-                <Text fontSize="16px" color="text-primary" fontWeight="500">
+                <Text color="text-primary" fontSize="16px" fontWeight="500">
                   Pay yearly
                 </Text>
-                <Text fontSize="16px" color="text-primary">
+                <Text color="text-primary" fontSize="16px">
                   (pay ${yearlyPrice} for a year)
                 </Text>
               </HStack>
@@ -373,10 +373,10 @@ const BillingCheckout = () => {
         <Divider borderColor="neutral.700" />
 
         <VStack align="flex-start" spacing={4} width="100%">
-          <Text fontWeight="700" color="text-primary" fontSize="24px">
+          <Text color="text-primary" fontSize="24px" fontWeight="700">
             Make your payment
           </Text>
-          <Text fontSize="16px" color="text-primary" fontWeight="700">
+          <Text color="text-primary" fontSize="16px" fontWeight="700">
             Select payment method
           </Text>
 
@@ -386,35 +386,35 @@ const BillingCheckout = () => {
             width="100%"
           >
             <PaymentMethod
+              disabled={isLoadingPlans || subscribeMutation.isLoading}
+              icon={FiatLogo}
               id="fiat"
               name={
                 isTrialEligible
                   ? 'Start 14-day free trial (card)'
                   : 'Pay with Card'
               }
-              tag="Your fiat cards"
-              step={PaymentStep.SELECT_PAYMENT_METHOD}
-              icon={FiatLogo}
-              type={PaymentType.FIAT}
-              disabled={isLoadingPlans || subscribeMutation.isLoading}
               onClick={handlePayWithCard}
+              step={PaymentStep.SELECT_PAYMENT_METHOD}
+              tag="Your fiat cards"
+              type={PaymentType.FIAT}
             />
             <PaymentMethod
+              disabled={
+                isLoadingPlans ||
+                cryptoSubscribeMutation.isLoading ||
+                !defaultChain
+              }
+              icon={ChainLogo}
               id="crypto"
               name={
                 isTrialEligible
                   ? 'Start 14-day free trial (crypto)'
                   : 'Pay with crypto'
               }
-              step={PaymentStep.SELECT_CRYPTO_NETWORK}
-              icon={ChainLogo}
-              type={PaymentType.CRYPTO}
-              disabled={
-                isLoadingPlans ||
-                cryptoSubscribeMutation.isLoading ||
-                !defaultChain
-              }
               onClick={handleCryptoPaymentClick}
+              step={PaymentStep.SELECT_CRYPTO_NETWORK}
+              type={PaymentType.CRYPTO}
             />
           </Stack>
         </VStack>
@@ -423,22 +423,22 @@ const BillingCheckout = () => {
       {/* Crypto Subscription Checkout Modal */}
       {cryptoPaymentConfig && defaultChain && (
         <SubscriptionCheckoutModal
-          isOpen={isCryptoModalOpen}
-          onClose={onCryptoModalClose}
-          subscriptionData={cryptoPaymentConfig.subscriptionData}
           amount={cryptoPaymentConfig.amount}
           chain={defaultChain}
-          token={defaultToken}
+          isOpen={isCryptoModalOpen}
+          onClose={onCryptoModalClose}
           onSuccess={handleCryptoPaymentSuccess}
+          subscriptionData={cryptoPaymentConfig.subscriptionData}
+          token={defaultToken}
         />
       )}
 
       {/* Crypto Trial Confirmation Dialog */}
       <AlertDialog
-        isOpen={isTrialDialogOpen}
-        onClose={onTrialDialogClose}
         isCentered
+        isOpen={isTrialDialogOpen}
         leastDestructiveRef={trialCancelRef}
+        onClose={onTrialDialogClose}
       >
         <AlertDialogOverlay bg="blackAlpha.900" />
         <AlertDialogContent
@@ -447,9 +447,9 @@ const BillingCheckout = () => {
           borderWidth="1px"
         >
           <AlertDialogHeader
+            color="text-primary"
             fontSize="lg"
             fontWeight="bold"
-            color="text-primary"
             pb={2}
           >
             Start 14-day crypto trial
@@ -465,20 +465,20 @@ const BillingCheckout = () => {
           </AlertDialogBody>
           <AlertDialogFooter>
             <Button
-              ref={trialCancelRef}
-              onClick={onTrialDialogClose}
               isDisabled={cryptoSubscribeMutation.isLoading}
+              onClick={onTrialDialogClose}
+              ref={trialCancelRef}
               variant="ghost"
             >
               Not now
             </Button>
             <Button
               colorScheme="primary"
-              ml={3}
-              onClick={handleConfirmCryptoTrial}
+              isDisabled={cryptoSubscribeMutation.isLoading}
               isLoading={cryptoSubscribeMutation.isLoading}
               loadingText="Starting trial..."
-              isDisabled={cryptoSubscribeMutation.isLoading}
+              ml={3}
+              onClick={handleConfirmCryptoTrial}
             >
               Start trial
             </Button>

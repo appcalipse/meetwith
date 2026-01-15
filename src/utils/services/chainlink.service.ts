@@ -68,9 +68,6 @@ export class PriceFeedService {
       if (!feedAddress) throw new Error(`No feed for ${token} on ${chain}`)
       const chainInfo = getChainInfo(chain)
       const chainLinkAggregator = getContract({
-        client: thirdWebClient,
-        chain: chainInfo!.thirdwebChain,
-        address: feedAddress,
         abi: [
           {
             inputs: [],
@@ -90,6 +87,9 @@ export class PriceFeedService {
             type: 'function',
           },
         ],
+        address: feedAddress,
+        chain: chainInfo!.thirdwebChain,
+        client: thirdWebClient,
       })
       const [, price] = await queryClient.fetchQuery(
         QueryKeys.chainLinkAggregator(
@@ -108,8 +108,8 @@ export class PriceFeedService {
       captureException(error, {
         tags: {
           chain,
-          token,
           service: 'PriceFeedService',
+          token,
         },
       })
       return 1 // Fallback to 1 if there's an error

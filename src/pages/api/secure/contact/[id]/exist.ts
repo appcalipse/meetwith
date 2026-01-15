@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { checkContactExists, initDB } from '@/utils/database'
+
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   const account_address = req.session.account!.address
   if (!account_address) {

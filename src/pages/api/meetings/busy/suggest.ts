@@ -28,7 +28,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         try {
           const account = await getAccountFromDB(address)
           accounts.push(account)
-        } catch (error) {
+        } catch (_error) {
           //if account doesn't exist, just ignore
         }
       }
@@ -62,16 +62,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       return res.status(200).json(
         suggestedTimes.map(slot => ({
-          start: slot.start.toJSDate(),
           end: slot.end.toJSDate(),
+          start: slot.start.toJSDate(),
         }))
       )
     } catch (e) {
       Sentry.captureException(e, {
         extra: {
-          startDate: req.body.startDate,
-          endDate: req.body.endDate,
           addresses: req.body.addresses,
+          endDate: req.body.endDate,
+          startDate: req.body.startDate,
         },
       })
       return res.status(500).send('An unexpected error occurred.')

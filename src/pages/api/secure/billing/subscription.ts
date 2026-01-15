@@ -35,12 +35,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       // If no active subscription, return null values
       if (!subscriptionPeriod) {
         return res.status(200).json({
-          subscription: null,
           billing_plan: null,
-          stripe_subscription: null,
-          is_active: false,
           expires_at: null,
+          is_active: false,
           payment_provider: null,
+          stripe_subscription: null,
+          subscription: null,
         } as GetSubscriptionResponse)
       }
 
@@ -55,17 +55,17 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         statusMap[subscriptionPeriod.status] || SubscriptionStatus.EXPIRED
 
       const subscription: SubscriptionPeriod = {
+        billing_plan_id: subscriptionPeriod.billing_plan_id,
+        chain: subscriptionPeriod.chain,
+        config_ipfs_hash: subscriptionPeriod.config_ipfs_hash,
+        domain: subscriptionPeriod.domain,
+        expiry_time: subscriptionPeriod.expiry_time,
         id: subscriptionPeriod.id,
         owner_account: subscriptionPeriod.owner_account,
         plan_id: subscriptionPeriod.plan_id,
-        billing_plan_id: subscriptionPeriod.billing_plan_id,
-        chain: subscriptionPeriod.chain,
-        domain: subscriptionPeriod.domain,
-        config_ipfs_hash: subscriptionPeriod.config_ipfs_hash,
-        status,
-        expiry_time: subscriptionPeriod.expiry_time,
-        transaction_id: subscriptionPeriod.transaction_id,
         registered_at: subscriptionPeriod.registered_at,
+        status,
+        transaction_id: subscriptionPeriod.transaction_id,
         updated_at: subscriptionPeriod.updated_at,
       }
 
@@ -75,12 +75,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         const stripeSub = await getStripeSubscriptionByAccount(accountAddress)
         if (stripeSub) {
           stripeSubscription = {
-            id: stripeSub.id,
             account_address: stripeSub.account_address,
-            stripe_subscription_id: stripeSub.stripe_subscription_id,
-            stripe_customer_id: stripeSub.stripe_customer_id,
             billing_plan_id: stripeSub.billing_plan_id,
             created_at: stripeSub.created_at,
+            id: stripeSub.id,
+            stripe_customer_id: stripeSub.stripe_customer_id,
+            stripe_subscription_id: stripeSub.stripe_subscription_id,
             updated_at: stripeSub.updated_at,
           }
         }
@@ -103,11 +103,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             billingCycleMap[plan.billing_cycle] || BillingCycle.MONTHLY
 
           billingPlan = {
+            billing_cycle: billingCycle,
+            created_at: plan.created_at,
             id: plan.id,
             name: plan.name,
             price: Number(plan.price),
-            billing_cycle: billingCycle,
-            created_at: plan.created_at,
             updated_at: plan.updated_at,
           }
         }
@@ -135,12 +135,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         new Date(subscriptionPeriod.expiry_time) > new Date()
 
       const response: GetSubscriptionResponse = {
-        subscription,
         billing_plan: billingPlan,
-        stripe_subscription: stripeSubscription,
-        is_active: isActive,
         expires_at: subscriptionPeriod.expiry_time,
+        is_active: isActive,
         payment_provider: paymentProvider,
+        stripe_subscription: stripeSubscription,
+        subscription,
       }
 
       return res.status(200).json(response)

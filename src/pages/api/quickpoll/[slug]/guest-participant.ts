@@ -53,7 +53,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         guest_email.trim().toLowerCase()
       )
       participantExists = true
-    } catch (error) {
+    } catch (_error) {
       participantExists = false
     }
 

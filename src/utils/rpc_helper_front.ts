@@ -39,8 +39,8 @@ export const resolveENS = async (
     }
 
     const validatedAddress = await resolveAddress({
-      name,
       client: thirdWebClient,
+      name,
     })
 
     // Check to be sure the reverse record is correct.
@@ -51,23 +51,23 @@ export const resolveENS = async (
     let avatar = undefined
     try {
       avatar = await resolveAvatar({
-        name,
         client: thirdWebClient,
+        name,
       })
-    } catch (e) {}
+    } catch (_e) {}
     return {
-      name,
       avatar: avatar || undefined,
+      name,
     }
-  } catch (e) {
+  } catch (_e) {
     return undefined
   }
 }
 
 const checkENSBelongsTo = async (domain: string): Promise<string | null> => {
   const validatedAddress = await resolveAddress({
-    name: domain,
     client: thirdWebClient,
+    name: domain,
   })
   return validatedAddress
 }
@@ -77,7 +77,7 @@ const checkDomainBelongsTo = async (domain: string): Promise<string | null> => {
     return (
       (await getSubscriptionByDomain(domain as string))?.owner_account || null
     )
-  } catch (e) {
+  } catch (_e) {
     return null
   }
 }
@@ -90,12 +90,12 @@ const checkUnstoppableDomainBelongsTo = async (
       uns: {
         locations: {
           Layer1: {
-            url: `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID}`,
             network: 'mainnet',
+            url: `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID}`,
           },
           Layer2: {
-            url: `https://polygon-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID}`,
             network: 'polygon-mainnet',
+            url: `https://polygon-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID}`,
           },
         },
       },
@@ -113,7 +113,7 @@ const checkUnstoppableDomainBelongsTo = async (
 
   try {
     return await resolution.addr(domain, getCurrency(domain))
-  } catch (e: unknown) {
+  } catch (_e: unknown) {
     return null
   }
 }

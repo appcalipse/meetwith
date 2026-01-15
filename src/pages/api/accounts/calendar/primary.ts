@@ -9,7 +9,7 @@ const getAccountUrl = async (req: NextApiRequest, res: NextApiResponse) => {
       const email = await getCalendarPrimaryEmail(targetAccount as string)
 
       return res.status(200).json({ email })
-    } catch (e) {
+    } catch (_e) {
       return res.status(404).send('Not found')
     }
   }

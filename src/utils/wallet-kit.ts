@@ -1,5 +1,6 @@
 import { IWalletKit, WalletKit } from '@reown/walletkit'
 import { Core } from '@walletconnect/core'
+
 process.env.DISABLE_GLOBAL_CORE = 'true'
 const core = new Core({
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID,
@@ -12,12 +13,12 @@ export async function getWalletKit() {
     walletKit = await WalletKit.init({
       core,
       metadata: {
-        name: 'Meetwith',
         description: 'Meetwith Wallet Connect client',
-        url: 'https://meetwith.xyz',
         icons: [
           'https://mww-public.s3.eu-west-1.amazonaws.com/email/logo_mail.png',
         ],
+        name: 'Meetwith',
+        url: 'https://meetwith.xyz',
       },
     })
     return walletKit

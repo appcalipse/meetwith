@@ -73,40 +73,40 @@ export class WebDAVEventMapper {
     }
 
     return {
-      id: this.generateInternalId(webdavEvent),
-      title: webdavEvent.summary || '(No title)',
+      accountEmail,
+      attendees: this.mapAttendees(webdavEvent.attendees || []),
+      calendarId,
       description: CalendarServiceHelper.parseDescriptionToRichText(
         webdavEvent.description
       ),
-      start: webdavEvent.startDate,
       end: webdavEvent.endDate,
+      etag: webdavEvent.etag || null,
+      id: this.generateInternalId(webdavEvent),
       isAllDay: this.isAllDayEvent(webdavEvent.startDate, webdavEvent.endDate),
-
-      source: TimeSlotSource.WEBDAV,
-      sourceEventId: webdavEvent.uid,
-      calendarId,
-      accountEmail,
+      lastModified: new Date(webdavEvent.lastModified || new Date()),
 
       meeting_url: webdavEvent.location || null,
-      webLink: webdavEvent.url,
-      attendees: this.mapAttendees(webdavEvent.attendees || []),
-      recurrence: this.mapRecurrence(webdavEvent),
-      status: this.mapEventStatus(webdavEvent.status),
-      lastModified: new Date(webdavEvent.lastModified || new Date()),
-      etag: webdavEvent.etag || null,
       permissions,
 
       providerData: {
         webdav: {
-          sequence: webdavEvent.sequence,
-          organizer: webdavEvent.organizer,
-          timezone: webdavEvent.timezone,
           duration: webdavEvent.duration,
+          organizer: webdavEvent.organizer,
           recurrenceId: webdavEvent.recurrenceId,
-          url: webdavEvent.url,
           rrule: webdavEvent.rrule,
+          sequence: webdavEvent.sequence,
+          timezone: webdavEvent.timezone,
+          url: webdavEvent.url,
         },
       },
+      recurrence: this.mapRecurrence(webdavEvent),
+
+      source: TimeSlotSource.WEBDAV,
+      sourceEventId: webdavEvent.uid,
+      start: webdavEvent.startDate,
+      status: this.mapEventStatus(webdavEvent.status),
+      title: webdavEvent.summary || '(No title)',
+      webLink: webdavEvent.url,
     }
   }
 
@@ -117,25 +117,25 @@ export class WebDAVEventMapper {
     const webdavData = unifiedEvent.providerData?.webdav
 
     return {
-      uid: unifiedEvent.sourceEventId,
-      summary: unifiedEvent.title,
+      attendees: this.createWebDAVAttendees(unifiedEvent.attendees || []),
       description: unifiedEvent.description || undefined,
-      startDate: unifiedEvent.start,
+      duration: webdavData?.duration,
       endDate: unifiedEvent.end,
-      location: unifiedEvent.meeting_url || undefined,
 
       // WebDAV-specific fields
       etag: unifiedEvent.etag || undefined,
-      url: webdavData?.url || '',
-      sequence: webdavData?.sequence,
-      organizer: webdavData?.organizer,
-      attendees: this.createWebDAVAttendees(unifiedEvent.attendees || []),
-      timezone: webdavData?.timezone,
       lastModified: unifiedEvent?.lastModified.toISOString(),
-      duration: webdavData?.duration,
+      location: unifiedEvent.meeting_url || undefined,
+      organizer: webdavData?.organizer,
       recurrenceId: webdavData?.recurrenceId,
-      status: this.mapUnifiedStatusToWebDAV(unifiedEvent.status),
       rrule: unifiedEvent.recurrence?.providerRecurrence?.webdav?.rrule,
+      sequence: webdavData?.sequence,
+      startDate: unifiedEvent.start,
+      status: this.mapUnifiedStatusToWebDAV(unifiedEvent.status),
+      summary: unifiedEvent.title,
+      timezone: webdavData?.timezone,
+      uid: unifiedEvent.sourceEventId,
+      url: webdavData?.url || '',
     }
   }
 
@@ -173,20 +173,20 @@ export class WebDAVEventMapper {
 
         return {
           email: email || '',
-          name: name || null,
-          status: this.mapAttendeeStatus(status),
           isOrganizer: role === 'CHAIR' || role === 'organizer',
+          name: name || null,
           providerData: {
             webdav: {
-              role,
+              cn: this.extractCnFromAttendee(attendee),
               cutype: this.extractCutypeFromAttendee(attendee),
-              rsvp: this.extractRsvpFromAttendee(attendee),
               delegatedFrom: this.extractDelegatedFromAttendee(attendee),
               delegatedTo: this.extractDelegatedToAttendee(attendee),
+              role,
+              rsvp: this.extractRsvpFromAttendee(attendee),
               sentBy: this.extractSentByFromAttendee(attendee),
-              cn: this.extractCnFromAttendee(attendee),
             },
           },
+          status: this.mapAttendeeStatus(status),
         }
       })
       .filter(attendee => attendee.email) // Filter out invalid attendees
@@ -385,24 +385,24 @@ export class WebDAVEventMapper {
     const ruleset = new RRuleSet()
     ruleset.rrule(rrule)
     return {
-      frequency: rrule.options.freq,
-      interval: rrule.options.interval || 1,
-      daysOfWeek: rrule.options.byweekday,
       dayOfMonth: Array.isArray(rrule.options.bymonthday)
         ? rrule.options.bymonthday[0]
         : rrule.options.bymonthday,
-      weekOfMonth: Array.isArray(rrule.options.bysetpos)
-        ? rrule.options.bysetpos[0]
-        : rrule.options.bysetpos,
+      daysOfWeek: rrule.options.byweekday,
       endDate: rrule.options.until,
-      occurrenceCount: rrule.options.count,
       excludeDates: ruleset.exdates(),
+      frequency: rrule.options.freq,
+      interval: rrule.options.interval || 1,
+      occurrenceCount: rrule.options.count,
 
       providerRecurrence: {
         webdav: {
           rrule: webdavEvent.rrule,
         },
       },
+      weekOfMonth: Array.isArray(rrule.options.bysetpos)
+        ? rrule.options.bysetpos[0]
+        : rrule.options.bysetpos,
     }
   }
   private static mapFrequency(freq?: Frequency): MeetingRepeat {
@@ -438,13 +438,13 @@ export class WebDAVEventMapper {
     if (!byday) return null
 
     const dayMap: Record<string, DayOfWeek> = {
-      SU: DayOfWeek.SUNDAY,
+      FR: DayOfWeek.FRIDAY,
       MO: DayOfWeek.MONDAY,
+      SA: DayOfWeek.SATURDAY,
+      SU: DayOfWeek.SUNDAY,
+      TH: DayOfWeek.THURSDAY,
       TU: DayOfWeek.TUESDAY,
       WE: DayOfWeek.WEDNESDAY,
-      TH: DayOfWeek.THURSDAY,
-      FR: DayOfWeek.FRIDAY,
-      SA: DayOfWeek.SATURDAY,
     }
 
     const days = byday
@@ -564,13 +564,13 @@ export class WebDAVEventMapper {
   ): string | undefined {
     if (!recurrence) return undefined
     const rrule = new RRule({
-      freq: recurrence.frequency,
-      interval: recurrence.interval || 1,
-      byweekday: recurrence.daysOfWeek,
       bymonthday: recurrence.dayOfMonth ? [recurrence.dayOfMonth] : undefined,
       bysetpos: recurrence.weekOfMonth ? [recurrence.weekOfMonth] : undefined,
-      until: recurrence.endDate || undefined,
+      byweekday: recurrence.daysOfWeek,
       count: recurrence.occurrenceCount || undefined,
+      freq: recurrence.frequency,
+      interval: recurrence.interval || 1,
+      until: recurrence.endDate || undefined,
     })
     const ruleset = rrule.toString()
     return isJson(ruleset) ? JSON.parse(ruleset) : ruleset

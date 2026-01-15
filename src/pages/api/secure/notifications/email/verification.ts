@@ -37,8 +37,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await sendVerificationCodeEmail(email, verificationCode)
 
     return res.status(200).json({
-      success: true,
       message: 'Verification code sent successfully',
+      success: true,
     })
   } catch (error) {
     Sentry.captureException(error)

@@ -95,16 +95,16 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     Array<{ value: MeetingReminders; label?: string }>
   >([
     {
-      value: MeetingReminders['1_HOUR_BEFORE'],
       label: '1 hour before',
+      value: MeetingReminders['1_HOUR_BEFORE'],
     },
   ])
   const [meetingRepeat, setMeetingRepeat] = useState<{
     value: MeetingRepeat
     label?: string
   }>({
-    value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
+    value: MeetingRepeat['NO_REPEAT'],
   })
   const [selectedPermissions, setSelectedPermissions] = useState<
     Array<MeetingPermissions> | undefined
@@ -112,34 +112,34 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   const [isScheduling, setIsScheduling] = useState(false)
 
   const value: IScheduleStateContext = {
-    title,
     content,
-    duration,
-    pickedTime,
     currentSelectedDate,
-    timezone,
-    meetingProvider,
-    meetingUrl,
-    meetingNotification,
-    meetingRepeat,
-    isScheduling,
-    selectedPermissions,
-    setTitle,
-    setContent,
-    setDuration,
-    setPickedTime,
-    setCurrentSelectedDate,
-    setTimezone,
-    setMeetingProvider,
-    setMeetingUrl,
-    setMeetingNotification,
-    setMeetingRepeat,
-    setSelectedPermissions,
-    setIsScheduling,
     decryptedMeeting,
-    setDecryptedMeeting,
+    duration,
     editMode,
+    isScheduling,
+    meetingNotification,
+    meetingProvider,
+    meetingRepeat,
+    meetingUrl,
+    pickedTime,
+    selectedPermissions,
+    setContent,
+    setCurrentSelectedDate,
+    setDecryptedMeeting,
+    setDuration,
     setEditMode,
+    setIsScheduling,
+    setMeetingNotification,
+    setMeetingProvider,
+    setMeetingRepeat,
+    setMeetingUrl,
+    setPickedTime,
+    setSelectedPermissions,
+    setTimezone,
+    setTitle,
+    timezone,
+    title,
   }
 
   return (

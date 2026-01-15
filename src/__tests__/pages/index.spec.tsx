@@ -7,12 +7,12 @@ import { ChakraTestWrapper } from '@/testing/chakra-helpers'
 
 // Mock Sentry BEFORE any imports that use it
 jest.mock('@sentry/nextjs', () => ({
+  BrowserTracing: jest.fn(),
   captureException: jest.fn(),
   captureMessage: jest.fn(),
-  withScope: jest.fn(callback => callback({ setTag: jest.fn() })),
   init: jest.fn(),
-  BrowserTracing: jest.fn(),
   Replay: jest.fn(),
+  withScope: jest.fn(callback => callback({ setTag: jest.fn() })),
 }))
 
 jest.mock('thirdweb/react', () => ({
@@ -22,16 +22,16 @@ jest.mock('thirdweb/react', () => ({
 
 jest.mock('next/router', () => ({
   useRouter: () => ({
-    push: jest.fn(),
-    pathname: '/',
-    query: {},
     asPath: '/',
     events: {
-      on: jest.fn(),
-      off: jest.fn(),
       emit: jest.fn(),
+      off: jest.fn(),
+      on: jest.fn(),
     },
     isFallback: false,
+    pathname: '/',
+    push: jest.fn(),
+    query: {},
   }),
 }))
 

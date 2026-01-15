@@ -78,26 +78,26 @@ a {
 
 /* For IE and Edge */
 .tiptap {
-  scrollbar-width: thin;
   scrollbar-color: currentcolor transparent;
+  scrollbar-width: thin;
 }
 
 .floating-menu {
   z-index: 100;
 }
 
-.tippy-box[data-theme~='material'] {
+.tippy-box[data-theme~="material"] {
+  max-width: none !important;
   background-color: transparent;
   opacity: 1;
-  max-width: none !important;
 }
 
 .tiptap p.is-editor-empty:first-child::before {
-  color: #7b8794;
-  content: attr(data-placeholder);
   float: left;
   height: 0;
+  color: #7b8794;
   pointer-events: none;
+  content: attr(data-placeholder);
 }
 
 /* Custom styled ends here */
@@ -174,28 +174,29 @@ a {
   );
 }
 .image-back-drop {
+  display: block;
   background: #3e4c59;
   filter: blur(40px);
-  display: block;
 }
 
 .gradient-border {
   position: relative;
+  z-index: 1;
+  padding: 5px; /* Adjust padding as needed */
   overflow: hidden;
   background-color: #1f2933;
-  padding: 5px; /* Adjust padding as needed */
   border-radius: 10px;
-  z-index: 1;
 }
 
 .gradient-border::before {
-  content: '';
   position: absolute;
   top: -2px;
-  left: -2px;
   right: -2px;
   bottom: -2px;
+  left: -2px;
   z-index: 0;
+  padding: 2px;
+  content: "";
   background: linear-gradient(
     -49deg,
     #f35826 0%,
@@ -203,13 +204,12 @@ a {
     #e8420d 65%,
     #80e6ae 100%
   );
-  border-radius: inherit;
-  padding: 2px;
   background-clip: padding-box;
+  border-radius: inherit;
 }
 th {
-  color: inherit !important;
   font-weight: 500 !important;
+  color: inherit !important;
   text-transform: none !important;
 }
 thead tr th {
@@ -261,30 +261,30 @@ thead tr th {
 
 .rsvp-dropdown {
   padding-inline: 0px !important;
-  margin-top: 1px !important;
   padding-left: 4px !important;
+  margin-top: 1px !important;
 }
 
 .rsvp-select > div {
+  align-items: center !important;
   justify-content: center !important;
   margin-inline: auto !important;
-  align-items: center !important;
   border: none !important;
 }
 
 .rich-text-wrapper a {
-  transition-property: var(--chakra-transition-property-common);
-  transition-duration: var(--chakra-transition-duration-fast);
-  transition-timing-function: var(--chakra-transition-easing-ease-out);
-  cursor: pointer;
-  -webkit-text-decoration: none;
-  text-decoration: none;
-  outline: 2px solid transparent;
-  outline-offset: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--chakra-colors-primary-400);
   white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
+  -webkit-text-decoration: none;
+  text-decoration: none;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition-timing-function: var(--chakra-transition-easing-ease-out);
+  transition-duration: var(--chakra-transition-duration-fast);
+  transition-property: var(--chakra-transition-property-common);
 }
 
 .rich-text-wrapper a:hover {
