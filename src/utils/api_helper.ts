@@ -2787,7 +2787,7 @@ export const parsedDecryptedParticipants = async (
   participants: ParseParticipantInfo[]
 ) => {
   return internalFetch<ParseParticipantInfo[], ParseParticipantsRequest>(
-    `/secure/meetings/instance/${instance_id}/participants`,
+    `/secure/meetings/instances/${instance_id}/participants`,
     'POST',
     { participants }
   )
