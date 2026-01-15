@@ -15,11 +15,11 @@ import {
   QUICKPOLL_MIN_DURATION_MINUTES,
 } from '@/utils/constants'
 import {
-  countActiveQuickPolls,
+  countActiveQuickPollsCreatedThisMonth,
   createQuickPoll,
   getQuickPollsForAccount,
+  isProAccountAsync,
 } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/database'
 import {
   QuickPollCreationError,
   QuickPollLimitExceededError,
@@ -48,10 +48,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const isPro = await isProAccountAsync(address)
 
       if (!isPro && status === PollStatus.ONGOING) {
-        // Get active polls only (limit to 2, no search)
+        // Get active polls only (limit to 1, no search)
         const activePollsResult = await getQuickPollsForAccount(
           address,
-          2,
+          1,
           0,
           PollStatus.ONGOING,
           undefined // No search for free users
@@ -66,9 +66,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           undefined // No search
         )
 
+        const activePollsCreatedThisMonth =
+          await countActiveQuickPollsCreatedThisMonth(address)
+
         const hiddenActivePolls = Math.max(
           0,
-          allActivePollsCountResult.total_count - 2
+          allActivePollsCountResult.total_count - 1
         )
 
         const response: QuickPollListResponse = {
@@ -76,7 +79,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           total_count: allActivePollsCountResult.total_count,
           has_more: false, // Free users don't get pagination for active polls
           hidden: hiddenActivePolls,
-          upgradeRequired: allActivePollsCountResult.total_count >= 2,
+          upgradeRequired: activePollsCreatedThisMonth >= 1,
         }
 
         return res.status(200).json(response)
@@ -154,9 +157,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const isPro = await isProAccountAsync(address)
 
       if (!isPro) {
-        // Free tier restriction: Maximum 2 active polls
-        const activePollCount = await countActiveQuickPolls(address)
-        if (activePollCount >= 2) {
+        const activePollCountThisMonth =
+          await countActiveQuickPollsCreatedThisMonth(address)
+        if (activePollCountThisMonth >= 1) {
           throw new QuickPollLimitExceededError()
         }
       }

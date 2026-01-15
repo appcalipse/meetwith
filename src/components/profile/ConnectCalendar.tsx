@@ -10,6 +10,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
@@ -108,6 +109,7 @@ const ConnectedCalendars: React.FC<{
 const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [calendarConnections, setCalendarConnections] = useState<
     ConnectedCalendarCore[]
@@ -173,21 +175,40 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         </Text>
       </VStack>
 
-      <Button
-        onClick={onOpen}
-        colorScheme="primary"
-        mb={7}
-        alignSelf="flex-start"
-        leftIcon={<FaPlus />}
-        isDisabled={!canCreateCalendar}
-        title={
-          !canCreateCalendar
-            ? 'Upgrade to Pro to connect more calendars'
-            : undefined
-        }
-      >
-        Add calendar connection
-      </Button>
+      <VStack align="flex-start" spacing={2} mb={7}>
+        <Button
+          onClick={onOpen}
+          colorScheme="primary"
+          alignSelf="flex-start"
+          leftIcon={<FaPlus />}
+          isDisabled={!canCreateCalendar}
+          title={
+            !canCreateCalendar
+              ? 'Upgrade to Pro to connect more calendars'
+              : undefined
+          }
+        >
+          Add calendar connection
+        </Button>
+        {!canCreateCalendar && (
+          <Text fontSize="14px" color="neutral.400">
+            Unlock unlimited calendar connections with PRO{' '}
+            <Button
+              variant="link"
+              colorScheme="primary"
+              px={0}
+              onClick={() => router.push('/dashboard/settings/subscriptions')}
+              textDecoration="underline"
+              fontSize="14px"
+              height="auto"
+              minW="auto"
+            >
+              here
+            </Button>
+            .
+          </Text>
+        )}
+      </VStack>
 
       <ConnectedCalendars
         activeCalendarConnections={activeCalendarConnections}

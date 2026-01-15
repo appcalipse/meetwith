@@ -1,5 +1,6 @@
 import { Box, Button, Flex, Spinner, Text, VStack } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { FiRefreshCcw } from 'react-icons/fi'
 
@@ -17,9 +18,14 @@ import PollCard from './PollCard'
 
 interface OngoingPollsProps {
   searchQuery?: string
+  upgradeRequired?: boolean
 }
 
-const OngoingPolls = ({ searchQuery = '' }: OngoingPollsProps) => {
+const OngoingPolls = ({
+  searchQuery = '',
+  upgradeRequired = false,
+}: OngoingPollsProps) => {
+  const { push } = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
 
@@ -88,6 +94,24 @@ const OngoingPolls = ({ searchQuery = '' }: OngoingPollsProps) => {
 
   return (
     <VStack spacing={4} align="stretch">
+      {upgradeRequired && currentPolls.length > 0 && (
+        <Text fontSize="14px" color="neutral.400">
+          Unlock unlimited QuickPolls with PRO{' '}
+          <Button
+            variant="link"
+            colorScheme="primary"
+            px={0}
+            onClick={() => push('/dashboard/settings/subscriptions')}
+            textDecoration="underline"
+            fontSize="14px"
+            height="auto"
+            minW="auto"
+          >
+            here
+          </Button>
+          .
+        </Text>
+      )}
       {isLoadingOngoing && debouncedSearchQuery ? (
         <CustomLoading text="Searching polls..." />
       ) : currentPolls.length > 0 ? (

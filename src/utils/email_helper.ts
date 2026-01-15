@@ -9,7 +9,6 @@ import {
   BillingEmailAccountInfo,
   BillingEmailPeriod,
   BillingEmailPlan,
-  BillingMode,
   PaymentProvider,
 } from '@/types/Billing'
 import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
@@ -31,8 +30,7 @@ import {
 import { appUrl } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
-import { getOwnerPublicUrlServer } from './database'
-import { getBillingEmailAccountInfo } from './database'
+import { getBillingEmailAccountInfo, getOwnerPublicUrlServer } from './database'
 import {
   formatDateForEmail,
   formatDaysRemainingForEmail,
@@ -41,6 +39,7 @@ import {
 import { generateIcsServer } from './services/calendar.backend.helper'
 import { getCalendars } from './sync_helper'
 import { getAllParticipantsDisplayName } from './user_manager'
+
 const FROM = process.env.FROM_MAIL!
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -1004,9 +1003,7 @@ export const sendSubscriptionExpiredEmail = async (
   const email = new Email()
 
   const periodEnd = formatDateForEmail(period.expiry_time)
-  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=${
-    BillingMode.EXTEND
-  }&plan=${encodeURIComponent(billingPlan.id)}`
+  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing`
 
   const locals = {
     appUrl,
@@ -1047,9 +1044,7 @@ export const sendSubscriptionRenewalDueEmail = async (
   const email = new Email()
 
   const periodEnd = formatDateForEmail(period.expiry_time)
-  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=${
-    BillingMode.EXTEND
-  }&plan=${encodeURIComponent(billingPlan.id)}`
+  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing`
 
   const locals = {
     appUrl,
@@ -1092,9 +1087,7 @@ export const sendCryptoExpiryReminderEmail = async (
   const email = new Email()
 
   const periodEnd = formatDateForEmail(period.expiry_time)
-  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=${
-    BillingMode.EXTEND
-  }&plan=${encodeURIComponent(billingPlan.id)}`
+  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing`
 
   const locals = {
     appUrl,
