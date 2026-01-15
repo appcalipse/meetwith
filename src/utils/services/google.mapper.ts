@@ -33,15 +33,17 @@ export class GoogleEventMapper {
     accountEmail: string
   ): UnifiedEvent {
     const permissions: MeetingPermissions[] = []
-    if (googleEvent.guestsCanModify) {
+    const isOrganizer = googleEvent.organizer?.self
+    if (googleEvent.guestsCanModify || isOrganizer) {
       permissions.push(MeetingPermissions.EDIT_MEETING)
     }
-    if (googleEvent.guestsCanInviteOthers) {
+    if (googleEvent.guestsCanInviteOthers || isOrganizer) {
       permissions.push(MeetingPermissions.INVITE_GUESTS)
     }
-    if (googleEvent.guestsCanSeeOtherGuests) {
+    if (googleEvent.guestsCanSeeOtherGuests || isOrganizer) {
       permissions.push(MeetingPermissions.SEE_GUEST_LIST)
     }
+
     return {
       accountEmail,
       attendees: this.mapAttendees(googleEvent.attendees || []),
