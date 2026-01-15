@@ -23,7 +23,7 @@
       "arrowParentheses": "asNeeded",
       "quoteStyle": "single",
       "semicolons": "asNeeded",
-      "trailingCommas": "none"
+      "trailingCommas": "es5"
     },
     "globals": ["React"],
     "parser": { "unsafeParameterDecoratorsEnabled": true }
