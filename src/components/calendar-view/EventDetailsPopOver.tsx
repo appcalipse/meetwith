@@ -277,7 +277,12 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
           </Text>
         )}
         {(isCalendarEvent(slot) ? slot.description : slot.content) && (
-          <HStack alignItems="center" flexWrap="wrap">
+          <HStack
+            alignItems="center"
+            flexWrap="wrap"
+            w="100%"
+            overflowX="hidden"
+          >
             <Text>Description:</Text>
             <TruncatedText
               content={
