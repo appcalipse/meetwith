@@ -1,15 +1,37 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on",
+        "recommended": true
+      }
+    },
+    "enabled": null
+  },
+  "files": {
+    "includes": ["**", "!**/*.json", "!**/*.css"]
+  },
   "formatter": {
+    "bracketSpacing": true,
     "enabled": true,
     "indentStyle": "space",
-    "lineWidth": 80,
-    "bracketSpacing": true
+    "lineWidth": 80
   },
+  "javascript": {
+    "formatter": {
+      "arrowParentheses": "asNeeded",
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "none"
+    },
+    "globals": ["React"],
+    "parser": { "unsafeParameterDecoratorsEnabled": true }
+  },
+  "json": { "parser": {} },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": false,
       "a11y": {
         "noAriaUnsupportedElements": "warn",
         "useAltText": "warn",
@@ -35,6 +57,7 @@
         "noUnusedExpressions": "off",
         "useConsistentArrowReturn": "off"
       },
+      "recommended": false,
       "security": { "noBlankTarget": "off" },
       "style": {
         "noCommonJs": "error",
@@ -62,11 +85,6 @@
       }
     }
   },
-  "javascript": {
-    "parser": { "unsafeParameterDecoratorsEnabled": true },
-    "globals": ["React"]
-  },
-  "json": { "parser": {} },
   "overrides": [
     {
       "includes": ["**/*.json"],
@@ -268,15 +286,5 @@
         }
       }
     }
-  ],
-  "assist": {
-    "enabled": null,
-    "actions": {
-      "source": {
-        "organizeImports": "on",
-        "recommended": true,
-        "useSortedAttributes": "on"
-      }
-    }
-  }
+  ]
 }
