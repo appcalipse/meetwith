@@ -45,6 +45,7 @@ import {
   incrementNotificationLookup,
   saveNotificationTime,
 } from '@/utils/storage'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { ThemeSwitcher } from '../../ThemeSwitcher'
@@ -90,6 +91,9 @@ export const NavMenu: React.FC<{
   const isDarkMode = useColorModeValue(false, true)
 
   const LinkItems: Array<LinkItemProps> = useMemo(() => {
+    const activeSubscription = getActiveProSubscription(currentAccount)
+    const hasProAccess = Boolean(activeSubscription)
+
     const tabs: Array<LinkItemProps> = [
       { name: 'My Schedule', icon: FaCalendarDay, mode: EditMode.MEETINGS },
       {
@@ -121,6 +125,7 @@ export const NavMenu: React.FC<{
         name: 'Wallet',
         icon: FaWallet,
         mode: EditMode.WALLET,
+        isDisabled: !hasProAccess,
       },
       {
         name: 'Availabilities',
@@ -130,7 +135,7 @@ export const NavMenu: React.FC<{
       { name: 'Settings', icon: FaCog, mode: EditMode.DETAILS },
     ]
     return tabs.filter(item => !item.isDisabled)
-  }, [groupInvitesCount, contactsRequestCount])
+  }, [currentAccount, groupInvitesCount, contactsRequestCount])
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
     emptyGroups?.forEach((data, index) => {
