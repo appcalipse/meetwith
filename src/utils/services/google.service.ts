@@ -1286,10 +1286,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       throw new Error('Instance not found')
     }
     // check if the owner is organizer
-    const actor = instance.attendees?.find(
-      attendee => attendee.self && attendee.organizer
-    )
-    if (!actor) {
+    const isOrganiserActor = instance.organizer?.self
+    if (!isOrganiserActor) {
       // eslint-disable-next-line no-restricted-syntax
       console.info('Calendar owner is not the organizer of this event')
       return
