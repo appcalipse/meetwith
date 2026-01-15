@@ -47,7 +47,10 @@
         "useConst": "warn"
       },
       "suspicious": {
-        "noConsole": { "level": "off", "options": { "allow": ["log"] } },
+        "noConsole": {
+          "level": "error",
+          "options": { "allow": ["error", "info", "debug", "warn", "trace"] }
+        },
         "noEmptyBlockStatements": "off",
         "noExplicitAny": "error",
         "noExtraNonNullAssertion": "error",
@@ -109,13 +112,13 @@
         "rules": {
           "complexity": { "noArguments": "error" },
           "correctness": {
-            "noConstAssign": "off",
+            "noConstAssign": "error",
             "noGlobalObjectCalls": "off",
             "noInvalidBuiltinInstantiation": "off",
-            "noInvalidConstructorSuper": "off",
+            "noInvalidConstructorSuper": "error",
             "noSetterReturn": "off",
             "noUndeclaredVariables": "off",
-            "noUnreachable": "off",
+            "noUnreachable": "error",
             "noUnreachableSuper": "off"
           },
           "style": { "useConst": "error" },
@@ -141,7 +144,7 @@
         "rules": {
           "complexity": { "noArguments": "error" },
           "correctness": {
-            "noConstAssign": "off",
+            "noConstAssign": "error",
             "noGlobalObjectCalls": "off",
             "noInvalidBuiltinInstantiation": "off",
             "noInvalidConstructorSuper": "off",
@@ -268,6 +271,12 @@
   ],
   "assist": {
     "enabled": null,
-    "actions": { "source": { "organizeImports": "on" } }
+    "actions": {
+      "source": {
+        "organizeImports": "on",
+        "recommended": true,
+        "useSortedAttributes": "on"
+      }
+    }
   }
 }
