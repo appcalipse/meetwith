@@ -20,6 +20,38 @@ export const CalendarServiceHelper = {
     )
     return full.test(str)
   },
+  plainTextToHtml(text: string): string {
+    if (!text) return ''
+
+    let html = text.replace(
+      /(https?:\/\/[^\s]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+    )
+
+    const paragraphs = html.split(/\n\n+/)
+    if (paragraphs.length > 1) {
+      html = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')
+    } else {
+      html = html.replace(/\n/g, '<br>')
+    }
+
+    return html
+  },
+
+  /**
+   * Detects if text contains HTML and returns appropriate format
+   */
+  parseDescriptionToRichText(description?: string | null): string | undefined {
+    if (!description) return undefined
+
+    const hasHtmlTags = CalendarServiceHelper.isHtml(description)
+
+    if (hasHtmlTags) {
+      return description
+    }
+
+    return this.plainTextToHtml(description)
+  },
   convertHtmlToPlainText: (html: string) => {
     if (!CalendarServiceHelper.isHtml(html)) {
       return html

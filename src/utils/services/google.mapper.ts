@@ -16,6 +16,7 @@ import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { getBaseEventId } from '../calendar_sync_helpers'
 import { MeetingPermissions } from '../constants/schedule'
 import { isJson } from '../generic_utils'
+import { CalendarServiceHelper } from './calendar.helper'
 
 interface DateTimeTimeZone {
   dateTime: string
@@ -44,7 +45,9 @@ export class GoogleEventMapper {
     return {
       id: this.generateInternalId(googleEvent),
       title: googleEvent.summary || '(No title)',
-      description: googleEvent.description,
+      description: CalendarServiceHelper.parseDescriptionToRichText(
+        googleEvent.description?.trim()
+      ),
       start: this.parseDateTime(googleEvent.start!, true),
       end: this.parseDateTime(googleEvent.end!),
       isAllDay: !googleEvent.start?.dateTime, // If no dateTime, it's all-day
@@ -106,7 +109,9 @@ export class GoogleEventMapper {
     const googleEvent: calendar_v3.Schema$Event = {
       id: unifiedEvent.sourceEventId,
       summary: unifiedEvent.title,
-      description: unifiedEvent.description,
+      description: CalendarServiceHelper.convertHtmlToPlainText(
+        unifiedEvent.description || ''
+      ),
       start: this.createDateTime(unifiedEvent.start, unifiedEvent.isAllDay),
       end: this.createDateTime(unifiedEvent.end, unifiedEvent.isAllDay),
 
@@ -153,6 +158,7 @@ export class GoogleEventMapper {
 
     return parsed.setZone(dto.timeZone, { keepLocalTime: false })
   }
+
   private static parseDateTime(
     dateTime: calendar_v3.Schema$EventDateTime,
     isStart?: boolean
