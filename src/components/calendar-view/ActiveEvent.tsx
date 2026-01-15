@@ -32,7 +32,14 @@ import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { isGroupParticipant } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import { updateCalendarEvent } from '@/utils/api_helper'
-import { deleteMeeting, updateMeeting } from '@/utils/calendar_manager'
+import {
+  deleteMeeting,
+  deleteMeetingInstance,
+  deleteMeetingSeries,
+  updateMeeting,
+  updateMeetingInstance,
+  updateMeetingSeries,
+} from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { MeetingAction, UpdateMode } from '@/utils/constants/meeting'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
@@ -119,7 +126,6 @@ const ActiveEvent: React.FC = () => {
     if (!selectedSlot || isCalendarEvent(selectedSlot)) return undefined
     return {
       ...selectedSlot,
-      id: selectedSlot.id.split('_')[0],
       start: selectedSlot.start.toJSDate(),
       end: selectedSlot.end.toJSDate(),
     }
@@ -249,13 +255,32 @@ const ActiveEvent: React.FC = () => {
     async (actor?: ParticipantInfo, decryptedMeeting?: MeetingDecrypted) => {
       if (!decryptedMeeting) return
       try {
-        const meeting = await deleteMeeting(
-          true,
-          currentAccount?.address || '',
-          NO_MEETING_TYPE,
-          decryptedMeeting,
-          actor
-        )
+        if (selectedSlot?.id.includes('_')) {
+          if (editMode === UpdateMode.SINGLE_EVENT) {
+            await deleteMeetingInstance(
+              decryptedMeeting.id,
+              true,
+              currentAccount?.address || '',
+              decryptedMeeting,
+              actor
+            )
+          } else {
+            await deleteMeetingSeries(
+              decryptedMeeting.id,
+              true,
+              currentAccount?.address || '',
+              actor
+            )
+          }
+        } else {
+          await deleteMeeting(
+            true,
+            currentAccount?.address || '',
+            NO_MEETING_TYPE,
+            decryptedMeeting,
+            actor
+          )
+        }
         toast({
           title: 'Meeting Deleted',
           description: 'The meeting was deleted successfully',
@@ -264,7 +289,6 @@ const ActiveEvent: React.FC = () => {
           position: 'top',
           isClosable: true,
         })
-        return meeting
       } catch (e: unknown) {
         if (e instanceof MeetingWithYourselfError) {
           toast({
@@ -502,23 +526,60 @@ const ActiveEvent: React.FC = () => {
           setIsScheduling(false)
           return
         }
-        await updateMeeting(
-          true,
-          currentAccount.address,
-          NO_MEETING_TYPE,
-          start,
-          end,
-          decryptedMeeting,
-          getSignature(currentAccount.address) || '',
-          _participants.valid,
-          content,
-          meetingUrl,
-          meetingProvider,
-          title,
-          meetingNotification.map(mn => mn.value),
-          meetingRepeat.value,
-          selectedPermissions
-        )
+        if (selectedSlot.id.includes('_')) {
+          if (editMode === UpdateMode.SINGLE_EVENT) {
+            await updateMeetingInstance(
+              selectedSlot.id,
+              true,
+              currentAccount!.address,
+              start,
+              end,
+              decryptedMeeting!,
+              getSignature(currentAccount!.address) || '',
+              _participants.valid,
+              content,
+              meetingUrl,
+              meetingProvider,
+              title,
+              meetingNotification.map(mn => mn.value),
+              selectedPermissions
+            )
+          } else {
+            await updateMeetingSeries(
+              selectedSlot.id,
+              true,
+              currentAccount!.address,
+              start,
+              end,
+              getSignature(currentAccount!.address) || '',
+              _participants.valid,
+              content,
+              meetingUrl,
+              meetingProvider,
+              title,
+              meetingNotification.map(mn => mn.value),
+              selectedPermissions
+            )
+          }
+        } else {
+          await updateMeeting(
+            true,
+            currentAccount.address,
+            NO_MEETING_TYPE,
+            start,
+            end,
+            decryptedMeeting,
+            getSignature(currentAccount.address) || '',
+            _participants.valid,
+            content,
+            meetingUrl,
+            meetingProvider,
+            title,
+            meetingNotification.map(mn => mn.value),
+            meetingRepeat.value,
+            selectedPermissions
+          )
+        }
         logEvent('Updated a meeting from calendar view', {
           fromDashboard: true,
           participantsSize: _participants.valid.length,
@@ -564,6 +625,7 @@ const ActiveEvent: React.FC = () => {
         isClosable: true,
       })
     } catch (e: unknown) {
+      console.error(e)
       if (e instanceof MeetingWithYourselfError) {
         toast({
           title: "Ops! Can't do that",
@@ -765,6 +827,7 @@ const ActiveEvent: React.FC = () => {
                   decryptedMeeting={decryptedMeeting}
                   currentAccount={currentAccount}
                   afterCancel={handleCleanup}
+                  editMode={editMode}
                 />
               ) : (
                 <DeleteEventDialog
