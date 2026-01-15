@@ -1464,6 +1464,78 @@ const updateMeetingSeries = async (
     selectedPermissions
   )
 }
+const deleteMeetingSeries = async (
+  currentInstanceId: string,
+  ignoreAvailabilities: boolean,
+  currentAccountAddress: string,
+  scheduler?: ParticipantInfo
+) => {
+  if (!currentInstanceId.includes('_')) {
+    throw new MeetingChangeConflictError()
+  }
+  const signature = getSignature(currentAccountAddress || '') || ''
+
+  const [slotId] = currentInstanceId.split('_')
+
+  const [currentAccount, existingDBSlot] = await Promise.all([
+    getAccount(currentAccountAddress),
+    getMeeting(slotId),
+  ])
+
+  if (!existingDBSlot) {
+    throw new MeetingNotFoundError(currentInstanceId)
+  }
+
+  const existingMeeting = await decryptMeeting(
+    existingDBSlot,
+    currentAccount,
+    signature
+  )
+
+  if (!existingMeeting) {
+    throw new MeetingNotFoundError(slotId)
+  }
+
+  return deleteMeeting(
+    ignoreAvailabilities,
+    currentAccountAddress,
+    NO_MEETING_TYPE,
+    existingMeeting,
+    scheduler
+  )
+}
+const cancelMeetingSeries = async (
+  currentInstanceId: string,
+  currentAccountAddress: string
+) => {
+  if (!currentInstanceId.includes('_')) {
+    throw new MeetingChangeConflictError()
+  }
+  const signature = getSignature(currentAccountAddress || '') || ''
+
+  const [slotId] = currentInstanceId.split('_')
+
+  const [currentAccount, existingDBSlot] = await Promise.all([
+    getAccount(currentAccountAddress),
+    getMeeting(slotId),
+  ])
+
+  if (!existingDBSlot) {
+    throw new MeetingNotFoundError(currentInstanceId)
+  }
+
+  const existingMeeting = await decryptMeeting(
+    existingDBSlot,
+    currentAccount,
+    signature
+  )
+
+  if (!existingMeeting) {
+    throw new MeetingNotFoundError(slotId)
+  }
+
+  return cancelMeeting(currentAccountAddress, existingMeeting)
+}
 
 const updateMeetingConferenceGuest = async (
   ignoreAvailabilities: boolean,
@@ -2958,4 +3030,6 @@ export {
   updateMeetingSeries,
   deleteMeetingInstance,
   cancelMeetingInstance,
+  deleteMeetingSeries,
+  cancelMeetingSeries,
 }
