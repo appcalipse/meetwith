@@ -21,6 +21,7 @@ RUN wget -q -t3 'https://packages.doppler.com/public/cli/rsa.8004D9FF50437357.ke
 
 WORKDIR /app
 ARG DOPPLER_TOKEN
+ENV DOPPLER_TOKEN=${DOPPLER_TOKEN}
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/.yarnrc.yml ./
