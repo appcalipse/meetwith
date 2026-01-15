@@ -2,11 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { NotificationChannel } from '@/types/AccountNotifications'
-import {
-  BillingEmailPeriod,
-  BillingEmailPlan,
-  BillingMode,
-} from '@/types/Billing'
+import { BillingEmailPeriod, BillingEmailPlan } from '@/types/Billing'
 import { appUrl } from '@/utils/constants'
 import {
   expireStaleSubscriptionPeriods,
@@ -81,9 +77,7 @@ export default async function expireSubscriptions(
             )
 
             // Prepare renewal URL
-            const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=${
-              BillingMode.EXTEND
-            }&plan=${encodeURIComponent(billingPlan.id)}`
+            const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing`
 
             const message = `Your ${billingPlan.name} subscription has expired. You can renew your subscription at any time to continue enjoying Pro features.\n\nRenew [here](${renewUrl})`
 

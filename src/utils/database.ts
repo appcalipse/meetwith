@@ -233,6 +233,7 @@ import {
   StripeSubscriptionFetchError,
   StripeSubscriptionTransactionLinkError,
   StripeSubscriptionUpdateError,
+  SubscriptionDomainUpdateNotAllowed,
   SubscriptionHistoryCheckError,
   SubscriptionHistoryFetchError,
   SubscriptionNotCustom,
@@ -3493,7 +3494,7 @@ const getConnectedCalendars = async (
   } = {}
 ): Promise<ConnectedCalendar[]> => {
   const isPro = await isProAccountAsync(address)
-  const effectiveLimit = !isPro ? 1 : limit !== undefined ? limit : undefined
+  const effectiveLimit = !isPro ? 2 : limit !== undefined ? limit : undefined
 
   const query = db.supabase
     .from('connected_calendars')
@@ -5205,9 +5206,13 @@ const updateCustomSubscriptionDomain = async (
   if (!subscription) {
     throw new NoActiveSubscription()
   }
-  if (subscription.chain !== SupportedChain.CUSTOM) {
-    throw new SubscriptionNotCustom()
+  const isCustomChain = subscription.chain === SupportedChain.CUSTOM
+  const isBillingSubscription = subscription.billing_plan_id !== null
+
+  if (!isCustomChain && !isBillingSubscription) {
+    throw new SubscriptionDomainUpdateNotAllowed()
   }
+
   const { error, data } = await db.supabase
     .from('subscriptions')
     .update({ domain })
@@ -5627,6 +5632,36 @@ const acceptContactInvite = async (
     throw new Error(deleteError.message)
   }
 }
+const countContactsAddedThisMonth = async (
+  accountAddress: string
+): Promise<number> => {
+  const now = new Date()
+  const nowISO = now.toISOString()
+
+  const firstDayOfMonth = DateTime.now().startOf('month').toISO()
+
+  if (!firstDayOfMonth) {
+    throw new Error('Failed to calculate first day of month')
+  }
+
+  const { count, error } = await db.supabase
+    .from('contact')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_owner_address', accountAddress.toLowerCase())
+    .eq('status', ContactStatus.ACTIVE)
+    .gte('created_at', firstDayOfMonth)
+    .lte('created_at', nowISO)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to count contacts added this month: ${error.message}`
+    )
+  }
+
+  return count || 0
+}
+
 const addContactInvite = async (
   account_address: string,
   contact_address: string
@@ -8343,6 +8378,56 @@ const countActiveQuickPolls = async (
   return count || 0
 }
 
+const countActiveQuickPollsCreatedThisMonth = async (
+  account_address: string
+): Promise<number> => {
+  const now = new Date()
+  const nowISO = now.toISOString()
+
+  const firstDayOfMonth = DateTime.now().startOf('month').toISO()
+
+  if (!firstDayOfMonth) {
+    throw new Error('Failed to calculate first day of month')
+  }
+
+  const { data: participations, error: participationError } = await db.supabase
+    .from('quick_poll_participants')
+    .select('poll_id')
+    .eq('account_address', account_address.toLowerCase())
+    .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+
+  if (participationError) {
+    Sentry.captureException(participationError)
+    throw new Error(
+      `Failed to count active QuickPolls: ${participationError.message}`
+    )
+  }
+
+  if (!participations || participations.length === 0) {
+    return 0
+  }
+
+  const pollIds = participations.map(p => p.poll_id)
+
+  const { count, error } = await db.supabase
+    .from('quick_polls')
+    .select('*', { count: 'exact', head: true })
+    .in('id', pollIds)
+    .eq('status', PollStatus.ONGOING)
+    .gt('expires_at', nowISO)
+    .gte('created_at', firstDayOfMonth)
+    .lte('created_at', nowISO)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to count active QuickPolls created this month: ${error.message}`
+    )
+  }
+
+  return count || 0
+}
+
 const createQuickPoll = async (
   owner_address: string,
   pollData: CreateQuickPollRequest
@@ -9761,6 +9846,22 @@ const linkTransactionToStripeSubscription = async (
   stripeSubscriptionId: string,
   transactionId: string
 ): Promise<Tables<'stripe_subscription_transactions'>> => {
+  // Check if link already exists to prevent duplicates
+  const { data: existingLink, error: checkError } = await db.supabase
+    .from('stripe_subscription_transactions')
+    .select('*')
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .eq('transaction_id', transactionId)
+    .maybeSingle()
+
+  if (checkError) {
+    Sentry.captureException(checkError)
+  }
+
+  if (existingLink) {
+    return existingLink
+  }
+
   const { data, error } = await db.supabase
     .from('stripe_subscription_transactions')
     .insert([
@@ -9784,10 +9885,38 @@ const linkTransactionToStripeSubscription = async (
   return data
 }
 
+// Find existing transaction by provider_reference_id to prevent duplicates
+const findTransactionByProviderReference = async (
+  providerReferenceId: string
+): Promise<Tables<'transactions'> | null> => {
+  const { data, error } = await db.supabase
+    .from('transactions')
+    .select('*')
+    .eq('provider_reference_id', providerReferenceId)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    return null
+  }
+
+  return data
+}
+
 // Create a subscription transaction (for billing subscriptions)
 const createSubscriptionTransaction = async (
   payload: TablesInsert<'transactions'>
 ): Promise<Tables<'transactions'>> => {
+  // Check for existing transaction by provider_reference_id to prevent duplicates
+  if (payload.provider_reference_id) {
+    const existingTransaction = await findTransactionByProviderReference(
+      payload.provider_reference_id
+    )
+    if (existingTransaction) {
+      return existingTransaction
+    }
+  }
+
   const { data, error } = await db.supabase
     .from('transactions')
     .insert([payload])
@@ -9814,20 +9943,22 @@ const createSubscriptionPeriod = async (
   billingPlanId: string,
   status: 'active' | 'cancelled' | 'expired',
   expiryTime: string,
-  transactionId: string | null
+  transactionId: string | null,
+  domain?: string | null
 ): Promise<Tables<'subscriptions'>> => {
+  const insertData = {
+    owner_account: ownerAccount.toLowerCase(),
+    billing_plan_id: billingPlanId,
+    status,
+    expiry_time: expiryTime,
+    transaction_id: transactionId,
+    registered_at: new Date().toISOString(),
+    ...(domain && { domain }),
+  }
+
   const { data, error } = await db.supabase
     .from('subscriptions')
-    .insert([
-      {
-        billing_plan_id: billingPlanId,
-        expiry_time: expiryTime,
-        owner_account: ownerAccount.toLowerCase(),
-        registered_at: new Date().toISOString(),
-        status,
-        transaction_id: transactionId,
-      },
-    ])
+    .insert([insertData])
     .select()
     .single()
 
@@ -10106,17 +10237,52 @@ const updateSubscriptionPeriodTransaction = async (
   return data
 }
 
+const updateSubscriptionPeriodDomain = async (
+  subscriptionId: string,
+  domain: string
+): Promise<Tables<'subscriptions'>> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .update({
+      domain: domain,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subscriptionId)
+    .select()
+    .single()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to update subscription period domain: ${error.message}`
+    )
+  }
+
+  if (!data) {
+    throw new Error('No data returned when updating subscription period domain')
+  }
+
+  return data
+}
+
 const findSubscriptionPeriodByPlanAndExpiry = async (
   accountAddress: string,
   billingPlanId: string,
   expiryTime: string
 ): Promise<Tables<'subscriptions'> | null> => {
+  const expiryDate = new Date(expiryTime)
+  const toleranceMs = 60 * 1000 // 1 minute
+  const minExpiry = new Date(expiryDate.getTime() - toleranceMs).toISOString()
+  const maxExpiry = new Date(expiryDate.getTime() + toleranceMs).toISOString()
+
   const { data, error } = await db.supabase
     .from('subscriptions')
     .select('*')
     .eq('owner_account', accountAddress.toLowerCase())
     .eq('billing_plan_id', billingPlanId)
     .is('transaction_id', null)
+    .gte('expiry_time', minExpiry)
+    .lte('expiry_time', maxExpiry)
     .order('registered_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -10140,6 +10306,52 @@ const findRecentSubscriptionPeriodByPlan = async (
     .eq('owner_account', accountAddress.toLowerCase())
     .eq('billing_plan_id', billingPlanId)
     .gte('registered_at', createdAfter)
+    .order('registered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new SubscriptionPeriodFindError(error.message)
+  }
+
+  return data
+}
+
+// Check if a subscription period already exists
+const findExistingSubscriptionPeriod = async (
+  accountAddress: string,
+  billingPlanId: string,
+  expiryTime: string,
+  transactionId: string | null
+): Promise<Tables<'subscriptions'> | null> => {
+  // First check by transaction_id if provided
+  if (transactionId) {
+    const { data: byTransaction, error: txError } = await db.supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('owner_account', accountAddress.toLowerCase())
+      .eq('transaction_id', transactionId)
+      .maybeSingle()
+
+    if (!txError && byTransaction) {
+      return byTransaction
+    }
+  }
+
+  // Then check by billing_plan_id + expiry_time (with 1 minute tolerance)
+  const expiryDate = new Date(expiryTime)
+  const toleranceMs = 60 * 1000 // 1 minute
+  const minExpiry = new Date(expiryDate.getTime() - toleranceMs).toISOString()
+  const maxExpiry = new Date(expiryDate.getTime() + toleranceMs).toISOString()
+
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('owner_account', accountAddress.toLowerCase())
+    .eq('billing_plan_id', billingPlanId)
+    .gte('expiry_time', minExpiry)
+    .lte('expiry_time', maxExpiry)
     .order('registered_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -10180,8 +10392,10 @@ export {
   connectedCalendarExists,
   contactInviteByEmailExists,
   countActiveQuickPolls,
+  countActiveQuickPollsCreatedThisMonth,
   countCalendarIntegrations,
   countCalendarSyncs,
+  countContactsAddedThisMonth,
   countGroups,
   countMeetingTypes,
   createCheckOutTransaction,
@@ -10211,6 +10425,7 @@ export {
   findAccountByIdentifier,
   findAccountsByEmails,
   findAccountsByText,
+  findExistingSubscriptionPeriod,
   findRecentSubscriptionPeriodByPlan,
   findSubscriptionPeriodByPlanAndExpiry,
   getAccountAvatarUrl,
@@ -10356,6 +10571,7 @@ export {
   updateQuickPollParticipantStatus,
   updateRecurringSlots,
   updateStripeSubscription,
+  updateSubscriptionPeriodDomain,
   updateSubscriptionPeriodStatus,
   updateSubscriptionPeriodTransaction,
   upsertGateCondition,

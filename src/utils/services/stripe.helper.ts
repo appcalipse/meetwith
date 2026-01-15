@@ -11,9 +11,9 @@ import {
   createStripeSubscription,
   createSubscriptionPeriod,
   createSubscriptionTransaction,
+  findExistingSubscriptionPeriod,
   findSubscriptionPeriodByPlanAndExpiry,
   getActiveSubscriptionPeriod,
-  getBillingEmailAccountInfo,
   getBillingPlanById,
   getBillingPlanIdFromStripeProduct,
   getPaymentAccountByProviderId,
@@ -23,6 +23,7 @@ import {
   linkTransactionToStripeSubscription,
   updatePaymentAccount,
   updateStripeSubscription,
+  updateSubscriptionPeriodDomain,
   updateSubscriptionPeriodStatus,
   updateSubscriptionPeriodTransaction,
 } from '@utils/database'
@@ -619,6 +620,8 @@ export const handleInvoicePaymentSucceeded = async (
   event: Stripe.InvoicePaymentSucceededEvent
 ) => {
   const invoice = event.data.object
+  const amountPaid = invoice.amount_paid / 100
+  const isTrialInvoice = amountPaid === 0
 
   // Get subscription ID from invoice
   const invoiceData = invoice as unknown as {
@@ -682,23 +685,24 @@ export const handleInvoicePaymentSucceeded = async (
     }
   }
 
-  // Final fallback: For subscription_update invoices, the subscription field might not be included
-  // Use customer ID to find the active subscription from Stripe
+  // Final fallback
   if (!stripeSubscriptionId) {
     const customerId = (invoice as unknown as { customer?: string }).customer
 
     if (customerId && typeof customerId === 'string') {
       try {
-        // Get customer's active subscriptions from Stripe
         const stripe = new StripeService()
-        const subscriptions = await stripe.subscriptions.list({
+        const allSubscriptions = await stripe.subscriptions.list({
           customer: customerId,
           limit: 1,
           status: 'active',
         })
 
-        if (subscriptions.data && subscriptions.data.length > 0) {
-          stripeSubscriptionId = subscriptions.data[0].id
+        if (allSubscriptions.data && allSubscriptions.data.length > 0) {
+          const sortedSubs = allSubscriptions.data.sort(
+            (a, b) => b.created - a.created
+          )
+          stripeSubscriptionId = sortedSubs[0].id
         }
       } catch (error) {
         Sentry.captureException(error)
@@ -733,7 +737,6 @@ export const handleInvoicePaymentSucceeded = async (
   }
 
   // Create transaction record for the invoice payment (renewal)
-  const amountPaid = invoice.amount_paid / 100 // Convert from cents
   const currency = invoice.currency ? invoice.currency.toUpperCase() : null
 
   const transactionPayload: TablesInsert<'transactions'> = {
@@ -768,24 +771,22 @@ export const handleInvoicePaymentSucceeded = async (
     return
   }
 
-  // Link transaction to Stripe subscription
-  try {
-    await linkTransactionToStripeSubscription(
-      stripeSubscriptionId,
-      transactionId
-    )
-  } catch (error) {
-    Sentry.captureException(error)
-    // continue; not fatal for subsequent steps
-  }
-
-  // Check invoice billing_reason to determine the flow
   const invoiceBillingReason = (
     invoice as unknown as { billing_reason?: string }
   ).billing_reason
   const invoicePeriodEnd = new Date(invoice.period_end * 1000).toISOString()
 
-  // Handle subscription_create invoices: Create transaction and subscription period
+  if (!isTrialInvoice) {
+    try {
+      await linkTransactionToStripeSubscription(
+        stripeSubscriptionId,
+        transactionId
+      )
+    } catch (error) {
+      Sentry.captureException(error)
+    }
+  }
+
   // This is the authoritative event for new subscription payment confirmation
   // NOTE: handleSubscriptionCreated only creates the stripe_subscriptions record,
   // so we always create the transaction and subscription period here
@@ -794,11 +795,23 @@ export const handleInvoicePaymentSucceeded = async (
     // We need to get the actual subscription's current_period_end from Stripe API
     let calculatedExpiryTime: Date
 
+    let handle: string | undefined
+
     try {
       const stripe = new StripeService()
       const fullSubscription = await stripe.subscriptions.retrieve(
         stripeSubscriptionId
       )
+
+      handle =
+        (fullSubscription.metadata?.handle as string | undefined) || undefined
+
+      if (!handle) {
+        const existingSubscription = await getActiveSubscriptionPeriod(
+          accountAddress
+        )
+        handle = existingSubscription?.domain || undefined
+      }
 
       // Get current_period_end from subscription (not invoice)
       // For flexible billing mode, period info is in items.data[0]
@@ -834,6 +847,10 @@ export const handleInvoicePaymentSucceeded = async (
       } else {
         calculatedExpiryTime = new Date(currentPeriodEnd * 1000)
       }
+
+      if (isTrialInvoice && fullSubscription.trial_end) {
+        calculatedExpiryTime = new Date(fullSubscription.trial_end * 1000)
+      }
     } catch (error) {
       Sentry.captureException(error)
 
@@ -846,14 +863,54 @@ export const handleInvoicePaymentSucceeded = async (
       }
     }
 
+    const expiryTimeISO = calculatedExpiryTime.toISOString()
+    const transactionIdForCheck = isTrialInvoice ? null : transactionId
+
+    const existingPeriod = await findExistingSubscriptionPeriod(
+      accountAddress,
+      billingPlanId,
+      expiryTimeISO,
+      transactionIdForCheck
+    )
+
+    if (existingPeriod) {
+      const periodCreatedAt = new Date(existingPeriod.registered_at)
+      const now = new Date()
+      const minutesSinceCreation =
+        (now.getTime() - periodCreatedAt.getTime()) / (1000 * 60)
+      const isRecentlyCreated = minutesSinceCreation < 5 // Within last 5 minutes
+
+      // If period was created recently and has null domain, but we have a handle, update it
+      if (isRecentlyCreated && !existingPeriod.domain && handle) {
+        try {
+          await updateSubscriptionPeriodDomain(existingPeriod.id, handle)
+        } catch (error) {
+          Sentry.captureException(error)
+        }
+      }
+
+      if (!isTrialInvoice && !existingPeriod.transaction_id && transactionId) {
+        try {
+          await updateSubscriptionPeriodTransaction(
+            existingPeriod.id,
+            transactionId
+          )
+        } catch (error) {
+          Sentry.captureException(error)
+        }
+      }
+      return
+    }
+
     // Create subscription period with invoice transaction
     try {
       const createdPeriod = await createSubscriptionPeriod(
         accountAddress,
         billingPlanId,
         'active',
-        calculatedExpiryTime.toISOString(),
-        transactionId
+        expiryTimeISO,
+        transactionIdForCheck,
+        handle
       )
 
       // Send subscription confirmation email (non-blocking, queued)
@@ -872,7 +929,10 @@ export const handleInvoicePaymentSucceeded = async (
             createdPeriod.registered_at,
             createdPeriod.expiry_time,
             BillingPaymentProvider.STRIPE,
-            { amount: amountPaid, currency: currency || 'USD' }
+            isTrialInvoice
+              ? undefined
+              : { amount: amountPaid, currency: currency || 'USD' },
+            isTrialInvoice
           )
           return true
         } catch (error) {
@@ -988,13 +1048,62 @@ export const handleInvoicePaymentSucceeded = async (
       const currentPeriodEnd = deriveCurrentPeriodEnd(fullSubscription)
 
       if (currentPeriodEnd && typeof currentPeriodEnd === 'number') {
+        const existingSubscription = await getActiveSubscriptionPeriod(
+          accountAddress
+        )
+        const handleFromMetadata = fullSubscription?.metadata?.handle as
+          | string
+          | undefined
+        const handle =
+          existingSubscription?.domain || handleFromMetadata || undefined
+
         const calculatedExpiryTime = new Date(currentPeriodEnd * 1000)
+        const expiryTimeISO = calculatedExpiryTime.toISOString()
+
+        // Check for existing period before creating
+        const existingPeriod = await findExistingSubscriptionPeriod(
+          accountAddress,
+          billingPlanId,
+          expiryTimeISO,
+          transactionId
+        )
+
+        if (existingPeriod) {
+          const periodCreatedAt = new Date(existingPeriod.registered_at)
+          const now = new Date()
+          const minutesSinceCreation =
+            (now.getTime() - periodCreatedAt.getTime()) / (1000 * 60)
+          const isRecentlyCreated = minutesSinceCreation < 5 // Within last 5 minutes
+
+          // If period was created recently and has null domain, but we have a handle, update it
+          if (isRecentlyCreated && !existingPeriod.domain && handle) {
+            try {
+              await updateSubscriptionPeriodDomain(existingPeriod.id, handle)
+            } catch (error) {
+              Sentry.captureException(error)
+            }
+          }
+
+          if (!existingPeriod.transaction_id && transactionId) {
+            try {
+              await updateSubscriptionPeriodTransaction(
+                existingPeriod.id,
+                transactionId
+              )
+            } catch (error) {
+              Sentry.captureException(error)
+            }
+          }
+          return
+        }
+
         const createdPeriod = await createSubscriptionPeriod(
           accountAddress,
           billingPlanId,
           'active',
-          calculatedExpiryTime.toISOString(),
-          transactionId
+          expiryTimeISO,
+          transactionId,
+          handle
         )
 
         // Send subscription confirmation email for plan update (non-blocking, queued)
@@ -1027,10 +1136,12 @@ export const handleInvoicePaymentSucceeded = async (
     } catch (error) {
       Sentry.captureException(error)
     }
+    return
   }
 
   // For subscription_cycle (renewals) or fallback: Create new subscription period
   let calculatedExpiryTime: Date
+  let existingDomain: string | null | undefined
 
   if (invoiceBillingReason === 'subscription_cycle') {
     // Renewal flow - use extension logic
@@ -1047,6 +1158,7 @@ export const handleInvoicePaymentSucceeded = async (
         // yearly
         calculatedExpiryTime = addYears(existingExpiry, 1)
       }
+      existingDomain = existingSubscription.domain
     } else {
       // No existing subscription - use invoice period_end
       calculatedExpiryTime = new Date(invoice.period_end * 1000)
@@ -1056,14 +1168,38 @@ export const handleInvoicePaymentSucceeded = async (
     calculatedExpiryTime = new Date(invoice.period_end * 1000)
   }
 
+  const expiryTimeISO = calculatedExpiryTime.toISOString()
+
+  const existingPeriod = await findExistingSubscriptionPeriod(
+    accountAddress,
+    billingPlanId,
+    expiryTimeISO,
+    transactionId
+  )
+
+  if (existingPeriod) {
+    if (!existingPeriod.transaction_id && transactionId) {
+      try {
+        await updateSubscriptionPeriodTransaction(
+          existingPeriod.id,
+          transactionId
+        )
+      } catch (error) {
+        Sentry.captureException(error)
+      }
+    }
+    return
+  }
+
   // Create new subscription period with calculated expiry_time
   try {
     await createSubscriptionPeriod(
       accountAddress,
       billingPlanId,
       'active',
-      calculatedExpiryTime.toISOString(),
-      transactionId
+      expiryTimeISO,
+      transactionId,
+      existingDomain
     )
   } catch (error) {
     Sentry.captureException(error)

@@ -43,6 +43,7 @@ import {
 import { handleApiError } from '@/utils/error_helper'
 import { formatCurrency } from '@/utils/generic_utils'
 import { CurrencyService } from '@/utils/services/currency.service'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 import { useToastHelpers } from '@/utils/toasts'
 import { getAccountDisplayName } from '@/utils/user_manager'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
@@ -52,6 +53,7 @@ import { Avatar } from './components/Avatar'
 import CurrencySelector from './components/CurrencySelector'
 import MagicLinkModal from './components/MagicLinkModal'
 import NetworkSelector from './components/NetworkSelector'
+import ProUpgradePrompt from './components/ProUpgradePrompt'
 import WalletActionButton from './components/WalletActionButton'
 import Pagination from './Pagination'
 import ReceiveFundsModal from './ReceiveFundsModal'
@@ -65,6 +67,18 @@ interface WalletProps {
 const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const router = useRouter()
   const { showSuccessToast } = useToastHelpers()
+
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+
+  if (!hasProAccess) {
+    return (
+      <ProUpgradePrompt
+        heading="Wallet feature requires Pro"
+        subheading="Upgrade to Pro to access wallet features including payments, invoicing, and fund management."
+      />
+    )
+  }
 
   // Network dropdown state
   const [isNetworkDropdownOpen, setIsNetworkDropdownOpen] = useState(false)

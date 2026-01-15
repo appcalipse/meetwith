@@ -16,6 +16,7 @@ import MeetingTypeCard from '@components/meeting-settings/MeetingTypeCard'
 import { Account, MeetingType } from '@meta/Account'
 import { useQuery } from '@tanstack/react-query'
 import { getAccountCalendarUrl } from '@utils/calendar_manager'
+import { useRouter } from 'next/router'
 import React, { ReactNode, useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -35,6 +36,7 @@ import MeetingTypeModal from '../meeting-settings/MeetingTypeModal'
 const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
+  const router = useRouter()
   const bgColor = useColorModeValue('white', 'neutral.900')
   const [selectedType, setSelectedType] = useState<MeetingType | null>(null)
   const [createKey, setCreateKey] = useState<string>(uuidv4())
@@ -205,23 +207,45 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
             <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
               Meeting Types
             </Heading>
-            <Button
-              colorScheme="primary"
-              onClick={openModal}
-              leftIcon={<AddIcon width={15} height={15} />}
-              fontSize={{
-                base: 'xs',
-                md: 'md',
-              }}
-              isDisabled={!canCreateMeetingType}
-              title={
-                !canCreateMeetingType
-                  ? 'Upgrade to Pro to create more meeting types'
-                  : undefined
-              }
-            >
-              New Meeting Type
-            </Button>
+            <VStack align="flex-end" spacing={2}>
+              <Button
+                colorScheme="primary"
+                onClick={openModal}
+                leftIcon={<AddIcon width={15} height={15} />}
+                fontSize={{
+                  base: 'xs',
+                  md: 'md',
+                }}
+                isDisabled={!canCreateMeetingType}
+                title={
+                  !canCreateMeetingType
+                    ? 'Upgrade to Pro to create more meeting types'
+                    : undefined
+                }
+              >
+                New Meeting Type
+              </Button>
+              {!canCreateMeetingType && (
+                <Text fontSize="14px" color="neutral.400" textAlign="right">
+                  Unlock unlimited meeting types with PRO{' '}
+                  <Button
+                    variant="link"
+                    colorScheme="primary"
+                    px={0}
+                    onClick={() =>
+                      router.push('/dashboard/settings/subscriptions')
+                    }
+                    textDecoration="underline"
+                    fontSize="14px"
+                    height="auto"
+                    minW="auto"
+                  >
+                    here
+                  </Button>
+                  .
+                </Text>
+              )}
+            </VStack>
           </HStack>
           <HStack
             width="100%"

@@ -29,7 +29,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const accountAddress = req.session.account.address.toLowerCase()
 
       // Validate request body
-      const { billing_plan_id } = req.body as SubscribeRequest
+      const { billing_plan_id, handle } = req.body as SubscribeRequest
 
       if (!billing_plan_id) {
         return res.status(400).json({ error: 'billing_plan_id is required' })
@@ -134,6 +134,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             billing_plan_id: billing_plan_id,
             calculated_expiry_time: calculatedExpiryTime.toISOString(),
             is_trial: isTrialEligible.toString(),
+            ...(handle && { handle }),
           },
           ...(isTrialEligible ? { trial_period_days: 14 } : {}),
         },

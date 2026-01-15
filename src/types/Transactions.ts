@@ -155,6 +155,7 @@ export interface ISubscriptionData {
   subscription_type: SubscriptionType
   billing_plan_id: string
   account_address: string
+  handle?: string
   [key: string]: unknown
 }
 export interface ICheckoutMetadata {

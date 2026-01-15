@@ -129,18 +129,10 @@ const Settings: React.FC<{
       [SettingsSection.WALLET_PAYMENT]: '/dashboard/settings/wallet-payment',
     }
 
-    const { section: _omit, ...restQuery } = router.query ?? {}
-
-    const query: Record<string, string> = {}
-    Object.entries(restQuery).forEach(([k, v]) => {
-      if (typeof v === 'string') query[k] = v
-      else if (Array.isArray(v) && v.length) query[k] = v.join(',')
-    })
-
     router.replace(
       {
         pathname: sectionPath[section],
-        query,
+        query: {},
       },
       undefined,
       { shallow: true }
