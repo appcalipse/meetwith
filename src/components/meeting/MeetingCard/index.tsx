@@ -66,6 +66,7 @@ import {
   rsvpMeeting,
 } from '@/utils/calendar_manager'
 import { appUrl, isProduction } from '@/utils/constants'
+import { UpdateMode } from '@/utils/constants/meeting'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
   canAccountAccessPermission,
@@ -719,6 +720,9 @@ const MeetingCard = ({
         decryptedMeeting={meeting.decrypted}
         isOpen={isCancelOpen}
         onClose={onCancelClose}
+        editMode={
+          meeting.id?.includes('_') ? UpdateMode.SINGLE_EVENT : undefined
+        }
       />
     </>
   )
