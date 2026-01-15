@@ -22,10 +22,10 @@ const InviteUsersPage = () => {
   const { groupName, groupId } = router.query
   return (
     <Flex direction="column" mb="169px">
-      <Box mt={8} flex="1">
-        <Flex direction="column" align="center">
+      <Box flex="1" mt={8}>
+        <Flex align="center" direction="column">
           <Box width="500px">
-            <VStack spacing={6} align="start">
+            <VStack align="start" spacing={6}>
               <VStack align="start">
                 <HStack justifyContent="space-between" width="100%">
                   <Heading flex={1} fontSize="2xl">
@@ -33,8 +33,8 @@ const InviteUsersPage = () => {
                   </Heading>
                   <IconButton
                     aria-label="Close invite users"
-                    icon={<CloseIcon />}
                     bg={'transparent'}
+                    icon={<CloseIcon />}
                     onClick={() => router.push(`/dashboard/${EditMode.GROUPS}`)}
                   />
                 </HStack>

@@ -10,7 +10,7 @@ const useSlotCache = (duration: number, timezone: string) => {
 
     // Create slots for a "template" day (2000-01-01)
     const templateDay = DateTime.fromObject(
-      { year: 2000, month: 1, day: 1 },
+      { day: 1, month: 1, year: 2000 },
       { zone: timezone }
     )
 

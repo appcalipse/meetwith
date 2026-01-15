@@ -53,8 +53,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       // Query Stripe API for price ID
       const stripe = new StripeService()
       const prices = await stripe.prices.list({
-        product: stripeProductId,
         active: true,
+        product: stripeProductId,
       })
 
       if (!prices.data || prices.data.length === 0) {
@@ -119,7 +119,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const cancelUrl = `${appUrl}/dashboard/settings/subscriptions?checkout=cancel`
 
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
-        mode: 'subscription',
+        cancel_url: cancelUrl,
         customer: customerId,
         line_items: [
           {
@@ -127,6 +127,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             quantity: 1,
           },
         ],
+        mode: 'subscription',
         subscription_data: {
           metadata: {
             account_address: accountAddress,
@@ -137,15 +138,14 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           ...(isTrialEligible ? { trial_period_days: 14 } : {}),
         },
         success_url: successUrl,
-        cancel_url: cancelUrl,
       }
 
       const session = await stripe.checkout.sessions.create(sessionParams)
 
       const response: SubscribeResponse = {
-        success: true,
         checkout_url: session.url || undefined,
         message: 'Checkout session created successfully',
+        success: true,
       }
 
       return res.status(200).json(response)

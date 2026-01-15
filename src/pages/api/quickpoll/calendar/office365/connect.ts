@@ -22,10 +22,10 @@ export default async function handler(
     const { state }: OAuthConnectQuery = req.query
 
     const params = {
-      response_type: 'code',
-      scope: officeScopes.join(' '),
       client_id: credentials.client_id,
       redirect_uri: `${apiUrl}/quickpoll/calendar/office365/callback`,
+      response_type: 'code',
+      scope: officeScopes.join(' '),
       state: typeof state === 'string' ? state : undefined,
     }
     const query = stringify(params)

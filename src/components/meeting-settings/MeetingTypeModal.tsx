@@ -61,8 +61,8 @@ import {
 import {
   createMeetingSchema,
   ErrorAction,
-  errorReducer,
   ErrorState,
+  errorReducer,
   fieldKey,
   PlanKeys,
   SchemaKeys,

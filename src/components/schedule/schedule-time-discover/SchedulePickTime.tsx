@@ -2,6 +2,7 @@ import { InfoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
+  Select as ChakraSelect,
   Flex,
   FormControl,
   FormLabel,
@@ -9,7 +10,6 @@ import {
   Heading,
   HStack,
   IconButton,
-  Select as ChakraSelect,
   SlideFade,
   Text,
   useBreakpointValue,
@@ -46,8 +46,8 @@ import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
   getCustomSelectComponents,
-  timeZoneFilter,
   TimeZoneOption,
+  timeZoneFilter,
 } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { deduplicateArray } from '@/utils/generic_utils'

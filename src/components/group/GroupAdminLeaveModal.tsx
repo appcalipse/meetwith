@@ -11,6 +11,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import React, { FC } from 'react'
+
 interface IGroupAdminLeaveModal {
   onClose: () => void
   isOpen: boolean

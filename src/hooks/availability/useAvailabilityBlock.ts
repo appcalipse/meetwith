@@ -9,17 +9,17 @@ export const useAvailabilityBlock = (blockId?: string) => {
     isFetching,
     error,
   } = useQuery({
-    queryKey: ['availabilityBlock', blockId],
-    queryFn: () => getAvailabilityBlock(blockId!),
     enabled: !!blockId,
+    queryFn: () => getAvailabilityBlock(blockId!),
+    queryKey: ['availabilityBlock', blockId],
     refetchOnMount: true,
     staleTime: 0,
   })
 
   return {
     block,
-    isLoading,
-    isFetching,
     error,
+    isFetching,
+    isLoading,
   }
 }

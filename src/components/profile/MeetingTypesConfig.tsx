@@ -31,6 +31,7 @@ import {
 import { getDefaultValues } from '@/utils/constants/meeting-types'
 
 import MeetingTypeModal from '../meeting-settings/MeetingTypeModal'
+
 const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {

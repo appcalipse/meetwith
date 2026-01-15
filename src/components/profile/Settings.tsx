@@ -28,9 +28,9 @@ import { EditMode, SettingsSection } from '@/types/Dashboard'
 
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
-import Block from './components/Block'
 import ConnectCalendar from './ConnectCalendar'
 import ConnectedAccounts from './ConnectedAccounts'
+import Block from './components/Block'
 
 interface SettingsNavItem {
   name: string

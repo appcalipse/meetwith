@@ -32,7 +32,6 @@ export default async function handler(
   const account_address = extractQuery(req.query, 'identifier')
   const params = extractQuery(req.query, 'params')
   // eslint-disable-next-line no-restricted-syntax
-  console.time('og_image_generation')
   try {
     if (!account_address) {
       // fallback to default og image
@@ -75,35 +74,35 @@ export default async function handler(
     const svg = await satori(
       <UserBanner
         avatar_url={avatar_url}
-        calendar_url={calendar_url}
-        description={user_preferences.description}
-        banner_url={user_preferences.banner_url}
-        name={user_preferences.name}
-        owner_account_address={user_preferences.owner_account_address}
         banner_setting={
           (user_preferences.banner_setting || {
             show_avatar: true,
             show_description: true,
           }) as BannerSetting
         }
+        banner_url={user_preferences.banner_url}
+        calendar_url={calendar_url}
+        description={user_preferences.description}
+        name={user_preferences.name}
+        owner_account_address={user_preferences.owner_account_address}
       />,
       {
-        width: 1200,
-        height: 630,
         fonts: [
           {
-            name: 'DM Sans',
             data: dmSansMediumData,
+            name: 'DM Sans',
             style: 'normal',
             weight: 500,
           },
           {
-            name: 'DM Sans',
             data: dmSansBoldData,
+            name: 'DM Sans',
             style: 'normal',
             weight: 700,
           },
         ],
+        height: 630,
+        width: 1200,
       }
     )
 
@@ -122,6 +121,5 @@ export default async function handler(
     res.status(200).send(Buffer.from(ogBuffer))
   } finally {
     // eslint-disable-next-line no-restricted-syntax
-    console.timeEnd('og_image_generation')
   }
 }

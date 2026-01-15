@@ -17,6 +17,7 @@ import {
   USDC_ELEMENT,
   USDT_ELEMENT,
 } from '../../testing/mocks'
+
 jest.mock('@/utils/api_helper')
 jest.mock('thirdweb')
 describe('get balance for tokens', () => {
@@ -69,8 +70,8 @@ describe('get balance for tokens', () => {
         fancy_id: '',
         id: 1,
         image_url: '',
-        start_date: new Date().toString(),
         name: '',
+        start_date: new Date().toString(),
         supply: 4,
         year: 1000,
       },

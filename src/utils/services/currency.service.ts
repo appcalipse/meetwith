@@ -26,7 +26,7 @@ export class CurrencyService {
         return { success: false }
       }
       const data: T = await response.json()
-      return { success: true, data }
+      return { data, success: true }
     } catch {
       return { success: false }
     }
@@ -47,8 +47,8 @@ export class CurrencyService {
     }
 
     return {
-      success: true,
       exchangeRate: data.data['mid'],
+      success: true,
     }
   }
 
@@ -67,8 +67,8 @@ export class CurrencyService {
     }
 
     return {
-      success: true,
       exchangeRate: data['conversion_rate'],
+      success: true,
     }
   }
 
@@ -85,8 +85,8 @@ export class CurrencyService {
     }
 
     return {
-      success: true,
       exchangeRate: data['rates'][currency.toUpperCase()],
+      success: true,
     }
   }
 
@@ -103,8 +103,8 @@ export class CurrencyService {
     }
 
     return {
-      success: true,
       exchangeRate: data['usd'][currency.toLowerCase()],
+      success: true,
     }
   }
 
@@ -143,8 +143,8 @@ export class CurrencyService {
       QueryKeys.exchangeRate(currency),
       () => this.getExchangeRate(currency),
       {
-        staleTime: 1000 * 60 * 60 * 24,
         cacheTime: 1000 * 60 * 60 * 24,
+        staleTime: 1000 * 60 * 60 * 24,
       }
     )
   }

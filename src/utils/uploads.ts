@@ -71,8 +71,8 @@ const SIZE_10_MB = 10485760 // 10 MB in bytes
 export function withFileUpload(
   handler: NextApiHandlerWithFile,
   options: UploadOptions = {
-    maxFileSize: SIZE_10_MB,
     allowedMimeTypes: ['image/png', 'image/jpg', 'image/webp'],
+    maxFileSize: SIZE_10_MB,
   }
 ) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
@@ -106,8 +106,8 @@ export function withFileUpload(
           }
 
           files[fieldname] = {
-            filename: info.filename,
             buffer,
+            filename: info.filename,
             mimeType: info.mimeType,
           }
         })

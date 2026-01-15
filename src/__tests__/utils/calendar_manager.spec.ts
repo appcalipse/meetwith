@@ -28,23 +28,23 @@ class NoErrorThrownError extends Error {}
 
 const mockAccount = (internal_pub_key: string, address: string): Account => {
   return {
-    id: faker.datatype.uuid(),
-    created_at: faker.date.past(),
-    payment_preferences: null,
     address: address || faker.finance.bitcoinAddress(),
-    internal_pub_key: internal_pub_key || faker.finance.bitcoinAddress(),
+    created_at: faker.date.past(),
     encoded_signature: faker.datatype.string(),
-    nonce: faker.datatype.number(),
+    id: faker.datatype.uuid(),
+    internal_pub_key: internal_pub_key || faker.finance.bitcoinAddress(),
     is_invited: faker.datatype.boolean(),
-    subscriptions: [],
+    nonce: faker.datatype.number(),
+    payment_preferences: null,
     preferences: {
-      name: faker.name.firstName(),
-      timezone: faker.address.timeZone(),
-      description: faker.datatype.string(),
       availabilities: [],
-      socialLinks: [],
+      description: faker.datatype.string(),
       meetingProviders: [MeetingProvider.GOOGLE_MEET],
+      name: faker.name.firstName(),
+      socialLinks: [],
+      timezone: faker.address.timeZone(),
     },
+    subscriptions: [],
   }
 }
 
@@ -72,17 +72,17 @@ describe('calendar manager', () => {
     const participants: ParticipantInfo[] = [
       {
         account_address: targetAccount,
-        slot_id: '',
-        type: ParticipantType.Owner,
-        status: ParticipationStatus.Accepted,
         meeting_id: '',
+        slot_id: '',
+        status: ParticipationStatus.Accepted,
+        type: ParticipantType.Owner,
       },
       {
         account_address: targetAccount,
-        slot_id: '',
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Pending,
         meeting_id: '',
+        slot_id: '',
+        status: ParticipationStatus.Pending,
+        type: ParticipantType.Scheduler,
       },
     ]
 
@@ -127,17 +127,17 @@ describe('calendar manager', () => {
     const participants: ParticipantInfo[] = [
       {
         account_address: sourceAccount,
-        slot_id: 'wathevs1',
         meeting_id: 'this_one',
-        type: ParticipantType.Scheduler,
+        slot_id: 'wathevs1',
         status: ParticipationStatus.Accepted,
+        type: ParticipantType.Scheduler,
       },
       {
         account_address: targetAccount,
-        slot_id: 'wathevs2',
         meeting_id: 'this_one',
-        type: ParticipantType.Owner,
+        slot_id: 'wathevs2',
         status: ParticipationStatus.Accepted,
+        type: ParticipantType.Owner,
       },
     ]
 
@@ -184,18 +184,18 @@ describe('calendar manager', () => {
     const participants: ParticipantInfo[] = [
       {
         account_address: sourceAccount,
-        slot_id: 'wathevs1',
         meeting_id: 'this_one',
-        type: ParticipantType.Scheduler,
+        slot_id: 'wathevs1',
         status: ParticipationStatus.Accepted,
+        type: ParticipantType.Scheduler,
       },
       {
         account_address: targetAccount,
-        slot_id: 'wathevs2',
         meeting_id: 'this_one',
-        type: ParticipantType.Owner,
-        status: ParticipationStatus.Pending,
         name: 'Mr wathevs',
+        slot_id: 'wathevs2',
+        status: ParticipationStatus.Pending,
+        type: ParticipantType.Owner,
       },
     ]
 
@@ -209,24 +209,24 @@ describe('calendar manager', () => {
     const meetingContent = faker.random.words(3)
     const meetingUrl = faker.internet.url()
     const data = {
-      id: faker.datatype.uuid(),
       account_address: targetAccount,
-      start: new Date(startTime),
-      end: new Date(endTime),
-      meeting_info_encrypted: crypto.mockEncrypted,
-      version: 0,
       created_at: new Date(),
-      source: TimeSlotSource.MWW,
+      end: new Date(endTime),
+      id: faker.datatype.uuid(),
+      meeting_info_encrypted: crypto.mockEncrypted,
       recurrence: MeetingRepeat.NO_REPEAT,
+      source: TimeSlotSource.MWW,
+      start: new Date(startTime),
+      version: 0,
     }
     jest.spyOn(helper, 'scheduleMeeting').mockResolvedValue(data)
 
     const mockedContent: MeetingInfo = {
-      created_at: new Date(),
-      participants: participants,
-      meeting_url: '',
-      meeting_id: randomUUID(),
       change_history_paths: [],
+      created_at: new Date(),
+      meeting_id: randomUUID(),
+      meeting_url: '',
+      participants: participants,
       related_slot_ids: [],
     }
     jest
@@ -246,23 +246,23 @@ describe('calendar manager', () => {
     )
 
     expect(result).toMatchObject({
-      start: startTime,
       participants: [
         {
           account_address: sourceAccount,
-          type: ParticipantType.Scheduler,
           slot_id: participants[0].slot_id,
           status: ParticipationStatus.Accepted,
+          type: ParticipantType.Scheduler,
         },
         {
-          name: participants[1].name,
           account_address: targetAccount,
-          type: ParticipantType.Owner,
+          name: participants[1].name,
           slot_id: participants[1].slot_id,
           status: ParticipationStatus.Pending,
+          type: ParticipantType.Owner,
         },
       ],
       related_slot_ids: [],
+      start: startTime,
     })
   })
 
@@ -291,26 +291,26 @@ describe('calendar manager', () => {
     const participants: ParticipantInfo[] = [
       {
         account_address: schedulerAccount,
-        slot_id: randomUUID(),
         meeting_id: randomUUID(),
-        type: ParticipantType.Scheduler,
+        slot_id: randomUUID(),
         status: ParticipationStatus.Accepted,
+        type: ParticipantType.Scheduler,
       },
       {
-        name: existingAccounts[0].preferences?.name,
         account_address: targetAccount,
-        slot_id: randomUUID(),
         meeting_id: randomUUID(),
-        type: ParticipantType.Owner,
+        name: existingAccounts[0].preferences?.name,
+        slot_id: randomUUID(),
         status: ParticipationStatus.Pending,
+        type: ParticipantType.Owner,
       },
     ]
     const mockedContent: MeetingInfo = {
-      created_at: new Date(),
-      participants: JSON.parse(JSON.stringify(participants)),
-      meeting_url: '',
-      meeting_id: randomUUID(),
       change_history_paths: [],
+      created_at: new Date(),
+      meeting_id: randomUUID(),
+      meeting_url: '',
+      participants: JSON.parse(JSON.stringify(participants)),
       related_slot_ids: [],
     }
 
@@ -324,15 +324,15 @@ describe('calendar manager', () => {
       .mockResolvedValue(existingAccounts)
 
     jest.spyOn(helper, 'scheduleMeeting').mockResolvedValue({
-      id: faker.datatype.uuid(),
       account_address: targetAccount,
-      start: new Date(startTime),
-      end: new Date(endTime),
-      meeting_info_encrypted: crypto.mockEncrypted,
-      version: 0,
       created_at: mockedContent.created_at,
-      source: TimeSlotSource.MWW,
+      end: new Date(endTime),
+      id: faker.datatype.uuid(),
+      meeting_info_encrypted: crypto.mockEncrypted,
       recurrence: MeetingRepeat.NO_REPEAT,
+      source: TimeSlotSource.MWW,
+      start: new Date(startTime),
+      version: 0,
     })
 
     // when
@@ -359,23 +359,23 @@ describe('calendar manager', () => {
     )
 
     expect(result).toMatchObject({
-      start: startTime,
       participants: [
         {
           account_address: schedulerAccount,
-          type: ParticipantType.Scheduler,
           slot_id: participants[0].slot_id,
           status: ParticipationStatus.Accepted,
+          type: ParticipantType.Scheduler,
         },
         {
-          name: participants[1].name,
           account_address: targetAccount,
-          type: ParticipantType.Owner,
+          name: participants[1].name,
           slot_id: participants[1].slot_id,
           status: ParticipationStatus.Pending,
+          type: ParticipantType.Owner,
         },
       ],
       related_slot_ids: [],
+      start: startTime,
       version: 0,
     })
   })
@@ -403,18 +403,18 @@ describe('calendar manager', () => {
     const participants: ParticipantInfo[] = [
       {
         guest_email: guestEmail,
+        meeting_id: randomUUID(),
         name: guestName,
         slot_id: '',
-        meeting_id: randomUUID(),
-        type: ParticipantType.Scheduler,
         status: ParticipationStatus.Accepted,
+        type: ParticipantType.Scheduler,
       },
       {
         account_address: targetAccount,
-        slot_id: '',
         meeting_id: randomUUID(),
-        type: ParticipantType.Owner,
+        slot_id: '',
         status: ParticipationStatus.Accepted,
+        type: ParticipantType.Owner,
       },
     ]
 
@@ -424,15 +424,15 @@ describe('calendar manager', () => {
       .mockResolvedValue(existingAccounts)
 
     jest.spyOn(helper, 'scheduleMeetingAsGuest').mockResolvedValue({
-      id: faker.datatype.uuid(),
       account_address: targetAccount,
-      start: new Date(startTime),
-      end: new Date(endTime),
-      meeting_info_encrypted: crypto.mockEncrypted,
-      version: 0,
       created_at: new Date(),
-      source: TimeSlotSource.MWW,
+      end: new Date(endTime),
+      id: faker.datatype.uuid(),
+      meeting_info_encrypted: crypto.mockEncrypted,
       recurrence: MeetingRepeat.NO_REPEAT,
+      source: TimeSlotSource.MWW,
+      start: new Date(startTime),
+      version: 0,
     })
 
     // when
@@ -459,7 +459,6 @@ describe('calendar manager', () => {
     )
 
     expect(result).toMatchObject({
-      start: startTime,
       participants: [
         {
           guest_email: guestEmail,
@@ -471,6 +470,7 @@ describe('calendar manager', () => {
         },
       ],
       related_slot_ids: [],
+      start: startTime,
       version: 0,
     })
   })
@@ -481,33 +481,33 @@ describe('calendar manager sanitizing participants', () => {
     const participants: ParticipantInfo[] = [
       {
         account_address: '0x1',
-        type: ParticipantType.Owner,
-        status: ParticipationStatus.Accepted,
-        slot_id: 'random',
         meeting_id: randomUUID(),
+        slot_id: 'random',
+        status: ParticipationStatus.Accepted,
+        type: ParticipantType.Owner,
       },
       {
         account_address: '0x1',
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Pending,
-        slot_id: 'random2',
+        meeting_id: randomUUID(),
         name: 'look, my name',
-        meeting_id: randomUUID(),
+        slot_id: 'random2',
+        status: ParticipationStatus.Pending,
+        type: ParticipantType.Scheduler,
       },
       {
-        type: ParticipantType.Invitee,
-        status: ParticipationStatus.Pending,
         guest_email: 'myemail@lookatme.com',
-        slot_id: 'whocares',
         meeting_id: randomUUID(),
+        slot_id: 'whocares',
+        status: ParticipationStatus.Pending,
+        type: ParticipantType.Invitee,
       },
       {
-        type: ParticipantType.Invitee,
-        status: ParticipationStatus.Pending,
         guest_email: 'myemail@lookatme.com',
-        slot_id: 'whocares',
+        meeting_id: randomUUID(),
         name: 'I have a name',
-        meeting_id: randomUUID(),
+        slot_id: 'whocares',
+        status: ParticipationStatus.Pending,
+        type: ParticipantType.Invitee,
       },
     ]
 
@@ -519,33 +519,33 @@ describe('calendar manager sanitizing participants', () => {
     const participants2: ParticipantInfo[] = [
       {
         account_address: '0x1',
-        type: ParticipantType.Owner,
-        status: ParticipationStatus.Accepted,
-        slot_id: 'random',
         meeting_id: randomUUID(),
+        slot_id: 'random',
+        status: ParticipationStatus.Accepted,
+        type: ParticipantType.Owner,
       },
       {
         account_address: '0x1',
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Pending,
-        slot_id: 'random2',
-        name: NAME_TO_CHECK,
         meeting_id: randomUUID(),
+        name: NAME_TO_CHECK,
+        slot_id: 'random2',
+        status: ParticipationStatus.Pending,
+        type: ParticipantType.Scheduler,
       },
       {
-        type: ParticipantType.Invitee,
-        status: ParticipationStatus.Pending,
         guest_email: EMAIL_TO_CHECK,
+        meeting_id: randomUUID(),
         name: 'I have a name',
         slot_id: 'whocares',
-        meeting_id: randomUUID(),
+        status: ParticipationStatus.Pending,
+        type: ParticipantType.Invitee,
       },
       {
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Pending,
         guest_email: EMAIL_TO_CHECK,
-        slot_id: 'whocaresagain',
         meeting_id: randomUUID(),
+        slot_id: 'whocaresagain',
+        status: ParticipationStatus.Pending,
+        type: ParticipantType.Scheduler,
       },
     ]
 

@@ -33,8 +33,8 @@ export class RefreshTokenCredential implements TokenCredential {
   async getToken(): Promise<AccessToken> {
     if (!this.isExpired()) {
       return {
-        token: this.accessToken,
         expiresOnTimestamp: this.expiryDate * 1000,
+        token: this.accessToken,
       }
     }
 
@@ -42,15 +42,15 @@ export class RefreshTokenCredential implements TokenCredential {
     const response = await fetch(
       'https://login.microsoftonline.com/common/oauth2/v2.0/token',
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          scope: officeScopes.join(' '),
           client_id: this.clientId,
-          refresh_token: this.refreshToken,
-          grant_type: 'refresh_token',
           client_secret: this.clientSecret,
+          grant_type: 'refresh_token',
+          refresh_token: this.refreshToken,
+          scope: officeScopes.join(' '),
         }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        method: 'POST',
       }
     )
 
@@ -61,8 +61,8 @@ export class RefreshTokenCredential implements TokenCredential {
     await this.onTokenRefresh(this.accessToken, this.expiryDate)
 
     return {
-      token: this.accessToken,
       expiresOnTimestamp: this.expiryDate * 1000,
+      token: this.accessToken,
     }
   }
 

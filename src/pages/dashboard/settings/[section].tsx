@@ -13,12 +13,12 @@ const Settings: NextPage<SettingsProps> = props => {
   return (
     <Container
       data-testid={`dashboard-settings-${props.section}`}
+      flex={1}
       maxW={{
-        base: '100%',
         '2xl': '8xl',
+        base: '100%',
       }}
       mt={{ base: 16, md: 8 }}
-      flex={1}
       px={{ base: 5, md: 8 }}
     >
       <DashboardContent currentSection={props.section} />

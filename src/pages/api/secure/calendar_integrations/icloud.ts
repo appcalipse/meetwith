@@ -8,8 +8,8 @@ import {
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
   countCalendarIntegrations,
+  isProAccountAsync,
 } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/database'
 import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
 
 const APPLE_WEBDAV_URL = 'https://caldav.icloud.com'
@@ -66,9 +66,9 @@ async function handler(
         TimeSlotSource.ICLOUD,
         details.calendars,
         {
-          username: details.username,
-          url: APPLE_WEBDAV_URL,
           password: encryptContent(symmetricKey, details.password),
+          url: APPLE_WEBDAV_URL,
+          username: details.username,
         }
       )
       return res.status(200).send({ connected: true })

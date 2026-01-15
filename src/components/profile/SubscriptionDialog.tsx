@@ -334,7 +334,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
       setTxRunning(true)
 
-      const tx = await subscribeToPlan(
+      const _tx = await subscribeToPlan(
         currentAccount!.address,
         Plan.PRO,
         currentChain!.chain,

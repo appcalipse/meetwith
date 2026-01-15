@@ -39,8 +39,8 @@ const CreateGroupPage = () => {
       router.push({
         pathname: '/dashboard/invite-users',
         query: {
-          groupName: groupName,
           groupId: newGroupId,
+          groupName: groupName,
         },
       })
     } catch (error: unknown) {
@@ -48,35 +48,35 @@ const CreateGroupPage = () => {
       const isJsonErr = isJson(message)
       const errorMessage = isJsonErr ? JSON.parse(message)?.error : message
       toast({
-        title: 'Error',
-        description:
-          errorMessage || 'An unexpected error occurred. Please try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
         containerStyle: {
           margin: '60px',
         },
+        description:
+          errorMessage || 'An unexpected error occurred. Please try again.',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+        status: 'error',
+        title: 'Error',
       })
     }
     setGroupCreating(false)
   }
 
   return (
-    <Flex direction="column" align="center" minH="100vh" mt={8}>
-      <Box maxW="400px" w="full" data-component="create-group-form">
+    <Flex align="center" direction="column" minH="100vh" mt={8}>
+      <Box data-component="create-group-form" maxW="400px" w="full">
         <VStack
+          align="stretch"
           as="form"
           onSubmit={handleGroupSubmit}
-          spacing={6}
-          align="stretch"
           p={8}
+          spacing={6}
         >
           <Link href={`/dashboard/${EditMode.GROUPS}`}>
-            <HStack alignItems="flex-start" mb={0} cursor="pointer">
-              <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
-              <Heading fontSize={16} color="primary.500">
+            <HStack alignItems="flex-start" cursor="pointer" mb={0}>
+              <Icon as={FaArrowLeft} color={'primary.500'} size="1.5em" />
+              <Heading color="primary.500" fontSize={16}>
                 Back
               </Heading>
             </HStack>
@@ -86,34 +86,34 @@ const CreateGroupPage = () => {
           </Heading>
           <FormControl>
             <FormLabel
+              fontFamily="'DM Sans', sans-serif"
               fontSize="16px"
               fontWeight="500"
               lineHeight="24px"
-              fontFamily="'DM Sans', sans-serif"
               textAlign="left"
             >
               Group name
             </FormLabel>
             <Input
-              id="groupName"
-              placeholder="My Group Name"
-              value={groupName}
-              borderColor="neutral.400"
               _placeholder={{
                 color: 'neutral.400',
               }}
+              borderColor="neutral.400"
+              id="groupName"
               onChange={e => setGroupName(e.target.value)}
+              placeholder="My Group Name"
+              value={groupName}
             />
           </FormControl>
           <Box>
             <Button
-              type="submit"
-              colorScheme="primary"
-              size="md"
-              height="48px"
               borderRadius="8px"
-              w="full"
+              colorScheme="primary"
+              height="48px"
               isLoading={groupCreating}
+              size="md"
+              type="submit"
+              w="full"
             >
               Create
             </Button>

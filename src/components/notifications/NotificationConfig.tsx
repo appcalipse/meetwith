@@ -11,8 +11,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import { useState } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import ChangeEmailModal from '@/components/profile/components/ChangeEmailModal'
 import MagicLinkModal from '@/components/profile/components/MagicLinkModal'
@@ -51,7 +50,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   const [discordNotificationConfig, setDiscordNotificationConfig] = useState(
     undefined as DiscordNotificationType | undefined
   )
-  const [_tgConnectionPending, setTgConnectionPending] = useState<
+  const [_tgConnectionPending, _setTgConnectionPending] = useState<
     TelegramConnection | undefined
   >(undefined)
   const [isEditingEmail, setIsEditingEmail] = useState(false)
@@ -125,7 +124,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
         'Telegram Notifications Updated',
         `Telegram notifications have been ${enabled ? 'enabled' : 'disabled'}`
       )
-    } catch (error) {
+    } catch (_error) {
       // Revert the state on error
       setTelegramNotification(telegramNotification)
       showErrorToast(

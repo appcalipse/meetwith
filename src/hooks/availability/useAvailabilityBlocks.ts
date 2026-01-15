@@ -24,11 +24,11 @@ export const useAvailabilityBlocks = (
     isLoading,
     isFetching,
   } = useQuery({
-    queryKey: ['availabilityBlocks', accountAddress],
+    enabled: !!accountAddress,
     queryFn: getAvailabilityBlocks,
+    queryKey: ['availabilityBlocks', accountAddress],
     refetchOnMount: true,
     staleTime: 0,
-    enabled: !!accountAddress,
   })
 
   const createBlock = useMutation({
@@ -77,11 +77,11 @@ export const useAvailabilityBlocks = (
 
   return {
     blocks,
-    isLoading,
-    isFetching,
     createBlock,
-    updateBlock,
     deleteBlock,
     duplicateBlock,
+    isFetching,
+    isLoading,
+    updateBlock,
   }
 }

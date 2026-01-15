@@ -14,7 +14,7 @@ const getAccountUrl = async (req: NextApiRequest, res: NextApiResponse) => {
       return res
         .status(200)
         .json({ calendar_url: getAccountCalendarUrl(account) })
-    } catch (e) {
+    } catch (_e) {
       return res.status(404).send('Not found')
     }
   }

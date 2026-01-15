@@ -60,10 +60,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         Sentry.captureException(error, {
           extra: {
             account_address,
-            eventId: unifiedEvent.id,
-            sourceEventId: unifiedEvent.sourceEventId,
-            source: unifiedEvent.source,
             calendarId: unifiedEvent.calendarId,
+            eventId: unifiedEvent.id,
+            source: unifiedEvent.source,
+            sourceEventId: unifiedEvent.sourceEventId,
           },
         })
 

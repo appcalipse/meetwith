@@ -74,11 +74,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const calendars: CalendarSyncInfo[] = [
         {
           calendarId: body.url!,
-          name: validationResult.calendarName || 'External Calendar',
           color: undefined,
-          sync: false, // Webcal is read-only, no sync
           enabled: true,
           isReadOnly: true,
+          name: validationResult.calendarName || 'External Calendar',
+          sync: false, // Webcal is read-only, no sync
         },
       ]
 
@@ -91,9 +91,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       )
 
       return res.status(200).json({
+        calendarName: validationResult.calendarName,
         connected: true,
         email: validationResult.userEmail,
-        calendarName: validationResult.calendarName,
         eventCount: validationResult.eventCount,
       })
     } catch (error) {
@@ -106,8 +106,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       return res.status(500).json({
-        message: 'Failed to connect webcal feed',
         error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to connect webcal feed',
       })
     }
   } else if (req.method === 'PUT') {
@@ -121,18 +121,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       if (!validationResult.valid) {
         return res.status(400).json({
-          valid: false,
           error: validationResult.error,
+          valid: false,
         })
       }
 
       return res.status(200).json({
-        valid: true,
         calendarName: validationResult.calendarName,
-        eventCount: validationResult.eventCount,
-        userEmail: validationResult.userEmail,
         emailFound: !!validationResult.userEmail,
+        eventCount: validationResult.eventCount,
         url: body.url,
+        userEmail: validationResult.userEmail,
+        valid: true,
       })
     } catch (error) {
       Sentry.captureException(error, {
@@ -140,8 +140,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       })
 
       return res.status(400).json({
-        valid: false,
         error: error instanceof Error ? error.message : 'Invalid ICS feed',
+        valid: false,
       })
     }
   }
@@ -175,8 +175,8 @@ async function validateWebcalFeed(
       new URL(feedUrl)
     } catch {
       return {
-        valid: false,
         error: 'Invalid URL format',
+        valid: false,
       }
     }
 
@@ -186,11 +186,11 @@ async function validateWebcalFeed(
     let response: Response
     try {
       response = await fetch(feedUrl, {
-        method: 'GET',
         headers: {
-          'User-Agent': 'MeetWithWallet/1.0',
           Accept: 'text/calendar, application/ics, text/plain',
+          'User-Agent': 'MeetWithWallet/1.0',
         },
+        method: 'GET',
         signal: controller.signal,
       })
     } finally {
@@ -199,8 +199,8 @@ async function validateWebcalFeed(
 
     if (!response.ok) {
       return {
-        valid: false,
         error: `Feed unavailable: ${response.status} ${response.statusText}`,
+        valid: false,
       }
     }
 
@@ -218,8 +218,8 @@ async function validateWebcalFeed(
 
     if (!icsData || icsData.trim().length === 0) {
       return {
-        valid: false,
         error: 'Feed is empty',
+        valid: false,
       }
     }
 
@@ -228,10 +228,10 @@ async function validateWebcalFeed(
       jcalData = ICAL.parse(icsData)
     } catch (parseError) {
       return {
-        valid: false,
         error: `Invalid ICS format: ${
           parseError instanceof Error ? parseError.message : 'Parse failed'
         }`,
+        valid: false,
       }
     }
 
@@ -239,8 +239,8 @@ async function validateWebcalFeed(
 
     if (vcalendar.name !== 'vcalendar') {
       return {
-        valid: false,
         error: 'Not a valid VCALENDAR resource',
+        valid: false,
       }
     }
 
@@ -263,10 +263,10 @@ async function validateWebcalFeed(
     }
 
     return {
-      valid: true,
       calendarName,
       eventCount,
       userEmail,
+      valid: true,
     }
   } catch (error) {
     Sentry.captureException(error, {
@@ -274,11 +274,11 @@ async function validateWebcalFeed(
     })
 
     return {
-      valid: false,
       error:
         error instanceof Error
           ? error.message
           : 'Failed to validate calendar feed',
+      valid: false,
     }
   }
 }
@@ -323,7 +323,7 @@ async function findUserEmailInCalendar(
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Skip malformed events
       continue
     }

@@ -27,8 +27,11 @@ import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
 import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
-import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
-import { getGroupsFullWithMetadata } from '@/utils/api_helper'
+import {
+  getGroupExternal,
+  getGroupsFullWithMetadata,
+  listConnectedCalendars,
+} from '@/utils/api_helper'
 import {
   getHideGroupAvailabilityLabels,
   setHideGroupAvailabilityLabels,
