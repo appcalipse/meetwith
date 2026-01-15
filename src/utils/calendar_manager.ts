@@ -200,7 +200,12 @@ const mapRelatedSlots = async (
   for (const slotId of meeting.related_slot_ids) {
     if (slotId !== meeting.id) {
       try {
-        const slot = await getMeeting(slotId)
+        let slot
+        if (slotId.includes('_')) {
+          slot = await getSlotInstanceById(slotId)
+        } else {
+          slot = await getMeeting(slotId)
+        }
         accountSlot[(slot?.account_address || slot?.guest_email)!] = slotId
       } catch (e) {
         // some slots might not be found if they belong to guests and were wrongly stored
@@ -226,7 +231,12 @@ const loadMeetingAccountAddresses = async (
   const otherSlots = []
   for (const slotId of meeting.related_slot_ids) {
     try {
-      const otherSlot = await getMeeting(slotId)
+      let otherSlot
+      if (slotId.includes('_')) {
+        otherSlot = await getSlotInstanceById(slotId)
+      } else {
+        otherSlot = await getMeeting(slotId)
+      }
       otherSlots.push(otherSlot)
     } catch (e) {
       // some slots might not be found if they belong to guests and were wrongly stored
@@ -234,7 +244,7 @@ const loadMeetingAccountAddresses = async (
   }
   const slotsAccounts = [
     ...otherSlots
-      .filter(it => it.account_address)
+      .filter((it): it is DBSlot => !!it?.account_address)
       .map(it => it.account_address!.toLowerCase()),
   ]
   if (currentAccountAddress) {
@@ -627,7 +637,6 @@ const updateMeeting = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
-  console.trace(decryptedMeeting)
   // Sanity check
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
@@ -951,6 +960,7 @@ const updateMeetingInstance = async (
       p.slot_id,
     ])
   )
+  existingMeeting.related_slot_ids = oldParticipantsParsing.map(p => p.slot_id)
 
   existingMeeting.participants = existingMeeting.participants.map(
     participant => {
@@ -964,6 +974,16 @@ const updateMeetingInstance = async (
       return participant
     }
   )
+  participants = participants.map(participant => {
+    const key = participant.account_address || participant.guest_email
+    if (oldParticipantMap.has(key)) {
+      return {
+        ...participant,
+        slot_id: oldParticipantMap.get(key),
+      }
+    }
+    return participant
+  })
 
   const existingMeetingAccounts = await loadMeetingAccountAddresses(
     existingMeeting!,
@@ -985,12 +1005,10 @@ const updateMeetingInstance = async (
       .filter(p => p.account_address)
       .map(p => p.account_address!.toLowerCase()),
   ])
-
   const accountSlotMap = await mapRelatedSlots(
     existingMeeting!,
     currentAccountAddress
   )
-
   const oldGuests = existingMeeting.participants.filter(p => p.guest_email)
 
   const guests = participants
@@ -1065,7 +1083,7 @@ const updateMeetingInstance = async (
     rootMeetingId,
     meetingTitle,
     meetingReminders,
-    MeetingRepeat.NO_REPEAT,
+    existingMeeting.recurrence,
     selectedPermissions
   )
   const payload: MeetingInstanceUpdateRequest = {
@@ -1131,6 +1149,7 @@ const deleteMeetingInstance = async (
       p.slot_id,
     ])
   )
+  existingMeeting.related_slot_ids = oldParticipantsParsing.map(p => p.slot_id)
 
   existingMeeting.participants = existingMeeting.participants.map(
     participant => {
@@ -1319,6 +1338,7 @@ const cancelMeetingInstance = async (
       p.slot_id,
     ])
   )
+  existingMeeting.related_slot_ids = oldParticipantsParsing.map(p => p.slot_id)
 
   existingMeeting.participants = existingMeeting.participants.map(
     participant => {
