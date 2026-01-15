@@ -141,7 +141,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         subscription_type: SubscriptionType.INITIAL,
         billing_plan_id,
         account_address: accountAddress,
-        billing_plan_id,
         subscription_channel: subscriptionChannel,
         handle,
       }
