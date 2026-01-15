@@ -1,8 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { getGroupsAndMembers, initDB } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/database'
+import {
+  getGroupsAndMembers,
+  initDB,
+  isProAccountAsync,
+} from '@/utils/database'
 import { extractQuery } from '@/utils/generic_utils'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -36,8 +39,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
         return res.status(200).json({
           groups: allGroups,
-          total: allGroupsUnlimited.length,
           hidden: Math.max(0, allGroupsUnlimited.length - 5),
+          total: allGroupsUnlimited.length,
           upgradeRequired: allGroupsUnlimited.length >= 5,
         })
       }
@@ -62,8 +65,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       return res.status(200).json({
         groups: allGroups,
-        total: allGroupsForCount.length,
         hidden: 0,
+        total: allGroupsForCount.length,
         upgradeRequired: false,
       })
     } catch (e) {

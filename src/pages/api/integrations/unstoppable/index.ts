@@ -9,12 +9,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const response = await fetch(
         `https://unstoppabledomains.g.alchemy.com/domains?owners=${address}`,
         {
-          method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             Authorization: `Bearer ${process.env.ALCHEMY_API_KEY!}`,
+            'Content-Type': 'application/json',
           },
+          method: 'GET',
         }
       )
       if (response.status === 200) {

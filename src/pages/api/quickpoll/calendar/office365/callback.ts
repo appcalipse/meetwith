@@ -67,10 +67,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const tokenResponse = await fetch(
     'https://login.microsoftonline.com/common/oauth2/v2.0/token',
     {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
       body: new URLSearchParams({
         client_id: client_id!,
         client_secret: client_secret!,
@@ -78,6 +74,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         grant_type: 'authorization_code',
         redirect_uri,
       }),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      method: 'POST',
     }
   )
 
@@ -112,11 +112,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const calendars: Array<CalendarSyncInfo> =
     calendarsData.value?.map((c: CalendarInfo) => ({
       calendarId: c.id,
-      name: c.name,
       color: c.color,
-      sync: true,
       enabled: true,
       isReadOnly: !c.canEdit,
+      name: c.name,
+      sync: true,
     })) || []
 
   let participantId = stateObject?.participantId

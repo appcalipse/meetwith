@@ -50,9 +50,10 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
 
   return (
     <Text
-      ref={textRef}
+      className="rich-text-wrapper"
       maxH={maxHeight}
       overflow="hidden"
+      ref={textRef}
       {...props}
       dangerouslySetInnerHTML={{
         __html: sanitizeHtml(truncatedContent, {

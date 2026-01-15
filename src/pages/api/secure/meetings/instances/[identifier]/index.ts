@@ -30,6 +30,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const meeting = await getSlotInstance(identifier)
       return res.status(200).json(meeting)
     } catch (error) {
+      console.error(error)
       res.status(500).json({ error: 'Unknown error occurred' })
     }
   }

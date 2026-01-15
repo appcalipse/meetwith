@@ -13,44 +13,47 @@ import { isValidEVMAddress } from './validations'
 // Meeting Types
 
 export const baseMeetingSchema = z.object({
-  title: z.string().min(1, 'Title is required'), // Required string
-  description: z
-    .string()
-    .max(500, 'Description must be under 500 characters')
-    .optional(), // Optional with limit
-  type: z.nativeEnum(SessionType, {
-    errorMap: () => ({ message: 'Invalid session type' }),
-  }), // SessionType enum
-  duration_minutes: z.number().min(15, 'Duration must be at least 15 minutes'), // Minimum 15 minutes
-  min_notice_minutes: z.number().min(60, 'Minimum notice must be 1 hour'), // Minimum notice 1 hour
+  availability_ids: z.array(z.string()).min(1, {
+    message: 'At least one availability block must be selected.',
+  }),
 
-  scheduleGate: z.string().url('Invalid schedule gate URL').optional(), // Optional valid URL
-  slug: z
-    .string()
-    .regex(
-      /^[a-z0-9]+(?:-[a-z0-9]+)*$/, // Regex for alphanumeric with dashes
-      'Slug must be alphanumeric with dashes'
-    )
-    .optional(), // Optional slug
+  calendars: z.array(z.number()).optional(), // Array of calendar IDs
   custom_link: z.preprocess(
     val => (val === '' ? undefined : val),
     z.string().url('Invalid custom link URL').optional()
   ), // Optional custom link URL
+  description: z
+    .string()
+    .max(500, 'Description must be under 500 characters')
+    .optional(), // Optional with limit
+  duration_minutes: z.number().min(15, 'Duration must be at least 15 minutes'), // Minimum 15 minutes
   fixed_link: z.boolean().optional(), // Optional boolean for fixed link
-  availability_ids: z.array(z.string()).min(1, {
-    message: 'At least one availability block must be selected.',
-  }),
   meeting_platforms: z.array(z.string()).min(1, {
     message: 'At least one meeting platform must be selected.',
   }),
-
-  calendars: z.array(z.number()).optional(), // Array of calendar IDs
+  min_notice_minutes: z.number().min(60, 'Minimum notice must be 1 hour'), // Minimum notice 1 hour
 
   plan: z
     .object({
-      type: z.nativeEnum(PlanType, {
-        errorMap: () => ({ message: 'Invalid plan type' }),
-      }), // PlanType enum
+      crypto_network: z.number().int().positive('Crypto network must be valid'), // Positive integer
+      default_token: z.nativeEnum(AcceptedToken, {
+        errorMap: () => ({ message: 'Invalid default token' }),
+      }),
+
+      no_of_slot: z
+        .number({ message: 'Number of slots is required.' })
+        .int()
+        .min(1, 'At least 1 slot is required'), // At least 1 slot
+      payment_address: z
+        .string()
+        .min(1, 'Payment address is required')
+        .refine(
+          val => isValidEVMAddress(val), // Example validation for Ethereum address
+          'Invalid payment address. Must be a valid Ethereum address (e.g., 0x742d...)'
+        ),
+      payment_channel: z.nativeEnum(PaymentChannel, {
+        errorMap: () => ({ message: 'Invalid payment channel' }),
+      }), // PaymentChannel enum
       payment_methods: z
         .array(
           z.nativeEnum(PaymentType, {
@@ -61,27 +64,24 @@ export const baseMeetingSchema = z.object({
       price_per_slot: z
         .number({ message: 'Price per slot is required.' })
         .min(0.05, 'Price per slot must be greater than 0.05'), // Positive price
-
-      no_of_slot: z
-        .number({ message: 'Number of slots is required.' })
-        .int()
-        .min(1, 'At least 1 slot is required'), // At least 1 slot
-      payment_channel: z.nativeEnum(PaymentChannel, {
-        errorMap: () => ({ message: 'Invalid payment channel' }),
-      }), // PaymentChannel enum
-      payment_address: z
-        .string()
-        .min(1, 'Payment address is required')
-        .refine(
-          val => isValidEVMAddress(val), // Example validation for Ethereum address
-          'Invalid payment address. Must be a valid Ethereum address (e.g., 0x742d...)'
-        ),
-      crypto_network: z.number().int().positive('Crypto network must be valid'), // Positive integer
-      default_token: z.nativeEnum(AcceptedToken, {
-        errorMap: () => ({ message: 'Invalid default token' }),
-      }),
+      type: z.nativeEnum(PlanType, {
+        errorMap: () => ({ message: 'Invalid plan type' }),
+      }), // PlanType enum
     })
     .optional(), // Plan object is optional
+
+  scheduleGate: z.string().url('Invalid schedule gate URL').optional(), // Optional valid URL
+  slug: z
+    .string()
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/, // Regex for alphanumeric with dashes
+      'Slug must be alphanumeric with dashes'
+    )
+    .optional(), // Optional slug
+  title: z.string().min(1, 'Title is required'), // Required string
+  type: z.nativeEnum(SessionType, {
+    errorMap: () => ({ message: 'Invalid session type' }),
+  }), // SessionType enum
 })
 
 export const createMeetingSchema = baseMeetingSchema.superRefine(
@@ -182,19 +182,19 @@ export const validateField = /*<T, J>*/ (
         .pick({ [field]: true } as Partial<Record<SchemaKeys, true>>)
         .parse({ [field]: value })
     }
-    return { isValid: true, error: null }
+    return { error: null, isValid: true }
   } catch (e) {
     if (e instanceof z.ZodError) {
-      return { isValid: false, error: e.errors[0].message }
+      return { error: e.errors[0].message, isValid: false }
     }
-    return { isValid: false, error: 'Validation failed' }
+    return { error: 'Validation failed', isValid: false }
   }
 }
 
 // Payment Info Schema
 export const paymentInfoSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
+  name: z.string().min(1, 'Name is required'),
 })
 export type PaymentInfo = z.infer<typeof paymentInfoSchema>
 
@@ -203,12 +203,12 @@ export const validatePaymentInfo = (key: keyof PaymentInfo, data: unknown) => {
     paymentInfoSchema
       .pick({ [key]: true } as Partial<Record<keyof PaymentInfo, true>>)
       .parse({ [key]: data })
-    return { isValid: true, error: null }
+    return { error: null, isValid: true }
   } catch (e) {
     if (e instanceof z.ZodError) {
-      return { isValid: false, error: e.errors[0].message }
+      return { error: e.errors[0].message, isValid: false }
     }
-    return { isValid: false, error: 'Validation failed' }
+    return { error: 'Validation failed', isValid: false }
   }
 }
 
@@ -234,14 +234,14 @@ export const errorReducerSingle = (
 
 export const quickPollSchema = z
   .object({
-    title: z.string().min(1, 'Title is required'),
     description: z.string().optional(),
     duration: z.number().min(1, 'Duration must be at least 1 minute'),
-    startDate: z.date(),
     endDate: z.date(),
     expiryDate: z.date(),
     expiryTime: z.date(),
     participants: z.array(z.any()),
+    startDate: z.date(),
+    title: z.string().min(1, 'Title is required'),
   })
   .refine(data => data.startDate < data.endDate, {
     message: 'Start date must be before end date',

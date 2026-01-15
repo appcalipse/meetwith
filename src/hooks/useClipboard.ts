@@ -11,7 +11,7 @@ const useClipboard = () => {
       } else {
         document.execCommand('copy', true, meeting_url || '')
       }
-    } catch (err) {
+    } catch (_err) {
       document.execCommand('copy', true, meeting_url || '')
     }
     logEvent('Copied link from Calendar', { url: meeting_url || '' })

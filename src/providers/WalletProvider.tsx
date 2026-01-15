@@ -212,50 +212,50 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   }, [resetPagination])
 
   const value: WalletContextType = {
-    // View states
-    showBalance,
-    setShowBalance,
-    showTransactions,
-    setShowTransactions,
-    showTransactionDetails,
-    setShowTransactionDetails,
-    showCryptoDetails,
-    setShowCryptoDetails,
-
-    // Selection states
-    selectedCurrency,
-    setSelectedCurrency,
-    selectedNetwork,
-    setSelectedNetwork,
-    selectedTransaction,
-    setSelectedTransaction,
-    selectedCrypto,
-    setSelectedCrypto,
-
-    // Loading state
-    isNetworkLoading,
+    currentPage,
 
     // Modal states
     isCurrencyModalOpen,
-    setIsCurrencyModalOpen,
-    isNetworkModalOpen,
-    setIsNetworkModalOpen,
-    isSendModalOpen,
-    setIsSendModalOpen,
-    isReceiveModalOpen,
-    setIsReceiveModalOpen,
 
-    // Search and pagination
-    searchQuery,
-    setSearchQuery,
-    currentPage,
-    setCurrentPage,
-    selectedCryptoCurrentPage,
-    setSelectedCryptoCurrentPage,
+    // Loading state
+    isNetworkLoading,
+    isNetworkModalOpen,
+    isReceiveModalOpen,
+    isSendModalOpen,
 
     // Reset functions
     resetPagination,
     resetWalletState,
+
+    // Search and pagination
+    searchQuery,
+    selectedCrypto,
+    selectedCryptoCurrentPage,
+
+    // Selection states
+    selectedCurrency,
+    selectedNetwork,
+    selectedTransaction,
+    setCurrentPage,
+    setIsCurrencyModalOpen,
+    setIsNetworkModalOpen,
+    setIsReceiveModalOpen,
+    setIsSendModalOpen,
+    setSearchQuery,
+    setSelectedCrypto,
+    setSelectedCryptoCurrentPage,
+    setSelectedCurrency,
+    setSelectedNetwork,
+    setSelectedTransaction,
+    setShowBalance,
+    setShowCryptoDetails,
+    setShowTransactionDetails,
+    setShowTransactions,
+    // View states
+    showBalance,
+    showCryptoDetails,
+    showTransactionDetails,
+    showTransactions,
   }
 
   return (

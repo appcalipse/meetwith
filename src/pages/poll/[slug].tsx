@@ -39,12 +39,12 @@ const PollPage = () => {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['quickpoll-public', slug],
-    queryFn: () => getQuickPollBySlug(slug as string),
     enabled: !!slug && typeof slug === 'string',
     onError: (err: unknown) => {
       handleApiError('Failed to load poll', err)
     },
+    queryFn: () => getQuickPollBySlug(slug as string),
+    queryKey: ['quickpoll-public', slug],
   })
 
   if (!router.isReady || isLoading) {
@@ -84,11 +84,11 @@ const PollPage = () => {
     }
 
     return (
-      <Box width="100%" minHeight="100vh" bg="bg-canvas" p={6}>
+      <Box bg="bg-canvas" minHeight="100vh" p={6} width="100%">
         <CustomError
-          title={title}
           description={description}
           imageAlt="Poll error"
+          title={title}
         />
       </Box>
     )
@@ -97,11 +97,11 @@ const PollPage = () => {
   // Handle missing data
   if (!pollData) {
     return (
-      <Box width="100%" minHeight="100vh" bg="bg-canvas" p={6}>
+      <Box bg="bg-canvas" minHeight="100vh" p={6} width="100%">
         <CustomError
-          title="Poll not found"
           description="This poll doesn't exist or may have been deleted."
           imageAlt="Poll not found"
+          title="Poll not found"
         />
       </Box>
     )
@@ -110,7 +110,7 @@ const PollPage = () => {
   const shouldSkipFetching = !currentAccount
 
   return (
-    <Box width="100%" minHeight="100vh" bg="bg-canvas">
+    <Box bg="bg-canvas" minHeight="100vh" width="100%">
       <QuickPollAvailabilityProvider
         initialParticipantId={participantId as string}
       >
@@ -120,8 +120,8 @@ const PollPage = () => {
               <PermissionsProvider>
                 <AvailabilityTrackerProvider>
                   <QuickPollMain
-                    pollData={pollData as QuickPollBySlugResponse}
                     initialPage={initialPage}
+                    pollData={pollData as QuickPollBySlugResponse}
                   />
                 </AvailabilityTrackerProvider>
               </PermissionsProvider>

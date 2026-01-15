@@ -28,15 +28,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           req.query.q as string
         )
         return res.status(200).json({
-          total_count: 1,
           result: [
             {
-              email: req.query.q as string,
               address: '',
-              name: '',
+              email: req.query.q as string,
               is_invited: inviteExists,
+              name: '',
             },
           ],
+          total_count: 1,
         })
       }
       results.result = results.result?.map(val => ({

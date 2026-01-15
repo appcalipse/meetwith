@@ -256,18 +256,18 @@ const handleUpdateParseMeetingInfo = async (
   )
   const payload = {
     ...meetingData,
+    eventId: eventId,
+    guestsToRemove,
+    rrule: rrule || meetingData.rrule,
     slotsToRemove: toRemove
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
-    guestsToRemove,
     version: decryptedMeeting.version + 1,
-    rrule: rrule || meetingData.rrule,
-    eventId: eventId,
   }
   return {
-    payload,
-    participantActing: getParticipantBaseInfoFromAccount(currentAccount),
     existingMeeting: decryptedMeeting,
+    participantActing: getParticipantBaseInfoFromAccount(currentAccount),
+    payload,
   }
 }
 const handleUpdateRSVPParseMeetingInfo = async (
@@ -368,18 +368,18 @@ const handleUpdateRSVPParseMeetingInfo = async (
   )
   const payload = {
     ...meetingData,
+    eventId,
+    guestsToRemove,
+    rrule: rrule || meetingData.rrule,
     slotsToRemove: toRemove
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
-    guestsToRemove,
     version: decryptedMeeting.version + 1,
-    rrule: rrule || meetingData.rrule,
-    eventId,
   }
   return {
-    payload,
-    participantActing: getParticipantBaseInfoFromAccount(currentAccount),
     existingMeeting: decryptedMeeting,
+    participantActing: getParticipantBaseInfoFromAccount(currentAccount),
+    payload,
   }
 }
 
@@ -498,16 +498,16 @@ const handleDeleteMeetingParseInfo = async (
   )
   const payload = {
     ...meetingData,
+    eventId,
+    guestsToRemove,
     slotsToRemove: toRemove
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
-    guestsToRemove,
     version: decryptedMeeting.version + 1,
-    eventId,
   }
   return {
-    payload,
     participantActing: getParticipantBaseInfoFromAccount(currentAccount),
+    payload,
   }
 }
 const handleCancelOrDelete = async (
@@ -613,15 +613,15 @@ const handleUpdateSingleRecurringInstance = async (
       async (slot): Promise<TablesUpdate<'slot_instance'>> => {
         const series_id = await getSlotSeriesId(slot.id!)
         return {
-          id: slot.id + '_' + timeStamp,
-          version: (slots[0].version || 0) + 1,
-          override_meeting_info_encrypted: slot.meeting_info_encrypted,
           account_address: slot.account_address,
-          status: RecurringStatus.MODIFIED,
-          start: new Date(startTime).toISOString(),
           end: new Date(endTime).toISOString(),
+          id: slot.id + '_' + timeStamp,
+          override_meeting_info_encrypted: slot.meeting_info_encrypted,
           role: slot.role!,
           series_id,
+          start: new Date(startTime).toISOString(),
+          status: RecurringStatus.MODIFIED,
+          version: (slots[0].version || 0) + 1,
         }
       }
     )
@@ -630,15 +630,15 @@ const handleUpdateSingleRecurringInstance = async (
         const series_id = await getSlotSeriesId(slotId!)
         const slot = await getSlotById(slotId)
         return {
+          account_address: slot.account_address,
+          end: new Date(endTime).toISOString(),
           id: slotId + '_' + timeStamp,
-          version: version + 1,
-          status: RecurringStatus.CANCELLED,
+          override_meeting_info_encrypted: null,
+          role: slot.role,
           series_id,
           start: new Date(startTime).toISOString(),
-          end: new Date(endTime).toISOString(),
-          override_meeting_info_encrypted: null,
-          account_address: slot.account_address,
-          role: slot.role,
+          status: RecurringStatus.CANCELLED,
+          version: version + 1,
         }
       }
     )
@@ -755,7 +755,7 @@ const handleCancelOrDeleteForRecurringInstance = async (
         if (!slot.account_address) continue
         ExternalCalendarSync.delete(slot.account_address, [event.id!])
       }
-    } catch (e) {}
+    } catch (_e) {}
     if (
       DateTime.now().hasSame(
         DateTime.fromJSDate(eventInstance.payload.start),
@@ -775,15 +775,15 @@ const handleCancelOrDeleteForRecurringInstance = async (
       slots.map(async (slot): Promise<TablesUpdate<'slot_instance'>> => {
         const series_id = await getSlotSeriesId(slot.id!)
         return {
+          account_address: slot.account_address,
+          end: new Date(endTime).toISOString(),
           id: slot.id + '_' + timeStamp,
-          version: (slot.version || 0) + 1,
-          status: RecurringStatus.CANCELLED,
+          override_meeting_info_encrypted: null,
+          role: slot.role!,
           series_id,
           start: new Date(startTime).toISOString(),
-          end: new Date(endTime).toISOString(),
-          override_meeting_info_encrypted: null,
-          account_address: slot.account_address,
-          role: slot.role!,
+          status: RecurringStatus.CANCELLED,
+          version: (slot.version || 0) + 1,
         }
       })
     )
@@ -805,16 +805,16 @@ const handleCancelOrDeleteForRecurringInstance = async (
       async (slot): Promise<TablesUpdate<'slot_instance'>> => {
         const series_id = await getSlotSeriesId(slot.id!)
         return {
-          id: slot.id + '_' + timeStamp,
-          version: (slot.version || 0) + 1,
-          override_meeting_info_encrypted: slot.meeting_info_encrypted,
           account_address: slot.account_address,
-          status: RecurringStatus.MODIFIED,
-          start: new Date(startTime).toISOString(),
           end: new Date(endTime).toISOString(),
+          guest_email: slot.guest_email,
+          id: slot.id + '_' + timeStamp,
+          override_meeting_info_encrypted: slot.meeting_info_encrypted,
           role: slot.role!,
           series_id,
-          guest_email: slot.guest_email,
+          start: new Date(startTime).toISOString(),
+          status: RecurringStatus.MODIFIED,
+          version: (slot.version || 0) + 1,
         }
       }
     )
@@ -823,16 +823,16 @@ const handleCancelOrDeleteForRecurringInstance = async (
         const series_id = await getSlotSeriesId(slotId!)
         const slot = await getSlotById(slotId)
         return {
+          account_address: slot.account_address,
+          end: new Date(endTime).toISOString(),
+          guest_email: slot.guest_email,
           id: slotId + '_' + timeStamp,
-          version: (slot.version || 0) + 1,
-          status: RecurringStatus.CANCELLED,
+          override_meeting_info_encrypted: null,
+          role: slot.role,
           series_id,
           start: new Date(startTime).toISOString(),
-          end: new Date(endTime).toISOString(),
-          override_meeting_info_encrypted: null,
-          account_address: slot.account_address,
-          role: slot.role,
-          guest_email: slot.guest_email,
+          status: RecurringStatus.CANCELLED,
+          version: (slot.version || 0) + 1,
         }
       }
     )
@@ -871,20 +871,20 @@ const handleSendEventNotification = async (
 ) => {
   await ExternalCalendarSync.update({
     ...payload,
-    start: new Date(payload.start),
-    end: new Date(payload.end),
-    participantActing: participantActing,
     created_at: new Date(),
-    timezone:
-      payload.participants_mapping.find(
-        p => p.account_address === participantActing.account_address
-      )?.timeZone || 'UTC',
-    participants: payload.participants_mapping,
+    end: new Date(payload.end),
+    eventId: eventId,
     meeting_type_id:
       payload.meetingTypeId === NO_MEETING_TYPE
         ? undefined
         : payload.meetingTypeId,
-    eventId: eventId,
+    participantActing: participantActing,
+    participants: payload.participants_mapping,
+    start: new Date(payload.start),
+    timezone:
+      payload.participants_mapping.find(
+        p => p.account_address === participantActing.account_address
+      )?.timeZone || 'UTC',
   })
 }
 const cancelMeeting = async (
@@ -1082,37 +1082,37 @@ const handleParseParticipants = async (
       })
       if (firstAccount) {
         parsedParticipants.push({
-          type: ParticipantType.Invitee,
-          meeting_id: meetingId,
           account_address: firstAccount.address,
-          slot_id: uuidv4(),
-          status: getParticipationStatus(attendee.responseStatus || ''),
+          guest_email: undefined,
+          meeting_id: meetingId,
           name:
             firstAccount?.name || attendee?.displayName || firstAccount.address,
-          guest_email: undefined,
+          slot_id: uuidv4(),
+          status: getParticipationStatus(attendee.responseStatus || ''),
+          type: ParticipantType.Invitee,
         })
       } else {
         // Guest participant
         parsedParticipants.push({
-          type: ParticipantType.Invitee,
-          meeting_id: meetingId,
           account_address: undefined,
+          guest_email: attendee.email,
+          meeting_id: meetingId,
+          name: attendee?.displayName || attendee.email || '',
           slot_id: uuidv4(),
           status: getParticipationStatus(attendee.responseStatus || ''),
-          name: attendee?.displayName || attendee.email || '',
-          guest_email: attendee.email,
+          type: ParticipantType.Invitee,
         })
       }
     } else {
       // Guest participant
       parsedParticipants.push({
-        type: ParticipantType.Invitee,
-        meeting_id: meetingId,
         account_address: undefined,
+        guest_email: attendee.email,
+        meeting_id: meetingId,
+        name: attendee?.displayName || attendee.email || '',
         slot_id: uuidv4(),
         status: getParticipationStatus(attendee.responseStatus || ''),
-        name: attendee?.displayName || attendee.email || '',
-        guest_email: attendee.email,
+        type: ParticipantType.Invitee,
       })
     }
   }

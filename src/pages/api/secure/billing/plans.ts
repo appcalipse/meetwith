@@ -30,13 +30,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       // Combine plans with provider info
       const plansWithProvider: GetPlansResponse['plans'] = plans.map(plan => ({
+        billing_cycle: plan.billing_cycle as BillingCycle,
+        created_at: plan.created_at,
         id: plan.id,
         name: plan.name,
         price: Number(plan.price),
-        billing_cycle: plan.billing_cycle as BillingCycle,
-        created_at: plan.created_at,
-        updated_at: plan.updated_at,
         provider_product_id: providerMap.get(plan.id),
+        updated_at: plan.updated_at,
       }))
 
       return res.status(200).json({ plans: plansWithProvider })

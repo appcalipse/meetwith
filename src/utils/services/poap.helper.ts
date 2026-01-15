@@ -30,16 +30,16 @@ export interface POAP {
 export const generatePOAPAuthToken = async (): Promise<AuthToken | null> => {
   try {
     const oauthResult = await fetch('https://poapauth.auth0.com/oauth/token', {
-      method: 'POST',
       body: JSON.stringify({
+        audience: 'meet-with-wallet',
         client_id: process.env.POAP_OAUTH_CLIENT_ID!,
         client_secret: process.env.POAP_OAUTH_CLIENT_SECRET!,
-        audience: 'meet-with-wallet',
         grant_type: 'client_credentials',
       }),
       headers: {
         'Content-Type': 'application/json',
       },
+      method: 'POST',
     })
 
     const oauthData = await oauthResult.json()
@@ -62,13 +62,13 @@ export const generatePOAPAuthToken = async (): Promise<AuthToken | null> => {
 
 export const fetchWalletPOAPs = async (address: string): Promise<POAP[]> => {
   const response = await fetch(`${POAP_API_URL}/actions/scan/${address}`, {
-    method: 'GET',
-    mode: 'cors',
     headers: {
-      'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'application/json',
       'X-API-Key': process.env.POAP_API_KEY!,
     },
+    method: 'GET',
+    mode: 'cors',
   })
   if (response.status >= 200 && response.status < 300) {
     const poaps = await response.json()
@@ -87,13 +87,13 @@ export const checkWalletHoldsPOAP = async (
   const response = await fetch(
     `${POAP_API_URL}/actions/scan/${address}/${eventId}`,
     {
-      method: 'GET',
-      mode: 'cors',
       headers: {
-        'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
         'X-API-Key': process.env.POAP_API_KEY!,
       },
+      method: 'GET',
+      mode: 'cors',
     }
   )
   if (response.status >= 200 && response.status < 300) {
@@ -110,13 +110,13 @@ export const getPOAPEventDetails = async (
   eventId: number
 ): Promise<POAPEvent | null> => {
   const response = await fetch(`${POAP_API_URL}/events/id/${eventId}`, {
-    method: 'GET',
-    mode: 'cors',
     headers: {
-      'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'application/json',
       'X-API-Key': process.env.POAP_API_KEY!,
     },
+    method: 'GET',
+    mode: 'cors',
   })
   if (response.status >= 200 && response.status < 300) {
     const event = await response.json()

@@ -16,11 +16,11 @@ const Dashboard: NextPage<DashboardProps> = props => {
   return (
     <Container
       data-testid={`dashboard-${props.section}`}
+      flex={1}
       maxW={{
         base: '100%',
       }}
       mt={{ base: 16, md: 8 }}
-      flex={1}
       px={{ base: 5, md: 8 }}
     >
       {isProduction && (

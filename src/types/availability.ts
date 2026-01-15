@@ -1,7 +1,5 @@
 import { UseMutationResult } from '@tanstack/react-query'
-
-import { TimeRange } from './Account'
-import { MeetingType } from './Account'
+import { MeetingType, TimeRange } from './Account'
 
 export interface AvailabilityBlock {
   id: string

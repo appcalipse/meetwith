@@ -19,7 +19,7 @@ export default async function discordInfo(
     if (!tgConnection) {
       return res
         .status(404)
-        .send({ success: false, message: 'Telegram connection not found' })
+        .send({ message: 'Telegram connection not found', success: false })
     }
     const subscriptions = await getAccountNotificationSubscriptions(
       tgConnection.account_address
@@ -30,8 +30,8 @@ export default async function discordInfo(
       )
     ) {
       return res.status(400).json({
-        success: false,
         message: 'Telegram notification already added',
+        success: false,
       })
     }
     subscriptions.notification_types.push({
@@ -45,9 +45,9 @@ export default async function discordInfo(
     )
     await deleteAllTgConnections(tgConnection.account_address)
     return res.status(200).json({
-      success: true,
-      message: 'Telegram notification added successfully',
       account_address: tgConnection.account_address,
+      message: 'Telegram notification added successfully',
+      success: true,
     })
   }
 

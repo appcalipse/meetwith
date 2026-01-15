@@ -43,14 +43,14 @@ class RSVPQueue {
 
     return new Promise((resolve, reject) => {
       const request: RSVPRequest = {
+        aborted: false,
+        abortSignal,
+        attendeeEmail,
         calendarId,
         eventId,
-        status,
-        attendeeEmail,
-        abortSignal,
-        resolve,
         reject,
-        aborted: false,
+        resolve,
+        status,
       }
 
       if (abortSignal) {

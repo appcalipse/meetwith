@@ -26,8 +26,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const meetingResult: DBSlot = await saveMeeting(
         {
-          name: guest.name,
           guest_email: guest.guest_email,
+          name: guest.name,
         },
         meeting
       )

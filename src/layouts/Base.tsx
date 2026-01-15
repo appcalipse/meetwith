@@ -1,5 +1,4 @@
-import { Box, ChakraProvider } from '@chakra-ui/react'
-import { useMediaQuery } from '@chakra-ui/react'
+import { Box, ChakraProvider, useMediaQuery } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { ReactNode, useContext } from 'react'
 import { CookiesProvider } from 'react-cookie'
@@ -29,8 +28,8 @@ export const BaseLayout: React.FC<{
   const router = useRouter()
   const { logged } = useContext(AccountContext)
   const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
-    ssr: true,
     fallback: false,
+    ssr: true,
   })
 
   const isDashboardPage = router.pathname.startsWith(DASHBOARD_ROUTE_PREFIX)
@@ -79,7 +78,7 @@ export const BaseLayout: React.FC<{
       <ChakraMDXProvider>
         <CookieConsent consentCookie={consentCookie} />
         <CookiesProvider>
-          <Box minH="100vh" display="flex" flexDir="column">
+          <Box display="flex" flexDir="column" minH="100vh">
             {navVisible && <Navbar />}
             {children}
             {footerVisible && <Footer />}

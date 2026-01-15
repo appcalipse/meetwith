@@ -200,16 +200,21 @@ const mapRelatedSlots = async (
   for (const slotId of meeting.related_slot_ids) {
     if (slotId !== meeting.id) {
       try {
-        const slot = await getMeeting(slotId)
+        let slot
+        if (slotId.includes('_')) {
+          slot = await getSlotInstanceById(slotId)
+        } else {
+          slot = await getMeeting(slotId)
+        }
         accountSlot[(slot?.account_address || slot?.guest_email)!] = slotId
-      } catch (e) {
+      } catch (_e) {
         // some slots might not be found if they belong to guests and were wrongly stored
         try {
           const guestSlot = await getGuestSlotById(slotId)
           if (guestSlot?.guest_email) {
             accountSlot[guestSlot.guest_email] = slotId
           }
-        } catch (e) {}
+        } catch (_e) {}
       }
     }
   }
@@ -226,15 +231,20 @@ const loadMeetingAccountAddresses = async (
   const otherSlots = []
   for (const slotId of meeting.related_slot_ids) {
     try {
-      const otherSlot = await getMeeting(slotId)
+      let otherSlot
+      if (slotId.includes('_')) {
+        otherSlot = await getSlotInstanceById(slotId)
+      } else {
+        otherSlot = await getMeeting(slotId)
+      }
       otherSlots.push(otherSlot)
-    } catch (e) {
+    } catch (_e) {
       // some slots might not be found if they belong to guests and were wrongly stored
     }
   }
   const slotsAccounts = [
     ...otherSlots
-      .filter(it => it.account_address)
+      .filter((it): it is DBSlot => !!it?.account_address)
       .map(it => it.account_address!.toLowerCase()),
   ]
   if (currentAccountAddress) {
@@ -284,7 +294,7 @@ const handleParticipants = async (
   ) {
     throw new MultipleSchedulersError()
   }
-  return { sanitizedParticipants, allAccounts }
+  return { allAccounts, sanitizedParticipants }
 }
 const buildMeetingData = async (
   schedulingType: SchedulingType,
@@ -320,18 +330,18 @@ const buildMeetingData = async (
   }
 
   const privateInfo: MeetingInfo = {
-    created_at: new Date(),
-    participants: sanitizedParticipants,
-    title: meetingTitle,
-    content: meetingContent,
-    meeting_url: meetingUrl,
     change_history_paths: [],
-    related_slot_ids: [],
+    content: meetingContent,
+    created_at: new Date(),
     meeting_id: meetingId,
-    reminders: meetingReminders,
+    meeting_url: meetingUrl,
+    participants: sanitizedParticipants,
+    permissions: selectedPermissions,
     provider: meetingProvider,
     recurrence: meetingRepeat,
-    permissions: selectedPermissions,
+    related_slot_ids: [],
+    reminders: meetingReminders,
+    title: meetingTitle,
   }
   // first pass to make sure that we are keeping the existing slot id
   for (const participant of sanitizedParticipants) {
@@ -363,27 +373,27 @@ const buildMeetingData = async (
 
     const participantMapping: RequestParticipantMapping = {
       account_address: participant.account_address || '',
-      // this is the actual slot id for this participant, we choose it before creation
-      slot_id: participant.slot_id,
-      type: participant.type,
-      meeting_id: meetingId,
-      privateInfo: await encryptWithPublicKey(encodingKey, privateInfoComplete),
-      // store a hash of the original data in order to be able to determine in the
-      // future if the user is th
-      privateInfoHash: simpleHash(privateInfoComplete),
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      name: participant.name || '',
       guest_email: participant.guest_email,
-      status:
-        participant.status ||
-        (participant.type === ParticipantType.Scheduler
-          ? ParticipationStatus.Accepted
-          : ParticipationStatus.Pending),
       mappingType: !!participantsToKeep[
         participant.account_address || participant.guest_email || ''
       ]
         ? ParticipantMappingType.KEEP
         : ParticipantMappingType.ADD,
+      meeting_id: meetingId,
+      name: participant.name || '',
+      privateInfo: await encryptWithPublicKey(encodingKey, privateInfoComplete),
+      // store a hash of the original data in order to be able to determine in the
+      // future if the user is th
+      privateInfoHash: simpleHash(privateInfoComplete),
+      // this is the actual slot id for this participant, we choose it before creation
+      slot_id: participant.slot_id,
+      status:
+        participant.status ||
+        (participant.type === ParticipantType.Scheduler
+          ? ParticipationStatus.Accepted
+          : ParticipationStatus.Pending),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      type: participant.type,
     }
 
     participantsMappings.push(participantMapping)
@@ -401,27 +411,27 @@ const buildMeetingData = async (
   )
 
   return {
-    type: schedulingType,
-    start: startTime,
-    end: endTime,
-    meeting_id: meetingId,
-    participants_mapping: participantsMappings,
-    meetingTypeId,
-    meeting_url: privateInfo['meeting_url'],
-    content: privateInfo['content'],
-    title: privateInfo['title'],
-    meetingProvider,
-    meetingReminders,
-    meetingRepeat,
     allSlotIds,
-    meetingPermissions: selectedPermissions,
+    content: privateInfo['content'],
     encrypted_metadata: encrypted,
+    end: endTime,
     ignoreOwnerAvailability:
       participantsMappings.filter(
         mapping => mapping.type === ParticipantType.Owner
       ).length > 1,
-    txHash,
+    meeting_id: meetingId,
+    meeting_url: privateInfo['meeting_url'],
+    meetingPermissions: selectedPermissions,
+    meetingProvider,
+    meetingReminders,
+    meetingRepeat,
+    meetingTypeId,
+    participants_mapping: participantsMappings,
     rrule: handleRRULEForMeeting(meetingRepeat, startTime),
+    start: startTime,
+    title: privateInfo['title'],
+    txHash,
+    type: schedulingType,
   }
 }
 
@@ -469,11 +479,11 @@ const updateMeetingAsGuest = async (
     if (slot.account_address) {
       existingParticipants.push({
         account_address: slot.account_address,
-        type: slot.role || ParticipantType.Owner,
-        slot_id: slot.id!,
         meeting_id: fullMeetingData.id || '',
-        status: ParticipationStatus.Accepted,
         name: '', // Will be filled by handleParticipants
+        slot_id: slot.id!,
+        status: ParticipationStatus.Accepted,
+        type: slot.role || ParticipantType.Owner,
       })
     }
   }
@@ -533,16 +543,16 @@ const updateMeetingAsGuest = async (
       meetingProvider !== fullMeetingData.provider)
   ) {
     const generated = await generateMeetingUrl({
-      meeting_id: fullMeetingData.id || '',
-      title: meetingTitle || fullMeetingData.title || 'No Title',
-      end: endTime,
-      start: startTime,
-      meetingProvider,
-      participants_mapping: participantData.sanitizedParticipants,
       accounts: participantData.allAccounts,
       content: meetingContent,
+      end: endTime,
+      meeting_id: fullMeetingData.id || '',
+      meetingProvider,
       meetingReminders,
       meetingRepeat,
+      participants_mapping: participantData.sanitizedParticipants,
+      start: startTime,
+      title: meetingTitle || fullMeetingData.title || 'No Title',
     })
     finalMeetingUrl = generated.url
   }
@@ -568,26 +578,26 @@ const updateMeetingAsGuest = async (
 
   const payload = {
     ...meetingData,
-    slotsToRemove: [],
     guestsToRemove: [],
+    slotsToRemove: [],
     version: currentVersion + 1,
   }
 
   const slot: DBSlot = await apiUpdateMeetingAsGuest(validSlotId, payload)
 
   return {
+    content: meetingData.content,
+    created_at: new Date(),
+    end: meetingData.end,
     id: slot.id!,
     meeting_id: slot.id!,
-    created_at: new Date(),
-    participants: meetingData.participants_mapping,
-    content: meetingData.content,
-    title: meetingData.title,
-    meeting_url: meetingData.meeting_url,
-    start: meetingData.start,
-    end: meetingData.end,
-    related_slot_ids: meetingData.allSlotIds || [],
-    version: slot.version,
     meeting_info_encrypted: slot.meeting_info_encrypted,
+    meeting_url: meetingData.meeting_url,
+    participants: meetingData.participants_mapping,
+    related_slot_ids: meetingData.allSlotIds || [],
+    start: meetingData.start,
+    title: meetingData.title,
+    version: slot.version,
   }
 }
 
@@ -627,7 +637,6 @@ const updateMeeting = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
-  console.trace(decryptedMeeting)
   // Sanity check
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
@@ -816,30 +825,30 @@ const updateMeeting = async (
   )
   const payload = {
     ...meetingData,
+    guestsToRemove,
+    ignoreOwnerAvailability: true,
     slotsToRemove: toRemove
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
-    guestsToRemove,
     version: decryptedMeeting.version + 1,
-    ignoreOwnerAvailability: true,
   }
 
   const slotId = decryptedMeeting.id.split('_')[0]
   if (decryptedMeeting.user_type === 'guest') {
     const slot: DBSlot = await apiUpdateMeetingAsGuest(slotId, payload)
     return {
+      content: meetingData.content,
+      created_at: new Date(),
+      end: meetingData.end,
       id: slot.id!,
       meeting_id: slot.id!,
-      created_at: new Date(),
-      participants: meetingData.participants_mapping,
-      content: meetingData.content,
-      title: meetingData.title,
-      meeting_url: meetingData.meeting_url,
-      start: meetingData.start,
-      end: meetingData.end,
-      related_slot_ids: meetingData.allSlotIds || [],
-      version: slot.version,
       meeting_info_encrypted: slot.meeting_info_encrypted,
+      meeting_url: meetingData.meeting_url,
+      participants: meetingData.participants_mapping,
+      related_slot_ids: meetingData.allSlotIds || [],
+      start: meetingData.start,
+      title: meetingData.title,
+      version: slot.version,
     }
   } else {
     const slot: DBSlot = await apiUpdateMeeting(slotId, payload)
@@ -940,9 +949,9 @@ const updateMeetingInstance = async (
     existingMeeting.participants
       .filter(p => !!p.slot_id)
       .map(p => ({
-        slot_id: p.slot_id!,
         account_address: p.account_address,
         guest_email: p.guest_email,
+        slot_id: p.slot_id!,
       }))
   )
   const oldParticipantMap = new Map(
@@ -951,6 +960,7 @@ const updateMeetingInstance = async (
       p.slot_id,
     ])
   )
+  existingMeeting.related_slot_ids = oldParticipantsParsing.map(p => p.slot_id)
 
   existingMeeting.participants = existingMeeting.participants.map(
     participant => {
@@ -964,6 +974,16 @@ const updateMeetingInstance = async (
       return participant
     }
   )
+  participants = participants.map(participant => {
+    const key = participant.account_address || participant.guest_email
+    if (oldParticipantMap.has(key)) {
+      return {
+        ...participant,
+        slot_id: oldParticipantMap.get(key),
+      }
+    }
+    return participant
+  })
 
   const existingMeetingAccounts = await loadMeetingAccountAddresses(
     existingMeeting!,
@@ -985,12 +1005,10 @@ const updateMeetingInstance = async (
       .filter(p => p.account_address)
       .map(p => p.account_address!.toLowerCase()),
   ])
-
   const accountSlotMap = await mapRelatedSlots(
     existingMeeting!,
     currentAccountAddress
   )
-
   const oldGuests = existingMeeting.participants.filter(p => p.guest_email)
 
   const guests = participants
@@ -1065,17 +1083,17 @@ const updateMeetingInstance = async (
     rootMeetingId,
     meetingTitle,
     meetingReminders,
-    MeetingRepeat.NO_REPEAT,
+    existingMeeting.recurrence,
     selectedPermissions
   )
   const payload: MeetingInstanceUpdateRequest = {
     ...meetingData,
+    guestsToRemove,
+    ignoreOwnerAvailability: true,
     slotsToRemove: toRemove
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
-    guestsToRemove,
     version: existingMeeting.version + 1,
-    ignoreOwnerAvailability: true,
   }
 
   const slot: DBSlot = await apiUpdateMeetingInstance(instanceId, payload)
@@ -1120,9 +1138,9 @@ const deleteMeetingInstance = async (
     existingMeeting.participants
       .filter(p => !!p.slot_id)
       .map(p => ({
-        slot_id: p.slot_id!,
         account_address: p.account_address,
         guest_email: p.guest_email,
+        slot_id: p.slot_id!,
       }))
   )
   const oldParticipantMap = new Map(
@@ -1131,6 +1149,7 @@ const deleteMeetingInstance = async (
       p.slot_id,
     ])
   )
+  existingMeeting.related_slot_ids = oldParticipantsParsing.map(p => p.slot_id)
 
   existingMeeting.participants = existingMeeting.participants.map(
     participant => {
@@ -1158,8 +1177,8 @@ const deleteMeetingInstance = async (
       ) {
         return {
           ...participant,
-          type: ParticipantType.Scheduler,
           status: ParticipationStatus.Accepted,
+          type: ParticipantType.Scheduler,
         }
       }
       return participant
@@ -1264,12 +1283,12 @@ const deleteMeetingInstance = async (
   )
   const payload: MeetingInstanceUpdateRequest = {
     ...meetingData,
+    guestsToRemove,
+    ignoreOwnerAvailability: true,
     slotsToRemove: toRemove
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
-    guestsToRemove,
     version: existingMeeting.version + 1,
-    ignoreOwnerAvailability: true,
   }
   const slotId = existingMeeting.id.split('_')[0]
 
@@ -1308,9 +1327,9 @@ const cancelMeetingInstance = async (
     existingMeeting.participants
       .filter(p => !!p.slot_id)
       .map(p => ({
-        slot_id: p.slot_id!,
         account_address: p.account_address,
         guest_email: p.guest_email,
+        slot_id: p.slot_id!,
       }))
   )
   const oldParticipantMap = new Map(
@@ -1319,6 +1338,7 @@ const cancelMeetingInstance = async (
       p.slot_id,
     ])
   )
+  existingMeeting.related_slot_ids = oldParticipantsParsing.map(p => p.slot_id)
 
   existingMeeting.participants = existingMeeting.participants.map(
     participant => {
@@ -1407,17 +1427,17 @@ const updateMeetingSeries = async (
   const newStartDate = DateTime.fromJSDate(existingMeeting.start)
     .set({
       hour: extendedStart.hour,
+      millisecond: extendedStart.millisecond,
       minute: extendedStart.minute,
       second: extendedStart.second,
-      millisecond: extendedStart.millisecond,
     })
     .toJSDate()
   const newEndDate = DateTime.fromJSDate(existingMeeting.end)
     .set({
       hour: extendedEnd.hour,
+      millisecond: extendedEnd.millisecond,
       minute: extendedEnd.minute,
       second: extendedEnd.second,
-      millisecond: extendedEnd.millisecond,
     })
     .toJSDate()
 
@@ -1443,6 +1463,78 @@ const updateMeetingSeries = async (
     existingMeeting.recurrence,
     selectedPermissions
   )
+}
+const deleteMeetingSeries = async (
+  currentInstanceId: string,
+  ignoreAvailabilities: boolean,
+  currentAccountAddress: string,
+  scheduler?: ParticipantInfo
+) => {
+  if (!currentInstanceId.includes('_')) {
+    throw new MeetingChangeConflictError()
+  }
+  const signature = getSignature(currentAccountAddress || '') || ''
+
+  const [slotId] = currentInstanceId.split('_')
+
+  const [currentAccount, existingDBSlot] = await Promise.all([
+    getAccount(currentAccountAddress),
+    getMeeting(slotId),
+  ])
+
+  if (!existingDBSlot) {
+    throw new MeetingNotFoundError(currentInstanceId)
+  }
+
+  const existingMeeting = await decryptMeeting(
+    existingDBSlot,
+    currentAccount,
+    signature
+  )
+
+  if (!existingMeeting) {
+    throw new MeetingNotFoundError(slotId)
+  }
+
+  return deleteMeeting(
+    ignoreAvailabilities,
+    currentAccountAddress,
+    NO_MEETING_TYPE,
+    existingMeeting,
+    scheduler
+  )
+}
+const cancelMeetingSeries = async (
+  currentInstanceId: string,
+  currentAccountAddress: string
+) => {
+  if (!currentInstanceId.includes('_')) {
+    throw new MeetingChangeConflictError()
+  }
+  const signature = getSignature(currentAccountAddress || '') || ''
+
+  const [slotId] = currentInstanceId.split('_')
+
+  const [currentAccount, existingDBSlot] = await Promise.all([
+    getAccount(currentAccountAddress),
+    getMeeting(slotId),
+  ])
+
+  if (!existingDBSlot) {
+    throw new MeetingNotFoundError(currentInstanceId)
+  }
+
+  const existingMeeting = await decryptMeeting(
+    existingDBSlot,
+    currentAccount,
+    signature
+  )
+
+  if (!existingMeeting) {
+    throw new MeetingNotFoundError(slotId)
+  }
+
+  return cancelMeeting(currentAccountAddress, existingMeeting)
 }
 
 const updateMeetingConferenceGuest = async (
@@ -1628,26 +1720,26 @@ const updateMeetingConferenceGuest = async (
 
   const payload = {
     ...meetingData,
-    slotsToRemove: toRemove.map(it => accountSlotMap[it]),
     guestsToRemove,
+    slotsToRemove: toRemove.map(it => accountSlotMap[it]),
     version: decryptedMeeting.version + 1,
   }
 
   const slot: DBSlot = await apiUpdateMeetingAsGuest(slotId, payload)
 
   return {
+    content: meetingData.content,
+    created_at: new Date(),
+    end: meetingData.end,
     id: slot.id!,
     meeting_id: slot.id!,
-    created_at: new Date(),
-    participants: meetingData.participants_mapping,
-    content: meetingData.content,
-    title: meetingData.title,
-    meeting_url: meetingData.meeting_url,
-    start: meetingData.start,
-    end: meetingData.end,
-    related_slot_ids: meetingData.allSlotIds || [],
-    version: slot.version,
     meeting_info_encrypted: slot.meeting_info_encrypted,
+    meeting_url: meetingData.meeting_url,
+    participants: meetingData.participants_mapping,
+    related_slot_ids: meetingData.allSlotIds || [],
+    start: meetingData.start,
+    title: meetingData.title,
+    version: slot.version,
   }
 }
 
@@ -1711,8 +1803,8 @@ const deleteMeeting = async (
       ) {
         return {
           ...participant,
-          type: ParticipantType.Scheduler,
           status: ParticipationStatus.Accepted,
+          type: ParticipantType.Scheduler,
         }
       }
       return participant
@@ -1818,10 +1910,10 @@ const deleteMeeting = async (
   )
   const payload = {
     ...meetingData,
+    guestsToRemove,
     slotsToRemove: toRemove
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
-    guestsToRemove,
     version: existingMeeting.version + 1,
   }
   const slotId = decryptedMeeting.id.split('_')[0]
@@ -1947,14 +2039,14 @@ const cancelMeetingGuest = async (
   const response = await conferenceGuestMeetingCancel(
     decryptedMeeting.meeting_id,
     {
+      currentTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      guest_email: actorParticipant?.guest_email || '',
       meeting: {
         ...decryptedMeeting,
         related_slot_ids: decryptedMeeting.related_slot_ids.concat([
           decryptedMeeting.id,
         ]),
       },
-      currentTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      guest_email: actorParticipant?.guest_email || '',
       reason: reason || '',
     }
   )
@@ -1987,16 +2079,16 @@ const scheduleMeeting = async (
     meetingUrl ||
     (
       await generateMeetingUrl({
-        meeting_id: newMeetingId,
-        title: meetingTitle || 'No Title',
-        end: endTime,
-        start: startTime,
-        meetingProvider,
-        participants_mapping: participantData.sanitizedParticipants,
         accounts: participantData.allAccounts,
         content: meetingContent,
+        end: endTime,
+        meeting_id: newMeetingId,
+        meetingProvider,
         meetingReminders,
         meetingRepeat,
+        participants_mapping: participantData.sanitizedParticipants,
+        start: startTime,
+        title: meetingTitle || 'No Title',
       })
     ).url
 
@@ -2081,17 +2173,17 @@ const scheduleMeeting = async (
     return {
       id: slot.id!,
       ...meeting,
-      created_at: meeting.start,
-      participants: meeting.participants_mapping,
       content: meeting.content,
-      title: meeting.title,
-      meeting_id: newMeetingId,
-      meeting_url: meeting.meeting_url,
-      start: meeting.start,
+      created_at: meeting.start,
       end: meeting.end,
-      related_slot_ids: [],
-      version: 0,
+      meeting_id: newMeetingId,
       meeting_info_encrypted: slot.meeting_info_encrypted,
+      meeting_url: meeting.meeting_url,
+      participants: meeting.participants_mapping,
+      related_slot_ids: [],
+      start: meeting.start,
+      title: meeting.title,
+      version: 0,
     }
   } catch (error: unknown) {
     throw error
@@ -2103,40 +2195,40 @@ export const createAlarm = (indicator: MeetingReminders): Alarm => {
       return {
         action: 'display',
         description: 'Reminder',
-        trigger: { minutes: 15, before: true },
+        trigger: { before: true, minutes: 15 },
       }
 
     case MeetingReminders['30_MINUTES_BEFORE']:
       return {
         action: 'display',
         description: 'Reminder',
-        trigger: { minutes: 30, before: true },
+        trigger: { before: true, minutes: 30 },
       }
 
     case MeetingReminders['1_HOUR_BEFORE']:
       return {
         action: 'display',
         description: 'Reminder',
-        trigger: { hours: 1, before: true },
+        trigger: { before: true, hours: 1 },
       }
     case MeetingReminders['1_DAY_BEFORE']:
       return {
         action: 'display',
         description: 'Reminder',
-        trigger: { days: 1, before: true },
+        trigger: { before: true, days: 1 },
       }
     case MeetingReminders['1_WEEK_BEFORE']:
       return {
         action: 'display',
         description: 'Reminder',
-        trigger: { weeks: 1, before: true },
+        trigger: { before: true, weeks: 1 },
       }
     case MeetingReminders['10_MINUTES_BEFORE']:
     default:
       return {
         action: 'display',
         description: 'Reminder',
-        trigger: { minutes: 10, before: true },
+        trigger: { before: true, minutes: 10 },
       }
   }
 }
@@ -2157,22 +2249,6 @@ const generateIcs = async (
   const end = DateTime.fromJSDate(new Date(meeting.end))
   const created_at = DateTime.fromJSDate(new Date(meeting.created_at!))
   const event: EventAttributes = {
-    uid: meeting.meeting_id.replaceAll('-', ''),
-    start: [start.year, start.month, start.day, start.hour, start.minute],
-    productId: '-//Meetwith//EN',
-    end: [end.year, end.month, end.day, end.hour, end.minute],
-    title: CalendarServiceHelper.getMeetingTitle(
-      ownerAddress,
-      meeting.participants,
-      meeting.title
-    ),
-    description: CalendarServiceHelper.getMeetingSummary(
-      meeting.content,
-      meeting.meeting_url,
-      changeUrl
-    ),
-    url,
-    location: meeting.meeting_url,
     created: [
       created_at.year,
       created_at.month,
@@ -2180,12 +2256,28 @@ const generateIcs = async (
       created_at.hour,
       created_at.minute,
     ],
+    description: CalendarServiceHelper.getMeetingSummary(
+      meeting.content,
+      meeting.meeting_url,
+      changeUrl
+    ),
+    end: [end.year, end.month, end.day, end.hour, end.minute],
+    location: meeting.meeting_url,
     organizer: {
-      name: 'Meetwith',
       email: NO_REPLY_EMAIL,
+      name: 'Meetwith',
     },
+    productId: '-//Meetwith//EN',
+    start: [start.year, start.month, start.day, start.hour, start.minute],
     status:
       meetingStatus === MeetingChangeType.DELETE ? 'CANCELLED' : 'CONFIRMED',
+    title: CalendarServiceHelper.getMeetingTitle(
+      ownerAddress,
+      meeting.participants,
+      meeting.title
+    ),
+    uid: meeting.meeting_id.replaceAll('-', ''),
+    url,
   }
   if (!isPrivate) {
     event.method = 'REQUEST'
@@ -2229,11 +2321,11 @@ const generateIcs = async (
         if (!email && !isValidEmail(email)) return null
 
         const attendee: Attendee = {
-          name: participant.name || participant.account_address,
           email,
-          rsvp: participant.status === ParticipationStatus.Accepted,
+          name: participant.name || participant.account_address,
           partstat: participantStatusToICSStatus(participant.status),
           role: 'REQ-PARTICIPANT',
+          rsvp: participant.status === ParticipationStatus.Accepted,
         }
 
         if (participant.account_address) {
@@ -2297,21 +2389,21 @@ const decryptMeeting = async (
   return {
     id: meeting.id!,
     ...meeting,
-    meeting_id: meetingInfo.meeting_id,
-    created_at: meeting.created_at!,
-    participants: meetingInfo.participants,
     content: meetingInfo.content,
-    title: meetingInfo.title,
-    meeting_url: meetingInfo.meeting_url,
-    related_slot_ids: meetingInfo.related_slot_ids,
-    start: new Date(meeting.start),
+    created_at: meeting.created_at!,
     end: new Date(meeting.end),
-    version: meeting.version,
-    reminders: meetingInfo.reminders,
+    meeting_id: meetingInfo.meeting_id,
+    meeting_url: meetingInfo.meeting_url,
+    participants: meetingInfo.participants,
+    permissions: meetingInfo?.permissions,
     provider: meetingInfo?.provider,
     recurrence: meetingInfo?.recurrence,
-    permissions: meetingInfo?.permissions,
+    related_slot_ids: meetingInfo.related_slot_ids,
+    reminders: meetingInfo.reminders,
     series_id: 'series_id' in meeting ? meeting?.series_id : null,
+    start: new Date(meeting.start),
+    title: meetingInfo.title,
+    version: meeting.version,
   }
 }
 // This functions runtime is for the server side only
@@ -2328,20 +2420,20 @@ const decryptMeetingGuest = async (
   return {
     id: meeting.id!,
     ...meeting,
-    meeting_id: meetingInfo.meeting_id,
-    created_at: meeting.created_at!,
-    participants: meetingInfo.participants,
     content: meetingInfo.content,
-    title: meetingInfo.title,
-    meeting_url: meetingInfo.meeting_url,
-    related_slot_ids: meetingInfo.related_slot_ids,
-    start: new Date(meeting.start),
+    created_at: meeting.created_at!,
     end: new Date(meeting.end),
-    version: meeting.version,
-    reminders: meetingInfo.reminders,
+    meeting_id: meetingInfo.meeting_id,
+    meeting_url: meetingInfo.meeting_url,
+    participants: meetingInfo.participants,
+    permissions: meetingInfo?.permissions,
     provider: meetingInfo?.provider,
     recurrence: meetingInfo?.recurrence,
-    permissions: meetingInfo?.permissions,
+    related_slot_ids: meetingInfo.related_slot_ids,
+    reminders: meetingInfo.reminders,
+    start: new Date(meeting.start),
+    title: meetingInfo.title,
+    version: meeting.version,
   }
 }
 // This functions runtime is for the server side only
@@ -2357,21 +2449,21 @@ const decryptConferenceMeeting = async (
   const meetingInfo = JSON.parse(content) as MeetingInfo
 
   return {
-    id: meeting.id!,
-    meeting_info_encrypted: meeting.encrypted_metadata,
-    meeting_id: meetingInfo.meeting_id,
-    created_at: meeting.created_at!,
-    participants: meetingInfo.participants,
     content: meetingInfo.content,
-    title: meetingInfo.title,
-    meeting_url: meetingInfo.meeting_url,
-    related_slot_ids: meetingInfo.related_slot_ids,
-    start: new Date(meeting.start),
+    created_at: meeting.created_at!,
     end: new Date(meeting.end),
-    reminders: meetingInfo.reminders,
+    id: meeting.id!,
+    meeting_id: meetingInfo.meeting_id,
+    meeting_info_encrypted: meeting.encrypted_metadata,
+    meeting_url: meetingInfo.meeting_url,
+    participants: meetingInfo.participants,
+    permissions: meetingInfo?.permissions,
     provider: meetingInfo?.provider,
     recurrence: meetingInfo?.recurrence,
-    permissions: meetingInfo?.permissions,
+    related_slot_ids: meetingInfo.related_slot_ids,
+    reminders: meetingInfo.reminders,
+    start: new Date(meeting.start),
+    title: meetingInfo.title,
     version: -1, // Conference meetings do not have versioning
   }
 }
@@ -2380,8 +2472,8 @@ const generateDefaultAvailabilities = (): DayAvailability[] => {
   const availabilities: DayAvailability[] = []
   for (let i = 0; i <= 6; i++) {
     availabilities.push({
-      weekday: i,
       ranges: i !== 0 && i !== 6 ? [defaultTimeRange()] : [],
+      weekday: i,
     })
   }
   return availabilities
@@ -2391,15 +2483,15 @@ const generateEmptyAvailabilities = (): DayAvailability[] => {
   const availabilities: DayAvailability[] = []
   for (let i = 0; i <= 6; i++) {
     availabilities.push({
-      weekday: i,
       ranges: [defaultTimeRange()],
+      weekday: i,
     })
   }
   return availabilities
 }
 
 const defaultTimeRange = () => {
-  return { start: '09:00', end: '18:00' }
+  return { end: '18:00', start: '09:00' }
 }
 
 const durationToHumanReadable = (duration: number): string => {
@@ -2486,7 +2578,7 @@ export const getOwnerPublicUrl = async (
   try {
     const ownerAccount = await getAccount(ownerAccountAddress)
     return getAccountCalendarUrl(ownerAccount)
-  } catch (error) {
+  } catch (_error) {
     // Fallback if account not found
     return `${appUrl}/address/${ownerAccountAddress}`
   }
@@ -2495,12 +2587,12 @@ export const getOwnerPublicUrl = async (
 const generateDefaultMeetingType = (account_owner_address: string) => {
   const title = '30 minutes meeting'
   const meetingType = {
-    title,
-    slug: getSlugFromText(title),
+    account_owner_address,
     duration_minutes: 30,
     min_notice_minutes: 60,
+    slug: getSlugFromText(title),
+    title,
     type: SessionType.FREE,
-    account_owner_address,
   }
 
   return meetingType
@@ -2769,11 +2861,11 @@ const meetWithSeriesPreprocessors = (
       if (!instanceExists) {
         const slotInstance: SlotInstance = {
           ...slotSerie,
-          status: RecurringStatus.CONFIRMED,
+          end: ghostEndTime.toJSDate(),
           id: `${slotSerie.id}_instance_${ghostStartTime.toJSDate().getTime()}`, // Unique ID for the ghost instance
           series_id: slotSerie.id!,
           start: ghostStartTime.toJSDate(),
-          end: ghostEndTime.toJSDate(),
+          status: RecurringStatus.CONFIRMED,
         }
         slots.push(slotInstance)
       }
@@ -2800,13 +2892,13 @@ const rsvpMeeting = async (
   const isRecurringMeeting = eventId.includes('_')
   const currentAccount = await getAccount(accountAddress)
   let decryptedMeeting: MeetingDecrypted | null = null
-  let series_id: string | null = null
+  let _series_id: string | null = null
   if (isRecurringMeeting) {
     const slot = await getSlotInstanceById(eventId, signal)
     if (!slot || !slot.account_address) {
       throw new MeetingNotFoundError(eventId)
     }
-    series_id = slot.series_id
+    _series_id = slot.series_id
     decryptedMeeting = await decodeMeeting(slot, currentAccount)
   } else {
     const existingDBSlot = await getMeeting(eventId, signal)
@@ -2880,10 +2972,10 @@ const rsvpMeeting = async (
   )
   const payload: MeetingInstanceUpdateRequest = {
     ...meetingData,
-    version: decryptedMeeting.version + 1,
-    slotsToRemove: [],
     guestsToRemove: [],
     ignoreOwnerAvailability: true,
+    slotsToRemove: [],
+    version: decryptedMeeting.version + 1,
   }
   if (isRecurringMeeting) {
     const slot: DBSlot = await apiUpdateMeetingInstance(
@@ -2944,4 +3036,6 @@ export {
   updateMeetingSeries,
   deleteMeetingInstance,
   cancelMeetingInstance,
+  deleteMeetingSeries,
+  cancelMeetingSeries,
 }

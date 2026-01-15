@@ -58,8 +58,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         .map(val => val.name || val.address || val.email)
         .join(', ')
       return res.status(400).json({
-        error: `${invitedUsersConcatenated} has already been invited to group.`,
         alreadyInvitedUsers,
+        error: `${invitedUsersConcatenated} has already been invited to group.`,
       })
     }
 
@@ -99,7 +99,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
               n => n.channel === NotificationChannel.EMAIL
             )?.destination
           }
-        } catch (error) {
+        } catch (_error) {
           console.warn(
             `Account with address ${invitee.address} not found. Proceeding with invite creation.`
           )
@@ -138,7 +138,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     return res
       .status(200)
-      .json({ success: true, message: 'Invitations sent successfully.' })
+      .json({ message: 'Invitations sent successfully.', success: true })
   } catch (error) {
     if (error instanceof ContactNotFound) {
       return res.status(404).json({ error: error.message })

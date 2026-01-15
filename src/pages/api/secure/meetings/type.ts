@@ -50,10 +50,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         const limitedMeetingTypes = freeMeetingTypes.slice(0, 1)
 
         return res.status(200).json({
-          meetingTypes: limitedMeetingTypes,
-          total: allMeetingTypes.length,
           hidden: allMeetingTypes.length - limitedMeetingTypes.length,
+          meetingTypes: limitedMeetingTypes,
           paidHidden: paidMeetingTypes.length,
+          total: allMeetingTypes.length,
           upgradeRequired:
             allMeetingTypes.length >= 1 || paidMeetingTypes.length >= 0,
         })
@@ -61,10 +61,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       // Pro: return all meeting types
       return res.status(200).json({
-        meetingTypes: allMeetingTypes,
-        total: allMeetingTypes.length,
         hidden: 0,
+        meetingTypes: allMeetingTypes,
         paidHidden: 0,
+        total: allMeetingTypes.length,
         upgradeRequired: false,
       })
     }

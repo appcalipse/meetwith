@@ -15,12 +15,12 @@ export const isSessionType = (value: string): value is SessionType => {
 
 export const SessionTypeOptions = [
   {
-    value: SessionType.FREE,
     label: 'Free',
+    value: SessionType.FREE,
   },
   {
-    value: SessionType.PAID,
     label: 'Paid',
+    value: SessionType.PAID,
   },
 ]
 export const BASE_PROVIDERS = [
@@ -31,34 +31,34 @@ export const BASE_PROVIDERS = [
 ]
 export const MinNoticeTimeOptions = [
   {
-    value: 'minutes',
     label: 'Minutes',
+    value: 'minutes',
   },
   {
-    value: 'hours',
     label: 'Hours',
+    value: 'hours',
   },
   {
-    value: 'days',
     label: 'Days',
+    value: 'days',
   },
 ]
 export const DurationOptions = [
   {
-    value: 15,
     label: '15 Mins',
+    value: 15,
   },
   {
-    value: 30,
     label: '30 Mins',
+    value: 30,
   },
   {
-    value: 45,
     label: '45 Mins',
+    value: 45,
   },
   {
-    value: 60,
     label: '60 Mins',
+    value: 60,
   },
 ]
 
@@ -69,12 +69,12 @@ export enum PlanType {
 
 export const PlanTypeOptions = [
   {
-    value: PlanType.ONE_OFF,
     label: 'One-off',
+    value: PlanType.ONE_OFF,
   },
   {
-    value: PlanType.SESSIONS,
     label: 'Package of Sessions',
+    value: PlanType.SESSIONS,
   },
 ]
 export const isPlanType = (value: string): value is PlanType => {
@@ -88,12 +88,12 @@ export enum PaymentChannel {
 
 export const PaymentChannelOptions = (address: string) => [
   {
-    value: PaymentChannel.ACCOUNT_ADDRESS,
     label: `In-app wallet (${address})`,
+    value: PaymentChannel.ACCOUNT_ADDRESS,
   },
   {
-    value: PaymentChannel.CUSTOM_ADDRESS,
     label: 'Custom Address',
+    value: PaymentChannel.CUSTOM_ADDRESS,
   },
 ]
 const devChains = [
@@ -109,8 +109,8 @@ export const supportedPaymentChains = isProduction ? prodChains : devChains
 export const CryptoNetworkForCardSettlementOptions = supportedChains
   .filter(val => (supportedPaymentChains || []).includes(val.chain))
   .map(val => ({
-    value: val.id,
     label: val.fullName,
+    value: val.id,
   }))
 export const isPaymentChannel = (value: string): value is PaymentChannel => {
   return Object.values(PaymentChannel).some(channel => channel === value)
@@ -159,28 +159,28 @@ export enum PaymentRedirectType {
   CHECKOUT = 'checkout',
 }
 export const getDefaultValues = (): Partial<MeetingType> => ({
-  type: SessionType.FREE,
-  slug: '',
-  title: '',
+  availabilities: [],
+  calendars: [],
+  description: '',
   duration_minutes: 30,
   min_notice_minutes: 60,
-  calendars: [],
-  availabilities: [],
-  description: '',
   plan: {
-    type: PlanType.ONE_OFF,
-    no_of_slot: 1,
-    price_per_slot: 0,
-    payment_channel: PaymentChannel.ACCOUNT_ADDRESS,
-    payment_address: '',
-    meeting_type_id: '',
+    created_at: new Date(),
     default_chain_id: networkOptions[0].id,
     default_token: AcceptedToken.USDC,
-    created_at: new Date(),
-    updated_at: new Date(),
-    payment_methods: [],
     id: '',
+    meeting_type_id: '',
+    no_of_slot: 1,
+    payment_address: '',
+    payment_channel: PaymentChannel.ACCOUNT_ADDRESS,
+    payment_methods: [],
+    price_per_slot: 0,
+    type: PlanType.ONE_OFF,
+    updated_at: new Date(),
   },
+  slug: '',
+  title: '',
+  type: SessionType.FREE,
 })
 
 export const networkOptions = supportedChains
@@ -193,8 +193,8 @@ export const networkOptions = supportedChains
       )
   )
   .map(val => ({
+    icon: val.image,
     id: val.id,
     name: val.fullName,
-    icon: val.image,
     value: val.chain,
   }))

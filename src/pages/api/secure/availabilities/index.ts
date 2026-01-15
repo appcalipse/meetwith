@@ -46,8 +46,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       )
       return res.status(200).json({
         ...newBlock,
-        isDefault: is_default,
         availabilities: newBlock.weekly_availability,
+        isDefault: is_default,
       })
     }
 
