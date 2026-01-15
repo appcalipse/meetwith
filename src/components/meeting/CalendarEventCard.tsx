@@ -173,72 +173,72 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
   }
   return (
     <Box
-      shadow="sm"
-      width="100%"
-      borderRadius="lg"
-      position="relative"
       bgColor={bgColor}
+      borderRadius="lg"
       mt={3}
+      position="relative"
       pt={{
         base: 3,
         md: 2,
       }}
+      shadow="sm"
+      width="100%"
     >
       <HStack position="absolute" right={0} top={0}>
         {label && (
           <Badge
-            borderRadius={0}
+            alignSelf="flex-end"
             borderBottomRightRadius={4}
+            borderRadius={0}
+            colorScheme={label.color}
             px={2}
             py={1}
-            colorScheme={label.color}
-            alignSelf="flex-end"
           >
             {label.text}
           </Badge>
         )}
         {isRecurring && recurrenceLabel && (
           <Badge
-            borderRadius={0}
+            alignSelf="flex-end"
             borderBottomRightRadius={4}
+            borderRadius={0}
+            colorScheme={'gray'}
             px={2}
             py={1}
-            colorScheme={'gray'}
-            alignSelf="flex-end"
           >
             Recurrence: {recurrenceLabel}
           </Badge>
         )}{' '}
         <Badge
-          fontSize="xs"
-          borderRadius={0}
           borderBottomRightRadius={4}
+          borderRadius={0}
+          colorScheme={'primary'}
+          fontSize="xs"
           px={2}
           py={1}
-          colorScheme={'primary'}
         >
           {event.source}
         </Badge>
       </HStack>
-      <Box p={6} pt={isRecurring ? 8 : 6} maxWidth="100%">
-        <VStack alignItems="start" position="relative" gap={6}>
+      <Box maxWidth="100%" p={6} pt={isRecurring ? 8 : 6}>
+        <VStack alignItems="start" gap={6} position="relative">
           <Flex
             alignItems="start"
-            w="100%"
             flexDirection={{
               base: 'column-reverse',
               md: 'row',
             }}
-            gap={4}
             flexWrap="wrap"
+            gap={4}
+            w="100%"
           >
-            <VStack flex={1} alignItems="start">
-              <Flex flex={1} alignItems="center" gap={3}>
+            <VStack alignItems="start" flex={1}>
+              <Flex alignItems="center" flex={1} gap={3}>
                 <Heading fontSize="24px">
                   <strong>{event?.title || 'No Title'}</strong>
                 </Heading>
               </Flex>
-              <Text fontSize="16px" alignItems="start">
+              <Text alignItems="start" fontSize="16px">
                 <strong>
                   {dateToLocalizedRange(
                     event.start as Date,
@@ -257,25 +257,25 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
               }}
             >
               <Link
-                href={addUTMParams(event?.meeting_url || '')}
-                isExternal
-                onClick={() => logEvent('Joined a meeting')}
-                whiteSpace="nowrap"
-                overflow="hidden"
-                textOverflow="ellipsis"
-                maxWidth="100%"
-                textDecoration="none"
-                flex={1}
                 _hover={{
                   textDecoration: 'none',
                 }}
+                flex={1}
+                href={addUTMParams(event?.meeting_url || '')}
+                isExternal
+                maxWidth="100%"
+                onClick={() => logEvent('Joined a meeting')}
+                overflow="hidden"
+                textDecoration="none"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
               >
                 <Button colorScheme="primary">Join meeting</Button>
               </Link>
               <Tooltip label="Delete meeting" placement="top">
                 <IconButton
-                  color={iconColor}
                   aria-label="delete"
+                  color={iconColor}
                   icon={<FaTrash size={16} />}
                   onClick={onOpen}
                 />
@@ -286,45 +286,45 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
           <Divider />
           <VStack alignItems="start" maxWidth="100%">
             <HStack alignItems="flex-start" maxWidth="100%">
-              <Text display="inline" width="100%" whiteSpace="balance">
+              <Text display="inline" whiteSpace="balance" width="100%">
                 <strong>Participants: </strong>
                 {participants || 'No participants'}
               </Text>
             </HStack>
             <HStack
               alignItems="flex-start"
-              maxWidth="100%"
               flexWrap="wrap"
               gap={2}
+              maxWidth="100%"
               width="100%"
             >
-              <Text whiteSpace="nowrap" fontWeight={700}>
+              <Text fontWeight={700} whiteSpace="nowrap">
                 Meeting link:
               </Text>
               <Flex flex={1} overflow="hidden">
                 <Link
-                  whiteSpace="nowrap"
-                  textOverflow="ellipsis"
-                  overflow="hidden"
                   href={addUTMParams(event.meeting_url || '')}
                   isExternal
                   onClick={() => logEvent('Clicked to start meeting')}
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
                 >
                   {event.meeting_url}
                 </Link>
                 <Tooltip
+                  isOpen={copyFeedbackOpen}
                   label="Link copied"
                   placement="top"
-                  isOpen={copyFeedbackOpen}
                 >
                   <Button
-                    w={4}
                     colorScheme="primary"
-                    variant="link"
-                    onClick={() => handleCopy(event.meeting_url || '')}
                     leftIcon={
-                      <FaRegCopy size={16} display="block" cursor="pointer" />
+                      <FaRegCopy cursor="pointer" display="block" size={16} />
                     }
+                    onClick={() => handleCopy(event.meeting_url || '')}
+                    variant="link"
+                    w={4}
                   />
                 </Tooltip>
               </Flex>
@@ -335,16 +335,17 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
                   <strong>Description:</strong>
                 </Text>
                 <Text
-                  width="100%"
-                  wordBreak="break-word"
-                  whiteSpace="pre-wrap"
-                  suppressHydrationWarning
+                  className="rich-text-wrapper"
                   dangerouslySetInnerHTML={{
                     __html: sanitizeHtml(event.description.trim(), {
                       allowedAttributes: false,
                       allowVulnerableTags: false,
                     }),
                   }}
+                  suppressHydrationWarning
+                  whiteSpace="pre-wrap"
+                  width="100%"
+                  wordBreak="break-word"
                 />
               </HStack>
             )}
@@ -354,17 +355,17 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
             <HStack alignItems="center" gap={2}>
               <Tag
                 bg={isAccepted(actor?.status) ? 'green.500' : 'transparent'}
-                borderWidth={1}
                 borderColor={'green.500'}
-                rounded="full"
-                px={3}
+                borderWidth={1}
+                cursor="pointer"
                 fontSize={{
                   lg: '16px',
                   md: '14px',
                   base: '12px',
                 }}
                 onClick={() => handleRSVP(AttendeeStatus.ACCEPTED)}
-                cursor="pointer"
+                px={3}
+                rounded="full"
               >
                 <TagLabel
                   color={isAccepted(actor?.status) ? 'white' : 'green.500'}
@@ -374,17 +375,17 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
               </Tag>
               <Tag
                 bg={isDeclined(actor?.status) ? 'red.250' : 'transparent'}
-                borderWidth={1}
                 borderColor={'red.250'}
-                rounded="full"
-                px={3}
+                borderWidth={1}
+                cursor="pointer"
                 fontSize={{
                   lg: '16px',
                   md: '14px',
                   base: '12px',
                 }}
                 onClick={() => handleRSVP(AttendeeStatus.DECLINED)}
-                cursor="pointer"
+                px={3}
+                rounded="full"
               >
                 <TagLabel
                   color={isDeclined(actor?.status) ? 'white' : 'red.250'}
@@ -396,17 +397,17 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
                 bg={
                   isPendingAction(actor?.status) ? 'primary.300' : 'transparent'
                 }
-                borderWidth={1}
                 borderColor={'primary.300'}
-                rounded="full"
-                px={3}
+                borderWidth={1}
+                cursor="pointer"
                 fontSize={{
                   lg: '16px',
                   md: '14px',
                   base: '12px',
                 }}
                 onClick={() => handleRSVP(AttendeeStatus.NEEDS_ACTION)}
-                cursor="pointer"
+                px={3}
+                rounded="full"
               >
                 <TagLabel
                   color={
@@ -421,10 +422,10 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
         </VStack>
       </Box>
       <DeleteEventDialog
+        afterCancel={() => removeEventFromCache(event.sourceEventId)}
+        event={event}
         isOpen={isOpen}
         onClose={onClose}
-        event={event}
-        afterCancel={() => removeEventFromCache(event.sourceEventId)}
       />
     </Box>
   )
