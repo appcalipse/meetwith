@@ -1420,7 +1420,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       auth: myGoogleAuth,
       version: 'v3',
     })
-    if (!event.id || !event.extendedProperties?.private?.meetingId) {
+    if (!event.id) {
       throw new Error('Event ID or meeting ID is missing')
     }
     await calendar.events.update({
