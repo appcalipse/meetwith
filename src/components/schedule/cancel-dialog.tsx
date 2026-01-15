@@ -15,7 +15,12 @@ import React, { useState } from 'react'
 
 import { Account } from '@/types/Account'
 import { MeetingDecrypted } from '@/types/Meeting'
-import { cancelMeeting } from '@/utils/calendar_manager'
+import {
+  cancelMeeting,
+  cancelMeetingInstance,
+  cancelMeetingSeries,
+} from '@/utils/calendar_manager'
+import { UpdateMode } from '@/utils/constants/meeting'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 interface CancelMeetingDialogProps {
@@ -25,6 +30,7 @@ interface CancelMeetingDialogProps {
   afterCancel?: (slotsRemoved: string[]) => void | Promise<unknown>
   isOpen: boolean
   onClose: () => void
+  editMode?: UpdateMode
 }
 
 export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
@@ -34,6 +40,7 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
   afterCancel,
   isOpen,
   onClose,
+  editMode,
 }) => {
   const cancelRef = React.useRef<HTMLButtonElement>(null)
   const [cancelling, _setCancelling] = useState(false)
@@ -102,8 +109,24 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
               onClick={() => {
                 if (!decryptedMeeting) return
                 setCancelling(true)
-
-                cancelMeeting(currentAccount!.address, meetingInfo)
+                let handler: Promise<{ removed: string[] }>
+                if (decryptedMeeting.id.includes('_')) {
+                  if (editMode === UpdateMode.SINGLE_EVENT) {
+                    handler = cancelMeetingInstance(
+                      currentAccount!.address,
+                      meetingInfo.id,
+                      meetingInfo
+                    )
+                  } else {
+                    handler = cancelMeetingSeries(
+                      meetingInfo.id,
+                      currentAccount!.address
+                    )
+                  }
+                } else {
+                  handler = cancelMeeting(currentAccount!.address, meetingInfo)
+                }
+                handler
                   .then(async ({ removed }) => {
                     try {
                       afterCancel && (await afterCancel(removed))
