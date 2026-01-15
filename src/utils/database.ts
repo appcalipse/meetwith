@@ -4711,7 +4711,7 @@ const updateMeetingInstance = async (
         version: slot.version,
       })
     } else {
-      // never had a series so we create a slot for this new participant
+      // meeting never had a series so we create a slot for this new participant
       slots.push({
         id: slot.id.split('_')[0],
         start: slot.start,
@@ -4779,11 +4779,9 @@ const updateMeetingInstance = async (
       meetingReminders: meetingUpdateRequest.meetingReminders,
       meetingPermissions: meetingUpdateRequest.meetingPermissions,
       skipCalendarSync: false,
-      skipNotify: true,
       rrule: meetingUpdateRequest.rrule,
       original_start_time: originalStartTime.toJSDate(),
     }
-
     // Doing notifications and syncs asynchronously
     fetch(`${apiUrl}/server/meetings/instance/syncAndNotify`, {
       method: 'PATCH',
@@ -4798,7 +4796,6 @@ const updateMeetingInstance = async (
     meetingUpdateRequest.slotsToRemove.length > 0 ||
     meetingUpdateRequest.guestsToRemove.length > 0
   )
-    // TODO: create a new hanbdler for deletying slots from recurring Instance, I.e deleteRecurringMeetingInstanceFromDB
     await deleteMeetingFromDB(
       participantActing,
       meetingUpdateRequest.slotsToRemove,
@@ -7440,7 +7437,6 @@ const handleWebhookEvent = async (
       end.toISO()
     )
     // eslint-disable-next-line no-restricted-syntax
-    console.log({ syncToken })
     if (syncToken)
       await updateResourcesSyncToken(channelId, resourceId, syncToken)
     return true
