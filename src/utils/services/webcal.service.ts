@@ -8,7 +8,10 @@ import { rrulestr } from 'rrule'
 
 import { UnifiedEvent } from '@/types/Calendar'
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import {
+  MeetingCancelSyncRequest,
+  MeetingCreationSyncRequest,
+} from '@/types/Requests'
 
 import { WebDAVEvent, WebDAVEventMapper } from './caldav.mapper'
 import { BaseCalendarService, EventBusyDate } from './calendar.service.types'
@@ -461,6 +464,17 @@ export default class WebCalService implements BaseCalendarService {
     responseStatus: string
   ): Promise<void> {
     console.warn('ICS feeds are read-only. Cannot update RSVP status.')
+    return Promise.resolve()
+  }
+  deleteExternalEvent(calendarId: string, eventId: string): Promise<void> {
+    console.warn('ICS feeds are read-only. Cannot delete external events.')
+    return Promise.resolve()
+  }
+  deleteEventInstance(
+    calendarId: string,
+    meetingDetails: MeetingCancelSyncRequest
+  ): Promise<void> {
+    console.warn('ICS feeds are read-only. Cannot delete event instances.')
     return Promise.resolve()
   }
 }

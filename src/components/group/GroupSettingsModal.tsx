@@ -318,14 +318,22 @@ const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
             <VStack gap={6} alignItems="stretch">
               {/* Avatar Section */}
               <FormControl>
-                <HStack gap={4} alignItems="center">
+                <HStack gap={4} alignItems="center" width="100%">
                   <GroupAvatar
                     avatarUrl={group.avatar_url}
                     groupName={groupName}
                     boxSize="80px"
+                    flexShrink={0}
                   />
-                  <VStack alignItems="flex-start" gap={0} flex={1}>
-                    <Heading size="md" fontWeight="bold">
+                  <VStack alignItems="flex-start" gap={0} flex={1} minW={0}>
+                    <Heading
+                      size="md"
+                      fontWeight="bold"
+                      width="100%"
+                      overflow="hidden"
+                      textOverflow="ellipsis"
+                      whiteSpace="nowrap"
+                    >
                       {groupName}
                     </Heading>
                     <Link

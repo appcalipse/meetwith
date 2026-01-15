@@ -26,6 +26,10 @@ const moduleExports = {
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   compress: true,
   poweredByHeader: false,
+  experimental: {
+    workerThreads: false,
+    cpus: 1,
+  },
   images: {
     domains: [],
     deviceSizes: [640, 750, 828, 1080, 1200],

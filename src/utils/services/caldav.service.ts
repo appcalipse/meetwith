@@ -25,6 +25,7 @@ import {
 import { Intents } from '@/types/Dashboard'
 import { MeetingChangeType } from '@/types/Meeting'
 import {
+  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -962,6 +963,57 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     }
   }
 
+  async deleteEventInstance(
+    calendarId: string,
+    meetingDetails: MeetingCancelSyncRequest
+  ): Promise<void> {
+    const eventUID = meetingDetails.meeting_id
+    const originalStartTime = meetingDetails.original_start_time
+
+    if (!originalStartTime) {
+      throw new Error(
+        'original_start_time is required for recurring instance deletions'
+      )
+    }
+    // Fetch all events with this UID (master + any existing exceptions)
+    const events = await this.getEventsByUID(eventUID)
+    const masterEvent = events.find(
+      event => event.uid === eventUID.replaceAll('-', '') && !event.recurrenceId
+    )
+
+    if (!masterEvent) {
+      throw new Error('Series master event not found')
+    }
+    // Check if exception exists for this recurrence
+    const originalStartTimeMs = new Date(originalStartTime).getTime()
+    const existingException = events.find(e => {
+      if (!e.recurrenceId) return false
+      try {
+        return new Date(e.recurrenceId).getTime() === originalStartTimeMs
+      } catch {
+        return false
+      }
+    })
+
+    // Add EXDATE to master event to exclude this occurrence
+    await this.addExdateToMaster(
+      masterEvent,
+      new Date(originalStartTime),
+      calendarId
+    )
+
+    // Delete existing exception if it exists
+    if (existingException) {
+      await deleteCalendarObject({
+        calendarObject: {
+          url: existingException.url,
+          etag: existingException.etag,
+        },
+        headers: this.headers,
+      })
+    }
+  }
+
   private async buildVEventWithRecurrenceId(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingInstanceCreationSyncRequest,
@@ -1250,5 +1302,23 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       Sentry.captureException(error)
       throw new Error(`Failed to update RSVP for CalDAV event: ${error}`)
     }
+  }
+  async deleteExternalEvent(
+    calendarId: string,
+    eventId: string
+  ): Promise<void> {
+    const events = await this.getEventsByUID(eventId)
+    const eventsToDelete = events.filter(event => event.uid === eventId)
+    await Promise.all(
+      eventsToDelete.map(event => {
+        return deleteCalendarObject({
+          calendarObject: {
+            url: event.url,
+            etag: event?.etag,
+          },
+          headers: this.headers,
+        })
+      })
+    )
   }
 }

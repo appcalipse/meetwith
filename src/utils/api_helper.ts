@@ -31,7 +31,13 @@ import {
   SubscribeResponseCrypto,
   TrialEligibilityResponse,
 } from '@/types/Billing'
-import { AttendeeStatus, CalendarEvents } from '@/types/Calendar'
+import {
+  AttendeeStatus,
+  CalendarEvents,
+  DashBoardMwwEvents,
+  ExtendedCalendarEvents,
+  UnifiedEvent,
+} from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -100,6 +106,8 @@ import {
   MeetingCreationRequest,
   MeetingInstanceUpdateRequest,
   MeetingUpdateRequest,
+  ParseParticipantInfo,
+  ParseParticipantsRequest,
   RequestInvoiceRequest,
   UpdateAvailabilityBlockMeetingTypesRequest,
   UpdateAvailabilityBlockRequest,
@@ -168,10 +176,11 @@ import { safeConvertConditionFromAPI } from './token.gate.service'
 type RequestOption = {
   signal?: AbortSignal
 }
-export const internalFetch = async <T>(
+type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+export const internalFetch = async <T, J = unknown>(
   path: string,
-  method = 'GET',
-  body?: unknown,
+  method: Method = 'GET',
+  body?: J,
   options: RequestInit = {},
   headers = {},
   isFormData = false,
@@ -569,6 +578,29 @@ export const cancelMeeting = async (
   try {
     return (await internalFetch(
       `/secure/meetings/${meeting.id}`,
+      'DELETE',
+      body
+    )) as { removed: string[] }
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    }
+    throw e
+  }
+}
+export const cancelMeetingInstance = async (
+  meeting: MeetingDecrypted,
+  currentTimezone: string
+): Promise<{ removed: string[] }> => {
+  const body: MeetingCancelRequest = {
+    meeting,
+    currentTimezone,
+  }
+  try {
+    return (await internalFetch(
+      `/secure/meetings/instances/${meeting.id}`,
       'DELETE',
       body
     )) as { removed: string[] }
@@ -2641,8 +2673,9 @@ export const getEvents = async (
 export const getCalendarEvents = async (
   startDate: DateTime,
   endDate: DateTime,
+  currentAccount: Account,
   onlyMeetings = true
-): Promise<CalendarEvents> => {
+): Promise<ExtendedCalendarEvents> => {
   const events = await internalFetch<CalendarEvents>(
     `/secure/calendar_events?startDate=${encodeURIComponent(
       startDate.toISO() || ''
@@ -2650,17 +2683,29 @@ export const getCalendarEvents = async (
       endDate.toISO() || ''
     )}&onlyMeetings=${onlyMeetings}`
   )
-
+  const preProcessedMeetWithEvents = meetWithSeriesPreprocessors(
+    events.mwwEvents,
+    startDate,
+    endDate
+  )
+  const decryptedMwwEvents = await Promise.all(
+    preProcessedMeetWithEvents.map(async slot => {
+      try {
+        const decrypted = await decodeMeeting(slot, currentAccount)
+        return { ...slot, decrypted }
+      } catch (_e) {
+        return { ...slot, decrypted: null }
+      }
+    })
+  )
   return {
     calendarEvents: events.calendarEvents.map(event => ({
       ...event,
       start: new Date(event.start),
       end: new Date(event.end),
     })),
-    mwwEvents: meetWithSeriesPreprocessors(
-      events.mwwEvents,
-      startDate,
-      endDate
+    mwwEvents: decryptedMwwEvents.filter(
+      (event): event is DashBoardMwwEvents => event.decrypted !== null
     ),
   }
 }
@@ -2717,5 +2762,37 @@ export const updateCalendarRsvpStatus = async (
     {
       signal: abortSignal,
     }
+  )
+}
+
+export const updateCalendarEvent = async (
+  event: UnifiedEvent
+): Promise<UnifiedEvent> => {
+  return await internalFetch<UnifiedEvent, UnifiedEvent>(
+    `/secure/calendar/event`,
+    'PATCH',
+    event
+  )
+}
+
+export const deleteCalendarEvent = async (
+  calendarId: string,
+  eventId: string
+) => {
+  return await internalFetch(
+    `/secure/calendar/${calendarId}/${eventId}`,
+    'DELETE',
+    undefined
+  )
+}
+
+export const parsedDecryptedParticipants = async (
+  instance_id: string,
+  participants: ParseParticipantInfo[]
+) => {
+  return internalFetch<ParseParticipantInfo[], ParseParticipantsRequest>(
+    `/secure/meetings/instance/${instance_id}/participants`,
+    'POST',
+    { participants }
   )
 }
