@@ -351,7 +351,8 @@ const MeetingCard = ({
   }
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
-    meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
+    meeting?.decrypted.recurrence &&
+    meeting?.decrypted.recurrence !== MeetingRepeat.NO_REPEAT
   const canSeeGuestList = canAccountAccessPermission(
     meeting.decrypted?.permissions,
     meeting.decrypted?.participants || [],
@@ -389,67 +390,66 @@ const MeetingCard = ({
   return (
     <>
       <Box
+        bgColor={bgColor}
+        borderRadius="lg"
+        mt={3}
+        position="relative"
+        pt={{
+          base: label || isRecurring ? 4 : 0,
+        }}
         shadow="sm"
         width="100%"
-        borderRadius="lg"
-        position="relative"
-        mt={3}
-        bgColor={bgColor}
-        pt={{
-          base: label ? 3 : 0,
-          md: label ? 1.5 : 0,
-        }}
       >
         <HStack
+          display={label || isRecurring ? 'flex' : 'none'}
           position="absolute"
           right={0}
           top={0}
-          display={label || isRecurring ? 'flex' : 'none'}
         >
           {label && (
             <Badge
-              borderRadius={0}
+              alignSelf="flex-end"
               borderBottomRightRadius={4}
+              borderRadius={0}
+              colorScheme={label.color}
               px={2}
               py={1}
-              colorScheme={label.color}
-              alignSelf="flex-end"
             >
               {label.text}
             </Badge>
           )}
           {isRecurring && (
             <Badge
-              borderRadius={0}
+              alignSelf="flex-end"
               borderBottomRightRadius={4}
+              borderRadius={0}
+              colorScheme={'gray'}
               px={2}
               py={1}
-              colorScheme={'gray'}
-              alignSelf="flex-end"
             >
-              Recurrence: {meeting?.recurrence}
+              Recurrence: {meeting?.decrypted?.recurrence}
             </Badge>
           )}
         </HStack>
-        <Box p={6} pt={isRecurring ? 8 : 6} maxWidth="100%">
-          <VStack alignItems="start" position="relative" gap={6}>
+        <Box maxWidth="100%" p={6} pt={isRecurring ? 8 : 6}>
+          <VStack alignItems="start" gap={6} position="relative">
             <Flex
               alignItems="start"
-              w="100%"
               flexDirection={{
                 base: 'column-reverse',
                 md: 'row',
               }}
-              gap={4}
               flexWrap="wrap"
+              gap={4}
+              w="100%"
             >
-              <VStack flex={1} alignItems="start">
-                <Flex flex={1} alignItems="center" gap={3}>
+              <VStack alignItems="start" flex={1}>
+                <Flex alignItems="center" flex={1} gap={3}>
                   <Heading fontSize="24px">
                     <strong>{meeting.decrypted?.title || 'No Title'}</strong>
                   </Heading>
                 </Flex>
-                <Text fontSize="16px" alignItems="start">
+                <Text alignItems="start" fontSize="16px">
                   <strong>
                     {dateToLocalizedRange(
                       meeting.start as Date,
@@ -468,25 +468,25 @@ const MeetingCard = ({
                 }}
               >
                 <Link
-                  href={addUTMParams(meeting.decrypted?.meeting_url || '')}
-                  isExternal
-                  onClick={() => logEvent('Joined a meeting')}
-                  whiteSpace="nowrap"
-                  overflow="hidden"
-                  textOverflow="ellipsis"
-                  maxWidth="100%"
-                  textDecoration="none"
-                  flex={1}
                   _hover={{
                     textDecoration: 'none',
                   }}
+                  flex={1}
+                  href={addUTMParams(meeting.decrypted?.meeting_url || '')}
+                  isExternal
+                  maxWidth="100%"
+                  onClick={() => logEvent('Joined a meeting')}
+                  overflow="hidden"
+                  textDecoration="none"
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
                 >
                   <Button colorScheme="primary">Join meeting</Button>
                 </Link>
                 <Tooltip label="Edit meeting" placement="top">
                   <IconButton
-                    color={iconColor}
                     aria-label="edit"
+                    color={iconColor}
                     icon={<FaEdit size={16} />}
                     onClick={handleEditMeeting}
                   />
@@ -494,8 +494,8 @@ const MeetingCard = ({
                 {isSchedulerOrOwner && (
                   <Tooltip label="Cancel meeting for everyone" placement="top">
                     <IconButton
-                      color={iconColor}
                       aria-label="remove"
+                      color={iconColor}
                       icon={<MdCancel size={16} />}
                       onClick={onCancelOpen}
                     />
@@ -503,17 +503,17 @@ const MeetingCard = ({
                 )}
                 <Tooltip label="Delete meeting" placement="top">
                   <IconButton
-                    color={iconColor}
                     aria-label="delete"
+                    color={iconColor}
                     icon={<FaTrash size={16} />}
                     onClick={handleDelete}
                   />
                 </Tooltip>
                 <Menu>
                   <MenuButton
+                    aria-label="option"
                     as={IconButton}
                     color={iconColor}
-                    aria-label="option"
                     icon={<FaEllipsisV size={16} />}
                     key={`${meeting?.id}-option`}
                   />
@@ -521,29 +521,29 @@ const MeetingCard = ({
                     <MenuList backgroundColor={menuBgColor}>
                       {menuItems.map((val, index, arr) => [
                         <MenuItem
-                          onClick={val.onClick}
+                          aria-busy
                           backgroundColor={menuBgColor}
                           key={`${val.label}-${meeting?.id}`}
-                          aria-busy
+                          onClick={val.onClick}
                         >
                           {val.label}
                         </MenuItem>,
                         index !== arr.length - 1 && (
                           <MenuDivider
-                            key={`divider-${index}-${meeting?.id}`}
                             borderColor="neutral.600"
+                            key={`divider-${index}-${meeting?.id}`}
                           />
                         ),
                       ])}
                       {!isProduction && (
                         <>
                           <MenuDivider
-                            key="divider2"
                             borderColor="neutral.600"
+                            key="divider2"
                           />
                           <MenuItem
-                            key="log-info"
                             backgroundColor={menuBgColor}
+                            key="log-info"
                             onClick={() => console.debug(meeting.decrypted)}
                           >
                             Log info (for debugging)
@@ -559,47 +559,47 @@ const MeetingCard = ({
             <Divider />
             <VStack alignItems="start" maxWidth="100%">
               <HStack alignItems="flex-start" maxWidth="100%">
-                <Text display="inline" width="100%" whiteSpace="balance">
+                <Text display="inline" whiteSpace="balance" width="100%">
                   <strong>Participants: </strong>
                   {getNamesDisplay(meeting.decrypted, canSeeGuestList)}
                 </Text>
               </HStack>
               <HStack
                 alignItems="flex-start"
-                maxWidth="100%"
                 flexWrap="wrap"
                 gap={2}
+                maxWidth="100%"
                 width="100%"
               >
-                <Text whiteSpace="nowrap" fontWeight={700}>
+                <Text fontWeight={700} whiteSpace="nowrap">
                   Meeting link:
                 </Text>
                 <Flex flex={1} overflow="hidden">
                   <Link
-                    whiteSpace="nowrap"
-                    textOverflow="ellipsis"
-                    overflow="hidden"
                     href={addUTMParams(meeting.decrypted.meeting_url || '')}
                     isExternal
                     onClick={() => logEvent('Clicked to start meeting')}
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                    whiteSpace="nowrap"
                   >
                     {meeting.decrypted.meeting_url}
                   </Link>
                   <Tooltip
+                    isOpen={copyFeedbackOpen}
                     label="Link copied"
                     placement="top"
-                    isOpen={copyFeedbackOpen}
                   >
                     <Button
-                      w={4}
                       colorScheme="primary"
-                      variant="link"
+                      leftIcon={
+                        <FaRegCopy cursor="pointer" display="block" size={16} />
+                      }
                       onClick={() =>
                         handleCopy(meeting.decrypted.meeting_url || '')
                       }
-                      leftIcon={
-                        <FaRegCopy size={16} display="block" cursor="pointer" />
-                      }
+                      variant="link"
+                      w={4}
                     />
                   </Tooltip>
                 </Flex>
@@ -610,16 +610,17 @@ const MeetingCard = ({
                     <strong>Description:</strong>
                   </Text>
                   <Text
-                    width="100%"
-                    wordBreak="break-word"
-                    whiteSpace="pre-wrap"
-                    suppressHydrationWarning
+                    className="rich-text-wrapper"
                     dangerouslySetInnerHTML={{
                       __html: sanitizeHtml(meeting.decrypted.content, {
                         allowedAttributes: false,
                         allowVulnerableTags: false,
                       }),
                     }}
+                    suppressHydrationWarning
+                    whiteSpace="pre-wrap"
+                    width="100%"
+                    wordBreak="break-word"
                   />
                 </HStack>
               )}
@@ -629,17 +630,17 @@ const MeetingCard = ({
               <HStack alignItems="center" gap={2}>
                 <Tag
                   bg={isAccepted(actor?.status) ? 'green.500' : 'transparent'}
-                  borderWidth={1}
                   borderColor={'green.500'}
-                  rounded="full"
-                  px={3}
+                  borderWidth={1}
+                  cursor="pointer"
                   fontSize={{
                     lg: '16px',
                     md: '14px',
                     base: '12px',
                   }}
-                  cursor="pointer"
                   onClick={() => handleRSVP(ParticipationStatus.Accepted)}
+                  px={3}
+                  rounded="full"
                 >
                   <TagLabel
                     color={isAccepted(actor?.status) ? 'white' : 'green.500'}
@@ -649,17 +650,17 @@ const MeetingCard = ({
                 </Tag>
                 <Tag
                   bg={isDeclined(actor?.status) ? 'red.250' : 'transparent'}
-                  borderWidth={1}
                   borderColor={'red.250'}
-                  rounded="full"
-                  px={3}
+                  borderWidth={1}
+                  cursor="pointer"
                   fontSize={{
                     lg: '16px',
                     md: '14px',
                     base: '12px',
                   }}
-                  cursor="pointer"
                   onClick={() => handleRSVP(ParticipationStatus.Rejected)}
+                  px={3}
+                  rounded="full"
                 >
                   <TagLabel
                     color={isDeclined(actor?.status) ? 'white' : 'red.250'}
@@ -673,17 +674,17 @@ const MeetingCard = ({
                       ? 'primary.300'
                       : 'transparent'
                   }
-                  borderWidth={1}
                   borderColor={'primary.300'}
-                  rounded="full"
+                  borderWidth={1}
                   cursor="pointer"
-                  px={3}
                   fontSize={{
                     lg: '16px',
                     md: '14px',
                     base: '12px',
                   }}
                   onClick={() => handleRSVP(ParticipationStatus.Pending)}
+                  px={3}
+                  rounded="full"
                 >
                   <TagLabel
                     color={
@@ -700,24 +701,24 @@ const MeetingCard = ({
       </Box>
 
       <ScheduleParticipantsSchedulerModal
+        decryptedMeeting={meeting.decrypted}
         isOpen={isEditSchedulerOpen}
         onClose={onEditSchedulerClose}
         participants={meeting.decrypted?.participants || []}
-        decryptedMeeting={meeting.decrypted}
       />
       <DeleteMeetingDialog
+        afterCancel={onCancel}
+        currentAccount={currentAccount}
+        decryptedMeeting={meeting.decrypted}
         isOpen={isDeleteOpen}
         onClose={onDeleteClose}
-        decryptedMeeting={meeting.decrypted}
-        currentAccount={currentAccount}
-        afterCancel={onCancel}
       />
       <CancelMeetingDialog
+        afterCancel={onCancel}
+        currentAccount={currentAccount}
+        decryptedMeeting={meeting.decrypted}
         isOpen={isCancelOpen}
         onClose={onCancelClose}
-        decryptedMeeting={meeting.decrypted}
-        currentAccount={currentAccount}
-        afterCancel={onCancel}
       />
     </>
   )
