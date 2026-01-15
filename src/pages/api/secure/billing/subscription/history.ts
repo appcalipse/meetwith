@@ -55,17 +55,17 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       const mappedPeriods: SubscriptionPeriod[] = periods.map(period => ({
+        billing_plan_id: period.billing_plan_id,
+        chain: period.chain,
+        config_ipfs_hash: period.config_ipfs_hash,
+        domain: period.domain,
+        expiry_time: period.expiry_time,
         id: period.id,
         owner_account: period.owner_account,
         plan_id: period.plan_id,
-        billing_plan_id: period.billing_plan_id,
-        chain: period.chain,
-        domain: period.domain,
-        config_ipfs_hash: period.config_ipfs_hash,
-        status: statusMap[period.status] || SubscriptionStatus.EXPIRED,
-        expiry_time: period.expiry_time,
-        transaction_id: period.transaction_id,
         registered_at: period.registered_at,
+        status: statusMap[period.status] || SubscriptionStatus.EXPIRED,
+        transaction_id: period.transaction_id,
         updated_at: period.updated_at,
       }))
 
@@ -98,14 +98,14 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         // Format date from transaction.confirmed_at
         const date = transaction.confirmed_at
           ? new Date(transaction.confirmed_at).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: '2-digit',
               day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
             })
           : new Date(period.registered_at).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: '2-digit',
               day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
             })
 
         // Determine payment method
@@ -119,18 +119,18 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           : `0.00 ${currency}`
 
         historyItems.push({
-          plan: planName,
+          amount,
           date,
           paymentMethod,
-          amount,
+          plan: planName,
         })
       }
 
       const response: GetSubscriptionHistoryResponse = {
-        periods: mappedPeriods,
-        total,
         items: historyItems,
         page: Math.floor(offset / limit) + 1,
+        periods: mappedPeriods,
+        total,
         totalPages: Math.ceil(total / limit),
       }
 

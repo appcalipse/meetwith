@@ -48,20 +48,20 @@ export const useAvailabilityBlockUIState = () => {
   }
 
   return {
-    isEditing,
-    editingBlockId,
     duplicatingBlockId,
-    showDeleteConfirmation,
-    showSelectDefaultModal,
-    selectDefaultModalConfig,
+    editingBlockId,
+    isEditing,
     isSaving,
-    setIsSaving,
     resetUIState,
-    setEditingState,
-    setDuplicatingState,
+    selectDefaultModalConfig,
     setCreateState,
+    setDuplicatingState,
+    setEditingState,
+    setIsSaving,
+    setSelectDefaultModalConfig,
     setShowDeleteConfirmation,
     setShowSelectDefaultModal,
-    setSelectDefaultModalConfig,
+    showDeleteConfirmation,
+    showSelectDefaultModal,
   }
 }

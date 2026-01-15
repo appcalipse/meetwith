@@ -68,10 +68,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
         // Send trial started email (non-blocking, queued)
         const emailPlan: BillingEmailPlan = {
+          billing_cycle: billingPlan.billing_cycle,
           id: billingPlan.id,
           name: billingPlan.name,
           price: billingPlan.price,
-          billing_cycle: billingPlan.billing_cycle,
         }
 
         emailQueue.add(async () => {
@@ -93,16 +93,16 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         })
 
         const trialResponse: SubscribeResponseCrypto = {
-          success: true,
           amount: 0,
-          currency: 'USD',
           billing_plan_id,
+          currency: 'USD',
           subscriptionData: {
-            subscription_type: SubscriptionType.INITIAL,
-            billing_plan_id,
             account_address: accountAddress,
+            billing_plan_id,
             subscription_channel: `crypto-subscription:trial:${v4()}:${billing_plan_id}`,
+            subscription_type: SubscriptionType.INITIAL,
           },
+          success: true,
         }
 
         return res.status(200).json(trialResponse)
@@ -111,23 +111,25 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const existingSubscription = await getActiveSubscriptionPeriod(
         accountAddress
       )
-      let calculatedExpiryTime: Date
+      let _calculatedExpiryTime: Date
 
       if (existingSubscription) {
         const existingExpiry = DateTime.fromISO(
           existingSubscription.expiry_time
         )
         if (billingPlan.billing_cycle === 'monthly') {
-          calculatedExpiryTime = existingExpiry.plus({ months: 1 }).toJSDate()
+          _calculatedExpiryTime = existingExpiry.plus({ months: 1 }).toJSDate()
         } else {
-          calculatedExpiryTime = existingExpiry.plus({ years: 1 }).toJSDate()
+          // yearly
+          _calculatedExpiryTime = existingExpiry.plus({ years: 1 }).toJSDate()
         }
       } else {
         const now = DateTime.now()
         if (billingPlan.billing_cycle === 'monthly') {
-          calculatedExpiryTime = now.plus({ months: 1 }).toJSDate()
+          _calculatedExpiryTime = now.plus({ months: 1 }).toJSDate()
         } else {
-          calculatedExpiryTime = now.plus({ years: 1 }).toJSDate()
+          // yearly
+          _calculatedExpiryTime = now.plus({ years: 1 }).toJSDate()
         }
       }
 
@@ -139,16 +141,17 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         subscription_type: SubscriptionType.INITIAL,
         billing_plan_id,
         account_address: accountAddress,
+        billing_plan_id,
         subscription_channel: subscriptionChannel,
         handle,
       }
 
       const response: SubscribeResponseCrypto = {
-        success: true,
         amount: billingPlan.price,
-        currency: 'USD',
         billing_plan_id,
+        currency: 'USD',
         subscriptionData,
+        success: true,
       }
 
       return res.status(200).json(response)

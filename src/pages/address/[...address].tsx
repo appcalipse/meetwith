@@ -39,7 +39,7 @@ EnhancedSchedule.getInitialProps = async (
     const host = ctx.req?.headers.host
     const currentUrl = host && ctx.asPath ? host + ctx.asPath : ''
 
-    return { currentUrl, account, serverSideRender: Boolean(ctx.res) }
+    return { account, currentUrl, serverSideRender: Boolean(ctx.res) }
   } catch (e) {
     if (!(e instanceof AccountNotFoundError)) {
       Sentry.captureException(e)

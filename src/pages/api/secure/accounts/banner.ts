@@ -44,8 +44,8 @@ const handler = async (req: handlerReqWithFile, res: NextApiResponse) => {
       }
       Sentry.captureException(e, {
         tags: {
-          route: 'api/secure/accounts/avatar',
           method: req.method,
+          route: 'api/secure/accounts/avatar',
         },
       })
       return res.status(500).json({

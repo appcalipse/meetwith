@@ -23,10 +23,10 @@ interface IOnboardingContext {
 const DEFAULT_STATE: IOnboardingContext = {
   accountDetailsComplete: () => false,
   availabilitiesComplete: () => Promise.resolve(false),
-  connectedCalendarsComplete: () => false,
   completeSteps: () => Promise.resolve(0),
-  onboardingComplete: () => Promise.resolve(false),
+  connectedCalendarsComplete: () => false,
   isLoaded: false,
+  onboardingComplete: () => Promise.resolve(false),
   reload: () => void 0,
 }
 
@@ -100,10 +100,10 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
   const onboardingContext = {
     accountDetailsComplete,
     availabilitiesComplete,
-    connectedCalendarsComplete,
     completeSteps,
-    onboardingComplete,
+    connectedCalendarsComplete,
     isLoaded: loadedState,
+    onboardingComplete,
     reload,
   }
 

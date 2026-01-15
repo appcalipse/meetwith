@@ -141,7 +141,7 @@ export function QuickPollPickAvailability({
   isSavingAvailability,
   isRefreshingAvailabilities,
 }: QuickPollPickAvailabilityProps) {
-  const router = useRouter()
+  const _router = useRouter()
   const {
     timezone,
     setTimezone,

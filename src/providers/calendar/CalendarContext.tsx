@@ -53,14 +53,14 @@ export type CalendarEventsData = {
 export const CalendarContext = React.createContext<ICalendarContext>({
   calendars: undefined,
   currentDate: DateTime.now(),
-  setCurrentDate: () => {},
-  selectedCalendars: [],
-  setSelectedCalendars: () => {},
-  getSlotBgColor: () => '',
-  selectedSlot: null,
-  setSelectedSlot: () => {},
   eventIndex: { dayIndex: new Map(), hourIndex: new Map() },
+  getSlotBgColor: () => '',
   isLoading: false,
+  selectedCalendars: [],
+  selectedSlot: null,
+  setCurrentDate: () => {},
+  setSelectedCalendars: () => {},
+  setSelectedSlot: () => {},
 })
 export const createEventsQueryKey = (date: DateTime) => [
   'calendar-events',
@@ -87,8 +87,8 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     | null
   >(null)
   const { data: calendars, isLoading: isCalendarLoading } = useQuery({
-    queryKey: ['connected-calendars'],
     queryFn: () => listConnectedCalendars(false),
+    queryKey: ['connected-calendars'],
   })
   const queryClient = useQueryClient()
   const currentAccount = useAccountContext()
@@ -127,10 +127,10 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   )
 
   const { data: events, isLoading } = useQuery({
-    queryKey: createEventsQueryKey(currentMonth),
-    queryFn: () => fetchEventsForMonth(currentMonth),
-    staleTime: 5 * 60 * 1000,
     enabled: !!currentMonth,
+    queryFn: () => fetchEventsForMonth(currentMonth),
+    queryKey: createEventsQueryKey(currentMonth),
+    staleTime: 5 * 60 * 1000,
   })
 
   React.useEffect(() => {
@@ -139,14 +139,14 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     const nextMonth = currentDate.plus({ month: 1 })
 
     queryClient.prefetchQuery({
-      queryKey: createEventsQueryKey(previousMonth),
       queryFn: () => fetchEventsForMonth(previousMonth),
+      queryKey: createEventsQueryKey(previousMonth),
       staleTime: 10 * 60 * 1000, // Keep prefetched data fresh for 10 minutes
     })
 
     queryClient.prefetchQuery({
-      queryKey: createEventsQueryKey(nextMonth),
       queryFn: () => fetchEventsForMonth(nextMonth),
+      queryKey: createEventsQueryKey(nextMonth),
       staleTime: 10 * 60 * 1000, // Keep prefetched data fresh for 10 minutes
     })
   }, [currentMonth, queryClient, isLoading])
@@ -180,12 +180,12 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
       }),
     ].map(event => ({
       ...event,
-      start: DateTime.fromJSDate(new Date(event.start)),
       end: DateTime.fromJSDate(new Date(event.end)),
       interval: Interval.fromDateTimes(
         DateTime.fromJSDate(new Date(event.start)),
         DateTime.fromJSDate(new Date(event.end))
       ),
+      start: DateTime.fromJSDate(new Date(event.start)),
     }))
 
     // Index events by hour for O(1) lookup
@@ -217,7 +217,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
       }
     })
 
-    return { hourIndex, dayIndex }
+    return { dayIndex, hourIndex }
   }, [events, selectedCalendars])
 
   const getSlotBgColor = React.useCallback(
@@ -234,14 +234,14 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     () => ({
       calendars,
       currentDate,
-      setCurrentDate,
-      selectedCalendars,
-      setSelectedCalendars,
-      getSlotBgColor,
-      selectedSlot,
-      setSelectedSlot,
       eventIndex,
+      getSlotBgColor,
       isLoading: isCalendarLoading || isLoading,
+      selectedCalendars,
+      selectedSlot,
+      setCurrentDate,
+      setSelectedCalendars,
+      setSelectedSlot,
     }),
     [
       calendars,

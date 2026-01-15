@@ -29,10 +29,10 @@ export const getTokenBalance = async (
 ): Promise<bigint> => {
   const chainInfo = getChainInfo(chain)
   const contract = getContract({
-    client: thirdWebClient,
-    chain: chainInfo!.thirdwebChain,
-    address: tokenAddress,
     abi: erc20Abi,
+    address: tokenAddress,
+    chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
   const balance = await readContract({
     contract,
@@ -66,11 +66,11 @@ export const getTokenMeta = async (
 ): Promise<Partial<TokenMeta>> => {
   const url = `https://api.coingecko.com/api/v3/coins/${chain}/contract/${tokenAddress}`
   const options = {
-    method: 'GET',
     headers: {
       accept: 'application/json',
       'x-cg-demo-api-key': process.env.NEXT_PUBLIC_COINGECKO_API_KEY || '',
     },
+    method: 'GET',
   }
   const data = await fetch(url, options)
   const dataJson = await data.json()
@@ -85,17 +85,17 @@ export const getTokenInfo = async (
 > => {
   const chainInfo = getChainInfo(chain)
   const erc20Contract = getContract({
-    client: thirdWebClient,
-    chain: chainInfo!.thirdwebChain,
-    address: tokenAddress,
     abi: erc20Abi,
+    address: tokenAddress,
+    chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
 
   const nftContract = getContract({
-    client: thirdWebClient,
-    chain: chainInfo!.thirdwebChain,
-    address: tokenAddress,
     abi: Abi.parse(ERC721),
+    address: tokenAddress,
+    chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
 
   try {
@@ -118,7 +118,7 @@ export const getTokenInfo = async (
       })
 
       if (baseURI) isNFT = true
-    } catch (error) {
+    } catch (_error) {
       for (const i of [0, 1, 100, 1000, 10000]) {
         try {
           const tokenURI = await readContract({
@@ -128,7 +128,7 @@ export const getTokenInfo = async (
           })
           if (tokenURI) isNFT = true
           isNFT = true
-        } catch (error) {}
+        } catch (_error) {}
       }
       if (!isNFT) {
         decimals = await readContract({
@@ -139,16 +139,16 @@ export const getTokenInfo = async (
     }
 
     return {
+      chain: chain,
+      contract: erc20Contract,
+      decimals,
+      itemId: tokenAddress,
       itemName: name,
       itemSymbol: symbol,
-      itemId: tokenAddress,
-      decimals,
-      chain: chain,
-      type: isNFT ? GateInterface.ERC721 : GateInterface.ERC20,
       minimumBalance: 0n,
-      contract: erc20Contract,
+      type: isNFT ? GateInterface.ERC721 : GateInterface.ERC20,
     }
-  } catch (error) {
+  } catch (_error) {
     return null
   }
 }
@@ -166,10 +166,10 @@ export const getCryptoTokenBalance = async (
     }
 
     const contract = getContract({
-      client: thirdWebClient,
-      chain: chainInfo.thirdwebChain,
-      address: tokenAddress as `0x${string}`,
       abi: erc20Abi,
+      address: tokenAddress as `0x${string}`,
+      chain: chainInfo.thirdwebChain,
+      client: thirdWebClient,
     })
 
     const balance = await readContract({
@@ -315,10 +315,10 @@ export const getTokenDecimals = async (
     }
 
     const contract = getContract({
-      client: thirdWebClient,
-      chain: chainInfo.thirdwebChain,
-      address: tokenAddress as `0x${string}`,
       abi: erc20Abi,
+      address: tokenAddress as `0x${string}`,
+      chain: chainInfo.thirdwebChain,
+      client: thirdWebClient,
     })
 
     const decimals = await readContract({
@@ -385,8 +385,8 @@ export const getNetworkWithHighestBalance = async (
         }
 
         networkBalances.push({
-          chain: chainInfo.chain,
           balance: networkTotal,
+          chain: chainInfo.chain,
         })
       } catch (error) {
         console.error(

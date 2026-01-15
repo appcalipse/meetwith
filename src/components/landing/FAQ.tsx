@@ -1,4 +1,3 @@
-import { VStack } from '@chakra-ui/react'
 import {
   Accordion,
   AccordionButton,
@@ -6,6 +5,7 @@ import {
   AccordionPanel,
   Box,
   Heading,
+  VStack,
 } from '@chakra-ui/react'
 import Link from 'next/link'
 import { ReactElement } from 'react'

@@ -25,9 +25,8 @@ import {
   OwnInviteError,
 } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
-
-import { Avatar } from '../profile/components/Avatar'
 import { ContactStateContext } from '../profile/Contact'
+import { Avatar } from '../profile/components/Avatar'
 
 export interface IContactRejectInviteModal {
   onClose: () => void

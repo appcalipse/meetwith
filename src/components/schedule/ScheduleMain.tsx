@@ -68,6 +68,7 @@ import {
   decodeMeeting,
   deleteMeeting,
   deleteMeetingInstance,
+  deleteMeetingSeries,
   scheduleMeeting,
   selectDefaultProvider,
   updateMeeting,
@@ -514,7 +515,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     try {
       if (seriesId) {
         if (editMode === UpdateMode.SINGLE_EVENT) {
-          deleteMeetingInstance(
+          await deleteMeetingInstance(
             decryptedMeeting.id,
             true,
             currentAccount?.address || '',
@@ -522,6 +523,12 @@ const ScheduleMain: FC<IInitialProps> = ({
             actor
           )
         } else {
+          await deleteMeetingSeries(
+            decryptedMeeting.id,
+            true,
+            currentAccount?.address || '',
+            actor
+          )
         }
       } else {
         await deleteMeeting(
@@ -1096,6 +1103,7 @@ const ScheduleMain: FC<IInitialProps> = ({
           decryptedMeeting={decryptedMeeting}
           currentAccount={currentAccount}
           afterCancel={handleRedirect}
+          editMode={editMode}
         />
       </Container>
     </ActionsContext.Provider>

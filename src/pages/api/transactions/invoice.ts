@@ -16,17 +16,17 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         (meetingType?.plan?.price_per_slot || 0) *
         (meetingType?.plan?.no_of_slot || 0)
       await sendInvoiceEmail(payload.guest_email, payload.guest_name, {
-        full_name: payload.guest_name,
         email_address: payload.guest_email,
-        plan: meetingType.title,
+        full_name: payload.guest_name,
         number_of_sessions: meetingType.plan?.no_of_slot.toString() || '0',
-        price: amount.toString(),
         payment_method: payload.payment_method,
+        plan: meetingType.title,
+        price: amount.toString(),
         url: payload.url,
       })
 
       return res.status(200).json({ success: true })
-    } catch (e: unknown) {
+    } catch (_e: unknown) {
       res.status(500).json({ error: 'Error sending transaction invoice' })
     }
   }

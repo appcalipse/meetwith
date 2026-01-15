@@ -2,7 +2,7 @@ import { Select } from 'chakra-react-select'
 import { useEffect, useMemo, useState } from 'react'
 
 import { getBrowserTimezone } from '@/utils/availability.helper'
-import { timeZoneFilter, TimeZoneOption } from '@/utils/constants/select'
+import { TimeZoneOption, timeZoneFilter } from '@/utils/constants/select'
 import { timezones } from '@/utils/date_helper'
 
 interface TimezoneProps {
