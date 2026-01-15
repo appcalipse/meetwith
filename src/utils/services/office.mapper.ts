@@ -22,6 +22,7 @@ import {
   ResponseStatus,
 } from '@/types/Office365'
 import { MeetingPermissions } from '../constants/schedule'
+import { CalendarServiceHelper } from './calendar.helper'
 
 export class Office365EventMapper {
   /**
@@ -142,12 +143,7 @@ export class Office365EventMapper {
   private static extractDescription(body?: ItemBody): string | undefined {
     if (!body?.content) return undefined
 
-    // If HTML, you might want to strip HTML tags or convert to plain text
-    if (body.contentType === 'html') {
-      return body.content.replace(/<[^>]*>/g, '') // Simple HTML strip
-    }
-
-    return body.content
+    return CalendarServiceHelper.parseDescriptionToRichText(body.content)
   }
 
   private static parseDateTime(dateTime: DateTimeTimeZone): Date {

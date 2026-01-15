@@ -15,6 +15,7 @@ import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { getBaseEventId } from '../calendar_sync_helpers'
 import { MeetingPermissions } from '../constants/schedule'
 import { isJson } from '../generic_utils'
+import { CalendarServiceHelper } from './calendar.helper'
 
 // Types for WebDAV/CalDAV events (based on your existing code)
 export interface WebDAVEvent {
@@ -74,7 +75,9 @@ export class WebDAVEventMapper {
     return {
       id: this.generateInternalId(webdavEvent),
       title: webdavEvent.summary || '(No title)',
-      description: webdavEvent.description || null,
+      description: CalendarServiceHelper.parseDescriptionToRichText(
+        webdavEvent.description
+      ),
       start: webdavEvent.startDate,
       end: webdavEvent.endDate,
       isAllDay: this.isAllDayEvent(webdavEvent.startDate, webdavEvent.endDate),
