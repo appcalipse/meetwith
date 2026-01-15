@@ -219,7 +219,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
             <PopoverArrow />
             <PopoverCloseButton
               onClick={() => handleSelectEvent(onClose)}
-              as={isCalendarEvent(event) ? FaX : FaExpand}
+              as={FaExpand}
               size={'24'}
               top={4}
               right={4}
