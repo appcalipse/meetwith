@@ -27,7 +27,9 @@ import { useScheduleNavigation } from '@/providers/schedule/NavigationContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import {
+  AttendeeStatus,
   isCalendarEvent,
+  mapParticipationStatusToAttendeeStatus,
   UnifiedAttendee,
   UnifiedEvent,
   WithInterval,
@@ -60,6 +62,7 @@ import {
 } from '@/utils/generic_utils'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { queryClient } from '@/utils/react_query'
+import { rsvpQueue } from '@/utils/workers/rsvp.queue'
 import { SingleDatepicker } from '../input-date-picker'
 import { InputTimePicker } from '../input-time-picker'
 import RichTextEditor from '../profile/components/RichTextEditor'
@@ -127,6 +130,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
     setMeetingUrl,
     setMeetingNotification,
     isScheduling,
+    setPickedTime,
   } = useScheduleState()
   const { handleSchedule, handleCancel } = useScheduleActions()
   const { canEditMeetingDetails } = useParticipantPermissions()
@@ -184,8 +188,13 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
   )
   const handleRSVP = async (status: ParticipationStatus) => {
     if (!actor || !currentAccount) return
-    if (status === actor.status) return
-    // cancel any in-flight rsvp request
+    if (
+      status === actor.status ||
+      actor.status === mapParticipationStatusToAttendeeStatus(status)
+    )
+      return
+    const previousStatus = actor.status
+
     if (rsvpAbortControllerRef.current) {
       rsvpAbortControllerRef.current.abort()
     }
@@ -194,42 +203,104 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
     rsvpAbortControllerRef.current = abortController
 
     logEvent(`Clicked RSVP ${status} from Event Details PopOver`)
-
-    queryClient.setQueryData<CalendarEventsData>(
-      createEventsQueryKey(currentDate),
-      old => {
-        if (!old?.mwwEvents) return old
-        return {
-          ...old,
-          mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
-            if (event.id !== slot.id) return event
-            return {
-              ...event,
-              participants: event.participants.map(p =>
-                p.account_address === currentAccount?.address
-                  ? { ...p, status }
-                  : p
-              ),
+    setActor(prev => {
+      if (!prev) return prev
+      if (!isCalendarEvent(slot)) {
+        const participantInfo = prev as ParticipantInfo
+        return previousStatus ? { ...participantInfo, status: status } : prev
+      } else {
+        const unifiedAttendee = prev as UnifiedAttendee
+        return previousStatus
+          ? {
+              ...unifiedAttendee,
+              status: mapParticipationStatusToAttendeeStatus(status),
             }
-          }),
-        }
+          : prev
       }
-    )
-
+    })
     try {
-      await rsvpMeeting(
-        slot.id,
-        currentAccount.address,
-        status,
-        abortController.signal
-      )
+      if (!isCalendarEvent(slot)) {
+        await rsvpMeeting(
+          slot.id,
+          currentAccount.address,
+          status,
+          abortController.signal
+        )
+        // Success: update global cache
+        queryClient.setQueryData<CalendarEventsData>(
+          createEventsQueryKey(currentDate),
+          old => {
+            if (!old?.mwwEvents) return old
+            return {
+              ...old,
+              mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
+                if (event.id !== slot.id) return event
+                return {
+                  ...event,
+                  participants: event.participants.map(p =>
+                    p.account_address === currentAccount?.address
+                      ? { ...p, status }
+                      : p
+                  ),
+                }
+              }),
+            }
+          }
+        )
+      } else {
+        const attendeeStatus = mapParticipationStatusToAttendeeStatus(status)
+        queryClient.setQueryData<CalendarEventsData>(
+          createEventsQueryKey(currentDate),
+          old => {
+            if (!old?.calendarEvents) return old
+            return {
+              ...old,
+              calendarEvents: old.calendarEvents.map((event: UnifiedEvent) => {
+                if (event.id !== slot.id) return event
+                return {
+                  ...event,
+                  attendees: event.attendees?.map(attendee =>
+                    attendee.email === slot.accountEmail
+                      ? { ...attendee, status: attendeeStatus }
+                      : attendee
+                  ),
+                }
+              }),
+            }
+          }
+        )
+        await rsvpQueue.enqueue(
+          slot.calendarId,
+          slot.sourceEventId,
+          attendeeStatus,
+          slot.accountEmail,
+          abortController.signal
+        )
+      }
     } catch (error) {
       console.error('Failed to update RSVP:', error)
       if (error instanceof Error && error.name === 'AbortError') {
         // Request was cancelled, ignore
         return
       }
-      queryClient.invalidateQueries(createEventsQueryKey(currentDate))
+      // Revert UI change
+      setActor(prev => {
+        if (!prev) return prev
+        if (!isCalendarEvent(slot)) {
+          const participantInfo = prev as ParticipantInfo
+          return previousStatus
+            ? {
+                ...participantInfo,
+                status: previousStatus as ParticipationStatus,
+              }
+            : prev
+        } else {
+          const unifiedAttendee = prev as UnifiedAttendee
+          return previousStatus
+            ? { ...unifiedAttendee, status: previousStatus as AttendeeStatus }
+            : prev
+        }
+      })
     }
   }
   const _onChange = (newValue: RSVPOption) => {
@@ -425,7 +496,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
                   borderColor: 'neutral.400',
                   borderRadius: '6px',
                 }}
-                onDateChange={() => undefined}
+                onDateChange={time => setPickedTime(new Date(time))}
               />
             </Box>
             <Box cursor={canEditMeeting ? 'pointer' : 'default'} flex="1">
@@ -440,7 +511,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
                   borderColor: 'neutral.400',
                   borderRadius: '6px',
                 }}
-                onChange={() => undefined}
+                onChange={time => setPickedTime(new Date(time))}
                 value={formattedTime}
               />
             </Box>
@@ -511,12 +582,7 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
             chakraStyles={{
               container: provided => ({
                 ...provided,
-                border: '1px solid',
-                borderTopColor: 'currentColor',
-                borderLeftColor: 'currentColor',
-                borderRightColor: 'currentColor',
-                borderBottomColor: 'currentColor',
-                borderColor: 'inherit',
+                borderColor: 'input-border',
                 borderRadius: 'md',
                 maxW: '100%',
                 display: 'block',
@@ -536,6 +602,8 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
             <Input
               isDisabled={isScheduling}
               my={4}
+              borderColor="neutral.400"
+              errorBorderColor="red.500"
               onChange={e => setMeetingUrl(e.target.value)}
               placeholder="insert a custom meeting url"
               type="text"
