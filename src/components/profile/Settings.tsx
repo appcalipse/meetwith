@@ -28,9 +28,9 @@ import { EditMode, SettingsSection } from '@/types/Dashboard'
 
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
-import Block from './components/Block'
 import ConnectCalendar from './ConnectCalendar'
 import ConnectedAccounts from './ConnectedAccounts'
+import Block from './components/Block'
 
 interface SettingsNavItem {
   name: string
@@ -129,18 +129,10 @@ const Settings: React.FC<{
       [SettingsSection.WALLET_PAYMENT]: '/dashboard/settings/wallet-payment',
     }
 
-    const { section: _omit, ...restQuery } = router.query ?? {}
-
-    const query: Record<string, string> = {}
-    Object.entries(restQuery).forEach(([k, v]) => {
-      if (typeof v === 'string') query[k] = v
-      else if (Array.isArray(v) && v.length) query[k] = v.join(',')
-    })
-
     router.replace(
       {
         pathname: sectionPath[section],
-        query,
+        query: {},
       },
       undefined,
       { shallow: true }

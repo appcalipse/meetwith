@@ -11,6 +11,7 @@ import {
   SubscriptionPeriod,
   SubscriptionStatus,
 } from '@/types/Billing'
+import { PaymentType } from '@/utils/constants/meeting-types'
 import {
   getActiveSubscriptionPeriod,
   getBillingPlanById,
@@ -73,7 +74,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       let stripeSubscription: StripeSubscription | null = null
       if (subscriptionPeriod.billing_plan_id) {
         const stripeSub = await getStripeSubscriptionByAccount(accountAddress)
-        if (stripeSub) {
+        if (
+          stripeSub &&
+          stripeSub.billing_plan_id === subscriptionPeriod.billing_plan_id
+        ) {
           stripeSubscription = {
             id: stripeSub.id,
             account_address: stripeSub.account_address,
@@ -88,11 +92,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       // Get billing plan if this is a billing subscription
       let billingPlan: BillingPlan | null = null
-      const billingPlanIdToUse =
-        stripeSubscription?.billing_plan_id ||
-        subscriptionPeriod.billing_plan_id
-      if (billingPlanIdToUse) {
-        const plan = await getBillingPlanById(billingPlanIdToUse)
+      if (subscriptionPeriod.billing_plan_id) {
+        const plan = await getBillingPlanById(
+          subscriptionPeriod.billing_plan_id
+        )
         if (plan) {
           // Map billing_cycle string to BillingCycle enum
           const billingCycleMap: Record<string, BillingCycle> = {
@@ -119,14 +122,23 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (stripeSubscription) {
         paymentProvider = PaymentProvider.STRIPE
       } else if (subscriptionPeriod.billing_plan_id) {
-        paymentProvider = null
-      } else if (subscriptionPeriod.transaction_id) {
-        const transaction = await getTransactionsById(
-          subscriptionPeriod.transaction_id
-        )
-        if (transaction?.provider === 'stripe') {
-          paymentProvider = PaymentProvider.STRIPE
+        if (subscriptionPeriod.transaction_id) {
+          const transaction = await getTransactionsById(
+            subscriptionPeriod.transaction_id
+          )
+          if (
+            transaction?.method === PaymentType.FIAT ||
+            transaction?.provider === PaymentProvider.STRIPE
+          ) {
+            paymentProvider = PaymentProvider.STRIPE
+          } else if (transaction?.method === PaymentType.CRYPTO) {
+            paymentProvider = PaymentProvider.CRYPTO
+          }
+        } else {
+          paymentProvider = PaymentProvider.CRYPTO
         }
+      } else {
+        paymentProvider = PaymentProvider.CRYPTO
       }
 
       // Check if subscription is actually active

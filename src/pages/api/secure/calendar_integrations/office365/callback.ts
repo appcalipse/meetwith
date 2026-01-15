@@ -125,10 +125,10 @@ async function handler(
       // If it's a new integration, check the limit
       if (!existingIntegration) {
         const integrationCount = await countCalendarIntegrations(accountAddress)
-        if (integrationCount >= 1) {
+        if (integrationCount >= 2) {
           res.redirect(
             `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
-              'Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.'
+              'Free tier allows only 2 calendar integrations. Upgrade to Pro for unlimited calendar integrations.'
             )}`
           )
           return
