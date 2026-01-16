@@ -13,9 +13,16 @@ import {
   countCalendarIntegrations,
   getAccountFromDB,
   isProAccountAsync,
+  uploadIcsFile,
 } from '@/utils/database'
 import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
+import { SIZE_5_MB, withFileUpload } from '@/utils/uploads'
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+}
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!req.session.account) {
     return res.status(401).json({ message: 'Authentication required' })
@@ -23,11 +30,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const body: WebcalRequestBody = req.body
   const accountAddress = req.session.account.address
+  const { resource } = req.body?.files
 
-  if (!body.url) {
+  if (!body.url && !resource) {
     return res.status(400).json({ message: 'Calendar URL is required' })
   }
-
+  let url
+  if (body.url) {
+    url = body.url
+  } else {
+    const { filename, buffer, mimeType } = resource
+    url = await uploadIcsFile(filename, buffer, mimeType)
+  }
+  if (!url) {
+    return res.status(400).json({ message: 'Calendar URL is required' })
+  }
   if (req.method === 'POST') {
     try {
       const account = await getAccountFromDB(accountAddress)
@@ -35,7 +52,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const isPro = await isProAccountAsync(accountAddress)
 
       const validationResult = await validateWebcalFeed(
-        body.url!,
+        url,
         body.email,
         account
       )
@@ -73,11 +90,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       const calendars: CalendarSyncInfo[] = [
         {
-          calendarId: body.url!,
+          calendarId: url,
           color: undefined,
           enabled: true,
           isReadOnly: true,
-          name: validationResult.calendarName || 'External Calendar',
+          name: body.title || 'External Calendar',
           sync: false, // Webcal is read-only, no sync
         },
       ]
@@ -87,18 +104,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         validationResult.userEmail,
         TimeSlotSource.WEBCAL,
         calendars,
-        { url: body.url } // Store the URL in payload
+        { url: url } // Store the URL in payload
       )
 
       return res.status(200).json({
-        calendarName: validationResult.calendarName,
+        calendarName: body.title,
         connected: true,
         email: validationResult.userEmail,
         eventCount: validationResult.eventCount,
       })
     } catch (error) {
       Sentry.captureException(error, {
-        extra: { accountAddress, url: body.url },
+        extra: { accountAddress, url: url },
       })
 
       if (error instanceof CalendarIntegrationLimitExceededError) {
@@ -243,12 +260,6 @@ async function validateWebcalFeed(
         valid: false,
       }
     }
-
-    const calendarName =
-      vcalendar.getFirstPropertyValue('x-wr-calname')?.toString() ||
-      vcalendar.getFirstPropertyValue('name')?.toString() ||
-      'External Calendar'
-
     const vevents = vcalendar.getAllSubcomponents('vevent')
     const eventCount = vevents.length
 
@@ -263,7 +274,6 @@ async function validateWebcalFeed(
     }
 
     return {
-      calendarName,
       eventCount,
       userEmail,
       valid: true,
@@ -294,13 +304,11 @@ async function findUserEmailInCalendar(
 ): Promise<string | undefined> {
   const possibleEmails = new Set<string>()
 
-  // Get user's known emails from account preferences if available
-  const accountEmail = account.preferences?.name // Sometimes stored here
+  const accountEmail = account.preferences?.name
   if (accountEmail && isValidEmail(accountEmail)) {
     possibleEmails.add(accountEmail.toLowerCase())
   }
 
-  // Search through all events
   for (const vevent of vevents) {
     try {
       const event = new ICAL.Event(vevent)
@@ -323,18 +331,27 @@ async function findUserEmailInCalendar(
           }
         }
       }
+
+      // CRITICAL: Check VALARM components for ATTENDEE (Proton Calendar format)
+      const valarms = vevent.getAllSubcomponents('valarm')
+      for (const valarm of valarms) {
+        const attendeeProp = valarm.getFirstProperty('attendee')
+        if (attendeeProp) {
+          const attendeeValue = attendeeProp.getFirstValue()
+          const email = extractEmailFromICalAddress(attendeeValue)
+          if (email) {
+            possibleEmails.add(email.toLowerCase())
+          }
+        }
+      }
     } catch (_error) {
-      // Skip malformed events
       continue
     }
   }
 
-  // Return the most common email (simple heuristic)
-  // In a real scenario, you might want to prompt the user to select
   if (possibleEmails.size === 1) {
     return Array.from(possibleEmails)[0]
   } else if (possibleEmails.size > 1) {
-    // Return first valid email (could be improved with better logic)
     return Array.from(possibleEmails)[0]
   }
 
@@ -382,4 +399,9 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
-export default withSessionRoute(handler)
+export default withSessionRoute(
+  withFileUpload(handler, {
+    allowedMimeTypes: ['text/calendar', 'application/ics'],
+    maxFileSize: SIZE_5_MB,
+  })
+)
