@@ -52,7 +52,7 @@ const WebCalDetail: React.FC<WebCalDetailProps> = ({
   const onSaveOrUpdate = async () => {
     try {
       setLoading(true)
-      if (!icsFile || !title || (!icsFile && !isValidUrl(url))) {
+      if (!title || (!icsFile && !isValidUrl(url))) {
         showErrorToast('Validation Error', 'Calendar Resource is required.')
         return
       }
