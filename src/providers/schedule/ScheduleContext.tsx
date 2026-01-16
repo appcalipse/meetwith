@@ -1,12 +1,14 @@
 import { DateTime } from 'luxon'
-import React, { createContext, ReactNode, useContext, useState } from 'react'
+import type React from 'react'
+import { createContext, type ReactNode, useContext, useState } from 'react'
 
 import { MeetingReminders } from '@/types/common'
 import {
-  MeetingDecrypted,
+  type MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
 } from '@/types/Meeting'
+import { UpdateMode } from '@/utils/constants/meeting'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 interface IScheduleStateContext {
@@ -23,6 +25,7 @@ interface IScheduleStateContext {
     label?: string
   }>
   meetingRepeat: { value: MeetingRepeat; label?: string }
+  editMode: UpdateMode
   isScheduling: boolean
   selectedPermissions: Array<MeetingPermissions> | undefined
   decryptedMeeting: MeetingDecrypted | undefined
@@ -47,6 +50,7 @@ interface IScheduleStateContext {
   setDecryptedMeeting: React.Dispatch<
     React.SetStateAction<MeetingDecrypted | undefined>
   >
+  setEditMode: React.Dispatch<React.SetStateAction<UpdateMode>>
 }
 
 const ScheduleStateContext = createContext<IScheduleStateContext | undefined>(
@@ -77,6 +81,7 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   const [currentSelectedDate, setCurrentSelectedDate] = useState<DateTime>(
     DateTime.now()
   )
+  const [editMode, setEditMode] = useState<UpdateMode>(UpdateMode.SINGLE_EVENT)
   const [timezone, setTimezone] = useState<string>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
@@ -91,49 +96,55 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     Array<{ value: MeetingReminders; label?: string }>
   >([
     {
-      value: MeetingReminders['1_HOUR_BEFORE'],
       label: '1 hour before',
+      value: MeetingReminders['1_HOUR_BEFORE'],
     },
   ])
   const [meetingRepeat, setMeetingRepeat] = useState<{
     value: MeetingRepeat
     label?: string
   }>({
-    value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
+    value: MeetingRepeat['NO_REPEAT'],
   })
   const [selectedPermissions, setSelectedPermissions] = useState<
     Array<MeetingPermissions> | undefined
-  >([MeetingPermissions.SEE_GUEST_LIST, MeetingPermissions.EDIT_MEETING])
+  >([
+    MeetingPermissions.SEE_GUEST_LIST,
+    MeetingPermissions.INVITE_GUESTS,
+    MeetingPermissions.EDIT_MEETING,
+  ])
   const [isScheduling, setIsScheduling] = useState(false)
 
   const value: IScheduleStateContext = {
-    title,
     content,
-    duration,
-    pickedTime,
     currentSelectedDate,
-    timezone,
-    meetingProvider,
-    meetingUrl,
-    meetingNotification,
-    meetingRepeat,
-    isScheduling,
-    selectedPermissions,
-    setTitle,
-    setContent,
-    setDuration,
-    setPickedTime,
-    setCurrentSelectedDate,
-    setTimezone,
-    setMeetingProvider,
-    setMeetingUrl,
-    setMeetingNotification,
-    setMeetingRepeat,
-    setSelectedPermissions,
-    setIsScheduling,
     decryptedMeeting,
+    duration,
+    editMode,
+    isScheduling,
+    meetingNotification,
+    meetingProvider,
+    meetingRepeat,
+    meetingUrl,
+    pickedTime,
+    selectedPermissions,
+    setContent,
+    setCurrentSelectedDate,
     setDecryptedMeeting,
+    setDuration,
+    setEditMode,
+    setIsScheduling,
+    setMeetingNotification,
+    setMeetingProvider,
+    setMeetingRepeat,
+    setMeetingUrl,
+    setPickedTime,
+    setSelectedPermissions,
+    setTimezone,
+    setTitle,
+    timezone,
+    title,
   }
 
   return (

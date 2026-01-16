@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/** biome-ignore-all lint/suspicious/noExplicitAny: Readonly calendar handler, any used to allow for catch all types */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import * as Sentry from '@sentry/nextjs'
 import { utcToZonedTime } from 'date-fns-tz'
@@ -7,7 +8,10 @@ import { rrulestr } from 'rrule'
 
 import { UnifiedEvent } from '@/types/Calendar'
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
+import {
+  MeetingCancelSyncRequest,
+  MeetingCreationSyncRequest,
+} from '@/types/Requests'
 
 import { WebDAVEvent, WebDAVEventMapper } from './caldav.mapper'
 import { BaseCalendarService, EventBusyDate } from './calendar.service.types'
@@ -40,10 +44,10 @@ export default class WebCalService implements BaseCalendarService {
   async refreshConnection(): Promise<CalendarSyncInfo[]> {
     try {
       const response = await fetch(this.feedUrl, {
-        method: 'HEAD',
         headers: {
           'User-Agent': 'MeetWithWallet/1.0',
         },
+        method: 'HEAD',
       })
 
       if (!response.ok) {
@@ -54,10 +58,10 @@ export default class WebCalService implements BaseCalendarService {
       return [
         {
           calendarId: this.feedUrl,
-          sync: false,
+          color: undefined,
           enabled: true,
           name: this.extractCalendarName() || 'External Calendar',
-          color: undefined,
+          sync: false,
         },
       ]
     } catch (error) {
@@ -83,7 +87,7 @@ export default class WebCalService implements BaseCalendarService {
       return events
     } catch (error) {
       Sentry.captureException(error, {
-        extra: { feedUrl: this.feedUrl, dateFrom, dateTo },
+        extra: { dateFrom, dateTo, feedUrl: this.feedUrl },
       })
       throw new Error('Failed to fetch events from ICS feed')
     }
@@ -93,9 +97,10 @@ export default class WebCalService implements BaseCalendarService {
    * Fetches all events from the ICS feed (for unified calendar view)
    */
   async getEvents(
-    calendarIds: string[],
+    _calendarIds: string[],
     dateFrom: string,
-    dateTo: string
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
   ): Promise<UnifiedEvent[]> {
     try {
       const icsData = await this.fetchIcsData()
@@ -129,7 +134,9 @@ export default class WebCalService implements BaseCalendarService {
           const eventEndMs = endDate.getTime()
 
           const rrule = vevent.getFirstPropertyValue('rrule')
-
+          if (onlyWithMeetingLinks && !event.location) {
+            return null
+          }
           const exdates = vevent
             .getAllProperties('exdate')
             .map(exdateProp => {
@@ -145,39 +152,39 @@ export default class WebCalService implements BaseCalendarService {
             .filter((ed): ed is Date => ed !== null)
 
           const baseEvent = {
-            uid: event.uid,
-            etag: undefined, // ICS feeds don't have ETags
-            url: this.feedUrl,
-            calId: this.feedUrl,
             accountEmail: this.email,
-            providerId: vcalendar.getFirstPropertyValue('prodid')?.toString(),
-            status: vevent.getFirstPropertyValue('status')?.toString(),
-            summary: event.summary,
-            description: event.description,
-            location: event.location,
-            sequence: event.sequence,
-            startDate,
-            endDate,
-            organizer: event.organizer,
             attendees: event.attendees.map(a => a.getValues()),
+            calId: this.feedUrl,
+            created: vevent.getFirstPropertyValue('created')?.toString(),
+            description: event.description,
+            duration: {
+              days: event.duration.days,
+              hours: event.duration.hours,
+              isNegative: event.duration.isNegative,
+              minutes: event.duration.minutes,
+              seconds: event.duration.seconds,
+              weeks: event.duration.weeks,
+            },
+            endDate,
+            etag: undefined, // ICS feeds don't have ETags
+            exdate: exdates,
+            lastModified: vevent
+              .getFirstPropertyValue('last-modified')
+              ?.toString(),
+            location: event.location,
+            organizer: event.organizer,
+            providerId: vcalendar.getFirstPropertyValue('prodid')?.toString(),
             recurrenceId: event.recurrenceId
               ? event.recurrenceId.toString()
               : null,
             rrule: rrule ? rrule.toString() : null,
-            created: vevent.getFirstPropertyValue('created')?.toString(),
+            sequence: event.sequence,
+            startDate,
+            status: vevent.getFirstPropertyValue('status')?.toString(),
+            summary: event.summary,
             timezone: calendarTimezone,
-            duration: {
-              weeks: event.duration.weeks,
-              days: event.duration.days,
-              hours: event.duration.hours,
-              minutes: event.duration.minutes,
-              seconds: event.duration.seconds,
-              isNegative: event.duration.isNegative,
-            },
-            lastModified: vevent
-              .getFirstPropertyValue('last-modified')
-              ?.toString(),
-            exdate: exdates,
+            uid: event.uid,
+            url: this.feedUrl,
           }
           if (rrule && !event.recurrenceId) {
             const instances = this.expandRecurringEvent(
@@ -252,11 +259,11 @@ export default class WebCalService implements BaseCalendarService {
   private async fetchIcsData(): Promise<string> {
     try {
       const response = await fetch(this.feedUrl, {
-        method: 'GET',
         headers: {
-          'User-Agent': 'MeetWithWallet/1.0',
           Accept: 'text/calendar, application/ics, text/plain',
+          'User-Agent': 'MeetWithWallet/1.0',
         },
+        method: 'GET',
         // Add timeout
         signal: AbortSignal.timeout(10000), // 10 second timeout
       })
@@ -346,12 +353,12 @@ export default class WebCalService implements BaseCalendarService {
             // Only include if within range
             if (startDate < endRange && endDate > startRange) {
               events.push({
-                start: startDate,
-                end: endDate,
-                title: event.summary || 'Busy',
-                eventId: event.uid,
-                webLink: vevent.getFirstPropertyValue('url')?.toString(),
                 email: this.email,
+                end: endDate,
+                eventId: event.uid,
+                start: startDate,
+                title: event.summary || 'Busy',
+                webLink: vevent.getFirstPropertyValue('url')?.toString(),
               })
             }
           }
@@ -415,13 +422,13 @@ export default class WebCalService implements BaseCalendarService {
         const eventEnd = new Date(occurrenceTime + duration)
 
         expandedEvents.push({
-          start: eventStart,
-          end: eventEnd,
-          title: event.summary || 'Busy',
-          eventId: event.uid,
-          webLink: vevent.getFirstPropertyValue('url')?.toString(),
           email: this.email,
+          end: eventEnd,
+          eventId: event.uid,
           recurrenceId: occurrence.toISOString(),
+          start: eventStart,
+          title: event.summary || 'Busy',
+          webLink: vevent.getFirstPropertyValue('url')?.toString(),
         })
       }
 
@@ -430,8 +437,8 @@ export default class WebCalService implements BaseCalendarService {
       // If recurrence expansion fails, log and return empty
       Sentry.captureException(error, {
         extra: {
-          feedUrl: this.feedUrl,
           eventUid: event.uid,
+          feedUrl: this.feedUrl,
         },
       })
       return []
@@ -449,5 +456,25 @@ export default class WebCalService implements BaseCalendarService {
     } catch {
       return null
     }
+  }
+  updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: string
+  ): Promise<void> {
+    console.warn('ICS feeds are read-only. Cannot update RSVP status.')
+    return Promise.resolve()
+  }
+  deleteExternalEvent(calendarId: string, eventId: string): Promise<void> {
+    console.warn('ICS feeds are read-only. Cannot delete external events.')
+    return Promise.resolve()
+  }
+  deleteEventInstance(
+    calendarId: string,
+    meetingDetails: MeetingCancelSyncRequest
+  ): Promise<void> {
+    console.warn('ICS feeds are read-only. Cannot delete event instances.')
+    return Promise.resolve()
   }
 }

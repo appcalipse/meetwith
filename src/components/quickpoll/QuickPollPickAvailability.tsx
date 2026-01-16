@@ -8,6 +8,7 @@ import {
   HStack,
   IconButton,
   SlideFade,
+  SystemStyleObject,
   Text,
   useBreakpointValue,
   useToast,
@@ -87,7 +88,7 @@ export const getBgColor = (state: State) => {
     case State.MOST_AVAILABLE:
       return 'yellow.600'
     case State.SOME_AVAILABLE:
-      return 'yellow.100'
+      return '#2F89F8'
     case State.NONE_AVAILABLE:
       return 'text-primary'
   }
@@ -140,7 +141,7 @@ export function QuickPollPickAvailability({
   isSavingAvailability,
   isRefreshingAvailabilities,
 }: QuickPollPickAvailabilityProps) {
-  const router = useRouter()
+  const _router = useRouter()
   const {
     timezone,
     setTimezone,
@@ -494,7 +495,7 @@ export function QuickPollPickAvailability({
   )
 
   const selectChakraStyles = {
-    container: (provided: any) => ({
+    container: (provided: SystemStyleObject) => ({
       ...provided,
       borderColor: 'input-border',
       bg: 'select-bg',
@@ -835,22 +836,11 @@ export function QuickPollPickAvailability({
       )
 
       const quickPollParticipants = allParticipants
-        .map(val => {
-          if (pollData && val.guest_email) {
-            const pollParticipant = (pollData as any).poll.participants.find(
-              (p: any) =>
-                p.guest_email?.toLowerCase() === val.guest_email?.toLowerCase()
-            )
-            return {
-              participant_id: pollParticipant?.id,
-              account_address: undefined,
-            }
-          }
-          return {
-            account_address: val.account_address,
-            participant_id: undefined,
-          }
-        })
+        .filter(p => p.account_address)
+        .map(p => ({
+          account_address: p.account_address,
+          participant_id: undefined,
+        }))
         .concat([
           {
             account_address: currentAccount?.address,

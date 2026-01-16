@@ -24,8 +24,8 @@ export async function getTransactionFeeThirdweb(
   const priceService = new PriceFeedService()
   const chainInfo = getChainInfo(chain)
   const rpcRequest = getRpcClient({
-    client: thirdWebClient,
     chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
 
   const [tx, receipt] = await Promise.all([
@@ -62,12 +62,12 @@ export async function getTransactionFeeThirdweb(
   }
 
   return {
-    gasUsed: gasUsed.toString(),
-    gasPrice: gasPrice.toString(),
-    feeInWei: fee.toString(),
     feeInEth: Number(fee) / 1e18,
     feeInUSD,
+    feeInWei: fee.toString(),
     from: tx.from,
+    gasPrice: gasPrice.toString(),
+    gasUsed: gasUsed.toString(),
     receiverAddress,
   }
 }

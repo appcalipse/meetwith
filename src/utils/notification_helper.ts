@@ -98,9 +98,9 @@ export const notifyForMeetingCancellation = async (
   for (const guest of meetingDetails.guestsToRemove) {
     participantsInfo.push({
       ...guest,
-      timezone: meetingDetails.timezone,
-      meeting_id: meetingDetails.meeting_id,
       mappingType: ParticipantMappingType.REMOVE,
+      meeting_id: meetingDetails.meeting_id,
+      timezone: meetingDetails.timezone,
     })
   }
 
@@ -108,13 +108,13 @@ export const notifyForMeetingCancellation = async (
     const account = await getAccountFromDB(address)
     participantsInfo.push({
       account_address: address,
+      mappingType: ParticipantMappingType.REMOVE,
+      meeting_id: meetingDetails.meeting_id,
       name: account.preferences?.name,
       notifications: await getAccountNotificationSubscriptions(address),
+      status: ParticipationStatus.Rejected,
       timezone: account.preferences.timezone || 'UTC',
       type: ParticipantType.Invitee,
-      meeting_id: meetingDetails.meeting_id,
-      status: ParticipationStatus.Rejected,
-      mappingType: ParticipantMappingType.REMOVE,
     })
   }
 
@@ -147,17 +147,17 @@ const setupParticipants = async (
     participants.map(async map => {
       return {
         account_address: map.account_address,
-        name: map.name,
-        slot_id: map.slot_id,
-        timezone: map.timeZone,
-        type: map.type,
         guest_email: map.guest_email,
+        mappingType: map.mappingType!,
         meeting_id: map.meeting_id,
+        name: map.name,
         notifications: map.account_address
           ? await getAccountNotificationSubscriptions(map.account_address)
           : undefined,
+        slot_id: map.slot_id,
         status: map.status,
-        mappingType: map.mappingType!,
+        timezone: map.timeZone,
+        type: map.type,
       }
     })
   )

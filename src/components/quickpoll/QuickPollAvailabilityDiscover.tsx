@@ -358,7 +358,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             'Availability saved',
             'Your availability has been saved successfully.'
           )
-        } catch (error) {
+        } catch (_error) {
           showErrorToast(
             'Failed to save availability',
             'There was an error saving your availability. Please try again.'
@@ -389,7 +389,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
               currentPollData.poll.slug,
               currentAccount.address
             )) as QuickPollParticipant
-          } catch (error) {
+          } catch (_error) {
             showErrorToast(
               'Participant not found',
               'You are not a participant in this poll.'
@@ -473,7 +473,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             'Your availability has been saved successfully.'
           )
         }
-      } catch (error) {
+      } catch (_error) {
         showErrorToast(
           'Failed to save availability',
           'There was an error saving your availability. Please try again.'
@@ -508,7 +508,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           'No participant found with this email address.'
         )
       }
-    } catch (error) {
+    } catch (_error) {
       showErrorToast(
         'Identification failed',
         'There was an error identifying you. Please try again.'

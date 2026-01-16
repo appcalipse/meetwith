@@ -73,8 +73,7 @@ const BasePage: FC = () => {
           borderColor={borderColor}
           borderRadius="md"
           p={4}
-          w="max-content"
-          minW={{ base: '100%', md: '40%' }}
+          minW={'40%'}
           display="flex"
           flexDirection="column"
           gap={2}

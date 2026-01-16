@@ -1,5 +1,4 @@
 import '../styles/globals.css'
-import 'react-virtualized/styles.css'
 import '../styles/swipers.css'
 
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -113,8 +112,8 @@ MyApp.getInitialProps = async (appContext: AppContext) => {
     // only force check on the client side if we have an account and we came from the backend
     const checkAuthOnClient = !!currentAccount && !!appContext.ctx.req
 
-    return { ...appProps, consentCookie, currentAccount, checkAuthOnClient }
-  } catch (e) {
+    return { ...appProps, checkAuthOnClient, consentCookie, currentAccount }
+  } catch (_e) {
     if (appContext.ctx.res) {
       appContext.ctx.res.writeHead(302, { Location: '/error' })
       appContext.ctx.res.end()

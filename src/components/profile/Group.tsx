@@ -13,6 +13,7 @@ import {
   Tabs,
   Text,
   useDisclosure,
+  VStack,
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
@@ -27,12 +28,16 @@ import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
 import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
-import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
-import { getGroupsFullWithMetadata } from '@/utils/api_helper'
+import {
+  getGroupExternal,
+  getGroupsFullWithMetadata,
+  listConnectedCalendars,
+} from '@/utils/api_helper'
 import {
   getHideGroupAvailabilityLabels,
   setHideGroupAvailabilityLabels,
 } from '@/utils/storage'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
 import Groups, { GroupRef } from '../group/Groups'
@@ -55,7 +60,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     enabled: !!currentAccount?.address,
     staleTime: 30000,
   })
-  const canCreateGroup = !groupsMetadata?.upgradeRequired
+
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+  const canCreateGroup = hasProAccess && !groupsMetadata?.upgradeRequired
 
   // Preference to hide availability block labels in group cards
   const [hideAvailabilityLabels, setHideAvailabilityLabels] = useState(() =>
@@ -182,24 +190,56 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             value={debouncedValue}
             placeholder="Search for group"
           />
-          <Button
-            onClick={() => router.push('/dashboard/create-group')}
-            flexShrink={0}
-            colorScheme="primary"
+          <VStack
+            align="stretch"
+            w="100%"
             display={{ base: 'flex', md: 'none' }}
-            mt={{ base: 4, md: 0 }}
+            mt={4}
             mb={4}
-            leftIcon={<FaPlus />}
-            w={'100%'}
-            isDisabled={!canCreateGroup}
-            title={
-              !canCreateGroup
-                ? 'Upgrade to Pro to create more groups'
-                : undefined
-            }
+            spacing={2}
           >
-            Create new group
-          </Button>
+            <Button
+              onClick={() => router.push('/dashboard/create-group')}
+              flexShrink={0}
+              colorScheme="primary"
+              leftIcon={<FaPlus />}
+              w={'100%'}
+              isDisabled={!canCreateGroup}
+              title={
+                !canCreateGroup
+                  ? 'Upgrade to Pro to create more groups'
+                  : undefined
+              }
+            >
+              Create new group
+            </Button>
+            {!canCreateGroup && (
+              <Text
+                fontSize="14px"
+                color="neutral.400"
+                lineHeight="1.4"
+                maxW="280px"
+              >
+                To see all your groups, schedule with the groups and create more
+                groups Go PRO{' '}
+                <Button
+                  variant="link"
+                  colorScheme="primary"
+                  px={0}
+                  onClick={() =>
+                    router.push('/dashboard/settings/subscriptions')
+                  }
+                  textDecoration="underline"
+                  fontSize="14px"
+                  height="auto"
+                  minW="auto"
+                >
+                  here
+                </Button>
+                .
+              </Text>
+            )}
+          </VStack>
           <TabList
             w={{ base: '100%', md: 'auto' }}
             bg="bg-surface-secondary"
@@ -247,21 +287,54 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               )}
             </Tab>
           </TabList>
-          <Button
-            onClick={() => router.push('/dashboard/create-group')}
-            flexShrink={0}
-            colorScheme="primary"
+          <VStack
+            align="flex-end"
             display={{ base: 'none', md: 'flex' }}
-            leftIcon={<FaPlus />}
-            isDisabled={!canCreateGroup}
-            title={
-              !canCreateGroup
-                ? 'Upgrade to Pro to create more groups'
-                : undefined
-            }
+            spacing={2}
+            w="fit-content"
           >
-            Create new group
-          </Button>
+            <Button
+              onClick={() => router.push('/dashboard/create-group')}
+              flexShrink={0}
+              colorScheme="primary"
+              leftIcon={<FaPlus />}
+              isDisabled={!canCreateGroup}
+              title={
+                !canCreateGroup
+                  ? 'Upgrade to Pro to create more groups'
+                  : undefined
+              }
+            >
+              Create new group
+            </Button>
+            {!canCreateGroup && (
+              <Text
+                fontSize="14px"
+                color="neutral.400"
+                textAlign="right"
+                lineHeight="1.4"
+                maxW="280px"
+              >
+                To see all your groups, schedule with the groups and create more
+                groups, Go{' '}
+                <Button
+                  variant="link"
+                  colorScheme="primary"
+                  px={0}
+                  onClick={() =>
+                    router.push('/dashboard/settings/subscriptions')
+                  }
+                  textDecoration="underline"
+                  fontSize="14px"
+                  height="auto"
+                  minW="auto"
+                >
+                  PRO
+                </Button>
+                .
+              </Text>
+            )}
+          </VStack>
         </HStack>
 
         {/* Hide availability labels checkbox */}

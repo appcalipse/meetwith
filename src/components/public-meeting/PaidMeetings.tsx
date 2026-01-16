@@ -8,6 +8,7 @@ import { getPaidSessions } from '@/utils/api_helper'
 
 import Loading from '../Loading'
 import PaidMeetingsCard from './PaidMeetingsCard'
+
 interface IProps {
   setPaidSessionsExists: (exists: boolean) => void
 }

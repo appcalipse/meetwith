@@ -2,6 +2,7 @@ import { InfoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
+  Select as ChakraSelect,
   Flex,
   FormControl,
   FormLabel,
@@ -9,7 +10,6 @@ import {
   Heading,
   HStack,
   IconButton,
-  Select as ChakraSelect,
   SlideFade,
   Text,
   useBreakpointValue,
@@ -46,8 +46,8 @@ import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
   getCustomSelectComponents,
-  timeZoneFilter,
   TimeZoneOption,
+  timeZoneFilter,
 } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
@@ -59,10 +59,9 @@ export interface AccountAddressRecord extends ParticipantInfo {
 }
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-
+import { useRouter } from 'next/router'
 import useSlotCache from '@/hooks/useSlotCache'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-
 import ScheduleDateSection from './ScheduleDateSection'
 
 export enum State {
@@ -79,7 +78,7 @@ export const getBgColor = (state: State) => {
     case State.MOST_AVAILABLE:
       return 'yellow.600'
     case State.SOME_AVAILABLE:
-      return 'yellow.100'
+      return '#2F89F8'
     case State.NONE_AVAILABLE:
       return 'neutral.0'
   }
@@ -127,7 +126,7 @@ export function SchedulePickTime({
     currentSelectedDate,
     setCurrentSelectedDate,
   } = useScheduleState()
-
+  const { groupId } = useRouter().query
   const { canEditMeetingDetails, isUpdatingMeeting } =
     useParticipantPermissions()
   const { allAvailaibility, groupAvailability, groupMembersAvailabilities } =
@@ -187,7 +186,14 @@ export function SchedulePickTime({
       }: {
         startDate: Date
         endDate: Date
-      }) => getSuggestedSlots(addresses, startDate, endDate, duration),
+      }) =>
+        getSuggestedSlots(
+          addresses,
+          startDate,
+          endDate,
+          duration,
+          groupId as string
+        ),
       onError: () =>
         toast({
           title: 'Error fetching suggested slots',
@@ -203,7 +209,7 @@ export function SchedulePickTime({
     {
       queryKey: ['meetingMembers', addresses],
       queryFn: ({ signal }) =>
-        getExistingAccounts(deduplicateArray(addresses), undefined, { signal }),
+        getExistingAccounts(deduplicateArray(addresses), true, { signal }),
     }
   )
 

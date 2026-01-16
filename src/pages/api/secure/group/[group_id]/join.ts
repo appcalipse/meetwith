@@ -4,11 +4,14 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
 import { InviteType } from '@/types/Dashboard'
 import {
+  countGroups,
   getAccountNotificationSubscriptions,
   initDB,
+  isProAccountAsync,
   manageGroupInvite,
   publicGroupJoin,
 } from '@/utils/database'
+import { SchedulingGroupLimitExceededError } from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -18,6 +21,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(401).send('Unauthorized')
     }
     try {
+      const isPro = await isProAccountAsync(account_address)
+
+      if (!isPro) {
+        const groupCount = await countGroups(account_address)
+        if (groupCount >= 5) {
+          throw new SchedulingGroupLimitExceededError()
+        }
+      }
+
       const { group_id, email_address, type } = req.query as {
         group_id: string
         email_address?: string
@@ -42,9 +54,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(200).json({
         success: true,
       })
-    } catch (e: any) {
+    } catch (e: unknown) {
+      if (e instanceof SchedulingGroupLimitExceededError) {
+        return res.status(403).json({ error: e.message })
+      }
       return res.status(500).send({
-        error: e.message,
+        error: e instanceof Error ? e.message : String(e),
       })
     }
   }

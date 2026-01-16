@@ -6,15 +6,16 @@ import {
   NotificationChannel,
 } from '@/types/AccountNotifications'
 import { TimeSlotSource } from '@/types/Meeting'
+import { CalendarInfo } from '@/types/Office365'
 import { apiUrl, OnboardingSubject } from '@/utils/constants'
 import {
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
   countCalendarIntegrations,
   getAccountNotificationSubscriptions,
+  isProAccountAsync,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/database'
 
 const credentials = {
   client_id: process.env.MS_GRAPH_CLIENT_ID!,
@@ -56,21 +57,21 @@ async function handler(
 
     const body = toUrlEncoded({
       client_id: credentials.client_id,
-      grant_type: 'authorization_code',
-      code,
-      scope: scopes.join(' '),
-      redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
       client_secret: credentials.client_secret,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
+      scope: scopes.join(' '),
     })
 
     const response = await fetch(
       'https://login.microsoftonline.com/common/oauth2/v2.0/token',
       {
-        method: 'POST',
+        body,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         },
-        body,
+        method: 'POST',
       }
     )
 
@@ -124,10 +125,10 @@ async function handler(
       // If it's a new integration, check the limit
       if (!existingIntegration) {
         const integrationCount = await countCalendarIntegrations(accountAddress)
-        if (integrationCount >= 1) {
+        if (integrationCount >= 2) {
           res.redirect(
             `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
-              'Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.'
+              'Free tier allows only 2 calendar integrations. Upgrade to Pro for unlimited calendar integrations.'
             )}`
           )
           return
@@ -139,13 +140,14 @@ async function handler(
       accountAddress,
       responseBody.email,
       TimeSlotSource.OFFICE,
-      calendars.value.map((c: any) => {
+      calendars.value.map((c: CalendarInfo) => {
         return {
           calendarId: c.id,
+          color: c.hexColor,
+          enabled: c.isDefaultCalendar,
+          isReadOnly: !c.canEdit,
           name: c.name,
           sync: true,
-          enabled: c.isDefaultCalendar,
-          color: c.hexColor,
         }
       }),
       responseBody

@@ -14,13 +14,13 @@ import { useContext, useEffect, useState } from 'react'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { EditMode, Intents } from '@/types/Dashboard'
+import { Group } from '@/types/Group'
 import { getGroupExternal } from '@/utils/api_helper'
-
 import Loading from '../components/Loading'
 
 export default function LogoutPage() {
   const bgColor = useColorModeValue('white', 'neutral.800')
-  const [group, setGroup] = useState<any>()
+  const [group, setGroup] = useState<Group>()
   const [loading, setLoading] = useState(true)
   const { openConnection } = useContext(OnboardingModalContext)
   const { query, push } = useRouter()
@@ -47,36 +47,37 @@ export default function LogoutPage() {
   }, [groupId])
   return (
     <Container
-      maxW="7xl"
-      mt={8}
-      minH={{ sm: '100vh', md: 'auto' }}
-      flex={1}
       display="grid"
+      flex={1}
+      maxW="7xl"
+      minH={{ md: 'auto', sm: '100vh' }}
+      mt={8}
       placeContent="center"
     >
       {loading ? (
         <Loading />
       ) : (
         <VStack
-          m="auto"
-          gap={10}
           bg={bgColor}
-          borderWidth={1}
           borderColor="neutral.600"
-          p={6}
           borderRadius={6}
+          borderWidth={1}
+          gap={10}
+          m="auto"
+          p={6}
         >
-          <Image width="100px" p={2} src="/assets/logo.svg" alt="Meetwith" />
+          <Image alt="Meetwith" p={2} src="/assets/logo.svg" width="100px" />
           <Image
-            src="/assets/join-illustration.svg"
             alt="Join illustration"
-            width="300px"
             height="auto"
+            src="/assets/join-illustration.svg"
+            width="300px"
           />
-          <Heading size="md" maxW="450px" textAlign="center">
-            Hey there! You’ve been invited to join {group.name}!
+          <Heading maxW="450px" size="md" textAlign="center">
+            Hey there! You’ve been invited to join {group?.name}!
           </Heading>
           <Button
+            colorScheme="primary"
             onClick={() => {
               if (logged) {
                 push(
@@ -88,7 +89,6 @@ export default function LogoutPage() {
                 )
               }
             }}
-            colorScheme="primary"
             w="100%"
           >
             Join Group

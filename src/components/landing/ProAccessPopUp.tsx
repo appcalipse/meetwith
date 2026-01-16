@@ -38,7 +38,7 @@ const ProAccessPopUp = () => {
       const data = await getNewestCoupon(signal)
       setCoupon(data)
       onOpen()
-    } catch (e) {}
+    } catch (_e) {}
   }
 
   const handleCoupon = (signal: AbortSignal) => {

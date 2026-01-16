@@ -2,85 +2,85 @@ import { TimeSlotSource } from '@/types/Meeting'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
 const FULL_DAY_OUT = {
-  start: new Date('2022-05-05 00:00:00.000Z'),
   end: new Date('2022-05-05 23:59:00.000Z'),
+  start: new Date('2022-05-05 00:00:00.000Z'),
 }
 
 const EARLY_DAY_START = {
-  start: new Date('2022-05-04 09:00:00.000Z'),
   end: new Date('2022-05-04 09:30:00.000Z'),
+  start: new Date('2022-05-04 09:00:00.000Z'),
 }
 
 const account_1_address = '0x123'
 const account_1_slots = [
   {
-    start: new Date('2022-05-04 15:45:00.000Z'),
+    account_address: account_1_address,
     end: new Date('2022-05-04 17:30:00.000Z'),
     source: TimeSlotSource.MWW,
-    account_address: account_1_address,
+    start: new Date('2022-05-04 15:45:00.000Z'),
   },
   {
     ...EARLY_DAY_START,
-    source: TimeSlotSource.MWW,
     account_address: account_1_address,
+    source: TimeSlotSource.MWW,
   },
   {
-    start: new Date('2022-05-05 09:00:00.000Z'),
+    account_address: account_1_address,
     end: new Date('2022-05-05 09:30:00.000Z'),
     source: TimeSlotSource.MWW,
-    account_address: account_1_address,
+    start: new Date('2022-05-05 09:00:00.000Z'),
   },
   {
-    start: new Date('2022-05-04 09:30:00.000Z'),
+    account_address: account_1_address,
     end: new Date('2022-05-04 10:30:00.000Z'),
     source: TimeSlotSource.OFFICE,
-    account_address: account_1_address,
+    start: new Date('2022-05-04 09:30:00.000Z'),
   },
   {
-    start: new Date('2022-05-05 11:00:00.000Z'),
+    account_address: account_1_address,
     end: new Date('2022-05-05 11:30:00.000Z'),
     source: TimeSlotSource.MWW,
-    account_address: account_1_address,
+    start: new Date('2022-05-05 11:00:00.000Z'),
   },
   {
-    start: new Date('2022-05-04 15:00:00.000Z'),
+    account_address: account_1_address,
     end: new Date('2022-05-04 15:30:00.000Z'),
     source: TimeSlotSource.GOOGLE,
-    account_address: account_1_address,
+    start: new Date('2022-05-04 15:00:00.000Z'),
   },
   {
-    start: new Date('2022-05-04 11:00:00.000Z'),
+    account_address: account_1_address,
     end: new Date('2022-05-04 12:00:00.000Z'),
     source: TimeSlotSource.ICLOUD,
-    account_address: account_1_address,
+    start: new Date('2022-05-04 11:00:00.000Z'),
   },
 ]
 
 const account_2_address = '0x345'
 const account_2_slots = [
   {
-    start: new Date('2022-05-04 09:00:00.000Z'),
+    account_address: account_2_address,
     end: new Date('2022-05-04 10:00:00.000Z'),
     source: TimeSlotSource.WEBDAV,
-    account_address: account_2_address,
+    start: new Date('2022-05-04 09:00:00.000Z'),
   },
   {
-    start: new Date('2022-05-04 10:00:00.000Z'),
+    account_address: account_2_address,
     end: new Date('2022-05-04 11:00:00.000Z'),
     source: TimeSlotSource.MWW,
-    account_address: account_2_address,
+    start: new Date('2022-05-04 10:00:00.000Z'),
   },
   {
-    start: new Date('2022-05-04 15:00:00.000Z'),
+    account_address: account_2_address,
     end: new Date('2022-05-04 15:30:00.000Z'),
     source: TimeSlotSource.MWW,
-    account_address: account_2_address,
+    start: new Date('2022-05-04 15:00:00.000Z'),
   },
   {
-    start: new Date('2022-05-05 09:00:00.000Z'),
+    account_address: account_2_address,
     end: new Date('2022-05-05 09:30:00.000Z'),
     source: TimeSlotSource.MWW,
-    account_address: account_2_address,
+    start: new Date('2022-05-05 09:00:00.000Z'),
   },
 ]
 
@@ -88,19 +88,19 @@ const account_3_address = '0x678'
 const account_3_slots = [
   {
     ...FULL_DAY_OUT,
-    source: TimeSlotSource.MWW,
     account_address: account_3_address,
+    source: TimeSlotSource.MWW,
   }, //account 3 is out for the whole day on the 5th
   {
     ...EARLY_DAY_START,
-    source: TimeSlotSource.MWW,
     account_address: account_3_address,
+    source: TimeSlotSource.MWW,
   },
   {
-    start: new Date('2022-05-04 12:00:00.000Z'),
+    account_address: account_3_address,
     end: new Date('2022-05-04 12:30:00.000Z'),
     source: TimeSlotSource.MWW,
-    account_address: account_3_address,
+    start: new Date('2022-05-04 12:00:00.000Z'),
   },
 ]
 
@@ -108,14 +108,14 @@ const account_4_address = '0x999'
 const account_4_slots = [
   {
     ...FULL_DAY_OUT,
-    source: TimeSlotSource.GOOGLE,
     account_address: account_4_address,
+    source: TimeSlotSource.GOOGLE,
   }, //account 3 is out for the whole day on the 5th
   {
-    start: new Date('2022-05-04 08:00:00.000Z'),
+    account_address: account_4_address,
     end: new Date('2022-05-04 13:00:00.000Z'),
     source: TimeSlotSource.OFFICE,
-    account_address: account_4_address,
+    start: new Date('2022-05-04 08:00:00.000Z'),
   },
 ]
 

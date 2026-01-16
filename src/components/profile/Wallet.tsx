@@ -12,8 +12,7 @@ import {
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useRef, useState } from 'react'
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
 import { FaCircleInfo } from 'react-icons/fa6'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
@@ -24,8 +23,7 @@ import {
   PiArrowCircleUpRight,
   PiPlusCircleLight,
 } from 'react-icons/pi'
-import { TbWallet } from 'react-icons/tb'
-import { TbSettings2 } from 'react-icons/tb'
+import { TbSettings2, TbWallet } from 'react-icons/tb'
 import { useOnClickOutside } from 'usehooks-ts'
 
 import { useCryptoBalance } from '@/hooks/useCryptoBalance'
@@ -37,12 +35,15 @@ import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
 import { getChainId, SupportedChain, supportedChains } from '@/types/chains'
 import { SettingsSection } from '@/types/Dashboard'
-import { getPaymentPreferences } from '@/utils/api_helper'
-import { sendEnablePinLink } from '@/utils/api_helper'
-import { getNotificationSubscriptions } from '@/utils/api_helper'
+import {
+  getNotificationSubscriptions,
+  getPaymentPreferences,
+  sendEnablePinLink,
+} from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { formatCurrency } from '@/utils/generic_utils'
 import { CurrencyService } from '@/utils/services/currency.service'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 import { useToastHelpers } from '@/utils/toasts'
 import { getAccountDisplayName } from '@/utils/user_manager'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
@@ -52,6 +53,7 @@ import { Avatar } from './components/Avatar'
 import CurrencySelector from './components/CurrencySelector'
 import MagicLinkModal from './components/MagicLinkModal'
 import NetworkSelector from './components/NetworkSelector'
+import ProUpgradePrompt from './components/ProUpgradePrompt'
 import WalletActionButton from './components/WalletActionButton'
 import Pagination from './Pagination'
 import ReceiveFundsModal from './ReceiveFundsModal'
@@ -65,6 +67,18 @@ interface WalletProps {
 const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const router = useRouter()
   const { showSuccessToast } = useToastHelpers()
+
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+
+  if (!hasProAccess) {
+    return (
+      <ProUpgradePrompt
+        heading="Wallet feature requires Pro"
+        subheading="Upgrade to Pro to access wallet features including payments, invoicing, and fund management."
+      />
+    )
+  }
 
   // Network dropdown state
   const [isNetworkDropdownOpen, setIsNetworkDropdownOpen] = useState(false)

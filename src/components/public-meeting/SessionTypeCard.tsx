@@ -13,6 +13,7 @@ import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import React, { FC, useContext, useState } from 'react'
 
 import { formatCurrency } from '@/utils/generic_utils'
+
 type IProps = MeetingType
 const SessionTypeCard: FC<IProps> = props => {
   const { handleSetSelectedType } = useContext(PublicScheduleContext)

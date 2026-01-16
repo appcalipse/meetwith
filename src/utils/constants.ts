@@ -101,15 +101,15 @@ export const isSupportedCurrency = (
 
 export const getCurrencyDisplayName = (currency: string): string => {
   const currencyNames: Record<CommonCurrency, string> = {
-    USD: 'US Dollar',
+    AUD: 'Australian Dollar',
+    CAD: 'Canadian Dollar',
+    CHF: 'Swiss Franc',
     EUR: 'Euro',
     GBP: 'British Pound',
-    NGN: 'Nigerian Naira',
     INR: 'Indian Rupee',
-    CAD: 'Canadian Dollar',
-    AUD: 'Australian Dollar',
     JPY: 'Japanese Yen',
-    CHF: 'Swiss Franc',
+    NGN: 'Nigerian Naira',
+    USD: 'US Dollar',
   }
 
   return currencyNames[currency as CommonCurrency] || currency

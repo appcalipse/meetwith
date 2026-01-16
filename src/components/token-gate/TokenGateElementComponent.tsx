@@ -61,7 +61,7 @@ export const TokenGateElementComponent = (
         (valueAsFloat * 10 ** (props.tokenInfo.decimals || 0)).toString()
       )
       props.onChange(info, props.position)
-    } catch (e) {}
+    } catch (_e) {}
     setMinimumBalance(value)
   }
 
@@ -118,7 +118,9 @@ export const TokenGateElementComponent = (
           <FormLabel>Type</FormLabel>
           <Select
             value={props.tokenInfo.type}
-            onChange={(e: any) => setType(e.target.value as GateInterface)}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setType(e.target.value as GateInterface)
+            }
           >
             <option value={GateInterface.NATIVE}>
               Chain&apos;s native token
@@ -246,7 +248,7 @@ const TokenForm: React.FC<{
         <FormLabel>Chain</FormLabel>
         <Select
           value={tokenInfo?.chain}
-          onChange={(e: any) =>
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
             !loadingToken && setChain(e.target.value as SupportedChain)
           }
         >

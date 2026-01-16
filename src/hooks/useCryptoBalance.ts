@@ -37,7 +37,8 @@ export const useCryptoBalance = (
   const chain = getChainFromId(chainId)
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['token-balance', currentAccount?.address, tokenAddress, chain],
+    cacheTime: 60000,
+    enabled: !!currentAccount?.address && !!tokenAddress && chainId !== 0,
     queryFn: async () => {
       if (!currentAccount?.address || !tokenAddress || chainId === 0)
         return { balance: 0 }
@@ -45,17 +46,16 @@ export const useCryptoBalance = (
       // Get token balance from blockchain
       return getCryptoTokenBalance(currentAccount.address, tokenAddress, chain)
     },
-    enabled: !!currentAccount?.address && !!tokenAddress && chainId !== 0,
-    staleTime: 30000,
-    cacheTime: 60000,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    queryKey: ['token-balance', currentAccount?.address, tokenAddress, chain],
     refetchInterval: 10000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 30000,
   })
 
   return {
     balance: data?.balance ?? 0,
-    isLoading,
     error: error instanceof Error ? error.message : null,
+    isLoading,
   }
 }

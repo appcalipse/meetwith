@@ -409,6 +409,7 @@ const getCalendarOrganizer = async (
   return calendarOrganizer
 }
 export const ExternalCalendarSync = {
+  cancelInstance: async (targetAccount: Account['address']) => {},
   create: async (meetingDetails: MeetingCreationSyncRequest) => {
     const calendarOrganizer = await getCalendarOrganizer(meetingDetails)
     if (!calendarOrganizer || !calendarOrganizer.account_address) {
@@ -419,6 +420,14 @@ export const ExternalCalendarSync = {
       meetingDetails
     )
   },
+  delete: async (targetAccount: Account['address'], eventIds: string[]) => {
+    const tasks = []
+    for (const eventId of eventIds) {
+      tasks.push(syncDeletedEventWithCalendar(targetAccount, eventId))
+    }
+
+    await Promise.all(tasks)
+  },
   update: async (meetingDetails: MeetingCreationSyncRequest) => {
     const calendarOrganizer = await getCalendarOrganizer(meetingDetails)
     if (!calendarOrganizer || !calendarOrganizer.account_address) {
@@ -428,14 +437,6 @@ export const ExternalCalendarSync = {
       calendarOrganizer.account_address!,
       meetingDetails
     )
-  },
-  delete: async (targetAccount: Account['address'], eventIds: string[]) => {
-    const tasks = []
-    for (const eventId of eventIds) {
-      tasks.push(syncDeletedEventWithCalendar(targetAccount, eventId))
-    }
-
-    await Promise.all(tasks)
   },
   updateInstance: async (
     meetingDetails: MeetingInstanceCreationSyncRequest

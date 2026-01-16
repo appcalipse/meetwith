@@ -18,7 +18,7 @@ import { thirdWebClient } from './user_manager'
 export const getBlockchainSubscriptionsForAccount = async (
   accountAddress: string
 ): Promise<BlockchainSubscription[]> => {
-  const subscriptions: any[] = []
+  const subscriptions = []
 
   const chainsToCheck: ChainInfo[] = isProduction
     ? getMainnetChains()
@@ -26,27 +26,27 @@ export const getBlockchainSubscriptionsForAccount = async (
 
   for (const chain of chainsToCheck) {
     const info = {
+      abi: MWWDomain,
       address: chain.domainContractAddess as `0x${string}`,
       chainId: chain.id,
-      abi: MWWDomain,
     }
 
     try {
       const domains = (await getProviderBackend(chain.chain)!.readContract({
         ...info,
-        functionName: 'getDomainsForAccount',
         args: [accountAddress],
+        functionName: 'getDomainsForAccount',
       })) as string[]
       for (const domain of domains) {
         const subs = (await getProviderBackend(chain.chain)!.readContract({
           ...info,
-          functionName: 'domains',
           args: [domain],
-        })) as any[]
+          functionName: 'domains',
+        })) as unknown[]
 
         subscriptions.push({
-          ...subs,
           chain: chain.chain,
+          subs,
         })
       }
     } catch (e) {
@@ -56,13 +56,13 @@ export const getBlockchainSubscriptionsForAccount = async (
 
   return subscriptions.map(sub => {
     return {
-      planId: sub[1],
-      owner: sub[0],
-      expiryTime: sub[2],
-      domain: sub[3],
-      configIpfsHash: sub[4],
-      registeredAt: sub[5],
       chain: sub.chain,
+      configIpfsHash: sub.subs[4],
+      domain: sub.subs[3],
+      expiryTime: sub.subs[2],
+      owner: sub.subs[0],
+      planId: sub.subs[1],
+      registeredAt: sub.subs[5],
     }
   }) as BlockchainSubscription[]
 }
@@ -70,7 +70,7 @@ export const getBlockchainSubscriptionsForAccount = async (
 export const getDomainInfo = async (
   domain: string
 ): Promise<BlockchainSubscription[]> => {
-  const subscriptions: any[] = []
+  const subscriptions = []
 
   const chainsToCheck: ChainInfo[] = isProduction
     ? getMainnetChains()
@@ -78,10 +78,10 @@ export const getDomainInfo = async (
 
   for (const chain of chainsToCheck) {
     const contract = getContract({
-      client: thirdWebClient,
-      chain: chain!.thirdwebChain,
-      address: chain!.domainContractAddess,
       abi: Abi.parse(MWWDomain),
+      address: chain!.domainContractAddess,
+      chain: chain!.thirdwebChain,
+      client: thirdWebClient,
     })
 
     try {
@@ -102,13 +102,13 @@ export const getDomainInfo = async (
   }
   return subscriptions.map(sub => {
     return {
-      planId: sub[1],
-      owner: sub[0],
-      expiryTime: sub[2],
-      domain: sub[3],
-      configIpfsHash: sub[4],
-      registeredAt: sub[5],
       chain: sub.chain,
+      configIpfsHash: sub[4],
+      domain: sub[3],
+      expiryTime: sub[2],
+      owner: sub[0],
+      planId: sub[1],
+      registeredAt: sub[5],
     }
   }) as BlockchainSubscription[]
 }

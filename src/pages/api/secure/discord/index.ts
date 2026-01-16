@@ -27,9 +27,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       const discordAccount: DiscordAccount = {
-        discord_id: userInfo!.id,
-        address: req.session.account!.address!,
         access_token: oAuthToken!,
+        address: req.session.account!.address!,
+        discord_id: userInfo!.id,
       }
 
       const result = await createOrUpdatesDiscordAccount(discordAccount)

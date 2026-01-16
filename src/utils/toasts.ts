@@ -9,12 +9,12 @@ export const useToastHelpers = () => {
     duration = 3000
   ) => {
     toast({
-      title,
       description,
-      status: 'success',
       duration,
-      position: 'top',
       isClosable: true,
+      position: 'top',
+      status: 'success',
+      title,
     })
   }
 
@@ -24,12 +24,12 @@ export const useToastHelpers = () => {
     duration = 3000
   ) => {
     toast({
-      title,
       description,
-      status: 'error',
       duration,
-      position: 'top',
       isClosable: true,
+      position: 'top',
+      status: 'error',
+      title,
     })
   }
 
@@ -39,18 +39,18 @@ export const useToastHelpers = () => {
     duration = 3000
   ) => {
     toast({
-      title,
       description,
-      status: 'info',
       duration,
-      position: 'top',
       isClosable: true,
+      position: 'top',
+      status: 'info',
+      title,
     })
   }
 
   return {
-    showSuccessToast,
     showErrorToast,
     showInfoToast,
+    showSuccessToast,
   }
 }

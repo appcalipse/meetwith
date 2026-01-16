@@ -2,8 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { CreateGroupPayload, CreateGroupsResponse } from '@/types/Group'
-import { countGroups, createGroupInDB } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/database'
+import { createGroupInDB, isProAccountAsync } from '@/utils/database'
 import {
   AccountNotFoundError,
   GroupCreationError,
@@ -32,11 +31,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const isPro = await isProAccountAsync(account_address)
 
     if (!isPro) {
-      // Free tier restriction: Maximum 5 scheduling groups
-      const groupCount = await countGroups(account_address)
-      if (groupCount >= 5) {
-        throw new SchedulingGroupLimitExceededError()
-      }
+      throw new SchedulingGroupLimitExceededError()
     }
 
     const newGroupData: CreateGroupsResponse = await createGroupInDB(
@@ -53,11 +48,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     } else if (error instanceof GroupCreationError) {
       return res
         .status(500)
-        .json({ error: error.message, details: error.details })
+        .json({ details: error.details, error: error.message })
     } else {
       return res.status(500).json({
-        error: 'Internal server error',
         details: (error as Error).message,
+        error: 'Internal server error',
       })
     }
   }

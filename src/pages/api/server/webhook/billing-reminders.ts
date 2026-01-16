@@ -69,11 +69,11 @@ export default async function billingReminders(
 
       // Process periods and enqueue emails
       const processedCount = {
-        crypto5d: 0,
-        crypto3d: 0,
         crypto0d: 0,
-        stripe4d: 0,
+        crypto3d: 0,
+        crypto5d: 0,
         expired: 0,
+        stripe4d: 0,
       }
 
       // Helper to check if a period is a Stripe subscription
@@ -125,15 +125,15 @@ export default async function billingReminders(
               )
 
               const emailPeriod: BillingEmailPeriod = {
-                registered_at: period.registered_at,
                 expiry_time: period.expiry_time,
+                registered_at: period.registered_at,
               }
 
               const emailPlan: BillingEmailPlan = {
+                billing_cycle: billingPlan.billing_cycle,
                 id: billingPlan.id,
                 name: billingPlan.name,
                 price: billingPlan.price,
-                billing_cycle: billingPlan.billing_cycle,
               }
 
               await sendCryptoExpiryReminderEmail(
@@ -172,15 +172,15 @@ export default async function billingReminders(
               )
 
               const emailPeriod: BillingEmailPeriod = {
-                registered_at: period.registered_at,
                 expiry_time: period.expiry_time,
+                registered_at: period.registered_at,
               }
 
               const emailPlan: BillingEmailPlan = {
+                billing_cycle: billingPlan.billing_cycle,
                 id: billingPlan.id,
                 name: billingPlan.name,
                 price: billingPlan.price,
-                billing_cycle: billingPlan.billing_cycle,
               }
 
               await sendSubscriptionExpiredEmail(
@@ -226,15 +226,15 @@ export default async function billingReminders(
               )
 
               const emailPeriod: BillingEmailPeriod = {
-                registered_at: period.registered_at,
                 expiry_time: period.expiry_time,
+                registered_at: period.registered_at,
               }
 
               const emailPlan: BillingEmailPlan = {
+                billing_cycle: billingPlan.billing_cycle,
                 id: billingPlan.id,
                 name: billingPlan.name,
                 price: billingPlan.price,
-                billing_cycle: billingPlan.billing_cycle,
               }
 
               await sendCryptoExpiryReminderEmail(
@@ -281,15 +281,15 @@ export default async function billingReminders(
               )
 
               const emailPeriod: BillingEmailPeriod = {
-                registered_at: period.registered_at,
                 expiry_time: period.expiry_time,
+                registered_at: period.registered_at,
               }
 
               const emailPlan: BillingEmailPlan = {
+                billing_cycle: billingPlan.billing_cycle,
                 id: billingPlan.id,
                 name: billingPlan.name,
                 price: billingPlan.price,
-                billing_cycle: billingPlan.billing_cycle,
               }
 
               await sendCryptoExpiryReminderEmail(
@@ -336,15 +336,15 @@ export default async function billingReminders(
               )
 
               const emailPeriod: BillingEmailPeriod = {
-                registered_at: period.registered_at,
                 expiry_time: period.expiry_time,
+                registered_at: period.registered_at,
               }
 
               const emailPlan: BillingEmailPlan = {
+                billing_cycle: billingPlan.billing_cycle,
                 id: billingPlan.id,
                 name: billingPlan.name,
                 price: billingPlan.price,
-                billing_cycle: billingPlan.billing_cycle,
               }
 
               await sendSubscriptionRenewalDueEmail(
@@ -363,18 +363,18 @@ export default async function billingReminders(
       }
 
       return res.status(200).json({
-        success: true,
-        processed: processedCount,
-        timestamp: now.toISOString(),
         message: `Successfully processed billing reminders: ${JSON.stringify(
           processedCount
         )}`,
+        processed: processedCount,
+        success: true,
+        timestamp: now.toISOString(),
       })
     } catch (error) {
       Sentry.captureException(error)
       return res.status(500).json({
-        success: false,
         error: (error as Error).message,
+        success: false,
       })
     }
   }

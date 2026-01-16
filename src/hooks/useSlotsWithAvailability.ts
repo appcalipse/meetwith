@@ -9,6 +9,7 @@ import { Account } from '@/types/Account'
 import { TimeSlot } from '@/types/Meeting'
 import { generateCalendarEventUrl } from '@/utils/calendar_event_url'
 import { getAccountDisplayName } from '@/utils/user_manager'
+
 const hasOverlap = (
   slot: Interval<true>,
   sortedIntervals: Array<{ start: number; end: number }>
@@ -40,7 +41,7 @@ const hasOverlap = (
 }
 const createIntervalLookup = (intervals: Interval<true>[]) => {
   return intervals
-    .map(i => ({ start: i.start.toMillis(), end: i.end.toMillis() }))
+    .map(i => ({ end: i.end.toMillis(), start: i.start.toMillis() }))
     .sort((a, b) => a.start - b.start)
 }
 const useSlotsWithAvailability = (
@@ -83,14 +84,14 @@ const useSlotsWithAvailability = (
     return userBusySlots
       .filter(slot => slot.eventTitle || slot.eventId || slot.eventWebLink)
       .map(slot => ({
-        start:
-          slot.start instanceof Date
-            ? slot.start.getTime()
-            : new Date(slot.start).getTime(),
         end:
           slot.end instanceof Date
             ? slot.end.getTime()
             : new Date(slot.end).getTime(),
+        start:
+          slot.start instanceof Date
+            ? slot.start.getTime()
+            : new Date(slot.start).getTime(),
         timeSlot: slot,
       }))
       .sort((a, b) => a.start - b.start)
@@ -113,7 +114,6 @@ const useSlotsWithAvailability = (
         const slotEnd = slot.end.toMillis()
         const isAfterNow = slotStart >= nowMillis
 
-        const isSlotAvailable: boolean[] = []
         let numberOfAvailable = 0
         const userStates: Array<{ state: boolean; displayName: string }> =
           participantAvailabilities.map(account => {
@@ -130,8 +130,8 @@ const useSlotsWithAvailability = (
               numberOfAvailable++
             }
             return {
-              state: isUserAvailable,
               displayName: accountDisplayNames.get(account) || '',
+              state: isUserAvailable,
             }
           })
 
@@ -168,12 +168,12 @@ const useSlotsWithAvailability = (
         }
 
         return {
-          slot,
-          state,
-          userStates,
-          slotKey: `${slot.start.toMillis()}-${slot.end.toMillis()}`,
           currentUserEvent,
           eventUrl,
+          slot,
+          slotKey: `${slot.start.toMillis()}-${slot.end.toMillis()}`,
+          state,
+          userStates,
         }
       }),
     }))

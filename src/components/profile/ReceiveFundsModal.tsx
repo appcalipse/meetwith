@@ -13,9 +13,7 @@ import {
 } from '@chakra-ui/react'
 import QRCode from 'qrcode'
 import React, { useEffect, useState } from 'react'
-import { FiArrowLeft } from 'react-icons/fi'
-import { FiCopy } from 'react-icons/fi'
-import { FiDownload } from 'react-icons/fi'
+import { FiArrowLeft, FiCopy, FiDownload } from 'react-icons/fi'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useToastHelpers } from '@/utils/toasts'
@@ -85,7 +83,7 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
       setCopied(true)
       showSuccessToast('Address copied!', 'Wallet address copied to clipboard')
       setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
+    } catch (_error) {
       // Fallback for older browsers
       const textArea = document.createElement('textarea')
       textArea.value = walletAddress
