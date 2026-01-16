@@ -1591,7 +1591,8 @@ export const getSuggestedSlots = async (
   addresses: string[],
   startDate: Date,
   endDate: Date,
-  duration: number
+  duration: number,
+  groupId?: string
 ): Promise<Interval[]> => {
   try {
     return (
@@ -1600,6 +1601,7 @@ export const getSuggestedSlots = async (
         duration,
         endDate,
         startDate,
+        groupId,
       })
     )
       .map(slot => ({
