@@ -2753,14 +2753,28 @@ export const getSlotInstanceById = async (
 }
 
 export const addOrUpdateWebcal = async (
-  url: string
+  formdata: FormData
 ): Promise<WebCalResponse> => {
   return await internalFetch<WebCalResponse>(
     `/secure/calendar_integrations/webcal`,
     'POST',
-    {
-      url,
-    }
+    formdata,
+    undefined,
+    undefined,
+    true
+  )
+}
+export const addOrUpdateQuickPollWebcal = async (
+  participantId: string,
+  formdata: FormData
+): Promise<WebCalResponse> => {
+  return await internalFetch<WebCalResponse>(
+    `/quickpoll/participants/${participantId}/webcal`,
+    'POST',
+    formdata,
+    undefined,
+    undefined,
+    true
   )
 }
 

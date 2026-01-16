@@ -68,6 +68,7 @@ function validateFile(
   return null
 }
 const SIZE_10_MB = 10485760 // 10 MB in bytes
+export const SIZE_5_MB = 5242880 // 5 MB in bytes
 export function withFileUpload(
   handler: NextApiHandlerWithFile,
   options: UploadOptions = {
