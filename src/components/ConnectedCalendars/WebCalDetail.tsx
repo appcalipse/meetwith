@@ -9,6 +9,7 @@ import {
 import { useContext, useState } from 'react'
 import { RiFileUploadLine } from 'react-icons/ri'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
+import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import { addOrUpdateWebcal } from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
@@ -23,7 +24,7 @@ interface WebCalDetailProps {
   onSuccess: () => Promise<void>
   isQuickPoll?: boolean
   participantId?: string
-  pollData?: any
+  pollData?: QuickPollBySlugResponse
 }
 
 const GENERIC_DISCLAIMER = (

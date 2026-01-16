@@ -9,13 +9,13 @@ export const useAllMeetingTypes = () => {
     isLoading,
     error,
   } = useQuery<MeetingType[]>({
-    queryKey: ['allMeetingTypes'],
     queryFn: () => getMeetingTypes(100, 0),
+    queryKey: ['allMeetingTypes'],
   })
 
   return {
-    meetingTypes: meetingTypes || [],
-    isLoading,
     error,
+    isLoading,
+    meetingTypes: meetingTypes || [],
   }
 }

@@ -286,7 +286,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
 
     try {
       await Promise.all([checkAccount(), checkSuggestions()])
-    } catch (e) {}
+    } catch (_e) {}
     setSearchingTimes(false)
   }
 

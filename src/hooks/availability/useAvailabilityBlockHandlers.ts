@@ -85,10 +85,10 @@ export const useAvailabilityBlockHandlers = ({
     deleteExistingBlock,
   } = useAvailabilityBlockMutations({
     createBlock,
-    updateBlock,
     deleteBlock,
     duplicateBlock,
     onMeetingTypesSave,
+    updateBlock,
   })
 
   // Form Handlers
@@ -98,10 +98,10 @@ export const useAvailabilityBlockHandlers = ({
     initializeFormForDuplicate,
   } = useAvailabilityBlockFormHandlers({
     resetForm,
-    setTitle,
-    setTimezone,
-    updateAvailability,
     setIsDefault,
+    setTimezone,
+    setTitle,
+    updateAvailability,
   })
 
   const handleCreateBlock = () => {
@@ -164,10 +164,10 @@ export const useAvailabilityBlockHandlers = ({
                 // First set the selected block as default
                 await updateBlock.mutateAsync({
                   id: selectedBlockId,
-                  title: selectedBlock.title,
-                  timezone: selectedBlock.timezone,
-                  weekly_availability: selectedBlock.weekly_availability,
                   is_default: true,
+                  timezone: selectedBlock.timezone,
+                  title: selectedBlock.title,
+                  weekly_availability: selectedBlock.weekly_availability,
                 })
                 // Then update the original block
                 await updateExistingBlock(formState, editingBlockId)
@@ -176,7 +176,7 @@ export const useAvailabilityBlockHandlers = ({
                   `${formState.title} has been updated successfully.`
                 )
                 handleClose()
-              } catch (updateError: unknown) {
+              } catch (_updateError: unknown) {
                 showErrorToast(
                   'Error',
                   'Failed to update default availability block.'
@@ -269,10 +269,10 @@ export const useAvailabilityBlockHandlers = ({
                     // First set the selected block as default
                     await updateBlock.mutateAsync({
                       id: selectedBlockId,
-                      title: selectedBlock.title,
-                      timezone: selectedBlock.timezone,
-                      weekly_availability: selectedBlock.weekly_availability,
                       is_default: true,
+                      timezone: selectedBlock.timezone,
+                      title: selectedBlock.title,
+                      weekly_availability: selectedBlock.weekly_availability,
                     })
                     // Then delete the original block
                     await deleteExistingBlock(editingBlockId)
@@ -281,7 +281,7 @@ export const useAvailabilityBlockHandlers = ({
                       'The availability block has been deleted successfully.'
                     )
                     handleClose()
-                  } catch (updateError: unknown) {
+                  } catch (_updateError: unknown) {
                     showErrorToast(
                       'Error',
                       'Failed to update default availability block.'
@@ -320,10 +320,10 @@ export const useAvailabilityBlockHandlers = ({
     onConfirm: (selectedBlockId: string) => void
   ) => {
     setSelectDefaultModalConfig({
-      title,
-      description,
       confirmButtonText,
+      description,
       onConfirm,
+      title,
     })
     setShowSelectDefaultModal(true)
   }
@@ -334,22 +334,22 @@ export const useAvailabilityBlockHandlers = ({
   }
 
   return {
-    isEditing,
-    editingBlockId,
     duplicatingBlockId,
+    editingBlockId,
+    handleCancelDelete,
+    handleClose,
+    handleCloseSelectDefaultModal,
+    handleCreateBlock,
+    handleDeleteBlock,
+    handleDuplicateBlock,
+    handleEditBlock,
+    handleSaveNewBlock,
+    handleShowDeleteConfirmation,
+    handleShowSelectDefaultModal,
+    isEditing,
+    isSaving,
+    selectDefaultModalConfig,
     showDeleteConfirmation,
     showSelectDefaultModal,
-    selectDefaultModalConfig,
-    isSaving,
-    handleCreateBlock,
-    handleEditBlock,
-    handleDuplicateBlock,
-    handleClose,
-    handleSaveNewBlock,
-    handleDeleteBlock,
-    handleShowDeleteConfirmation,
-    handleCancelDelete,
-    handleShowSelectDefaultModal,
-    handleCloseSelectDefaultModal,
   }
 }

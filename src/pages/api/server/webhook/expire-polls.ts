@@ -11,16 +11,16 @@ export default async function expirePolls(
     try {
       const result = await expireStalePolls()
       return res.status(200).json({
-        success: true,
         expiredCount: result.expiredCount,
-        timestamp: result.timestamp,
         message: `Successfully expired ${result.expiredCount} poll(s)`,
+        success: true,
+        timestamp: result.timestamp,
       })
     } catch (error) {
       Sentry.captureException(error)
       return res.status(500).json({
-        success: false,
         error: (error as Error).message,
+        success: false,
       })
     }
   }

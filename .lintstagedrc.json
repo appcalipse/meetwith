@@ -1,5 +1,5 @@
 {
-  "*.{js,jsx,ts,tsx}": ["eslint", "prettier --write"],
+  "*.{js,jsx,ts,tsx}": ["biome check --write", "prettier --write"],
   "*.{less,scss}": "prettier --write",
-  "*.{js,css,json,md}": ["prettier --write"]
+  "*.{json,md}": ["prettier --write"]
 }

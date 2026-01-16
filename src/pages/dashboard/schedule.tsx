@@ -1,7 +1,6 @@
 import { NextPage } from 'next'
-
-import { AvailabilityTrackerProvider } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import ScheduleMain from '@/components/schedule/ScheduleMain'
+import { AvailabilityTrackerProvider } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import { NavigationProvider } from '@/providers/schedule/NavigationContext'
 import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
 import { PermissionsProvider } from '@/providers/schedule/PermissionsContext'
@@ -10,12 +9,13 @@ import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import { Intents } from '@/types/Dashboard'
 
-interface IInitialProps {
+export interface IInitialProps {
   groupId?: string
   intent?: Intents
   meetingId?: string
   contactId?: string
   pollId?: string
+  seriesId?: string
   conferenceId?: string
 }
 
@@ -26,6 +26,7 @@ const Schedule: NextPage<IInitialProps> = ({
   contactId,
   pollId,
   conferenceId,
+  seriesId,
 }) => {
   return (
     <ScheduleStateProvider>
@@ -34,12 +35,13 @@ const Schedule: NextPage<IInitialProps> = ({
           <NavigationProvider>
             <PermissionsProvider>
               <ScheduleMain
+                conferenceId={conferenceId}
+                contactId={contactId}
                 groupId={groupId}
                 intent={intent}
                 meetingId={meetingId}
-                contactId={contactId}
                 pollId={pollId}
-                conferenceId={conferenceId}
+                seriesId={seriesId}
               />
             </PermissionsProvider>
           </NavigationProvider>
@@ -54,9 +56,24 @@ const EnhancedSchedule: NextPage = withLoginRedirect(
 )
 
 EnhancedSchedule.getInitialProps = async ctx => {
-  const { groupId, intent, meetingId, contactId, pollId, conferenceId } =
-    ctx.query
-  return { groupId, intent, meetingId, contactId, pollId, conferenceId }
+  const {
+    groupId,
+    intent,
+    meetingId,
+    contactId,
+    pollId,
+    conferenceId,
+    seriesId,
+  } = ctx.query
+  return {
+    conferenceId,
+    contactId,
+    groupId,
+    intent,
+    meetingId,
+    pollId,
+    seriesId,
+  }
 }
 
 export default withLoginRedirect(EnhancedSchedule)

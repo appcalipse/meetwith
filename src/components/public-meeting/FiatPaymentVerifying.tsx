@@ -13,6 +13,7 @@ import { useToastHelpers } from '@/utils/toasts'
 
 import Loading from '../Loading'
 import { PublicScheduleContext, ScheduleStateContext } from '.'
+
 const getIconColor = (status?: PaymentStatus) => {
   switch (status) {
     case PaymentStatus.COMPLETED:

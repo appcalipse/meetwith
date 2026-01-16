@@ -23,13 +23,19 @@
       "@meta/*": ["./types/*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "tawk.to.d.ts",
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "src/**/*.js",
-    "src/**/*.jsx"
-  ],
-  "exclude": ["node_modules", ".next", "dist", "build", "out", "coverage"]
+  "include": ["next-env.d.ts", "tawk.to.d.ts", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "dist",
+    "build",
+    "out",
+    "coverage",
+    ".yarn",
+    ".swc",
+    ".husky",
+    ".github",
+    "__mocks__",
+    "copilot"
+  ]
 }

@@ -101,7 +101,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
       await updateConnectedCalendar(props.email, props.provider, _calendars)
       _calendars[index].loading = false
       setCalendars([..._calendars]) //force update with spread operator
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Something went wrong',
         description: 'There was an error updating the calendar connection',

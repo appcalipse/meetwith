@@ -467,7 +467,7 @@ const OnboardingModal = () => {
             },
             stateObject.jti
           )
-      } catch (e) {
+      } catch (_e) {
         toast({
           title: 'Error setting email',
           description:

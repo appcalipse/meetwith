@@ -29,7 +29,8 @@ export const useWalletTransactions = (
   const currentAccount = useAccountContext()
 
   const { data: exchangeRates } = useQuery({
-    queryKey: ['exchangeRates', selectedCurrency],
+    cacheTime: 1000 * 60 * 60 * 24,
+    enabled: selectedCurrency !== 'USD',
     queryFn: async () => {
       if (selectedCurrency === 'USD') return { USD: 1 }
 
@@ -51,9 +52,8 @@ export const useWalletTransactions = (
 
       return rates
     },
-    enabled: selectedCurrency !== 'USD',
+    queryKey: ['exchangeRates', selectedCurrency],
     staleTime: 1000 * 60 * 60,
-    cacheTime: 1000 * 60 * 60 * 24,
   })
 
   const {
@@ -61,18 +61,10 @@ export const useWalletTransactions = (
     isLoading,
     error,
   } = useQuery({
-    queryKey: [
-      'wallet-transactions',
-      currentAccount?.address,
-      tokenAddress,
-      chainId,
-      limit,
-      offset,
-      selectedCurrency,
-      searchQuery,
-    ],
+    cacheTime: 60000,
+    enabled: !!currentAccount?.address,
     queryFn: async (): Promise<WalletTransactionsResponse> => {
-      if (!currentAccount?.address) return { transactions: [], totalCount: 0 }
+      if (!currentAccount?.address) return { totalCount: 0, transactions: [] }
 
       return getWalletTransactions(
         currentAccount.address,
@@ -83,10 +75,18 @@ export const useWalletTransactions = (
         searchQuery
       ) as Promise<WalletTransactionsResponse>
     },
-    enabled: !!currentAccount?.address,
-    staleTime: 30000,
-    cacheTime: 60000,
+    queryKey: [
+      'wallet-transactions',
+      currentAccount?.address,
+      tokenAddress,
+      chainId,
+      limit,
+      offset,
+      selectedCurrency,
+      searchQuery,
+    ],
     refetchInterval: 10000,
+    staleTime: 30000,
   })
 
   const transactions = response?.transactions || []
@@ -187,15 +187,15 @@ export const useWalletTransactions = (
     }
 
     return {
-      id: tx.id,
-      user,
-      userImage: '/assets/wallet-add.png',
       action,
       amount: formattedAmount,
-      status,
       date,
-      time,
+      id: tx.id,
       originalTransaction: tx,
+      status,
+      time,
+      user,
+      userImage: '/assets/wallet-add.png',
     }
   }
 
@@ -205,10 +205,10 @@ export const useWalletTransactions = (
       : []
 
   return {
-    transactions: formattedTransactions,
-    rawTransactions: transactions,
-    isLoading,
     error: error instanceof Error ? error.message : null,
+    isLoading,
+    rawTransactions: transactions,
     totalCount,
+    transactions: formattedTransactions,
   }
 }

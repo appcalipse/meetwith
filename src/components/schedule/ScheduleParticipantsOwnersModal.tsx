@@ -17,6 +17,7 @@ import React, { FC, useEffect, useState } from 'react'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { ellipsizeAddress } from '@/utils/user_manager'
+
 interface IProps {
   onClose: () => void
   isOpen: boolean

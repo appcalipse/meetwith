@@ -57,8 +57,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       return res.status(200).json({
         ...updatedAvailability,
-        isDefault: is_default,
         availabilities: updatedAvailability.weekly_availability,
+        isDefault: is_default,
       })
     }
 
@@ -78,8 +78,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       return res.status(200).json({
         ...duplicatedBlock,
-        isDefault: modifiedData.is_default,
         availabilities: duplicatedBlock.weekly_availability,
+        isDefault: modifiedData.is_default,
       })
     }
 

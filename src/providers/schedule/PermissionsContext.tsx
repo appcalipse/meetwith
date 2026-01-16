@@ -55,19 +55,19 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
   const isUpdatingMeeting = useMemo(() => !!query.meetingId, [query.meetingId])
 
   const value: IPermissionsContext = {
-    isDeleting,
-    canDelete,
     canCancel,
-    isScheduler,
-    setIsDeleting,
-    setCanDelete,
-    setCanCancel,
-    setIsScheduler,
+    canDelete,
     canEditMeetingDetails,
-    setCanEditMeetingDetails,
-    isUpdatingMeeting,
     canEditMeetingParticipants,
+    isDeleting,
+    isScheduler,
+    isUpdatingMeeting,
+    setCanCancel,
+    setCanDelete,
+    setCanEditMeetingDetails,
     setCanEditMeetingParticipants,
+    setIsDeleting,
+    setIsScheduler,
   }
   return (
     <PermissionsContext.Provider value={value}>

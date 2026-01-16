@@ -2,6 +2,7 @@ import { format, isSameMonth } from 'date-fns'
 import { FC, useMemo } from 'react'
 
 import { MonthDay } from './MonthDays'
+
 interface StandAloneMonthDaysProps {
   day: Date
   startDay: Date

@@ -26,13 +26,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     if (isValid) {
       return res.status(200).json({
-        success: true,
         message: 'Verification code verified successfully',
+        success: true,
       })
     } else {
       return res.status(400).json({
-        success: false,
         error: 'Invalid or expired verification code',
+        success: false,
       })
     }
   } catch (error) {

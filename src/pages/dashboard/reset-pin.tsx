@@ -39,15 +39,15 @@ const ResetPinPage = () => {
       return await resetPinWithToken(newPin, token)
     },
     {
+      onError: (error: unknown) => {
+        handleApiError('Error resetting transaction PIN', error)
+        console.error('Error resetting PIN:', error)
+      },
       onSuccess: () => {
         showSuccessToast('Success', 'Transaction PIN reset successfully')
         setIsResetModalOpen(false)
         setIsSuccessModalOpen(true)
         setPinResetSuccessful(true) // Mark PIN as reset
-      },
-      onError: (error: unknown) => {
-        handleApiError('Error resetting transaction PIN', error)
-        console.error('Error resetting PIN:', error)
       },
     }
   )
@@ -63,11 +63,11 @@ const ResetPinPage = () => {
   if (isLoading) {
     return (
       <Box
-        minH="100vh"
+        alignItems="center"
         bg="bg-surface"
         display="flex"
-        alignItems="center"
         justifyContent="center"
+        minH="100vh"
       >
         <CustomLoading />
       </Box>
@@ -76,28 +76,28 @@ const ResetPinPage = () => {
 
   return (
     <Box
-      minH="100vh"
+      alignItems="center"
       bg="bg-surface"
       display="flex"
-      alignItems="center"
       justifyContent="center"
+      minH="100vh"
     >
       {/* Reset PIN Modal */}
       <ResetPinModal
+        isLoading={resetPinMutation.isLoading}
         isOpen={isResetModalOpen}
         onClose={() => setIsResetModalOpen(true)}
         onPinReset={handlePinReset}
-        isLoading={resetPinMutation.isLoading}
       />
 
       {/* Success Modal */}
       <SuccessModal
+        buttonText="Go back to Dashboard"
         isOpen={isSuccessModalOpen}
+        message="You have successfully reset your transaction PIN for secure transactions"
+        onButtonClick={handleBackToDashboard}
         onClose={() => setIsSuccessModalOpen(true)}
         title="Transaction pin reset was successful"
-        message="You have successfully reset your transaction PIN for secure transactions"
-        buttonText="Go back to Dashboard"
-        onButtonClick={handleBackToDashboard}
       />
     </Box>
   )

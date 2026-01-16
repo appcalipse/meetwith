@@ -11,11 +11,11 @@ export const handleApiError = (title: string, err: unknown) => {
     ? JSON.parse(error.message)?.error || JSON.parse(error.message)?.name
     : error.message
   toast({
-    title,
     description: errorMessage,
-    status: 'error',
     duration: 5000,
     isClosable: true,
     position: 'top',
+    status: 'error',
+    title,
   })
 }

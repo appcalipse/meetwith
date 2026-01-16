@@ -26,8 +26,8 @@ import {
 } from '@utils/constants/meeting-types'
 import {
   ErrorAction,
-  errorReducerSingle,
   ErrorState,
+  errorReducerSingle,
   PaymentInfo,
   validatePaymentInfo,
 } from '@utils/schemas'

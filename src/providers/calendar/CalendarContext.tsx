@@ -11,19 +11,25 @@ import {
 import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
 import { getEvents, listConnectedCalendars } from '@/utils/api_helper'
 import {
-  calendarEventsPreprocessors,
   decodeMeeting,
   meetWithSeriesPreprocessors,
 } from '@/utils/calendar_manager'
 
 interface ICalendarContext {
   calendars: undefined | ConnectedCalendarCore[]
-  currrentDate: DateTime
+  currentDate: DateTime
   setCurrentDate: (date: DateTime) => void
   selectedCalendars: CalendarSyncInfo[]
-  selectedSlot: WithInterval<MeetingDecrypted> | null
+  selectedSlot:
+    | WithInterval<UnifiedEvent<DateTime>>
+    | WithInterval<MeetingDecrypted<DateTime>>
+    | null
   setSelectedSlot: React.Dispatch<
-    React.SetStateAction<WithInterval<MeetingDecrypted> | null>
+    React.SetStateAction<
+      | WithInterval<UnifiedEvent<DateTime>>
+      | WithInterval<MeetingDecrypted<DateTime>>
+      | null
+    >
   >
   isLoading: boolean
   setSelectedCalendars: React.Dispatch<React.SetStateAction<CalendarSyncInfo[]>>
@@ -46,20 +52,20 @@ export type CalendarEventsData = {
 
 export const CalendarContext = React.createContext<ICalendarContext>({
   calendars: undefined,
-  currrentDate: DateTime.now(),
-  setCurrentDate: () => {},
-  selectedCalendars: [],
-  setSelectedCalendars: () => {},
-  getSlotBgColor: () => '',
-  selectedSlot: null,
-  setSelectedSlot: () => {},
+  currentDate: DateTime.now(),
   eventIndex: { dayIndex: new Map(), hourIndex: new Map() },
+  getSlotBgColor: () => '',
   isLoading: false,
+  selectedCalendars: [],
+  selectedSlot: null,
+  setCurrentDate: () => {},
+  setSelectedCalendars: () => {},
+  setSelectedSlot: () => {},
 })
 export const createEventsQueryKey = (date: DateTime) => [
   'calendar-events',
   date.startOf('month').startOf('week').toISODate() || '',
-  date.endOf('month').startOf('week').toISODate() || '',
+  date.endOf('month').endOf('week').toISODate() || '',
 ]
 export const useCalendarContext = () => {
   const context = React.useContext(CalendarContext)
@@ -71,17 +77,18 @@ export const useCalendarContext = () => {
 export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   children,
 }) => {
-  const [currrentDate, setCurrentDate] = React.useState<DateTime>(
-    DateTime.now()
-  )
+  const [currentDate, setCurrentDate] = React.useState<DateTime>(DateTime.now())
   const [selectedCalendars, setSelectedCalendars] = React.useState<
     CalendarSyncInfo[]
   >([])
-  const [selectedSlot, setSelectedSlot] =
-    React.useState<WithInterval<MeetingDecrypted> | null>(null)
+  const [selectedSlot, setSelectedSlot] = React.useState<
+    | WithInterval<UnifiedEvent<DateTime>>
+    | WithInterval<MeetingDecrypted<DateTime>>
+    | null
+  >(null)
   const { data: calendars, isLoading: isCalendarLoading } = useQuery({
-    queryKey: ['connected-calendars'],
     queryFn: () => listConnectedCalendars(false),
+    queryKey: ['connected-calendars'],
   })
   const queryClient = useQueryClient()
   const currentAccount = useAccountContext()
@@ -90,54 +97,56 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
     async (date: DateTime): Promise<CalendarEventsData> => {
       const res = await getEvents(date)
       return {
-        calendarEvents: calendarEventsPreprocessors(res.calendarEvents, date),
+        calendarEvents: res.calendarEvents,
         mwwEvents: await Promise.all(
-          meetWithSeriesPreprocessors(res.mwwEvents, date).map(
-            async meeting => {
-              // TODO: Pass all events through a preprocessor first before mapping this prepropcesssor shopuld get all the meeting sereis and check if all single instance of that meeting is already included in the events, if yes it returns all the events and discard the mastyer event otherwise it takes the availaible events and adds the master events to it.
-              try {
-                const decodedMeeting = await decodeMeeting(
-                  meeting as DBSlot,
-                  currentAccount!
-                )
-                return decodedMeeting
-              } catch (e) {
-                console.error('Error decoding meeting in calendar provider:', e)
-                return null
-              }
+          meetWithSeriesPreprocessors(
+            res.mwwEvents,
+            date.startOf('month').startOf('week'),
+            date.endOf('month').endOf('week')
+          ).map(async meeting => {
+            // TODO: Pass all events through a preprocessor first before mapping this prepropcesssor shopuld get all the meeting sereis and check if all single instance of that meeting is already included in the events, if yes it returns all the events and discard the mastyer event otherwise it takes the availaible events and adds the master events to it.
+            try {
+              const decodedMeeting = await decodeMeeting(
+                meeting as DBSlot,
+                currentAccount!
+              )
+              return decodedMeeting
+            } catch (e) {
+              console.error('Error decoding meeting in calendar provider:', e)
+              return null
             }
-          )
+          })
         ).then(meetings => meetings.filter(m => m !== null)),
       }
     },
     [currentAccount]
   )
   const currentMonth = React.useMemo(
-    () => currrentDate.startOf('month'),
-    [currrentDate.year, currrentDate.month]
+    () => currentDate.startOf('month'),
+    [currentDate.year, currentDate.month]
   )
 
   const { data: events, isLoading } = useQuery({
-    queryKey: createEventsQueryKey(currentMonth),
-    queryFn: () => fetchEventsForMonth(currentMonth),
-    staleTime: 5 * 60 * 1000,
     enabled: !!currentMonth,
+    queryFn: () => fetchEventsForMonth(currentMonth),
+    queryKey: createEventsQueryKey(currentMonth),
+    staleTime: 5 * 60 * 1000,
   })
 
   React.useEffect(() => {
     if (isLoading) return
-    const previousMonth = currrentDate.minus({ month: 1 })
-    const nextMonth = currrentDate.plus({ month: 1 })
+    const previousMonth = currentDate.minus({ month: 1 })
+    const nextMonth = currentDate.plus({ month: 1 })
 
     queryClient.prefetchQuery({
-      queryKey: createEventsQueryKey(previousMonth),
       queryFn: () => fetchEventsForMonth(previousMonth),
+      queryKey: createEventsQueryKey(previousMonth),
       staleTime: 10 * 60 * 1000, // Keep prefetched data fresh for 10 minutes
     })
 
     queryClient.prefetchQuery({
-      queryKey: createEventsQueryKey(nextMonth),
       queryFn: () => fetchEventsForMonth(nextMonth),
+      queryKey: createEventsQueryKey(nextMonth),
       staleTime: 10 * 60 * 1000, // Keep prefetched data fresh for 10 minutes
     })
   }, [currentMonth, queryClient, isLoading])
@@ -171,12 +180,12 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
       }),
     ].map(event => ({
       ...event,
-      start: DateTime.fromJSDate(new Date(event.start)),
       end: DateTime.fromJSDate(new Date(event.end)),
       interval: Interval.fromDateTimes(
         DateTime.fromJSDate(new Date(event.start)),
         DateTime.fromJSDate(new Date(event.end))
       ),
+      start: DateTime.fromJSDate(new Date(event.start)),
     }))
 
     // Index events by hour for O(1) lookup
@@ -208,7 +217,7 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
       }
     })
 
-    return { hourIndex, dayIndex }
+    return { dayIndex, hourIndex }
   }, [events, selectedCalendars])
 
   const getSlotBgColor = React.useCallback(
@@ -224,19 +233,19 @@ export const CalendarProvider: React.FC<React.PropsWithChildren> = ({
   const context: ICalendarContext = React.useMemo(
     () => ({
       calendars,
-      currrentDate,
-      setCurrentDate,
-      selectedCalendars,
-      setSelectedCalendars,
-      getSlotBgColor,
-      selectedSlot,
-      setSelectedSlot,
+      currentDate,
       eventIndex,
+      getSlotBgColor,
       isLoading: isCalendarLoading || isLoading,
+      selectedCalendars,
+      selectedSlot,
+      setCurrentDate,
+      setSelectedCalendars,
+      setSelectedSlot,
     }),
     [
       calendars,
-      currrentDate,
+      currentDate,
       selectedCalendars,
       getSlotBgColor,
       selectedSlot,

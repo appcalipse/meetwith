@@ -18,6 +18,7 @@ import InviteParticipants from '@/components/schedule/participants/InvitePartici
 import ScheduleBase from '@/components/schedule/ScheduleBase'
 import ScheduleCompleted from '@/components/schedule/ScheduleCompleted'
 import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
+import { IInitialProps } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { QuickPollAvailabilityProvider } from '@/providers/quickpoll/QuickPollAvailabilityContext'
@@ -31,10 +32,12 @@ import { useParticipantPermissions } from '@/providers/schedule/PermissionsConte
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode, Intents } from '@/types/Dashboard'
 import {
+  DBSlot,
   MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
+  SlotInstance,
 } from '@/types/Meeting'
 import {
   ParticipantInfo,
@@ -58,16 +61,22 @@ import {
   getMeeting,
   getQuickPollById,
   getSlotByMeetingId,
+  getSlotInstanceById,
   updateQuickPoll,
 } from '@/utils/api_helper'
 import {
   decodeMeeting,
   deleteMeeting,
+  deleteMeetingInstance,
+  deleteMeetingSeries,
   scheduleMeeting,
   selectDefaultProvider,
   updateMeeting,
+  updateMeetingInstance,
+  updateMeetingSeries,
 } from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
+import { UpdateMode } from '@/utils/constants/meeting'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -102,14 +111,6 @@ export enum Page {
   SCHEDULE_DETAILS,
   COMPLETED,
 }
-interface IInitialProps {
-  groupId?: string
-  intent?: Intents
-  meetingId?: string
-  conferenceId?: string
-  contactId?: string
-  pollId?: string
-}
 
 const ScheduleMain: FC<IInitialProps> = ({
   groupId,
@@ -118,6 +119,7 @@ const ScheduleMain: FC<IInitialProps> = ({
   contactId,
   conferenceId,
   pollId,
+  seriesId,
 }) => {
   const { currentAccount } = useContext(AccountContext)
   const { fetchPollCounts } = useContext(MetricStateContext)
@@ -143,6 +145,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     setIsScheduling,
     decryptedMeeting,
     setDecryptedMeeting,
+    editMode,
   } = useScheduleState()
   const {
     addGroup,
@@ -282,9 +285,26 @@ const ScheduleMain: FC<IInitialProps> = ({
       let decryptedMeeting: MeetingDecrypted | null = null
       let actor = ''
       if (meetingId) {
-        const slot = await getMeeting(meetingId)
+        let slot: DBSlot | SlotInstance | null
+        if (meetingId.includes('_')) {
+          slot = await getSlotInstanceById(meetingId)
+        } else {
+          slot = await getMeeting(meetingId)
+        }
+        if (!slot) {
+          toast({
+            title: 'Meeting Not Found',
+            description: `The meeting you are trying to access does not exist or has been deleted.`,
+            status: 'error',
+            duration: 15000,
+            position: 'top',
+            isClosable: true,
+            onCloseComplete: () => push(`/dashboard/${EditMode.MEETINGS}`),
+          })
+          return
+        }
         decryptedMeeting = await decodeMeeting(slot, currentAccount!)
-        actor = slot.account_address!
+        actor = slot.account_address || ''
       } else if (conferenceId) {
         const slot = await getSlotByMeetingId(conferenceId)
         if (slot?.user_type === 'account') {
@@ -354,10 +374,12 @@ const ScheduleMain: FC<IInitialProps> = ({
         setCanCancel(false)
       }
       if (decryptedMeeting.permissions) {
-        const canEditMeetingDetails =
-          !!decryptedMeeting?.permissions?.includes(
-            MeetingPermissions.EDIT_MEETING
-          ) || isSchedulerOrOwner
+        const canEditMeetingDetails = canAccountAccessPermission(
+          decryptedMeeting?.permissions,
+          decryptedMeeting?.participants || [],
+          currentAccount?.address,
+          MeetingPermissions.EDIT_MEETING
+        )
         setCanEditMeetingDetails(canEditMeetingDetails)
         const canViewParticipants = canAccountAccessPermission(
           decryptedMeeting?.permissions,
@@ -491,16 +513,32 @@ const ScheduleMain: FC<IInitialProps> = ({
     if (!decryptedMeeting) return
     setIsDeleting(true)
     try {
-      await deleteMeeting(
-        true,
-        currentAccount?.address || '',
-        NO_MEETING_TYPE,
-        decryptedMeeting?.start,
-        decryptedMeeting?.end,
-        decryptedMeeting,
-        getSignature(currentAccount?.address || '') || '',
-        actor
-      )
+      if (seriesId) {
+        if (editMode === UpdateMode.SINGLE_EVENT) {
+          await deleteMeetingInstance(
+            decryptedMeeting.id,
+            true,
+            currentAccount?.address || '',
+            decryptedMeeting,
+            actor
+          )
+        } else {
+          await deleteMeetingSeries(
+            decryptedMeeting.id,
+            true,
+            currentAccount?.address || '',
+            actor
+          )
+        }
+      } else {
+        await deleteMeeting(
+          true,
+          currentAccount?.address || '',
+          NO_MEETING_TYPE,
+          decryptedMeeting,
+          actor
+        )
+      }
       toast({
         title: 'Meeting Deleted',
         description: 'The meeting was deleted successfully',
@@ -777,28 +815,69 @@ const ScheduleMain: FC<IInitialProps> = ({
         setIsScheduling(false)
         return
       }
-      if ((meetingId || conferenceId) && intent === Intents.UPDATE_MEETING) {
-        await updateMeeting(
-          true,
-          currentAccount!.address,
-          NO_MEETING_TYPE,
-          start,
-          end,
-          decryptedMeeting!,
-          getSignature(currentAccount!.address) || '',
-          _participants.valid,
-          content,
-          meetingUrl,
-          meetingProvider,
-          title,
-          meetingNotification.map(mn => mn.value),
-          meetingRepeat.value,
-          selectedPermissions
-        )
-        logEvent('Updated a meeting', {
-          fromDashboard: true,
-          participantsSize: _participants.valid.length,
-        })
+      if (
+        (meetingId || conferenceId) &&
+        intent === Intents.UPDATE_MEETING &&
+        decryptedMeeting
+      ) {
+        if (seriesId) {
+          if (editMode === UpdateMode.SINGLE_EVENT) {
+            await updateMeetingInstance(
+              decryptedMeeting.id,
+              true,
+              currentAccount!.address,
+              start,
+              end,
+              decryptedMeeting!,
+              getSignature(currentAccount!.address) || '',
+              _participants.valid,
+              content,
+              meetingUrl,
+              meetingProvider,
+              title,
+              meetingNotification.map(mn => mn.value),
+              selectedPermissions
+            )
+          } else {
+            await updateMeetingSeries(
+              decryptedMeeting.id,
+              true,
+              currentAccount!.address,
+              start,
+              end,
+              getSignature(currentAccount!.address) || '',
+              _participants.valid,
+              content,
+              meetingUrl,
+              meetingProvider,
+              title,
+              meetingNotification.map(mn => mn.value),
+              selectedPermissions
+            )
+          }
+        } else {
+          await updateMeeting(
+            true,
+            currentAccount!.address,
+            NO_MEETING_TYPE,
+            start,
+            end,
+            decryptedMeeting!,
+            getSignature(currentAccount!.address) || '',
+            _participants.valid,
+            content,
+            meetingUrl,
+            meetingProvider,
+            title,
+            meetingNotification.map(mn => mn.value),
+            meetingRepeat.value,
+            selectedPermissions
+          )
+          logEvent('Updated a meeting', {
+            fromDashboard: true,
+            participantsSize: _participants.valid.length,
+          })
+        }
       } else {
         await scheduleMeeting(
           true,
@@ -1024,6 +1103,7 @@ const ScheduleMain: FC<IInitialProps> = ({
           decryptedMeeting={decryptedMeeting}
           currentAccount={currentAccount}
           afterCancel={handleRedirect}
+          editMode={editMode}
         />
       </Container>
     </ActionsContext.Provider>

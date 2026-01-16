@@ -8,23 +8,33 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  InfiniteData,
+  useInfiniteQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
-import { FC, ReactNode, useEffect, useRef } from 'react'
+import { FC, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { ActionsContext } from '@/providers/schedule/ActionsContext'
 import { Account } from '@/types/Account'
+import {
+  AttendeeStatus,
+  DashBoardMwwEvents,
+  ExtendedCalendarEvents,
+  UnifiedEvent,
+} from '@/types/Calendar'
 import { Intents } from '@/types/Dashboard'
 import {
   ExtendedDBSlot,
   MeetingChangeType,
   MeetingDecrypted,
 } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { getMeeting, getMeetingsForDashboard } from '@/utils/api_helper'
+import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
+import { getCalendarEvents, getMeeting } from '@/utils/api_helper'
 import { decodeMeeting, deleteMeeting } from '@/utils/calendar_manager'
-import { MEETING_PAGE_SIZE } from '@/utils/constants/meeting'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
 import {
@@ -44,38 +54,42 @@ import { getSignature } from '@/utils/storage'
 
 import { useCancelDialog } from '../schedule/cancel.dialog.hook'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
+import CalendarEventCard from './CalendarEventCard'
 import MeetingCard from './MeetingCard'
 
 interface MeetingBaseProps {
   currentAccount: Account
 }
+type DashboardEvent = DashBoardMwwEvents | UnifiedEvent
 
-interface MeetingsQueryConfig {
-  accountAddress: string
-  startDate: Date
+const isCalendarEvent = (event: DashboardEvent): event is UnifiedEvent => {
+  return 'calendarId' in event
 }
 
+interface MeetingsQueryConfig {
+  currentAccount: Account
+  timeWindow: {
+    start: DateTime
+    end: DateTime
+  }
+}
+const WEEKS_TO_LOAD = 1
 const createMeetingsQueryConfig = ({
-  accountAddress,
-  startDate,
+  currentAccount,
+  timeWindow,
 }: MeetingsQueryConfig) => ({
-  queryKey: ['meetings', accountAddress, startDate.toISOString()],
+  queryKey: ['meetings', currentAccount.address],
   queryFn: async ({ pageParam: offset = 0 }) => {
-    const meetings = (await getMeetingsForDashboard(
-      accountAddress,
-      startDate,
-      MEETING_PAGE_SIZE,
-      offset
-    )) as ExtendedDBSlot[]
+    const meetings = await getCalendarEvents(
+      timeWindow.start.plus({ weeks: offset }),
+      timeWindow.end.plus({ weeks: offset }),
+      currentAccount,
+      true
+    )
 
-    return {
-      meetings,
-      nextOffset: offset + meetings.length,
-      hasMore: meetings.length >= MEETING_PAGE_SIZE,
-    }
+    return meetings
   },
-  getNextPageParam: (lastPage: { hasMore: boolean; nextOffset: number }) =>
-    lastPage.hasMore ? lastPage.nextOffset : undefined,
+  getNextPageParam: () => WEEKS_TO_LOAD,
   staleTime: 30_000,
   refetchOnWindowFocus: true,
 })
@@ -83,13 +97,17 @@ const createMeetingsQueryConfig = ({
 const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const queryClient = useQueryClient()
-  const startDate = DateTime.now()
-    .minus({ hours: 1 })
-    .startOf('hour')
-    .toJSDate()
+  const startWindow = useMemo(
+    () => ({
+      start: DateTime.now().startOf('hour'),
+      end: DateTime.now().plus({ weeks: WEEKS_TO_LOAD }),
+    }),
+    []
+  )
+
   const queryConfig = createMeetingsQueryConfig({
-    accountAddress: currentAccount.address,
-    startDate,
+    currentAccount,
+    timeWindow: startWindow,
   })
   const {
     data,
@@ -98,7 +116,122 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
     isFetchingNextPage,
     isLoading,
     isError,
-  } = useInfiniteQuery(queryConfig)
+  } = useInfiniteQuery<ExtendedCalendarEvents>(queryConfig)
+
+  const updateAttendeeStatus = useCallback(
+    (eventId: string, accountEmail: string, status: AttendeeStatus) => {
+      queryClient.setQueriesData<InfiniteData<ExtendedCalendarEvents>>(
+        { queryKey: ['meetings', currentAccount.address] },
+        old => {
+          if (!old?.pages) return old
+
+          const updatedPages = old.pages.map(page => {
+            if (!page?.calendarEvents) return page
+
+            const hasTargetEvent = page.calendarEvents.some(
+              (event: UnifiedEvent) => event.sourceEventId === eventId
+            )
+            if (!hasTargetEvent) return page
+
+            return {
+              ...page,
+              calendarEvents: page.calendarEvents.map((event: UnifiedEvent) => {
+                if (event.sourceEventId !== eventId) return event
+
+                return {
+                  ...event,
+                  attendees: event.attendees?.map(attendee =>
+                    attendee.email === accountEmail
+                      ? { ...attendee, status }
+                      : attendee
+                  ),
+                }
+              }),
+            }
+          })
+
+          return {
+            ...old,
+            pages: updatedPages,
+          }
+        }
+      )
+    },
+    [queryClient, currentAccount.address]
+  )
+  const updateParticipationStatus = useCallback(
+    (eventId: string, accountAddress: string, status: ParticipationStatus) => {
+      queryClient.setQueriesData<InfiniteData<ExtendedCalendarEvents>>(
+        { queryKey: ['meetings', currentAccount.address] },
+        old => {
+          if (!old?.pages) return old
+
+          const updatedPages = old.pages.map(page => {
+            if (!page?.mwwEvents) return page
+
+            const hasTargetEvent = page.mwwEvents.some(
+              (event: DashBoardMwwEvents) => event.id === eventId
+            )
+            if (!hasTargetEvent) return page
+
+            return {
+              ...page,
+              mwwEvents: page.mwwEvents.map(event => {
+                if (event.id !== eventId) return event
+
+                return {
+                  ...event,
+                  participants: event.decrypted.participants.map(participant =>
+                    participant.account_address === accountAddress
+                      ? { ...participant, status }
+                      : participant
+                  ),
+                }
+              }),
+            }
+          })
+
+          return {
+            ...old,
+            pages: updatedPages,
+          }
+        }
+      )
+    },
+    [queryClient, currentAccount.address]
+  )
+  const removeEventFromCache = useCallback(
+    (eventId: string) => {
+      queryClient.setQueriesData<InfiniteData<ExtendedCalendarEvents>>(
+        { queryKey: ['meetings', currentAccount.address] },
+        old => {
+          if (!old?.pages) return old
+
+          const updatedPages = old.pages.map(page => {
+            if (!page?.calendarEvents) return page
+
+            const hasTargetEvent = page.calendarEvents.some(
+              (event: UnifiedEvent) => event.sourceEventId === eventId
+            )
+            if (!hasTargetEvent) return page
+
+            return {
+              ...page,
+              calendarEvents: page.calendarEvents.filter(
+                (event: UnifiedEvent) => event.sourceEventId !== eventId
+              ),
+            }
+          })
+
+          return {
+            ...old,
+            pages: updatedPages,
+          }
+        }
+      )
+    },
+    [queryClient, currentAccount.address]
+  )
   useEffect(() => {
     if (hasNextPage && !isFetchingNextPage && !isLoading) {
       const prefetch = () => {
@@ -114,8 +247,21 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
       }
     }
   }, [hasNextPage, isFetchingNextPage, isLoading, queryClient])
+  const meetings: DashboardEvent[] = useMemo(() => {
+    if (!data) return []
+    const now = DateTime.now()
+    const allEvents: DashboardEvent[] = data.pages
+      .flatMap(data => [...data.mwwEvents, ...data.calendarEvents])
+      .map(event => ({
+        ...event,
+        start: new Date(event.start),
+        end: new Date(event.end),
+      }))
+      .filter(event => DateTime.fromJSDate(event.start) >= now) // ← Add this
+      .sort((a, b) => a.start.getTime() - b.start.getTime())
 
-  const meetings = data?.pages.flatMap(page => page.meetings) ?? []
+    return allEvents
+  }, [data])
   const toast = useToast()
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
@@ -176,7 +322,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
       try {
         const meeting = await getMeeting(slotId)
         const decodedMeeting = await decodeMeeting(meeting, currentAccount)
-
+        if (!decodedMeeting) return
         if (intent === Intents.CANCEL_MEETING) {
           openCancelDialog(
             meeting,
@@ -205,10 +351,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
         true,
         currentAccount?.address || '',
         NO_MEETING_TYPE,
-        decryptedMeeting?.start,
-        decryptedMeeting?.end,
         decryptedMeeting,
-        getSignature(currentAccount?.address || '') || '',
         actor
       )
       toast({
@@ -391,21 +534,36 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   } else {
     content = (
       <VStack mb={8}>
-        {meetings.map(meeting => (
-          <MeetingCard
-            key={meeting.id}
-            meeting={meeting}
-            timezone={timezone}
-            onCancel={(removed: string[], skipToast?: boolean) =>
-              afterClose(
-                MeetingChangeType.DELETE,
-                undefined,
-                removed,
-                skipToast
-              )
-            }
-          />
-        ))}
+        {meetings.map(event => {
+          if (isCalendarEvent(event)) {
+            return (
+              <CalendarEventCard
+                key={event.sourceEventId}
+                event={event}
+                timezone={timezone}
+                updateAttendeeStatus={updateAttendeeStatus}
+                removeEventFromCache={removeEventFromCache}
+              />
+            )
+          } else {
+            return (
+              <MeetingCard
+                key={event.id}
+                meeting={event}
+                updateParticipationStatus={updateParticipationStatus}
+                timezone={timezone}
+                onCancel={(removed: string[], skipToast?: boolean) =>
+                  afterClose(
+                    MeetingChangeType.DELETE,
+                    undefined,
+                    removed,
+                    skipToast
+                  )
+                }
+              />
+            )
+          }
+        })}
         {hasNextPage && (
           <Box
             ref={loadMoreRef}

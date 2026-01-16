@@ -11,7 +11,7 @@ export const validateAuthentication = async (
   ctx: NextPageContext
 ): Promise<Account | null> => {
   const cookie = ctx.req?.headers.cookie
-  let cookies: any = {}
+  let cookies: Record<string, string> = {}
   if (cookie) {
     cookies = parseCookie(cookie)
   }
@@ -31,8 +31,7 @@ export const validateAuthentication = async (
       const updatedAccount = await getFullAccountInfo(session.account.address)
       if (!updatedAccount) return null
 
-      // this should be server side only
-      delete (updatedAccount as any).signature
+      // this shouldA be server side only
 
       return updatedAccount
     }

@@ -28,10 +28,10 @@ export const useAvailabilityBlockMutations = ({
   const createNewBlock = async (formState: FormState) => {
     try {
       const newBlock = await createBlock.mutateAsync({
-        title: formState.title,
-        timezone: formState.timezone || 'Africa/Lagos',
-        weekly_availability: formState.availabilities,
         is_default: formState.isDefault,
+        timezone: formState.timezone || 'Africa/Lagos',
+        title: formState.title,
+        weekly_availability: formState.availabilities,
       })
 
       if (onMeetingTypesSave && newBlock?.id) {
@@ -51,10 +51,10 @@ export const useAvailabilityBlockMutations = ({
     try {
       await updateBlock.mutateAsync({
         id: editingBlockId,
-        title: formState.title,
-        timezone: formState.timezone || 'Africa/Lagos',
-        weekly_availability: formState.availabilities,
         is_default: formState.isDefault,
+        timezone: formState.timezone || 'Africa/Lagos',
+        title: formState.title,
+        weekly_availability: formState.availabilities,
       })
 
       if (onMeetingTypesSave && editingBlockId) {
@@ -72,10 +72,10 @@ export const useAvailabilityBlockMutations = ({
     const duplicatedBlock = await duplicateBlock.mutateAsync({
       id: duplicatingBlockId,
       modifiedData: {
-        title: formState.title,
-        timezone: formState.timezone || 'Africa/Lagos',
-        weekly_availability: formState.availabilities,
         is_default: formState.isDefault,
+        timezone: formState.timezone || 'Africa/Lagos',
+        title: formState.title,
+        weekly_availability: formState.availabilities,
       },
     })
 
@@ -92,8 +92,8 @@ export const useAvailabilityBlockMutations = ({
 
   return {
     createNewBlock,
-    updateExistingBlock,
-    duplicateExistingBlock,
     deleteExistingBlock,
+    duplicateExistingBlock,
+    updateExistingBlock,
   }
 }

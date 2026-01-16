@@ -17,39 +17,39 @@ const InviteSuccessPage: NextPage<{ invitedCount: number }> = ({
   const router = useRouter()
 
   return (
-    <Flex direction="column" align="center" minH="100vh" mt={8}>
+    <Flex align="center" direction="column" minH="100vh" mt={8}>
       <VStack maxW="400px" w="full">
-        <Box display="flex" justifyContent="center" width="full" mb="32px">
+        <Box display="flex" justifyContent="center" mb="32px" width="full">
           <Image
-            src="/assets/create-group-success.svg"
-            alt="Success"
-            width="350px"
             alignSelf="center"
+            alt="Success"
             m="0"
             p="0"
+            src="/assets/create-group-success.svg"
+            width="350px"
           />
         </Box>
         <Heading
           as="h1"
-          fontWeight="700"
-          textAlign="center"
-          mb="8px"
-          fontSize="24px"
-          lineHeight="28.8px"
-          fontFamily="'DM Sans', sans-serif"
           display="flex"
+          fontFamily="'DM Sans', sans-serif"
+          fontSize="24px"
+          fontWeight="700"
           justifyContent="center"
+          lineHeight="28.8px"
+          mb="8px"
+          textAlign="center"
         >
           Success!
         </Heading>
         <Text
+          fontFamily="'DM Sans', sans-serif"
+          fontSize="16px"
+          fontWeight="500"
+          lineHeight="24px"
+          mb="30px"
           textAlign="center"
           width="349px"
-          mb="30px"
-          fontWeight="500"
-          fontSize="16px"
-          lineHeight="24px"
-          fontFamily="'DM Sans', sans-serif"
         >
           <strong>
             {invitedCount} user{invitedCount > 1 && 's'}
@@ -58,24 +58,24 @@ const InviteSuccessPage: NextPage<{ invitedCount: number }> = ({
           permissions and send them reminders.
         </Text>
         <Button
-          onClick={() => router.push('/dashboard/groups')}
-          colorScheme="primary"
-          size="md"
-          height="48px"
           borderRadius="8px"
-          w="full"
+          colorScheme="primary"
+          height="48px"
           mb="8px"
+          onClick={() => router.push('/dashboard/groups')}
+          size="md"
+          w="full"
         >
           View Groups
         </Button>
         <Button
-          onClick={() => router.push('/dashboard/create-group')}
-          variant="outline"
-          colorScheme="primary"
-          size="md"
-          height="48px"
           borderRadius="8px"
           borderWidth="2px"
+          colorScheme="primary"
+          height="48px"
+          onClick={() => router.push('/dashboard/create-group')}
+          size="md"
+          variant="outline"
           w="full"
         >
           Create another Group

@@ -15,6 +15,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       const start = extractQuery(req.query, 'startDate')
       const end = extractQuery(req.query, 'endDate')
+      const onlyMeetings = extractQuery(req.query, 'onlyMeetings') === 'true'
 
       const startDate = new Date(
         start ? start : DateTime.now().startOf('month').toISO()
@@ -28,12 +29,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         CalendarBackendHelper.getCalendarEventsForAccount(
           account_address,
           startDate,
-          endDate
+          endDate,
+          onlyMeetings
         ),
       ])
 
       return res.status(200).json({
-        mwwEvents: meetwithEvents,
         calendarEvents: unifiedEvents.filter(event => {
           const isMeetwithEvent = meetwithEvents.some(
             mwwEvent =>
@@ -44,6 +45,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           )
           return !isMeetwithEvent // we only want to display non-meetwith events from calendars on the client side
         }),
+        mwwEvents: meetwithEvents,
       })
     }
   } catch (error) {

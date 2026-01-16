@@ -186,6 +186,7 @@ export interface MeetingDecrypted<T = Date> extends MeetingInfo {
   version: DBSlot['version']
   meeting_info_encrypted: Encrypted
   user_type?: 'account' | 'guest'
+  series_id?: string | null
 }
 
 export interface ExistingMeetingData {

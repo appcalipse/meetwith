@@ -16,6 +16,7 @@ import { FaExpand, FaX } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import {
+  CalendarEventsData,
   createEventsQueryKey,
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
@@ -34,6 +35,7 @@ import {
 import { queryClient } from '@/utils/react_query'
 
 import { CancelMeetingDialog } from '../schedule/cancel-dialog'
+import { DeleteEventDialog } from '../schedule/delete-event-dialog'
 import EventDetailsPopOver from './EventDetailsPopOver'
 
 interface EventProps {
@@ -48,11 +50,16 @@ interface EventProps {
 
 const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
   const currentAccount = useAccountContext()
-  const { setSelectedSlot, currrentDate } = useCalendarContext()
+  const { setSelectedSlot, currentDate } = useCalendarContext()
   const {
     isOpen: isCancelOpen,
     onOpen: onCancelOpen,
     onClose: onCancelClose,
+  } = useDisclosure()
+  const {
+    isOpen: isDeleteEventOpen,
+    onOpen: onDeleteEventOpen,
+    onClose: onDeleteEventClose,
   } = useDisclosure()
   const actor = React.useMemo(() => {
     if (isCalendarEvent(event)) {
@@ -66,6 +73,13 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
     }
   }, [event, currentAccount])
   const isDeclinedStatus = isDeclined(actor?.status)
+  const handleOpenDeleteDialog = () => {
+    if (isCalendarEvent(event)) {
+      onDeleteEventOpen()
+    } else {
+      onCancelOpen()
+    }
+  }
   const isPendingStatus = isPendingAction(actor?.status)
 
   const isStartInsideOtherEvent = dayEvents.filter(otherEvent => {
@@ -78,13 +92,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
   const top =
     ((event.start.diff(timeSlot, 'minutes').toObject().minutes || 0) / 60) * 36
   const handleSelectEvent = (close: () => void) => {
-    if (!isCalendarEvent(event)) {
-      setSelectedSlot({
-        ...event,
-        start: event.start.toJSDate(),
-        end: event.end.toJSDate(),
-      })
-    }
+    setSelectedSlot(event)
     close()
   }
   const { colorMode } = useColorMode()
@@ -97,17 +105,30 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
     [borderColor]
   )
   const handleCleanup = async (close: () => void) => {
-    await Promise.all([
-      queryClient.invalidateQueries(createEventsQueryKey(currrentDate)),
-      queryClient.invalidateQueries(
-        createEventsQueryKey(currrentDate.minus({ month: 1 }))
-      ),
-      queryClient.invalidateQueries(
-        createEventsQueryKey(currrentDate.plus({ month: 1 }))
-      ),
-    ])
+    const isCalEvent = isCalendarEvent(event)
+
+    queryClient.setQueriesData<CalendarEventsData>(
+      { queryKey: ['calendar-events'] },
+      old => {
+        if (!old) return old
+
+        return {
+          calendarEvents: isCalEvent
+            ? old.calendarEvents?.filter(
+                e => e.sourceEventId !== event.sourceEventId
+              ) ?? []
+            : old.calendarEvents ?? [],
+          mwwEvents: !isCalEvent
+            ? old.mwwEvents?.filter(e => e.id !== event.id) ?? []
+            : old.mwwEvents ?? [],
+        }
+      }
+    )
     close()
+
+    queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
   }
+
   return (
     <Popover isLazy placement="auto" strategy="fixed" gutter={12}>
       {({ onClose }) => (
@@ -119,6 +140,18 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
               decryptedMeeting={event}
               currentAccount={currentAccount}
               afterCancel={() => handleCleanup(onClose)}
+            />
+          )}
+          {isDeleteEventOpen && isCalendarEvent(event) && (
+            <DeleteEventDialog
+              isOpen={isDeleteEventOpen}
+              onClose={onDeleteEventClose}
+              event={{
+                ...event,
+                start: event.start.toJSDate(),
+                end: event.end.toJSDate(),
+              }}
+              afterCancel={() => handleCleanup(onDeleteEventClose)}
             />
           )}
           <PopoverTrigger>
@@ -186,7 +219,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
             <PopoverArrow />
             <PopoverCloseButton
               onClick={() => handleSelectEvent(onClose)}
-              as={isCalendarEvent(event) ? FaX : FaExpand}
+              as={FaExpand}
               size={'24'}
               top={4}
               right={4}
@@ -197,7 +230,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
                 slot={event}
                 onSelectEvent={() => handleSelectEvent(onClose)}
                 onClose={onClose}
-                onCancelOpen={onCancelOpen}
+                onCancelOpen={handleOpenDeleteDialog}
               />
             </PopoverBody>
           </PopoverContent>
