@@ -2764,6 +2764,19 @@ export const addOrUpdateWebcal = async (
     true
   )
 }
+export const addOrUpdateQuickPollWebcal = async (
+  participantId: string,
+  formdata: FormData
+): Promise<WebCalResponse> => {
+  return await internalFetch<WebCalResponse>(
+    `/quickpoll/participants/${participantId}/webcal`,
+    'POST',
+    formdata,
+    undefined,
+    undefined,
+    true
+  )
+}
 
 export const updateCalendarRsvpStatus = async (
   calendarId: string,
