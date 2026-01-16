@@ -473,10 +473,12 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
       )}
       <VStack alignItems="flex-start" gap={6} w={'100%'}>
         <Heading fontSize="x-large">Meeting Information</Heading>
-        <ParticipantsControl
-          currentAccount={currentAccount}
-          openInviteModal={() => setInviteModalOpen(true)}
-        />
+        {!isCalendarEvent(slot) && (
+          <ParticipantsControl
+            currentAccount={currentAccount}
+            openInviteModal={() => setInviteModalOpen(true)}
+          />
+        )}
         <FormControl>
           <FormLabel>Date/Time</FormLabel>
           <HStack alignItems="stretch" gap={3}>
