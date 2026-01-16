@@ -74,7 +74,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       if (grouMembersAvailaibilities) {
         for (const account of accounts) {
           const groupAvailaibility = grouMembersAvailaibilities[account.address]
-          if (groupAvailaibility.length > 0) {
+          if (groupAvailaibility && groupAvailaibility.length > 0) {
             accountAvailaibilities[account.address] = {
               address: account.address,
               availabilities: mergeAvailabilityBlocks(
