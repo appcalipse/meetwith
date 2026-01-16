@@ -100,6 +100,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
       return res.status(200).json(suggestedTimes)
     } catch (e) {
+      console.error(e)
       Sentry.captureException(e, {
         extra: {
           addresses: req.body.addresses,
