@@ -11,7 +11,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import React, { useState } from 'react'
-import { CiStreamOn } from 'react-icons/ci'
+import { LuCalendarSearch } from 'react-icons/lu'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
 import { TimeSlotSource } from '@/types/Meeting'
@@ -170,7 +170,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 </Button>
                 <Button
                   onClick={selectOption(TimeSlotSource.WEBCAL)}
-                  leftIcon={<CiStreamOn />}
+                  leftIcon={<LuCalendarSearch />}
                   variant={
                     selectedProvider === TimeSlotSource.WEBCAL
                       ? 'solid'
@@ -179,7 +179,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                   display={isQuickPoll ? 'none' : undefined}
                   isLoading={loading === TimeSlotSource.WEBCAL}
                 >
-                  Webcal
+                  Use ICS
                 </Button>
               </HStack>
               <VStack

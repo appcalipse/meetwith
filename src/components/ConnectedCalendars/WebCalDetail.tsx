@@ -7,7 +7,7 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useContext, useState } from 'react'
-
+import { RiFileUploadLine } from 'react-icons/ri'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { addOrUpdateWebcal } from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
@@ -69,6 +69,7 @@ const WebCalDetail: React.FC<WebCalDetailProps> = ({ onSuccess }) => {
           type="Calendar URL"
           placeholder="https://example.com/calendar.ics"
           onChange={event => setUrl(event.target.value)}
+          // right={<RiFileUploadLine />}
         />
       </FormControl>
       <Box
