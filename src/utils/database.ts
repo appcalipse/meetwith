@@ -286,7 +286,7 @@ import {
   sendReceiptEmail,
   sendSessionBookingIncomeEmail,
 } from './email_helper'
-import { deduplicateArray, deduplicateMembers } from './generic_utils'
+import { deduplicateArray, deduplicateMembers, isJson } from './generic_utils'
 import PostHogClient from './posthog'
 import { CaldavCredentials } from './services/caldav.service'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
@@ -758,6 +758,62 @@ const updateGroupAvatar = async (
   }
 
   return publicUrl
+}
+const uploadIcsFile = async (
+  filename: string,
+  buffer: Buffer,
+  mimeType: string
+) => {
+  const contentType = mimeType
+  const decoded = decodeURIComponent(filename)
+  const sanitized = decoded
+    .toLowerCase()
+    .replace(/\s+/g, '-') // spaces -> hyphens
+    .replace(/[^a-z0-9.-]/g, '') // remove non-alphanumeric except .-
+    .replace(/--+/g, '-') // collapse multiple hyphens
+    .replace(/^-|-$/g, '') // trim leading/trailing hyphens
+
+  const file = `${Date.now()}-${sanitized}`
+  const { error } = await db.supabase.storage
+    .from('ics-files')
+    .upload(file, buffer, {
+      contentType,
+      upsert: true,
+    })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new UploadError(
+      'Unable to upload avatar. Please try again or contact support if the problem persists.'
+    )
+  }
+
+  const { data } = db.supabase.storage.from('ics-files').getPublicUrl(file)
+
+  const publicUrl = data?.publicURL
+  return publicUrl
+}
+const deleteIcsFile = async (publicUrl: string) => {
+  try {
+    const url = new URL(publicUrl)
+    const pathParts = url.pathname.split('/storage/v1/object/public/ics-files/')
+
+    if (pathParts.length < 2) {
+      throw new Error('Invalid public URL format')
+    }
+    const filePath = pathParts[1]
+
+    const { error, data } = await db.supabase.storage
+      .from('ics-files')
+      .remove([decodeURI(filePath)])
+    if (error) {
+      Sentry.captureException(error)
+      throw new Error('Failed to delete calendar file')
+    }
+  } catch (error) {
+    Sentry.captureException(error)
+    throw error
+  }
 }
 
 const getGroupMemberAvailabilities = async (
@@ -3908,6 +3964,15 @@ const removeConnectedCalendar = async (
     throw new Error(error.message)
   }
   const calendar = Array.isArray(data) ? data[0] : data
+  if (provider === TimeSlotSource.WEBCAL) {
+    const payload = calendar.payload as string
+    const icsFeed = (
+      isJson(payload) ? JSON.parse(payload) : calendar.payload
+    ) as { url: string }
+    if (icsFeed?.url?.includes('ics-files')) {
+      await deleteIcsFile(icsFeed?.url).catch(e => console.error(e))
+    }
+  }
   await removeCalendarFromAllExistingMeetingTypes(address, calendar)
   return calendar
 }
@@ -10582,4 +10647,6 @@ export {
   verifyVerificationCode,
   workMeetingTypeGates,
   getSeriesIdMapping,
+  uploadIcsFile,
+  deleteIcsFile,
 }
