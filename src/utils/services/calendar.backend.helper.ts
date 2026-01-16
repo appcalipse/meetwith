@@ -145,29 +145,19 @@ export const CalendarBackendHelper = {
     limit?: number,
     offset?: number
   ): Promise<TimeSlot[]> => {
-    const busySlots: TimeSlot[] = []
-
-    const addSlotsForAccount = async (account: string) => {
-      busySlots.push(
-        ...(await CalendarBackendHelper.getBusySlotsForAccount(
-          account,
+    const busySlots = await Promise.all(
+      account_addresses.map(address =>
+        CalendarBackendHelper.getBusySlotsForAccount(
+          address,
           startDate,
           endDate,
           limit,
           offset
-        ))
+        )
       )
-    }
+    )
 
-    const promises: Promise<void>[] = []
-
-    for (const address of account_addresses) {
-      promises.push(addSlotsForAccount(address))
-    }
-
-    await Promise.all(promises)
-
-    return busySlots
+    return busySlots.flat()
   },
 
   getBusySlotsForQuickPollParticipants: async (
