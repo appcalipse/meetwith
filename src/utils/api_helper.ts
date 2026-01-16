@@ -2753,14 +2753,15 @@ export const getSlotInstanceById = async (
 }
 
 export const addOrUpdateWebcal = async (
-  url: string
+  formdata: FormData
 ): Promise<WebCalResponse> => {
   return await internalFetch<WebCalResponse>(
     `/secure/calendar_integrations/webcal`,
     'POST',
-    {
-      url,
-    }
+    formdata,
+    undefined,
+    undefined,
+    true
   )
 }
 
