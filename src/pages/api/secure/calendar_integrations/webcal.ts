@@ -47,15 +47,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   if (req.method === 'POST') {
     try {
-      const account = await getAccountFromDB(accountAddress)
-
       const isPro = await isProAccountAsync(accountAddress)
 
-      const validationResult = await validateWebcalFeed(
-        url,
-        body.email,
-        account
-      )
+      const validationResult = await validateWebcalFeed(url, body.email)
 
       if (!validationResult.valid) {
         return res.status(400).json({
@@ -129,12 +123,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } else if (req.method === 'PUT') {
     try {
-      const account = await getAccountFromDB(accountAddress)
-      const validationResult = await validateWebcalFeed(
-        body.url!,
-        body.email,
-        account
-      )
+      const validationResult = await validateWebcalFeed(body.url!, body.email)
 
       if (!validationResult.valid) {
         return res.status(400).json({
@@ -175,8 +164,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
  */
 async function validateWebcalFeed(
   url: string,
-  providedEmail?: string,
-  account?: any
+  providedEmail?: string
 ): Promise<{
   valid: boolean
   error?: string
@@ -269,8 +257,8 @@ async function validateWebcalFeed(
 
     let userEmail = providedEmail
 
-    if (!userEmail && account) {
-      userEmail = await findUserEmailInCalendar(vcalendar, vevents, account)
+    if (!userEmail) {
+      userEmail = await findUserEmailInCalendar(vcalendar, vevents)
     }
 
     return {
@@ -299,15 +287,9 @@ async function validateWebcalFeed(
  */
 async function findUserEmailInCalendar(
   vcalendar: any,
-  vevents: any[],
-  account: any
+  vevents: any[]
 ): Promise<string | undefined> {
   const possibleEmails = new Set<string>()
-
-  const accountEmail = account.preferences?.name
-  if (accountEmail && isValidEmail(accountEmail)) {
-    possibleEmails.add(accountEmail.toLowerCase())
-  }
 
   for (const vevent of vevents) {
     try {
