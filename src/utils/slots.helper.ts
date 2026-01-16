@@ -130,24 +130,18 @@ export const getAvailabilitiesForWeekDay = (
   availabilities?: DayAvailability[],
   day?: Date
 ) => availabilities?.find(_ => !!day && _.weekday === getDay(day))?.ranges ?? []
-
+export type AccountAvailabilities = {
+  address: string
+  availabilities: LuxonInterval<true>[]
+}
 export const suggestBestSlots = (
   startDate: Date,
   duration: number,
   endDate: Date,
   timezone: string,
   busySlots: LuxonInterval<true>[],
-  accounts: Account[]
+  accountAvailabilities: AccountAvailabilities[]
 ) => {
-  const accountAvailabilities = accounts.map(account => ({
-    account,
-    availabilities: parseMonthAvailabilitiesToDate(
-      account.preferences.availabilities || [],
-      startDate,
-      endDate,
-      account.preferences.timezone || 'UTC'
-    ),
-  }))
   const sortedBusySlots = busySlots.sort(
     (a, b) => a.start.toMillis() - b.start.toMillis()
   )
@@ -159,12 +153,10 @@ export const suggestBestSlots = (
     timezone,
     endDate
   ).filter(slot => slot.isValid && slot.start >= now)
-
   return allSlots.filter(slot => {
     const hasAvailability = accountAvailabilities.every(({ availabilities }) =>
       hasOverlapBinary(slot, availabilities)
     )
-
     return hasAvailability && !hasOverlapBinary(slot, sortedBusySlots)
   })
 }
