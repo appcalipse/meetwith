@@ -860,7 +860,9 @@ const getGroupMembersAvailabilities = async (
   groupId: string
 ): Promise<Record<string, AvailabilityBlock[]>> => {
   const { data, error } = await db.supabase
-    .from('group_availabilities')
+    .from<
+      Tables<'group_availabilities'> & { availabilities: AvailabilityBlock }
+    >('group_availabilities')
     .select(
       `
       member_id,
@@ -891,8 +893,7 @@ const getGroupMembersAvailabilities = async (
 
   for (const item of data) {
     const memberId = item.member_id as string
-    const availability = (item as { availabilities: AvailabilityBlock })
-      .availabilities
+    const availability = item.availabilities
 
     if (!result[memberId]) {
       result[memberId] = []
@@ -1043,6 +1044,8 @@ async function getExistingAccountsFromDB(
       if (default_availability) {
         preferences.availabilities = default_availability.weekly_availability
         preferences.timezone = default_availability.timezone
+      } else {
+        preferences.availabilities = generateEmptyAvailabilities()
       }
       account.preferences = preferences
       delete account.calendars
