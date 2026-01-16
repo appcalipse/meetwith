@@ -558,7 +558,7 @@ export function SchedulePickTime({
       toast({
         title: 'No Matching Times',
         description:
-          'No slots in the next 30 days work for all participants. Choose a time from the calendar grid that works best.',
+          'No slots in the next 30 days work for all participants. Please browse the calendar grid and select a time that works best.',
         status: 'info',
         duration: 5000,
         isClosable: true,
