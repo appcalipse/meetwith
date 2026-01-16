@@ -38,6 +38,7 @@ import {
   CantInviteYourself,
   ContactAlreadyExists,
   ContactInviteAlreadySent,
+  ContactLimitExceededError,
 } from '@/utils/errors'
 import { getMeetingsScheduled } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -111,6 +112,15 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
           position: 'top',
         })
       } else if (e instanceof ContactInviteAlreadySent) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      } else if (e instanceof ContactLimitExceededError) {
         toast({
           title: 'Error',
           description: e.message,
