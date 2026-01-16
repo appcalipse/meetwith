@@ -1,3 +1,5 @@
+import { Auth } from 'googleapis'
+import { CiStreamOn } from 'react-icons/ci'
 import {
   FaApple,
   FaCalendar,
@@ -5,7 +7,8 @@ import {
   FaGoogle,
   FaMicrosoft,
 } from 'react-icons/fa'
-
+import { CaldavCredentials } from '@/utils/services/caldav.service'
+import { O365AuthCredentials } from '@/utils/services/office365.credential'
 import { TimeSlotSource } from './Meeting'
 
 export interface ConnectResponse {
@@ -18,6 +21,7 @@ export const ConnectedCalendarIcons = {
   [TimeSlotSource.OFFICE]: FaMicrosoft,
   [TimeSlotSource.WEBDAV]: FaCalendarAlt,
   [TimeSlotSource.MWW]: FaCalendar,
+  [TimeSlotSource.WEBCAL]: CiStreamOn,
 }
 
 export interface CalendarSyncInfo {
@@ -26,6 +30,7 @@ export interface CalendarSyncInfo {
   sync: boolean
   enabled: boolean
   color?: string
+  isReadOnly?: boolean
 }
 export interface ConnectedCalendarCore {
   id: number
@@ -42,7 +47,7 @@ export interface ConnectedCalendar extends ConnectedCalendarCore {
   calendarId?: string
   enabled: boolean
   created: Date
-  payload: any
+  payload: string | Auth.Credentials | O365AuthCredentials | CaldavCredentials
 }
 
 // Response type for calendar integrations API
@@ -59,7 +64,7 @@ export type NewCalendarEventType = {
   type: string
   password: string
   url: string
-  additionalInfo: Record<string, any>
+  additionalInfo: Record<string, string | number | boolean>
 }
 
 export enum Office365RecurrenceType {
@@ -69,4 +74,11 @@ export enum Office365RecurrenceType {
   RELATIVE_MONTHLY = 'relativeMonthly',
   ABSOLUTE_YEARLY = 'absoluteYearly',
   RELATIVE_YEARLY = 'relativeYearly',
+}
+
+export interface WebCalResponse {
+  connected: boolean
+  email: string
+  calendarName: string
+  eventCount: string
 }

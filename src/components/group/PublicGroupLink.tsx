@@ -24,7 +24,7 @@ const PublicGroupLink = (props: Props) => {
         isClosable: true,
         position: 'top',
       })
-    } catch (e) {
+    } catch (_e) {
       toast({
         title: 'Error copying link',
         description: 'Please try again.',

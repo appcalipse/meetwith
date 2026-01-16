@@ -1,6 +1,6 @@
 import { DateTime, Interval } from 'luxon'
 import { Frequency } from 'rrule'
-
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
   WebDAVAttendeeExtensions,
   WebDAVEventExtensions,
@@ -9,7 +9,6 @@ import {
   GoogleAttendeeExtensions,
   GoogleEventExtensions,
 } from '@/utils/services/google.mapper'
-
 import {
   ExtendedDBSlot,
   ExtendedSlotInstance,
@@ -18,11 +17,11 @@ import {
   TimeSlotSource,
 } from './Meeting'
 import {
-  Attendee as Office365Attendee,
   EventImportance,
   EventSensitivity,
   FreeBusyStatus,
   Location,
+  Attendee as Office365Attendee,
   OnlineMeetingInfo,
   OnlineMeetingProviderType,
   RecurrencePattern,
@@ -52,6 +51,8 @@ export interface UnifiedEvent<T = Date> {
   attendees?: UnifiedAttendee[]
   recurrence?: UnifiedRecurrence | null
   status?: EventStatus
+
+  permissions: MeetingPermissions[]
 
   providerData?: {
     google?: Nullable<GoogleEventExtensions>
@@ -149,6 +150,14 @@ export interface CalendarEvents {
   mwwEvents: Array<ExtendedDBSlot | ExtendedSlotInstance | ExtendedSlotSeries>
   calendarEvents: Array<UnifiedEvent>
 }
+export type DashBoardMwwEvents = (ExtendedDBSlot | ExtendedSlotInstance) & {
+  decrypted: MeetingDecrypted
+}
+
+export interface ExtendedCalendarEvents {
+  mwwEvents: Array<DashBoardMwwEvents>
+  calendarEvents: Array<UnifiedEvent>
+}
 export type WithInterval<T> = T & {
   interval: Interval
 }
@@ -192,9 +201,7 @@ const includesStatus = (
   statuses: readonly (ParticipationStatus | AttendeeStatus)[],
   status: AttendeeStatusType
 ): boolean => {
-  return (
-    status != null && status != undefined && statuses.includes(status as any)
-  )
+  return status != null && status != undefined && statuses.includes(status)
 }
 
 export const isDeclined = (status: AttendeeStatusType): boolean => {
@@ -207,4 +214,34 @@ export const isPendingAction = (status: AttendeeStatusType): boolean => {
 
 export const isAccepted = (status: AttendeeStatusType): boolean => {
   return includesStatus(ACCEPTED_STATUSES, status)
+}
+
+export const mapParticipationStatusToAttendeeStatus = (
+  status: ParticipationStatus
+): AttendeeStatus => {
+  switch (status) {
+    case ParticipationStatus.Accepted:
+      return AttendeeStatus.ACCEPTED
+    case ParticipationStatus.Rejected:
+      return AttendeeStatus.DECLINED
+    case ParticipationStatus.Pending:
+    default:
+      return AttendeeStatus.NEEDS_ACTION
+  }
+}
+export const mapAttendeeStatusToParticipationStatus = (
+  status: AttendeeStatus
+): ParticipationStatus => {
+  switch (status) {
+    case AttendeeStatus.ACCEPTED:
+    case AttendeeStatus.COMPLETED:
+      return ParticipationStatus.Accepted
+    case AttendeeStatus.DECLINED:
+      return ParticipationStatus.Rejected
+    case AttendeeStatus.TENTATIVE:
+    case AttendeeStatus.NEEDS_ACTION:
+    case AttendeeStatus.DELEGATED:
+    default:
+      return ParticipationStatus.Pending
+  }
 }

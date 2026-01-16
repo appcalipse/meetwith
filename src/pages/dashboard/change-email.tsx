@@ -38,15 +38,15 @@ const ChangeEmailPage = () => {
       return await changeEmailWithToken(email, token)
     },
     {
+      onError: (error: unknown) => {
+        handleApiError('Error updating email', error)
+        console.error('Error updating email:', error)
+      },
       onSuccess: () => {
         showSuccessToast('Success', 'Email updated successfully')
         setIsChangeEmailModalOpen(false)
         setIsSuccessModalOpen(true)
         setEmailChangeSuccessful(true) // Mark email change as successful
-      },
-      onError: (error: unknown) => {
-        handleApiError('Error updating email', error)
-        console.error('Error updating email:', error)
       },
     }
   )
@@ -62,11 +62,11 @@ const ChangeEmailPage = () => {
   if (isLoading) {
     return (
       <Box
-        minH="100vh"
+        alignItems="center"
         bg="bg-surface"
         display="flex"
-        alignItems="center"
         justifyContent="center"
+        minH="100vh"
       >
         <CustomLoading />
       </Box>
@@ -75,28 +75,28 @@ const ChangeEmailPage = () => {
 
   return (
     <Box
-      minH="100vh"
+      alignItems="center"
       bg="bg-surface"
       display="flex"
-      alignItems="center"
       justifyContent="center"
+      minH="100vh"
     >
       {/* Change Email Modal */}
       <ChangeEmailModal
+        isLoading={changeEmailMutation.isLoading}
         isOpen={isChangeEmailModalOpen}
         onClose={() => setIsChangeEmailModalOpen(true)}
         onEmailChange={handleEmailChange}
-        isLoading={changeEmailMutation.isLoading}
       />
 
       {/* Success Modal */}
       <SuccessModal
+        buttonText="Go back to Dashboard"
         isOpen={isSuccessModalOpen}
+        message="You have successfully updated your account & notification email"
+        onButtonClick={handleBackToDashboard}
         onClose={() => setIsSuccessModalOpen(true)}
         title="Email update was successful"
-        message="You have successfully updated your account & notification email"
-        buttonText="Go back to Dashboard"
-        onButtonClick={handleBackToDashboard}
       />
     </Box>
   )

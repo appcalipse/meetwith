@@ -8,7 +8,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const identifier = req.query.identifier as string
       const meeting = await getSlotInstance(identifier)
       return res.status(200).json(meeting)
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({ error: 'Unknown error occurred' })
     }
   }

@@ -147,7 +147,7 @@ export const shouldEnforceColorOnPath = (pathname: string): boolean => {
 export const isJson = (str: string) => {
   try {
     JSON.parse(str)
-  } catch (e) {
+  } catch (_e) {
     return false
   }
   return true
@@ -170,14 +170,14 @@ export const renderProviderName = (provider: MeetingProvider) => {
 
 export const convertMinutes = (minutes: number) => {
   if (minutes < 60) {
-    return { amount: minutes, type: 'minutes', isEmpty: false }
+    return { amount: minutes, isEmpty: false, type: 'minutes' }
   } else if (minutes < 60 * 24) {
-    return { amount: Math.floor(minutes / 60), type: 'hours', isEmpty: false }
+    return { amount: Math.floor(minutes / 60), isEmpty: false, type: 'hours' }
   } else {
     return {
       amount: Math.floor(minutes / (60 * 24)),
-      type: 'days',
       isEmpty: false,
+      type: 'days',
     }
   }
 }
@@ -213,9 +213,9 @@ export const formatCurrency = (
   minimumFractionDigits = 0
 ) => {
   return new Intl.NumberFormat('en-US', {
-    style: 'currency',
     currency,
     minimumFractionDigits,
+    style: 'currency',
   }).format(amount)
 }
 

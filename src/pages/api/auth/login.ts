@@ -35,10 +35,10 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
           [
             {
               address: account.address.toLowerCase(),
-              internal_pub_key: newIdentity.publicKey,
               encoded_signature: encryptedPvtKey,
-              nonce: account.nonce,
+              internal_pub_key: newIdentity.publicKey,
               is_invited: false,
+              nonce: account.nonce,
             },
           ],
           { onConflict: 'address' }
@@ -52,11 +52,11 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
 
       //avoid exploding cookie size
       req.session.account.preferences = {
+        availabilities: [],
+        meetingProviders: [MeetingProvider.GOOGLE_MEET],
         // add users name to preferences
         name: account.preferences?.name,
         timezone: '',
-        availabilities: [],
-        meetingProviders: [MeetingProvider.GOOGLE_MEET],
       }
       await req.session.save()
 

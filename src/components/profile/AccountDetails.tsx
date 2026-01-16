@@ -42,6 +42,7 @@ import {
 import { appUrl } from '@/utils/constants'
 import { getLensHandlesForAddress } from '@/utils/lens.helper'
 import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
+import { saveSubscriptionHandle } from '@/utils/storage'
 import {
   changeDomainOnChain,
   getActiveProSubscription,
@@ -60,10 +61,13 @@ import HandlePicker, {
 import Tooltip from './components/Tooltip'
 
 const AccountDetails: React.FC<{ currentAccount: Account }> = ({
-  currentAccount,
+  currentAccount: currentAccountProp,
 }) => {
-  const { login } = useContext(AccountContext)
+  const { login, currentAccount: currentAccountFromContext } =
+    useContext(AccountContext)
   const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
+
+  const currentAccount = currentAccountFromContext || currentAccountProp
 
   const [loading, setLoading] = useState(false)
   const socialLinks = currentAccount?.preferences?.socialLinks || []
@@ -105,12 +109,25 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const activeWallet = useActiveWallet()
 
+  const activeSubscription = React.useMemo(
+    () => getActiveProSubscription(currentAccount),
+    [currentAccount]
+  )
+  const isLegacyBlockchainSubscription =
+    activeSubscription && activeSubscription.chain
+
   const [proDomain, setProDomain] = useState<string>(
-    currentAccount.subscriptions?.[0]?.domain || ''
+    activeSubscription?.domain || ''
   )
   const [newProDomain, setNewProDomain] = useState<string>(
-    currentAccount.subscriptions?.[0]?.domain ?? ''
+    activeSubscription?.domain ?? ''
   )
+
+  React.useEffect(() => {
+    const domain = activeSubscription?.domain || ''
+    setProDomain(domain)
+    setNewProDomain(domain)
+  }, [activeSubscription?.domain])
   const [_currentPlan, setCurrentPlan] = useState<Plan | undefined>(undefined)
 
   const saveDetails = async () => {
@@ -185,7 +202,11 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       )
     }
 
-    setNewProDomain(currentAccount?.subscriptions?.[0]?.domain ?? '')
+    const proDomain = getActiveProSubscription(currentAccount)?.domain ?? ''
+    setNewProDomain(proDomain)
+    if (proDomain) {
+      saveSubscriptionHandle(proDomain)
+    }
   }
 
   const updateAccountSubs = async () => {
@@ -194,6 +215,12 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     currentAccount!.subscriptions = subscriptions
     login(currentAccount!)
     setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
+
+    const updatedActiveSubscription = getActiveProSubscription(currentAccount)
+    if (updatedActiveSubscription?.domain) {
+      setProDomain(updatedActiveSubscription.domain)
+      saveSubscriptionHandle(updatedActiveSubscription.domain)
+    }
   }
 
   const changeDomain = async () => {
@@ -215,12 +242,31 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     }
 
     try {
-      const subscription = currentAccount?.subscriptions?.find(
-        sub => new Date(sub.expiry_time) > new Date()
-      )
-      if (subscription?.chain === SupportedChain.CUSTOM) {
+      if (!activeSubscription) {
+        setLoading(false)
+        showErrorToast(
+          'No Active Subscription',
+          'You need an active subscription to update your calendar link'
+        )
+        return
+      }
+
+      const isCustomChain = activeSubscription.chain === SupportedChain.CUSTOM
+      const isBillingSubscription =
+        activeSubscription.billing_plan_id !== null &&
+        activeSubscription.billing_plan_id !== undefined
+
+      if (isCustomChain || isBillingSubscription) {
         await updateCustomSubscriptionDomain(newProDomain)
       } else {
+        if (!activeSubscription.chain) {
+          setLoading(false)
+          showErrorToast(
+            'Invalid Subscription',
+            'Unable to determine subscription type. Please contact support.'
+          )
+          return
+        }
         await changeDomainOnChain(
           currentAccount.address,
           proDomain,
@@ -230,17 +276,19 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       }
       await updateAccountSubs()
       setProDomain(newProDomain)
+      saveSubscriptionHandle(newProDomain)
       showSuccessToast(
         'Calendar Link Updated',
         'Your calendar link has been changed successfully'
       )
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e)
+      if (e instanceof Error) {
+        showErrorToast('Domain Change Failed', `${e.message}`)
+      }
+    } finally {
       setLoading(false)
-      showErrorToast('Domain Change Failed', `${e.message}`)
     }
-
-    setLoading(false)
   }
 
   const getHandles = async () => {
@@ -415,13 +463,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                   borderLeftColor="transparent"
                   value={newProDomain}
                   type="text"
-                  disabled={
-                    !currentAccount?.subscriptions?.find(
-                      sub => new Date(sub.expiry_time) > new Date()
-                    )
-                  }
+                  disabled={!activeSubscription}
                   placeholder={
-                    getActiveProSubscription(currentAccount)
+                    activeSubscription
                       ? 'your_custom_link'
                       : `address/${currentAccount?.address}`
                   }
@@ -433,21 +477,19 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                 isLoading={loading}
                 colorScheme="primary"
                 variant="outline"
-                isDisabled={
-                  !currentAccount?.subscriptions?.find(
-                    sub => new Date(sub.expiry_time) > new Date()
-                  )
-                }
+                isDisabled={!activeSubscription}
                 onClick={changeDomain}
               >
                 Update
               </Button>
             </HStack>
             <FormHelperText>
-              {currentAccount?.subscriptions?.find(
-                sub => new Date(sub.expiry_time) > new Date()
-              ) ? (
-                'There is a gas fee associated with each link change.'
+              {activeSubscription ? (
+                isLegacyBlockchainSubscription ? (
+                  'There is a gas fee associated with each link change.'
+                ) : (
+                  'You can update your calendar link at any time.'
+                )
               ) : (
                 <>
                   Unlock custom calendar link with PRO{' '}

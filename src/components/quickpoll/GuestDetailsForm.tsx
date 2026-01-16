@@ -148,7 +148,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
       setIsEditingAvailability(false)
 
       onSuccess(isProfileUpdateOnly)
-    } catch (error) {
+    } catch (_error) {
       showErrorToast(
         'Failed to save details',
         'There was an error saving your details. Please try again.'

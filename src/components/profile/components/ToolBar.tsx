@@ -23,7 +23,7 @@ import {
   useDisclosure,
 } from '@chakra-ui/react'
 import * as TogglePrimitive from '@radix-ui/react-toggle'
-import { type Editor, BubbleMenu } from '@tiptap/react'
+import { BubbleMenu, type Editor } from '@tiptap/react'
 import Link from 'next/link'
 import * as React from 'react'
 import {
@@ -43,6 +43,7 @@ import { FaRemoveFormat } from 'react-icons/fa'
 
 import { isValidUrl } from '../../../utils/validations'
 import InfoTooltip from './Tooltip'
+
 const Toggle = TogglePrimitive.Root
 
 interface ToolBarProps {

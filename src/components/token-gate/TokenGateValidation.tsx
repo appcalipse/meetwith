@@ -24,7 +24,7 @@ interface TokenGateValidationProps {
 }
 
 const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
-  const [chosenGate, setChosenGate] = useState<GateCondition | null>(null)
+  const [_chosenGate, setChosenGate] = useState<GateCondition | null>(null)
   const { currentAccount } = useLogin()
   const [firstToken, setFirstToken] = useState<
     (GateCondition['elements'][number] & { image?: string }) | undefined

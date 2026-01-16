@@ -1,7 +1,13 @@
 /* eslint-disable no-restricted-syntax */
 import { DiscordUserInfo } from '@meta/Discord'
 import * as Sentry from '@sentry/nextjs'
-import { Client, GatewayIntentBits } from 'discord.js'
+import {
+  Client,
+  DiscordAPIError,
+  DiscordjsError,
+  DiscordjsErrorCodes,
+  GatewayIntentBits,
+} from 'discord.js'
 
 import { AuthToken } from '@/types/Account'
 import {
@@ -17,6 +23,7 @@ import {
   getDiscordAccount,
   setAccountNotificationSubscriptions,
 } from '../database'
+
 let ready = false
 const client = new Client({
   intents: [
@@ -28,7 +35,7 @@ const client = new Client({
 
 client.on('ready', () => {
   ready = true
-  !isProduction && console.log(`Discord bot logged in as ${client.user?.tag}!`)
+  !isProduction && console.info(`Discord bot logged in as ${client.user?.tag}!`)
 })
 
 client.on('error', error => {
@@ -38,7 +45,7 @@ client.on('error', error => {
 const doLogin = async () => {
   try {
     if (!ready) {
-      !isProduction && console.log('Logging in to Discord...')
+      !isProduction && console.info('Logging in to Discord...')
       await client.login(process.env.DISCORD_TOKEN)
     }
   } catch (error) {
@@ -53,7 +60,6 @@ export const generateDiscordAuthToken = async (
 ): Promise<AuthToken | null> => {
   try {
     const oauthResult = await fetch('https://discord.com/api/oauth2/token', {
-      method: 'POST',
       body: new URLSearchParams({
         client_id: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID!,
         client_secret: process.env.DISCORD_CLIENT_SECRET!,
@@ -65,6 +71,7 @@ export const generateDiscordAuthToken = async (
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
+      method: 'POST',
     })
 
     const oauthData = await oauthResult.json()
@@ -119,7 +126,6 @@ export const refreshDiscordOAuthToken = async (
 ) => {
   try {
     const oauthResult = await fetch('https://discord.com/api/oauth2/token', {
-      method: 'POST',
       body: new URLSearchParams({
         client_id: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID!,
         client_secret: process.env.DISCORD_CLIENT_SECRET!,
@@ -129,6 +135,7 @@ export const refreshDiscordOAuthToken = async (
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
+      method: 'POST',
     })
 
     if (oauthResult.status === 401) {
@@ -229,7 +236,7 @@ export const dmAccount = async (
       doLogin()
     }
     while (!client.isReady() && attempts < maxAttempts) {
-      console.log(`Waiting for Discord client... attempt ${attempts + 1}`)
+      console.info(`Waiting for Discord client... attempt ${attempts + 1}`)
       await new Promise(resolve => setTimeout(resolve, 1500))
       attempts++
     }
@@ -238,39 +245,40 @@ export const dmAccount = async (
       throw new Error('Discord client not ready after waiting')
     }
 
-    console.log(
+    console.info(
       `Discord client ready, attempting to send DM to user ${discord_user_id}`
     )
-    console.log(`Attempting to send DM to user ${discord_user_id}`)
+    console.info(`Attempting to send DM to user ${discord_user_id}`)
 
     const user = await client.users.fetch(discord_user_id)
-    console.log(`User fetched: ${user.tag}`)
+    console.info(`User fetched: ${user.tag}`)
 
     const sentMessage = await user.send(message)
-    console.log(`Message sent successfully: ${sentMessage.id}`)
+    console.info(`Message sent successfully: ${sentMessage.id}`)
 
     return true
-  } catch (error: any) {
+  } catch (error: unknown) {
     let context
-    console.error('Discord DM Error:', {
-      error: error.message,
-      code: error.code,
-      userId: discord_user_id,
-      accountAddress,
-    })
+    if (error instanceof DiscordAPIError) {
+      console.error('Discord DM Error:', {
+        accountAddress,
+        code: error.code,
+        error: error.message,
+        userId: discord_user_id,
+      })
 
-    // Handle specific Discord errors
-    if (error.code === 50007) {
-      console.log('Cannot send messages to this user (privacy settings)')
-      context = 'Cannot send messages to this user (privacy settings)'
-    } else if (error.code === 10013) {
-      console.log('Unknown user')
-      context = 'Unknown user'
-    } else if (error.code === 50001) {
-      console.log('Missing access')
-      context = 'Missing access'
+      // Handle specific Discord errors
+      if (error.code === 50007) {
+        console.error('Cannot send messages to this user (privacy settings)')
+        context = 'Cannot send messages to this user (privacy settings)'
+      } else if (error.code === 10013) {
+        console.error('Unknown user')
+        context = 'Unknown user'
+      } else if (error.code === 50001) {
+        console.error('Missing access')
+        context = 'Missing access'
+      }
     }
-
     const notifications = await getAccountNotificationSubscriptions(
       accountAddress
     )
@@ -289,8 +297,8 @@ export const dmAccount = async (
 
     Sentry.captureException(error, {
       extra: {
-        context,
         accountAddress,
+        context,
         discord_user_id,
       },
     })

@@ -68,8 +68,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       const participant = await addQuickPollParticipant(pollId, {
         account_address: participantData.account_address,
-        guest_name: participantData.guest_name?.trim() || 'Guest',
         guest_email: participantData.guest_email.trim().toLowerCase(),
+        guest_name: participantData.guest_name?.trim() || 'Guest',
         participant_type: participantData.participant_type,
       })
 

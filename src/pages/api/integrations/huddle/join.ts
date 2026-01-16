@@ -9,17 +9,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     try {
       const response = await fetch(`${HUDDLE_API_URL}/joinroom`, {
-        method: 'POST',
+        body: JSON.stringify({
+          name,
+          roomId,
+          type: 'guest',
+        }),
         headers: {
           Accept: '*/*',
           'Content-Type': 'application/json',
           'x-api-key': process.env.HUDDLE_API_KEY!,
         },
-        body: JSON.stringify({
-          type: 'guest',
-          name,
-          roomId,
-        }),
+        method: 'POST',
       })
 
       const joinData = await response.json()

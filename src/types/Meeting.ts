@@ -25,6 +25,7 @@ export enum TimeSlotSource {
   ICLOUD = 'iCloud',
   OFFICE = 'Office 365',
   WEBDAV = 'Webdav',
+  WEBCAL = 'Webcal', // read-only streams
 }
 export interface ExistingMeetingData {
   title?: string
@@ -185,6 +186,7 @@ export interface MeetingDecrypted<T = Date> extends MeetingInfo {
   version: DBSlot['version']
   meeting_info_encrypted: Encrypted
   user_type?: 'account' | 'guest'
+  series_id?: string | null
 }
 
 export interface ExistingMeetingData {

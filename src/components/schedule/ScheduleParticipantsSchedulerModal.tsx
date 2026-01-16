@@ -19,6 +19,7 @@ import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import { MeetingDecrypted } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { ellipsizeAddress } from '@/utils/user_manager'
+
 interface IProps {
   onClose: () => void
   isOpen: boolean

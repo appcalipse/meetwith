@@ -54,12 +54,12 @@ export interface CryptoConfig {
 
 // Centralized currency configuration
 export const CURRENCIES: Currency[] = [
-  { name: 'US Dollar', code: 'USD', flag: '/assets/currencies/usd.png' },
-  { name: 'Euro', code: 'EUR', flag: '/assets/currencies/euro.png' },
+  { code: 'USD', flag: '/assets/currencies/usd.png', name: 'US Dollar' },
+  { code: 'EUR', flag: '/assets/currencies/euro.png', name: 'Euro' },
   {
-    name: 'Pounds sterling',
     code: 'GBP',
     flag: '/assets/currencies/pounds.png',
+    name: 'Pounds sterling',
   },
 ]
 
@@ -73,9 +73,9 @@ export const NETWORKS: Network[] = supportedChains
       )
   )
   .map(chain => ({
-    name: chain.name,
-    icon: chain.image,
     chainId: chain.id,
+    icon: chain.image,
+    name: chain.name,
   }))
 
 export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
@@ -105,8 +105,8 @@ export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
       if (existingConfig) {
         // Add additional chain info to existing config dynamically
         existingConfig.chains[chain.name] = {
-          tokenAddress: tokenInfo.contractAddress,
           chainId: chain.id,
+          tokenAddress: tokenInfo.contractAddress,
         }
 
         if (!existingConfig.icon && tokenInfo.icon) {
@@ -120,16 +120,16 @@ export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
         const price = await getPriceForChain(chain.chain, tokenInfo.token)
 
         const config: CryptoConfig = {
-          name: tokenInfo.displayName || tokenInfo.token,
-          symbol: tokenInfo.token,
-          icon: tokenInfo.icon || getTokenIcon(tokenInfo.token) || '',
-          price: price,
           chains: {
             [chain.name]: {
-              tokenAddress: tokenInfo.contractAddress,
               chainId: chain.id,
+              tokenAddress: tokenInfo.contractAddress,
             },
           },
+          icon: tokenInfo.icon || getTokenIcon(tokenInfo.token) || '',
+          name: tokenInfo.displayName || tokenInfo.token,
+          price: price,
+          symbol: tokenInfo.token,
         }
         configs.push(config)
       }
@@ -152,13 +152,13 @@ export const getCryptoAssetsForNetwork = async (
       return {
         ...crypto,
         balance: '0 ' + crypto.symbol,
-        usdValue: '$0',
-        fullBalance: '0',
+        chainId: chainInfo?.chainId || network.chainId,
         currencyIcon:
           crypto.icon || getTokenIcon(crypto.symbol as AcceptedToken) || '',
-        tokenAddress: chainInfo?.tokenAddress || '',
-        chainId: chainInfo?.chainId || network.chainId,
+        fullBalance: '0',
         networkName: networkName,
+        tokenAddress: chainInfo?.tokenAddress || '',
+        usdValue: '$0',
       }
     })
   } catch (error) {

@@ -10,15 +10,17 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 import { LuCalendarCheck2 } from 'react-icons/lu'
 import { MdOutlineCalendarMonth } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
+import { isProduction } from '@/utils/constants'
 
 import CalendarView from '../calendar-view'
 import MeetingBase from '../meeting/Base'
+
 const NavigationTab = () => (
   <TabList
     w={{ base: '100%', md: 'auto' }}
@@ -34,6 +36,7 @@ const NavigationTab = () => (
         bg: 'tab-button-bg',
       }}
       flex={{ base: 1, md: 'auto' }}
+      display={isProduction ? 'none' : 'flex'}
     >
       <MdOutlineCalendarMonth size={24} />
       My Calendar
@@ -55,18 +58,9 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const [currentTab, setCurrentTab] = useState(0)
-  const { push, query } = useRouter()
-  const { slotId } = query as {
-    slotId: string
-  }
-  useEffect(() => {
-    if (slotId) {
-      setCurrentTab(1)
-    } else {
-      setCurrentTab(0)
-    }
-  }, [slotId])
+  const [currentTab, setCurrentTab] = useState(1)
+  const { push } = useRouter()
+
   return (
     <Tabs
       w="100%"
@@ -108,9 +102,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
           </Button>
         </Flex>
         <TabPanels>
-          <TabPanel p={0}>
-            <CalendarView />
-          </TabPanel>
+          <TabPanel p={0}>{!isProduction && <CalendarView />}</TabPanel>
 
           <TabPanel p={0}>
             <MeetingBase currentAccount={currentAccount} />

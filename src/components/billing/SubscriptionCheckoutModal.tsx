@@ -39,7 +39,6 @@ const SubscriptionCheckoutModal = ({
   country,
   onSuccess,
 }: Props) => {
-  const currentAccount = useAccountContext()
   const subscriptionRef = useRef<boolean>(false)
   const wallet = useActiveWallet()
   const { showSuccessToast, showErrorToast } = useToastHelpers()

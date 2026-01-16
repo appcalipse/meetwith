@@ -53,3 +53,4 @@ zoom-token.json
 .qodo
 .nvmrc
 .github/rules/
+.env.sentry-build-plugin

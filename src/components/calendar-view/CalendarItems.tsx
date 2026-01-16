@@ -7,7 +7,7 @@ import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 import CalendarItem from './CalendarItem'
 
 const CalendarItems: React.FC = () => {
-  const { currrentDate } = useCalendarContext()
+  const { currentDate } = useCalendarContext()
 
   const timeSlots = React.useMemo(
     () =>
@@ -20,9 +20,9 @@ const CalendarItems: React.FC = () => {
   const days = React.useMemo(
     () =>
       Array.from({ length: 7 }, (_, index) =>
-        currrentDate.startOf('week').plus({ days: index }).startOf('day')
+        currentDate.startOf('week').plus({ days: index }).startOf('day')
       ),
-    [currrentDate]
+    [currentDate]
   )
 
   return (

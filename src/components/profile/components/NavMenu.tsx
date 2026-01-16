@@ -45,6 +45,7 @@ import {
   incrementNotificationLookup,
   saveNotificationTime,
 } from '@/utils/storage'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { ThemeSwitcher } from '../../ThemeSwitcher'
@@ -90,6 +91,9 @@ export const NavMenu: React.FC<{
   const isDarkMode = useColorModeValue(false, true)
 
   const LinkItems: Array<LinkItemProps> = useMemo(() => {
+    const activeSubscription = getActiveProSubscription(currentAccount)
+    const hasProAccess = Boolean(activeSubscription)
+
     const tabs: Array<LinkItemProps> = [
       { name: 'My Schedule', icon: FaCalendarDay, mode: EditMode.MEETINGS },
       {
@@ -121,6 +125,7 @@ export const NavMenu: React.FC<{
         name: 'Wallet',
         icon: FaWallet,
         mode: EditMode.WALLET,
+        isDisabled: !hasProAccess,
       },
       {
         name: 'Availabilities',
@@ -130,7 +135,7 @@ export const NavMenu: React.FC<{
       { name: 'Settings', icon: FaCog, mode: EditMode.DETAILS },
     ]
     return tabs.filter(item => !item.isDisabled)
-  }, [groupInvitesCount, contactsRequestCount])
+  }, [currentAccount, groupInvitesCount, contactsRequestCount])
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
     emptyGroups?.forEach((data, index) => {
@@ -272,15 +277,14 @@ export const NavMenu: React.FC<{
           <VStack width="100%" gap={6} px={5} py={8} flexShrink={0}>
             <Box
               cursor="pointer"
-              mb={4}
               onClick={toggleSidebar}
               color="sidebar-inverted-subtle"
               alignSelf={isOpened ? 'flex-end' : 'center'}
             >
               {isOpened ? (
-                <TbLayoutSidebarRightExpand size={40} />
+                <TbLayoutSidebarRightExpand size={30} />
               ) : (
-                <TbLayoutSidebarLeftExpand size={40} />
+                <TbLayoutSidebarLeftExpand size={30} />
               )}
             </Box>
             <HStack width="100%" textAlign="center">

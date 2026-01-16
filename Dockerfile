@@ -26,6 +26,7 @@ RUN corepack prepare yarn@4.9.1 --activate
 
 WORKDIR /app
 ARG DOPPLER_TOKEN
+ENV DOPPLER_TOKEN=${DOPPLER_TOKEN}
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/.yarnrc.yml ./
