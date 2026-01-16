@@ -20,6 +20,7 @@ import { IoMdTimer } from 'react-icons/io'
 import { getFormattedDateAndDuration } from '@/utils/date_helper'
 
 import { RescheduleConferenceData } from '.'
+
 type Props = {
   onClose: () => void
   meeting: RescheduleConferenceData

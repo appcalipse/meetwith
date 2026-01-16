@@ -42,7 +42,7 @@ export const useAvailabilityBlockFormHandlers = ({
 
   return {
     initializeFormForCreate,
-    initializeFormForEdit,
     initializeFormForDuplicate,
+    initializeFormForEdit,
   }
 }

@@ -26,9 +26,9 @@ interface IAccountContext {
 const DEFAULT_STATE: IAccountContext = {
   logged: false,
   login: () => null,
+  loginIn: false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   logout: (wallet?: Wallet) => null,
-  loginIn: false,
   setLoginIn: () => null,
   updateUser: () => Promise.resolve(),
 }
@@ -107,10 +107,10 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
   }
   const context = {
     ...userContext,
-    loginIn,
-    setLoginIn,
     login,
+    loginIn,
     logout,
+    setLoginIn,
     updateUser,
   }
   return (

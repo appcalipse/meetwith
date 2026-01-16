@@ -2,6 +2,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { syncAllSeries, updateAllRecurringSlots } from '@/utils/database'
+
 const TIMEOUT_MS = 25000
 export default async function recurrenceSync(
   req: NextApiRequest,
@@ -12,20 +13,20 @@ export default async function recurrenceSync(
       const startTime = Date.now()
       const jobId = `recurrence-${Date.now()}`
 
-      console.log('[RecurrenceSync] Starting', { jobId })
+      console.debug('[RecurrenceSync] Starting', { jobId })
 
       const syncPromise = Promise.allSettled([
         updateAllRecurringSlots().catch(err => {
           console.error('[RecurrenceSync] updateAllRecurringSlots failed', {
-            jobId,
             error: err.message,
+            jobId,
             stack: err.stack,
           })
         }),
         syncAllSeries().catch(err => {
           console.error('[RecurrenceSync] syncAllSeries failed', {
-            jobId,
             error: err.message,
+            jobId,
             stack: err.stack,
           })
         }),
@@ -44,42 +45,45 @@ export default async function recurrenceSync(
 
       if (raceResult === 'timeout') {
         // job Still running in background
-        console.log('[RecurrenceSync] Timeout - job continues in background', {
-          jobId,
-          elapsed_ms: elapsed,
-        })
+        console.debug(
+          '[RecurrenceSync] Timeout - job continues in background',
+          {
+            elapsed_ms: elapsed,
+            jobId,
+          }
+        )
 
         return res.status(202).json({
-          success: true,
-          message: 'Recurrence sync started (processing in background)',
-          job_id: jobId,
           elapsed_ms: elapsed,
+          job_id: jobId,
+          message: 'Recurrence sync started (processing in background)',
           status: 'processing',
+          success: true,
         })
       }
 
       const results = await syncPromise
       const failed = results.filter(r => r.status === 'rejected')
 
-      console.log('[RecurrenceSync] Completed', {
-        jobId,
+      console.debug('[RecurrenceSync] Completed', {
         elapsed_ms: elapsed,
         failures: failed.length,
+        jobId,
       })
 
       if (failed.length > 0) {
         console.error('[RecurrenceSync] Partial failure', {
-          jobId,
           errors: failed.map((f: PromiseRejectedResult) => f.reason?.message),
+          jobId,
         })
       }
 
       return res.status(200).json({
-        success: true,
-        message: 'Recurrence sync completed',
-        job_id: jobId,
         elapsed_ms: elapsed,
+        job_id: jobId,
+        message: 'Recurrence sync completed',
         partial_failure: failed.length > 0,
+        success: true,
       })
     } catch (error) {
       return res.status(500).json({ error: (error as Error).message })

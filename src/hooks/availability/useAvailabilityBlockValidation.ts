@@ -57,7 +57,7 @@ export const useAvailabilityBlockValidation = () => {
   }
 
   return {
-    validateForm,
     showDeleteErrorToast,
+    validateForm,
   }
 }

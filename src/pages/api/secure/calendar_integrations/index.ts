@@ -94,19 +94,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           }
         }
         return {
-          id: it.id,
-          provider: it.provider,
-          email: it.email,
           calendars: it.calendars,
+          email: it.email,
           expectedPermissions,
           grantedPermissions,
+          id: it.id,
+          provider: it.provider,
         }
       })
 
       return res.status(200).json({
         calendars: response,
-        total: totalCount,
         hidden,
+        total: totalCount,
         upgradeRequired,
       })
     } catch (e) {

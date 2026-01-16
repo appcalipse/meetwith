@@ -15,7 +15,7 @@ async function loadSavedCredentialsIfExist(): Promise<
     const content = (await readFile(TOKEN_PATH)).toString('utf8')
     const credentials = JSON.parse(content)
     return auth.fromJSON(credentials)
-  } catch (err) {
+  } catch (_err) {
     return null
   }
 }
@@ -25,10 +25,10 @@ async function saveCredentials(client: OAuth2Client): Promise<void> {
   const keys = JSON.parse(content)
   const key = keys.installed || keys.web
   const payload = JSON.stringify({
-    type: 'authorized_user',
     client_id: key.client_id,
     client_secret: key.client_secret,
     refresh_token: client.credentials.refresh_token,
+    type: 'authorized_user',
   })
   await writeFile(TOKEN_PATH, payload)
 }

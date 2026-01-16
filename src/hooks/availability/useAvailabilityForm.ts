@@ -1,7 +1,5 @@
 import { useState } from 'react'
-
-import { Account } from '@/types/Account'
-import { TimeRange } from '@/types/Account'
+import { Account, TimeRange } from '@/types/Account'
 import {
   getBestTimezone,
   initializeDefaultAvailabilities,
@@ -16,18 +14,18 @@ interface FormState {
 
 export const useAvailabilityForm = (currentAccount: Account) => {
   const [formState, setFormState] = useState<FormState>({
-    title: '',
-    timezone: getBestTimezone(currentAccount),
     availabilities: initializeDefaultAvailabilities(),
     isDefault: false,
+    timezone: getBestTimezone(currentAccount),
+    title: '',
   })
 
   const resetForm = () => {
     setFormState({
-      title: '',
-      timezone: getBestTimezone(currentAccount),
       availabilities: initializeDefaultAvailabilities(),
       isDefault: false,
+      timezone: getBestTimezone(currentAccount),
+      title: '',
     })
   }
 
@@ -35,7 +33,7 @@ export const useAvailabilityForm = (currentAccount: Account) => {
     setFormState(prev => {
       const newAvailabilities = prev.availabilities.map(availability => {
         if (availability.weekday === day) {
-          return { weekday: day, ranges: ranges ?? [] }
+          return { ranges: ranges ?? [], weekday: day }
         }
         return availability
       })
@@ -61,9 +59,9 @@ export const useAvailabilityForm = (currentAccount: Account) => {
   return {
     formState,
     resetForm,
-    updateAvailability,
-    setTitle,
-    setTimezone,
     setIsDefault,
+    setTimezone,
+    setTitle,
+    updateAvailability,
   }
 }

@@ -9,7 +9,7 @@
     "static": "biome lint src --max-diagnostics 200 &&  next build && next export",
     "start": "next start",
     "lint": "biome lint src --max-diagnostics 200",
-    "lint:fix": "biome lint src --write",
+    "lint:fix": "npx biome check src --max-diagnostics 200 --write --unsafe",
     "typecheck": "tsc --pretty --noEmit",
     "prepare": "husky install",
     "postinstall": "patch-package",

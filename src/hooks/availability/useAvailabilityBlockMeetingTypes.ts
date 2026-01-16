@@ -14,15 +14,15 @@ export const useAvailabilityBlockMeetingTypes = (
     isLoading,
     error,
   } = useQuery<MeetingType[]>({
-    queryKey: ['availabilityBlockMeetingTypes', availabilityBlockId],
-    queryFn: () => getMeetingTypesForAvailabilityBlock(availabilityBlockId),
     enabled: !!availabilityBlockId,
+    queryFn: () => getMeetingTypesForAvailabilityBlock(availabilityBlockId),
+    queryKey: ['availabilityBlockMeetingTypes', availabilityBlockId],
   })
 
   return {
-    meetingTypes: meetingTypes || [],
-    isLoading,
     error,
+    isLoading,
+    meetingTypes: meetingTypes || [],
   }
 }
 
@@ -48,7 +48,7 @@ export const useUpdateAvailabilityBlockMeetingTypes = (
   })
 
   return {
-    updateMeetingTypes: updateMutation.mutate,
     isUpdating: updateMutation.isLoading,
+    updateMeetingTypes: updateMutation.mutate,
   }
 }

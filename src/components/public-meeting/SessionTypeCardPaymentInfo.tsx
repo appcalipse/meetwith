@@ -21,6 +21,7 @@ import {
   generateTelegramUrl,
   generateTwitterUrl,
 } from '@/utils/generic_utils'
+
 const SessionTypeCardPaymentInfo = () => {
   const { selectedType, account } = useContext(PublicScheduleContext)
   let [twitter, telegram, discord] = ['', '', '']

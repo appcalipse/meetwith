@@ -73,7 +73,7 @@ const loginOrSignup = async (
     const nonce = Number(Math.random().toString(8).substring(2, 10))
 
     const signature = await signDefaultMessage(wallet, nonce)
-    return { signature, nonce }
+    return { nonce, signature }
   }
 
   let signedUp = false

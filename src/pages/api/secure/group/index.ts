@@ -48,11 +48,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     } else if (error instanceof GroupCreationError) {
       return res
         .status(500)
-        .json({ error: error.message, details: error.details })
+        .json({ details: error.details, error: error.message })
     } else {
       return res.status(500).json({
-        error: 'Internal server error',
         details: (error as Error).message,
+        error: 'Internal server error',
       })
     }
   }

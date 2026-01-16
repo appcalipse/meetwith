@@ -2,6 +2,7 @@ import { Heading, HStack, Text, VStack } from '@chakra-ui/react'
 import { getFormattedDateAndDuration } from '@utils/date_helper'
 import React, { FC } from 'react'
 import { FaCalendar, FaClock, FaGlobe } from 'react-icons/fa'
+
 interface IFormerTimeInfoProps {
   startTime: Date
   timezone: string

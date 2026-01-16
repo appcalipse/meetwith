@@ -56,8 +56,8 @@ import { parseUnits } from '@/utils/generic_utils'
 import { DEFAULT_MESSAGE_NAME, PubSubManager } from '@/utils/pub-sub.helper'
 import {
   ErrorAction,
-  errorReducerSingle,
   ErrorState,
+  errorReducerSingle,
   PaymentInfo,
   paymentInfoSchema,
   validatePaymentInfo,

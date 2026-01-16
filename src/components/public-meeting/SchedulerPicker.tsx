@@ -27,8 +27,8 @@ import { logEvent } from '@/utils/analytics'
 import { doesContactExist } from '@/utils/api_helper'
 import {
   getCustomSelectComponents,
-  timeZoneFilter,
   TimeZoneOption,
+  timeZoneFilter,
 } from '@/utils/constants/select'
 import { getFormattedDateAndDuration, timezones } from '@/utils/date_helper'
 import { generateTimeSlots } from '@/utils/slots.helper'

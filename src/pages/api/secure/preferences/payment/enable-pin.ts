@@ -91,11 +91,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else {
       // Create new preferences with default values
       const result = await createPaymentPreferences(account_address, {
-        pin: pin,
-        notification: [],
         default_chain_id:
           supportedChains.find(chain => chain.walletSupported)?.id ||
           supportedChains[0].id,
+        notification: [],
+        pin: pin,
       })
       return res.status(200).json(result)
     }

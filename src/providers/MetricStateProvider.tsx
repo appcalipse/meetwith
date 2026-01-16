@@ -26,12 +26,12 @@ interface IMetricStateContext {
 const DEFAULT_STATE: IMetricStateContext = {
   contactsRequestCount: 0,
   fetchContactsRequestCount: async () => {},
-  groupInvitesCount: 0,
   fetchGroupInvitesCount: async () => {},
+  fetchPollCounts: async () => {},
+  groupInvitesCount: 0,
+  isLoadingPollCounts: false,
   ongoingPollsCount: 0,
   pastPollsCount: 0,
-  fetchPollCounts: async () => {},
-  isLoadingPollCounts: false,
 }
 
 export const MetricStateContext =
@@ -99,12 +99,12 @@ const MetricStateProvider: React.FC<{
   const context = {
     contactsRequestCount,
     fetchContactsRequestCount,
-    groupInvitesCount,
     fetchGroupInvitesCount,
+    fetchPollCounts,
+    groupInvitesCount,
+    isLoadingPollCounts,
     ongoingPollsCount,
     pastPollsCount,
-    fetchPollCounts,
-    isLoadingPollCounts,
   }
   return (
     <MetricStateContext.Provider value={context}>

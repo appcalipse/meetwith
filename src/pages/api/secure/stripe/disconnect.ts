@@ -14,7 +14,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'PATCH') {
     try {
       const account_address = req.session.account!.address
-      const stripe = new StripeService()
+      const _stripe = new StripeService()
       const provider = await getOrCreatePaymentAccount(
         account_address,
         PaymentProvider.STRIPE

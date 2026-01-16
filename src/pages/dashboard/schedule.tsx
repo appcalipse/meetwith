@@ -35,12 +35,12 @@ const Schedule: NextPage<IInitialProps> = ({
           <NavigationProvider>
             <PermissionsProvider>
               <ScheduleMain
+                conferenceId={conferenceId}
+                contactId={contactId}
                 groupId={groupId}
                 intent={intent}
                 meetingId={meetingId}
-                contactId={contactId}
                 pollId={pollId}
-                conferenceId={conferenceId}
                 seriesId={seriesId}
               />
             </PermissionsProvider>
@@ -66,12 +66,12 @@ EnhancedSchedule.getInitialProps = async ctx => {
     seriesId,
   } = ctx.query
   return {
+    conferenceId,
+    contactId,
     groupId,
     intent,
     meetingId,
-    contactId,
     pollId,
-    conferenceId,
     seriesId,
   }
 }

@@ -88,40 +88,40 @@ export const QuickPollAvailabilityProvider: React.FC<
   }
 
   const value: QuickPollAvailabilityState = {
-    // Modal states
-    isInviteParticipantsOpen,
-    showCalendarModal,
-    showGuestForm,
-    showGuestIdModal,
-    showCalendarImportFlow,
+    clearGuestAvailabilitySlots,
+    currentGuestEmail,
+    currentIntent,
 
     // Data states
     currentParticipantId,
-    currentGuestEmail,
-    guestAvailabilitySlots,
     currentTimezone,
-    currentIntent,
+    guestAvailabilitySlots,
 
     // Loading states
     isEditingAvailability,
-    isSavingAvailability,
+    // Modal states
+    isInviteParticipantsOpen,
     isRefreshingAvailabilities,
+    isSavingAvailability,
+    setCurrentGuestEmail,
+    setCurrentIntent,
+    setCurrentParticipantId,
+    setCurrentTimezone,
+    setGuestAvailabilitySlots,
+    setIsEditingAvailability,
 
     // Actions
     setIsInviteParticipantsOpen,
+    setIsRefreshingAvailabilities,
+    setIsSavingAvailability,
+    setShowCalendarImportFlow,
     setShowCalendarModal,
     setShowGuestForm,
     setShowGuestIdModal,
-    setShowCalendarImportFlow,
-    setCurrentParticipantId,
-    setCurrentGuestEmail,
-    setGuestAvailabilitySlots,
-    setCurrentTimezone,
-    setCurrentIntent,
-    setIsEditingAvailability,
-    setIsSavingAvailability,
-    setIsRefreshingAvailabilities,
-    clearGuestAvailabilitySlots,
+    showCalendarImportFlow,
+    showCalendarModal,
+    showGuestForm,
+    showGuestIdModal,
   }
 
   return (

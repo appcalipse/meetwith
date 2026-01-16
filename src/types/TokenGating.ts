@@ -44,14 +44,14 @@ export interface GateConditionObject {
 }
 
 export const DummyGateElement: TokenGateElement = {
-  type: GateInterface.ERC20,
-  itemName: '',
-  itemSymbol: '',
-  itemId: '',
   chain: isProduction
     ? SupportedChain.POLYGON_MATIC
     : SupportedChain.POLYGON_AMOY,
+  itemId: '',
+  itemName: '',
+  itemSymbol: '',
   minimumBalance: 0n,
+  type: GateInterface.ERC20,
 }
 
 export enum GateUsageType {
@@ -69,34 +69,34 @@ export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
     case SupportedChain.ETHEREUM:
     case SupportedChain.SEPOLIA:
       return {
-        type: GateInterface.NATIVE,
+        chain: chain,
+        decimals: getNativeDecimals(chain),
+        itemId: '0x0000000000000000000000000000000000000000',
         itemName: 'Ether',
         itemSymbol: 'ETH',
-        itemId: '0x0000000000000000000000000000000000000000',
-        chain: chain,
         minimumBalance: 0n,
-        decimals: getNativeDecimals(chain),
+        type: GateInterface.NATIVE,
       }
     case SupportedChain.POLYGON_MATIC:
     case SupportedChain.POLYGON_AMOY:
       return {
-        type: GateInterface.NATIVE,
+        chain: chain,
+        decimals: getNativeDecimals(chain),
+        itemId: '0x0000000000000000000000000000000000000000',
         itemName: 'Matic',
         itemSymbol: 'MATIC',
-        itemId: '0x0000000000000000000000000000000000000000',
-        chain: chain,
         minimumBalance: 0n,
-        decimals: getNativeDecimals(chain),
+        type: GateInterface.NATIVE,
       }
     case SupportedChain.METIS_ANDROMEDA:
       return {
-        type: GateInterface.NATIVE,
+        chain: chain,
+        decimals: getNativeDecimals(chain),
+        itemId: '0x0000000000000000000000000000000000000000',
         itemName: 'Metis',
         itemSymbol: 'METIS',
-        itemId: '0x0000000000000000000000000000000000000000',
-        chain: chain,
         minimumBalance: 0n,
-        decimals: getNativeDecimals(chain),
+        type: GateInterface.NATIVE,
       }
     default:
       return DummyGateElement

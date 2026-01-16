@@ -52,15 +52,15 @@ export default async function expireSubscriptions(
             )
 
             const emailPeriod: BillingEmailPeriod = {
-              registered_at: period.registered_at,
               expiry_time: period.expiry_time,
+              registered_at: period.registered_at,
             }
 
             const emailPlan: BillingEmailPlan = {
+              billing_cycle: billingPlan.billing_cycle,
               id: billingPlan.id,
               name: billingPlan.name,
               price: billingPlan.price,
-              billing_cycle: billingPlan.billing_cycle,
             }
 
             // Send email
@@ -133,19 +133,19 @@ export default async function expireSubscriptions(
       }
 
       return res.status(200).json({
-        success: true,
-        expiredCount: result.expiredCount,
-        emailCount,
         discordCount,
+        emailCount,
+        expiredCount: result.expiredCount,
+        message: `Successfully expired ${result.expiredCount} subscription period(s) and sent ${emailCount} email(s), ${discordCount} Discord message(s), and ${telegramCount} Telegram message(s)`,
+        success: true,
         telegramCount,
         timestamp: result.timestamp,
-        message: `Successfully expired ${result.expiredCount} subscription period(s) and sent ${emailCount} email(s), ${discordCount} Discord message(s), and ${telegramCount} Telegram message(s)`,
       })
     } catch (error) {
       Sentry.captureException(error)
       return res.status(500).json({
-        success: false,
         error: (error as Error).message,
+        success: false,
       })
     }
   }

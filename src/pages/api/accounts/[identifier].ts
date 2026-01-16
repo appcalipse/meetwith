@@ -10,7 +10,7 @@ const getAccount = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const account = await getAccountFromDBPublic(identifier as string)
       return res.status(200).json(account)
-    } catch (e) {
+    } catch (_e) {
       return res.status(404).send('Not found')
     }
   }

@@ -581,7 +581,7 @@ const PublicPage: FC<IProps> = props => {
           setMeetingSlotId(slot?.id)
         }
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Unable to load meeting details',
         status: 'error',
