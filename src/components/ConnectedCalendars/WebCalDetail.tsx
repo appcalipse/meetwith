@@ -13,7 +13,10 @@ import { useContext, useRef, useState } from 'react'
 import { RiFileUploadLine } from 'react-icons/ri'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { QuickPollBySlugResponse } from '@/types/QuickPoll'
-import { addOrUpdateWebcal } from '@/utils/api_helper'
+import {
+  addOrUpdateQuickPollWebcal,
+  addOrUpdateWebcal,
+} from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { useToastHelpers } from '@/utils/toasts'
@@ -61,6 +64,7 @@ const WebCalDetail: React.FC<WebCalDetailProps> = ({
         formdata.append('url', url)
       }
       if (isQuickPoll && participantId) {
+        await addOrUpdateQuickPollWebcal(participantId, formdata)
       } else {
         await addOrUpdateWebcal(formdata)
       }
