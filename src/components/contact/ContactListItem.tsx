@@ -11,6 +11,7 @@ import {
   AccountNotFoundError,
   CantInviteYourself,
   ContactAlreadyExists,
+  ContactLimitExceededError,
 } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
@@ -87,6 +88,15 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+        })
+      } else if (e instanceof ContactLimitExceededError) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof CantInviteYourself) {
         toast({
