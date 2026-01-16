@@ -11,8 +11,8 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import React, { useState } from 'react'
-import { CiStreamOn } from 'react-icons/ci'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
+import { LuCalendarSearch } from 'react-icons/lu'
 
 import { TimeSlotSource } from '@/types/Meeting'
 import { QuickPollBySlugResponse } from '@/types/QuickPoll'
@@ -127,7 +127,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 flexDirection={{ base: 'column', md: 'row' }}
                 justifyContent="center"
                 gap={4}
-                flexWrap="wrap"
+                flexWrap={{ base: 'wrap', lg: 'nowrap' }}
               >
                 <Button
                   onClick={selectOption(TimeSlotSource.GOOGLE)}
@@ -169,21 +169,19 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 >
                   Webdav
                 </Button>
-                {!isProduction && (
-                  <Button
-                    onClick={selectOption(TimeSlotSource.WEBCAL)}
-                    leftIcon={<CiStreamOn />}
-                    variant={
-                      selectedProvider === TimeSlotSource.WEBCAL
-                        ? 'solid'
-                        : 'outline'
-                    }
-                    display={isQuickPoll ? 'none' : undefined}
-                    isLoading={loading === TimeSlotSource.WEBCAL}
-                  >
-                    Webcal
-                  </Button>
-                )}
+                <Button
+                  onClick={selectOption(TimeSlotSource.WEBCAL)}
+                  leftIcon={<LuCalendarSearch />}
+                  variant={
+                    selectedProvider === TimeSlotSource.WEBCAL
+                      ? 'solid'
+                      : 'outline'
+                  }
+                  display={isQuickPoll ? 'none' : undefined}
+                  isLoading={loading === TimeSlotSource.WEBCAL}
+                >
+                  Use ICS
+                </Button>
               </HStack>
               <VStack
                 hidden={selectedProvider !== TimeSlotSource.ICLOUD}

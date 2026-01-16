@@ -13,6 +13,7 @@ import {
   countCalendarIntegrations,
   getAccountFromDB,
   isProAccountAsync,
+  saveQuickPollCalendar,
   uploadIcsFile,
 } from '@/utils/database'
 import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
@@ -29,7 +30,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const body: WebcalRequestBody = req.body
-  const accountAddress = req.session.account.address
+  const participantId = req.query.participantId as string
   const { resource } = req.body?.files
 
   if (!body.url && !resource) {
@@ -47,8 +48,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   if (req.method === 'POST') {
     try {
-      const isPro = await isProAccountAsync(accountAddress)
-
       const validationResult = await validateWebcalFeed(url, body.email)
 
       if (!validationResult.valid) {
@@ -65,23 +64,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         })
       }
 
-      if (!isPro) {
-        const existingIntegration = await connectedCalendarExists(
-          accountAddress,
-          validationResult.userEmail,
-          TimeSlotSource.WEBCAL
-        )
-
-        if (!existingIntegration) {
-          const integrationCount = await countCalendarIntegrations(
-            accountAddress
-          )
-          if (integrationCount >= 2) {
-            throw new CalendarIntegrationLimitExceededError()
-          }
-        }
-      }
-
       const calendars: CalendarSyncInfo[] = [
         {
           calendarId: url,
@@ -93,12 +75,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         },
       ]
 
-      await addOrUpdateConnectedCalendar(
-        accountAddress,
+      await saveQuickPollCalendar(
+        participantId,
         validationResult.userEmail,
         TimeSlotSource.WEBCAL,
-        calendars,
-        { url: url } // Store the URL in payload
+        { url: url }, // Store the URL in payload
+        calendars
       )
 
       return res.status(200).json({
@@ -109,7 +91,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       })
     } catch (error) {
       Sentry.captureException(error, {
-        extra: { accountAddress, url: url },
+        extra: { participantId, url: url },
       })
 
       if (error instanceof CalendarIntegrationLimitExceededError) {
@@ -142,7 +124,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       })
     } catch (error) {
       Sentry.captureException(error, {
-        extra: { accountAddress, url: body.url },
+        extra: { participantId, url: body.url },
       })
 
       return res.status(400).json({
@@ -381,9 +363,7 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
-export default withSessionRoute(
-  withFileUpload(handler, {
-    allowedMimeTypes: ['text/calendar', 'application/ics'],
-    maxFileSize: SIZE_5_MB,
-  })
-)
+export default withFileUpload(handler, {
+  allowedMimeTypes: ['text/calendar', 'application/ics'],
+  maxFileSize: SIZE_5_MB,
+})
