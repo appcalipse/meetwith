@@ -59,8 +59,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     try {
       // Calculate metadata for free tier
-      const hidden = !isPro ? Math.max(0, totalCount - 1) : 0
-      const upgradeRequired = !isPro && totalCount >= 1
+      const hidden = !isPro ? Math.max(0, totalCount - 2) : 0
+      const upgradeRequired = !isPro && totalCount >= 2
 
       const response = calendars.map(it => {
         let grantedPermissions = 0
