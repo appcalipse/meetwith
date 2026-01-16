@@ -127,7 +127,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 flexDirection={{ base: 'column', md: 'row' }}
                 justifyContent="center"
                 gap={4}
-                flexWrap="wrap"
+                flexWrap={{ base: 'wrap', lg: 'nowrap' }}
               >
                 <Button
                   onClick={selectOption(TimeSlotSource.GOOGLE)}
