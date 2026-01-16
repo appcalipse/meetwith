@@ -59,10 +59,9 @@ export interface AccountAddressRecord extends ParticipantInfo {
 }
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-
+import { useRouter } from 'next/router'
 import useSlotCache from '@/hooks/useSlotCache'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-
 import ScheduleDateSection from './ScheduleDateSection'
 
 export enum State {
@@ -127,7 +126,7 @@ export function SchedulePickTime({
     currentSelectedDate,
     setCurrentSelectedDate,
   } = useScheduleState()
-
+  const { groupId } = useRouter().query
   const { canEditMeetingDetails, isUpdatingMeeting } =
     useParticipantPermissions()
   const { allAvailaibility, groupAvailability, groupMembersAvailabilities } =
@@ -187,7 +186,14 @@ export function SchedulePickTime({
       }: {
         startDate: Date
         endDate: Date
-      }) => getSuggestedSlots(addresses, startDate, endDate, duration),
+      }) =>
+        getSuggestedSlots(
+          addresses,
+          startDate,
+          endDate,
+          duration,
+          groupId as string
+        ),
       onError: () =>
         toast({
           title: 'Error fetching suggested slots',
@@ -203,7 +209,7 @@ export function SchedulePickTime({
     {
       queryKey: ['meetingMembers', addresses],
       queryFn: ({ signal }) =>
-        getExistingAccounts(deduplicateArray(addresses), undefined, { signal }),
+        getExistingAccounts(deduplicateArray(addresses), true, { signal }),
     }
   )
 
