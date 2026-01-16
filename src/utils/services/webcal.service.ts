@@ -30,8 +30,8 @@ export default class WebCalService implements BaseCalendarService {
    * @param icsUrl - The URL to the ICS feed (webcal://, http://, or https://)
    */
   constructor(accountAddress: string, email: string, payload: string) {
-    const icsUrl = JSON.parse(payload) as { url: string }
-    this.feedUrl = icsUrl.url.replace(/^webcal:\/\//i, 'https://')
+    const icsFeed = JSON.parse(payload) as { url: string }
+    this.feedUrl = icsFeed.url.replace(/^webcal:\/\//i, 'https://')
     this.email = email
   }
 
