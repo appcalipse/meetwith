@@ -7,7 +7,7 @@ import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    if (req.method === 'PUT' || req.method === 'PATCH') {
+    if (req.method === 'PATCH') {
       const account_address = req.session.account?.address
       if (!account_address) {
         return res.status(401).send('Unauthorized')
@@ -51,51 +51,68 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       try {
-        const updatedEvent = await CalendarBackendHelper.updateCalendarEvent(
+        unifiedEvent.start = startDate
+        unifiedEvent.end = endDate
+        await CalendarBackendHelper.updateCalendarEvent(
           account_address,
           unifiedEvent
         )
-        return res.status(200).json(updatedEvent)
-      } catch (error: any) {
+        return res.status(200).json({
+          success: true,
+        })
+      } catch (error: unknown) {
         Sentry.captureException(error, {
           extra: {
             account_address,
-            eventId: unifiedEvent.id,
-            sourceEventId: unifiedEvent.sourceEventId,
-            source: unifiedEvent.source,
             calendarId: unifiedEvent.calendarId,
+            eventId: unifiedEvent.id,
+            source: unifiedEvent.source,
+            sourceEventId: unifiedEvent.sourceEventId,
           },
         })
 
-        if (
-          error.message?.includes('not found') ||
-          error.message?.includes('not enabled')
-        ) {
-          return res.status(404).send(error.message)
+        if (error instanceof Error) {
+          if (
+            error.message?.includes('not found') ||
+            error.message?.includes('not enabled')
+          ) {
+            return res.status(404).send(error.message)
+          }
+          if (
+            error.message?.includes('Unauthorized') ||
+            error.message?.includes('permission') ||
+            error.message?.includes('403')
+          ) {
+            return res.status(403).send(error.message)
+          }
+          if (
+            error.message?.includes('conflict') ||
+            error.message?.includes('409')
+          ) {
+            return res.status(409).send(error.message)
+          }
         }
-        if (
-          error.message?.includes('Unauthorized') ||
-          error.message?.includes('permission') ||
-          error.message?.includes('403')
-        ) {
-          return res.status(403).send(error.message)
-        }
-        if (
-          error.message?.includes('conflict') ||
-          error.message?.includes('409')
-        ) {
-          return res.status(409).send(error.message)
-        }
-        return res.status(500).send(`Failed to update event: ${error.message}`)
+
+        return res
+          .status(500)
+          .send(
+            `Failed to update event: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          )
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     Sentry.captureException(error)
     return res
       .status(500)
-      .send(`Internal server error: ${error.message || error}`)
+      .send(
+        `Internal server error: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      )
   }
-  return res.status(405).send('Method not allowed. Use PUT or PATCH.')
+  return res.status(405).send('Method not allowed.')
 }
 
 export default withSessionRoute(handler)

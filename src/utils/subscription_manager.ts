@@ -27,6 +27,7 @@ import {
   syncSubscriptions,
 } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
+import { ApiFetchError } from './errors'
 import { parseUnits, zeroAddress } from './generic_utils'
 import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
 import { thirdWebClient } from './user_manager'
@@ -46,9 +47,17 @@ export const isProAccount = (
 export const getActiveProSubscription = (
   account?: Pick<Account, 'subscriptions'> | null
 ): Subscription | undefined => {
-  return account?.subscriptions?.find(
-    sub => new Date(sub.expiry_time) > new Date()
-  )
+  if (!account?.subscriptions) return undefined
+
+  const now = new Date()
+  const activeSubs = account.subscriptions
+    .filter(sub => new Date(sub.expiry_time) > now)
+    .sort(
+      (a, b) =>
+        new Date(b.expiry_time).getTime() - new Date(a.expiry_time).getTime()
+    )
+
+  return activeSubs[0]
 }
 
 // Get the most recent active billing subscription from account subscriptions
@@ -127,10 +136,10 @@ export const checkAllowance = async (
     }
 
     const contract = getContract({
-      client: thirdWebClient,
-      chain: chainInfo!.thirdwebChain,
-      address: tokenInfo.contractAddress,
       abi: erc20Abi,
+      address: tokenInfo.contractAddress,
+      chain: chainInfo!.thirdwebChain,
+      client: thirdWebClient,
     })
 
     const decimals = await readContract({
@@ -171,7 +180,7 @@ export const approveTokenSpending = async (
 
   try {
     await validateChainToActOn(chain, wallet)
-  } catch (e) {
+  } catch (_e) {
     throw Error('Please connect to the correct network')
   }
 
@@ -183,10 +192,10 @@ export const approveTokenSpending = async (
   }
 
   const contract = getContract({
-    client: thirdWebClient,
-    chain: chainInfo!.thirdwebChain,
-    address: tokenInfo.contractAddress,
     abi: erc20Abi,
+    address: tokenInfo.contractAddress,
+    chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
 
   const tokenTransaction = await prepareContractCall({
@@ -201,8 +210,8 @@ export const approveTokenSpending = async (
   })
 
   await waitForReceipt({
-    client: thirdWebClient,
     chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
     transactionHash: tokenHash,
   })
 }
@@ -216,17 +225,17 @@ export const getNativePriceForDuration = async (
   const planInfo = getPlanInfo(plan)
   if (planInfo) {
     const contract = getContract({
-      client: thirdWebClient,
-      chain: chainInfo!.thirdwebChain,
-      address: chainInfo!.registarContractAddress,
       abi: Abi.parse(MWWRegister),
+      address: chainInfo!.registarContractAddress,
+      chain: chainInfo!.thirdwebChain,
+      client: thirdWebClient,
     })
 
-    const result = (await readContract({
+    const result = await readContract({
       contract,
       method: 'function getNativeConvertedValue(uint8 price)',
       params: [planInfo.usdPrice],
-    })) as any
+    })
     const value =
       (BigInt(result[0]) * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
 
@@ -250,8 +259,8 @@ export const subscribeToPlan = async (
     if (subExists && subExists!.owner_account !== accountAddress) {
       throw Error('Domain already registered')
     }
-  } catch (e: any) {
-    if (e.status !== 404) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status !== 404) {
       throw e
     }
   }
@@ -260,15 +269,15 @@ export const subscribeToPlan = async (
 
   try {
     await validateChainToActOn(chain, wallet)
-  } catch (e) {
+  } catch (_e) {
     throw Error('Please connect to the correct network')
   }
 
   const contract = getContract({
-    client: thirdWebClient,
-    chain: chainInfo!.thirdwebChain,
-    address: chainInfo!.registarContractAddress,
     abi: Abi.parse(MWWRegister),
+    address: chainInfo!.registarContractAddress,
+    chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
 
   try {
@@ -291,10 +300,10 @@ export const subscribeToPlan = async (
 
       if (neededApproval > 0) {
         const tokenContract = getContract({
-          client: thirdWebClient,
-          chain: chainInfo!.thirdwebChain,
-          address: tokenInfo.contractAddress,
           abi: erc20Abi,
+          address: tokenInfo.contractAddress,
+          chain: chainInfo!.thirdwebChain,
+          client: thirdWebClient,
         })
 
         const tokenTransaction = await prepareContractCall({
@@ -312,8 +321,8 @@ export const subscribeToPlan = async (
         })
 
         await waitForReceipt({
-          client: thirdWebClient,
           chain: chainInfo!.thirdwebChain,
+          client: thirdWebClient,
           transactionHash: tokenHash,
         })
       }
@@ -338,8 +347,8 @@ export const subscribeToPlan = async (
       })
 
       return await waitForReceipt({
-        client: thirdWebClient,
         chain: chainInfo!.thirdwebChain,
+        client: thirdWebClient,
         transactionHash,
       })
     } else {
@@ -348,12 +357,12 @@ export const subscribeToPlan = async (
         throw Error('Plan does not exists')
       }
 
-      const readResult = (await readContract({
+      const readResult = await readContract({
         contract,
         method:
           'function getNativeConvertedValue(uint256 usdPrice) public view returns (uint256 amountInNative, uint256 timestamp)',
         params: [BigInt(planInfo.usdPrice)],
-      })) as any
+      })
 
       const value =
         (BigInt(readResult[0]) * BigInt(duration)) /
@@ -379,8 +388,8 @@ export const subscribeToPlan = async (
       })
 
       return await waitForReceipt({
-        client: thirdWebClient,
         chain: chainInfo!.thirdwebChain,
+        client: thirdWebClient,
         transactionHash,
       })
     }
@@ -401,15 +410,15 @@ export const convertBlockchainSubscriptionToSubscription = (
   }
 
   const subscriptionInfo: Subscription = {
-    plan_id: Number(sub.planId),
     chain: sub.chain,
-    owner_account: sub.owner.toLowerCase(),
+    config_ipfs_hash: sub.configIpfsHash,
+    domain: sub.domain,
     expiry_time:
       new Date(expiryTime * 1000).getFullYear() < 2200
         ? new Date(expiryTime * 1000)
         : new Date(2200, 1, 1), // bad initial domain injections
-    domain: sub.domain,
-    config_ipfs_hash: sub.configIpfsHash,
+    owner_account: sub.owner.toLowerCase(),
+    plan_id: Number(sub.planId),
     registered_at: new Date(Number(sub.registeredAt) * 1000),
   }
 
@@ -427,13 +436,13 @@ export const changeDomainOnChain = async (
     if (subExists) {
       throw Error('Domain already registered')
     }
-  } catch (e: any) {
-    if (e.status !== 404) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status !== 404) {
       throw e
     }
   }
 
-  let chain: any
+  let chain: SupportedChain | null = null
   try {
     const subExists = await getSubscriptionByDomain(domain)
     if (subExists && subExists!.owner_account !== accountAddress) {
@@ -441,7 +450,7 @@ export const changeDomainOnChain = async (
     } else {
       chain = subExists!.chain
     }
-  } catch (e: any) {
+  } catch (_e: unknown) {
     throw Error('Your current domain is not registered. Please contact us')
   }
 
@@ -449,17 +458,17 @@ export const changeDomainOnChain = async (
 
   try {
     await validateChainToActOn(chain!, wallet)
-  } catch (e) {
+  } catch (_e) {
     throw Error(
       'Please connect to the ${chain} network. (consider you must unlock your wallet and also reload the page after that)'
     )
   }
 
   const contract = getContract({
-    client: thirdWebClient,
-    chain: chainInfo!.thirdwebChain,
-    address: chainInfo!.domainContractAddess,
     abi: Abi.parse(MWWDomain),
+    address: chainInfo!.domainContractAddess,
+    chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
 
   try {
@@ -475,11 +484,11 @@ export const changeDomainOnChain = async (
     })
 
     return await waitForReceipt({
-      client: thirdWebClient,
       chain: chainInfo!.thirdwebChain,
+      client: thirdWebClient,
       transactionHash,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     Sentry.captureException(error)
     throw Error(checkTransactionError(error))
   }

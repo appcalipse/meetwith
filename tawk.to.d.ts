@@ -21,7 +21,7 @@ declare module '@tawk.to/tawk-messenger-react' {
   interface TawkVisitorData {
     name?: string
     email?: string
-    [key: string]: any
+    [key: string]: unknown
   }
 
   interface TawkSatisfactionData {
@@ -54,7 +54,7 @@ declare module '@tawk.to/tawk-messenger-react' {
     widgetId: string
 
     // Optional props
-    customStyle?: Record<string, any>
+    customStyle?: Record<string, unknown>
     embedId?: string
     basePath?: string
     autoStart?: boolean
@@ -68,8 +68,8 @@ declare module '@tawk.to/tawk-messenger-react' {
     tawkOnChatHidden?: () => void
     tawkOnChatStarted?: () => void
     tawkOnChatEnded?: () => void
-    tawkOnPrechatSubmit?: (data: any) => void
-    tawkOnOfflineSubmit?: (data: any) => void
+    tawkOnPrechatSubmit?: (data: unknown) => void
+    tawkOnOfflineSubmit?: (data: unknown) => void
     tawkOnChatMessageVisitor?: (data: TawkMessageData) => void
     tawkOnChatMessageAgent?: (data: TawkMessageData) => void
     tawkOnChatMessageSystem?: (data: TawkMessageData) => void
@@ -101,16 +101,16 @@ declare module '@tawk.to/tawk-messenger-react' {
     tawkIsChatHidden(): boolean
     tawkIsChatOngoing(): boolean
     tawkIsVisitorEngaged(): boolean
-    tawkOnLoaded(): any
-    tawkOnBeforeLoaded(): any
-    tawkWidgetPosition(): any
+    tawkOnLoaded(): unknown
+    tawkOnBeforeLoaded(): unknown
+    tawkWidgetPosition(): unknown
 
     tawkVisitor(data: TawkVisitorData): void
     tawkSetAttributes(
-      attribute: Record<string, any>,
+      attribute: Record<string, unknown>,
       callback?: () => void
     ): void
-    tawkAddEvent(event: string, metadata?: any, callback?: () => void): void
+    tawkAddEvent(event: string, metadata?: unknown, callback?: () => void): void
     tawkAddTags(tags: string[], callback?: () => void): void
     tawkRemoveTags(tags: string[], callback?: () => void): void
     tawkSwitchWidget(

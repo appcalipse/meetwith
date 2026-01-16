@@ -4,8 +4,8 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
   BillingEmailPlan,
-  CancelSubscriptionResponse,
   PaymentProvider as BillingPaymentProvider,
+  CancelSubscriptionResponse,
 } from '@/types/Billing'
 import {
   getBillingPlanById,
@@ -75,10 +75,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
           if (billingPlan) {
             const emailPlan: BillingEmailPlan = {
+              billing_cycle: billingPlan.billing_cycle,
               id: billingPlan.id,
               name: billingPlan.name,
               price: billingPlan.price,
-              billing_cycle: billingPlan.billing_cycle,
             }
 
             emailQueue.add(async () => {
@@ -104,9 +104,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       const response: CancelSubscriptionResponse = {
-        success: true,
         message:
           'Subscription cancelled successfully. You will retain access until your current billing period ends.',
+        success: true,
       }
 
       return res.status(200).json(response)

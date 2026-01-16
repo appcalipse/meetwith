@@ -72,8 +72,8 @@ const redirectBasedOnLogin = async (
 
 const withAuthRedirect =
   (route: string, redirectType: AuthRedirect) =>
-  <P,>(Page: NextComponentType<NextPageContext, any, P>) => {
-    function HOC(props: any) {
+  <P,>(Page: NextComponentType<NextPageContext, P, P>) => {
+    function HOC(props: P & { checkAuthOnClient?: boolean }) {
       const { checkAuthOnClient } = props
       const { logged, currentAccount } = useContext(AccountContext)
       const router = useRouter()
@@ -101,10 +101,10 @@ const withAuthRedirect =
 
         return (
           <Flex
-            width="100%"
-            height="100%"
             alignItems="center"
+            height="100%"
             justifyContent="center"
+            width="100%"
           >
             <Loading />
           </Flex>
@@ -120,10 +120,10 @@ const withAuthRedirect =
         router.push(route)
         return (
           <Flex
-            width="100%"
-            height="100%"
             alignItems="center"
+            height="100%"
             justifyContent="center"
+            width="100%"
           >
             <Loading />
           </Flex>
@@ -133,10 +133,10 @@ const withAuthRedirect =
       if (checkAuthOnClient && !currentAccount) {
         return (
           <Flex
-            width="100%"
-            height="100%"
             alignItems="center"
+            height="100%"
             justifyContent="center"
+            width="100%"
           >
             <Loading />
           </Flex>

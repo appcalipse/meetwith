@@ -10,16 +10,14 @@ import { EditMode, SettingsSection } from '@/types/Dashboard'
 
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
-import NotificationsConfig from '../notifications/NotificationConfig'
 import QuickPoll from '../quickpoll/QuickPoll'
 import RedirectHandler from '../redirect'
 import Clientboard from './Clientboard'
-import { NavMenu } from './components/NavMenu'
-import ConnectCalendar from './ConnectCalendar'
 import Contact from './Contact'
+import { NavMenu } from './components/NavMenu'
 import Group from './Group'
-import Meetings from './Meetings'
 import MeetingSettings from './MeetingSettings'
+import Meetings from './Meetings'
 import Settings from './Settings'
 import Wallet from './Wallet'
 
@@ -28,7 +26,7 @@ const DashboardContent: React.FC<{
 }> = ({ currentSection }) => {
   const { currentAccount } = useContext(AccountContext)
   const [isOpened, setIsOpened] = useLocalStorage('SIDEBAR::OPENED', true)
-  const settingsSections = new Set<string>([
+  const settingsSections = new Set<SettingsSection>([
     SettingsSection.DETAILS,
     SettingsSection.CONNECTED_CALENDARS,
     SettingsSection.CONNECTED_ACCOUNTS,
@@ -37,7 +35,7 @@ const DashboardContent: React.FC<{
     SettingsSection.WALLET_PAYMENT,
   ])
   const isSettings = currentSection
-    ? settingsSections.has(currentSection as string)
+    ? settingsSections.has(currentSection as SettingsSection)
     : false
 
   // NavMenu only accepts EditMode; when in settings we hide NavMenu, so safe to pass undefined
@@ -46,7 +44,10 @@ const DashboardContent: React.FC<{
     : undefined
 
   const renderSelected = () => {
-    if (currentSection && settingsSections.has(currentSection as string)) {
+    if (
+      currentSection &&
+      settingsSections.has(currentSection as SettingsSection)
+    ) {
       return <Settings currentAccount={currentAccount!} />
     }
     switch (currentSection) {

@@ -97,32 +97,56 @@ const AllPolls = () => {
             </Text>
           </VStack>
 
-          <Button
-            leftIcon={<HiMiniPlusCircle size={20} color="#323F4B" />}
-            bg="primary.200"
-            color="neutral.900"
-            px={5}
-            py={2.5}
-            fontSize="15px"
-            fontWeight="600"
-            borderRadius="8px"
-            w={{ base: '100%', md: 'auto' }}
-            _hover={{
-              bg: 'primary.300',
-            }}
-            _active={{
-              bg: 'primary.400',
-            }}
-            onClick={() => push('/dashboard/create-poll')}
-            isDisabled={!canCreateQuickPoll}
-            title={
-              !canCreateQuickPoll
-                ? 'Upgrade to Pro to create more active polls'
-                : undefined
-            }
-          >
-            Run new poll
-          </Button>
+          <VStack align={{ base: 'stretch', md: 'flex-end' }} spacing={2}>
+            <Button
+              leftIcon={<HiMiniPlusCircle size={20} color="#323F4B" />}
+              bg="primary.200"
+              color="neutral.900"
+              px={5}
+              py={2.5}
+              fontSize="15px"
+              fontWeight="600"
+              borderRadius="8px"
+              w={{ base: '100%', md: 'auto' }}
+              _hover={{
+                bg: 'primary.300',
+              }}
+              _active={{
+                bg: 'primary.400',
+              }}
+              onClick={() => push('/dashboard/create-poll')}
+              isDisabled={!canCreateQuickPoll}
+              title={
+                !canCreateQuickPoll
+                  ? 'Upgrade to Pro to create more active polls'
+                  : undefined
+              }
+            >
+              Run new poll
+            </Button>
+            {!canCreateQuickPoll && (
+              <Text
+                fontSize="14px"
+                color="neutral.400"
+                textAlign={{ base: 'left', md: 'right' }}
+              >
+                Unlock unlimited QuickPolls with PRO{' '}
+                <Button
+                  variant="link"
+                  colorScheme="primary"
+                  px={0}
+                  onClick={() => push('/dashboard/settings/subscriptions')}
+                  textDecoration="underline"
+                  fontSize="14px"
+                  height="auto"
+                  minW="auto"
+                >
+                  here
+                </Button>
+                .
+              </Text>
+            )}
+          </VStack>
         </Flex>
 
         {/* Tabs with Search Section */}
@@ -207,7 +231,10 @@ const AllPolls = () => {
           {/* Poll Cards */}
           <TabPanels mt={6}>
             <TabPanel p={0}>
-              <OngoingPolls searchQuery={debouncedSearchQuery} />
+              <OngoingPolls
+                searchQuery={debouncedSearchQuery}
+                upgradeRequired={pollsMetadata?.upgradeRequired}
+              />
             </TabPanel>
             <TabPanel p={0}>
               <PastPolls searchQuery={debouncedSearchQuery} />

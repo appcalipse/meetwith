@@ -12,6 +12,7 @@ import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 import { Account, TimeRange } from './Account'
+import { AttendeeStatus } from './Calendar'
 import { MeetingReminders } from './common'
 import { MemberType } from './Group'
 import {
@@ -38,13 +39,7 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   eventId?: string | null
   calendar_id?: string | null
 }
-export interface MeetingInstanceUpdateRequest extends MeetingCreationRequest {
-  slotsToRemove: string[]
-  guestsToRemove: ParticipantInfo[]
-  version: number
-  eventId?: string | null
-  calendar_id?: string | null
-}
+export interface MeetingInstanceUpdateRequest extends MeetingUpdateRequest {}
 
 export interface MeetingCreationRequest {
   type: SchedulingType
@@ -146,6 +141,7 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   reason?: string
   title?: string
   eventId?: string | null
+  original_start_time?: Date
 }
 
 export interface DiscordAccountInfoRequest {
@@ -288,4 +284,23 @@ export interface MeetingCheckoutRequest {
   guest_address?: string
   amount: number
   redirectUrl: string
+}
+
+export interface WebcalRequestBody {
+  url?: string
+  email?: string
+}
+
+export interface UpdateCalendarEventRequest {
+  rsvp_status: AttendeeStatus
+  attendee_email: string
+}
+export interface ParseParticipantInfo {
+  account_address?: string
+  guest_email?: string
+  slot_id: string
+}
+
+export interface ParseParticipantsRequest {
+  participants: ParseParticipantInfo[]
 }

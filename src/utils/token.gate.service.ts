@@ -45,9 +45,9 @@ export const isConditionValid = async (
       }
 
       isValid.push({
-        valid: balance > 0 && element.minimumBalance <= balance,
         balance,
         symbol: element.itemSymbol,
+        valid: balance > 0 && element.minimumBalance <= balance,
       })
     }
     if (gateCondition.relation === ConditionRelation.AND) {
@@ -55,8 +55,8 @@ export const isConditionValid = async (
         isValid: isValid.every(valid => valid.valid === true),
         tokens: isValid.map(val => ({
           balance: val.balance,
-          symbol: val.symbol,
           relation: gateCondition.relation,
+          symbol: val.symbol,
         })),
       }
     } else {
@@ -64,8 +64,8 @@ export const isConditionValid = async (
         isValid: isValid.some(valid => valid.valid === true),
         tokens: isValid.map(val => ({
           balance: val.balance,
-          symbol: val.symbol,
           relation: gateCondition.relation,
+          symbol: val.symbol,
         })),
       }
     }

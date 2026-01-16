@@ -14,14 +14,14 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         gateObject
       )
       return res.status(200).json(upserted)
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof UnauthorizedError) {
         return res.status(503).json({
           error: err.message,
         })
       } else {
         return res.status(503).json({
-          error: err.message,
+          error: err instanceof Error ? err.message : String(err),
         })
       }
     }
@@ -33,7 +33,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         idToDelete
       )
       return res.status(200).json({ result: deleted })
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof UnauthorizedError) {
         return res.status(503).json({
           error: err.message,
@@ -44,7 +44,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         })
       } else {
         return res.status(503).json({
-          error: err.message,
+          error: err instanceof Error ? err.message : String(err),
         })
       }
     }

@@ -24,7 +24,7 @@ export class PubSubManager {
     this.readyPromise = new Promise(resolve => {
       this.ably.connection.once('connected', () => {
         // eslint-disable-next-line no-restricted-syntax
-        console.log('Connected to Ably!')
+        console.info('Connected to Ably!')
         this.isReady = true
         resolve()
       })

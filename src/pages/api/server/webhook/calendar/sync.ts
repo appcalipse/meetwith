@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { isProduction } from '@/utils/constants'
 import { handleWebhookEvent } from '@/utils/database'
 export type ResourceState = 'sync' | 'exists'
 
@@ -9,6 +10,11 @@ export default async function recurrenceSync(
 ) {
   if (req.method === 'POST') {
     try {
+      if (isProduction) {
+        return res
+          .status(200)
+          .json({ message: 'Webhook received in production, no action taken' })
+      }
       const channelId = req.headers['x-goog-channel-id'] as string
       const resourceId = req.headers['x-goog-resource-id'] as string
       const resourceState = req.headers[

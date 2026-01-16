@@ -13,11 +13,12 @@ import { Features } from '../components/landing/Features'
 import Hero from '../components/landing/Hero'
 import { Pricing } from '../components/landing/Pricing'
 import Why from '../components/landing/Why'
+
 const ProAccessPopUp = dynamic(
   () => import('@/components/landing/ProAccessPopUp'),
   {
-    ssr: false,
     loading: () => <Loading />,
+    ssr: false,
   }
 )
 const Home: NextPage = () => {
@@ -33,7 +34,7 @@ const Home: NextPage = () => {
   return (
     <main data-testid="main-container">
       <DarkMode>
-        <Box bg={'neutral.900'} pb={36} fontWeight={500}>
+        <Box bg={'neutral.900'} fontWeight={500} pb={36}>
           <Hero />
           <Why />
           <Features />

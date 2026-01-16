@@ -22,21 +22,28 @@ import { FaRegCopy } from 'react-icons/fa6'
 import { MdCancel } from 'react-icons/md'
 
 import useAccountContext from '@/hooks/useAccountContext'
+import useClipboard from '@/hooks/useClipboard'
 import {
   CalendarEventsData,
   createEventsQueryKey,
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
+import { Account } from '@/types/Account'
 import {
+  AttendeeStatus,
   isAccepted,
   isDeclined,
   isPendingAction,
+  mapParticipationStatusToAttendeeStatus,
+  UnifiedAttendee,
   UnifiedEvent,
   WithInterval,
 } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
-import { ParticipationStatus } from '@/types/ParticipantInfo'
+import { Attendee } from '@/types/Office365'
+import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
+import { updateCalendarRsvpStatus } from '@/utils/api_helper'
 import { dateToLocalizedRange, rsvpMeeting } from '@/utils/calendar_manager'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
@@ -46,7 +53,7 @@ import {
 import { addUTMParams } from '@/utils/huddle.helper'
 import { queryClient } from '@/utils/react_query'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
-
+import { rsvpQueue } from '@/utils/workers/rsvp.queue'
 import { TruncatedText } from './TruncatedText'
 
 interface EventDetailsPopOverProps {
@@ -60,6 +67,20 @@ const isCalendarEvent = (
 ): slot is WithInterval<UnifiedEvent<DateTime>> => {
   return 'calendarId' in slot
 }
+export const getActor = (
+  slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>,
+  currentAccount: Account
+) => {
+  if (isCalendarEvent(slot)) {
+    return slot.attendees?.find(
+      attendee => attendee.email === slot.accountEmail
+    )
+  } else {
+    return slot.participants.find(
+      participant => participant.account_address === currentAccount?.address
+    )
+  }
+}
 const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
   slot,
   onSelectEvent,
@@ -67,10 +88,9 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
 }) => {
   const rsvpAbortControllerRef = React.useRef<AbortController | null>(null)
 
-  const { currrentDate } = useCalendarContext()
+  const { currentDate } = useCalendarContext()
   const currentAccount = useAccountContext()
-  const [copyFeedbackOpen, setCopyFeedbackOpen] = React.useState(false)
-
+  const { copyFeedbackOpen, handleCopy } = useClipboard()
   const isSchedulerOrOwner =
     !isCalendarEvent(slot) &&
     isAccountSchedulerOrOwner(slot?.participants, currentAccount?.address)
@@ -107,37 +127,23 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
       )
     }
   }, [currentAccount])
-  const actor = React.useMemo(() => {
-    if (isCalendarEvent(slot)) {
-      return slot.attendees?.find(
-        attendee => attendee.email === slot.accountEmail
-      )
-    } else {
-      return slot.participants.find(
-        participant => participant.account_address === currentAccount?.address
-      )
-    }
+  const [actor, setActor] = React.useState<
+    UnifiedAttendee | ParticipantInfo | undefined
+  >(getActor(slot, currentAccount!))
+
+  React.useEffect(() => {
+    setActor(getActor(slot, currentAccount!))
   }, [slot, currentAccount])
-  const handleCopy = async () => {
-    try {
-      if ('clipboard' in navigator) {
-        await navigator.clipboard.writeText(slot?.meeting_url || '')
-      } else {
-        document.execCommand('copy', true, slot?.meeting_url || '')
-      }
-    } catch (err) {
-      document.execCommand('copy', true, slot?.meeting_url || '')
-    }
-    logEvent('Copied link from Calendar', { url: slot?.meeting_url || '' })
-    setCopyFeedbackOpen(true)
-    setTimeout(() => {
-      setCopyFeedbackOpen(false)
-    }, 2000)
-  }
+
   const handleRSVP = async (status: ParticipationStatus) => {
-    if (isCalendarEvent(slot) || !actor || !currentAccount) return
-    if (status === actor.status) return
-    // cancel any in-flight rsvp request
+    if (!actor || !currentAccount) return
+    if (
+      status === actor.status ||
+      actor.status === mapParticipationStatusToAttendeeStatus(status)
+    )
+      return
+    const previousStatus = actor.status
+
     if (rsvpAbortControllerRef.current) {
       rsvpAbortControllerRef.current.abort()
     }
@@ -146,42 +152,104 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
     rsvpAbortControllerRef.current = abortController
 
     logEvent(`Clicked RSVP ${status} from Event Details PopOver`)
-
-    queryClient.setQueryData<CalendarEventsData>(
-      createEventsQueryKey(currrentDate),
-      old => {
-        if (!old?.mwwEvents) return old
-        return {
-          ...old,
-          mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
-            if (event.id !== slot.id) return event
-            return {
-              ...event,
-              participants: event.participants.map(p =>
-                p.account_address === currentAccount?.address
-                  ? { ...p, status }
-                  : p
-              ),
+    setActor(prev => {
+      if (!prev) return prev
+      if (!isCalendarEvent(slot)) {
+        const participantInfo = prev as ParticipantInfo
+        return previousStatus ? { ...participantInfo, status: status } : prev
+      } else {
+        const unifiedAttendee = prev as UnifiedAttendee
+        return previousStatus
+          ? {
+              ...unifiedAttendee,
+              status: mapParticipationStatusToAttendeeStatus(status),
             }
-          }),
-        }
+          : prev
       }
-    )
-
+    })
     try {
-      await rsvpMeeting(
-        slot.id,
-        currentAccount.address,
-        status,
-        abortController.signal
-      )
+      if (!isCalendarEvent(slot)) {
+        await rsvpMeeting(
+          slot.id,
+          currentAccount.address,
+          status,
+          abortController.signal
+        )
+        // Success: update global cache
+        queryClient.setQueryData<CalendarEventsData>(
+          createEventsQueryKey(currentDate),
+          old => {
+            if (!old?.mwwEvents) return old
+            return {
+              ...old,
+              mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
+                if (event.id !== slot.id) return event
+                return {
+                  ...event,
+                  participants: event.participants.map(p =>
+                    p.account_address === currentAccount?.address
+                      ? { ...p, status }
+                      : p
+                  ),
+                }
+              }),
+            }
+          }
+        )
+      } else {
+        const attendeeStatus = mapParticipationStatusToAttendeeStatus(status)
+        queryClient.setQueryData<CalendarEventsData>(
+          createEventsQueryKey(currentDate),
+          old => {
+            if (!old?.calendarEvents) return old
+            return {
+              ...old,
+              calendarEvents: old.calendarEvents.map((event: UnifiedEvent) => {
+                if (event.id !== slot.id) return event
+                return {
+                  ...event,
+                  attendees: event.attendees?.map(attendee =>
+                    attendee.email === slot.accountEmail
+                      ? { ...attendee, status: attendeeStatus }
+                      : attendee
+                  ),
+                }
+              }),
+            }
+          }
+        )
+        await rsvpQueue.enqueue(
+          slot.calendarId,
+          slot.sourceEventId,
+          attendeeStatus,
+          slot.accountEmail,
+          abortController.signal
+        )
+      }
     } catch (error) {
       console.error('Failed to update RSVP:', error)
       if (error instanceof Error && error.name === 'AbortError') {
         // Request was cancelled, ignore
         return
       }
-      queryClient.invalidateQueries(createEventsQueryKey(currrentDate))
+      // Revert UI change
+      setActor(prev => {
+        if (!prev) return prev
+        if (!isCalendarEvent(slot)) {
+          const participantInfo = prev as ParticipantInfo
+          return previousStatus
+            ? {
+                ...participantInfo,
+                status: previousStatus as ParticipationStatus,
+              }
+            : prev
+        } else {
+          const unifiedAttendee = prev as UnifiedAttendee
+          return previousStatus
+            ? { ...unifiedAttendee, status: previousStatus as AttendeeStatus }
+            : prev
+        }
+      })
     }
   }
 
@@ -209,7 +277,12 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
           </Text>
         )}
         {(isCalendarEvent(slot) ? slot.description : slot.content) && (
-          <HStack alignItems="center" flexWrap="wrap">
+          <HStack
+            alignItems="center"
+            flexWrap="wrap"
+            w="100%"
+            overflowX="hidden"
+          >
             <Text>Description:</Text>
             <TruncatedText
               content={
@@ -249,7 +322,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                   w={4}
                   colorScheme="white"
                   variant="link"
-                  onClick={handleCopy}
+                  onClick={() => handleCopy(slot.meeting_url || '')}
                   leftIcon={<FaRegCopy />}
                 />
               </Tooltip>
@@ -276,17 +349,15 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
             <Button colorScheme="primary">Join meeting</Button>
           </Link>
         )}
-        {!isCalendarEvent(slot) && (
-          <Tooltip label="Edit meeting" placement="top">
-            <IconButton
-              color={iconColor}
-              aria-label="edit"
-              icon={<FaEdit size={16} />}
-              onClick={onSelectEvent}
-            />
-          </Tooltip>
-        )}
-        {isSchedulerOrOwner && !isCalendarEvent(slot) && (
+        <Tooltip label="Edit meeting" placement="top">
+          <IconButton
+            color={iconColor}
+            aria-label="edit"
+            icon={<FaEdit size={16} />}
+            onClick={onSelectEvent}
+          />
+        </Tooltip>
+        {isSchedulerOrOwner && (
           <Tooltip label="Cancel meeting" placement="top">
             <IconButton
               color={iconColor}
@@ -297,7 +368,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
           </Tooltip>
         )}
       </HStack>
-      {actor && !isCalendarEvent(slot) && (
+      {actor && (
         <HStack alignItems="center" gap={3.5}>
           <Text fontWeight={700}>RSVP:</Text>
           <HStack alignItems="center" gap={2}>

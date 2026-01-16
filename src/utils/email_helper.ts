@@ -9,7 +9,6 @@ import {
   BillingEmailAccountInfo,
   BillingEmailPeriod,
   BillingEmailPlan,
-  BillingMode,
   PaymentProvider,
 } from '@/types/Billing'
 import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
@@ -31,8 +30,7 @@ import {
 import { appUrl } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
-import { getOwnerPublicUrlServer } from './database'
-import { getBillingEmailAccountInfo } from './database'
+import { getBillingEmailAccountInfo, getOwnerPublicUrlServer } from './database'
 import {
   formatDateForEmail,
   formatDaysRemainingForEmail,
@@ -41,6 +39,7 @@ import {
 import { generateIcsServer } from './services/calendar.backend.helper'
 import { getCalendars } from './sync_helper'
 import { getAllParticipantsDisplayName } from './user_manager'
+
 const FROM = process.env.FROM_MAIL!
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -98,10 +97,10 @@ export const newGroupInviteEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {
@@ -128,8 +127,8 @@ export const sendPollInviteEmail = async (
   const pollLink = `${appUrl}/poll/${pollSlug}`
   const locals = {
     inviterName,
-    pollTitle,
     pollLink,
+    pollTitle,
   }
 
   const rendered = await email.renderAll(
@@ -138,10 +137,10 @@ export const sendPollInviteEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: `${inviterName} invited you to participate in "${pollTitle}". View the poll and add your availability here: ${pollLink}`,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {
@@ -179,10 +178,10 @@ export const newGroupRejectEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {
@@ -243,23 +242,23 @@ export const newMeetingEmail = async (
   )
 
   const locals = {
+    cancelUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
+      : `${appUrl}/meeting/cancel/${meetingDetails.meeting_id}?type=conference`,
+    // Only include reschedule link for guests
+    changeUrl,
+    meeting: {
+      description,
+      duration: durationToHumanReadable(differenceInMinutes(end, start)),
+      start: dateToHumanReadable(start, timezone, true),
+      title,
+      url: meetingUrl,
+    },
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
       destinationAccountAddress,
       canSeeGuestList
     ),
-    meeting: {
-      start: dateToHumanReadable(start, timezone, true),
-      duration: durationToHumanReadable(differenceInMinutes(end, start)),
-      url: meetingUrl,
-      title,
-      description,
-    },
-    // Only include reschedule link for guests
-    changeUrl,
-    cancelUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
-      : `${appUrl}/meeting/cancel/${meetingDetails.meeting_id}?type=conference`,
   }
   const isScheduler =
     participantType === ParticipantType.Scheduler ||
@@ -314,16 +313,16 @@ export const newMeetingEmail = async (
     return false
   }
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     attachments: [
       {
         content: icsFile.value,
-        filename: `meeting_${meeting_id}.ics`,
         contentType: `text/calendar; method=REQUEST; charset=UTF-8; name=meeting_${meeting_id}.ics`,
+        filename: `meeting_${meeting_id}.ics`,
       },
     ],
     tags: [
@@ -363,26 +362,26 @@ export const cancelledMeetingEmail = async (
   const locals = {
     currentActorDisplayName,
     meeting: {
-      title,
-      start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
       reason: reason,
+      start: dateToHumanReadable(start, timezone, true),
+      title,
     },
   }
   // Generate ICS file for cancellation meeting participants aren't included in deleted events so this should be efficient
   const icsFile = await generateIcs(
     {
-      meeting_id,
-      meeting_url: '',
-      title,
-      start: new Date(start),
+      created_at: new Date(created_at as Date),
       end: new Date(end),
       id: meeting_id,
-      created_at: new Date(created_at as Date),
-      participants: [],
-      version: 0,
-      related_slot_ids: [],
+      meeting_id,
       meeting_info_encrypted: mockEncrypted,
+      meeting_url: '',
+      participants: [],
+      related_slot_ids: [],
+      start: new Date(start),
+      title,
+      version: 0,
     },
     destinationAccountAddress || '',
     MeetingChangeType.DELETE,
@@ -407,17 +406,17 @@ export const cancelledMeetingEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
-    html: rendered.html!,
-    text: rendered.text,
     attachments: [
       {
         content: icsFile.value,
-        filename: `meeting_${meeting_id}.ics`,
         contentType: `text/calendar; method=REQUEST; charset=UTF-8; name=meeting_${meeting_id}.ics`,
+        filename: `meeting_${meeting_id}.ics`,
       },
     ],
+    html: rendered.html!,
+    subject: rendered.subject!,
+    text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {
@@ -494,25 +493,14 @@ export const updateMeetingEmail = async (
     : null
 
   const locals = {
-    currentActorDisplayName,
-    participantsDisplay: getAllParticipantsDisplayName(
-      participants,
-      destinationAccountAddress,
-      canSeeGuestList
-    ),
-    meeting: {
-      start: dateToHumanReadable(start, timezone, true),
-      duration: durationToHumanReadable(newDuration),
-      url: meetingUrl,
-      title,
-      description,
-    },
-    // Only include reschedule link for guests
-    changeUrl,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
       : `${appUrl}/meeting/cancel/${meetingDetails.meeting_id}?type=conference`,
     changes: {
+      oldDuration:
+        oldDuration && oldDuration !== newDuration
+          ? durationToHumanReadable(oldDuration)
+          : null,
       oldStart:
         changes?.dateChange?.oldStart &&
         new Date(changes.dateChange?.oldStart).getTime() !== start.getTime()
@@ -522,11 +510,22 @@ export const updateMeetingEmail = async (
               false
             )
           : null,
-      oldDuration:
-        oldDuration && oldDuration !== newDuration
-          ? durationToHumanReadable(oldDuration)
-          : null,
     },
+    // Only include reschedule link for guests
+    changeUrl,
+    currentActorDisplayName,
+    meeting: {
+      description,
+      duration: durationToHumanReadable(newDuration),
+      start: dateToHumanReadable(start, timezone, true),
+      title,
+      url: meetingUrl,
+    },
+    participantsDisplay: getAllParticipantsDisplayName(
+      participants,
+      destinationAccountAddress,
+      canSeeGuestList
+    ),
   }
 
   const rendered = await email.renderAll(
@@ -576,16 +575,16 @@ export const updateMeetingEmail = async (
   }
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     attachments: [
       {
         content: icsFile.value,
-        filename: `meeting_${meeting_id}.ics`,
         contentType: `text/calendar; method=REQUEST; charset=UTF-8; name=meeting_${meeting_id}.ics`,
+        filename: `meeting_${meeting_id}.ics`,
       },
     ],
     tags: [
@@ -615,12 +614,6 @@ export const sendInvitationEmail = async (
   invitationLink: string
 ): Promise<void> => {
   const email = new Email({
-    views: {
-      root: path.resolve('src', 'emails', 'group_invite'),
-      options: {
-        extension: 'pug',
-      },
-    },
     message: {
       from: FROM,
     },
@@ -628,14 +621,20 @@ export const sendInvitationEmail = async (
     transport: {
       jsonTransport: true,
     },
+    views: {
+      options: {
+        extension: 'pug',
+      },
+      root: path.resolve('src', 'emails', 'group_invite'),
+    },
   })
 
   const locals = {
-    inviterName,
-    groupName: group.name,
-    message,
-    invitationLink,
     group,
+    groupName: group.name,
+    invitationLink,
+    inviterName,
+    message,
   }
 
   try {
@@ -643,10 +642,10 @@ export const sendInvitationEmail = async (
     const subject = await email.render('subject', locals)
 
     const msg: CreateEmailOptions = {
-      to: toEmail,
-      subject: subject,
       html: rendered,
+      subject: subject,
       text: `${inviterName} invited you to join ${group.name}. Accept your invite here: ${invitationLink}`,
+      to: toEmail,
       ...defaultResendOptions,
       tags: [
         {
@@ -670,12 +669,6 @@ export const sendContactInvitationEmail = async (
   declineLink: string
 ): Promise<void> => {
   const email = new Email({
-    views: {
-      root: path.resolve('src', 'emails', 'contact_invite'),
-      options: {
-        extension: 'pug',
-      },
-    },
     message: {
       from: FROM,
     },
@@ -683,12 +676,18 @@ export const sendContactInvitationEmail = async (
     transport: {
       jsonTransport: true,
     },
+    views: {
+      options: {
+        extension: 'pug',
+      },
+      root: path.resolve('src', 'emails', 'contact_invite'),
+    },
   })
 
   const locals = {
-    inviterName,
-    invitationLink,
     declineLink,
+    invitationLink,
+    inviterName,
   }
 
   try {
@@ -696,19 +695,19 @@ export const sendContactInvitationEmail = async (
     const subject = await email.render('subject', locals)
 
     const msg: CreateEmailOptions = {
-      to: toEmail,
       from: FROM,
-      subject: subject,
       html: rendered,
-      text: `${inviterName} invited you to join their contact list on MeetWith.
-            Click here to accept the invitation: ${invitationLink}
-          If you weren’t expecting this, you can safely ignore this email.`,
+      subject: subject,
       tags: [
         {
           name: 'contact',
           value: 'invite',
         },
       ],
+      text: `${inviterName} invited you to join their contact list on MeetWith.
+            Click here to accept the invitation: ${invitationLink}
+          If you weren’t expecting this, you can safely ignore this email.`,
+      to: toEmail,
     }
 
     await resend.emails.send(msg)
@@ -719,7 +718,6 @@ export const sendContactInvitationEmail = async (
 }
 const createPdfBuffer = async (html: string): Promise<Buffer> => {
   const browser = await puppeteer.launch({
-    headless: true,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -729,20 +727,21 @@ const createPdfBuffer = async (html: string): Promise<Buffer> => {
       '--no-zygote',
       '--disable-gpu',
     ],
+    headless: true,
   })
   const page = await browser.newPage()
   await page.setContent(html, { waitUntil: 'networkidle0' })
   const buffer = await page.pdf({
     format: 'a4',
-    printBackground: true,
-    preferCSSPageSize: true,
-    pageRanges: '1',
     margin: {
-      top: '0mm',
-      right: '0mm',
       bottom: '0mm',
       left: '0mm',
+      right: '0mm',
+      top: '0mm',
     },
+    pageRanges: '1',
+    preferCSSPageSize: true,
+    printBackground: true,
   })
   await browser.close()
   return buffer
@@ -752,34 +751,34 @@ export const sendReceiptEmail = async (
   receiptMetadata: ReceiptMetadata
 ) => {
   const email = new Email({
-    views: {
-      root: path.resolve('src', 'emails', 'receipt_email'),
-      options: {
-        extension: 'pug',
-      },
-    },
     message: {
       from: FROM,
     },
     send: true,
     transport: {
       jsonTransport: true,
+    },
+    views: {
+      options: {
+        extension: 'pug',
+      },
+      root: path.resolve('src', 'emails', 'receipt_email'),
     },
   })
 
   const pdf_email = new Email({
-    views: {
-      root: path.resolve('src', 'emails', 'receipt'),
-      options: {
-        extension: 'pug',
-      },
-    },
     message: {
       from: FROM,
     },
     send: true,
     transport: {
       jsonTransport: true,
+    },
+    views: {
+      options: {
+        extension: 'pug',
+      },
+      root: path.resolve('src', 'emails', 'receipt'),
     },
   })
 
@@ -795,18 +794,18 @@ export const sendReceiptEmail = async (
     )
 
     const msg: CreateEmailOptions = {
-      to: toEmail,
-      subject: subject,
       html: rendered,
+      subject: subject,
       text: `Receipt for your payment: ${receiptMetadata.plan}`,
+      to: toEmail,
       ...defaultResendOptions,
       attachments: [
         {
           content: pdfBuffer,
+          contentType: 'application/pdf',
           filename: `receipt-${
             receiptMetadata.transaction_hash || Date.now()
           }.pdf`,
-          contentType: 'application/pdf',
         },
       ],
       tags: [
@@ -845,8 +844,8 @@ export const sendSubscriptionConfirmationEmailForAccount = async (
     const processedDisplayName = getDisplayNameForEmail(accountInfo.displayName)
 
     const period: BillingEmailPeriod = {
-      registered_at: registeredAt,
       expiry_time: expiryTime,
+      registered_at: registeredAt,
     }
 
     await sendSubscriptionConfirmationEmail(
@@ -880,13 +879,13 @@ export const sendSubscriptionConfirmationEmail = async (
   const locals = {
     appUrl,
     displayName: getDisplayNameForEmail(account.displayName),
-    planName: billingPlan.name,
-    price: isTrial ? 0 : transaction?.amount ?? billingPlan.price,
-    periodStart,
-    periodEnd,
-    provider,
     isTrial: isTrial || false,
     manageUrl,
+    periodEnd,
+    periodStart,
+    planName: billingPlan.name,
+    price: isTrial ? 0 : transaction?.amount ?? billingPlan.price,
+    provider,
   }
 
   try {
@@ -896,10 +895,10 @@ export const sendSubscriptionConfirmationEmail = async (
     )
 
     const msg: CreateEmailOptions = {
-      to: account.email,
-      subject: rendered.subject!,
       html: rendered.html!,
+      subject: rendered.subject!,
       text: rendered.text,
+      to: account.email,
       ...defaultResendOptions,
       tags: [
         { name: 'billing', value: 'subscription_confirmation' },
@@ -932,8 +931,8 @@ export const sendSubscriptionCancelledEmailForAccount = async (
     const processedDisplayName = getDisplayNameForEmail(accountInfo.displayName)
 
     const period: BillingEmailPeriod = {
-      registered_at: registeredAt,
       expiry_time: expiryTime,
+      registered_at: registeredAt,
     }
 
     await sendSubscriptionCancelledEmail(
@@ -963,12 +962,12 @@ export const sendSubscriptionCancelledEmail = async (
   const locals = {
     appUrl,
     displayName: getDisplayNameForEmail(account.displayName),
+    manageUrl,
+    periodEnd,
+    periodStart,
     planName: billingPlan.name,
     price: billingPlan.price,
-    periodStart,
-    periodEnd,
     provider,
-    manageUrl,
   }
 
   try {
@@ -978,10 +977,10 @@ export const sendSubscriptionCancelledEmail = async (
     )
 
     const msg: CreateEmailOptions = {
-      to: account.email,
-      subject: rendered.subject!,
       html: rendered.html!,
+      subject: rendered.subject!,
       text: rendered.text,
+      to: account.email,
       ...defaultResendOptions,
       tags: [
         { name: 'billing', value: 'subscription_cancelled' },
@@ -1004,16 +1003,14 @@ export const sendSubscriptionExpiredEmail = async (
   const email = new Email()
 
   const periodEnd = formatDateForEmail(period.expiry_time)
-  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=${
-    BillingMode.EXTEND
-  }&plan=${encodeURIComponent(billingPlan.id)}`
+  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing`
 
   const locals = {
     appUrl,
     displayName: getDisplayNameForEmail(account.displayName),
     periodEnd,
-    renewUrl,
     planName: billingPlan.name,
+    renewUrl,
   }
 
   try {
@@ -1023,10 +1020,10 @@ export const sendSubscriptionExpiredEmail = async (
     )
 
     const msg: CreateEmailOptions = {
-      to: account.email,
-      subject: rendered.subject!,
       html: rendered.html!,
+      subject: rendered.subject!,
       text: rendered.text,
+      to: account.email,
       ...defaultResendOptions,
       tags: [{ name: 'billing', value: 'subscription_expired' }],
     }
@@ -1047,18 +1044,16 @@ export const sendSubscriptionRenewalDueEmail = async (
   const email = new Email()
 
   const periodEnd = formatDateForEmail(period.expiry_time)
-  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=${
-    BillingMode.EXTEND
-  }&plan=${encodeURIComponent(billingPlan.id)}`
+  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing`
 
   const locals = {
     appUrl,
-    displayName: getDisplayNameForEmail(account.displayName),
-    periodEnd,
-    renewUrl,
     daysRemaining,
     daysText: formatDaysRemainingForEmail(daysRemaining),
+    displayName: getDisplayNameForEmail(account.displayName),
+    periodEnd,
     planName: billingPlan.name,
+    renewUrl,
   }
 
   try {
@@ -1068,10 +1063,10 @@ export const sendSubscriptionRenewalDueEmail = async (
     )
 
     const msg: CreateEmailOptions = {
-      to: account.email,
-      subject: rendered.subject!,
       html: rendered.html!,
+      subject: rendered.subject!,
       text: rendered.text,
+      to: account.email,
       ...defaultResendOptions,
       tags: [{ name: 'billing', value: 'subscription_renewal_due' }],
     }
@@ -1092,18 +1087,16 @@ export const sendCryptoExpiryReminderEmail = async (
   const email = new Email()
 
   const periodEnd = formatDateForEmail(period.expiry_time)
-  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=${
-    BillingMode.EXTEND
-  }&plan=${encodeURIComponent(billingPlan.id)}`
+  const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing`
 
   const locals = {
     appUrl,
-    displayName: getDisplayNameForEmail(account.displayName),
-    periodEnd,
-    renewUrl,
     daysRemaining,
     daysText: formatDaysRemainingForEmail(daysRemaining),
+    displayName: getDisplayNameForEmail(account.displayName),
+    periodEnd,
     planName: billingPlan.name,
+    renewUrl,
   }
 
   try {
@@ -1113,10 +1106,10 @@ export const sendCryptoExpiryReminderEmail = async (
     )
 
     const msg: CreateEmailOptions = {
-      to: account.email,
-      subject: rendered.subject!,
       html: rendered.html!,
+      subject: rendered.subject!,
       text: rendered.text,
+      to: account.email,
       ...defaultResendOptions,
       tags: [{ name: 'billing', value: 'subscription_crypto_reminder' }],
     }
@@ -1134,33 +1127,33 @@ export const sendInvoiceEmail = async (
   receiptMetadata: InvoiceMetadata
 ) => {
   const email = new Email({
-    views: {
-      root: path.resolve('src', 'emails', 'invoice_email'),
-      options: {
-        extension: 'pug',
-      },
-    },
     message: {
       from: FROM,
     },
     send: true,
     transport: {
       jsonTransport: true,
+    },
+    views: {
+      options: {
+        extension: 'pug',
+      },
+      root: path.resolve('src', 'emails', 'invoice_email'),
     },
   })
   const pdf_email = new Email({
-    views: {
-      root: path.resolve('src', 'emails', 'invoice'),
-      options: {
-        extension: 'pug',
-      },
-    },
     message: {
       from: FROM,
     },
     send: true,
     transport: {
       jsonTransport: true,
+    },
+    views: {
+      options: {
+        extension: 'pug',
+      },
+      root: path.resolve('src', 'emails', 'invoice'),
     },
   })
 
@@ -1176,16 +1169,16 @@ export const sendInvoiceEmail = async (
     )
 
     const msg: CreateEmailOptions = {
-      to: toEmail,
-      subject: subject,
       html: rendered,
+      subject: subject,
       text: `Invoice for your payment: ${receiptMetadata.plan}`,
+      to: toEmail,
       ...defaultResendOptions,
       attachments: [
         {
           content: pdfBuffer,
-          filename: `invoice-${receiptMetadata.plan}-${Date.now()}.pdf`,
           contentType: 'application/pdf',
+          filename: `invoice-${receiptMetadata.plan}-${Date.now()}.pdf`,
         },
       ],
       tags: [
@@ -1209,8 +1202,8 @@ export const sendResetPinEmail = async (
 ): Promise<boolean> => {
   const email = new Email()
   const locals = {
-    resetUrl,
     appUrl,
+    resetUrl,
   }
   const rendered = await email.renderAll(
     `${path.resolve('src', 'emails', 'reset_pin')}`,
@@ -1218,10 +1211,10 @@ export const sendResetPinEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {
@@ -1245,8 +1238,8 @@ export const sendChangeEmailEmail = async (
 ): Promise<boolean> => {
   const email = new Email()
   const locals = {
-    changeUrl,
     appUrl,
+    changeUrl,
   }
   const rendered = await email.renderAll(
     `${path.resolve('src', 'emails', 'change_email')}`,
@@ -1254,10 +1247,10 @@ export const sendChangeEmailEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {
@@ -1288,10 +1281,10 @@ export const sendPinResetSuccessEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {
@@ -1315,8 +1308,8 @@ export const sendEnablePinEmail = async (
 ): Promise<boolean> => {
   const email = new Email()
   const locals = {
-    enableUrl,
     appUrl,
+    enableUrl,
   }
   const rendered = await email.renderAll(
     `${path.resolve('src', 'emails', 'enable_pin')}`,
@@ -1324,10 +1317,10 @@ export const sendEnablePinEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {
@@ -1351,8 +1344,8 @@ export const sendVerificationCodeEmail = async (
 ): Promise<boolean> => {
   const email = new Email()
   const locals = {
-    verificationCode,
     appUrl,
+    verificationCode,
   }
   const rendered = await email.renderAll(
     `${path.resolve('src', 'emails', 'verification_code')}`,
@@ -1360,10 +1353,10 @@ export const sendVerificationCodeEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {
@@ -1399,10 +1392,10 @@ export const sendCryptoDebitEmail = async (
     { ...locals, appUrl }
   )
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [{ name: 'wallet', value: 'crypto_debit' }],
   }
@@ -1432,10 +1425,10 @@ export const sendSessionBookingIncomeEmail = async (
     { ...locals, appUrl }
   )
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [{ name: 'wallet', value: 'session_income' }],
   }
@@ -1460,12 +1453,12 @@ export const sendEmailChangeSuccessEmail = async (
   const changeTime = now.toLocaleTimeString()
 
   const locals = {
-    userName: userName || 'there',
-    oldEmail,
-    newEmail,
+    appUrl,
     changeDate,
     changeTime,
-    appUrl,
+    newEmail,
+    oldEmail,
+    userName: userName || 'there',
   }
   const rendered = await email.renderAll(
     `${path.resolve('src', 'emails', 'email_change_success')}`,
@@ -1473,10 +1466,10 @@ export const sendEmailChangeSuccessEmail = async (
   )
 
   const msg: CreateEmailOptions = {
-    to: toEmail,
-    subject: rendered.subject!,
     html: rendered.html!,
+    subject: rendered.subject!,
     text: rendered.text,
+    to: toEmail,
     ...defaultResendOptions,
     tags: [
       {

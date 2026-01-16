@@ -18,7 +18,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       const event = req.body as OnrampMoneyWebhook
       // eslint-disable-next-line no-restricted-syntax
-      console.log(event)
+      console.debug(event)
       await recordOffRampTransaction(event)
       res.status(200).send('OK')
     } catch (e) {

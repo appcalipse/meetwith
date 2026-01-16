@@ -33,6 +33,7 @@ import { LeanContact } from '@/types/Contacts'
 import { getContactsLean } from '@/utils/api_helper'
 
 import GroupContactModalItem from './GroupContactModalItem'
+
 type Props = {
   isOpen: boolean
   onClose: () => void

@@ -42,7 +42,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           break
         default:
           // eslint-disable-next-line no-restricted-syntax
-          console.log(`Unhandled event type: ${event.type}`)
+          console.error(`Unhandled event type: ${event.type}`)
       }
       return res.status(200).json({
         success: true,

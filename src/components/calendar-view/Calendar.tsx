@@ -6,6 +6,7 @@ import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 
 import CalendarHeader from './CalendarHeader'
 import CalendarItems from './CalendarItems'
+
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }

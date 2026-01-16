@@ -93,7 +93,7 @@ const TransactionVerificationModal: React.FC<
           'Could not send verification code. Please try again.'
         )
       }
-    } catch (error) {
+    } catch (_error) {
       showErrorToast(
         'Failed to Send Code',
         'Could not send verification code. Please try again.'

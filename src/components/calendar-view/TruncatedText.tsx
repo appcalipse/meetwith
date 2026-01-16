@@ -5,7 +5,7 @@ import sanitizeHtml from 'sanitize-html'
 interface TruncatedTextProps {
   content: string
   maxHeight: string
-  [key: string]: any // For other props
+  [key: string]: unknown // For other props
 }
 
 export const TruncatedText: React.FC<TruncatedTextProps> = ({
@@ -50,9 +50,10 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
 
   return (
     <Text
-      ref={textRef}
+      className="rich-text-wrapper"
       maxH={maxHeight}
       overflow="hidden"
+      ref={textRef}
       {...props}
       dangerouslySetInnerHTML={{
         __html: sanitizeHtml(truncatedContent, {

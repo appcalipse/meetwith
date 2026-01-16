@@ -11,17 +11,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const huddleResponse = await fetch(
         `${HUDDLE_API_URL}/v2/platform/rooms/create-room`,
         {
-          method: 'POST',
+          body: JSON.stringify({
+            hostDetails: [],
+            roomLocked: false,
+            title: title || 'Meetwith Meeting',
+          }),
           headers: {
             Accept: '*/*',
             'Content-Type': 'application/json',
             'x-api-key': process.env.HUDDLE_API_KEY!,
           },
-          body: JSON.stringify({
-            title: title || 'Meetwith Meeting',
-            roomLocked: false,
-            hostDetails: [],
-          }),
+          method: 'POST',
         }
       )
       if (![200, 201].includes(huddleResponse.status)) {

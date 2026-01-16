@@ -186,7 +186,7 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
     response && window.location.assign(response.url)
   }
 
-  const calendarIsConnected = calendarConnections.length > 0
+  const _calendarIsConnected = calendarConnections.length > 0
   const onChange = (day: number, ranges: TimeRange[] | null) => {
     const newAvailabilities = [...availabilities]
     newAvailabilities[day] = { weekday: day, ranges: ranges ?? [] }

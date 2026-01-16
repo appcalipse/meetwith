@@ -34,10 +34,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Create a secure JWT with expiration and single-use capability
     const payload = {
-      type: 'change_email',
       account_address,
       iat: Math.floor(Date.now() / 1000),
       jti,
+      type: 'change_email',
     }
 
     const changeToken = jwt.sign(payload, JWT_SECRET, {
@@ -71,8 +71,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await sendChangeEmailEmail(currentEmail, changeUrl)
 
     return res.status(200).json({
-      success: true,
       message: 'Change email link sent successfully',
+      success: true,
     })
   } catch (error) {
     Sentry.captureException(error)

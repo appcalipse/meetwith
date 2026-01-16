@@ -5,13 +5,11 @@ import { isProduction } from './constants'
 const initAnalytics = async () => {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
     api_host: '/ingest',
-    ui_host: 'https://eu.posthog.com',
-    defaults: '2025-05-24',
+    autocapture: isProduction,
     capture_exceptions: true,
     debug: false,
-    autocapture: isProduction,
+    defaults: '2025-05-24',
     session_recording: {
-      recordBody: true,
       maskCapturedNetworkRequestFn: (request: CapturedNetworkRequest) => {
         request.responseBody = request.responseBody?.replace(
           /"signature":\s*"[^"]*"/g,
@@ -19,7 +17,9 @@ const initAnalytics = async () => {
         )
         return request
       },
+      recordBody: true,
     },
+    ui_host: 'https://eu.posthog.com',
   })
 }
 

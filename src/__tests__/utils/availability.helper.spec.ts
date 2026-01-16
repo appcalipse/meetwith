@@ -17,14 +17,14 @@ describe('availability helper functions', () => {
   describe('getHoursPerWeek', () => {
     it('returns 0hrs/week for empty availabilities', () => {
       expect(getHoursPerWeek([])).toBe('0hrs/week')
-      expect(getHoursPerWeek([{ weekday: 0, ranges: [] }])).toBe('0hrs/week')
+      expect(getHoursPerWeek([{ ranges: [], weekday: 0 }])).toBe('0hrs/week')
     })
 
     it('calculates total hours correctly for single day', () => {
       const availabilities = [
         {
+          ranges: [{ end: '17:00', start: '09:00' }],
           weekday: 1,
-          ranges: [{ start: '09:00', end: '17:00' }],
         },
       ]
       expect(getHoursPerWeek(availabilities)).toBe('8hrs/week')
@@ -33,12 +33,12 @@ describe('availability helper functions', () => {
     it('calculates total hours correctly for multiple days', () => {
       const availabilities = [
         {
+          ranges: [{ end: '17:00', start: '09:00' }],
           weekday: 1,
-          ranges: [{ start: '09:00', end: '17:00' }],
         },
         {
+          ranges: [{ end: '18:00', start: '10:00' }],
           weekday: 2,
-          ranges: [{ start: '10:00', end: '18:00' }],
         },
       ]
       expect(getHoursPerWeek(availabilities)).toBe('16hrs/week')
@@ -65,8 +65,8 @@ describe('availability helper functions', () => {
     it('formats single day correctly', () => {
       const availabilities = [
         {
+          ranges: [{ end: '17:00', start: '09:00' }],
           weekday: 1,
-          ranges: [{ start: '09:00', end: '17:00' }],
         },
       ]
       const result = getFormattedSchedule(availabilities)
@@ -80,12 +80,12 @@ describe('availability helper functions', () => {
     it('groups consecutive days with same time', () => {
       const availabilities = [
         {
+          ranges: [{ end: '17:00', start: '09:00' }],
           weekday: 1,
-          ranges: [{ start: '09:00', end: '17:00' }],
         },
         {
+          ranges: [{ end: '17:00', start: '09:00' }],
           weekday: 2,
-          ranges: [{ start: '09:00', end: '17:00' }],
         },
       ]
       const result = getFormattedSchedule(availabilities)
@@ -100,11 +100,11 @@ describe('availability helper functions', () => {
     it('formats multiple ranges for a single day', () => {
       const availabilities = [
         {
-          weekday: 1,
           ranges: [
-            { start: '09:00', end: '17:00' },
-            { start: '20:00', end: '23:00' },
+            { end: '17:00', start: '09:00' },
+            { end: '23:00', start: '20:00' },
           ],
+          weekday: 1,
         },
       ]
       const result = getFormattedSchedule(availabilities)
@@ -118,18 +118,18 @@ describe('availability helper functions', () => {
     it('groups consecutive days that share identical multi-range sets', () => {
       const availabilities = [
         {
-          weekday: 1,
           ranges: [
-            { start: '09:00', end: '17:00' },
-            { start: '20:00', end: '23:00' },
+            { end: '17:00', start: '09:00' },
+            { end: '23:00', start: '20:00' },
           ],
+          weekday: 1,
         },
         {
-          weekday: 2,
           ranges: [
-            { start: '09:00', end: '17:00' },
-            { start: '20:00', end: '23:00' },
+            { end: '17:00', start: '09:00' },
+            { end: '23:00', start: '20:00' },
           ],
+          weekday: 2,
         },
       ]
       const result = getFormattedSchedule(availabilities)
@@ -143,18 +143,18 @@ describe('availability helper functions', () => {
     it('does not group days when multi-range sets differ', () => {
       const availabilities = [
         {
-          weekday: 1,
           ranges: [
-            { start: '09:00', end: '17:00' },
-            { start: '20:00', end: '23:00' },
+            { end: '17:00', start: '09:00' },
+            { end: '23:00', start: '20:00' },
           ],
+          weekday: 1,
         },
         {
-          weekday: 2,
           ranges: [
-            { start: '09:00', end: '17:00' },
+            { end: '17:00', start: '09:00' },
             // Missing the evening range on Tuesday
           ],
+          weekday: 2,
         },
       ]
       const result = getFormattedSchedule(availabilities)
@@ -172,19 +172,19 @@ describe('availability helper functions', () => {
     it('treats range order as irrelevant when grouping', () => {
       const availabilities = [
         {
-          weekday: 1,
           ranges: [
             // Intentionally reversed order
-            { start: '20:00', end: '23:00' },
-            { start: '09:00', end: '17:00' },
+            { end: '23:00', start: '20:00' },
+            { end: '17:00', start: '09:00' },
           ],
+          weekday: 1,
         },
         {
-          weekday: 2,
           ranges: [
-            { start: '09:00', end: '17:00' },
-            { start: '20:00', end: '23:00' },
+            { end: '17:00', start: '09:00' },
+            { end: '23:00', start: '20:00' },
           ],
+          weekday: 2,
         },
       ]
       const result = getFormattedSchedule(availabilities)
@@ -199,29 +199,29 @@ describe('availability helper functions', () => {
   describe('formatDayGroup', () => {
     it('returns empty object for empty days array', () => {
       expect(formatDayGroup([], '09:00 - 17:00')).toEqual({
-        weekdays: '',
         timeRange: '',
+        weekdays: '',
       })
     })
 
     it('formats single day correctly', () => {
       expect(formatDayGroup([1], '09:00 - 17:00')).toEqual({
-        weekdays: 'Mon',
         timeRange: '09:00 - 17:00',
+        weekdays: 'Mon',
       })
     })
 
     it('formats consecutive days with dash', () => {
       expect(formatDayGroup([1, 2], '09:00 - 17:00')).toEqual({
-        weekdays: 'Mon - Tue',
         timeRange: '09:00 - 17:00',
+        weekdays: 'Mon - Tue',
       })
     })
 
     it('formats non-consecutive days with comma', () => {
       expect(formatDayGroup([1, 3], '09:00 - 17:00')).toEqual({
-        weekdays: 'Mon, Wed',
         timeRange: '09:00 - 17:00',
+        weekdays: 'Mon, Wed',
       })
     })
   })
@@ -251,8 +251,8 @@ describe('availability helper functions', () => {
     it('validates valid block', () => {
       const result = validateAvailabilityBlock('Test Block', [
         {
+          ranges: [{ end: '17:00', start: '09:00' }],
           weekday: 1,
-          ranges: [{ start: '09:00', end: '17:00' }],
         },
       ])
       expect(result.isValid).toBe(true)
@@ -263,17 +263,17 @@ describe('availability helper functions', () => {
     const mockBlocks: AvailabilityBlock[] = [
       {
         id: '1',
-        title: 'Block 1',
-        timezone: 'UTC',
-        weekly_availability: [],
         isDefault: false,
+        timezone: 'UTC',
+        title: 'Block 1',
+        weekly_availability: [],
       },
       {
         id: '2',
-        title: 'Block 2',
-        timezone: 'UTC',
-        weekly_availability: [],
         isDefault: false,
+        timezone: 'UTC',
+        title: 'Block 2',
+        weekly_availability: [],
       },
     ]
 
@@ -337,13 +337,13 @@ describe('availability helper functions', () => {
   describe('sortAvailabilitiesByWeekday', () => {
     it('sorts availabilities correctly - Monday to Friday first, then Sunday and Saturday', () => {
       const availabilities = [
-        { weekday: 0, ranges: [] }, // Sunday
-        { weekday: 6, ranges: [] }, // Saturday
-        { weekday: 3, ranges: [] }, // Wednesday
-        { weekday: 1, ranges: [] }, // Monday
-        { weekday: 5, ranges: [] }, // Friday
-        { weekday: 2, ranges: [] }, // Tuesday
-        { weekday: 4, ranges: [] }, // Thursday
+        { ranges: [], weekday: 0 }, // Sunday
+        { ranges: [], weekday: 6 }, // Saturday
+        { ranges: [], weekday: 3 }, // Wednesday
+        { ranges: [], weekday: 1 }, // Monday
+        { ranges: [], weekday: 5 }, // Friday
+        { ranges: [], weekday: 2 }, // Tuesday
+        { ranges: [], weekday: 4 }, // Thursday
       ]
 
       const sorted = sortAvailabilitiesByWeekday(availabilities)
@@ -354,16 +354,16 @@ describe('availability helper functions', () => {
 
     it('preserves original data structure', () => {
       const availabilities = [
-        { weekday: 0, ranges: [{ start: '09:00', end: '17:00' }] },
-        { weekday: 1, ranges: [{ start: '10:00', end: '18:00' }] },
+        { ranges: [{ end: '17:00', start: '09:00' }], weekday: 0 },
+        { ranges: [{ end: '18:00', start: '10:00' }], weekday: 1 },
       ]
 
       const sorted = sortAvailabilitiesByWeekday(availabilities)
 
       expect(sorted[0].weekday).toBe(1)
-      expect(sorted[0].ranges).toEqual([{ start: '10:00', end: '18:00' }])
+      expect(sorted[0].ranges).toEqual([{ end: '18:00', start: '10:00' }])
       expect(sorted[1].weekday).toBe(0)
-      expect(sorted[1].ranges).toEqual([{ start: '09:00', end: '17:00' }])
+      expect(sorted[1].ranges).toEqual([{ end: '17:00', start: '09:00' }])
     })
 
     it('handles empty array', () => {
@@ -372,7 +372,7 @@ describe('availability helper functions', () => {
     })
 
     it('handles single item', () => {
-      const availabilities = [{ weekday: 3, ranges: [] }]
+      const availabilities = [{ ranges: [], weekday: 3 }]
       const result = sortAvailabilitiesByWeekday(availabilities)
       expect(result).toEqual(availabilities)
     })
@@ -380,16 +380,16 @@ describe('availability helper functions', () => {
 
   describe('handleCopyToDays', () => {
     const mockAvailabilities = [
-      { weekday: 0, ranges: [] },
-      { weekday: 1, ranges: [] },
-      { weekday: 2, ranges: [] },
-      { weekday: 3, ranges: [] },
-      { weekday: 4, ranges: [] },
-      { weekday: 5, ranges: [] },
-      { weekday: 6, ranges: [] },
+      { ranges: [], weekday: 0 },
+      { ranges: [], weekday: 1 },
+      { ranges: [], weekday: 2 },
+      { ranges: [], weekday: 3 },
+      { ranges: [], weekday: 4 },
+      { ranges: [], weekday: 5 },
+      { ranges: [], weekday: 6 },
     ]
 
-    const mockRanges = [{ start: '09:00', end: '17:00' }]
+    const mockRanges = [{ end: '17:00', start: '09:00' }]
     const mockOnChange = jest.fn()
 
     beforeEach(() => {

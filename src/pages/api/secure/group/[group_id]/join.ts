@@ -42,9 +42,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(200).json({
         success: true,
       })
-    } catch (e: any) {
+    } catch (e: unknown) {
       return res.status(500).send({
-        error: e.message,
+        error: e instanceof Error ? e.message : String(e),
       })
     }
   }

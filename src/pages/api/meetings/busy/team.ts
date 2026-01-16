@@ -50,10 +50,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           return slot
         } else {
           return {
-            start: slot.start,
+            account_address: timeSlot.account_address,
             end: slot.end,
             source: timeSlot.source,
-            account_address: timeSlot.account_address,
+            start: slot.start,
           }
         }
       })

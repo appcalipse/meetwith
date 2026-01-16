@@ -29,13 +29,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(404).send('Not found')
       }
       const data: ContactInvite = {
-        id: invite.id,
         address: invite.account_owner_address,
         calendar_exists: invite.account.calendars_exist.length > 0,
         email_address:
           invite.account.account_notifications?.notification_types?.find(
             n => n.channel === 'email' && !n.disabled
           )?.destination,
+        id: invite.id,
         ...invite.account.preferences,
       }
       return res.status(200).json(data)

@@ -8,8 +8,8 @@ import {
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
   countCalendarIntegrations,
+  isProAccountAsync,
 } from '@/utils/database'
-import { isProAccountAsync } from '@/utils/database'
 import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
 import CaldavCalendarService from '@/utils/services/caldav.service'
 
@@ -54,7 +54,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // If it's a new integration, check the limit
       if (!existingIntegration) {
         const integrationCount = await countCalendarIntegrations(accountAddress)
-        if (integrationCount >= 1) {
+        if (integrationCount >= 2) {
           throw new CalendarIntegrationLimitExceededError()
         }
       }
@@ -67,9 +67,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         TimeSlotSource.WEBDAV,
         body.calendars,
         {
-          username: body.username,
-          url: body.url,
           password: encryptContent(symmetricKey, body.password),
+          url: body.url,
+          username: body.username,
         }
       )
       return res.status(200).send({ connected: true })
@@ -87,8 +87,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         body.username,
         {
           password: body.password,
-          username: body.username,
           url: body.url,
+          username: body.username,
         },
         false
       )
@@ -99,7 +99,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       } else {
         return res.status(401).send('Invalid Credentials')
       }
-    } catch (err) {
+    } catch (_err) {
       return res.status(401).send('Invalid Credentials')
     }
   }
