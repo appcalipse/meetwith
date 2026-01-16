@@ -52,8 +52,5 @@ package-lock.json
 zoom-token.json
 .qodo
 .nvmrc
-.github/rules/commit-message.mdx
-
-# Sentry Config File
+.github/rules/
 .env.sentry-build-plugin
-.github/rules/peer-architect.md
