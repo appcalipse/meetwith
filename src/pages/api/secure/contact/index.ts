@@ -2,7 +2,13 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { Contact, LeanContact } from '@/types/Contacts'
-import { getContactLean, getContacts, initDB } from '@/utils/database'
+import {
+  countContactsAddedThisMonth,
+  getContactLean,
+  getContacts,
+  initDB,
+  isProAccountAsync,
+} from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -12,6 +18,20 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(401).send('Unauthorized')
     }
     try {
+      if (req.query.metadata === 'true') {
+        const isPro = await isProAccountAsync(account_address)
+        const contactsAddedThisMonth = await countContactsAddedThisMonth(
+          account_address
+        )
+        const upgradeRequired = !isPro && contactsAddedThisMonth >= 3
+
+        return res.status(200).json({
+          upgradeRequired,
+          contactsAddedThisMonth,
+          limit: 3,
+        })
+      }
+
       const type = req.query.type as 'lean' | undefined
       const dbResults = await (type === 'lean'
         ? getContactLean(
