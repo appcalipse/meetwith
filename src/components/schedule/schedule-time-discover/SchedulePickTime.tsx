@@ -58,6 +58,7 @@ import { getMergedParticipants } from '@/utils/schedule.helper'
 import { suggestBestSlots } from '@/utils/slots.helper'
 
 import ScheduleTimeSlot from './ScheduleTimeSlot'
+
 interface AccountAddressRecord extends ParticipantInfo {
   account_address: string
 }
@@ -75,7 +76,7 @@ export const getBgColor = (state: State) => {
     case State.MOST_AVAILABLE:
       return 'yellow.600'
     case State.SOME_AVAILABLE:
-      return 'yellow.100'
+      return '#2F89F8'
     case State.NONE_AVAILABLE:
       return 'neutral.0'
   }
