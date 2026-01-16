@@ -35,9 +35,9 @@ const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
 
       //avoid exploding cookie size
       req.session.account.preferences = {
-        timezone: '',
         availabilities: [],
         meetingProviders: [MeetingProvider.GOOGLE_MEET],
+        timezone: '',
       }
 
       await req.session.save()

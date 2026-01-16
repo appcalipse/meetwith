@@ -33,10 +33,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       .substr(2, 9)}`
 
     const payload = {
-      type: 'reset_pin',
       account_address,
       iat: Math.floor(Date.now() / 1000), // issued at
       jti,
+      type: 'reset_pin',
     }
 
     const resetToken = jwt.sign(payload, JWT_SECRET, {
@@ -68,8 +68,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await sendResetPinEmail(email, resetUrl)
 
     return res.status(200).json({
-      success: true,
       message: 'Reset PIN email sent successfully',
+      success: true,
     })
   } catch (error) {
     Sentry.captureException(error)

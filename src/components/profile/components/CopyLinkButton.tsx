@@ -29,7 +29,7 @@ export const CopyLinkButton = ({
       } else {
         document.execCommand('copy', true, url)
       }
-    } catch (err) {
+    } catch (_err) {
       document.execCommand('copy', true, url)
     }
     logEvent('Copied link', { url })

@@ -1,5 +1,4 @@
-import { TimeRange } from '@/types/Account'
-import { Account } from '@/types/Account'
+import { Account, TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 
 export const getHoursPerWeek = (
@@ -30,8 +29,8 @@ export const formatTime = (time: string | undefined): string => {
   date.setHours(hours, minutes, 0, 0)
   return date.toLocaleTimeString([], {
     hour: '2-digit',
-    minute: '2-digit',
     hour12: true,
+    minute: '2-digit',
   })
 }
 
@@ -59,7 +58,7 @@ export const getFormattedSchedule = (
   // Build a comparable signature and a display string for all ranges in a day
   const getDaySignatureAndDisplay = (ranges: TimeRange[] | undefined) => {
     if (!ranges || ranges.length === 0) {
-      return { signature: '', display: '' }
+      return { display: '', signature: '' }
     }
 
     // Sort ranges by start time for stable comparison and display
@@ -73,7 +72,7 @@ export const getFormattedSchedule = (
       .map(r => `${formatTime(r.start)} - ${formatTime(r.end)}`)
       .join(', ')
 
-    return { signature, display }
+    return { display, signature }
   }
 
   // Group consecutive days that share identical sets of ranges
@@ -111,8 +110,8 @@ export const getFormattedSchedule = (
         if (currentGroup.length > 0) {
           consecutiveGroups.push({
             days: [...currentGroup],
-            signature: currentSignature,
             display: currentDisplay,
+            signature: currentSignature,
           })
         }
         currentGroup = [day.weekday]
@@ -126,8 +125,8 @@ export const getFormattedSchedule = (
       if (currentGroup.length > 0) {
         consecutiveGroups.push({
           days: [...currentGroup],
-          signature: currentSignature,
           display: currentDisplay,
+          signature: currentSignature,
         })
       }
     }
@@ -159,12 +158,12 @@ export const formatDayGroup = (
   days: number[],
   timeRange: string
 ): { weekdays: string; timeRange: string } => {
-  if (days.length === 0) return { weekdays: '', timeRange: '' }
+  if (days.length === 0) return { timeRange: '', weekdays: '' }
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   if (days.length === 1) {
-    return { weekdays: dayNames[days[0]], timeRange }
+    return { timeRange, weekdays: dayNames[days[0]] }
   } else {
     let consecutive = true
     for (let i = 1; i < days.length; i++) {
@@ -178,12 +177,12 @@ export const formatDayGroup = (
 
     if (consecutive) {
       return {
-        weekdays: `${dayNames[days[0]]} - ${dayNames[days[days.length - 1]]}`,
         timeRange,
+        weekdays: `${dayNames[days[0]]} - ${dayNames[days[days.length - 1]]}`,
       }
     } else {
       const dayLabels = days.map(day => dayNames[day]).join(', ')
-      return { weekdays: dayLabels, timeRange }
+      return { timeRange, weekdays: dayLabels }
     }
   }
 }
@@ -191,7 +190,7 @@ export const formatDayGroup = (
 export const initializeEmptyAvailabilities = () => {
   const emptyAvailabilities = []
   for (let i = 0; i <= 6; i++) {
-    emptyAvailabilities.push({ weekday: i, ranges: [] })
+    emptyAvailabilities.push({ ranges: [], weekday: i })
   }
   return emptyAvailabilities
 }
@@ -204,22 +203,22 @@ export const initializeDefaultAvailabilities = () => {
       if (i === 1) {
         // Monday gets two slots: 9:00-17:00 and 18:00-20:00
         defaultAvailabilities.push({
-          weekday: i,
           ranges: [
-            { start: '09:00', end: '17:00' },
-            { start: '18:00', end: '19:00' },
+            { end: '17:00', start: '09:00' },
+            { end: '19:00', start: '18:00' },
           ],
+          weekday: i,
         })
       } else {
         // Tuesday to Friday get one slot: 9:00-17:00
         defaultAvailabilities.push({
+          ranges: [{ end: '17:00', start: '09:00' }],
           weekday: i,
-          ranges: [{ start: '09:00', end: '17:00' }],
         })
       }
     } else {
       // Sunday and Saturday remain empty
-      defaultAvailabilities.push({ weekday: i, ranges: [] })
+      defaultAvailabilities.push({ ranges: [], weekday: i })
     }
   }
   return defaultAvailabilities
@@ -231,8 +230,8 @@ export const validateAvailabilityBlock = (
 ) => {
   if (!title.trim()) {
     return {
-      isValid: false,
       error: 'Title required',
+      isValid: false,
     }
   }
 
@@ -242,8 +241,8 @@ export const validateAvailabilityBlock = (
 
   if (!hasAvailabilities) {
     return {
-      isValid: false,
       error: 'Availability required',
+      isValid: false,
     }
   }
 
@@ -260,7 +259,7 @@ export const getCurrentEditingBlock = (
 export const getBrowserTimezone = (): string => {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone
-  } catch (error) {
+  } catch (_error) {
     return 'UTC'
   }
 }
@@ -312,13 +311,13 @@ export const handleCopyToDays = (
   })
 
   return {
-    targetWeekdays,
     copyTypeText:
       copyType === 'all'
         ? 'all other days'
         : copyType === 'weekdays'
         ? 'weekdays (Mon-Fri)'
         : 'weekends (Sat-Sun)',
+    targetWeekdays,
   }
 }
 

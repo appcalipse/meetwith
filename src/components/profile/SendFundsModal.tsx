@@ -60,8 +60,8 @@ import {
 import {
   PaymentType,
   supportedPaymentChains,
+  TokenType,
 } from '@/utils/constants/meeting-types'
-import { TokenType } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
 import { estimateGasFee, GasEstimationParams } from '@/utils/gasEstimation'
 import { formatCurrency, parseUnits, zeroAddress } from '@/utils/generic_utils'

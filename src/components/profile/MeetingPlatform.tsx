@@ -64,7 +64,7 @@ const MeetingPlatform: FC<Props> = props => {
       })
       logEvent('updated_meeting_provider', { selectedProviders })
       login(updatedAccount)
-    } catch (e) {
+    } catch (_e) {
       toast({
         title: 'Error Occurred',
         description:

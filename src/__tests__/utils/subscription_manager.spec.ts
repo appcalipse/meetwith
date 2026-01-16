@@ -22,8 +22,8 @@ describe('isProAccount', () => {
     const account = {
       subscriptions: [
         {
-          plan_id: Plan.PRO,
           expiry_time: sub(new Date(), { minutes: 1 }),
+          plan_id: Plan.PRO,
         },
       ],
     } as Account
@@ -35,8 +35,8 @@ describe('isProAccount', () => {
     const account = {
       subscriptions: [
         {
-          plan_id: Plan.PRO,
           expiry_time: add(new Date(), { minutes: 1 }),
+          plan_id: Plan.PRO,
         },
       ],
     } as Account

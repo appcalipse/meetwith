@@ -19,25 +19,25 @@ export const useWalletBalance = (currency = 'USD'): WalletBalance => {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['total-wallet-balance', currentAccount?.address],
+    cacheTime: 0,
+    enabled: !!currentAccount?.address,
     queryFn: async () => {
       if (!currentAccount?.address) return { balance: 0 }
 
       const result = await getTotalWalletBalance(currentAccount.address)
       return result
     },
-    enabled: !!currentAccount?.address,
-    staleTime: 0,
-    cacheTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    queryKey: ['total-wallet-balance', currentAccount?.address],
     refetchInterval: 10000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   })
 
   return {
-    totalBalance: balanceData?.balance || 0,
     currency,
-    isLoading,
     error: error instanceof Error ? error.message : null,
+    isLoading,
+    totalBalance: balanceData?.balance || 0,
   }
 }

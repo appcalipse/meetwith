@@ -37,8 +37,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     )
     await deleteMeetingFromDB(
       {
-        name,
         guest_email: request.guest_email,
+        name,
       },
       request.meeting.related_slot_ids,
       guestsToRemove,

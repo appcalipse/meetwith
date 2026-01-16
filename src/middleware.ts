@@ -7,16 +7,16 @@ import { apiUrl, YEAR_DURATION_IN_SECONDS } from './utils/constants'
 export const SESSION_COOKIE_NAME = 'mww_iron'
 
 export const sessionOptions = {
-  password: process.env.IRON_COOKIE_PASSWORD!,
   cookieName: SESSION_COOKIE_NAME,
-  ttl: YEAR_DURATION_IN_SECONDS,
   // secure: true should be used in production (HTTPS) but can't be used in development (HTTP)
   cookieOptions: {
+    httpOnly: false,
     secure:
       process.env.NEXT_PUBLIC_ENV === 'production' ||
       process.env.NEXT_PUBLIC_ENV === 'development',
-    httpOnly: false,
   },
+  password: process.env.IRON_COOKIE_PASSWORD!,
+  ttl: YEAR_DURATION_IN_SECONDS,
 }
 
 export function middleware(request: NextRequest) {
@@ -52,15 +52,15 @@ const handleSecureRoute = async (req: NextRequest) => {
   if (!session?.account) return notAuthorized()
 
   const response = await fetch(`${apiUrl}/server/accounts/check`, {
-    method: 'POST',
     body: JSON.stringify({
       address: session.account.address,
       signature: session.account.signature,
     }),
     headers: {
-      'X-Server-Secret': process.env.SERVER_SECRET!,
       'Content-Type': 'application/json',
+      'X-Server-Secret': process.env.SERVER_SECRET!,
     },
+    method: 'POST',
   })
 
   if (response.status !== 200) return notAuthorized()

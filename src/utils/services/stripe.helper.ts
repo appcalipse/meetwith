@@ -99,12 +99,12 @@ export const handleChargeSucceeded = async (
     metadata,
     (eventObject.application_fee_amount || 0) / 100,
     {
-      provider: PaymentProvider.STRIPE,
-      destination: event.account || event.context || '',
-      receipt_url: eventObject.receipt_url || '',
-      payment_method: `${eventObject.payment_method_details?.type || ''}`,
-      currency: eventObject.currency,
       amount_received: eventObject.amount / 100,
+      currency: eventObject.currency,
+      destination: event.account || event.context || '',
+      payment_method: `${eventObject.payment_method_details?.type || ''}`,
+      provider: PaymentProvider.STRIPE,
+      receipt_url: eventObject.receipt_url || '',
     }
   )
 }
@@ -140,12 +140,12 @@ export const handleFeeCollected = async (
     chargeObj.metadata as ICheckoutMetadata,
     (chargeObj.application_fee_amount || 0) / 100,
     {
+      amount_received: chargeObj.amount / 100,
+      currency: chargeObj.currency,
+      destination: accountId,
+      payment_method: `${chargeObj.payment_method_details?.type || ''}`,
       provider: PaymentProvider.STRIPE,
       receipt_url: chargeObj.receipt_url || '',
-      payment_method: `${chargeObj.payment_method_details?.type || ''}`,
-      currency: chargeObj.currency,
-      amount_received: chargeObj.amount / 100,
-      destination: accountId,
     }
   )
 }
@@ -189,6 +189,63 @@ export const handleSubscriptionCreated = async (
     )
   } catch (error) {
     Sentry.captureException(error)
+  }
+
+  // If this subscription starts with a trial, create a trial subscription period now
+  // so the user has access during the trial. When the first paid invoice succeeds,
+  // a new paid period will be created via invoice.payment_succeeded.
+  const trialEnd = subscription.trial_end
+  const isTrialingNow =
+    subscription.status === 'trialing' &&
+    trialEnd !== null &&
+    trialEnd !== undefined &&
+    trialEnd * 1000 > Date.now()
+
+  if (isTrialingNow) {
+    try {
+      const createdPeriod = await createSubscriptionPeriod(
+        accountAddress,
+        billingPlanId,
+        'active',
+        new Date(trialEnd * 1000).toISOString(),
+        null
+      )
+
+      // Send trial started email (non-blocking, queued)
+      try {
+        const billingPlan = await getBillingPlanById(billingPlanId)
+        if (billingPlan) {
+          const emailPlan: BillingEmailPlan = {
+            billing_cycle: billingPlan.billing_cycle,
+            id: billingPlan.id,
+            name: billingPlan.name,
+            price: billingPlan.price,
+          }
+
+          emailQueue.add(async () => {
+            try {
+              await sendSubscriptionConfirmationEmailForAccount(
+                accountAddress,
+                emailPlan,
+                createdPeriod.registered_at,
+                createdPeriod.expiry_time,
+                BillingPaymentProvider.STRIPE,
+                undefined,
+                true // isTrial
+              )
+              return true
+            } catch (error) {
+              Sentry.captureException(error)
+              return false
+            }
+          })
+        }
+      } catch (error) {
+        Sentry.captureException(error)
+      }
+    } catch (error) {
+      Sentry.captureException(error)
+    }
   }
 }
 
@@ -285,10 +342,10 @@ export const handleSubscriptionUpdated = async (
 
           if (billingPlan) {
             const emailPlan: BillingEmailPlan = {
+              billing_cycle: billingPlan.billing_cycle,
               id: billingPlan.id,
               name: billingPlan.name,
               price: billingPlan.price,
-              billing_cycle: billingPlan.billing_cycle,
             }
 
             emailQueue.add(async () => {
@@ -506,13 +563,13 @@ export const handleSubscriptionUpdated = async (
           `Could not extract product ID from Stripe subscription: ${stripeSubscriptionId}`
         ),
         {
-          tags: {
-            webhook_event: 'customer.subscription.updated',
-            stripe_subscription_id: stripeSubscriptionId,
-          },
           extra: {
             hasItems: !!subscription.items,
             itemsCount: subscription.items?.data?.length || 0,
+          },
+          tags: {
+            stripe_subscription_id: stripeSubscriptionId,
+            webhook_event: 'customer.subscription.updated',
           },
         }
       )
@@ -637,7 +694,8 @@ export const handleInvoicePaymentSucceeded = async (
         const stripe = new StripeService()
         const allSubscriptions = await stripe.subscriptions.list({
           customer: customerId,
-          limit: 10,
+          limit: 1,
+          status: 'active',
         })
 
         if (allSubscriptions.data && allSubscriptions.data.length > 0) {
@@ -682,26 +740,26 @@ export const handleInvoicePaymentSucceeded = async (
   const currency = invoice.currency ? invoice.currency.toUpperCase() : null
 
   const transactionPayload: TablesInsert<'transactions'> = {
-    method: PaymentType.FIAT,
-    status: PaymentStatus.COMPLETED,
-    meeting_type_id: null,
     amount: amountPaid,
-    fiat_equivalent: amountPaid,
+    confirmed_at: new Date().toISOString(),
     currency: currency,
     direction: PaymentDirection.CREDIT,
+    fiat_equivalent: amountPaid,
     initiator_address: accountAddress,
+    meeting_type_id: null,
     metadata: {
-      source: 'stripe.webhook.invoice.payment_succeeded',
-      stripe_subscription_id: stripeSubscriptionId,
-      stripe_customer_id: stripeSubscription.stripe_customer_id,
       billing_plan_id: billingPlanId,
       invoice_id: invoice.id,
+      source: 'stripe.webhook.invoice.payment_succeeded',
+      stripe_customer_id: stripeSubscription.stripe_customer_id,
+      stripe_subscription_id: stripeSubscriptionId,
     },
+    method: PaymentType.FIAT,
     provider: BillingPaymentProvider.STRIPE,
     provider_reference_id: invoice.id,
-    transaction_hash: null,
+    status: PaymentStatus.COMPLETED,
     total_fee: amountPaid,
-    confirmed_at: new Date().toISOString(),
+    transaction_hash: null,
   }
 
   let transactionId: string
@@ -857,10 +915,10 @@ export const handleInvoicePaymentSucceeded = async (
 
       // Send subscription confirmation email (non-blocking, queued)
       const emailPlan: BillingEmailPlan = {
+        billing_cycle: billingPlan.billing_cycle,
         id: billingPlan.id,
         name: billingPlan.name,
         price: billingPlan.price,
-        billing_cycle: billingPlan.billing_cycle,
       }
 
       emailQueue.add(async () => {
@@ -911,10 +969,10 @@ export const handleInvoicePaymentSucceeded = async (
 
         // Send subscription confirmation email for plan update (non-blocking, queued)
         const emailPlan: BillingEmailPlan = {
+          billing_cycle: billingPlan.billing_cycle,
           id: billingPlan.id,
           name: billingPlan.name,
           price: billingPlan.price,
-          billing_cycle: billingPlan.billing_cycle,
         }
 
         emailQueue.add(async () => {
@@ -1050,10 +1108,10 @@ export const handleInvoicePaymentSucceeded = async (
 
         // Send subscription confirmation email for plan update (non-blocking, queued)
         const emailPlan: BillingEmailPlan = {
+          billing_cycle: billingPlan.billing_cycle,
           id: billingPlan.id,
           name: billingPlan.name,
           price: billingPlan.price,
-          billing_cycle: billingPlan.billing_cycle,
         }
 
         emailQueue.add(async () => {

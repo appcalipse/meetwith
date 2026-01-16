@@ -91,10 +91,10 @@ export class Office365CalendarService implements IOffcie365CalendarService {
 
     return calendars.map(calendar => ({
       calendarId: calendar.id!,
+      color: calendar.hexColor,
+      enabled: calendar.isDefaultCalendar ?? false,
       name: calendar.name!,
       sync: false,
-      enabled: calendar.isDefaultCalendar ?? false,
-      color: calendar.hexColor,
     }))
   }
 
@@ -231,20 +231,20 @@ export class Office365CalendarService implements IOffcie365CalendarService {
           let response = await this.graphClient
             .api(`/me/calendars/${calendarId}/calendarView`)
             .query({
-              startdatetime: dateFromParsed.toISOString(),
-              enddatetime: dateToParsed.toISOString(),
               $top: '500',
+              enddatetime: dateToParsed.toISOString(),
+              startdatetime: dateFromParsed.toISOString(),
             })
             .get()
 
           // Process first page
           allEvents.push(
             ...response.value.map((evt: MicrosoftGraphEvent) => ({
-              start: evt.start?.dateTime + 'Z',
-              end: evt.end?.dateTime + 'Z',
-              title: evt.subject || '',
-              eventId: evt.id || '',
               email: this.email,
+              end: evt.end?.dateTime + 'Z',
+              eventId: evt.id || '',
+              start: evt.start?.dateTime + 'Z',
+              title: evt.subject || '',
               webLink: evt.webLink || undefined,
             }))
           )
@@ -260,11 +260,11 @@ export class Office365CalendarService implements IOffcie365CalendarService {
 
             allEvents.push(
               ...response.value.map((evt: MicrosoftGraphEvent) => ({
-                start: evt.start?.dateTime + 'Z',
-                end: evt.end?.dateTime + 'Z',
-                title: evt.subject || '',
-                eventId: evt.id || '',
                 email: this.email,
+                end: evt.end?.dateTime + 'Z',
+                eventId: evt.id || '',
+                start: evt.start?.dateTime + 'Z',
+                title: evt.subject || '',
                 webLink: evt.webLink || undefined,
               }))
             )
@@ -299,9 +299,9 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     let response = await this.graphClient
       .api(`/me/calendars/${calendarId}/calendarView`)
       .query({
-        startdatetime: dateFromParsed.toISOString(),
-        enddatetime: dateToParsed.toISOString(),
         $top: '500',
+        enddatetime: dateToParsed.toISOString(),
+        startdatetime: dateFromParsed.toISOString(),
       })
       .get()
 
@@ -402,61 +402,61 @@ export class Office365CalendarService implements IOffcie365CalendarService {
   ) => {
     const participantsInfo: ParticipantInfo[] = details.participants.map(
       participant => ({
-        type: participant.type,
-        name: participant.name,
         account_address: participant.account_address,
-        status: participant.status,
-        slot_id: '',
         meeting_id,
+        name: participant.name,
+        slot_id: '',
+        status: participant.status,
+        type: participant.type,
       })
     )
 
     const payload: MicrosoftGraphEvent = {
-      subject: CalendarServiceHelper.getMeetingTitle(
-        calendarOwnerAccountAddress,
-        participantsInfo,
-        details.title
-      ),
+      allowNewTimeProposals: false,
+      attendees: [],
       body: {
-        contentType: 'text',
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
           details.meeting_url,
           `${appUrl}/dashboard/schedule?conferenceId=${details.meeting_id}&intent=${Intents.UPDATE_MEETING}`
         ),
+        contentType: 'text',
       },
-      start: {
-        dateTime: new Date(details.start).toISOString(),
-        timeZone: 'UTC',
-      },
+      createdDateTime: new Date(meeting_creation_time).toISOString(),
       end: {
         dateTime: new Date(details.end).toISOString(),
         timeZone: 'UTC',
       },
-      createdDateTime: new Date(meeting_creation_time).toISOString(),
+      isOnlineMeeting: true,
       location: {
         displayName: details.meeting_url,
       },
-      isOnlineMeeting: true,
-      onlineMeetingProvider: 'unknown',
-      onlineMeetingUrl: details.meeting_url,
       onlineMeeting: {
         joinUrl: details.meeting_url,
       },
+      onlineMeetingProvider: 'unknown',
+      onlineMeetingUrl: details.meeting_url,
       organizer: {
         emailAddress: {
-          name: calendarOwnerAccountAddress,
           address: this.getConnectedEmail(), // Use the actual email
+          name: calendarOwnerAccountAddress,
         },
       },
-      attendees: [],
       singleValueExtendedProperties: [
         {
           id: 'String {00020329-0000-0000-C000-000000000046} Name meeting_id',
           value: meeting_id,
         },
       ],
-      allowNewTimeProposals: false,
+      start: {
+        dateTime: new Date(details.start).toISOString(),
+        timeZone: 'UTC',
+      },
+      subject: CalendarServiceHelper.getMeetingTitle(
+        calendarOwnerAccountAddress,
+        participantsInfo,
+        details.title
+      ),
       transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
     }
     if (details.meetingReminders && details.meetingReminders.length > 0) {
@@ -489,20 +489,20 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       ] as RecurrencePattern['daysOfWeek']
       payload['recurrence'] = {
         pattern: {
-          type,
-          interval: 1,
           daysOfWeek,
           firstDayOfWeek: 'sunday',
+          interval: 1,
+          type,
         },
         range: {
-          type: 'endDate',
-          startDate: format(meetingDate, 'yyyy-MM-dd'),
           endDate: DateTime.fromJSDate(meetingDate)
             .plus({
               months: 6,
             })
             .toFormat('yyyy-MM-dd'),
           recurrenceTimeZone: 'UTC',
+          startDate: format(meetingDate, 'yyyy-MM-dd'),
+          type: 'endDate',
         },
       }
     }
@@ -518,10 +518,9 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         }
         const attendee: Attendee = {
           emailAddress: {
-            name: participant.name || participant.account_address,
             address: email,
+            name: participant.name || participant.account_address,
           },
-          type: 'required',
           status: {
             response:
               participant.status === ParticipationStatus.Accepted
@@ -531,6 +530,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
                 : 'notResponded',
             time: new Date().toISOString(),
           },
+          type: 'required',
         }
         if (
           isAccountSchedulerOrOwner(
@@ -567,8 +567,8 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     const instances = await this.graphClient
       .api(`/me/calendars/${calendarId}/events/${officeId}/instances`)
       .query({
-        startDateTime: dateFrom!,
         endDateTime: dateTo!,
+        startDateTime: dateFrom!,
       })
       .get()
 
@@ -615,8 +615,8 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     const instances = await this.graphClient
       .api(`/me/calendars/${calendarId}/events/${officeId}/instances`)
       .query({
-        startDateTime: dateFrom!,
         endDateTime: dateTo!,
+        startDateTime: dateFrom!,
       })
       .get()
 

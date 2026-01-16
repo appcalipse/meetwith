@@ -29,33 +29,34 @@ export default function LogoutPage() {
 
   return (
     <Container
-      maxW="7xl"
-      mt={8}
-      minH={{ sm: '100vh', md: 'auto' }}
-      flex={1}
       display="grid"
+      flex={1}
+      maxW="7xl"
+      minH={{ md: 'auto', sm: '100vh' }}
+      mt={8}
       placeContent="center"
     >
       <VStack
-        m="auto"
-        gap={10}
         bg={bgColor}
-        borderWidth={1}
         borderColor="neutral.600"
-        p={6}
         borderRadius={6}
+        borderWidth={1}
+        gap={10}
+        m="auto"
+        p={6}
       >
-        <Image width="100px" p={2} src="/assets/logo.svg" alt="Meetwith" />
+        <Image alt="Meetwith" p={2} src="/assets/logo.svg" width="100px" />
         <Image
-          src="/assets/join-illustration.svg"
           alt="Join illustration"
-          width="300px"
           height="auto"
+          src="/assets/join-illustration.svg"
+          width="300px"
         />
-        <Heading size="md" maxW="450px" textAlign="center">
+        <Heading maxW="450px" size="md" textAlign="center">
           Hey there! You’ve been invited to a Contact List
         </Heading>
         <Button
+          colorScheme="primary"
           onClick={() => {
             if (logged) {
               void push(ACCEPT_URL)
@@ -63,7 +64,6 @@ export default function LogoutPage() {
               openConnection(ACCEPT_URL)
             }
           }}
-          colorScheme="primary"
           w="100%"
         >
           Join Contact

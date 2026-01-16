@@ -318,7 +318,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
         willStartScheduling && willStartScheduling?.(!success)
       }
-    } catch (e) {
+    } catch (_e) {
       willStartScheduling && willStartScheduling?.(true)
     }
   }

@@ -15,7 +15,7 @@ const EditPollPage = () => {
   }
 
   return (
-    <Box width="100%" minHeight="100vh" bg="neutral.850">
+    <Box bg="neutral.850" minHeight="100vh" width="100%">
       <ParticipantsProvider>
         <CreatePoll isEditMode={true} pollSlug={slug} />
       </ParticipantsProvider>

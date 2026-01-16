@@ -9,9 +9,9 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
         b: parseInt(result[3], 16),
+        g: parseInt(result[2], 16),
+        r: parseInt(result[1], 16),
       }
     : null
 }
@@ -56,7 +56,7 @@ function rgbToHsl(
     h /= 6
   }
 
-  return { h: h * 360, s: s * 100, l: l * 100 }
+  return { h: h * 360, l: l * 100, s: s * 100 }
 }
 
 /**
@@ -93,9 +93,9 @@ function hslToRgb(
   }
 
   return {
-    r: Math.round(r * 255),
-    g: Math.round(g * 255),
     b: Math.round(b * 255),
+    g: Math.round(g * 255),
+    r: Math.round(r * 255),
   }
 }
 
@@ -367,8 +367,8 @@ export function getAdvancedContrastingText(
     return {
       color: selected.color,
       contrastRatio: selected.contrastRatio,
-      wcagCompliant: true,
       level: selected.contrastRatio >= 7 ? 'AAA' : 'AA',
+      wcagCompliant: true,
     }
   }
 
@@ -380,8 +380,8 @@ export function getAdvancedContrastingText(
   return {
     color: bestOption.color,
     contrastRatio: bestOption.contrastRatio,
-    wcagCompliant: false,
     level: 'fail' as const,
+    wcagCompliant: false,
   }
 }
 
@@ -424,8 +424,8 @@ export function generateColorScheme(
     text: textResult.color,
     textDetails: {
       contrastRatio: textResult.contrastRatio,
-      wcagCompliant: textResult.wcagCompliant,
       level: textResult.level,
+      wcagCompliant: textResult.wcagCompliant,
     },
   }
 }
@@ -436,18 +436,18 @@ export function generateColorScheme(
  */
 export function getDesignSystemTextColor(backgroundColor: string): string {
   const brandColors = {
-    primaryLight: '#FFFFFF',
-    primaryDark: '#2D3748',
     accent: '#F46739',
     neutral: '#7B8794',
+    primaryDark: '#2D3748',
+    primaryLight: '#FFFFFF',
   }
 
   const textResult = getAdvancedContrastingText(backgroundColor, {
-    lightText: brandColors.primaryLight,
-    darkText: brandColors.primaryDark,
     alternatives: [brandColors.neutral],
-    wcagLevel: 'AA',
+    darkText: brandColors.primaryDark,
+    lightText: brandColors.primaryLight,
     preference: 'dark',
+    wcagLevel: 'AA',
   })
 
   return textResult.color
