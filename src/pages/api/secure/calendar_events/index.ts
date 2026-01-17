@@ -2,10 +2,7 @@ import { DateTime } from 'luxon'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import {
-  getSlotsForAccountWithConference,
-  syncConnectedCalendars,
-} from '@/utils/database'
+import { getSlotsForAccountWithConference } from '@/utils/database'
 import { extractQuery } from '@/utils/generic_utils'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
