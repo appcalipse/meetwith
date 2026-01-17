@@ -265,7 +265,12 @@ export const CalendarBackendHelper = {
         )
 
         const externalSlots = await integration.getEvents(
-          calendar.calendars!.filter(c => c.enabled).map(c => c.calendarId),
+          calendar
+            .calendars!.filter(c => (onlyWithMeetingLinks ? c.enabled : true))
+            .map(c => ({
+              calendarId: c.calendarId,
+              name: c.name,
+            })),
           startDate.toISOString(),
           endDate.toISOString(),
           onlyWithMeetingLinks
