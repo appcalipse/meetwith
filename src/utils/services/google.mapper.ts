@@ -30,6 +30,7 @@ export class GoogleEventMapper {
   static toUnified(
     googleEvent: calendar_v3.Schema$Event,
     calendarId: string,
+    calendarName: string,
     accountEmail: string
   ): UnifiedEvent {
     const permissions: MeetingPermissions[] = []
@@ -48,6 +49,7 @@ export class GoogleEventMapper {
       accountEmail,
       attendees: this.mapAttendees(googleEvent.attendees || []),
       calendarId,
+      calendarName,
       description: CalendarServiceHelper.parseDescriptionToRichText(
         googleEvent.description?.trim()
       ),

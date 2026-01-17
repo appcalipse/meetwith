@@ -28,6 +28,7 @@ export interface WebDAVEvent {
   location?: string
   sequence?: number
   calId?: string
+  calName?: string
   accountEmail?: string
   startDate: Date
   endDate: Date
@@ -59,6 +60,7 @@ export class WebDAVEventMapper {
   static toUnified(
     webdavEvent: WebDAVEvent,
     calendarId: string,
+    calendarName: string,
     accountEmail: string
   ): UnifiedEvent {
     const isOrganizer = webdavEvent.organizer
@@ -76,6 +78,7 @@ export class WebDAVEventMapper {
       accountEmail,
       attendees: this.mapAttendees(webdavEvent.attendees || []),
       calendarId,
+      calendarName,
       description: CalendarServiceHelper.parseDescriptionToRichText(
         webdavEvent.description
       ),
