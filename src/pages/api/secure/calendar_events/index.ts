@@ -16,7 +16,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       if (!account_address) {
         return res.status(401).send('Unauthorized')
       }
-      void syncConnectedCalendars(account_address)
       const start = extractQuery(req.query, 'startDate')
       const end = extractQuery(req.query, 'endDate')
       const onlyMeetings = extractQuery(req.query, 'onlyMeetings') === 'true'
