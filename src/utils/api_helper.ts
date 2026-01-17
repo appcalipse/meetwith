@@ -192,12 +192,10 @@ export const internalFetch = async <T, J = unknown>(
 
   try {
     const response = await fetch(`${apiUrl}${path}`, {
-      headers: isFormData
-        ? undefined
-        : {
-            'Content-Type': 'application/json',
-            ...headers,
-          },
+      headers: {
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...headers,
+      },
       method,
       mode: 'cors',
       ...options,
