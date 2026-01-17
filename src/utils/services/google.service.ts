@@ -109,6 +109,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           calendarId: c.id!,
           color: c.backgroundColor || undefined,
           enabled: Boolean(c.primary),
+          isReadOnly:
+            c.accessRole === 'reader' || c.accessRole === 'freeBusyReader',
           name: c.summary!,
           sync: false,
         }
@@ -1198,6 +1200,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
   private async getEventsCalendarId(
     calendarId: string,
     calendarName: string,
+    isReadOnlyCalendar: boolean,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -1241,17 +1244,31 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       : aggregatedEvents
 
     return filteredEvents.map(event =>
-      GoogleEventMapper.toUnified(event, calendarId, calendarName, this.email)
+      GoogleEventMapper.toUnified(
+        event,
+        calendarId,
+        calendarName,
+        this.email,
+        isReadOnlyCalendar
+      )
     )
   }
   async getEvents(
-    calendars: Array<Pick<CalendarSyncInfo, 'name' | 'calendarId'>>,
+    calendars: Array<
+      Pick<CalendarSyncInfo, 'name' | 'calendarId' | 'isReadOnly'>
+    >,
     dateFrom: string,
     dateTo: string
   ): Promise<UnifiedEvent[]> {
     const events = await Promise.all(
       calendars.map(cal =>
-        this.getEventsCalendarId(cal.calendarId, cal.name, dateFrom, dateTo)
+        this.getEventsCalendarId(
+          cal.calendarId,
+          cal.name,
+          cal.isReadOnly ?? false,
+          dateFrom,
+          dateTo
+        )
       )
     )
     return events.flat()

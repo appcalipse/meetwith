@@ -93,6 +93,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       calendarId: calendar.id!,
       color: calendar.hexColor,
       enabled: calendar.isDefaultCalendar ?? false,
+      isReadOnly: calendar.canEdit === false,
       name: calendar.name!,
       sync: false,
     }))
@@ -287,6 +288,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
   async getEventsCalendarId(
     calendarId: string,
     calendarName: string,
+    isReadOnlyCalendar: boolean,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -361,19 +363,28 @@ export class Office365CalendarService implements IOffcie365CalendarService {
             event,
             calendarId,
             calendarName,
-            this.getConnectedEmail()
+            this.getConnectedEmail(),
+            isReadOnlyCalendar
           )
       )
     )
   }
   async getEvents(
-    calendars: Array<Pick<CalendarSyncInfo, 'name' | 'calendarId'>>,
+    calendars: Array<
+      Pick<CalendarSyncInfo, 'name' | 'calendarId' | 'isReadOnly'>
+    >,
     dateFrom: string,
     dateTo: string
   ): Promise<UnifiedEvent[]> {
     const events = await Promise.all(
       calendars.map(cal =>
-        this.getEventsCalendarId(cal.calendarId, cal.name, dateFrom, dateTo)
+        this.getEventsCalendarId(
+          cal.calendarId,
+          cal.name,
+          cal.isReadOnly ?? false,
+          dateFrom,
+          dateTo
+        )
       )
     )
     return events.flat()

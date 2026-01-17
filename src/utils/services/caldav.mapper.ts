@@ -61,7 +61,8 @@ export class WebDAVEventMapper {
     webdavEvent: WebDAVEvent,
     calendarId: string,
     calendarName: string,
-    accountEmail: string
+    accountEmail: string,
+    isReadOnlyCalendar: boolean = false
   ): UnifiedEvent {
     const isOrganizer = webdavEvent.organizer
       ? webdavEvent.organizer.includes(accountEmail)
@@ -86,6 +87,7 @@ export class WebDAVEventMapper {
       etag: webdavEvent.etag || null,
       id: this.generateInternalId(webdavEvent),
       isAllDay: this.isAllDayEvent(webdavEvent.startDate, webdavEvent.endDate),
+      isReadOnlyCalendar,
       lastModified: new Date(webdavEvent.lastModified || new Date()),
 
       meeting_url: webdavEvent.location || null,
