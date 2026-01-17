@@ -136,6 +136,7 @@ import {
   ContactInviteAlreadySent,
   ContactInviteNotForAccount,
   ContactInviteNotFound,
+  ContactLimitExceededError,
   ContactNotFound,
   CouponAlreadyUsed,
   CouponExpired,
@@ -191,12 +192,10 @@ export const internalFetch = async <T, J = unknown>(
 
   try {
     const response = await fetch(`${apiUrl}${path}`, {
-      headers: isFormData
-        ? undefined
-        : {
-            'Content-Type': 'application/json',
-            ...headers,
-          },
+      headers: {
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...headers,
+      },
       method,
       mode: 'cors',
       ...options,
@@ -1591,7 +1590,8 @@ export const getSuggestedSlots = async (
   addresses: string[],
   startDate: Date,
   endDate: Date,
-  duration: number
+  duration: number,
+  groupId?: string
 ): Promise<Interval[]> => {
   try {
     return (
@@ -1600,6 +1600,7 @@ export const getSuggestedSlots = async (
         duration,
         endDate,
         startDate,
+        groupId,
       })
     )
       .map(slot => ({
@@ -1880,11 +1881,15 @@ export const sendContactListInvite = async (
         throw new ContactAlreadyExists()
       }
       if (e.status && e.status === 403) {
+        if (e.message.includes('Free tier allows only')) {
+          throw new ContactLimitExceededError()
+        }
         throw new CantInviteYourself()
       } else if (e.status && e.status === 409) {
         throw new ContactInviteAlreadySent()
       }
     }
+    throw e
   }
 }
 export const addGroupMemberToContact = async (payload: InviteGroupMember) => {
@@ -1899,6 +1904,9 @@ export const addGroupMemberToContact = async (payload: InviteGroupMember) => {
       if (e.status && e.status === 400) {
         throw new ContactAlreadyExists()
       } else if (e.status && e.status === 403) {
+        if (e.message.includes('Free tier allows only')) {
+          throw new ContactLimitExceededError()
+        }
         throw new CantInviteYourself()
       } else if (e.status && e.status === 404) {
         throw new MemberDoesNotExist()
@@ -1906,6 +1914,7 @@ export const addGroupMemberToContact = async (payload: InviteGroupMember) => {
         throw new ContactInviteAlreadySent()
       }
     }
+    throw e
   }
 }
 
@@ -1922,6 +1931,14 @@ export const getContactsLean = async (limit = 10, offset = 0, query = '') => {
         `/secure/contact?type=lean&limit=${limit}&offset=${offset}&q=${query}`
       )
   )
+}
+
+export const getContactsMetadata = async () => {
+  return await internalFetch<{
+    upgradeRequired: boolean
+    contactsAddedThisMonth: number
+    limit: number
+  }>(`/secure/contact?metadata=true`)
 }
 
 export const getContactInviteRequests = async (
@@ -2734,14 +2751,28 @@ export const getSlotInstanceById = async (
 }
 
 export const addOrUpdateWebcal = async (
-  url: string
+  formdata: FormData
 ): Promise<WebCalResponse> => {
   return await internalFetch<WebCalResponse>(
     `/secure/calendar_integrations/webcal`,
     'POST',
-    {
-      url,
-    }
+    formdata,
+    undefined,
+    undefined,
+    true
+  )
+}
+export const addOrUpdateQuickPollWebcal = async (
+  participantId: string,
+  formdata: FormData
+): Promise<WebCalResponse> => {
+  return await internalFetch<WebCalResponse>(
+    `/quickpoll/participants/${participantId}/webcal`,
+    'POST',
+    formdata,
+    undefined,
+    undefined,
+    true
   )
 }
 

@@ -288,7 +288,7 @@ export interface MeetingCheckoutRequest {
 
 export interface WebcalRequestBody {
   url?: string
-  email?: string
+  title: string
 }
 
 export interface UpdateCalendarEventRequest {

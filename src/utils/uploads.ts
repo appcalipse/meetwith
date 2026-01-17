@@ -68,6 +68,7 @@ function validateFile(
   return null
 }
 const SIZE_10_MB = 10485760 // 10 MB in bytes
+export const SIZE_5_MB = 5242880 // 5 MB in bytes
 export function withFileUpload(
   handler: NextApiHandlerWithFile,
   options: UploadOptions = {
@@ -112,15 +113,37 @@ export function withFileUpload(
           }
         })
       })
-      busboy.on('finish', () => {
-        req.body = {
-          ...fields,
-          files,
-        }
-        resolve()
-      })
+      busboy
+        .on('finish', () => {
+          req.body = {
+            ...fields,
+            files,
+          }
+          resolve()
+        })
+        .on('close', resolve)
 
       busboy.on('error', err => {
+        // CRITICAL: Handle "Unexpected end of form" gracefully
+        if (
+          err instanceof Error &&
+          err.message.includes('Unexpected end of form')
+        ) {
+          console.warn(
+            'Busboy: Incomplete multipart stream, using partial data'
+          )
+
+          // If we got at least some fields, use them
+          if (Object.keys(fields).length > 0 || Object.keys(files).length > 0) {
+            req.body = {
+              ...fields,
+              files: Object.keys(files).length > 0 ? files : undefined,
+            }
+            return resolve()
+          }
+        }
+
+        console.error('Busboy error:', err)
         reject(err)
       })
 

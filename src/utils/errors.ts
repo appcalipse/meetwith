@@ -591,7 +591,7 @@ export class PaidMeetingTypeNotAllowedError extends Error {
 export class SchedulingGroupLimitExceededError extends Error {
   constructor() {
     super(
-      `Free tier allows only 5 scheduling groups. Upgrade to Pro for unlimited scheduling groups.`
+      `Free tier allows joining up to 5 groups. Upgrade to Pro to join unlimited groups and create your own.`
     )
     this.name = 'SchedulingGroupLimitExceededError'
   }

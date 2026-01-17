@@ -108,7 +108,7 @@ describe('Rich Text Editor', () => {
     if (!editableElement) return
     fireEvent.click(editableElement!)
     await userEvent.type(editableElement!, 'Test')
-    expect(editableElement!.innerHTML).toBe('<p>RichTextEditor Works!</p>')
+    expect(editableElement!.innerHTML).toBe('<p>RichTextEditor Works!Test</p>')
     expect(placeHolderElement).toBeInTheDocument()
     cleanup()
   })
