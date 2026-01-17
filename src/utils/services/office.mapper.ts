@@ -32,7 +32,8 @@ export class Office365EventMapper {
     o365Event: MicrosoftGraphEvent,
     calendarId: string,
     calendarName: string,
-    accountEmail: string
+    accountEmail: string,
+    isReadOnlyCalendar: boolean = false
   ): Promise<UnifiedEvent> {
     const permissions: MeetingPermissions[] = []
     const isOrganizer =
@@ -58,6 +59,7 @@ export class Office365EventMapper {
       etag: o365Event.changeKey,
       id: await this.generateInternalId(o365Event),
       isAllDay: o365Event.isAllDay || false,
+      isReadOnlyCalendar,
 
       lastModified: o365Event.lastModifiedDateTime
         ? new Date(o365Event.lastModifiedDateTime)
