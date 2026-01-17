@@ -378,28 +378,29 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
             />
           </Tooltip>
         )}
-        {isSchedulerOrOwner && (
-          <Tooltip label="Cancel meeting for all" placement="top">
-            <IconButton
-              aria-label="remove"
-              bg={menuBgColor}
-              color={iconColor}
-              icon={<MdCancel size={16} />}
-              onClick={() => {
-                if (isCalendarEvent(slot)) {
-                  handleCancel()
-                } else {
-                  if (slot.id.includes('_')) {
-                    setCurrentAction(MeetingAction.CANCEL_MEETING)
-                    onEditModeConfirmOpen()
-                  } else {
+        {isSchedulerOrOwner &&
+          !(isCalendarEvent(slot) && slot.isReadOnlyCalendar) && (
+            <Tooltip label="Cancel meeting for all" placement="top">
+              <IconButton
+                aria-label="remove"
+                bg={menuBgColor}
+                color={iconColor}
+                icon={<MdCancel size={16} />}
+                onClick={() => {
+                  if (isCalendarEvent(slot)) {
                     handleCancel()
+                  } else {
+                    if (slot.id.includes('_')) {
+                      setCurrentAction(MeetingAction.CANCEL_MEETING)
+                      onEditModeConfirmOpen()
+                    } else {
+                      handleCancel()
+                    }
                   }
-                }
-              }}
-            />
-          </Tooltip>
-        )}
+                }}
+              />
+            </Tooltip>
+          )}
         <Select
           chakraStyles={{
             control: provided => ({
@@ -431,6 +432,9 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
           components={rsvpSelectComponent}
           onChange={change => _onChange(change as RSVPOption)}
           options={RSVP_OPTIONS}
+          isDisabled={
+            isScheduling || (isCalendarEvent(slot) && slot.isReadOnlyCalendar)
+          }
           placeholder="RSVP"
           value={rsvp}
         />
@@ -675,7 +679,8 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
             !duration ||
             !pickedTime ||
             !canEditMeetingDetails ||
-            isScheduling
+            isScheduling ||
+            (isCalendarEvent(slot) && slot.isReadOnlyCalendar)
           }
           isLoading={isScheduling}
           onClick={() => {
