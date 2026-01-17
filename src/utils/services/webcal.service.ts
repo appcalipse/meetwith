@@ -97,7 +97,7 @@ export default class WebCalService implements BaseCalendarService {
    * Fetches all events from the ICS feed (for unified calendar view)
    */
   async getEvents(
-    _calendarIds: string[],
+    calendarsInfo: Array<Pick<CalendarSyncInfo, 'name' | 'calendarId'>>,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -155,6 +155,8 @@ export default class WebCalService implements BaseCalendarService {
             accountEmail: this.email,
             attendees: event.attendees.map(a => a.getValues()),
             calId: this.feedUrl,
+            calName: calendarsInfo.find(cal => cal.calendarId === this.feedUrl)
+              ?.name,
             created: vevent.getFirstPropertyValue('created')?.toString(),
             description: event.description,
             duration: {
@@ -206,7 +208,12 @@ export default class WebCalService implements BaseCalendarService {
         })
         .filter((e): e is WebDAVEvent => e !== null)
       return events.map(event =>
-        WebDAVEventMapper.toUnified(event, this.feedUrl, this.email)
+        WebDAVEventMapper.toUnified(
+          event,
+          this.feedUrl,
+          event.calName || '',
+          this.email
+        )
       )
     } catch (error) {
       Sentry.captureException(error)

@@ -44,6 +44,7 @@ export interface UnifiedEvent<T = Date> {
   source: TimeSlotSource
   sourceEventId: string
   calendarId: string
+  calendarName: string
   accountEmail: string
 
   meeting_url?: Optional<string>

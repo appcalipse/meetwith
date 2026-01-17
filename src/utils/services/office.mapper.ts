@@ -31,6 +31,7 @@ export class Office365EventMapper {
   static async toUnified(
     o365Event: MicrosoftGraphEvent,
     calendarId: string,
+    calendarName: string,
     accountEmail: string
   ): Promise<UnifiedEvent> {
     const permissions: MeetingPermissions[] = []
@@ -51,6 +52,7 @@ export class Office365EventMapper {
       accountEmail,
       attendees: this.mapAttendees(o365Event.attendees || []),
       calendarId,
+      calendarName,
       description: this.extractDescription(o365Event.body),
       end: this.parseDateTime(o365Event.end!),
       etag: o365Event.changeKey,

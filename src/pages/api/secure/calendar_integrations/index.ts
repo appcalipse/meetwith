@@ -46,6 +46,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             calendar.payload
           )
           await integration.refreshConnection()
+          // TODO: use this to update DB level name
         } catch (e) {
           console.error(e)
           // await removeConnectedCalendar(
