@@ -45,6 +45,7 @@ export interface UnifiedEvent<T = Date> {
   sourceEventId: string
   calendarId: string
   calendarName: string
+  isReadOnlyCalendar: boolean
   accountEmail: string
 
   meeting_url?: Optional<string>
