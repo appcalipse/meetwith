@@ -218,17 +218,23 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
         >
           {event.source}
         </Badge>
-        <Badge
-          borderBottomRightRadius={4}
-          borderRadius={0}
-          colorScheme={'primary'}
-          fontSize="xs"
-          px={2}
-          py={1}
-          textTransform="none"
-        >
-          {event.calendarId}
-        </Badge>
+        {event.calendarName && (
+          <Badge
+            borderBottomRightRadius={4}
+            borderRadius={0}
+            colorScheme={'primary'}
+            fontSize="xs"
+            px={2}
+            py={1}
+            textTransform="none"
+          >
+            {event.calendarName}{' '}
+            {event.calendarName.toLowerCase() !==
+            event.accountEmail.toLowerCase()
+              ? ` - ${event.accountEmail}`
+              : ''}
+          </Badge>
+        )}
       </HStack>
       <Box maxWidth="100%" p={6} pt={isRecurring ? 8 : 6}>
         <VStack alignItems="start" gap={6} position="relative">
