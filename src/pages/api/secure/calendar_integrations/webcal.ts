@@ -109,6 +109,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         eventCount: validationResult.eventCount,
       })
     } catch (error) {
+      console.error(error)
       Sentry.captureException(error, {
         extra: { accountAddress, url: url },
       })
@@ -142,6 +143,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         valid: true,
       })
     } catch (error) {
+      console.error(error)
       Sentry.captureException(error, {
         extra: { accountAddress, url: body.url },
       })
