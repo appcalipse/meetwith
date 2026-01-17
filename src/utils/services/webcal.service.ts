@@ -60,6 +60,7 @@ export default class WebCalService implements BaseCalendarService {
           calendarId: this.feedUrl,
           color: undefined,
           enabled: true,
+          isReadOnly: true, // WebCal feeds are always read-only
           name: this.extractCalendarName() || 'External Calendar',
           sync: false,
         },
@@ -97,7 +98,9 @@ export default class WebCalService implements BaseCalendarService {
    * Fetches all events from the ICS feed (for unified calendar view)
    */
   async getEvents(
-    calendarsInfo: Array<Pick<CalendarSyncInfo, 'name' | 'calendarId'>>,
+    calendarsInfo: Array<
+      Pick<CalendarSyncInfo, 'name' | 'calendarId' | 'isReadOnly'>
+    >,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -212,7 +215,8 @@ export default class WebCalService implements BaseCalendarService {
           event,
           this.feedUrl,
           event.calName || '',
-          this.email
+          this.email,
+          true // WebCal feeds are always read-only
         )
       )
     } catch (error) {

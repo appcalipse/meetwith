@@ -114,6 +114,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         calendarId: calendar.url,
         color: calendar.calendarColor && calendar.calendarColor._cdata,
         enabled: index === 0,
+        isReadOnly: false, // CalDAV calendars are assumed writable unless privilege check is implemented
         name:
           typeof calendar.displayName === 'string'
             ? calendar.displayName
@@ -717,7 +718,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     })
   }
   async getEvents(
-    calendarsInfo: Array<Pick<CalendarSyncInfo, 'name' | 'calendarId'>>,
+    calendarsInfo: Array<
+      Pick<CalendarSyncInfo, 'name' | 'calendarId' | 'isReadOnly'>
+    >,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -878,14 +881,19 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       }
     }
 
-    return Array.from(uniqueEventsMap.values()).map(event =>
-      WebDAVEventMapper.toUnified(
+    return Array.from(uniqueEventsMap.values()).map(event => {
+      const calendarInfo = calendarsInfo.find(
+        cal => cal.calendarId === event.calId
+      )
+      const isReadOnly = calendarInfo?.isReadOnly ?? false
+      return WebDAVEventMapper.toUnified(
         event,
         event.calId!,
         event.calName || '',
-        event.accountEmail!
+        event.accountEmail!,
+        isReadOnly
       )
-    )
+    })
   }
 
   async updateEventInstance(
