@@ -10377,7 +10377,56 @@ const getSlotInstance = async (slotInstanceId: string) => {
   }
   return Array.isArray(slotInstance) ? slotInstance[0] : slotInstance
 }
+const syncConnectedCalendars = async (accountAddress: string) => {
+  const calendars = await getConnectedCalendars(accountAddress, {
+    syncOnly: false,
+  })
+  for (const calendar of calendars) {
+    try {
+      if (calendar.provider === TimeSlotSource.WEBCAL) continue
+      const integration = getConnectedCalendarIntegration(
+        accountAddress,
+        calendar.email,
+        calendar.provider,
+        calendar.payload
+      )
+      const refreshedCalendars = await integration.refreshConnection()
 
+      // Update calendar metadata (names and isReadOnly status) from provider
+      if (refreshedCalendars && refreshedCalendars.length > 0) {
+        const updatedCalendars = calendar.calendars.map(existingCal => {
+          const refreshedCal = refreshedCalendars.find(
+            rc => rc.calendarId === existingCal.calendarId
+          )
+          if (refreshedCal) {
+            return {
+              ...existingCal,
+              name: refreshedCal.name,
+              isReadOnly: refreshedCal.isReadOnly ?? existingCal.isReadOnly,
+              color: refreshedCal.color ?? existingCal.color,
+            }
+          }
+          return existingCal
+        })
+
+        await addOrUpdateConnectedCalendar(
+          accountAddress,
+          calendar.email,
+          calendar.provider,
+          updatedCalendars,
+          calendar.payload
+        )
+      }
+    } catch (e) {
+      console.error(e)
+      // await removeConnectedCalendar(
+      //   req.session.account!.address,
+      //   calendar.email,
+      //   calendar.provider
+      // )
+    }
+  }
+}
 export {
   acceptContactInvite,
   addContactInvite,
@@ -10579,4 +10628,5 @@ export {
   verifyVerificationCode,
   workMeetingTypeGates,
   getSeriesIdMapping,
+  syncConnectedCalendars,
 }
