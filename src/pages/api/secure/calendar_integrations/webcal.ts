@@ -17,6 +17,7 @@ import {
 } from '@/utils/database'
 import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
 import { SIZE_5_MB, withFileUpload } from '@/utils/uploads'
+import { isValidEmail } from '@/utils/validations'
 
 export const config = {
   api: {
@@ -49,7 +50,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     try {
       const isPro = await isProAccountAsync(accountAddress)
 
-      const validationResult = await validateWebcalFeed(url, body.email)
+      const validationResult = await validateWebcalFeed(url, body.title)
 
       if (!validationResult.valid) {
         return res.status(400).json({
@@ -123,7 +124,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } else if (req.method === 'PUT') {
     try {
-      const validationResult = await validateWebcalFeed(body.url!, body.email)
+      const validationResult = await validateWebcalFeed(body.url!, body.title)
 
       if (!validationResult.valid) {
         return res.status(400).json({
@@ -162,9 +163,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
  * - Searches for user's email in calendar events
  * - Extracts calendar metadata
  */
-async function validateWebcalFeed(
+export async function validateWebcalFeed(
   url: string,
-  providedEmail?: string
+  title: string
 ): Promise<{
   valid: boolean
   error?: string
@@ -255,11 +256,15 @@ async function validateWebcalFeed(
       console.warn('Calendar feed has no events')
     }
 
-    let userEmail = providedEmail
-
-    if (!userEmail) {
-      userEmail = await findUserEmailInCalendar(vcalendar, vevents)
-    }
+    const calendarName =
+      vcalendar.getFirstPropertyValue('x-wr-calname') ||
+      vcalendar.getFirstPropertyValue('name') ||
+      title
+    const userEmail = await findUserEmailInCalendar(
+      vcalendar,
+      vevents,
+      calendarName as string
+    )
 
     return {
       eventCount,
@@ -287,7 +292,8 @@ async function validateWebcalFeed(
  */
 async function findUserEmailInCalendar(
   vcalendar: any,
-  vevents: any[]
+  vevents: any[],
+  calendarName: string
 ): Promise<string | undefined> {
   const possibleEmails = new Set<string>()
 
@@ -335,6 +341,8 @@ async function findUserEmailInCalendar(
     return Array.from(possibleEmails)[0]
   } else if (possibleEmails.size > 1) {
     return Array.from(possibleEmails)[0]
+  } else {
+    return calendarName
   }
 
   return undefined
@@ -371,14 +379,6 @@ function extractEmailFromAttendeeValues(values: string[]): string | undefined {
   }
 
   return undefined
-}
-
-/**
- * Simple email validation
- */
-function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
 }
 
 export default withSessionRoute(
