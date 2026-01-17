@@ -24,6 +24,7 @@ export const config = {
     bodyParser: false,
   },
 }
+
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!req.session.account) {
     return res.status(401).json({ message: 'Authentication required' })
