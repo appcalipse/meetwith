@@ -12,6 +12,7 @@ import {
   getConnectedCalendars,
   isProAccountAsync,
   removeConnectedCalendar,
+  syncConnectedCalendars,
 } from '@/utils/database'
 import { CalendarSyncLimitExceededError } from '@/utils/errors'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
@@ -34,31 +35,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const totalCount = await countCalendarIntegrations(accountAddress)
 
-    // Force all connected calendars to renew its Tokens in background
-    // if needed for displaying calendars...
-    ;(async () => {
-      for (const calendar of calendars) {
-        try {
-          const integration = getConnectedCalendarIntegration(
-            accountAddress,
-            calendar.email,
-            calendar.provider,
-            calendar.payload
-          )
-          await integration.refreshConnection()
-          // TODO: use this to update DB level name
-        } catch (e) {
-          console.error(e)
-          // await removeConnectedCalendar(
-          //   req.session.account!.address,
-          //   calendar.email,
-          //   calendar.provider
-          // )
-        }
-      }
-    })()
-
     try {
+      // Force all connected calendars to renew its Tokens in background
+      // if needed for displaying calendars...
+      void syncConnectedCalendars(accountAddress)
       // Calculate metadata for free tier
       const hidden = !isPro ? Math.max(0, totalCount - 1) : 0
       const upgradeRequired = !isPro && totalCount >= 1
