@@ -286,6 +286,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
 
   async getEventsCalendarId(
     calendarId: string,
+    calendarName: string,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -359,19 +360,20 @@ export class Office365CalendarService implements IOffcie365CalendarService {
           await Office365EventMapper.toUnified(
             event,
             calendarId,
+            calendarName,
             this.getConnectedEmail()
           )
       )
     )
   }
   async getEvents(
-    calendarIds: string[],
+    calendars: Array<Pick<CalendarSyncInfo, 'name' | 'calendarId'>>,
     dateFrom: string,
     dateTo: string
   ): Promise<UnifiedEvent[]> {
     const events = await Promise.all(
-      calendarIds.map(calId =>
-        this.getEventsCalendarId(calId, dateFrom, dateTo)
+      calendars.map(cal =>
+        this.getEventsCalendarId(cal.calendarId, cal.name, dateFrom, dateTo)
       )
     )
     return events.flat()

@@ -83,7 +83,7 @@ export interface BaseCalendarService {
   deleteEvent(meeting_id: string, calendarId: string): Promise<void>
 
   getEvents(
-    calendarIds: string[],
+    calendars: Array<Pick<CalendarSyncInfo, 'name' | 'calendarId'>>,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
