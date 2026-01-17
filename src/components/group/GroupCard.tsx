@@ -42,6 +42,7 @@ import { GetGroupsFullResponse, MemberType, MenuOptions } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { updateGroupRole } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 
 import GroupAvatar from './GroupAvatar'
 import GroupMemberCard from './GroupMemberCard'
@@ -66,6 +67,10 @@ const GroupCard: React.FC<IGroupCard> = props => {
     member => member.address === props.currentAccount.address
   )
   const [isAdmin, setIsAdmin] = useState(actor?.role === MemberType.ADMIN)
+
+  const activeSubscription = getActiveProSubscription(props.currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>(
     props.members?.map(member => member.role) || []
   )
@@ -245,6 +250,12 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 onClick={() =>
                   push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
                 }
+                isDisabled={!hasProAccess}
+                title={
+                  !hasProAccess
+                    ? 'Upgrade to Pro to schedule with groups'
+                    : undefined
+                }
               >
                 Schedule
               </Button>
@@ -375,6 +386,12 @@ const GroupCard: React.FC<IGroupCard> = props => {
                   flex={1}
                   onClick={() =>
                     push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
+                  }
+                  isDisabled={!hasProAccess}
+                  title={
+                    !hasProAccess
+                      ? 'Upgrade to Pro to schedule with groups'
+                      : undefined
                   }
                 >
                   Schedule

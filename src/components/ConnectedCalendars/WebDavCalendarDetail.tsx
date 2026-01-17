@@ -9,13 +9,10 @@ import {
   Link,
   Text,
 } from '@chakra-ui/react'
-import { useRouter } from 'next/router'
 import { useContext, useState } from 'react'
 import { v4 } from 'uuid'
 
-import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
-import { EditMode } from '@/types/Dashboard'
 import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
   addOrUpdateICloud,

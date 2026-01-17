@@ -37,6 +37,7 @@ import {
   getHideGroupAvailabilityLabels,
   setHideGroupAvailabilityLabels,
 } from '@/utils/storage'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
 import Groups, { GroupRef } from '../group/Groups'
@@ -59,7 +60,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     enabled: !!currentAccount?.address,
     staleTime: 30000,
   })
-  const canCreateGroup = !groupsMetadata?.upgradeRequired
+
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+  const canCreateGroup = hasProAccess && !groupsMetadata?.upgradeRequired
 
   // Preference to hide availability block labels in group cards
   const [hideAvailabilityLabels, setHideAvailabilityLabels] = useState(() =>
@@ -210,8 +214,14 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               Create new group
             </Button>
             {!canCreateGroup && (
-              <Text fontSize="14px" color="neutral.400">
-                Unlock unlimited groups with PRO{' '}
+              <Text
+                fontSize="14px"
+                color="neutral.400"
+                lineHeight="1.4"
+                maxW="280px"
+              >
+                To see all your groups, schedule with the groups and create more
+                groups Go PRO{' '}
                 <Button
                   variant="link"
                   colorScheme="primary"
@@ -281,6 +291,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             align="flex-end"
             display={{ base: 'none', md: 'flex' }}
             spacing={2}
+            w="fit-content"
           >
             <Button
               onClick={() => router.push('/dashboard/create-group')}
@@ -297,8 +308,15 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               Create new group
             </Button>
             {!canCreateGroup && (
-              <Text fontSize="14px" color="neutral.400" textAlign="right">
-                Unlock unlimited groups with PRO{' '}
+              <Text
+                fontSize="14px"
+                color="neutral.400"
+                textAlign="right"
+                lineHeight="1.4"
+                maxW="280px"
+              >
+                To see all your groups, schedule with the groups and create more
+                groups, Go{' '}
                 <Button
                   variant="link"
                   colorScheme="primary"
@@ -311,7 +329,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                   height="auto"
                   minW="auto"
                 >
-                  here
+                  PRO
                 </Button>
                 .
               </Text>

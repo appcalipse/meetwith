@@ -35,9 +35,11 @@ import ContactSearchItem from './ContactSearchItem'
 type Props = {
   isOpen: boolean
   onClose: () => void
+  canAddContact?: boolean
 }
 
 const ContactSearchModal = (props: Props) => {
+  const { canAddContact = true } = props
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const [result, setResult] = React.useState<ContactSearch | null>(null)
 
@@ -179,6 +181,7 @@ const ContactSearchModal = (props: Props) => {
                       }-${index}`}
                       index={index}
                       {...account}
+                      canAddContact={canAddContact}
                       handleUpdateResult={() => {
                         const updatedResult = result
                         if (updatedResult?.result) {

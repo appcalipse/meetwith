@@ -3,10 +3,17 @@ import { Interval } from 'luxon'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { Account } from '@/types/Account'
+import { AvailabilityBlock } from '@/types/availability'
 import { ConditionRelation } from '@/types/common'
-import { getAccountFromDB } from '@/utils/database'
+import {
+  getAccountFromDB,
+  getExistingAccountsFromDB,
+  getGroupMembersAvailabilities,
+} from '@/utils/database'
+import { parseMonthAvailabilitiesToDate } from '@/utils/date_helper'
+import { mergeAvailabilityBlocks } from '@/utils/schedule.helper'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
-import { suggestBestSlots } from '@/utils/slots.helper'
+import { AccountAvailabilities, suggestBestSlots } from '@/utils/slots.helper'
 import { isValidEVMAddress } from '@/utils/validations'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -17,33 +24,23 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const addresses: string[] = Array.from(new Set<string>(body.addresses))
       const startDate = new Date(body.startDate)
       const endDate = new Date(body.endDate)
+      const groupId = body.groupId
       const duration = body.duration
-
       const sanitizedAddresses = addresses.filter(address =>
         isValidEVMAddress(address)
       )
-
-      const accounts: Account[] = []
-      const getAccount = async (address: string) => {
-        try {
-          const account = await getAccountFromDB(address)
-          accounts.push(account)
-        } catch (_error) {
-          //if account doesn't exist, just ignore
-        }
-      }
-      const promises = []
-      for (const address of sanitizedAddresses) {
-        promises.push(getAccount(address))
-      }
-      await Promise.all(promises)
-
-      const busySlots: Interval[] =
-        await CalendarBackendHelper.getMergedBusySlotsForMultipleAccounts(
-          accounts.map(account => account.address),
-          ConditionRelation.OR,
+      const promises: [
+        Promise<Account[]>,
+        Promise<Interval[]>,
+        Promise<Record<string, AvailabilityBlock[]>> | undefined
+      ] = [
+        getExistingAccountsFromDB(sanitizedAddresses, true),
+        CalendarBackendHelper.getMergedBusySlotsForMultipleAccounts(
+          sanitizedAddresses,
+          ConditionRelation.AND,
           startDate,
-          endDate
+          endDate,
+          true
         ).then(busySlots =>
           busySlots.map(busySlot => {
             return Interval.fromDateTimes(
@@ -51,22 +48,59 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               new Date(busySlot.end)
             )
           })
-        )
+        ),
+        undefined,
+      ]
+
+      if (groupId) {
+        promises[2] = getGroupMembersAvailabilities(groupId)
+      }
+      const [accounts, busySlots, grouMembersAvailaibilities] =
+        await Promise.all(promises)
+
+      const accountAvailaibilities: Record<string, AccountAvailabilities> = {}
+      for (const account of accounts) {
+        accountAvailaibilities[account.address] = {
+          address: account.address,
+          availabilities: parseMonthAvailabilitiesToDate(
+            account.preferences.availabilities || [],
+            startDate,
+            endDate,
+            account.preferences.timezone || 'UTC'
+          ),
+        }
+      }
+
+      if (grouMembersAvailaibilities) {
+        for (const account of accounts) {
+          const groupAvailaibility = grouMembersAvailaibilities[account.address]
+          if (groupAvailaibility && groupAvailaibility.length > 0) {
+            accountAvailaibilities[account.address] = {
+              address: account.address,
+              availabilities: mergeAvailabilityBlocks(
+                groupAvailaibility,
+                startDate,
+                endDate
+              ),
+            }
+          }
+        }
+      }
       const suggestedTimes = suggestBestSlots(
         startDate,
         duration,
         endDate,
         'UTC',
         busySlots,
-        accounts
-      )
-      return res.status(200).json(
-        suggestedTimes.map(slot => ({
-          end: slot.end.toJSDate(),
-          start: slot.start.toJSDate(),
-        }))
-      )
+        Object.values(accountAvailaibilities)
+      ).map(slot => ({
+        end: slot.end.toJSDate(),
+        start: slot.start.toJSDate(),
+      }))
+
+      return res.status(200).json(suggestedTimes)
     } catch (e) {
+      console.error(e)
       Sentry.captureException(e, {
         extra: {
           addresses: req.body.addresses,
