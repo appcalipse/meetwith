@@ -16,6 +16,7 @@ import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { getBaseEventId } from '../calendar_sync_helpers'
 import { MeetingPermissions } from '../constants/schedule'
 import { isJson } from '../generic_utils'
+import { isValidUrl } from '../validations'
 import { CalendarServiceHelper } from './calendar.helper'
 
 interface DateTimeTimeZone {
@@ -31,7 +32,8 @@ export class GoogleEventMapper {
     googleEvent: calendar_v3.Schema$Event,
     calendarId: string,
     calendarName: string,
-    accountEmail: string
+    accountEmail: string,
+    isReadOnlyCalendar: boolean = false
   ): UnifiedEvent {
     const permissions: MeetingPermissions[] = []
     const isOrganizer = googleEvent.organizer?.self
@@ -57,16 +59,13 @@ export class GoogleEventMapper {
       etag: googleEvent.etag,
       id: this.generateInternalId(googleEvent),
       isAllDay: !googleEvent.start?.dateTime, // If no dateTime, it's all-day
+      isReadOnlyCalendar,
 
       lastModified: googleEvent.updated
         ? new Date(googleEvent.updated)
         : new Date(),
 
-      meeting_url:
-        googleEvent.location ||
-        googleEvent.hangoutLink ||
-        googleEvent.conferenceData?.entryPoints?.find(ep => ep.uri)?.uri ||
-        '',
+      meeting_url: this.getCalendarMeetingUrl(googleEvent) || '',
       permissions,
       providerData: {
         google: {
@@ -147,6 +146,28 @@ export class GoogleEventMapper {
   }
 
   // Helper Methods
+  private static getCalendarMeetingUrl(googleEvent: calendar_v3.Schema$Event) {
+    const entryPointUrl = googleEvent.conferenceData?.entryPoints?.find(
+      ep => ep.uri
+    )?.uri
+    if (entryPointUrl && isValidUrl(entryPointUrl)) {
+      return entryPointUrl
+    }
+    const hangoutUrl = googleEvent.hangoutLink
+    if (hangoutUrl && isValidUrl(hangoutUrl)) {
+      return hangoutUrl
+    }
+    if (googleEvent.location) {
+      if (isValidUrl(googleEvent.location)) {
+        return googleEvent.location
+      }
+      // Try to extract URL from location text (e.g., "Meeting at https://zoom.us/j/123456")
+      const extractedUrl = this.extractUrlFromText(googleEvent.location)
+      if (extractedUrl) {
+        return extractedUrl
+      }
+    }
+  }
 
   private static generateInternalId(
     googleEvent: calendar_v3.Schema$Event
@@ -453,6 +474,31 @@ export class GoogleEventMapper {
 
     const ruleset = rrule.toString()
     return isJson(ruleset) ? JSON.parse(ruleset) : [ruleset]
+  }
+
+  /**
+   * Extracts a URL from text that may contain meeting links
+   * e.g., "Meeting at https://zoom.us/j/123456" -> "https://zoom.us/j/123456"
+   */
+  private static extractUrlFromText(text: string): string | null {
+    if (!text) return null
+
+    // URL regex pattern to match http/https URLs
+    const urlPattern = /(https?:\/\/[^\s<>"]+)/gi
+    const matches = text.match(urlPattern)
+
+    if (!matches || matches.length === 0) return null
+
+    // Return the first valid URL found
+    for (const match of matches) {
+      // Clean up potential trailing punctuation
+      const cleanUrl = match.replace(/[.,;!?]+$/, '')
+      if (isValidUrl(cleanUrl)) {
+        return cleanUrl
+      }
+    }
+
+    return null
   }
 
   private static mapDayToGoogle(day: DayOfWeek): string {

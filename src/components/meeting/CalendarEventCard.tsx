@@ -288,7 +288,11 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
               >
                 <Button colorScheme="primary">Join meeting</Button>
               </Link>
-              <Tooltip label="Delete meeting" placement="top">
+              <Tooltip
+                label="Delete meeting"
+                placement="top"
+                display={event.isReadOnlyCalendar ? 'none' : undefined}
+              >
                 <IconButton
                   aria-label="delete"
                   color={iconColor}
@@ -366,7 +370,11 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
               </HStack>
             )}
           </VStack>
-          <HStack alignItems="center" gap={3.5}>
+          <HStack
+            alignItems="center"
+            gap={3.5}
+            display={event.isReadOnlyCalendar ? 'none' : undefined}
+          >
             <Text fontWeight={700}>RSVP:</Text>
             <HStack alignItems="center" gap={2}>
               <Tag

@@ -369,7 +369,15 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
         )}
       </HStack>
       {actor && (
-        <HStack alignItems="center" gap={3.5}>
+        <HStack
+          alignItems="center"
+          gap={3.5}
+          display={
+            isCalendarEvent(slot) && slot.isReadOnlyCalendar
+              ? 'none'
+              : undefined
+          }
+        >
           <Text fontWeight={700}>RSVP:</Text>
           <HStack alignItems="center" gap={2}>
             <Tag
