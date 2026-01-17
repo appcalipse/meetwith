@@ -1197,6 +1197,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
   }
   private async getEventsCalendarId(
     calendarId: string,
+    calendarName: string,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -1240,17 +1241,17 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       : aggregatedEvents
 
     return filteredEvents.map(event =>
-      GoogleEventMapper.toUnified(event, calendarId, this.email)
+      GoogleEventMapper.toUnified(event, calendarId, calendarName, this.email)
     )
   }
   async getEvents(
-    calendarIds: string[],
+    calendars: Array<Pick<CalendarSyncInfo, 'name' | 'calendarId'>>,
     dateFrom: string,
     dateTo: string
   ): Promise<UnifiedEvent[]> {
     const events = await Promise.all(
-      calendarIds.map(calId =>
-        this.getEventsCalendarId(calId, dateFrom, dateTo)
+      calendars.map(cal =>
+        this.getEventsCalendarId(cal.calendarId, cal.name, dateFrom, dateTo)
       )
     )
     return events.flat()

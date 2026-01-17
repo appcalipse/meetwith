@@ -717,7 +717,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     })
   }
   async getEvents(
-    calendarIds: string[],
+    calendarsInfo: Array<Pick<CalendarSyncInfo, 'name' | 'calendarId'>>,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -771,10 +771,17 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
             if (onlyWithMeetingLinks && !event.location) {
               return null
             }
+            const displayName = calendar.displayName
+            const calName =
+              typeof displayName === 'string'
+                ? displayName
+                : calendarsInfo.find(cal => cal.calendarId === calendar.url)
+                    ?.name
             return {
               accountEmail: this.email,
               attendees: event.attendees.map(a => a.getValues()),
               calId: calendar.url,
+              calName,
               created: vevent.getFirstPropertyValue('created')?.toString(),
               description: event.description,
               duration: {
@@ -840,7 +847,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
 
     // Fetch events for each calendar and chunk in parallel
     const allEventsPromises = calendars
-      .filter(cal => calendarIds.includes(cal.url!))
+      .filter(cal =>
+        calendarsInfo.map(cal => cal.calendarId).includes(cal.url!)
+      )
       .map(async calendar => {
         const chunkPromises = chunks.map(chunk =>
           fetchEventsForCalendar(
@@ -870,7 +879,12 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     }
 
     return Array.from(uniqueEventsMap.values()).map(event =>
-      WebDAVEventMapper.toUnified(event, event.calId!, event.accountEmail!)
+      WebDAVEventMapper.toUnified(
+        event,
+        event.calId!,
+        event.calName || '',
+        event.accountEmail!
+      )
     )
   }
 
