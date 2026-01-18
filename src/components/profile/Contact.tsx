@@ -32,6 +32,7 @@ import { Account } from '@/types/Account'
 import { ContactInvite } from '@/types/Contacts'
 import { logEvent } from '@/utils/analytics'
 import { getContactsMetadata } from '@/utils/api_helper'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 
 import ContactRequests from '../contact/ContactRequests'
 import ContactSearchModal from '../contact/ContactSearchModal'
@@ -72,7 +73,8 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     enabled: !!currentAccount?.address,
     staleTime: 30000,
   })
-  const canAddContact = !contactsMetadata?.upgradeRequired
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
   async function defineCalendarsConnected() {
     setCalendarsConnected(await onboardingContext.connectedCalendarsComplete())
   }
@@ -102,11 +104,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   return (
     <ContactStateContext.Provider value={context}>
       <Flex direction={'column'} maxWidth="100%">
-        <ContactSearchModal
-          isOpen={isOpen}
-          onClose={onClose}
-          canAddContact={canAddContact}
-        />
+        <ContactSearchModal isOpen={isOpen} onClose={onClose} />
         <ConnectCalendarModal
           isOpen={isCalendarConnectionOpen}
           onClose={closeCalendarConnection}
@@ -192,35 +190,9 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                   colorScheme="primary"
                   leftIcon={<FaPlus />}
                   w={'100%'}
-                  isDisabled={!canAddContact}
-                  title={
-                    !canAddContact
-                      ? 'Upgrade to Pro to add more contacts'
-                      : undefined
-                  }
                 >
                   Add new contact
                 </Button>
-                {!canAddContact && contactsMetadata && (
-                  <Text fontSize="14px" color="neutral.400">
-                    {contactsMetadata.contactsAddedThisMonth}/
-                    {contactsMetadata.limit} invites(connections) exhausted for
-                    the month. Upgrade to PRO for more{' '}
-                    <Button
-                      variant="link"
-                      colorScheme="primary"
-                      px={0}
-                      onClick={() => push('/dashboard/settings/subscriptions')}
-                      textDecoration="underline"
-                      fontSize="14px"
-                      height="auto"
-                      minW="auto"
-                    >
-                      here
-                    </Button>
-                    .
-                  </Text>
-                )}
               </VStack>
               <TabList
                 w={{ base: '100%', md: 'auto' }}
@@ -282,43 +254,32 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                   flexShrink={0}
                   colorScheme="primary"
                   leftIcon={<FaPlus />}
-                  isDisabled={!canAddContact}
-                  title={
-                    !canAddContact
-                      ? 'Upgrade to Pro to add more contacts'
-                      : undefined
-                  }
                 >
                   Add new contact
                 </Button>
-                {!canAddContact && contactsMetadata && (
-                  <Text
-                    fontSize="14px"
-                    color="neutral.400"
-                    textAlign="right"
-                    lineHeight="1.4"
-                    maxW="280px"
-                  >
-                    {contactsMetadata.contactsAddedThisMonth}/
-                    {contactsMetadata.limit} invites(connections) exhausted for
-                    the month. Upgrade to PRO for more{' '}
-                    <Button
-                      variant="link"
-                      colorScheme="primary"
-                      px={0}
-                      onClick={() => push('/dashboard/settings/subscriptions')}
-                      textDecoration="underline"
-                      fontSize="14px"
-                      height="auto"
-                      minW="auto"
-                    >
-                      here
-                    </Button>
-                    .
-                  </Text>
-                )}
               </VStack>
             </HStack>
+            {/* Limit text when free user cannot schedule with contacts */}
+            {!hasProAccess && (
+              <Box mb={4} w="100%" textAlign="left">
+                <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
+                  You've maxed out your plan. Upgrade to create more contacts
+                  and schedule with them.{' '}
+                  <Button
+                    variant="link"
+                    colorScheme="primary"
+                    px={0}
+                    onClick={() => push('/dashboard/settings/subscriptions')}
+                    textDecoration="underline"
+                    fontSize="14px"
+                    height="auto"
+                    minW="auto"
+                  >
+                    Go PRO
+                  </Button>
+                </Text>
+              </Box>
+            )}
             {!calendarsConnected && (
               <Text w={'100%'}>
                 Your calendar is not connected, this is preventing your contact
@@ -345,6 +306,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                   currentAccount={currentAccount}
                   search={debouncedValue}
                   ref={contactListRef}
+                  hasProAccess={hasProAccess}
                 />
               </TabPanel>
               <TabPanel p={0}>

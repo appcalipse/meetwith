@@ -3,7 +3,6 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { Contact, LeanContact } from '@/types/Contacts'
 import {
-  countContactsAddedThisMonth,
   getContactLean,
   getContacts,
   initDB,
@@ -20,15 +19,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       if (req.query.metadata === 'true') {
         const isPro = await isProAccountAsync(account_address)
-        const contactsAddedThisMonth = await countContactsAddedThisMonth(
-          account_address
-        )
-        const upgradeRequired = !isPro && contactsAddedThisMonth >= 3
+        const upgradeRequired = !isPro
 
         return res.status(200).json({
           upgradeRequired,
-          contactsAddedThisMonth,
-          limit: 3,
         })
       }
 

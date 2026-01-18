@@ -40,7 +40,6 @@ import {
   AccountNotFoundError,
   CantInviteYourself,
   ContactAlreadyExists,
-  ContactLimitExceededError,
   MemberDoesNotExist,
 } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -210,15 +209,6 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
-        })
-      } else if (e instanceof ContactLimitExceededError) {
-        toast({
-          title: 'Error',
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
         })
       } else if (e instanceof CantInviteYourself) {
         toast({

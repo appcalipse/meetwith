@@ -624,15 +624,6 @@ export class CalendarSyncLimitExceededError extends Error {
   }
 }
 
-export class ContactLimitExceededError extends Error {
-  constructor() {
-    super(
-      `Free tier allows only 3 new contacts per month. Upgrade to Pro for unlimited contacts.`
-    )
-    this.name = 'ContactLimitExceededError'
-  }
-}
-
 export class TransactionCouldBeNotFoundError extends Error {
   constructor(txHash: `0x${string}`) {
     super(`Transaction or receipt not found for hash: ${txHash}`)

@@ -48,7 +48,6 @@ import InviteModal from '../group/InviteModal'
 type Props = {
   currentAccount: Account
   search: string
-  hideAvailabilityLabels?: boolean
 }
 
 export interface GroupRef {
@@ -86,7 +85,7 @@ const DEFAULT_STATE: IGroupModal = {
 export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 
 const Groups = forwardRef<GroupRef, Props>(
-  ({ currentAccount, search, hideAvailabilityLabels = false }: Props, ref) => {
+  ({ currentAccount, search }: Props, ref) => {
     const toast = useToast()
 
     const {
@@ -361,7 +360,6 @@ const Groups = forwardRef<GroupRef, Props>(
                     handleAddNewMember(...args)
                   }}
                   onOpenSettingsModal={() => handleOpenSettingsModal(group.id)}
-                  hideAvailabilityLabels={hideAvailabilityLabels}
                   mt={0}
                   resetState={resetState}
                 />

@@ -136,7 +136,6 @@ import {
   ContactInviteAlreadySent,
   ContactInviteNotForAccount,
   ContactInviteNotFound,
-  ContactLimitExceededError,
   ContactNotFound,
   CouponAlreadyUsed,
   CouponExpired,
@@ -1881,9 +1880,6 @@ export const sendContactListInvite = async (
         throw new ContactAlreadyExists()
       }
       if (e.status && e.status === 403) {
-        if (e.message.includes('Free tier allows only')) {
-          throw new ContactLimitExceededError()
-        }
         throw new CantInviteYourself()
       } else if (e.status && e.status === 409) {
         throw new ContactInviteAlreadySent()
@@ -1904,9 +1900,6 @@ export const addGroupMemberToContact = async (payload: InviteGroupMember) => {
       if (e.status && e.status === 400) {
         throw new ContactAlreadyExists()
       } else if (e.status && e.status === 403) {
-        if (e.message.includes('Free tier allows only')) {
-          throw new ContactLimitExceededError()
-        }
         throw new CantInviteYourself()
       } else if (e.status && e.status === 404) {
         throw new MemberDoesNotExist()
@@ -1936,8 +1929,6 @@ export const getContactsLean = async (limit = 10, offset = 0, query = '') => {
 export const getContactsMetadata = async () => {
   return await internalFetch<{
     upgradeRequired: boolean
-    contactsAddedThisMonth: number
-    limit: number
   }>(`/secure/contact?metadata=true`)
 }
 
