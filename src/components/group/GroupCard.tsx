@@ -51,7 +51,6 @@ export interface IGroupCard extends GetGroupsFullResponse {
   currentAccount: Account
   onAddNewMember: (groupId: string, groupName: string) => void
   onOpenSettingsModal?: () => void
-  hideAvailabilityLabels?: boolean
   mt: number
   resetState: () => void
 }
@@ -214,37 +213,35 @@ const GroupCard: React.FC<IGroupCard> = props => {
               display={{ base: 'none', md: 'flex' }}
             >
               {/* Availability Block Badge */}
-              {!props.hideAvailabilityLabels &&
-                displayAvailabilities &&
-                displayAvailabilities.length > 0 && (
-                  <HStack gap={2} flexWrap="wrap">
-                    {displayAvailabilities.slice(0, 2).map(block => (
-                      <Badge
-                        key={block.id}
-                        bg="bg-surface-tertiary-2"
-                        color="text-primary"
-                        borderRadius={6}
-                        fontSize="xs"
-                        px={2}
-                        py={0.5}
-                      >
-                        {block.title}
-                      </Badge>
-                    ))}
-                    {displayAvailabilities.length > 2 && (
-                      <Badge
-                        bg="bg-surface-tertiary-2"
-                        color="text-primary"
-                        borderRadius={6}
-                        fontSize="xs"
-                        px={2}
-                        py={0.5}
-                      >
-                        +{displayAvailabilities.length - 2} more
-                      </Badge>
-                    )}
-                  </HStack>
-                )}
+              {displayAvailabilities && displayAvailabilities.length > 0 && (
+                <HStack gap={2} flexWrap="wrap">
+                  {displayAvailabilities.slice(0, 2).map(block => (
+                    <Badge
+                      key={block.id}
+                      bg="bg-surface-tertiary-2"
+                      color="text-primary"
+                      borderRadius={6}
+                      fontSize="xs"
+                      px={2}
+                      py={0.5}
+                    >
+                      {block.title}
+                    </Badge>
+                  ))}
+                  {displayAvailabilities.length > 2 && (
+                    <Badge
+                      bg="bg-surface-tertiary-2"
+                      color="text-primary"
+                      borderRadius={6}
+                      fontSize="xs"
+                      px={2}
+                      py={0.5}
+                    >
+                      +{displayAvailabilities.length - 2} more
+                    </Badge>
+                  )}
+                </HStack>
+              )}
               <Button
                 colorScheme="primary"
                 onClick={() =>
@@ -342,37 +339,35 @@ const GroupCard: React.FC<IGroupCard> = props => {
               display={{ base: 'flex', md: 'none' }}
             >
               {/* Availability badges - full width, can wrap */}
-              {!props.hideAvailabilityLabels &&
-                displayAvailabilities &&
-                displayAvailabilities.length > 0 && (
-                  <HStack gap={2} flexWrap="wrap" width="100%">
-                    {displayAvailabilities.slice(0, 2).map(block => (
-                      <Badge
-                        key={block.id}
-                        bg="bg-surface-tertiary-2"
-                        color="text-primary"
-                        borderRadius={6}
-                        fontSize="xs"
-                        px={2}
-                        py={0.5}
-                      >
-                        {block.title}
-                      </Badge>
-                    ))}
-                    {displayAvailabilities.length > 2 && (
-                      <Badge
-                        bg="bg-surface-tertiary-2"
-                        color="text-primary"
-                        borderRadius={6}
-                        fontSize="xs"
-                        px={2}
-                        py={0.5}
-                      >
-                        +{displayAvailabilities.length - 2} more
-                      </Badge>
-                    )}
-                  </HStack>
-                )}
+              {displayAvailabilities && displayAvailabilities.length > 0 && (
+                <HStack gap={2} flexWrap="wrap" width="100%">
+                  {displayAvailabilities.slice(0, 2).map(block => (
+                    <Badge
+                      key={block.id}
+                      bg="bg-surface-tertiary-2"
+                      color="text-primary"
+                      borderRadius={6}
+                      fontSize="xs"
+                      px={2}
+                      py={0.5}
+                    >
+                      {block.title}
+                    </Badge>
+                  ))}
+                  {displayAvailabilities.length > 2 && (
+                    <Badge
+                      bg="bg-surface-tertiary-2"
+                      color="text-primary"
+                      borderRadius={6}
+                      fontSize="xs"
+                      px={2}
+                      py={0.5}
+                    >
+                      +{displayAvailabilities.length - 2} more
+                    </Badge>
+                  )}
+                </HStack>
+              )}
 
               {/* Action buttons - separate row, won't get squeezed */}
               <HStack

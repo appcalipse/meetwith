@@ -4,17 +4,14 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { InviteGroupMember } from '@/types/Contacts'
 import {
   addContactInvite,
-  countContactsAddedThisMonth,
   getGroupMembersOrInvite,
   initDB,
-  isProAccountAsync,
   isUserContact,
 } from '@/utils/database'
 import {
   CantInviteYourself,
   ContactAlreadyExists,
   ContactInviteAlreadySent,
-  ContactLimitExceededError,
   MemberDoesNotExist,
 } from '@/utils/errors'
 
@@ -33,17 +30,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const isContact = await isUserContact(account_address, address)
       if (isContact) {
         throw new ContactAlreadyExists()
-      }
-
-      const isPro = await isProAccountAsync(account_address)
-
-      if (!isPro) {
-        const contactsAddedThisMonth = await countContactsAddedThisMonth(
-          account_address
-        )
-        if (contactsAddedThisMonth >= 3) {
-          throw new ContactLimitExceededError()
-        }
       }
 
       const member = await getGroupMembersOrInvite(groupId, address, state)
@@ -66,9 +52,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(409).send(e.message)
       } else if (e instanceof MemberDoesNotExist) {
         return res.status(404).send(e.message)
-      }
-      if (e instanceof ContactLimitExceededError) {
-        return res.status(403).send(e.message)
       }
 
       console.error('Error sending contact invite:', e)
