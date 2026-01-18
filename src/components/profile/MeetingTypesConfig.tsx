@@ -207,46 +207,47 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
             <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
               Meeting Types
             </Heading>
-            <VStack align="flex-end" spacing={2}>
-              <Button
-                colorScheme="primary"
-                onClick={openModal}
-                leftIcon={<AddIcon width={15} height={15} />}
-                fontSize={{
-                  base: 'xs',
-                  md: 'md',
-                }}
-                isDisabled={!canCreateMeetingType}
-                title={
-                  !canCreateMeetingType
-                    ? 'Upgrade to Pro to create more meeting types'
-                    : undefined
-                }
-              >
-                New Meeting Type
-              </Button>
-              {!canCreateMeetingType && (
-                <Text fontSize="14px" color="neutral.400" textAlign="right">
-                  Unlock unlimited meeting types with PRO{' '}
-                  <Button
-                    variant="link"
-                    colorScheme="primary"
-                    px={0}
-                    onClick={() =>
-                      router.push('/dashboard/settings/subscriptions')
-                    }
-                    textDecoration="underline"
-                    fontSize="14px"
-                    height="auto"
-                    minW="auto"
-                  >
-                    here
-                  </Button>
-                  .
-                </Text>
-              )}
-            </VStack>
+            <Button
+              colorScheme="primary"
+              onClick={openModal}
+              leftIcon={<AddIcon width={15} height={15} />}
+              fontSize={{
+                base: 'xs',
+                md: 'md',
+              }}
+              isDisabled={!canCreateMeetingType}
+              title={
+                !canCreateMeetingType
+                  ? 'Upgrade to Pro to create more meeting types'
+                  : undefined
+              }
+            >
+              New Meeting Type
+            </Button>
           </HStack>
+          {/* Limit text when free user cannot create more meeting types */}
+          {!canCreateMeetingType && (
+            <Box mb={4} w="100%" textAlign="left">
+              <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
+                Unlock unlimited meeting types with PRO{' '}
+                <Button
+                  variant="link"
+                  colorScheme="primary"
+                  px={0}
+                  onClick={() =>
+                    router.push('/dashboard/settings/subscriptions')
+                  }
+                  textDecoration="underline"
+                  fontSize="14px"
+                  height="auto"
+                  minW="auto"
+                >
+                  here
+                </Button>
+                .
+              </Text>
+            </Box>
+          )}
           <HStack
             width="100%"
             alignItems="flex-start"

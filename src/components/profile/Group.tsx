@@ -2,7 +2,6 @@ import {
   Badge,
   Box,
   Button,
-  Checkbox,
   Flex,
   Heading,
   HStack,
@@ -33,10 +32,6 @@ import {
   getGroupsFullWithMetadata,
   listConnectedCalendars,
 } from '@/utils/api_helper'
-import {
-  getHideGroupAvailabilityLabels,
-  setHideGroupAvailabilityLabels,
-} from '@/utils/storage'
 import { getActiveProSubscription } from '@/utils/subscription_manager'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
@@ -64,16 +59,6 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const activeSubscription = getActiveProSubscription(currentAccount)
   const hasProAccess = Boolean(activeSubscription)
   const canCreateGroup = hasProAccess && !groupsMetadata?.upgradeRequired
-
-  // Preference to hide availability block labels in group cards
-  const [hideAvailabilityLabels, setHideAvailabilityLabels] = useState(() =>
-    getHideGroupAvailabilityLabels(currentAccount?.address || '')
-  )
-
-  const handleToggleHideLabels = (checked: boolean) => {
-    setHideAvailabilityLabels(checked)
-    setHideGroupAvailabilityLabels(currentAccount?.address || '', checked)
-  }
 
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
@@ -197,6 +182,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             mt={4}
             mb={4}
             spacing={2}
+            minW={0}
           >
             <Button
               onClick={() => router.push('/dashboard/create-group')}
@@ -213,32 +199,6 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             >
               Create new group
             </Button>
-            {!canCreateGroup && (
-              <Text
-                fontSize="14px"
-                color="neutral.400"
-                lineHeight="1.4"
-                maxW="280px"
-              >
-                To see all your groups, schedule with the groups and create more
-                groups Go PRO{' '}
-                <Button
-                  variant="link"
-                  colorScheme="primary"
-                  px={0}
-                  onClick={() =>
-                    router.push('/dashboard/settings/subscriptions')
-                  }
-                  textDecoration="underline"
-                  fontSize="14px"
-                  height="auto"
-                  minW="auto"
-                >
-                  here
-                </Button>
-                .
-              </Text>
-            )}
           </VStack>
           <TabList
             w={{ base: '100%', md: 'auto' }}
@@ -307,68 +267,36 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             >
               Create new group
             </Button>
-            {!canCreateGroup && (
-              <Text
-                fontSize="14px"
-                color="neutral.400"
-                textAlign="right"
-                lineHeight="1.4"
-                maxW="280px"
-              >
-                To see all your groups, schedule with the groups and create more
-                groups, Go{' '}
-                <Button
-                  variant="link"
-                  colorScheme="primary"
-                  px={0}
-                  onClick={() =>
-                    router.push('/dashboard/settings/subscriptions')
-                  }
-                  textDecoration="underline"
-                  fontSize="14px"
-                  height="auto"
-                  minW="auto"
-                >
-                  PRO
-                </Button>
-                .
-              </Text>
-            )}
           </VStack>
         </HStack>
 
-        {/* Hide availability labels checkbox */}
-        <HStack mb={4}>
-          <Checkbox
-            isChecked={hideAvailabilityLabels}
-            onChange={e => handleToggleHideLabels(e.target.checked)}
-            size="md"
-            sx={{
-              '.chakra-checkbox__control': {
-                bg: 'transparent',
-                borderColor: 'border-subtle',
-                _checked: {
-                  bg: 'primary.200',
-                  borderColor: 'primary.200',
-                  color: 'neutral.900',
-                },
-              },
-              '.chakra-checkbox__label': {
-                color: 'text-primary',
-                fontSize: 'sm',
-              },
-            }}
-          >
-            Hide the availability block labels for groups
-          </Checkbox>
-        </HStack>
+        {/* Limit text when free user cannot create groups */}
+        {!canCreateGroup && (
+          <HStack mb={4}>
+            <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
+              You've maxed out your plan. Upgrade to create more groups and
+              schedule with groups.{' '}
+              <Button
+                variant="link"
+                colorScheme="primary"
+                px={0}
+                onClick={() => router.push('/dashboard/settings/subscriptions')}
+                textDecoration="underline"
+                fontSize="14px"
+                height="auto"
+                minW="auto"
+              >
+                Go PRO
+              </Button>
+            </Text>
+          </HStack>
+        )}
 
         <TabPanels p={0}>
           <TabPanel p={0}>
             <Groups
               currentAccount={currentAccount}
               search={debouncedValue}
-              hideAvailabilityLabels={hideAvailabilityLabels}
               ref={groupRef}
             />
           </TabPanel>

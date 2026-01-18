@@ -109,7 +109,6 @@ const OngoingPolls = ({
           >
             here
           </Button>
-          .
         </Text>
       )}
       {isLoadingOngoing && debouncedSearchQuery ? (

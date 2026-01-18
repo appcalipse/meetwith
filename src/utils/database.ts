@@ -5700,35 +5700,6 @@ const acceptContactInvite = async (
     throw new Error(deleteError.message)
   }
 }
-const countContactsAddedThisMonth = async (
-  accountAddress: string
-): Promise<number> => {
-  const now = new Date()
-  const nowISO = now.toISOString()
-
-  const firstDayOfMonth = DateTime.now().startOf('month').toISO()
-
-  if (!firstDayOfMonth) {
-    throw new Error('Failed to calculate first day of month')
-  }
-
-  const { count, error } = await db.supabase
-    .from('contact')
-    .select('*', { count: 'exact', head: true })
-    .eq('account_owner_address', accountAddress.toLowerCase())
-    .eq('status', ContactStatus.ACTIVE)
-    .gte('created_at', firstDayOfMonth)
-    .lte('created_at', nowISO)
-
-  if (error) {
-    Sentry.captureException(error)
-    throw new Error(
-      `Failed to count contacts added this month: ${error.message}`
-    )
-  }
-
-  return count || 0
-}
 
 const addContactInvite = async (
   account_address: string,
@@ -10512,7 +10483,6 @@ export {
   countActiveQuickPollsCreatedThisMonth,
   countCalendarIntegrations,
   countCalendarSyncs,
-  countContactsAddedThisMonth,
   countGroups,
   countMeetingTypes,
   createCheckOutTransaction,

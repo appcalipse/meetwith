@@ -32,6 +32,7 @@ import ContactListItem from './ContactListItem'
 type Props = {
   currentAccount: Account | null
   search: string
+  hasProAccess?: boolean
 }
 export interface ContactLisRef {
   reloadContacts: () => void
@@ -40,7 +41,7 @@ export interface ContactLisRef {
 const PAGE_SIZE = 10
 
 const ContactsList = forwardRef<ContactLisRef, Props>(
-  ({ currentAccount, search }: Props, ref) => {
+  ({ currentAccount, search, hasProAccess = true }: Props, ref) => {
     const loadMoreRef = useRef<HTMLTableRowElement | null>(null)
 
     const {
@@ -187,6 +188,7 @@ const ContactsList = forwardRef<ContactLisRef, Props>(
               index={index}
               sync={handleContactSync}
               refetch={handleRefetch}
+              hasProAccess={hasProAccess}
             />
           ))}
           {hasNextPage && (
