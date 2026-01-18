@@ -17,7 +17,6 @@ import {
   CantInviteYourself,
   ContactAlreadyExists,
   ContactInviteAlreadySent,
-  ContactLimitExceededError,
 } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
@@ -26,11 +25,9 @@ import { Avatar } from '../profile/components/Avatar'
 interface IContactSearchItem extends SearchAccount {
   index: number
   handleUpdateResult: (result: SearchAccount) => void
-  canAddContact?: boolean
 }
 
 const ContactSearchItem = (props: IContactSearchItem) => {
-  const { canAddContact = true } = props
   const { isLoading: isInviteLoading, mutateAsync: sendInviteAsync } =
     useMutation({
       mutationFn: (data: { email?: string; address?: string }) =>
@@ -69,15 +66,6 @@ const ContactSearchItem = (props: IContactSearchItem) => {
           position: 'top',
         })
       } else if (e instanceof ContactInviteAlreadySent) {
-        toast({
-          title: 'Error',
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
-      } else if (e instanceof ContactLimitExceededError) {
         toast({
           title: 'Error',
           description: e.message,
@@ -138,7 +126,7 @@ const ContactSearchItem = (props: IContactSearchItem) => {
           <Button
             colorScheme="primary"
             isLoading={isInviteLoading}
-            isDisabled={isInviteLoading || props.is_invited || !canAddContact}
+            isDisabled={isInviteLoading || props.is_invited}
             _disabled={{
               bg: props.is_invited ? 'neutral.400' : '',
             }}
@@ -146,9 +134,6 @@ const ContactSearchItem = (props: IContactSearchItem) => {
               bg: props.is_invited ? 'neutral.400' : 'primary.300',
             }}
             onClick={() => handleInvite()}
-            title={
-              !canAddContact ? 'Upgrade to Pro to add more contacts' : undefined
-            }
           >
             {props.is_invited ? 'Request Already Sent' : 'Send request'}
           </Button>

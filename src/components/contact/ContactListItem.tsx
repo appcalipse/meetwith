@@ -11,7 +11,6 @@ import {
   AccountNotFoundError,
   CantInviteYourself,
   ContactAlreadyExists,
-  ContactLimitExceededError,
 } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
@@ -22,9 +21,16 @@ type Props = {
   index: number
   sync: (id: string) => void
   refetch: () => void
+  hasProAccess?: boolean
 }
 
-const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
+const ContactListItem: FC<Props> = ({
+  account,
+  index,
+  sync,
+  refetch,
+  hasProAccess = true,
+}) => {
   const [isRemoving, setIsRemoving] = React.useState(false)
   const { push } = useRouter()
   const toast = useToast()
@@ -88,15 +94,6 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
           status: 'error',
           duration: 5000,
           isClosable: true,
-        })
-      } else if (e instanceof ContactLimitExceededError) {
-        toast({
-          title: 'Error',
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
         })
       } else if (e instanceof CantInviteYourself) {
         toast({
@@ -169,6 +166,12 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
             onClick={() => {
               push(`${appUrl}/${account.domain || account.address}`)
             }}
+            isDisabled={!hasProAccess}
+            title={
+              !hasProAccess
+                ? 'Upgrade to Pro to schedule with contacts'
+                : undefined
+            }
           >
             Schedule
           </Button>

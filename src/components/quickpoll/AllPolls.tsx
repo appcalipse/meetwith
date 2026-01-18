@@ -124,28 +124,6 @@ const AllPolls = () => {
             >
               Run new poll
             </Button>
-            {!canCreateQuickPoll && (
-              <Text
-                fontSize="14px"
-                color="neutral.400"
-                textAlign={{ base: 'left', md: 'right' }}
-              >
-                Unlock unlimited QuickPolls with PRO{' '}
-                <Button
-                  variant="link"
-                  colorScheme="primary"
-                  px={0}
-                  onClick={() => push('/dashboard/settings/subscriptions')}
-                  textDecoration="underline"
-                  fontSize="14px"
-                  height="auto"
-                  minW="auto"
-                >
-                  here
-                </Button>
-                .
-              </Text>
-            )}
           </VStack>
         </Flex>
 
