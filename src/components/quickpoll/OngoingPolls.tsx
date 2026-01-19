@@ -8,11 +8,13 @@ import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import EmptyState from '@/components/EmptyState'
 import Pagination from '@/components/profile/Pagination'
+import useAccountContext from '@/hooks/useAccountContext'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { PollStatus } from '@/types/QuickPoll'
 import { getQuickPolls } from '@/utils/api_helper'
 import { QUICKPOLL_DEFAULT_LIMIT } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
+import { isTrialEligible } from '@/utils/subscription_manager'
 
 import PollCard from './PollCard'
 
@@ -28,6 +30,10 @@ const OngoingPolls = ({
   const { push } = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
+  const currentAccount = useAccountContext()
+
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
 
   const {
     data: ongoingPollsData,
@@ -94,9 +100,9 @@ const OngoingPolls = ({
 
   return (
     <VStack spacing={4} align="stretch">
-      {upgradeRequired && currentPolls.length > 0 && (
+      {upgradeRequired && currentPolls.length > 0 && currentAccount && (
         <Text fontSize="14px" color="neutral.400">
-          Unlock unlimited QuickPolls with PRO{' '}
+          Unlock unlimited QuickPolls with PRO.{' '}
           <Button
             variant="link"
             colorScheme="primary"
@@ -107,7 +113,7 @@ const OngoingPolls = ({
             height="auto"
             minW="auto"
           >
-            here
+            {trialEligible ? 'Try for free' : 'Go PRO'}
           </Button>
         </Text>
       )}

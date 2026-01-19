@@ -10,15 +10,36 @@ export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
   currentUserEvent,
   eventUrl,
   otherUserStates,
-  defaultBlockId,
+  activeAvailabilityBlocks,
 }) => {
   const router = useRouter()
 
   const handleOpenAvailabilityBlock = () => {
-    if (defaultBlockId) {
-      router.push(`/dashboard/availability?editBlock=${defaultBlockId}`)
+    if (activeAvailabilityBlocks && activeAvailabilityBlocks.length === 1) {
+      router.push(
+        `/dashboard/availability?editBlock=${activeAvailabilityBlocks[0].id}`
+      )
+    } else {
+      router.push('/dashboard/availability')
     }
   }
+
+  const getBlockNamesDisplay = () => {
+    if (!activeAvailabilityBlocks || activeAvailabilityBlocks.length === 0) {
+      return 'your'
+    }
+    if (activeAvailabilityBlocks.length === 1) {
+      return `your "${activeAvailabilityBlocks[0].title}"`
+    }
+    // Multiple blocks - list them
+    const blockNames = activeAvailabilityBlocks.map(b => `"${b.title}"`)
+    return `your ${blockNames.join(', ')}`
+  }
+
+  const isSingleBlock =
+    activeAvailabilityBlocks && activeAvailabilityBlocks.length === 1
+  const hasBlocks =
+    activeAvailabilityBlocks && activeAvailabilityBlocks.length > 0
 
   return (
     <>
@@ -107,11 +128,12 @@ export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
           ) : (
             <>
               <Text fontSize="16px" fontWeight="500" color="neutral.900" mb={2}>
-                You&apos;re unavailable because of your <b>default</b>{' '}
-                availability block settings. You can update it to make this time
-                slot available.
+                You&apos;re unavailable because of {getBlockNamesDisplay()}{' '}
+                availability block settings. You can update{' '}
+                {isSingleBlock ? 'it' : 'them'} to make this time slot
+                available.
               </Text>
-              {defaultBlockId && (
+              {hasBlocks && (
                 <HStack gap={1}>
                   <Link
                     as="button"
@@ -129,7 +151,7 @@ export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
                       color: 'primary.300',
                     }}
                   >
-                    Update availability block
+                    Update availability block{isSingleBlock ? '' : 's'}
                   </Link>
                   <FaArrowRight size={12} color="#F35826" />
                 </HStack>

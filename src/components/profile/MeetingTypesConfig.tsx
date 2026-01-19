@@ -30,6 +30,7 @@ import {
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { getDefaultValues } from '@/utils/constants/meeting-types'
+import { isTrialEligible } from '@/utils/subscription_manager'
 
 import MeetingTypeModal from '../meeting-settings/MeetingTypeModal'
 
@@ -61,6 +62,9 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
     queryFn: () => listConnectedCalendars(),
     enabled: !!currentAccount?.id,
   })
+
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
   const { data: availabilityBlocks, isLoading: isAvailabilityLoading } =
     useQuery<AvailabilityBlock[]>({
       queryKey: ['availabilityBlocks', currentAccount?.address],
@@ -229,7 +233,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
           {!canCreateMeetingType && (
             <Box mb={4} w="100%" textAlign="left">
               <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
-                Unlock unlimited meeting types with PRO{' '}
+                Unlock unlimited meeting types with PRO.{' '}
                 <Button
                   variant="link"
                   colorScheme="primary"
@@ -242,7 +246,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
                   height="auto"
                   minW="auto"
                 >
-                  here
+                  {trialEligible ? 'Try for free' : 'Go PRO'}
                 </Button>
                 .
               </Text>

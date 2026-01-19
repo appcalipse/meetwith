@@ -27,6 +27,7 @@ import {
   deleteConnectedCalendar,
   getCalendarIntegrationsWithMetadata,
 } from '@/utils/api_helper'
+import { isTrialEligible } from '@/utils/subscription_manager'
 
 // biome-ignore lint/correctness/noUnusedVariables: No unused vars
 const GoProCTA = () => (
@@ -118,6 +119,9 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
+
   const loadCalendars = async () => {
     setLoading(true)
     try {
@@ -190,9 +194,9 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         >
           Add calendar connection
         </Button>
-        {!canCreateCalendar && (
+        {!canCreateCalendar && currentAccount && (
           <Text fontSize="14px" color="neutral.400">
-            Unlock unlimited calendar connections with PRO{' '}
+            Unlock unlimited calendar connections with PRO.{' '}
             <Button
               variant="link"
               colorScheme="primary"
@@ -203,7 +207,7 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
               height="auto"
               minW="auto"
             >
-              here
+              {trialEligible ? 'Try for free' : 'Go PRO'}
             </Button>
             .
           </Text>

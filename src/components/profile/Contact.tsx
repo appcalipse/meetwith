@@ -32,7 +32,10 @@ import { Account } from '@/types/Account'
 import { ContactInvite } from '@/types/Contacts'
 import { logEvent } from '@/utils/analytics'
 import { getContactsMetadata } from '@/utils/api_helper'
-import { getActiveProSubscription } from '@/utils/subscription_manager'
+import {
+  getActiveProSubscription,
+  isTrialEligible,
+} from '@/utils/subscription_manager'
 
 import ContactRequests from '../contact/ContactRequests'
 import ContactSearchModal from '../contact/ContactSearchModal'
@@ -73,6 +76,10 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     enabled: !!currentAccount?.address,
     staleTime: 30000,
   })
+
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
+
   const activeSubscription = getActiveProSubscription(currentAccount)
   const hasProAccess = Boolean(activeSubscription)
   async function defineCalendarsConnected() {
@@ -260,7 +267,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               </VStack>
             </HStack>
             {/* Limit text when free user cannot schedule with contacts */}
-            {!hasProAccess && (
+            {!hasProAccess && currentAccount && (
               <Box mb={4} w="100%" textAlign="left">
                 <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
                   You've maxed out your plan. Upgrade to create more contacts
@@ -275,7 +282,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                     height="auto"
                     minW="auto"
                   >
-                    Go PRO
+                    {trialEligible ? 'Try for free' : 'Go PRO'}
                   </Button>
                 </Text>
               </Box>

@@ -62,6 +62,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import useSlotCache from '@/hooks/useSlotCache'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { ActiveAvailabilityBlock } from '@/types/schedule'
 import ScheduleDateSection from './ScheduleDateSection'
 
 export enum State {
@@ -444,6 +445,59 @@ export function SchedulePickTime({
     })
     return map
   }, [meetingMembers])
+
+  const currentUserActiveBlocks = useMemo((): ActiveAvailabilityBlock[] => {
+    if (!currentAccount?.address) return []
+
+    const currentUserAddressLower = currentAccount.address.toLowerCase()
+
+    // Check if we're scheduling for a group
+    const groupAvailabilityKeys = Object.keys(groupAvailability || {}).filter(
+      key => key !== NO_GROUP_KEY
+    )
+    const isGroupScheduling = groupAvailabilityKeys.length > 0
+
+    if (isGroupScheduling) {
+      const activeGroupId = groupAvailabilityKeys[0]
+      // Get group members availabilities from context
+      const groupBlocksData = groupMembersAvailabilities?.[activeGroupId]
+
+      if (groupBlocksData) {
+        const userBlocks = groupBlocksData[currentUserAddressLower]
+        if (userBlocks && userBlocks.length > 0) {
+          return userBlocks.map(block => ({
+            id: block.id,
+            title: block.title,
+          }))
+        }
+      }
+    }
+
+    // Fall back to default availability block
+    if (
+      currentAccount?.preferences?.availaibility_id &&
+      currentAccount?.preferences?.availabilities
+    ) {
+      const defaultTitle =
+        currentAccount.preferences.availabilities.length > 0
+          ? 'default'
+          : 'default'
+      return [
+        {
+          id: currentAccount.preferences.availaibility_id,
+          title: defaultTitle,
+        },
+      ]
+    }
+
+    return []
+  }, [
+    currentAccount?.address,
+    currentAccount?.preferences?.availaibility_id,
+    currentAccount?.preferences?.availabilities,
+    groupAvailability,
+    groupMembersAvailabilities,
+  ])
   const [monthValue, setMonthValue] = useState<
     SingleValue<{ label: string; value: string }>
   >({
@@ -974,9 +1028,7 @@ export function SchedulePickTime({
                     timezone={timezone}
                     currentAccountAddress={currentAccount?.address}
                     displayNameToAddress={displayNameToAddress}
-                    defaultBlockId={
-                      currentAccount?.preferences?.availaibility_id
-                    }
+                    activeAvailabilityBlocks={currentUserActiveBlocks}
                     slots={date.slots}
                     handleTimeSelection={handleTimeSelection}
                   />
