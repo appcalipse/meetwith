@@ -24,12 +24,12 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { writeFileSync } from 'fs'
 import { Credentials } from 'google-auth-library'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
 import { rrulestr } from 'rrule'
 import { validate } from 'uuid'
-
 import { ResourceState } from '@/pages/api/server/webhook/calendar/sync'
 import {
   Account,
@@ -257,7 +257,6 @@ import {
 } from '@/utils/notification_helper'
 import { generatePollSlug } from '@/utils/quickpoll_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
-
 import {
   decryptConferenceMeeting,
   generateDefaultMeetingType,
@@ -7575,6 +7574,10 @@ const handleWebhookEvent = async (
   const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
     meeting => !isRecurringInstance(meeting)
   )
+  writeFileSync(
+    `events_${Date.now()}.json`,
+    JSON.stringify(recentlyUpdated, null, 2)
+  )
 
   const actions = await Promise.all(
     recentlyUpdatedNonRecurringMeetings
@@ -7662,97 +7665,125 @@ const handleSyncRecurringEvents = async (
   calendar_id: string
 ) => {
   const masterEvents = events.filter(e => e.recurrence && !e.recurringEventId)
+  const masterBatch = new Map<string, calendar_v3.Schema$Event[]>()
+
+  for (const event of masterEvents) {
+    const meetingId = event.extendedProperties?.private?.meetingId
+    if (!meetingId) continue
+    if (masterBatch.has(meetingId)) {
+    } else {
+      masterBatch.set(meetingId, [event])
+    }
+  }
   const exceptions = events.filter(e => e.recurringEventId)
+  writeFileSync(
+    `master_events_${Date.now()}.json`,
+    JSON.stringify(masterEvents, null, 2)
+  )
+  writeFileSync(
+    `exceptions_${Date.now()}.json`,
+    JSON.stringify(exceptions, null, 2)
+  )
   const slotInstanceUpdates: Array<TablesUpdate<'slot_instance'>> = []
 
   const processed = new Set<string>()
-  for (const masterEvent of masterEvents) {
-    const meetingId = masterEvent?.extendedProperties?.private?.meetingId
-    const meetingTypeId =
-      masterEvent?.extendedProperties?.private?.meetingTypeId
-    const startTime = masterEvent?.start?.dateTime
-    const endTime = masterEvent?.end?.dateTime
-    if (!meetingId || !startTime || !endTime) {
-      continue
-    }
-    const { meetingInfo, conferenceMeeting } =
-      await getConferenceDecryptedMeeting(meetingId)
-    if (!meetingInfo || !masterEvent.recurrence) continue
+  for (const [meetingId, masterEvents] of masterBatch) {
+    if (masterEvents.length > 1) {
+      // process meetings and create breakout
+    } else {
+      const masterEvent = masterEvents[0]
+      const meetingTypeId =
+        masterEvent?.extendedProperties?.private?.meetingTypeId
+      const startTime = masterEvent?.start?.dateTime
+      const endTime = masterEvent?.end?.dateTime
+      if (!startTime || !endTime) {
+        continue
+      }
 
-    const peerEvents = masterEvents.filter(
-      peerEvent =>
-        peerEvent.id !== masterEvent.id &&
-        peerEvent?.extendedProperties?.private?.meetingId ===
-          masterEvent?.extendedProperties?.private?.meetingId &&
-        peerEvent.status !== 'cancelled'
-    )
-    if (peerEvents.length > 0) {
-      if (processed.has(meetingId)) continue
-      const actor = masterEvent.attendees?.find(attendee => attendee.self)
-      // REVERT MEETING TO PREVIOUS VERSION IF PEER WITH ID TAKEOVER EXISTS
-      await handleUpdateMeetingRsvps(
-        calendar.account_address,
-        meetingTypeId,
-        meetingInfo,
-        getParticipationStatus(actor?.responseStatus || ''),
-        true
+      const { meetingInfo, conferenceMeeting } =
+        await getConferenceDecryptedMeeting(meetingId)
+      if (!meetingInfo || !masterEvent.recurrence) continue
+      // simply process meetingd
+      if (masterEvent.status === 'cancelled') {
+        await handleCancelOrDelete(
+          calendar.account_address,
+          meetingInfo,
+          meetingTypeId,
+          masterEvent.id
+        )
+        continue
+      }
+      const parsedParticipants = await handleParseParticipants(
+        meetingId,
+        masterEvent.attendees || [],
+        meetingInfo.participants,
+        calendar.account_address
       )
-      processed.add(meetingId)
-      continue
-    }
-    if (masterEvent.status === 'cancelled') {
-      await handleCancelOrDelete(
-        calendar.account_address,
-        meetingInfo,
-        meetingTypeId,
-        masterEvent.id
-      )
-      continue
-    }
-    const parsedParticipants = await handleParseParticipants(
-      meetingId,
-      masterEvent.attendees || [],
-      meetingInfo.participants,
-      calendar.account_address
-    )
-    try {
-      const rule = rrulestr(masterEvent.recurrence[0], {
-        dtstart: new Date(startTime), // The original start time of the series
-      })
+      try {
+        const rule = rrulestr(masterEvent.recurrence[0], {
+          dtstart: new Date(startTime), // The original start time of the series
+        })
 
-      await handleUpdateMeeting(
-        true,
-        calendar.account_address,
-        meetingTypeId,
-        new Date(startTime),
-        new Date(endTime),
-        meetingInfo,
-        parsedParticipants,
-        extractMeetingDescription(masterEvent.description || '') || '',
-        masterEvent.location || '',
-        conferenceMeeting.provider,
-        masterEvent.summary || '',
-        conferenceMeeting.reminders,
-        getMeetingRepeatFromRule(rule),
-        conferenceMeeting.permissions,
-        masterEvent.recurrence,
-        masterEvent.id,
-        calendar_id
-      )
-    } catch (e) {
-      if (e instanceof MeetingDetailsModificationDenied) {
-        // update only the rsvp on other calendars
-        const actor = masterEvent.attendees?.find(attendee => attendee.self)
-        await handleUpdateMeetingRsvps(
+        await handleUpdateMeeting(
+          true,
           calendar.account_address,
           meetingTypeId,
+          new Date(startTime),
+          new Date(endTime),
           meetingInfo,
-          getParticipationStatus(actor?.responseStatus || '')
+          parsedParticipants,
+          extractMeetingDescription(masterEvent.description || '') || '',
+          masterEvent.location || '',
+          conferenceMeeting.provider,
+          masterEvent.summary || '',
+          conferenceMeeting.reminders,
+          getMeetingRepeatFromRule(rule),
+          conferenceMeeting.permissions,
+          masterEvent.recurrence,
+          masterEvent.id,
+          calendar_id
         )
+      } catch (e) {
+        if (e instanceof MeetingDetailsModificationDenied) {
+          // update only the rsvp on other calendars
+          const actor = masterEvent.attendees?.find(attendee => attendee.self)
+          await handleUpdateMeetingRsvps(
+            calendar.account_address,
+            meetingTypeId,
+            meetingInfo,
+            getParticipationStatus(actor?.responseStatus || '')
+          )
+        }
+        console.error(e)
+        continue
       }
-      console.error(e)
-      continue
     }
+
+    // const { meetingInfo, conferenceMeeting } =
+    //   await getConferenceDecryptedMeeting(meetingId)
+    // if (!meetingInfo || !masterEvent.recurrence) continue
+
+    // const peerEvents = masterEvents.filter(
+    //   peerEvent =>
+    //     peerEvent.id !== masterEvent.id &&
+    //     peerEvent?.extendedProperties?.private?.meetingId ===
+    //       masterEvent?.extendedProperties?.private?.meetingId &&
+    //     peerEvent.status !== 'cancelled'
+    // )
+    // if (peerEvents.length > 0) {
+    //   if (processed.has(meetingId)) continue
+    //   const actor = masterEvent.attendees?.find(attendee => attendee.self)
+    //   // REVERT MEETING TO PREVIOUS VERSION IF PEER WITH ID TAKEOVER EXISTS
+    //   await handleUpdateMeetingRsvps(
+    //     calendar.account_address,
+    //     meetingTypeId,
+    //     meetingInfo,
+    //     getParticipationStatus(actor?.responseStatus || ''),
+    //     true
+    //   )
+    //   processed.add(meetingId)
+    //   continue
+    // }
   }
   const otherSlotsPromise = exceptions.map(async exceptionEvent => {
     try {
