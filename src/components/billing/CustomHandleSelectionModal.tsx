@@ -32,12 +32,14 @@ interface CustomHandleSelectionModalProps {
   isOpen: boolean
   onClose: () => void
   currentAccountAddress: string
+  onHandleSelected?: (handle: string) => void
 }
 
 const CustomHandleSelectionModal: React.FC<CustomHandleSelectionModalProps> = ({
   isOpen,
   onClose,
   currentAccountAddress,
+  onHandleSelected,
 }) => {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -120,9 +122,13 @@ const CustomHandleSelectionModal: React.FC<CustomHandleSelectionModalProps> = ({
 
     saveSubscriptionHandle(handle)
 
-    void router.push(
-      `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}/billing`
-    )
+    if (onHandleSelected) {
+      onHandleSelected(handle)
+    } else {
+      void router.push(
+        `/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}/billing`
+      )
+    }
     handleModalClose()
   }
 
@@ -253,7 +259,7 @@ const CustomHandleSelectionModal: React.FC<CustomHandleSelectionModalProps> = ({
             isDisabled={!canContinue}
             isLoading={status === HandleStatus.CHECKING}
           >
-            Continue to Payment
+            {onHandleSelected ? 'Save Handle' : 'Continue to Payment'}
           </Button>
         </ModalFooter>
       </ModalContent>

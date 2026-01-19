@@ -17,6 +17,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import CustomHandleSelectionModal from '@components/billing/CustomHandleSelectionModal'
 import SubscriptionCheckoutModal from '@components/billing/SubscriptionCheckoutModal'
 import ChainLogo from '@components/icons/ChainLogo'
 import FiatLogo from '@components/icons/FiatLogo'
@@ -54,7 +55,7 @@ import {
 } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
-import { getSubscriptionHandle } from '@/utils/storage'
+import { getSubscriptionHandle, saveSubscriptionHandle } from '@/utils/storage'
 import {
   getActiveBillingSubscription,
   getActiveProSubscription,
@@ -62,7 +63,9 @@ import {
 
 const BillingCheckout = () => {
   const router = useRouter()
-  const handleFromStorage = getSubscriptionHandle() || undefined
+  const [handleFromStorage, setHandleFromStorage] = useState(
+    getSubscriptionHandle() || undefined
+  )
 
   const currentAccount = useAccountContext()
   const [isYearly, setIsYearly] = useState(false)
@@ -75,6 +78,11 @@ const BillingCheckout = () => {
     isOpen: isTrialDialogOpen,
     onOpen: onTrialDialogOpen,
     onClose: onTrialDialogClose,
+  } = useDisclosure()
+  const {
+    isOpen: isHandleModalOpen,
+    onOpen: onHandleModalOpen,
+    onClose: onHandleModalClose,
   } = useDisclosure()
   const trialCancelRef = useRef<HTMLButtonElement | null>(null)
 
@@ -269,11 +277,17 @@ const BillingCheckout = () => {
   }
 
   const handleChangeHandle = () => {
-    router.push(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`)
+    onHandleModalOpen()
   }
 
   const handleChooseHandle = () => {
-    router.push(`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`)
+    onHandleModalOpen()
+  }
+
+  const handleHandleSelected = (newHandle: string) => {
+    saveSubscriptionHandle(newHandle)
+    setHandleFromStorage(newHandle)
+    onHandleModalClose()
   }
 
   const handleCryptoPaymentSuccess = () => {
@@ -486,7 +500,9 @@ const BillingCheckout = () => {
             width="100%"
           >
             <PaymentMethod
-              disabled={isLoadingPlans || subscribeMutation.isLoading}
+              disabled={
+                isLoadingPlans || subscribeMutation.isLoading || !handle
+              }
               icon={FiatLogo}
               id="fiat"
               name={
@@ -503,7 +519,8 @@ const BillingCheckout = () => {
               disabled={
                 isLoadingPlans ||
                 cryptoSubscribeMutation.isLoading ||
-                !defaultChain
+                !defaultChain ||
+                !handle
               }
               icon={ChainLogo}
               id="crypto"
@@ -557,7 +574,7 @@ const BillingCheckout = () => {
           <AlertDialogBody>
             <VStack align="flex-start" spacing={3}>
               <Text color="text-primary" fontSize="md">
-                You’ll get full Pro access for 14 days without payment. You can
+                You'll get full Pro access for 14 days without payment. You can
                 extend to a paid plan at any time, or cancel the trial — access
                 continues until it expires.
               </Text>
@@ -585,6 +602,16 @@ const BillingCheckout = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Custom Handle Selection Modal */}
+      {currentAccount?.address && (
+        <CustomHandleSelectionModal
+          currentAccountAddress={currentAccount.address}
+          isOpen={isHandleModalOpen}
+          onClose={onHandleModalClose}
+          onHandleSelected={handleHandleSelected}
+        />
+      )}
     </Container>
   )
 }
