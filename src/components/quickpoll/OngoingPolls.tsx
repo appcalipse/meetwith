@@ -8,12 +8,13 @@ import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import EmptyState from '@/components/EmptyState'
 import Pagination from '@/components/profile/Pagination'
+import useAccountContext from '@/hooks/useAccountContext'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
-import { TrialEligibilityResponse } from '@/types/Billing'
 import { PollStatus } from '@/types/QuickPoll'
-import { getQuickPolls, getTrialEligibility } from '@/utils/api_helper'
+import { getQuickPolls } from '@/utils/api_helper'
 import { QUICKPOLL_DEFAULT_LIMIT } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
+import { isTrialEligible } from '@/utils/subscription_manager'
 
 import PollCard from './PollCard'
 
@@ -29,16 +30,10 @@ const OngoingPolls = ({
   const { push } = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
+  const currentAccount = useAccountContext()
 
-  // Trial eligibility
-  const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
-    queryFn: getTrialEligibility,
-    queryKey: ['trialEligibility'],
-    refetchOnMount: true,
-    staleTime: 60000,
-  })
-
-  const isTrialEligible = trialEligibility?.eligible === true
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
 
   const {
     data: ongoingPollsData,
@@ -105,7 +100,7 @@ const OngoingPolls = ({
 
   return (
     <VStack spacing={4} align="stretch">
-      {upgradeRequired && currentPolls.length > 0 && (
+      {upgradeRequired && currentPolls.length > 0 && currentAccount && (
         <Text fontSize="14px" color="neutral.400">
           Unlock unlimited QuickPolls with PRO.{' '}
           <Button
@@ -118,7 +113,7 @@ const OngoingPolls = ({
             height="auto"
             minW="auto"
           >
-            {isTrialEligible ? 'Try for free' : 'Go PRO'}
+            {trialEligible ? 'Try for free' : 'Go PRO'}
           </Button>
         </Text>
       )}

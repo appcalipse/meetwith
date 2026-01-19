@@ -21,17 +21,16 @@ import React, { ReactNode, useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
 import { AvailabilityBlock } from '@/types/availability'
-import { TrialEligibilityResponse } from '@/types/Billing'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
   getAvailabilityBlocks,
   getMeetingTypesWithMetadata,
   getStripeStatus,
-  getTrialEligibility,
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { getDefaultValues } from '@/utils/constants/meeting-types'
+import { isTrialEligible } from '@/utils/subscription_manager'
 
 import MeetingTypeModal from '../meeting-settings/MeetingTypeModal'
 
@@ -64,15 +63,8 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
     enabled: !!currentAccount?.id,
   })
 
-  // Trial eligibility
-  const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
-    queryFn: getTrialEligibility,
-    queryKey: ['trialEligibility'],
-    refetchOnMount: true,
-    staleTime: 60000,
-  })
-
-  const isTrialEligible = trialEligibility?.eligible === true
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
   const { data: availabilityBlocks, isLoading: isAvailabilityLoading } =
     useQuery<AvailabilityBlock[]>({
       queryKey: ['availabilityBlocks', currentAccount?.address],
@@ -254,7 +246,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
                   height="auto"
                   minW="auto"
                 >
-                  {isTrialEligible ? 'Try for free' : 'Go PRO'}
+                  {trialEligible ? 'Try for free' : 'Go PRO'}
                 </Button>
                 .
               </Text>

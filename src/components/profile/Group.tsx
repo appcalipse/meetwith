@@ -25,16 +25,17 @@ import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
-import { TrialEligibilityResponse } from '@/types/Billing'
 import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
 import {
   getGroupExternal,
   getGroupsFullWithMetadata,
-  getTrialEligibility,
   listConnectedCalendars,
 } from '@/utils/api_helper'
-import { getActiveProSubscription } from '@/utils/subscription_manager'
+import {
+  getActiveProSubscription,
+  isTrialEligible,
+} from '@/utils/subscription_manager'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
 import Groups, { GroupRef } from '../group/Groups'
@@ -58,15 +59,8 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     staleTime: 30000,
   })
 
-  // Trial eligibility
-  const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
-    queryFn: getTrialEligibility,
-    queryKey: ['trialEligibility'],
-    refetchOnMount: true,
-    staleTime: 60000,
-  })
-
-  const isTrialEligible = trialEligibility?.eligible === true
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
 
   const activeSubscription = getActiveProSubscription(currentAccount)
   const hasProAccess = Boolean(activeSubscription)
@@ -283,7 +277,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         </HStack>
 
         {/* Limit text when free user cannot create groups */}
-        {!canCreateGroup && (
+        {!canCreateGroup && currentAccount && (
           <HStack mb={4}>
             <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
               You've maxed out your plan. Upgrade to create more groups and
@@ -298,7 +292,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                 height="auto"
                 minW="auto"
               >
-                {isTrialEligible ? 'Try for free' : 'Go PRO'}
+                {trialEligible ? 'Try for free' : 'Go PRO'}
               </Button>
             </Text>
           </HStack>
