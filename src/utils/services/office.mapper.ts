@@ -147,7 +147,7 @@ export class Office365EventMapper {
   private static extractDescription(body?: ItemBody): string | undefined {
     if (!body?.content) return undefined
 
-    return CalendarServiceHelper.parseDescriptionToRichText(body.content)
+    return CalendarServiceHelper.parseDescriptionToRichText(body.content.trim())
   }
 
   private static parseDateTime(dateTime: DateTimeTimeZone): Date {
