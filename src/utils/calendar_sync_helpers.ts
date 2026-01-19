@@ -56,6 +56,8 @@ import {
 } from './database'
 import { ExternalCalendarSync } from './sync_helper'
 
+const db = initDB()
+
 const getBaseEventId = (googleEventId: string): string => {
   const sanitizedMeetingId = googleEventId.split('_')[0] // '02cd383a77214840b5a1ad4ceb545ff8'
   // Insert hyphens in UUID format: 8-4-4-4-12
@@ -1118,6 +1120,31 @@ const handleParseParticipants = async (
   }
   return parsedParticipants
 }
+
+async function handleBreakoutSequence(
+  meetingId: string,
+  sortedMasters: calendar_v3.Schema$Event[],
+  existingMeeting: MeetingDecrypted<Date>
+) {
+  const toInsert = []
+  for (const breakoutMaster of sortedMasters) {
+    if (!breakoutMaster.recurrence || breakoutMaster.status === 'cancelled')
+      continue
+    const breakoutData = {
+      meeting_id: meetingId,
+      master_event_id: breakoutMaster.id,
+      effective_from: breakoutMaster.start?.dateTime
+        ? new Date(breakoutMaster.start?.dateTime)
+        : new Date(),
+      rrule: breakoutMaster.recurrence[0],
+      summary: breakoutMaster.summary,
+      created_at: new Date(),
+    }
+    toInsert.push(breakoutData)
+  }
+  await db.supabase.from('slot_series_breakout').insert(toInsert)
+}
+
 export {
   extractMeetingDescription,
   getBaseEventId,
@@ -1132,4 +1159,5 @@ export {
   handleUpdateParseMeetingInfo,
   handleUpdateRSVPParseMeetingInfo,
   handleUpdateSingleRecurringInstance,
+  handleBreakoutSequence,
 }
