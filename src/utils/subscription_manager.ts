@@ -77,6 +77,16 @@ export const getActiveBillingSubscription = (
   return billingSubs.length > 0 ? billingSubs[0] : null
 }
 
+export const isTrialEligible = (
+  account?: Pick<Account, 'subscriptions'> | null
+): boolean => {
+  if (!account?.subscriptions || account.subscriptions.length === 0) {
+    return true
+  }
+
+  return false
+}
+
 // checks both domain and billing subscriptions
 export const getActiveProSubscriptionAsync = async (
   accountAddress: string

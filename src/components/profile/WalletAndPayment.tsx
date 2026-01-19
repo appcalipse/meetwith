@@ -21,6 +21,7 @@ import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 
 import MagicLinkModal from '@/components/profile/components/MagicLinkModal'
+import ProUpgradePrompt from '@/components/profile/components/ProUpgradePrompt'
 import ResetPinModal from '@/components/profile/components/ResetPinModal'
 import SuccessModal from '@/components/profile/components/SuccessModal'
 import TransactionPinModal from '@/components/profile/components/TransactionPinModal'
@@ -43,6 +44,7 @@ import {
   supportedPaymentChains,
 } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 import { useToastHelpers } from '@/utils/toasts'
 
 import Block from './components/Block'
@@ -426,6 +428,18 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
       refetch()
     }
   }, [router.asPath, currentAccount.address, refetch])
+
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+
+  if (!hasProAccess) {
+    return (
+      <ProUpgradePrompt
+        heading="Wallet & Payments requires Pro"
+        subheading="Upgrade to Pro to access wallet features including payments, invoicing, and fund management."
+      />
+    )
+  }
 
   return (
     <VStack width="100%" maxW="100%" gap={6} alignItems={'flex-start'}>
