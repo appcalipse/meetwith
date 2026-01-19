@@ -32,6 +32,7 @@ import {
   UnifiedAttendee,
   UnifiedEvent,
 } from '@/types/Calendar'
+import { TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import { updateCalendarRsvpStatus } from '@/utils/api_helper'
 import { dateToLocalizedRange } from '@/utils/calendar_manager'
@@ -86,6 +87,12 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
   const isRecurring =
     event?.recurrence && Object.values(event?.recurrence).length > 0
   const recurrenceLabel = getRecurrenceLabel(event?.recurrence?.frequency)
+  const isRsvpAllowed = useMemo(() => {
+    if (event.source === TimeSlotSource.OFFICE) {
+      return event.providerData?.office365?.responseRequested !== false
+    }
+    return true
+  }, [event])
   const participants = useMemo(() => {
     const result: string[] = []
     const attendees: UnifiedAttendee[] =
@@ -357,10 +364,36 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
                 <Text
                   className="rich-text-wrapper"
                   dangerouslySetInnerHTML={{
-                    __html: sanitizeHtml(event.description.trim(), {
-                      allowedAttributes: false,
-                      allowVulnerableTags: false,
-                    }),
+                    __html: sanitizeHtml(event.description, {
+                      allowedTags: [
+                        'a',
+                        'p',
+                        'br',
+                        'strong',
+                        'em',
+                        'u',
+                        'ul',
+                        'ol',
+                        'li',
+                        'span',
+                        'div',
+                      ],
+                      allowedAttributes: { a: ['href', 'target', 'rel'] },
+                      transformTags: {
+                        a: (tagName, attribs) => ({
+                          tagName,
+                          attribs: {
+                            ...attribs,
+                            target: '_blank',
+                            rel: 'noopener noreferrer',
+                          },
+                        }),
+                      },
+                      textFilter: text => text.trimStart(),
+                    })
+                      .replace(/^(<br\s*\/?>|\s)+/i, '') // Remove leading breaks/whitespace
+                      .replace(/(<br\s*\/?>|\s)+$/i, '') // Remove trailing breaks/whitespace
+                      .replace(/(<br\s*\/?>){3,}/gi, '<br><br>'), // Collapse excessive line breaks
                   }}
                   suppressHydrationWarning
                   whiteSpace="pre-wrap"
@@ -372,11 +405,14 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
           </VStack>
           <HStack
             alignItems="center"
-            gap={3.5}
-            display={event.isReadOnlyCalendar ? 'none' : undefined}
+            gap={4}
+            display={
+              event.isReadOnlyCalendar || !isRsvpAllowed ? 'none' : 'flex'
+            }
+            w="100%"
           >
             <Text fontWeight={700}>RSVP:</Text>
-            <HStack alignItems="center" gap={2}>
+            <HStack alignItems="center" gap={2} w="fit-content">
               <Tag
                 bg={isAccepted(actor?.status) ? 'green.500' : 'transparent'}
                 borderColor={'green.500'}

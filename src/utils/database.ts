@@ -3745,7 +3745,8 @@ const addOrUpdateConnectedCalendar = async (
   provider: TimeSlotSource,
   calendars: CalendarSyncInfo[],
   // Unknown as it can be anything
-  _payload?: unknown
+  _payload?: unknown,
+  skipSideEffect: boolean = false
 ): Promise<ConnectedCalendar> => {
   const existingConnection = await connectedCalendarExists(
     address,
@@ -3788,14 +3789,15 @@ const addOrUpdateConnectedCalendar = async (
   }
   const calendar = data[0] as ConnectedCalendar
   // run this as a background operation so it doesn't block the main flow as they'll be added anyways via cron jobs if this fails
-  void handleCalendarConnectionCleanups(
-    address,
-    email,
-    provider,
-    payload as Credentials,
-    calendars,
-    calendar
-  )
+  !skipSideEffect &&
+    void handleCalendarConnectionCleanups(
+      address,
+      email,
+      provider,
+      payload as Credentials,
+      calendars,
+      calendar
+    )
   return calendar
 }
 
@@ -10453,7 +10455,8 @@ const syncConnectedCalendars = async (accountAddress: string) => {
           calendar.email,
           calendar.provider,
           updatedCalendars,
-          calendar.payload
+          calendar.payload,
+          true
         )
       }
     } catch (e) {

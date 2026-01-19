@@ -81,7 +81,7 @@ export class WebDAVEventMapper {
       calendarId,
       calendarName,
       description: CalendarServiceHelper.parseDescriptionToRichText(
-        webdavEvent.description
+        webdavEvent.description?.trim()
       ),
       end: webdavEvent.endDate,
       etag: webdavEvent.etag || null,

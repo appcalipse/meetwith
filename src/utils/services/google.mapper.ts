@@ -117,7 +117,7 @@ export class GoogleEventMapper {
       colorId: googleData.colorId,
       conferenceData: googleData.conferenceData ?? undefined,
       description: CalendarServiceHelper.convertHtmlToPlainText(
-        unifiedEvent.description || ''
+        unifiedEvent.description?.trim() || ''
       ),
       end: this.createDateTime(unifiedEvent.end, unifiedEvent.isAllDay),
       eventType: googleData.eventType,
