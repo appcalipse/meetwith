@@ -25,11 +25,13 @@ import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
+import { TrialEligibilityResponse } from '@/types/Billing'
 import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
 import {
   getGroupExternal,
   getGroupsFullWithMetadata,
+  getTrialEligibility,
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { getActiveProSubscription } from '@/utils/subscription_manager'
@@ -55,6 +57,16 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     enabled: !!currentAccount?.address,
     staleTime: 30000,
   })
+
+  // Trial eligibility
+  const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
+    queryFn: getTrialEligibility,
+    queryKey: ['trialEligibility'],
+    refetchOnMount: true,
+    staleTime: 60000,
+  })
+
+  const isTrialEligible = trialEligibility?.eligible === true
 
   const activeSubscription = getActiveProSubscription(currentAccount)
   const hasProAccess = Boolean(activeSubscription)
@@ -286,7 +298,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                 height="auto"
                 minW="auto"
               >
-                Go PRO
+                {isTrialEligible ? 'Try for free' : 'Go PRO'}
               </Button>
             </Text>
           </HStack>
