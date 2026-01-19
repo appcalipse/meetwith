@@ -5,7 +5,6 @@ import { isProduction } from './constants'
 const initAnalytics = async () => {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
     api_host: '/ingest',
-    autocapture: isProduction,
     capture_exceptions: true,
     debug: false,
     defaults: '2025-05-24',
