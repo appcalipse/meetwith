@@ -7558,18 +7558,16 @@ const handleWebhookEvent = async (
       recurringIdSet.add(meeting.recurringEventId)
     }
   })
+  function extractBaseId(googleEventId: string): string {
+    const match = googleEventId.match(/^(.+?)(?:_\d+)?$/)
+    return match?.[1] || googleEventId
+  }
   const isRecurringInstance = (meeting: calendar_v3.Schema$Event): boolean => {
-    if (meeting.recurringEventId) return true
-    if (meeting.recurrence) return true
-
-    if (meeting.id) {
-      for (const recId of recurringIdSet) {
-        // filter out deleted recurring instances converted to ordinary meetings with deleted recurring instances namespaces
-        if (meeting.id.startsWith(recId)) return true
-      }
-      if (meeting.id?.includes('_')) return true // Google Calendar recurring instances have '_' in their IDs
-    }
-    return false
+    return (
+      !!meeting.recurringEventId ||
+      !!meeting.recurrence ||
+      (!!meeting.id && recurringIdSet.has(extractBaseId(meeting.id)))
+    )
   }
   const recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
     meeting => !!meeting.recurringEventId || !!meeting.recurrence // only consider events with recurringEventId
