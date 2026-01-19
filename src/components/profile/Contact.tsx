@@ -29,9 +29,10 @@ import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
+import { TrialEligibilityResponse } from '@/types/Billing'
 import { ContactInvite } from '@/types/Contacts'
 import { logEvent } from '@/utils/analytics'
-import { getContactsMetadata } from '@/utils/api_helper'
+import { getContactsMetadata, getTrialEligibility } from '@/utils/api_helper'
 import { getActiveProSubscription } from '@/utils/subscription_manager'
 
 import ContactRequests from '../contact/ContactRequests'
@@ -73,6 +74,17 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     enabled: !!currentAccount?.address,
     staleTime: 30000,
   })
+
+  // Trial eligibility
+  const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
+    queryFn: getTrialEligibility,
+    queryKey: ['trialEligibility'],
+    refetchOnMount: true,
+    staleTime: 60000,
+  })
+
+  const isTrialEligible = trialEligibility?.eligible === true
+
   const activeSubscription = getActiveProSubscription(currentAccount)
   const hasProAccess = Boolean(activeSubscription)
   async function defineCalendarsConnected() {
@@ -275,7 +287,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                     height="auto"
                     minW="auto"
                   >
-                    Go PRO
+                    {isTrialEligible ? 'Try for free' : 'Go PRO'}
                   </Button>
                 </Text>
               </Box>

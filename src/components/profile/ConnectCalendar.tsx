@@ -10,6 +10,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
@@ -18,6 +19,7 @@ import ConnectCalendarModal from '@/components/ConnectedCalendars/ConnectCalenda
 import { ConnectedCalendarCard } from '@/components/ConnectedCalendars/ConnectedCalendarCard'
 import { DisabledCalendarCard } from '@/components/ConnectedCalendars/DisabledCalendarCard'
 import { Account } from '@/types/Account'
+import { TrialEligibilityResponse } from '@/types/Billing'
 import {
   ConnectedCalendarCore,
   ConnectedCalendarIcons,
@@ -26,6 +28,7 @@ import { SettingsSection } from '@/types/Dashboard'
 import {
   deleteConnectedCalendar,
   getCalendarIntegrationsWithMetadata,
+  getTrialEligibility,
 } from '@/utils/api_helper'
 
 // biome-ignore lint/correctness/noUnusedVariables: No unused vars
@@ -118,6 +121,16 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
+  // Trial eligibility
+  const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
+    queryFn: getTrialEligibility,
+    queryKey: ['trialEligibility'],
+    refetchOnMount: true,
+    staleTime: 60000,
+  })
+
+  const isTrialEligible = trialEligibility?.eligible === true
+
   const loadCalendars = async () => {
     setLoading(true)
     try {
@@ -192,7 +205,7 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         </Button>
         {!canCreateCalendar && (
           <Text fontSize="14px" color="neutral.400">
-            Unlock unlimited calendar connections with PRO{' '}
+            Unlock unlimited calendar connections with PRO.{' '}
             <Button
               variant="link"
               colorScheme="primary"
@@ -203,7 +216,7 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
               height="auto"
               minW="auto"
             >
-              here
+              {isTrialEligible ? 'Try for free' : 'Go PRO'}
             </Button>
             .
           </Text>

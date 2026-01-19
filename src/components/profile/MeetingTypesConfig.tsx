@@ -21,12 +21,14 @@ import React, { ReactNode, useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
 import { AvailabilityBlock } from '@/types/availability'
+import { TrialEligibilityResponse } from '@/types/Billing'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
   getAvailabilityBlocks,
   getMeetingTypesWithMetadata,
   getStripeStatus,
+  getTrialEligibility,
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { getDefaultValues } from '@/utils/constants/meeting-types'
@@ -61,6 +63,16 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
     queryFn: () => listConnectedCalendars(),
     enabled: !!currentAccount?.id,
   })
+
+  // Trial eligibility
+  const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
+    queryFn: getTrialEligibility,
+    queryKey: ['trialEligibility'],
+    refetchOnMount: true,
+    staleTime: 60000,
+  })
+
+  const isTrialEligible = trialEligibility?.eligible === true
   const { data: availabilityBlocks, isLoading: isAvailabilityLoading } =
     useQuery<AvailabilityBlock[]>({
       queryKey: ['availabilityBlocks', currentAccount?.address],
@@ -229,7 +241,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
           {!canCreateMeetingType && (
             <Box mb={4} w="100%" textAlign="left">
               <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
-                Unlock unlimited meeting types with PRO{' '}
+                Unlock unlimited meeting types with PRO.{' '}
                 <Button
                   variant="link"
                   colorScheme="primary"
@@ -242,7 +254,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
                   height="auto"
                   minW="auto"
                 >
-                  here
+                  {isTrialEligible ? 'Try for free' : 'Go PRO'}
                 </Button>
                 .
               </Text>

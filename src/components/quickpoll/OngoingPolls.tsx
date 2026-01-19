@@ -9,8 +9,9 @@ import CustomLoading from '@/components/CustomLoading'
 import EmptyState from '@/components/EmptyState'
 import Pagination from '@/components/profile/Pagination'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
+import { TrialEligibilityResponse } from '@/types/Billing'
 import { PollStatus } from '@/types/QuickPoll'
-import { getQuickPolls } from '@/utils/api_helper'
+import { getQuickPolls, getTrialEligibility } from '@/utils/api_helper'
 import { QUICKPOLL_DEFAULT_LIMIT } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
 
@@ -28,6 +29,16 @@ const OngoingPolls = ({
   const { push } = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
+
+  // Trial eligibility
+  const { data: trialEligibility } = useQuery<TrialEligibilityResponse>({
+    queryFn: getTrialEligibility,
+    queryKey: ['trialEligibility'],
+    refetchOnMount: true,
+    staleTime: 60000,
+  })
+
+  const isTrialEligible = trialEligibility?.eligible === true
 
   const {
     data: ongoingPollsData,
@@ -96,7 +107,7 @@ const OngoingPolls = ({
     <VStack spacing={4} align="stretch">
       {upgradeRequired && currentPolls.length > 0 && (
         <Text fontSize="14px" color="neutral.400">
-          Unlock unlimited QuickPolls with PRO{' '}
+          Unlock unlimited QuickPolls with PRO.{' '}
           <Button
             variant="link"
             colorScheme="primary"
@@ -107,7 +118,7 @@ const OngoingPolls = ({
             height="auto"
             minW="auto"
           >
-            here
+            {isTrialEligible ? 'Try for free' : 'Go PRO'}
           </Button>
         </Text>
       )}
