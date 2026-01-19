@@ -1,7 +1,7 @@
 import { calendar_v3 } from 'googleapis'
 import { Attendee } from 'ics'
 
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -113,7 +113,7 @@ export interface BaseCalendarService {
     calendarId: string,
     eventId: string,
     attendeeEmail: string,
-    responseStatus: string
+    responseStatus: AttendeeStatus
   ): Promise<void>
 
   deleteExternalEvent(calendarId: string, eventId: string): Promise<void>
