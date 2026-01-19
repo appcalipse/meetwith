@@ -15,10 +15,15 @@ export const isGroupParticipant = (
   return 'isGroup' in participant && participant.isGroup === true
 }
 
+export interface ActiveAvailabilityBlock {
+  id: string
+  title: string
+}
+
 export interface TimeSlotTooltipContentProps {
   currentUserState?: { state: boolean; displayName: string }
   currentUserEvent?: TimeSlot | null
   eventUrl?: string | null
   otherUserStates: Array<{ state: boolean; displayName: string }>
-  defaultBlockId?: string | null
+  activeAvailabilityBlocks?: ActiveAvailabilityBlock[]
 }

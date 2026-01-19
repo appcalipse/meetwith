@@ -11,6 +11,7 @@ import { DateTime, Interval } from 'luxon'
 import { FC, memo, useState } from 'react'
 
 import { TimeSlot } from '@/types/Meeting'
+import { ActiveAvailabilityBlock } from '@/types/schedule'
 
 import { getBgColor, State } from './SchedulePickTime'
 import TimeSlotTooltipBody from './TimeSlotTooltipBody'
@@ -30,7 +31,7 @@ export interface ScheduleTimeSlotProps {
   duration: number
   currentAccountAddress?: string
   displayNameToAddress: Map<string, string>
-  defaultBlockId?: string | null
+  activeAvailabilityBlocks?: ActiveAvailabilityBlock[]
 }
 
 const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
@@ -41,7 +42,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
   duration,
   currentAccountAddress,
   displayNameToAddress,
-  defaultBlockId,
+  activeAvailabilityBlocks,
 }) => {
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const { slot, state, userStates } = slotData
@@ -122,7 +123,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
               currentAccountAddress={currentAccountAddress}
               currentUserEvent={currentUserEvent}
               eventUrl={eventUrl}
-              defaultBlockId={defaultBlockId}
+              activeAvailabilityBlocks={activeAvailabilityBlocks}
             />
           </Box>
           <Tooltip.Arrow />
