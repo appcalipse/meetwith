@@ -54,3 +54,4 @@ zoom-token.json
 .nvmrc
 .github/rules/
 .env.sentry-build-plugin
+test.http
