@@ -1,10 +1,10 @@
-import { Client } from '@microsoft/microsoft-graph-client'
+import { Client, GraphError } from '@microsoft/microsoft-graph-client'
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials'
 import * as Sentry from '@sentry/nextjs'
 import format from 'date-fns/format'
 import { DateTime } from 'luxon'
 
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -653,36 +653,54 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     calendarId: string,
     eventId: string,
     attendeeEmail: string,
-    responseStatus: string
+    responseStatus: AttendeeStatus
   ) {
-    const event = await this.getEvent(eventId, calendarId)
-    if (!event.attendees) {
-      throw new Error('No attendees found for the event')
-    }
-    const attendee = event.attendees.find(
-      att =>
-        att.emailAddress.address.toLowerCase() === attendeeEmail.toLowerCase()
-    )
-    if (!attendee) {
-      throw new Error('Attendee not found in the event')
-    }
-    attendee.status = {
-      response:
-        responseStatus === ParticipationStatus.Accepted
-          ? 'accepted'
-          : responseStatus === ParticipationStatus.Rejected
-          ? 'declined'
-          : 'notResponded',
-      time: new Date().toISOString(),
+    const connectedEmail = this.getConnectedEmail()
+    if (connectedEmail.toLowerCase() !== attendeeEmail.toLowerCase()) {
+      throw new Error('Can only update RSVP status for the connected account')
     }
 
-    await this.graphClient
-      .api(`/me/calendars/${calendarId}/events/${eventId}`)
-      .header(
-        'Prefer',
-        'outlook.send-meeting-invitations="sendToAllAndSaveCopy"'
-      )
-      .patch({ attendees: event.attendees })
+    const event = await this.getEvent(eventId, calendarId)
+    if (event.responseRequested === false) {
+      throw new Error('RSVP not allowed for this event by organizer')
+    }
+
+    let endpoint: string
+    const body = {
+      sendResponse: true,
+      comment: '',
+    }
+
+    switch (responseStatus) {
+      case AttendeeStatus.ACCEPTED:
+      case AttendeeStatus.COMPLETED:
+        endpoint = `/me/events/${eventId}/accept`
+        break
+      case AttendeeStatus.DECLINED:
+        endpoint = `/me/events/${eventId}/decline`
+        break
+      case AttendeeStatus.NEEDS_ACTION:
+      case AttendeeStatus.TENTATIVE:
+      case AttendeeStatus.DELEGATED:
+        endpoint = `/me/events/${eventId}/tentativelyAccept`
+        break
+      default:
+        throw new Error(`Unsupported response status: ${responseStatus}`)
+    }
+
+    try {
+      await this.graphClient.api(endpoint).post(body)
+    } catch (error: unknown) {
+      // Handle specific error cases
+      if (
+        error instanceof GraphError &&
+        error?.code === 'ErrorInvalidRequest' &&
+        error?.message?.includes("hasn't requested a response")
+      ) {
+        throw new Error('RSVP not allowed for this event')
+      }
+      throw error
+    }
   }
 
   async deleteExternalEvent(
