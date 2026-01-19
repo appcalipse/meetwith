@@ -17,7 +17,7 @@ import {
 } from 'tsdav'
 import { v4 } from 'uuid'
 
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -1231,9 +1231,25 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     calendarId: string,
     eventId: string,
     attendeeEmail: string,
-    responseStatus: ParticipationStatus
+    responseStatus: AttendeeStatus
   ): Promise<void> {
     try {
+      let status: 'ACCEPTED' | 'DECLINED' | 'TENTATIVE' | 'NEEDS-ACTION'
+      switch (responseStatus) {
+        case AttendeeStatus.ACCEPTED:
+        case AttendeeStatus.COMPLETED:
+          status = 'ACCEPTED'
+          break
+        case AttendeeStatus.DECLINED:
+          status = 'DECLINED'
+          break
+        case AttendeeStatus.TENTATIVE:
+          status = 'TENTATIVE'
+          break
+        case AttendeeStatus.DELEGATED:
+        case AttendeeStatus.NEEDS_ACTION:
+          status = 'NEEDS-ACTION'
+      }
       // Fetch the existing event metadata
       const events = await this.getEventsByUID(eventId)
       const eventToUpdate = events.find(event => event.uid === eventId)
@@ -1287,7 +1303,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
           calAddress.toString().toLowerCase() ===
             `mailto:${attendeeEmail.toLowerCase()}`
         ) {
-          attendeeProp.setParameter('partstat', responseStatus.toUpperCase())
+          attendeeProp.setParameter('partstat', status)
           attendeeFound = true
         }
       })
