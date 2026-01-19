@@ -1500,6 +1500,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       auth: myGoogleAuth,
       calendarId,
       eventId,
+      sendUpdates: 'all',
       requestBody: payload,
     })
   }
