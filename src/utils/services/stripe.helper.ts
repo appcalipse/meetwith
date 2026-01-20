@@ -190,63 +190,6 @@ export const handleSubscriptionCreated = async (
   } catch (error) {
     Sentry.captureException(error)
   }
-
-  // If this subscription starts with a trial, create a trial subscription period now
-  // so the user has access during the trial. When the first paid invoice succeeds,
-  // a new paid period will be created via invoice.payment_succeeded.
-  const trialEnd = subscription.trial_end
-  const isTrialingNow =
-    subscription.status === 'trialing' &&
-    trialEnd !== null &&
-    trialEnd !== undefined &&
-    trialEnd * 1000 > Date.now()
-
-  if (isTrialingNow) {
-    try {
-      const createdPeriod = await createSubscriptionPeriod(
-        accountAddress,
-        billingPlanId,
-        'active',
-        new Date(trialEnd * 1000).toISOString(),
-        null
-      )
-
-      // Send trial started email (non-blocking, queued)
-      try {
-        const billingPlan = await getBillingPlanById(billingPlanId)
-        if (billingPlan) {
-          const emailPlan: BillingEmailPlan = {
-            billing_cycle: billingPlan.billing_cycle,
-            id: billingPlan.id,
-            name: billingPlan.name,
-            price: billingPlan.price,
-          }
-
-          emailQueue.add(async () => {
-            try {
-              await sendSubscriptionConfirmationEmailForAccount(
-                accountAddress,
-                emailPlan,
-                createdPeriod.registered_at,
-                createdPeriod.expiry_time,
-                BillingPaymentProvider.STRIPE,
-                undefined,
-                true // isTrial
-              )
-              return true
-            } catch (error) {
-              Sentry.captureException(error)
-              return false
-            }
-          })
-        }
-      } catch (error) {
-        Sentry.captureException(error)
-      }
-    } catch (error) {
-      Sentry.captureException(error)
-    }
-  }
 }
 
 export const handleSubscriptionUpdated = async (
@@ -694,8 +637,7 @@ export const handleInvoicePaymentSucceeded = async (
         const stripe = new StripeService()
         const allSubscriptions = await stripe.subscriptions.list({
           customer: customerId,
-          limit: 1,
-          status: 'active',
+          limit: 10,
         })
 
         if (allSubscriptions.data && allSubscriptions.data.length > 0) {
