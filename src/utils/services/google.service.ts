@@ -31,7 +31,9 @@ import {
   getOwnerPublicUrlServer,
   updateCalendarPayload,
 } from '../database'
+import { extractUrlFromText } from '../generic_utils'
 import { getCalendarPrimaryEmail } from '../sync_helper'
+import { isValidUrl } from '../validations'
 import { CalendarServiceHelper } from './calendar.helper'
 import { EventList, IGoogleCalendarService } from './calendar.service.types'
 import { GoogleEventMapper } from './google.mapper'
@@ -1224,22 +1226,19 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       aggregatedEvents.push(...(response.data.items || []))
       token = response.data.nextPageToken || undefined
     } while (token)
-
     const filteredEvents = onlyWithMeetingLinks
       ? aggregatedEvents.filter(event => {
-          const hasHangout = !!event.hangoutLink
-          const hasConferenceData = !!event.conferenceData?.entryPoints?.some(
-            ep => ep.uri
+          const hasHangout = event.hangoutLink && isValidUrl(event.hangoutLink)
+          const hasConferenceData = event.conferenceData?.entryPoints?.some(
+            ep => ep.uri && isValidUrl(ep.uri)
           )
-          const hasLocationUrl = !!(
-            event.location &&
-            (event.location.includes('http://') ||
-              event.location.includes('https://') ||
-              event.location.includes('zoom.us') ||
-              event.location.includes('meet.google.com') ||
-              event.location.includes('teams.microsoft.com'))
+          const hasLocationUrl = event.location && isValidUrl(event.location)
+          const hasExtractedUrl = isValidUrl(
+            extractUrlFromText(event.description)
           )
-          return hasHangout || hasConferenceData || hasLocationUrl
+          return (
+            hasHangout || hasConferenceData || hasLocationUrl || hasExtractedUrl
+          )
         })
       : aggregatedEvents
 
@@ -1258,7 +1257,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       Pick<CalendarSyncInfo, 'name' | 'calendarId' | 'isReadOnly'>
     >,
     dateFrom: string,
-    dateTo: string
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
   ): Promise<UnifiedEvent[]> {
     const events = await Promise.all(
       calendars.map(cal =>
@@ -1267,7 +1267,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           cal.name,
           cal.isReadOnly ?? false,
           dateFrom,
-          dateTo
+          dateTo,
+          onlyWithMeetingLinks
         )
       )
     )
