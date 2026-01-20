@@ -1142,7 +1142,6 @@ const PublicPage: FC<IProps> = props => {
             emailToSendReminders,
             title,
             meetingReminders,
-            meetingRepeat,
             undefined,
             txHash
           )

@@ -382,6 +382,7 @@ export const cancelledMeetingEmail = async (
       start: new Date(start),
       title,
       version: 0,
+      rrule: [], // TODO: CORRECT THIS!
     },
     destinationAccountAddress || '',
     MeetingChangeType.DELETE,
