@@ -8,6 +8,7 @@ const initAnalytics = async () => {
     capture_exceptions: true,
     debug: false,
     defaults: '2025-05-24',
+    autocapture: isProduction,
     session_recording: {
       maskCapturedNetworkRequestFn: (request: CapturedNetworkRequest) => {
         request.responseBody = request.responseBody?.replace(
