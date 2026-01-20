@@ -7,6 +7,7 @@ import { DBSlot, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 
 import { MeetingPermissions } from './constants/schedule'
+import { isValidUrl } from './validations'
 
 export const zeroAddress = '0x0000000000000000000000000000000000000000' as const
 
@@ -319,4 +320,45 @@ export const clearValidationError = <T extends Record<string, unknown>>(
       return prev
     })
   }
+}
+
+/**
+ * Extracts a URL from text that may contain meeting links
+ * e.g., "Meeting at https://zoom.us/j/123456" -> "https://zoom.us/j/123456"
+ */
+export const extractUrlFromText = (text?: string | null): string | null => {
+  if (!text) return null
+
+  // Whitelist of allowed meeting domains
+  const allowedDomains = [
+    'zoom.us',
+    'meet.google.com',
+    'teams.microsoft.com',
+    'jitsi.meet',
+    'huddle01.app',
+  ]
+
+  // URL regex pattern to match http/https URLs
+  const urlPattern = /(https?:\/\/[^\s<>"]+)/gi
+  const matches = text.match(urlPattern)
+
+  if (!matches || matches.length === 0) return null
+
+  // Return the first valid URL from allowed domains
+  for (const match of matches) {
+    // Clean up potential trailing punctuation
+    const cleanUrl = match.replace(/[.,;!?]+$/, '')
+
+    if (isValidUrl(cleanUrl)) {
+      // Check if URL is from an allowed domain
+      const isAllowedDomain = allowedDomains.some(domain =>
+        cleanUrl.includes(domain)
+      )
+      if (isAllowedDomain) {
+        return cleanUrl
+      }
+    }
+  }
+
+  return null
 }

@@ -15,7 +15,7 @@ import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 
 import { getBaseEventId } from '../calendar_sync_helpers'
 import { MeetingPermissions } from '../constants/schedule'
-import { isJson } from '../generic_utils'
+import { extractUrlFromText, isJson } from '../generic_utils'
 import { isValidUrl } from '../validations'
 import { CalendarServiceHelper } from './calendar.helper'
 
@@ -148,7 +148,7 @@ export class GoogleEventMapper {
   // Helper Methods
   private static getCalendarMeetingUrl(googleEvent: calendar_v3.Schema$Event) {
     const entryPointUrl = googleEvent.conferenceData?.entryPoints?.find(
-      ep => ep.uri
+      ep => ep.uri && isValidUrl(ep.uri)
     )?.uri
     if (entryPointUrl && isValidUrl(entryPointUrl)) {
       return entryPointUrl
@@ -161,12 +161,23 @@ export class GoogleEventMapper {
       if (isValidUrl(googleEvent.location)) {
         return googleEvent.location
       }
-      // Try to extract URL from location text (e.g., "Meeting at https://zoom.us/j/123456")
-      const extractedUrl = this.extractUrlFromText(googleEvent.location)
-      if (extractedUrl) {
-        return extractedUrl
+
+      // case 1: Try to extract URL from location text (e.g., "Meeting at https://zoom.us/j/123456")
+      const extractedUrlLocation = extractUrlFromText(googleEvent.location)
+      if (extractedUrlLocation) {
+        return extractedUrlLocation
       }
     }
+    if (googleEvent.description) {
+      // case 2: Try to extract URL from description text (e.g., "Meeting at https://zoom.us/j/123456")
+      const extractedUrlDescription = extractUrlFromText(
+        googleEvent.description
+      )
+      if (extractedUrlDescription) {
+        return extractedUrlDescription
+      }
+    }
+    return undefined
   }
 
   private static generateInternalId(
@@ -474,31 +485,6 @@ export class GoogleEventMapper {
 
     const ruleset = rrule.toString()
     return isJson(ruleset) ? JSON.parse(ruleset) : [ruleset]
-  }
-
-  /**
-   * Extracts a URL from text that may contain meeting links
-   * e.g., "Meeting at https://zoom.us/j/123456" -> "https://zoom.us/j/123456"
-   */
-  private static extractUrlFromText(text: string): string | null {
-    if (!text) return null
-
-    // URL regex pattern to match http/https URLs
-    const urlPattern = /(https?:\/\/[^\s<>"]+)/gi
-    const matches = text.match(urlPattern)
-
-    if (!matches || matches.length === 0) return null
-
-    // Return the first valid URL found
-    for (const match of matches) {
-      // Clean up potential trailing punctuation
-      const cleanUrl = match.replace(/[.,;!?]+$/, '')
-      if (isValidUrl(cleanUrl)) {
-        return cleanUrl
-      }
-    }
-
-    return null
   }
 
   private static mapDayToGoogle(day: DayOfWeek): string {
