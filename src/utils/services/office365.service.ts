@@ -33,9 +33,9 @@ import {
   insertOfficeEventMapping,
   updateCalendarPayload,
 } from '../database'
-import { isAccountSchedulerOrOwner } from '../generic_utils'
+import { extractUrlFromText, isAccountSchedulerOrOwner } from '../generic_utils'
 import { getCalendarPrimaryEmail } from '../sync_helper'
-import { isValidEmail } from '../validations'
+import { isValidEmail, isValidUrl } from '../validations'
 import { CalendarServiceHelper } from './calendar.helper'
 import { IOffcie365CalendarService } from './calendar.service.types'
 import { Office365EventMapper } from './office.mapper'
@@ -322,36 +322,29 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     }
     const filteredEvents = onlyWithMeetingLinks
       ? events.filter(event => {
-          const hasOnlineMeeting = event.isOnlineMeeting === true
-          const hasOnlineMeetingInfo = !!(
-            event.onlineMeeting?.joinUrl || event.onlineMeeting?.conferenceId
-          )
-          const hasDeprecatedUrl = !!event.onlineMeetingUrl
+          const hasOnlineMeetingInfo =
+            isValidUrl(event.onlineMeeting?.joinUrl) ||
+            isValidUrl(event.onlineMeeting?.conferenceId)
+
+          const hasDeprecatedUrl = isValidUrl(event.onlineMeetingUrl)
 
           const locationHasUrl =
             event.location?.displayName &&
-            (event.location.displayName.includes('http://') ||
-              event.location.displayName.includes('https://') ||
-              event.location.displayName.includes('zoom.us') ||
-              event.location.displayName.includes('teams.microsoft.com') ||
-              event.location.displayName.includes('meet.google.com'))
+            isValidUrl(event.location?.displayName)
 
           const locationsHaveUrl = event.locations?.some(
-            loc =>
-              loc.displayName &&
-              (loc.displayName.includes('http://') ||
-                loc.displayName.includes('https://') ||
-                loc.displayName.includes('zoom.us') ||
-                loc.displayName.includes('teams.microsoft.com') ||
-                loc.displayName.includes('meet.google.com'))
+            loc => loc.displayName && isValidUrl(loc.displayName)
+          )
+          const hasExtractedUrl = isValidUrl(
+            extractUrlFromText(event.body?.content)
           )
 
           return (
-            hasOnlineMeeting ||
             hasOnlineMeetingInfo ||
             hasDeprecatedUrl ||
             locationHasUrl ||
-            locationsHaveUrl
+            locationsHaveUrl ||
+            hasExtractedUrl
           )
         })
       : events
@@ -374,7 +367,8 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       Pick<CalendarSyncInfo, 'name' | 'calendarId' | 'isReadOnly'>
     >,
     dateFrom: string,
-    dateTo: string
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
   ): Promise<UnifiedEvent[]> {
     const events = await Promise.all(
       calendars.map(cal =>
@@ -383,7 +377,8 @@ export class Office365CalendarService implements IOffcie365CalendarService {
           cal.name,
           cal.isReadOnly ?? false,
           dateFrom,
-          dateTo
+          dateTo,
+          onlyWithMeetingLinks
         )
       )
     )

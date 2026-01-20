@@ -19,9 +19,11 @@ export const isEthereumAddressOrDomain = (address: string): boolean => {
   return isValidEVMAddress(address) || isValidEthereumDomain(address)
 }
 
-export const isValidUrl = (url: string): boolean => {
-  const reg =
-    /(http(s)?:\/\/.)(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
+export const isValidUrl = (url?: string | null): boolean => {
+  if (!url) return false
+  const reg = new RegExp(
+    /(http(s)?:\/\/)(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&\/\/=]*)/g
+  )
   return reg.test(url)
 }
 
