@@ -445,6 +445,30 @@ export const scheduleMeeting = async (
     throw e
   }
 }
+export const scheduleMeetingSeries = async (
+  meeting: MeetingCreationRequest
+): Promise<DBSlot> => {
+  try {
+    return (await internalFetch(
+      `/secure/meetings/series`,
+      'POST',
+      meeting
+    )) as DBSlot
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 402) {
+      throw new AllMeetingSlotsUsedError()
+    } else if (e instanceof ApiFetchError && e.status === 400) {
+      throw new TransactionIsRequired()
+    } else if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e instanceof ApiFetchError && e.status === 403) {
+      throw new GateConditionNotValidError()
+    }
+    throw e
+  }
+}
 
 export const scheduleMeetingAsGuest = async (
   meeting: MeetingCreationRequest

@@ -35,9 +35,15 @@ import {
 export interface MeetingUpdateRequest extends MeetingCreationRequest {
   slotsToRemove: string[]
   guestsToRemove: ParticipantInfo[]
-  version: number
   eventId?: string | null
   calendar_id?: string | null
+}
+export interface MeetingSeriesUpdateRequest extends MeetingUpdateRequest {
+  /**
+   * The instance ID (e.g., "slot_20240315") that the user is editing.
+   * Required to calculate time offset from series base for proper propagation.
+   */
+  focus_instance_id: string
 }
 export interface MeetingInstanceUpdateRequest extends MeetingUpdateRequest {}
 
@@ -61,6 +67,7 @@ export interface MeetingCreationRequest {
   txHash?: Address | null
   encrypted_metadata?: Encrypted
   rrule: Array<string>
+  version: number
 }
 
 export interface UrlCreationRequest {
@@ -118,11 +125,10 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   content?: string
   meetingProvider: MeetingProvider
   meetingReminders?: Array<MeetingReminders>
-  meetingRepeat?: MeetingRepeat
   meetingPermissions?: Array<MeetingPermissions>
   eventId?: string | null
   notification_hash?: string
-  rrule?: Array<string>
+  rrule: Array<string>
   skipCalendarSync?: boolean
   skipNotify?: boolean
 }

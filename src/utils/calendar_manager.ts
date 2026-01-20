@@ -9,7 +9,7 @@ import {
   ReturnObject,
 } from 'ics'
 import { DateTime } from 'luxon'
-import { RRule, rrulestr } from 'rrule'
+import { Frequency, Options, RRule, rrulestr, Weekday } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability } from '@/types/Account'
@@ -53,6 +53,7 @@ import {
   cancelMeeting as apiCancelMeeting,
   cancelMeetingInstance as apiCancelMeetingInstance,
   scheduleMeeting as apiScheduleMeeting,
+  scheduleMeetingSeries as apiScheduleMeetingSeries,
   apiUpdateMeeting,
   updateMeetingAsGuest as apiUpdateMeetingAsGuest,
   apiUpdateMeetingInstance,
@@ -103,7 +104,6 @@ import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
-import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress, getAccountDisplayName } from './user_manager'
 import { isValidEmail, isValidUrl } from './validations'
 export const sanitizeParticipants = (
@@ -307,7 +307,6 @@ const buildMeetingData = async (
     [accountOrEmail: string]: string
   },
   meetingProvider: MeetingProvider,
-  currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl = '',
   meetingId = '',
@@ -315,7 +314,8 @@ const buildMeetingData = async (
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[],
-  txHash?: Address | null
+  txHash?: Address | null,
+  version?: number
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -328,7 +328,7 @@ const buildMeetingData = async (
       }
     }
   }
-
+  const rrule = handleRRULEForMeeting(meetingRepeat, startTime)
   const privateInfo: MeetingInfo = {
     change_history_paths: [],
     content: meetingContent,
@@ -342,6 +342,7 @@ const buildMeetingData = async (
     related_slot_ids: [],
     reminders: meetingReminders,
     title: meetingTitle,
+    rrule,
   }
   // first pass to make sure that we are keeping the existing slot id
   for (const participant of sanitizedParticipants) {
@@ -427,11 +428,12 @@ const buildMeetingData = async (
     meetingRepeat,
     meetingTypeId,
     participants_mapping: participantsMappings,
-    rrule: handleRRULEForMeeting(meetingRepeat, startTime),
+    rrule,
     start: startTime,
     title: privateInfo['title'],
     txHash,
     type: schedulingType,
+    version: version || 0,
   }
 }
 
@@ -566,7 +568,6 @@ const updateMeetingAsGuest = async (
     participantData.allAccounts,
     participantsToKeep,
     meetingProvider,
-    undefined,
     meetingContent,
     finalMeetingUrl,
     fullMeetingData.id,
@@ -598,6 +599,7 @@ const updateMeetingAsGuest = async (
     start: meetingData.start,
     title: meetingData.title,
     version: slot.version,
+    rrule: meetingData.rrule,
   }
 }
 
@@ -814,7 +816,6 @@ const updateMeeting = async (
       return acc
     }, {}),
     meetingProvider,
-    currentAccount,
     content,
     meetingUrl,
     rootMeetingId,
@@ -849,6 +850,7 @@ const updateMeeting = async (
       start: meetingData.start,
       title: meetingData.title,
       version: slot.version,
+      rrule: meetingData.rrule,
     }
   } else {
     const slot: DBSlot = await apiUpdateMeeting(slotId, payload)
@@ -1077,7 +1079,6 @@ const updateMeetingInstance = async (
       return acc
     }, {}),
     meetingProvider,
-    currentAccount,
     content,
     meetingUrl,
     rootMeetingId,
@@ -1273,7 +1274,6 @@ const deleteMeetingInstance = async (
       return acc
     }, {}),
     existingMeeting?.provider || MeetingProvider.GOOGLE_MEET,
-    currentAccount,
     existingMeeting?.content,
     existingMeeting?.meeting_url || '',
     rootMeetingId,
@@ -1707,7 +1707,6 @@ const updateMeetingConferenceGuest = async (
       return acc
     }, {}),
     meetingProvider,
-    undefined,
     content,
     meetingUrl,
     rootMeetingId,
@@ -1739,6 +1738,7 @@ const updateMeetingConferenceGuest = async (
     start: meetingData.start,
     title: meetingData.title,
     version: slot.version,
+    rrule: meetingData.rrule,
   }
 }
 
@@ -1899,7 +1899,6 @@ const deleteMeeting = async (
       return acc
     }, {}),
     existingMeeting?.provider || MeetingProvider.GOOGLE_MEET,
-    currentAccount,
     existingMeeting?.content,
     existingMeeting?.meeting_url || '',
     rootMeetingId,
@@ -2072,7 +2071,6 @@ const scheduleMeeting = async (
   emailToSendReminders?: string,
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[],
   txHash?: Address | null
 ): Promise<MeetingDecrypted> => {
@@ -2089,7 +2087,7 @@ const scheduleMeeting = async (
         meeting_id: newMeetingId,
         meetingProvider,
         meetingReminders,
-        meetingRepeat,
+        meetingRepeat: MeetingRepeat.NO_REPEAT,
         participants_mapping: participantData.sanitizedParticipants,
         start: startTime,
         title: meetingTitle || 'No Title',
@@ -2105,13 +2103,12 @@ const scheduleMeeting = async (
     participantData.allAccounts,
     {},
     meetingProvider,
-    currentAccount,
     meetingContent,
     meeting_url,
     newMeetingId,
     meetingTitle,
     meetingReminders,
-    meetingRepeat,
+    MeetingRepeat.NO_REPEAT,
     selectedPermissions,
     txHash
   )
@@ -2155,6 +2152,97 @@ const scheduleMeeting = async (
       const meeting = (await decryptMeeting(slot, currentAccount))!
       return meeting
     }
+
+    // Invalidate meetings cache and update meetings where required
+    queryClient.invalidateQueries(
+      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
+    )
+    queryClient.invalidateQueries(
+      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
+    )
+
+    participants.forEach(p => {
+      queryClient.invalidateQueries(
+        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
+      )
+      queryClient.invalidateQueries(
+        QueryKeys.busySlots({
+          id: p.account_address?.toLowerCase(),
+        })
+      )
+    })
+    return {
+      id: slot.id!,
+      ...meeting,
+      content: meeting.content,
+      created_at: meeting.start,
+      end: meeting.end,
+      meeting_id: newMeetingId,
+      meeting_info_encrypted: slot.meeting_info_encrypted,
+      meeting_url: meeting.meeting_url,
+      participants: meeting.participants_mapping,
+      related_slot_ids: [],
+      start: meeting.start,
+      title: meeting.title,
+      version: 0,
+    }
+  } catch (error: unknown) {
+    throw error
+  }
+}
+const scheduleRecurringMeeting = async (
+  startTime: Date,
+  endTime: Date,
+  participants: ParticipantInfo[],
+  meetingRepeat: MeetingRepeat,
+  meetingProvider: MeetingProvider,
+  currentAccount?: Account | null,
+  meetingContent?: string,
+  meetingUrl?: string,
+  meetingTitle?: string,
+  meetingReminders?: Array<MeetingReminders>,
+  selectedPermissions?: MeetingPermissions[]
+): Promise<MeetingDecrypted> => {
+  const newMeetingId = uuidv4()
+  const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
+
+  const meeting_url =
+    meetingUrl ||
+    (
+      await generateMeetingUrl({
+        accounts: participantData.allAccounts,
+        content: meetingContent,
+        end: endTime,
+        meeting_id: newMeetingId,
+        meetingProvider,
+        meetingReminders,
+        meetingRepeat,
+        participants_mapping: participantData.sanitizedParticipants,
+        start: startTime,
+        title: meetingTitle || 'No Title',
+      })
+    ).url
+
+  const meeting = await buildMeetingData(
+    SchedulingType.REGULAR,
+    NO_MEETING_TYPE,
+    startTime,
+    endTime,
+    participantData.sanitizedParticipants,
+    participantData.allAccounts,
+    {},
+    meetingProvider,
+    meetingContent,
+    meeting_url,
+    newMeetingId,
+    meetingTitle,
+    meetingReminders,
+    meetingRepeat,
+    selectedPermissions
+  )
+
+  try {
+    const slot: DBSlot = await apiScheduleMeetingSeries(meeting)
 
     // Invalidate meetings cache and update meetings where required
     queryClient.invalidateQueries(
@@ -2408,6 +2496,7 @@ const decryptMeeting = async (
     start: new Date(meeting.start),
     title: meetingInfo.title,
     version: meeting.version,
+    rrule: meetingInfo.rrule,
   }
 }
 // This functions runtime is for the server side only
@@ -2438,6 +2527,7 @@ const decryptMeetingGuest = async (
     start: new Date(meeting.start),
     title: meetingInfo.title,
     version: meeting.version,
+    rrule: meetingInfo.rrule,
   }
 }
 // This functions runtime is for the server side only
@@ -2468,6 +2558,7 @@ const decryptConferenceMeeting = async (
     reminders: meetingInfo.reminders,
     start: new Date(meeting.start),
     title: meetingInfo.title,
+    rrule: meetingInfo.rrule,
     version: -1, // Conference meetings do not have versioning
   }
 }
@@ -2769,26 +2860,63 @@ const selectDefaultProvider = (providers?: Array<MeetingProvider>) => {
 }
 
 const handleRRULEForMeeting = (recurrence: MeetingRepeat, start: Date) => {
-  if (recurrence !== MeetingRepeat.NO_REPEAT) {
-    let RRULE = `RRULE:FREQ=${recurrence.toUpperCase()};INTERVAL=1`
-    const startDateTime = DateTime.fromJSDate(start)
-    const dayOfWeek = startDateTime
-      .toFormat('EEE')
-      .toUpperCase()
-      .substring(0, 2)
-    const weekOfMonth = Math.ceil(startDateTime.day / 7)
+  if (recurrence === MeetingRepeat.NO_REPEAT) return []
 
-    switch (recurrence) {
-      case MeetingRepeat.WEEKLY:
-        RRULE += `;BYDAY=${dayOfWeek}`
+  const freqMap: Record<
+    MeetingRepeat.DAILY | MeetingRepeat.WEEKLY | MeetingRepeat.MONTHLY,
+    Frequency
+  > = {
+    [MeetingRepeat.DAILY]: RRule.DAILY,
+    [MeetingRepeat.WEEKLY]: RRule.WEEKLY,
+    [MeetingRepeat.MONTHLY]: RRule.MONTHLY,
+  }
+
+  const options: Partial<Options> = {
+    freq: freqMap[recurrence],
+    interval: 1,
+    dtstart: start,
+  }
+
+  // rrule library auto-handles BYDAY for weekly (uses dtstart's weekday)
+  // and BYSETPOS for monthly (uses dtstart's week-of-month position)
+  if (recurrence === MeetingRepeat.MONTHLY) {
+    const startDateTime = DateTime.fromJSDate(start)
+    const weekOfMonth = Math.floor((startDateTime.day - 1) / 7) + 1
+
+    let weekday
+    switch (startDateTime.weekday) {
+      case 1:
+        weekday = RRule.MO
         break
-      case MeetingRepeat.MONTHLY:
-        RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+      case 2:
+        weekday = RRule.TU
+        break
+      case 3:
+        weekday = RRule.WE
+        break
+      case 4:
+        weekday = RRule.TH
+        break
+      case 5:
+        weekday = RRule.FR
+        break
+      case 6:
+        weekday = RRule.SA
+        break
+      case 7:
+        weekday = RRule.SU
+        break
+      default:
+        weekday = RRule.MO
         break
     }
-    return [RRULE]
+
+    options.byweekday = weekday
+    options.bysetpos = [weekOfMonth]
   }
-  return []
+
+  const rule = new RRule(options)
+  return [rule.toString()]
 }
 const isDiffRRULE = (oldRRULE: string[], newRRULE: string[]) => {
   return (
@@ -2964,7 +3092,6 @@ const rsvpMeeting = async (
       return acc
     }, {}),
     decryptedMeeting.provider || MeetingProvider.GOOGLE_MEET,
-    currentAccount,
     decryptedMeeting.content,
     decryptedMeeting.meeting_url,
     decryptedMeeting.meeting_id,
@@ -3042,4 +3169,5 @@ export {
   cancelMeetingInstance,
   deleteMeetingSeries,
   cancelMeetingSeries,
+  scheduleRecurringMeeting,
 }

@@ -403,82 +403,86 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
               </HStack>
             )}
           </VStack>
-          <HStack
-            alignItems="center"
-            gap={4}
-            display={
-              event.isReadOnlyCalendar || !isRsvpAllowed ? 'none' : 'flex'
-            }
-            w="100%"
-          >
-            <Text fontWeight={700}>RSVP:</Text>
-            <HStack alignItems="center" gap={2} w="fit-content">
-              <Tag
-                bg={isAccepted(actor?.status) ? 'green.500' : 'transparent'}
-                borderColor={'green.500'}
-                borderWidth={1}
-                cursor="pointer"
-                fontSize={{
-                  lg: '16px',
-                  md: '14px',
-                  base: '12px',
-                }}
-                onClick={() => handleRSVP(AttendeeStatus.ACCEPTED)}
-                px={3}
-                rounded="full"
-              >
-                <TagLabel
-                  color={isAccepted(actor?.status) ? 'white' : 'green.500'}
+          {actor && (
+            <HStack
+              alignItems="center"
+              gap={4}
+              display={
+                event.isReadOnlyCalendar || !isRsvpAllowed ? 'none' : 'flex'
+              }
+              w="100%"
+            >
+              <Text fontWeight={700}>RSVP:</Text>
+              <HStack alignItems="center" gap={2} w="fit-content">
+                <Tag
+                  bg={isAccepted(actor?.status) ? 'green.500' : 'transparent'}
+                  borderColor={'green.500'}
+                  borderWidth={1}
+                  cursor="pointer"
+                  fontSize={{
+                    lg: '16px',
+                    md: '14px',
+                    base: '12px',
+                  }}
+                  onClick={() => handleRSVP(AttendeeStatus.ACCEPTED)}
+                  px={3}
+                  rounded="full"
                 >
-                  Yes
-                </TagLabel>
-              </Tag>
-              <Tag
-                bg={isDeclined(actor?.status) ? 'red.250' : 'transparent'}
-                borderColor={'red.250'}
-                borderWidth={1}
-                cursor="pointer"
-                fontSize={{
-                  lg: '16px',
-                  md: '14px',
-                  base: '12px',
-                }}
-                onClick={() => handleRSVP(AttendeeStatus.DECLINED)}
-                px={3}
-                rounded="full"
-              >
-                <TagLabel
-                  color={isDeclined(actor?.status) ? 'white' : 'red.250'}
+                  <TagLabel
+                    color={isAccepted(actor?.status) ? 'white' : 'green.500'}
+                  >
+                    Yes
+                  </TagLabel>
+                </Tag>
+                <Tag
+                  bg={isDeclined(actor?.status) ? 'red.250' : 'transparent'}
+                  borderColor={'red.250'}
+                  borderWidth={1}
+                  cursor="pointer"
+                  fontSize={{
+                    lg: '16px',
+                    md: '14px',
+                    base: '12px',
+                  }}
+                  onClick={() => handleRSVP(AttendeeStatus.DECLINED)}
+                  px={3}
+                  rounded="full"
                 >
-                  No
-                </TagLabel>
-              </Tag>
-              <Tag
-                bg={
-                  isPendingAction(actor?.status) ? 'primary.300' : 'transparent'
-                }
-                borderColor={'primary.300'}
-                borderWidth={1}
-                cursor="pointer"
-                fontSize={{
-                  lg: '16px',
-                  md: '14px',
-                  base: '12px',
-                }}
-                onClick={() => handleRSVP(AttendeeStatus.NEEDS_ACTION)}
-                px={3}
-                rounded="full"
-              >
-                <TagLabel
-                  color={
-                    isPendingAction(actor?.status) ? 'white' : 'primary.300'
+                  <TagLabel
+                    color={isDeclined(actor?.status) ? 'white' : 'red.250'}
+                  >
+                    No
+                  </TagLabel>
+                </Tag>
+                <Tag
+                  bg={
+                    isPendingAction(actor?.status)
+                      ? 'primary.300'
+                      : 'transparent'
                   }
+                  borderColor={'primary.300'}
+                  borderWidth={1}
+                  cursor="pointer"
+                  fontSize={{
+                    lg: '16px',
+                    md: '14px',
+                    base: '12px',
+                  }}
+                  onClick={() => handleRSVP(AttendeeStatus.NEEDS_ACTION)}
+                  px={3}
+                  rounded="full"
                 >
-                  Maybe
-                </TagLabel>
-              </Tag>
+                  <TagLabel
+                    color={
+                      isPendingAction(actor?.status) ? 'white' : 'primary.300'
+                    }
+                  >
+                    Maybe
+                  </TagLabel>
+                </Tag>
+              </HStack>
             </HStack>
-          </HStack>
+          )}
         </VStack>
       </Box>
       <DeleteEventDialog

@@ -177,6 +177,7 @@ export interface MeetingInfo {
   provider?: MeetingProvider
   recurrence?: MeetingRepeat
   permissions?: Array<MeetingPermissions>
+  rrule: string[]
 }
 
 export interface MeetingDecrypted<T = Date> extends MeetingInfo {

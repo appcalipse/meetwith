@@ -47,6 +47,7 @@ import {
   findAccountsByEmails,
   getAccountFromDB,
   getConferenceMeetingFromDB,
+  getEventMasterSeries,
   getSlotById,
   getSlotSeriesId,
   initDB,
@@ -245,7 +246,6 @@ const handleUpdateParseMeetingInfo = async (
       return acc
     }, {}),
     meetingProvider,
-    currentAccount,
     content,
     meetingUrl,
     rootMeetingId,
@@ -357,7 +357,6 @@ const handleUpdateRSVPParseMeetingInfo = async (
       return acc
     }, {}),
     decryptedMeeting?.provider || MeetingProvider.GOOGLE_MEET,
-    currentAccount,
     decryptedMeeting.content,
     decryptedMeeting.meeting_url,
     rootMeetingId,
@@ -488,7 +487,6 @@ const handleDeleteMeetingParseInfo = async (
       return acc
     }, {}),
     decryptedMeeting?.provider || MeetingProvider.GOOGLE_MEET,
-    currentAccount,
     decryptedMeeting?.content,
     decryptedMeeting?.meeting_url || '',
     rootMeetingId,
@@ -531,6 +529,16 @@ const handleCancelOrDelete = async (
       eventId
     )
   }
+}
+const handleCancelOrDeleteSeries = async (
+  currentAccountAddress: string,
+  decryptedMeeting: MeetingDecrypted,
+  meetingId: string,
+  masterEvent: calendar_v3.Schema$Event
+) => {
+  if (!masterEvent.id) return
+  // we first check to see if an event of this section exists
+  const series = getEventMasterSeries(meetingId, masterEvent.id!)
 }
 
 const handleUpdateSingleRecurringInstance = async (
@@ -617,7 +625,6 @@ const handleUpdateSingleRecurringInstance = async (
           end: new Date(endTime).toISOString(),
           id: slot.id + '_' + timeStamp,
           override_meeting_info_encrypted: slot.meeting_info_encrypted,
-          role: slot.role!,
           series_id,
           start: new Date(startTime).toISOString(),
           status: RecurringStatus.MODIFIED,
@@ -634,7 +641,6 @@ const handleUpdateSingleRecurringInstance = async (
           end: new Date(endTime).toISOString(),
           id: slotId + '_' + timeStamp,
           override_meeting_info_encrypted: null,
-          role: slot.role,
           series_id,
           start: new Date(startTime).toISOString(),
           status: RecurringStatus.CANCELLED,
@@ -779,7 +785,6 @@ const handleCancelOrDeleteForRecurringInstance = async (
           end: new Date(endTime).toISOString(),
           id: slot.id + '_' + timeStamp,
           override_meeting_info_encrypted: null,
-          role: slot.role!,
           series_id,
           start: new Date(startTime).toISOString(),
           status: RecurringStatus.CANCELLED,
@@ -810,7 +815,6 @@ const handleCancelOrDeleteForRecurringInstance = async (
           guest_email: slot.guest_email,
           id: slot.id + '_' + timeStamp,
           override_meeting_info_encrypted: slot.meeting_info_encrypted,
-          role: slot.role!,
           series_id,
           start: new Date(startTime).toISOString(),
           status: RecurringStatus.MODIFIED,
@@ -828,7 +832,6 @@ const handleCancelOrDeleteForRecurringInstance = async (
           guest_email: slot.guest_email,
           id: slotId + '_' + timeStamp,
           override_meeting_info_encrypted: null,
-          role: slot.role,
           series_id,
           start: new Date(startTime).toISOString(),
           status: RecurringStatus.CANCELLED,
@@ -1118,6 +1121,7 @@ const handleParseParticipants = async (
   }
   return parsedParticipants
 }
+
 export {
   extractMeetingDescription,
   getBaseEventId,

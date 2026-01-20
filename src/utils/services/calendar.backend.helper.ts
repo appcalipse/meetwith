@@ -625,24 +625,11 @@ export const generateIcsServer = async (
   if (meeting.meetingReminders) {
     event.alarms = meeting.meetingReminders.map(createAlarm)
   }
-  if (
-    meeting.meetingRepeat &&
-    meeting?.meetingRepeat !== MeetingRepeat.NO_REPEAT
-  ) {
-    let RRULE = `FREQ=${meeting.meetingRepeat?.toUpperCase()};INTERVAL=1`
-    const dayOfWeek = format(meeting.start, 'eeeeee').toUpperCase()
-    const weekOfMonth = getWeekOfMonth(meeting.start)
 
-    switch (meeting.meetingRepeat) {
-      case MeetingRepeat.WEEKLY:
-        RRULE += `;BYDAY=${dayOfWeek}`
-        break
-      case MeetingRepeat.MONTHLY:
-        RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
-        break
-    }
-    event.recurrenceRule = RRULE
+  if (meeting.rrule.length > 0) {
+    event.recurrenceRule = meeting.rrule[0]
   }
+
   event.attendees = []
   if (useParticipants) {
     const attendees = await Promise.all(
