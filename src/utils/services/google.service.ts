@@ -316,16 +316,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
               this.createReminder
             )
           }
-          if (
-            meetingDetails.meetingRepeat &&
-            meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
-          ) {
-            payload.recurrence =
-              meetingDetails.rrule ||
-              handleRRULEForMeeting(
-                meetingDetails.meetingRepeat,
-                new Date(meetingDetails.start)
-              )
+          if (meetingDetails.rrule.length > 0) {
+            payload.recurrence = meetingDetails.rrule
           }
           const calendar = google.calendar({
             auth: myGoogleAuth,
@@ -467,16 +459,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           this.createReminder
         )
       }
-      if (
-        meetingDetails.meetingRepeat &&
-        meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
-      ) {
-        payload.recurrence =
-          meetingDetails.rrule ||
-          handleRRULEForMeeting(
-            meetingDetails.meetingRepeat,
-            new Date(meetingDetails.start)
-          )
+      if (meetingDetails.rrule.length > 0) {
+        payload.recurrence = meetingDetails.rrule
       }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
