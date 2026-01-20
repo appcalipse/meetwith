@@ -160,7 +160,7 @@ export interface CreateGroupPayload {
 export interface GetGroupsFullResponseWithMetadata {
   groups: Array<GetGroupsFullResponse>
   total: number
-  hidden: number
+  isPro: boolean
   upgradeRequired: boolean
 }
 

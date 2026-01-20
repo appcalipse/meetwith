@@ -15,7 +15,8 @@ import {
   QUICKPOLL_MIN_DURATION_MINUTES,
 } from '@/utils/constants'
 import {
-  countActiveQuickPollsCreatedThisMonth,
+  countQuickPollsCreatedThisMonth,
+  countScheduledQuickPollsThisMonth,
   createQuickPoll,
   getQuickPollsForAccount,
   isProAccountAsync,
@@ -44,48 +45,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         searchQuery,
       } = req.query
 
-      // Check subscription status first
+      // Check subscription status
       const isPro = await isProAccountAsync(address)
 
-      if (!isPro && status === PollStatus.ONGOING) {
-        // Get active polls only (limit to 1, no search)
-        const activePollsResult = await getQuickPollsForAccount(
-          address,
-          1,
-          0,
-          PollStatus.ONGOING,
-          undefined // No search for free users
-        )
-
-        // Get total count of all active polls (no search) to show hidden count
-        const allActivePollsCountResult = await getQuickPollsForAccount(
-          address,
-          QUICKPOLL_MAX_LIMIT,
-          0,
-          PollStatus.ONGOING,
-          undefined // No search
-        )
-
-        const activePollsCreatedThisMonth =
-          await countActiveQuickPollsCreatedThisMonth(address)
-
-        const hiddenActivePolls = Math.max(
-          0,
-          allActivePollsCountResult.total_count - 1
-        )
-
-        const response: QuickPollListResponse = {
-          has_more: false, // Free users don't get pagination for active polls
-          hidden: hiddenActivePolls,
-          polls: activePollsResult.polls,
-          total_count: allActivePollsCountResult.total_count,
-          upgradeRequired: allActivePollsCountResult.total_count >= 1,
-        }
-
-        return res.status(200).json(response)
-      }
-
-      // Pro: fetch all polls with search/limit/offset from query params
+      // Fetch all polls with search/limit/offset from query params
       const result = await getQuickPollsForAccount(
         address,
         parseInt(limit as string),
@@ -103,12 +66,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         searchQuery as string
       )
 
+      let upgradeRequired = false
+      let canSchedule = true
+      if (!isPro) {
+        const pollsCreatedThisMonth = await countQuickPollsCreatedThisMonth(
+          address
+        )
+
+        const scheduledPollsThisMonth = await countScheduledQuickPollsThisMonth(
+          address
+        )
+        upgradeRequired = pollsCreatedThisMonth >= 1
+        canSchedule = scheduledPollsThisMonth < 1
+      }
+
       const response: QuickPollListResponse = {
+        canSchedule,
         has_more: result.has_more,
-        hidden: 0,
+        isPro,
         polls: result.polls,
         total_count: countResult.total_count,
-        upgradeRequired: false,
+        upgradeRequired,
       }
 
       return res.status(200).json(response)
@@ -157,9 +135,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const isPro = await isProAccountAsync(address)
 
       if (!isPro) {
-        const activePollCountThisMonth =
-          await countActiveQuickPollsCreatedThisMonth(address)
-        if (activePollCountThisMonth >= 1) {
+        const pollsCreatedThisMonth = await countQuickPollsCreatedThisMonth(
+          address
+        )
+        if (pollsCreatedThisMonth >= 1) {
           throw new QuickPollLimitExceededError()
         }
       }
