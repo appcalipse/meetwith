@@ -39,8 +39,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       // Force all connected calendars to renew its Tokens in background
       // if needed for displaying calendars...
       void syncConnectedCalendars(accountAddress)
-      // Calculate metadata for free tier
-      const hidden = !isPro ? Math.max(0, totalCount - 2) : 0
       const upgradeRequired = !isPro && totalCount >= 2
 
       const response = calendars.map(it => {
@@ -86,7 +84,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
       return res.status(200).json({
         calendars: response,
-        hidden,
+        isPro,
         total: totalCount,
         upgradeRequired,
       })

@@ -118,7 +118,7 @@ const Groups = forwardRef<GroupRef, Props>(
       refetchOnMount: true,
     })
     const groups = data?.pages.flatMap(page => page.groups || []) ?? []
-    const canCreateGroup = !data?.pages[0]?.upgradeRequired
+    const canCreateGroup = data?.pages[0]?.isPro ?? true
     const firstFetch = isLoading
 
     // Fetch user's availability blocks (used in settings modal)

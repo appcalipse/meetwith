@@ -195,7 +195,8 @@ export interface QuickPollListResponse {
   polls: QuickPollWithParticipants[]
   total_count: number
   has_more: boolean
-  hidden?: number
+  isPro?: boolean
+  canSchedule?: boolean
   upgradeRequired?: boolean
 }
 
