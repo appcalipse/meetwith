@@ -7323,15 +7323,16 @@ const handleWebhookEvent = async (
   )
 
   const actions = await Promise.all(
-    recentlyUpdatedNonRecurringMeetings
-      .map(event => handleSyncEvent(event, calendar))
-      .concat(
-        handleSyncRecurringEvents(
-          recentlyUpdatedRecurringMeetings,
-          calendar,
-          data.calendar_id
-        )
-      )
+    recentlyUpdatedNonRecurringMeetings.map(event =>
+      handleSyncEvent(event, calendar)
+    )
+    // .concat(
+    //   handleSyncRecurringEvents(
+    //     recentlyUpdatedRecurringMeetings,
+    //     calendar,
+    //     data.calendar_id
+    //   )
+    // )
   )
   return actions.length > 0
 }
@@ -7417,8 +7418,6 @@ const handleSyncRecurringEvents = async (
   calendar: ConnectedCalendar,
   calendar_id: string
 ) => {
-  return undefined
-
   const masterEvents = events.filter(e => e.recurrence && !e.recurringEventId)
   const masterBatch = new Map<string, calendar_v3.Schema$Event[]>()
 
