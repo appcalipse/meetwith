@@ -228,6 +228,7 @@ describe('calendar manager', () => {
       meeting_url: '',
       participants: participants,
       related_slot_ids: [],
+      rrule: [],
     }
     jest
       .spyOn(crypto, 'getContentFromEncrypted')
@@ -312,6 +313,7 @@ describe('calendar manager', () => {
       meeting_url: '',
       participants: JSON.parse(JSON.stringify(participants)),
       related_slot_ids: [],
+      rrule: [],
     }
 
     jest
