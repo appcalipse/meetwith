@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { syncAllSeries, updateAllRecurringSlots } from '@/utils/database'
+import { syncAllSeries } from '@/utils/database'
 
 const TIMEOUT_MS = 25000
 export default async function recurrenceSync(
@@ -16,13 +16,6 @@ export default async function recurrenceSync(
       console.debug('[RecurrenceSync] Starting', { jobId })
 
       const syncPromise = Promise.allSettled([
-        updateAllRecurringSlots().catch(err => {
-          console.error('[RecurrenceSync] updateAllRecurringSlots failed', {
-            error: err.message,
-            jobId,
-            stack: err.stack,
-          })
-        }),
         syncAllSeries().catch(err => {
           console.error('[RecurrenceSync] syncAllSeries failed', {
             error: err.message,
