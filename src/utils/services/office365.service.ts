@@ -2,8 +2,9 @@ import { Client, GraphError } from '@microsoft/microsoft-graph-client'
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials'
 import * as Sentry from '@sentry/nextjs'
 import format from 'date-fns/format'
+import { instance } from 'gaxios'
 import { DateTime } from 'luxon'
-
+import { RRule, rrulestr, Weekday, WeekdayStr } from 'rrule'
 import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
@@ -15,10 +16,13 @@ import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import {
   Attendee,
+  DaysOfWeek,
   EventBusyDate,
   MicrosoftGraphCalendar,
   MicrosoftGraphEvent,
   RecurrencePattern,
+  RecurrenceRange,
+  RecurrenceRangeType,
 } from '@/types/Office365'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import {
@@ -26,7 +30,6 @@ import {
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
-
 import { appUrl } from '../constants'
 import {
   getOfficeEventMappingId,
@@ -474,46 +477,121 @@ export class Office365CalendarService implements IOffcie365CalendarService {
       )
       payload.reminderMinutesBeforeStart = this.createReminder(lowestReminder)
     }
-    if (
-      details.meetingRepeat &&
-      details?.meetingRepeat !== MeetingRepeat.NO_REPEAT
-    ) {
+
+    if (details.rrule.length > 0) {
+      const rruleString = details.rrule[0]
+      const parsed = rrulestr(rruleString)
+      const options = parsed.origOptions
+
+      // Map RRULE FREQ to Office365 type
       let type!: Office365RecurrenceType
-      switch (details.meetingRepeat) {
-        case MeetingRepeat.DAILY:
-          type = Office365RecurrenceType.DAILY
-          break
-        case MeetingRepeat.WEEKLY:
-          type = Office365RecurrenceType.WEEKLY
-          break
-        case MeetingRepeat.MONTHLY:
-          type = Office365RecurrenceType.RELATIVE_MONTHLY
-          break
+      const freq = options.freq
+
+      if (freq === RRule.DAILY) {
+        type = Office365RecurrenceType.DAILY
+      } else if (freq === RRule.WEEKLY) {
+        type = Office365RecurrenceType.WEEKLY
+      } else if (freq === RRule.MONTHLY) {
+        // BYSETPOS indicates relative monthly (e.g., "2nd Friday")
+        type = options.bysetpos
+          ? Office365RecurrenceType.RELATIVE_MONTHLY
+          : Office365RecurrenceType.ABSOLUTE_MONTHLY
       }
 
       const meetingDate = new Date(details.start)
-      const daysOfWeek = [
-        format(meetingDate, 'eeee').toLowerCase(),
-      ] as RecurrencePattern['daysOfWeek']
-      payload['recurrence'] = {
-        pattern: {
-          daysOfWeek,
-          firstDayOfWeek: 'sunday',
-          interval: 1,
-          type,
-        },
-        range: {
-          endDate: DateTime.fromJSDate(meetingDate)
-            .plus({
-              months: 6,
-            })
-            .toFormat('yyyy-MM-dd'),
-          recurrenceTimeZone: 'UTC',
-          startDate: format(meetingDate, 'yyyy-MM-dd'),
-          type: 'endDate',
-        },
+      const pattern: RecurrencePattern = {
+        firstDayOfWeek: 'sunday',
+        interval: options.interval || 1,
+        type,
       }
+
+      // Map BYDAY to daysOfWeek for weekly/monthly
+      if (options.byweekday && Array.isArray(options.byweekday)) {
+        const dayMap: Array<DaysOfWeek> = [
+          'sunday',
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+        ]
+        const weekStrMap: Record<WeekdayStr, DaysOfWeek> = {
+          SU: 'sunday',
+          MO: 'monday',
+          TU: 'tuesday',
+          WE: 'wednesday',
+          TH: 'thursday',
+          FR: 'friday',
+          SA: 'saturday',
+        }
+        pattern.daysOfWeek = options.byweekday.map(d => {
+          switch (true) {
+            case typeof d === 'number':
+              return dayMap[d]
+            case d instanceof Weekday:
+              return dayMap[d.weekday]
+            default:
+              return weekStrMap[d]
+          }
+        })
+      } else if (
+        type === Office365RecurrenceType.WEEKLY ||
+        type === Office365RecurrenceType.RELATIVE_MONTHLY
+      ) {
+        // Fallback: use meeting date's day of week
+        pattern.daysOfWeek = [
+          format(meetingDate, 'eeee').toLowerCase(),
+        ] as RecurrencePattern['daysOfWeek']
+      }
+
+      // For relative monthly: map BYSETPOS to index
+      if (
+        type === Office365RecurrenceType.RELATIVE_MONTHLY &&
+        options.bysetpos
+      ) {
+        const pos = Array.isArray(options.bysetpos)
+          ? options.bysetpos[0]
+          : options.bysetpos
+        const indexMap: Record<number, RecurrencePattern['index']> = {
+          1: 'first',
+          2: 'second',
+          3: 'third',
+          4: 'fourth',
+          [-1]: 'last',
+        }
+        pattern.index = indexMap[pos] || 'first'
+      }
+
+      // For absolute monthly: use day of month
+      if (type === Office365RecurrenceType.ABSOLUTE_MONTHLY) {
+        pattern.dayOfMonth = meetingDate.getDate()
+      }
+
+      // Determine range type: COUNT vs UNTIL vs no end
+
+      let rangeType!: RecurrenceRangeType
+      let numberOfOccurrences: RecurrenceRange['numberOfOccurrences']
+      let endDate: RecurrenceRange['endDate']
+      if (options.count) {
+        rangeType = 'numbered'
+        numberOfOccurrences = options.count
+      } else if (options.until) {
+        rangeType = 'endDate'
+        endDate = format(options.until, 'yyyy-MM-dd')
+      } else {
+        rangeType = 'noEnd'
+      }
+      const range: RecurrenceRange = {
+        recurrenceTimeZone: 'UTC',
+        startDate: format(meetingDate, 'yyyy-MM-dd'),
+        type: rangeType,
+        numberOfOccurrences,
+        endDate,
+      }
+      payload['recurrence'] = { pattern, range }
     }
+
     if (useParticipants && payload.attendees) {
       for (const participant of details.participants) {
         const email =
