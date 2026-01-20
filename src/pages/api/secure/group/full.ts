@@ -16,36 +16,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(401).send('Unauthorized')
     }
     try {
-      // Check subscription status first
+      // Check subscription status
       const isPro = await isProAccountAsync(account_address)
 
-      if (!isPro) {
-        const allGroups = await getGroupsAndMembers(
-          account_address,
-          '5',
-          '0',
-          '',
-          extractQuery(req.query, 'includeInvites') === 'true'
-        )
-
-        // Get total count for all groups
-        const allGroupsUnlimited = await getGroupsAndMembers(
-          account_address,
-          undefined,
-          undefined,
-          '',
-          extractQuery(req.query, 'includeInvites') === 'true'
-        )
-
-        return res.status(200).json({
-          groups: allGroups,
-          hidden: Math.max(0, allGroupsUnlimited.length - 5),
-          total: allGroupsUnlimited.length,
-          upgradeRequired: allGroupsUnlimited.length >= 5,
-        })
-      }
-
-      // Pro: fetch all groups with search/limit/offset from query params
+      // Fetch all groups with search/limit/offset from query params
       const allGroups = await getGroupsAndMembers(
         account_address,
         extractQuery(req.query, 'limit'),
@@ -65,9 +39,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       return res.status(200).json({
         groups: allGroups,
-        hidden: 0,
+        isPro,
         total: allGroupsForCount.length,
-        upgradeRequired: false,
+        upgradeRequired: !isPro,
       })
     } catch (e) {
       return res.status(500).send(e)

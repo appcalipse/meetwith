@@ -37,7 +37,6 @@ const AllPolls = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
 
-  // Fetch metadata to get upgradeRequired status
   const { data: pollsMetadata } = useQuery({
     queryKey: ['quickpolls-metadata'],
     queryFn: () =>
@@ -45,6 +44,7 @@ const AllPolls = () => {
     staleTime: 30000,
   })
   const canCreateQuickPoll = !pollsMetadata?.upgradeRequired
+  const canSchedulePolls = pollsMetadata?.canSchedule ?? true
 
   const {
     ongoingPollsCount,
@@ -212,6 +212,7 @@ const AllPolls = () => {
               <OngoingPolls
                 searchQuery={debouncedSearchQuery}
                 upgradeRequired={pollsMetadata?.upgradeRequired}
+                canSchedule={canSchedulePolls}
               />
             </TabPanel>
             <TabPanel p={0}>

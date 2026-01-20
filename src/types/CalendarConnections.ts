@@ -54,7 +54,7 @@ export interface ConnectedCalendar extends ConnectedCalendarCore {
 export interface GetCalendarIntegrationsResponse {
   calendars: ConnectedCalendarCore[]
   total: number
-  hidden: number
+  isPro: boolean
   upgradeRequired: boolean
 }
 

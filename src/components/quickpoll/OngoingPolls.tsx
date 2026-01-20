@@ -21,11 +21,13 @@ import PollCard from './PollCard'
 interface OngoingPollsProps {
   searchQuery?: string
   upgradeRequired?: boolean
+  canSchedule?: boolean
 }
 
 const OngoingPolls = ({
   searchQuery = '',
   upgradeRequired = false,
+  canSchedule = true,
 }: OngoingPollsProps) => {
   const { push } = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
@@ -123,7 +125,7 @@ const OngoingPolls = ({
         <>
           <VStack spacing={4} align="stretch">
             {currentPolls.map(poll => (
-              <PollCard key={poll.id} poll={poll} />
+              <PollCard key={poll.id} poll={poll} canSchedule={canSchedule} />
             ))}
           </VStack>
 

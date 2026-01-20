@@ -270,8 +270,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             {!hasProAccess && currentAccount && (
               <Box mb={4} w="100%" textAlign="left">
                 <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
-                  You've maxed out your plan. Upgrade to create more contacts
-                  and schedule with them.{' '}
+                  You've maxed out your plan. Upgrade to schedule with contacts.{' '}
                   <Button
                     variant="link"
                     colorScheme="primary"

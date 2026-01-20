@@ -615,6 +615,15 @@ export class QuickPollLimitExceededError extends Error {
   }
 }
 
+export class QuickPollSchedulingLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 1 poll scheduling per month. Upgrade to Pro for unlimited poll scheduling.`
+    )
+    this.name = 'QuickPollSchedulingLimitExceededError'
+  }
+}
+
 export class CalendarSyncLimitExceededError extends Error {
   constructor() {
     super(
