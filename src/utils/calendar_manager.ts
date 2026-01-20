@@ -1533,7 +1533,6 @@ const cancelMeetingSeries = async (
   if (!existingMeeting) {
     throw new MeetingNotFoundError(slotId)
   }
-
   return cancelMeeting(currentAccountAddress, existingMeeting)
 }
 
@@ -1970,12 +1969,17 @@ const cancelMeeting = async (
   const slotId = decryptedMeeting.id.split('_')[0]
   // Only the owner or scheduler of the meeting can cancel it
   const isMeetingOwners = existingMeeting?.participants.find(
-    user => user.type === ParticipantType.Owner && user.slot_id === slotId
+    user =>
+      user.type === ParticipantType.Owner &&
+      (user.slot_id === decryptedMeeting.id ||
+        user.slot_id?.split('_')[0] === decryptedMeeting.id.split('_')[0])
   )
   const isMeetingScheduler = existingMeeting?.participants.find(
-    user => user.type === ParticipantType.Scheduler && user.slot_id === slotId
+    user =>
+      user.type === ParticipantType.Scheduler &&
+      (user.slot_id === decryptedMeeting.id ||
+        user.slot_id?.split('_')[0] === decryptedMeeting.id.split('_')[0])
   )
-
   if (!isMeetingOwners && !isMeetingScheduler) {
     throw new MeetingCancelForbiddenError()
   }

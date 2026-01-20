@@ -22,6 +22,8 @@ import {
   ResponseStatus,
 } from '@/types/Office365'
 import { MeetingPermissions } from '../constants/schedule'
+import { extractUrlFromText } from '../generic_utils'
+import { isValidUrl } from '../validations'
 import { CalendarServiceHelper } from './calendar.helper'
 
 export class Office365EventMapper {
@@ -159,21 +161,24 @@ export class Office365EventMapper {
   private static mapLocation(
     o365Event: MicrosoftGraphEvent
   ): string | undefined {
-    return (
-      o365Event?.onlineMeeting?.joinUrl ||
-      o365Event?.onlineMeetingUrl ||
-      o365Event?.location?.displayName ||
-      o365Event?.locations?.find(
-        loc =>
-          loc.displayName &&
-          (loc.displayName.includes('http://') ||
-            loc.displayName.includes('https://') ||
-            loc.displayName.includes('zoom.us') ||
-            loc.displayName.includes('teams.microsoft.com') ||
-            loc.displayName.includes('meet.google.com'))
-      )?.displayName ||
-      undefined
+    const loc = o365Event?.locations?.find(
+      loc => loc.displayName && isValidUrl(loc.displayName)
     )
+    if (isValidUrl(o365Event?.onlineMeeting?.joinUrl)) {
+      return o365Event?.onlineMeeting?.joinUrl
+    } else if (isValidUrl(o365Event?.onlineMeetingUrl)) {
+      return o365Event?.onlineMeetingUrl
+    } else if (isValidUrl(o365Event?.location?.displayName)) {
+      return o365Event?.location?.displayName
+    } else if (loc) {
+      return loc.displayName
+    } else {
+      const bodyUrl = extractUrlFromText(o365Event.body?.content)
+      if (bodyUrl && isValidUrl(bodyUrl)) {
+        return bodyUrl
+      }
+    }
+    return undefined
   }
 
   private static mapAttendees(
