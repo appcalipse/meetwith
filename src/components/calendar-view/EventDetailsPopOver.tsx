@@ -39,7 +39,7 @@ import {
   UnifiedEvent,
   WithInterval,
 } from '@/types/Calendar'
-import { MeetingDecrypted } from '@/types/Meeting'
+import { MeetingDecrypted, TimeSlotSource } from '@/types/Meeting'
 import { Attendee } from '@/types/Office365'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
@@ -252,7 +252,12 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
       })
     }
   }
-
+  const isRsvpAllowed = React.useMemo(() => {
+    if (isCalendarEvent(slot) && slot.source === TimeSlotSource.OFFICE) {
+      return slot.providerData?.office365?.responseRequested !== false
+    }
+    return true
+  }, [slot])
   return (
     <VStack width="100%" align="start" gap={6} p={4}>
       <VStack width="100%" align="start" gap={4}>
@@ -373,9 +378,9 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
           alignItems="center"
           gap={3.5}
           display={
-            isCalendarEvent(slot) && slot.isReadOnlyCalendar
+            isCalendarEvent(slot) && (slot.isReadOnlyCalendar || !isRsvpAllowed)
               ? 'none'
-              : undefined
+              : 'flex'
           }
         >
           <Text fontWeight={700}>RSVP:</Text>
@@ -391,11 +396,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                 md: '14px',
                 base: '12px',
               }}
-              onClick={() => {
-                if (!isCalendarEvent(slot)) {
-                  handleRSVP(ParticipationStatus.Accepted)
-                }
-              }}
+              onClick={() => handleRSVP(ParticipationStatus.Accepted)}
             >
               <TagLabel
                 color={isAccepted(actor?.status) ? 'white' : 'green.500'}
@@ -414,11 +415,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                 md: '14px',
                 base: '12px',
               }}
-              onClick={() => {
-                if (!isCalendarEvent(slot)) {
-                  handleRSVP(ParticipationStatus.Rejected)
-                }
-              }}
+              onClick={() => handleRSVP(ParticipationStatus.Rejected)}
             >
               <TagLabel color={isDeclined(actor?.status) ? 'white' : 'red.250'}>
                 No
@@ -437,11 +434,7 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                 md: '14px',
                 base: '12px',
               }}
-              onClick={() => {
-                if (!isCalendarEvent(slot)) {
-                  handleRSVP(ParticipationStatus.Pending)
-                }
-              }}
+              onClick={() => handleRSVP(ParticipationStatus.Pending)}
             >
               <TagLabel
                 color={isPendingAction(actor?.status) ? 'white' : 'primary.300'}
