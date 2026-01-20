@@ -725,7 +725,6 @@ const ScheduleMain: FC<IInitialProps> = ({
           undefined,
           title,
           meetingNotification.map(n => n.value),
-          meetingRepeat.value,
           selectedPermissions
         )
 
