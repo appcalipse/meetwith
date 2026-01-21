@@ -77,6 +77,7 @@ import {
   MeetingDecrypted,
   MeetingInfo,
   SlotInstance,
+  SlotSeries,
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -2757,6 +2758,22 @@ export const getSlotInstanceById = async (
       end: new Date(slot.end),
       start: new Date(slot.start),
     }))
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
+}
+
+export const getSlotSeries = async (seriesId: string, signal?: AbortSignal) => {
+  try {
+    return await internalFetch<SlotSeries>(
+      `/meetings/meeting/${seriesId}/series`,
+      'GET',
+      undefined,
+      { signal }
+    )
   } catch (e) {
     if (e instanceof ApiFetchError && e.status === 404) {
       return null
