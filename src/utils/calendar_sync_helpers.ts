@@ -35,15 +35,18 @@ import {
 import { getParticipantBaseInfoFromAccount } from '@utils/user_manager'
 import { calendar_v3 } from 'googleapis'
 import { DateTime } from 'luxon'
+import { RRule, rrulestr } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
-
 import { MeetingReminders, RecurringStatus } from '@/types/common'
-import { Tables, TablesUpdate } from '@/types/Supabase'
-
+import { Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
 import { MeetingCreationRequest } from '../types/Requests'
+import { PIN_ENABLE_TOKEN_EXPIRY } from './constants'
 import { NO_MEETING_TYPE } from './constants/meeting-types'
 import {
+  bulkUpdateSlotSeriesConfirmedSlots,
   deleteMeetingFromDB,
+  deleteRecurringSlotInstances,
+  deleteSeriesInstantAfterDate,
   findAccountsByEmails,
   getAccountFromDB,
   getConferenceMeetingFromDB,
@@ -54,6 +57,7 @@ import {
   isSlotFree,
   parseParticipantSlots,
   updateMeeting,
+  upsertSeries,
 } from './database'
 import { ExternalCalendarSync } from './sync_helper'
 
@@ -208,31 +212,6 @@ const handleUpdateParseMeetingInfo = async (
 
   const rootMeetingId = decryptedMeeting?.meeting_id
 
-  if (!ignoreAvailabilities) {
-    const promises: Promise<void>[] = []
-
-    participants
-      .filter(p => p.account_address !== currentAccount?.address)
-      .forEach(participant => {
-        promises.push(
-          new Promise<void>(async resolve => {
-            if (
-              !participant.account_address ||
-              (await isSlotFree(
-                participant.account_address,
-                startTime,
-                endTime,
-                meetingTypeId
-              ))
-            ) {
-              resolve()
-            }
-            throw new TimeNotAvailableError()
-          })
-        )
-      })
-    await Promise.all(promises)
-  }
   const participantData = await handleParticipants(participants, currentAccount)
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
@@ -537,8 +516,184 @@ const handleCancelOrDeleteSeries = async (
   masterEvent: calendar_v3.Schema$Event
 ) => {
   if (!masterEvent.id) return
-  // we first check to see if an event of this section exists
-  const series = getEventMasterSeries(meetingId, masterEvent.id!)
+  const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+    decryptedMeeting.participants,
+    currentAccountAddress
+  )
+  const seriesMap = new Map<string, Tables<'slot_series'>>(
+    series.map(serie => [
+      serie.account_address || serie.guest_email || '',
+      serie,
+    ])
+  )
+  if (isSchedulerOrOwner) {
+    await deleteRecurringSlotInstances(series.map(serie => serie.id))
+    // TODO: Sync to ditrbuted calendars
+  } else {
+    const { participantActing, payload } = await handleDeleteMeetingParseInfo(
+      false,
+      currentAccountAddress,
+      NO_MEETING_TYPE,
+      decryptedMeeting,
+      eventId
+    )
+  }
+}
+const handleUpdateMeetingSeries = async (
+  currentAccountAddress: string,
+  meetingId: string,
+  masterEvent: calendar_v3.Schema$Event,
+  startTime: Date,
+  endTime: Date,
+  decryptedMeeting: MeetingDecrypted,
+  participants: ParticipantInfo[],
+  content: string,
+  meetingUrl: string,
+  meetingProvider: MeetingProvider,
+  meetingTitle?: string,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT,
+  selectedPermissions?: MeetingPermissions[],
+  rrule?: Array<string> | null,
+  eventId?: string | null,
+  calendar_id?: string | null
+) => {
+  if (!masterEvent.id || !masterEvent.recurrence) return
+  const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  const seriesMap = new Map(
+    series.map(serie => [serie.account_address || serie.guest_email, serie])
+  )
+  const cleanedParticipants = []
+  for (const participant of participants) {
+    const serie = seriesMap.get(
+      participant?.account_address || participant.guest_email || ''
+    )
+    if (serie) {
+      cleanedParticipants.push({
+        ...participant,
+        slot_id: serie.id, // generate a new id for meeting
+      })
+    } else {
+      cleanedParticipants.push({
+        ...participant,
+        slot_id: uuidv4(), // generate a new id for meeting
+      })
+    }
+  }
+  const eventInstance = await handleUpdateParseMeetingInfo(
+    true,
+    currentAccountAddress,
+    NO_MEETING_TYPE,
+    startTime,
+    endTime,
+    decryptedMeeting,
+    participants.map(p => ({
+      ...p,
+    })),
+    content,
+    meetingUrl,
+    meetingProvider,
+    meetingTitle,
+    meetingReminders,
+    meetingRepeat,
+    selectedPermissions,
+    rrule,
+    eventId
+  )
+  const { slots } = await parseParticipantSlots(
+    eventInstance.participantActing,
+    eventInstance.payload,
+    true
+  )
+
+  const rule = rrulestr(masterEvent.recurrence[0])
+  const until = rule.options.until
+  const toUpdate: Array<TablesInsert<'slot_series'>> = []
+  const toInsert: Array<TablesInsert<'slot_series'>> = []
+  for (const slot of slots) {
+    const serie = seriesMap.get(slot?.account_address || slot.guest_email || '')
+    if (serie) {
+      // series already exists
+      toUpdate.push({
+        id: slot.id,
+        account_address: slot.account_address || null,
+        created_at: new Date().toISOString(),
+        default_meeting_info_encrypted: slot.meeting_info_encrypted,
+        guest_email: slot.guest_email || null,
+        template_start: slot.end,
+        template_end: slot.start,
+        rrule: masterEvent.recurrence,
+        effective_start: slot.start,
+        effective_end: until ? until.toISOString() : null,
+        ical_uid: masterEvent.id,
+        meeting_id: meetingId,
+        role: slot.role || ParticipantType.Invitee,
+      })
+    } else {
+      toInsert.push({
+        id: slot.id,
+        account_address: slot.account_address || null,
+        created_at: new Date().toISOString(),
+        default_meeting_info_encrypted: slot.meeting_info_encrypted,
+        guest_email: slot.guest_email || null,
+        template_start: slot.end,
+        template_end: slot.start,
+        rrule: masterEvent.recurrence,
+        effective_start: slot.start,
+        effective_end: until ? until.toISOString() : null,
+        ical_uid: masterEvent.id,
+        meeting_id: meetingId,
+        role: slot.role || ParticipantType.Invitee,
+      })
+    }
+  }
+  const updatedSeries = await upsertSeries(toUpdate)
+  const insertedSeries = await upsertSeries(toInsert)
+
+  const promises = updatedSeries.map(async slotSerie => {
+    await bulkUpdateSlotSeriesConfirmedSlots(
+      slotSerie.id,
+      new Date(startTime),
+      new Date(endTime)
+    )
+    if (until) {
+      await deleteSeriesInstantAfterDate(slotSerie.id, until)
+    }
+  })
+  await Promise.all(promises)
+  const seriesToInsert = insertedSeries.map(serie => {
+    const start = DateTime.fromJSDate(new Date(serie.template_start))
+    const maxLimit = start.plus({ months: 1 })
+    const ghostStartTimes = rule.between(
+      start.toJSDate(),
+      maxLimit.toJSDate(),
+      true
+    )
+    const duration_minutes = DateTime.fromJSDate(
+      new Date(serie.template_end)
+    ).diff(start, 'minutes').minutes
+
+    const toInsert = ghostStartTimes.map(ghostStart => {
+      const start = DateTime.fromJSDate(ghostStart)
+      const end = start.plus({ minutes: Math.abs(duration_minutes) })
+      const newSlot: TablesInsert<'slot_instance'> = {
+        account_address: serie.account_address || null,
+        created_at: new Date().toISOString(),
+        end: end.toJSDate().toISOString(),
+        guest_email: serie.guest_email || null,
+        id: `${serie.id}_${ghostStart.getTime()}`,
+        override_meeting_info_encrypted: null,
+        series_id: serie.id,
+        start: ghostStart.toISOString(),
+        status: RecurringStatus.CONFIRMED,
+        version: 0,
+      }
+      return newSlot
+    })
+    return toInsert
+  })
+  return seriesToInsert
 }
 
 const handleUpdateSingleRecurringInstance = async (
