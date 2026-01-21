@@ -12,7 +12,7 @@
         }
       }
     },
-    "enabled": null
+    "enabled": true
   },
   "files": {
     "includes": ["**", "!**/*.json", "!**/*.css"]
