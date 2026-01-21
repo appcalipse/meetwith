@@ -1,5 +1,5 @@
 export const MEETING_PAGE_SIZE = 5
-
+export const MAX_RECURRING_LOOKAHEAD_MONTHS = 1
 export enum UpdateMode {
   ALL_EVENTS = 'all_events',
   SINGLE_EVENT = 'single_event',
