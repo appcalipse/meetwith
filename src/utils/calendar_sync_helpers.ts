@@ -535,8 +535,7 @@ const handleCancelOrDeleteSeries = async (
       false,
       currentAccountAddress,
       NO_MEETING_TYPE,
-      decryptedMeeting,
-      eventId
+      decryptedMeeting
     )
   }
 }
