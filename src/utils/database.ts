@@ -272,13 +272,17 @@ import {
   getParticipationStatus,
   handleCancelOrDelete,
   handleCancelOrDeleteForRecurringInstance,
+  handleCancelOrDeleteSeries,
   handleParseParticipants,
   handleUpdateMeeting,
   handleUpdateMeetingRsvps,
+  handleUpdateMeetingSeries,
+  handleUpdateMeetingSeriesRsvps,
   handleUpdateSingleRecurringInstance,
 } from './calendar_sync_helpers'
 import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
+import { MAX_RECURRING_LOOKAHEAD_MONTHS } from './constants/meeting'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import {
@@ -321,6 +325,57 @@ const initDB = () => {
 }
 
 initDB()
+
+const BATCH_SIZE = 500
+
+/**
+ * Batch upsert records to avoid rate limits and payload size constraints
+ * @param table - Table name to upsert into
+ * @param records - Array of records to upsert
+ * @param onConflict - Column name(s) to use for conflict resolution
+ * @param batchSize - Number of records per batch (default: 500)
+ */
+const batchUpsert = async <T extends keyof Database['public']['Tables']>(
+  table: T,
+  records: Array<TablesInsert<T> | TablesUpdate<T>>,
+  onConflict: string,
+  batchSize: number = BATCH_SIZE
+): Promise<void> => {
+  if (records.length === 0) return
+
+  const batches: Array<typeof records> = []
+  for (let i = 0; i < records.length; i += batchSize) {
+    batches.push(records.slice(i, i + batchSize))
+  }
+
+  const results = await Promise.allSettled(
+    batches.map(async (batch, index) => {
+      const { error } = await db.supabase
+        .from(table)
+        .upsert(batch, { onConflict })
+
+      if (error) {
+        throw new Error(
+          `Batch ${index + 1}/${batches.length} failed: ${error.message}`
+        )
+      }
+    })
+  )
+
+  const failures = results.filter(
+    (r): r is PromiseRejectedResult => r.status === 'rejected'
+  )
+
+  if (failures.length > 0) {
+    console.error(
+      `Failed to upsert ${failures.length}/${batches.length} batches into ${table}:`,
+      failures.map(f => f.reason)
+    )
+    throw new Error(
+      `Batch upsert failed: ${failures.length}/${batches.length} batches failed`
+    )
+  }
+}
 
 const initAccountDBForWallet = async (
   address: string,
@@ -1388,7 +1443,7 @@ const syncAllSeries = async () => {
       }
 
       const start = DateTime.fromJSDate(lastInstanceDate)
-      const maxLimit = start.plus({ months: 3 })
+      const maxLimit = start.plus({ months: MAX_RECURRING_LOOKAHEAD_MONTHS })
       const ghostStartTimes = rule.between(
         start.toJSDate(),
         maxLimit.toJSDate(),
@@ -2298,7 +2353,7 @@ const saveRecurringMeetings = async (
     if (!slotSeries) return
 
     const start = DateTime.fromJSDate(new Date(slot.start))
-    const maxLimit = start.plus({ months: 1 })
+    const maxLimit = start.plus({ months: MAX_RECURRING_LOOKAHEAD_MONTHS })
     const ghostStartTimes = rule.between(
       start.toJSDate(),
       maxLimit.toJSDate(),
@@ -2331,12 +2386,8 @@ const saveRecurringMeetings = async (
   const toInsert = toInsertResolved
     .flat()
     .filter((val): val is TablesInsert<'slot_instance'> => val !== undefined)
-  await db.supabase
-    .from('slot_instance')
-    .insert(toInsert)
-    .then(({ error }) => {
-      if (error) console.error(error)
-    })
+
+  await batchUpsert('slot_instance', toInsert, 'id', BATCH_SIZE)
 
   meetingResponse.id = slots?.[index]?.id
   meetingResponse.created_at =
@@ -7463,11 +7514,11 @@ const handleSyncRecurringEvents = async (
       if (!meetingInfo || !masterEvent.recurrence) continue
       // simply process meetingd
       if (masterEvent.status === 'cancelled') {
-        await handleCancelOrDelete(
+        await handleCancelOrDeleteSeries(
           calendar.account_address,
           meetingInfo,
-          meetingTypeId,
-          masterEvent.id
+          meetingId,
+          masterEvent
         )
         continue
       }
@@ -7482,10 +7533,10 @@ const handleSyncRecurringEvents = async (
           dtstart: new Date(startTime), // The original start time of the series
         })
 
-        await handleUpdateMeeting(
-          true,
+        const toInsert = await handleUpdateMeetingSeries(
           calendar.account_address,
-          meetingTypeId,
+          meetingId,
+          masterEvent,
           new Date(startTime),
           new Date(endTime),
           meetingInfo,
@@ -7496,21 +7547,21 @@ const handleSyncRecurringEvents = async (
           masterEvent.summary || '',
           conferenceMeeting.reminders,
           getMeetingRepeatFromRule(rule),
-          conferenceMeeting.permissions,
-          masterEvent.recurrence,
-          masterEvent.id,
-          calendar_id
+          conferenceMeeting.permissions
         )
+        toInsert && slotInstanceUpdates.push(...toInsert)
       } catch (e) {
         if (e instanceof MeetingDetailsModificationDenied) {
           // update only the rsvp on other calendars
           const actor = masterEvent.attendees?.find(attendee => attendee.self)
-          await handleUpdateMeetingRsvps(
+          const toInsert = await handleUpdateMeetingSeriesRsvps(
             calendar.account_address,
-            meetingTypeId,
+            meetingId,
+            masterEvent,
             meetingInfo,
             getParticipationStatus(actor?.responseStatus || '')
           )
+          toInsert && slotInstanceUpdates.push(...toInsert)
         }
         console.error(e)
         continue
@@ -7519,32 +7570,6 @@ const handleSyncRecurringEvents = async (
   })
 
   await Promise.all(masterPromises)
-
-  // const { meetingInfo, conferenceMeeting } =
-  //   await getConferenceDecryptedMeeting(meetingId)
-  // if (!meetingInfo || !masterEvent.recurrence) continue
-
-  // const peerEvents = masterEvents.filter(
-  //   peerEvent =>
-  //     peerEvent.id !== masterEvent.id &&
-  //     peerEvent?.extendedProperties?.private?.meetingId ===
-  //       masterEvent?.extendedProperties?.private?.meetingId &&
-  //     peerEvent.status !== 'cancelled'
-  // )
-  // if (peerEvents.length > 0) {
-  //   if (processed.has(meetingId)) continue
-  //   const actor = masterEvent.attendees?.find(attendee => attendee.self)
-  //   // REVERT MEETING TO PREVIOUS VERSION IF PEER WITH ID TAKEOVER EXISTS
-  //   await handleUpdateMeetingRsvps(
-  //     calendar.account_address,
-  //     meetingTypeId,
-  //     meetingInfo,
-  //     getParticipationStatus(actor?.responseStatus || ''),
-  //     true
-  //   )
-  //   processed.add(meetingId)
-  //   continue
-  // }
 
   const otherSlotsPromise = exceptions.map(async exceptionEvent => {
     try {
@@ -7566,17 +7591,30 @@ const handleSyncRecurringEvents = async (
   slotInstanceUpdates.push(...otherSlots)
 
   if (slotInstanceUpdates.length > 0) {
-    await db.supabase
-      .from('slot_instance')
-      .upsert(slotInstanceUpdates, {
-        onConflict: 'id',
-      })
-      .then(({ error }) => {
-        if (error) {
-          console.error('Error updating slot_instance:', error)
-        }
-      })
+    await batchUpsert('slot_instance', slotInstanceUpdates, 'id')
   }
+}
+const getSlotInstanceSeriesId = async (
+  meetingId: string,
+  iCalId: string,
+  account_address?: string | null,
+  guest_email?: string | null
+) => {
+  const query = db.supabase
+    .from<Tables<'slot_series'>>('slot_series')
+    .select('id')
+    .eq('meeting_id', meetingId)
+    .eq('ical_uid', iCalId)
+  if (account_address) {
+    query.eq('account_address', account_address)
+  } else if (guest_email) {
+    query.eq('guest_email', guest_email)
+  } else {
+    return null
+  }
+  const { data } = await query.maybeSingle()
+
+  return data?.id
 }
 const getSlotSeriesId = async (slot_id: string) => {
   const { data } = await db.supabase
@@ -10488,4 +10526,5 @@ export {
   bulkUpdateSlotSeriesConfirmedSlots,
   deleteSeriesInstantAfterDate,
   deleteRecurringSlotInstances,
+  getSlotInstanceSeriesId,
 }
