@@ -68,6 +68,7 @@ import {
   getMeetingGuest,
   getSlotByMeetingId,
   getSlotInstanceById,
+  getSlotSeries,
   getSlotsByIds,
   isSlotFreeApiCall,
   parsedDecryptedParticipants,
@@ -223,30 +224,32 @@ const mapRelatedSlots = async (
 
 const loadMeetingAccountAddresses = async (
   meeting: MeetingDecrypted,
-  currentAccountAddress?: string
+  currentAccountAddress?: string,
+  isSlotSeries?: boolean
 ): Promise<string[]> => {
   // also make sure that the version of every related db slot is also in sync
   // and that there is a change already going on
   // TODO: change to one fetch all in batch
-  const otherSlots = []
+  const slotsAccounts = []
   for (const slotId of meeting.related_slot_ids) {
     try {
       let otherSlot
-      if (slotId.includes('_')) {
-        otherSlot = await getSlotInstanceById(slotId)
+      if (isSlotSeries) {
+        otherSlot = await getSlotSeries(slotId.split('_')?.[0])
       } else {
-        otherSlot = await getMeeting(slotId)
+        if (slotId.includes('_')) {
+          otherSlot = await getSlotInstanceById(slotId)
+        } else {
+          otherSlot = await getMeeting(slotId)
+        }
       }
-      otherSlots.push(otherSlot)
+      otherSlot?.account_address &&
+        slotsAccounts.push(otherSlot?.account_address)
     } catch (_e) {
       // some slots might not be found if they belong to guests and were wrongly stored
     }
   }
-  const slotsAccounts = [
-    ...otherSlots
-      .filter((it): it is DBSlot => !!it?.account_address)
-      .map(it => it.account_address!.toLowerCase()),
-  ]
+
   if (currentAccountAddress) {
     slotsAccounts.unshift(currentAccountAddress.toLowerCase())
   }
@@ -2971,15 +2974,18 @@ const meetWithSeriesPreprocessors = (
   for (const slotSerie of slotSeries) {
     if (!slotSerie.rrule?.[0]) continue
     const rule = rrulestr(slotSerie.rrule[0], {
-      dtstart: new Date(slotSerie.start), // The original start time of the series
+      dtstart: new Date(slotSerie.template_start), // The original start time of the series
     })
     const ghostStartTimes = rule
       .between(startDate.toJSDate(), endDate.toJSDate(), true)
       .map(date => DateTime.fromJSDate(date))
     for (const ghostStartTime of ghostStartTimes) {
       const difference =
-        DateTime.fromJSDate(new Date(slotSerie.end))
-          .diff(DateTime.fromJSDate(new Date(slotSerie.start)), 'minutes')
+        DateTime.fromJSDate(new Date(slotSerie.template_start))
+          .diff(
+            DateTime.fromJSDate(new Date(slotSerie.template_end)),
+            'minutes'
+          )
           .toObject().minutes || 0
       const ghostEndTime = ghostStartTime.plus({ minutes: difference })
 
@@ -2992,12 +2998,17 @@ const meetWithSeriesPreprocessors = (
       )
       if (!instanceExists) {
         const slotInstance: SlotInstance = {
-          ...slotSerie,
           end: ghostEndTime.toJSDate(),
           id: `${slotSerie.id}_instance_${ghostStartTime.toJSDate().getTime()}`, // Unique ID for the ghost instance
           series_id: slotSerie.id!,
           start: ghostStartTime.toJSDate(),
           status: RecurringStatus.CONFIRMED,
+          meeting_info_encrypted: slotSerie.meeting_info_encrypted,
+          slot_id: slotSerie.id || '',
+          version: 0,
+          account_address: slotSerie.account_address,
+          role: slotSerie.role,
+          recurrence: getMeetingRepeatFromRule(rule),
         }
         slots.push(slotInstance)
       }
