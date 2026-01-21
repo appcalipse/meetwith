@@ -267,8 +267,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         {!canCreateGroup && currentAccount && (
           <HStack mb={4}>
             <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
-              You've maxed out your plan. Upgrade to create and schedule with
-              groups.{' '}
+              Upgrade to create and schedule with groups.{' '}
               <Button
                 variant="link"
                 colorScheme="primary"
