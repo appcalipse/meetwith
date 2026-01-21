@@ -52,7 +52,7 @@ import {
   noClearCustomSelectComponent,
   Option,
 } from '@utils/constants/select'
-import { MeetingSlugAlreadyExists } from '@utils/errors'
+import { ApiFetchError, MeetingSlugAlreadyExists } from '@utils/errors'
 import {
   convertMinutes,
   getSlugFromText,
@@ -69,7 +69,7 @@ import {
   validateField,
 } from '@utils/schemas'
 import { Select as ChakraSelect } from 'chakra-react-select'
-import React, { FC, Reducer, useMemo, useState } from 'react'
+import React, { FC, Reducer, useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 
 import useAccountContext from '@/hooks/useAccountContext'
@@ -95,6 +95,7 @@ interface IProps {
   isAvailabilityLoading: boolean
   stripeStatus?: PaymentAccountStatus | null
   isStripeLoading?: boolean
+  isPro?: boolean
 }
 
 const MeetingTypeModal: FC<IProps> = props => {
@@ -102,11 +103,29 @@ const MeetingTypeModal: FC<IProps> = props => {
     Reducer<ErrorState<SchemaKeys, 'plan', PlanKeys>, ErrorAction<fieldKey>>
   >(errorReducer, {})
   const currentAccount = useAccountContext()
-  const [sessionType, setSessionType] = React.useState<Option<SessionType>>(
-    SessionTypeOptions.find(
-      option => option.value === props.initialValues?.type
-    ) || SessionTypeOptions[0]
+
+  const sessionTypeOptions = React.useMemo(
+    () =>
+      props.isPro === false
+        ? SessionTypeOptions.filter(option => option.value === SessionType.FREE)
+        : SessionTypeOptions,
+    [props.isPro]
   )
+
+  const [sessionType, setSessionType] = React.useState<Option<SessionType>>(
+    sessionTypeOptions.find(
+      option => option.value === props.initialValues?.type
+    ) || sessionTypeOptions[0]
+  )
+
+  useEffect(() => {
+    if (props.isPro === false) {
+      const freeOption =
+        sessionTypeOptions.find(o => o.value === SessionType.FREE) ||
+        sessionTypeOptions[0]
+      setSessionType(freeOption)
+    }
+  }, [props.isPro, sessionTypeOptions])
   const [planType, setPlanType] = React.useState<Option<PlanType>>(
     PlanTypeOptions.find(
       option => option.value === props.initialValues?.plan?.type
@@ -424,6 +443,17 @@ const MeetingTypeModal: FC<IProps> = props => {
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof ApiFetchError && e.status === 403) {
+        toast({
+          title: 'Upgrade required',
+          description:
+            e.message ||
+            'Free plan only supports free session types. Upgrade to create paid sessions.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       }
     }
     setIsLoading(false)
@@ -588,16 +618,16 @@ const MeetingTypeModal: FC<IProps> = props => {
               justifyContent={'space-between'}
               alignItems="flex-start"
               isInvalid={!!errors.type}
-              isDisabled
+              isDisabled={props.isPro === false}
             >
               <FormLabel fontSize={'16px'}>Session Type</FormLabel>
               <ChakraSelect
-                isDisabled={!!props.initialValues?.id}
+                isDisabled={props.isPro === false}
                 value={sessionType}
                 colorScheme="primary"
                 onChange={handleSessionChange}
                 className="noLeftBorder timezone-select"
-                options={SessionTypeOptions}
+                options={sessionTypeOptions}
                 components={noClearCustomSelectComponent}
                 chakraStyles={{
                   ...fullWidthStyle,

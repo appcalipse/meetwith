@@ -275,6 +275,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         isAvailabilityLoading={isAvailabilityLoading}
         stripeStatus={stripeStatus}
         isStripeLoading={isStripeLoading}
+        isPro={isPro}
         onDelete={() => {
           openDeleteConfirmationModal()
           closeModal()
