@@ -323,7 +323,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
             flexWrap="wrap"
             gap={2}
           >
-            <Text color="neutral.400">Here are your created session</Text>
+            <Text color="neutral.400">Here are your created meeting types</Text>
             {!isPro && (
               <Text fontSize="14px" color="neutral.400">
                 <Button
