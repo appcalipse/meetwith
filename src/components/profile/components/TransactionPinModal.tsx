@@ -368,8 +368,8 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
                   mode === 'create'
                     ? 'Creating PIN...'
                     : mode === 'change'
-                    ? 'Updating PIN...'
-                    : 'Disabling PIN...'
+                      ? 'Updating PIN...'
+                      : 'Disabling PIN...'
                 }
                 isDisabled={isLoading}
               >

@@ -159,7 +159,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
                 name:
                   typeof calendar.displayName === 'string'
                     ? calendar.displayName
-                    : calendar.ctag ?? v4(),
+                    : (calendar.ctag ?? v4()),
                 color: calendar.calendarColor && calendar.calendarColor._cdata,
               }
             }),
@@ -186,7 +186,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
                 name:
                   typeof calendar.displayName === 'string'
                     ? calendar.displayName
-                    : calendar.ctag ?? v4(),
+                    : (calendar.ctag ?? v4()),
                 color: calendar.calendarColor && calendar.calendarColor._cdata,
               }
             }),

@@ -138,14 +138,17 @@ export const useCryptoBalances = ({
 
   return {
     balances: {
-      ...chainTokens.reduce((acc, tokenInfo, index) => {
-        const balanceQuery = balanceQueries[index]
-        const key = `${tokenInfo.tokenAddress.toLowerCase()}${
-          chainInfo?.name?.replace(/\s+/g, '') || selectedChain
-        }Balance`
-        acc[key] = balanceQuery?.data || { balance: 0 }
-        return acc
-      }, {} as Record<string, { balance: number }>),
+      ...chainTokens.reduce(
+        (acc, tokenInfo, index) => {
+          const balanceQuery = balanceQueries[index]
+          const key = `${tokenInfo.tokenAddress.toLowerCase()}${
+            chainInfo?.name?.replace(/\s+/g, '') || selectedChain
+          }Balance`
+          acc[key] = balanceQuery?.data || { balance: 0 }
+          return acc
+        },
+        {} as Record<string, { balance: number }>
+      ),
     },
     cryptoAssetsWithBalances,
   }

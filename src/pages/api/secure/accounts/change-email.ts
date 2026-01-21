@@ -65,9 +65,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .json({ error: 'Token has already been used or is invalid' })
     }
 
-    const currentNotifications = await getAccountNotificationSubscriptions(
-      account_address
-    )
+    const currentNotifications =
+      await getAccountNotificationSubscriptions(account_address)
 
     const emailChannel = currentNotifications.notification_types.find(
       n => n.channel === 'email'

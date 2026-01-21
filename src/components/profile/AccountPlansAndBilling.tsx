@@ -136,7 +136,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   const paymentProvider = billingSubscriptionDetails?.payment_provider ?? null
 
   // Derive billing plan label, status, and expiry from subscription data
-  const billingPlanLabel = billingPlan
+  const _billingPlanLabel = billingPlan
     ? billingPlan.billing_cycle === 'yearly'
       ? 'Pro – $80/year'
       : 'Pro – $8/month'
@@ -329,8 +329,8 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     isCryptoTrial && hasActiveBillingSubscription
       ? 'Trial'
       : hasActiveSubscription
-      ? 'Active'
-      : undefined
+        ? 'Active'
+        : undefined
 
   const freeCardBadge = !hasActiveSubscription ? 'Active' : undefined
 

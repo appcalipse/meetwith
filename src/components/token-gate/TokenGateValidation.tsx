@@ -87,8 +87,8 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
   const bgColor = !props.userAccount
     ? '#FFC700'
     : props.isGateValid
-    ? 'neutral.900'
-    : '#F3B5B4'
+      ? 'neutral.900'
+      : '#F3B5B4'
   return loading ? (
     <Box
       mt={10}

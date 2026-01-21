@@ -387,8 +387,8 @@ export class Office365EventMapper {
       type: recurrence.endDate
         ? 'endDate'
         : recurrence.occurrenceCount
-        ? 'numbered'
-        : 'noEnd',
+          ? 'numbered'
+          : 'noEnd',
     }
 
     if (recurrence.endDate) {

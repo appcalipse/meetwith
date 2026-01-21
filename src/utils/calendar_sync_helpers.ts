@@ -530,7 +530,7 @@ const handleCancelOrDelete = async (
     )
   }
 }
-const handleCancelOrDeleteSeries = async (
+const _handleCancelOrDeleteSeries = async (
   currentAccountAddress: string,
   decryptedMeeting: MeetingDecrypted,
   meetingId: string,
@@ -538,7 +538,7 @@ const handleCancelOrDeleteSeries = async (
 ) => {
   if (!masterEvent.id) return
   // we first check to see if an event of this section exists
-  const series = getEventMasterSeries(meetingId, masterEvent.id!)
+  const _series = getEventMasterSeries(meetingId, masterEvent.id!)
 }
 
 const handleUpdateSingleRecurringInstance = async (

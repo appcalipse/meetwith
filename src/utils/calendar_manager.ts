@@ -3071,15 +3071,18 @@ const rsvpMeeting = async (
 
   // those are the guests that must receive an update email
 
-  const accountSlotMap = participants.reduce((acc, participant) => {
-    if (participant.account_address) {
-      const lowerCasedAddress = participant.account_address.toLowerCase()
-      acc[lowerCasedAddress] = participant.slot_id!
-    } else if (participant.guest_email) {
-      acc[participant.guest_email] = participant.slot_id!
-    }
-    return acc
-  }, {} as Record<string, string>)
+  const accountSlotMap = participants.reduce(
+    (acc, participant) => {
+      if (participant.account_address) {
+        const lowerCasedAddress = participant.account_address.toLowerCase()
+        acc[lowerCasedAddress] = participant.slot_id!
+      } else if (participant.guest_email) {
+        acc[participant.guest_email] = participant.slot_id!
+      }
+      return acc
+    },
+    {} as Record<string, string>
+  )
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     '',

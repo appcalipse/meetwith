@@ -200,9 +200,8 @@ export const handleSubscriptionUpdated = async (
   const previousAttributes = event.data.previous_attributes || {}
 
   // Find stripe_subscriptions record
-  const stripeSubscription = await getStripeSubscriptionById(
-    stripeSubscriptionId
-  )
+  const stripeSubscription =
+    await getStripeSubscriptionById(stripeSubscriptionId)
 
   if (!stripeSubscription) {
     return
@@ -213,9 +212,8 @@ export const handleSubscriptionUpdated = async (
   let actualCancelAt: number | null | undefined = subscription.cancel_at
   try {
     const stripe = new StripeService()
-    const fullSubscription = await stripe.subscriptions.retrieve(
-      stripeSubscriptionId
-    )
+    const fullSubscription =
+      await stripe.subscriptions.retrieve(stripeSubscriptionId)
     actualCancelAt = fullSubscription.cancel_at
   } catch (error) {
     Sentry.captureException(error)
@@ -248,9 +246,8 @@ export const handleSubscriptionUpdated = async (
   if (shouldCancel) {
     // Update all active subscription periods to 'cancelled' status
     try {
-      const allSubscriptions = await getSubscriptionPeriodsByAccount(
-        accountAddress
-      )
+      const allSubscriptions =
+        await getSubscriptionPeriodsByAccount(accountAddress)
 
       // Update all active subscriptions that haven't expired yet
       const now = new Date()
@@ -318,9 +315,8 @@ export const handleSubscriptionUpdated = async (
     // Subscription was reactivated (cancel_at timestamp was removed)
     // Update cancelled subscription periods back to 'active' if still within expiry_time
     try {
-      const allSubscriptions = await getSubscriptionPeriodsByAccount(
-        accountAddress
-      )
+      const allSubscriptions =
+        await getSubscriptionPeriodsByAccount(accountAddress)
 
       const now = new Date()
       for (const sub of allSubscriptions) {
@@ -349,9 +345,8 @@ export const handleSubscriptionUpdated = async (
 
     if (stripeProductId) {
       // Look up corresponding billing_plan_id
-      const newBillingPlanId = await getBillingPlanIdFromStripeProduct(
-        stripeProductId
-      )
+      const newBillingPlanId =
+        await getBillingPlanIdFromStripeProduct(stripeProductId)
 
       if (
         newBillingPlanId &&
@@ -375,9 +370,8 @@ export const handleSubscriptionUpdated = async (
           let currentPeriodEnd: number | undefined
           try {
             const stripe = new StripeService()
-            const fullSubscription = await stripe.subscriptions.retrieve(
-              stripeSubscriptionId
-            )
+            const fullSubscription =
+              await stripe.subscriptions.retrieve(stripeSubscriptionId)
 
             // For flexible billing mode, period info is in items.data[0]
             // For standard subscriptions, it's at the top level
@@ -459,9 +453,8 @@ export const handleSubscriptionUpdated = async (
           }
 
           // Get existing active subscription to check if we need to mark it as expired
-          const existingSubscription = await getActiveSubscriptionPeriod(
-            accountAddress
-          )
+          const existingSubscription =
+            await getActiveSubscriptionPeriod(accountAddress)
 
           // Mark existing subscription periods as expired if they're before the new expiry
           if (existingSubscription) {
@@ -470,9 +463,8 @@ export const handleSubscriptionUpdated = async (
 
             // If the new expiry is later, mark old periods that end before it as expired
             if (newExpiry > existingExpiry) {
-              const allSubscriptions = await getSubscriptionPeriodsByAccount(
-                accountAddress
-              )
+              const allSubscriptions =
+                await getSubscriptionPeriodsByAccount(accountAddress)
               const now = new Date()
 
               for (const sub of allSubscriptions) {
@@ -529,9 +521,8 @@ export const handleSubscriptionDeleted = async (
   const stripeSubscriptionId = subscription.id
 
   // Find stripe_subscriptions record
-  const stripeSubscription = await getStripeSubscriptionById(
-    stripeSubscriptionId
-  )
+  const stripeSubscription =
+    await getStripeSubscriptionById(stripeSubscriptionId)
 
   if (!stripeSubscription) {
     return
@@ -541,9 +532,8 @@ export const handleSubscriptionDeleted = async (
 
   // Update all active subscription periods to 'expired' status
   try {
-    const activeSubscriptions = await getSubscriptionPeriodsByAccount(
-      accountAddress
-    )
+    const activeSubscriptions =
+      await getSubscriptionPeriodsByAccount(accountAddress)
 
     const now = new Date()
     for (const sub of activeSubscriptions) {
@@ -657,9 +647,8 @@ export const handleInvoicePaymentSucceeded = async (
   }
 
   // Find stripe_subscriptions record by stripe_subscription_id
-  const stripeSubscription = await getStripeSubscriptionById(
-    stripeSubscriptionId
-  )
+  const stripeSubscription =
+    await getStripeSubscriptionById(stripeSubscriptionId)
 
   if (!stripeSubscription) {
     return
@@ -741,17 +730,15 @@ export const handleInvoicePaymentSucceeded = async (
 
     try {
       const stripe = new StripeService()
-      const fullSubscription = await stripe.subscriptions.retrieve(
-        stripeSubscriptionId
-      )
+      const fullSubscription =
+        await stripe.subscriptions.retrieve(stripeSubscriptionId)
 
       handle =
         (fullSubscription.metadata?.handle as string | undefined) || undefined
 
       if (!handle) {
-        const existingSubscription = await getActiveSubscriptionPeriod(
-          accountAddress
-        )
+        const existingSubscription =
+          await getActiveSubscriptionPeriod(accountAddress)
         handle = existingSubscription?.domain || undefined
       }
 
@@ -982,17 +969,15 @@ export const handleInvoicePaymentSucceeded = async (
 
       if (!fullSubscription && stripeSubscriptionId) {
         const stripe = new StripeService()
-        fullSubscription = await stripe.subscriptions.retrieve(
-          stripeSubscriptionId
-        )
+        fullSubscription =
+          await stripe.subscriptions.retrieve(stripeSubscriptionId)
       }
 
       const currentPeriodEnd = deriveCurrentPeriodEnd(fullSubscription)
 
       if (currentPeriodEnd && typeof currentPeriodEnd === 'number') {
-        const existingSubscription = await getActiveSubscriptionPeriod(
-          accountAddress
-        )
+        const existingSubscription =
+          await getActiveSubscriptionPeriod(accountAddress)
         const handleFromMetadata = fullSubscription?.metadata?.handle as
           | string
           | undefined
@@ -1087,9 +1072,8 @@ export const handleInvoicePaymentSucceeded = async (
 
   if (invoiceBillingReason === 'subscription_cycle') {
     // Renewal flow - use extension logic
-    const existingSubscription = await getActiveSubscriptionPeriod(
-      accountAddress
-    )
+    const existingSubscription =
+      await getActiveSubscriptionPeriod(accountAddress)
 
     if (existingSubscription) {
       // Extension: Add duration to existing farthest expiry
@@ -1167,9 +1151,8 @@ export const handleInvoicePaymentFailed = async (
   }
 
   // Find stripe_subscriptions record
-  const stripeSubscription = await getStripeSubscriptionById(
-    stripeSubscriptionId
-  )
+  const stripeSubscription =
+    await getStripeSubscriptionById(stripeSubscriptionId)
 
   if (!stripeSubscription) {
     return

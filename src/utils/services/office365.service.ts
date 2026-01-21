@@ -612,8 +612,8 @@ export class Office365CalendarService implements IOffcie365CalendarService {
               participant.status === ParticipationStatus.Accepted
                 ? 'accepted'
                 : participant.status === ParticipationStatus.Rejected
-                ? 'declined'
-                : 'notResponded',
+                  ? 'declined'
+                  : 'notResponded',
             time: new Date().toISOString(),
           },
           type: 'required',

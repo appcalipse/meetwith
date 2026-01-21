@@ -85,8 +85,8 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
   const isActive = isQuickPoll
     ? isSelected
     : pickedTime
-    ? slot.start.hasSame(DateTime.fromJSDate(pickedTime), 'minute')
-    : false
+      ? slot.start.hasSame(DateTime.fromJSDate(pickedTime), 'minute')
+      : false
 
   const { isTopElement, isBottomElement } = getMeetingBoundaries(slot, duration)
 

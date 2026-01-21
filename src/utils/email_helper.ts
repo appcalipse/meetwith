@@ -885,7 +885,7 @@ export const sendSubscriptionConfirmationEmail = async (
     periodEnd,
     periodStart,
     planName: billingPlan.name,
-    price: isTrial ? 0 : transaction?.amount ?? billingPlan.price,
+    price: isTrial ? 0 : (transaction?.amount ?? billingPlan.price),
     provider,
   }
 

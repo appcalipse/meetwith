@@ -315,8 +315,8 @@ export const handleCopyToDays = (
       copyType === 'all'
         ? 'all other days'
         : copyType === 'weekdays'
-        ? 'weekdays (Mon-Fri)'
-        : 'weekends (Sat-Sun)',
+          ? 'weekdays (Mon-Fri)'
+          : 'weekends (Sat-Sun)',
     targetWeekdays,
   }
 }

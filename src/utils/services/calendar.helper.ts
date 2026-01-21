@@ -45,8 +45,8 @@ export const CalendarServiceHelper = {
             participant.status === ParticipationStatus.Accepted
               ? 'accepted'
               : participant.status === ParticipationStatus.Rejected
-              ? 'declined'
-              : 'needsAction',
+                ? 'declined'
+                : 'needsAction',
         })
       }
     }
@@ -100,10 +100,10 @@ export const CalendarServiceHelper = {
             actorStatus
               ? actorStatus
               : participant.status === ParticipationStatus.Accepted
-              ? 'accepted'
-              : participant.status === ParticipationStatus.Rejected
-              ? 'declined'
-              : 'needsAction',
+                ? 'accepted'
+                : participant.status === ParticipationStatus.Rejected
+                  ? 'declined'
+                  : 'needsAction',
         })
       }
     }

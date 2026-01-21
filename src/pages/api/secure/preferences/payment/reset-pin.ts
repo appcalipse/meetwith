@@ -84,9 +84,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })
 
     try {
-      const email = await getAccountNotificationSubscriptionEmail(
-        account_address
-      )
+      const email =
+        await getAccountNotificationSubscriptionEmail(account_address)
       if (email) {
         await sendPinResetSuccessEmail(email)
       }

@@ -69,13 +69,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       let upgradeRequired = false
       let canSchedule = true
       if (!isPro) {
-        const pollsCreatedThisMonth = await countQuickPollsCreatedThisMonth(
-          address
-        )
+        const pollsCreatedThisMonth =
+          await countQuickPollsCreatedThisMonth(address)
 
-        const scheduledPollsThisMonth = await countScheduledQuickPollsThisMonth(
-          address
-        )
+        const scheduledPollsThisMonth =
+          await countScheduledQuickPollsThisMonth(address)
         upgradeRequired = pollsCreatedThisMonth >= 1
         canSchedule = scheduledPollsThisMonth < 1
       }
@@ -135,9 +133,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const isPro = await isProAccountAsync(address)
 
       if (!isPro) {
-        const pollsCreatedThisMonth = await countQuickPollsCreatedThisMonth(
-          address
-        )
+        const pollsCreatedThisMonth =
+          await countQuickPollsCreatedThisMonth(address)
         if (pollsCreatedThisMonth >= 1) {
           throw new QuickPollLimitExceededError()
         }

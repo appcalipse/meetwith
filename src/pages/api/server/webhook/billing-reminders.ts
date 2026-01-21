@@ -82,9 +82,8 @@ export default async function billingReminders(
         billingPlanId: string
       ): Promise<boolean> => {
         try {
-          const stripeSubscription = await getStripeSubscriptionByAccount(
-            accountAddress
-          )
+          const stripeSubscription =
+            await getStripeSubscriptionByAccount(accountAddress)
           return (
             stripeSubscription?.billing_plan_id === billingPlanId &&
             stripeSubscription?.account_address.toLowerCase() ===
@@ -110,9 +109,8 @@ export default async function billingReminders(
           processedCount.crypto0d++
           await emailQueue.add(async () => {
             try {
-              const accountInfo = await getBillingEmailAccountInfo(
-                accountAddress
-              )
+              const accountInfo =
+                await getBillingEmailAccountInfo(accountAddress)
               if (!accountInfo) return false
 
               const billingPlan = await getBillingPlanById(
@@ -157,9 +155,8 @@ export default async function billingReminders(
             try {
               await updateSubscriptionPeriodStatus(period.id, 'expired')
 
-              const accountInfo = await getBillingEmailAccountInfo(
-                accountAddress
-              )
+              const accountInfo =
+                await getBillingEmailAccountInfo(accountAddress)
               if (!accountInfo) return false
 
               const billingPlan = await getBillingPlanById(
@@ -211,9 +208,8 @@ export default async function billingReminders(
           processedCount.crypto5d++
           await emailQueue.add(async () => {
             try {
-              const accountInfo = await getBillingEmailAccountInfo(
-                accountAddress
-              )
+              const accountInfo =
+                await getBillingEmailAccountInfo(accountAddress)
               if (!accountInfo) return false
 
               const billingPlan = await getBillingPlanById(
@@ -266,9 +262,8 @@ export default async function billingReminders(
           processedCount.crypto3d++
           await emailQueue.add(async () => {
             try {
-              const accountInfo = await getBillingEmailAccountInfo(
-                accountAddress
-              )
+              const accountInfo =
+                await getBillingEmailAccountInfo(accountAddress)
               if (!accountInfo) return false
 
               const billingPlan = await getBillingPlanById(
@@ -321,9 +316,8 @@ export default async function billingReminders(
           processedCount.stripe4d++
           await emailQueue.add(async () => {
             try {
-              const accountInfo = await getBillingEmailAccountInfo(
-                accountAddress
-              )
+              const accountInfo =
+                await getBillingEmailAccountInfo(accountAddress)
               if (!accountInfo) return false
 
               const billingPlan = await getBillingPlanById(

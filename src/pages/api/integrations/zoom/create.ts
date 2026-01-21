@@ -25,9 +25,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         (address): address is string => address !== undefined
       )
 
-      const emails = await getAccountsNotificationSubscriptionEmails(
-        validAddresses
-      )
+      const emails =
+        await getAccountsNotificationSubscriptionEmails(validAddresses)
 
       const meeting_invitees = meeting.participants_mapping
         .filter(val => val.guest_email)

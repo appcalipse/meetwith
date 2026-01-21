@@ -72,9 +72,8 @@ export default async function expireSubscriptions(
             emailCount++
 
             // Get notification subscriptions
-            const notifications = await getAccountNotificationSubscriptions(
-              accountAddress
-            )
+            const notifications =
+              await getAccountNotificationSubscriptions(accountAddress)
 
             // Prepare renewal URL
             const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing`

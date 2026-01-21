@@ -59,8 +59,8 @@ const PaymentMethod: FC<IProps> = props => {
           props.step === PaymentStep.SELECT_CRYPTO_NETWORK
             ? 16
             : props.step === PaymentStep.HANDLE_SEND_INVOICE
-            ? '70px'
-            : 12
+              ? '70px'
+              : 12
         }
         mx="auto"
       />

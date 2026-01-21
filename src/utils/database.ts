@@ -302,7 +302,7 @@ import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
 
 const PIN_SALT = process.env.PIN_SALT
-const posthogClient = PostHogClient()
+const _posthogClient = PostHogClient()
 // TODO: better typing
 type SupabaseRecords = { ready: boolean } & Record<string, SupabaseClient>
 const db: SupabaseRecords = {
@@ -2251,7 +2251,7 @@ const saveMeeting = async (
   }
 }
 
-const saveRecurringMeetings = async (
+const _saveRecurringMeetings = async (
   participantActing: ParticipantBaseInfo,
   meeting: MeetingCreationRequest
 ) => {
@@ -2392,7 +2392,7 @@ const saveRecurringMeetings = async (
   }
 }
 
-const updateRecurringMeeting = async (
+const _updateRecurringMeeting = async (
   participantActing: ParticipantBaseInfo,
   meetingUpdateRequest: MeetingSeriesUpdateRequest
 ): Promise<DBSlot> => {
@@ -4664,7 +4664,7 @@ const insertOfficeEventMapping = async (
     throw new Error(error.message)
   }
 }
-const insertGoogleEventMapping = async (
+const _insertGoogleEventMapping = async (
   event_id: string,
   mww_id: string,
   calendar_id: string
@@ -6655,9 +6655,8 @@ const sendWalletDebitEmail = async (
     const notifications = prefs?.notification || []
     if (!notifications.includes(PaymentNotificationType.SEND_TOKENS)) return
 
-    const senderEmail = await getAccountNotificationSubscriptionEmail(
-      initiatorAddress
-    )
+    const senderEmail =
+      await getAccountNotificationSubscriptionEmail(initiatorAddress)
     if (!senderEmail) return
 
     await sendCryptoDebitEmail(senderEmail, {
@@ -7335,7 +7334,7 @@ const handleWebhookEvent = async (
       (!!meeting.id && recurringIdSet.has(extractBaseId(meeting.id)))
     )
   }
-  const recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
+  const _recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
     meeting => !!meeting.recurringEventId || !!meeting.recurrence // only consider events with recurringEventId
   )
   const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
@@ -7437,7 +7436,7 @@ const getEventMasterSeries = async (meetingId: string, iCalId: string) => {
   }
   return data
 }
-const handleSyncRecurringEvents = async (
+const _handleSyncRecurringEvents = async (
   events: calendar_v3.Schema$Event[],
   calendar: ConnectedCalendar,
   calendar_id: string
@@ -7464,7 +7463,7 @@ const handleSyncRecurringEvents = async (
   )
   const slotInstanceUpdates: Array<TablesUpdate<'slot_instance'>> = []
 
-  const processed = new Set<string>()
+  const _processed = new Set<string>()
   for (const [meetingId, masterEvents] of masterBatch) {
     for (const masterEvent of masterEvents) {
       const meetingTypeId =
@@ -8354,9 +8353,8 @@ const createQuickPoll = async (
 
     // Add the owner as a participant
     const ownerAccount = await getAccountFromDB(owner_address)
-    const ownerEmail = await getAccountNotificationSubscriptionEmail(
-      owner_address
-    )
+    const ownerEmail =
+      await getAccountNotificationSubscriptionEmail(owner_address)
 
     // Get owner's availability
     let ownerAvailableSlots: AvailabilitySlot[] = []
@@ -9904,9 +9902,8 @@ const isProAccountAsync = async (accountAddress: string): Promise<boolean> => {
     }
 
     // Check domain subscriptions (billing_plan_id is null, domain is not null)
-    const domainSubscriptions = await getSubscriptionFromDBForAccount(
-      accountAddress
-    )
+    const domainSubscriptions =
+      await getSubscriptionFromDBForAccount(accountAddress)
     const hasDomain = domainSubscriptions.some(
       sub => sub.billing_plan_id === null && sub.domain !== null
     )

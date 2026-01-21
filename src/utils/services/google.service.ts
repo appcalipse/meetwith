@@ -1106,8 +1106,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             participant.status === ParticipationStatus.Accepted
               ? 'accepted'
               : participant.status === ParticipationStatus.Rejected
-              ? 'declined'
-              : 'needsAction',
+                ? 'declined'
+                : 'needsAction',
         }
         if (
           [ParticipantType.Owner, ParticipantType.Scheduler].includes(
@@ -1173,10 +1173,10 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             actorStatus
               ? actorStatus
               : participant.status === ParticipationStatus.Accepted
-              ? 'accepted'
-              : participant.status === ParticipationStatus.Rejected
-              ? 'declined'
-              : 'needsAction',
+                ? 'accepted'
+                : participant.status === ParticipationStatus.Rejected
+                  ? 'declined'
+                  : 'needsAction',
         })
       }
     }
@@ -1467,8 +1467,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             responseStatus === AttendeeStatus.ACCEPTED
               ? 'accepted'
               : responseStatus === AttendeeStatus.DECLINED
-              ? 'declined'
-              : 'needsAction',
+                ? 'declined'
+                : 'needsAction',
         }
       }
       return attendee

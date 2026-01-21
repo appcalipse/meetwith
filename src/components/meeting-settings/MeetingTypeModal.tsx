@@ -170,8 +170,8 @@ const MeetingTypeModal: FC<IProps> = props => {
       (props?.initialValues?.plan?.payment_methods?.length || 0) > 0
       ? props?.initialValues?.plan?.payment_methods
       : props.stripeStatus === PaymentAccountStatus.CONNECTED
-      ? [PaymentType.FIAT, PaymentType.CRYPTO]
-      : [PaymentType.CRYPTO]
+        ? [PaymentType.FIAT, PaymentType.CRYPTO]
+        : [PaymentType.CRYPTO]
   )
 
   const handlePaymentPlatformChange = (value: PaymentType) => {
@@ -369,8 +369,8 @@ const MeetingTypeModal: FC<IProps> = props => {
         (minAdvanceTime.type === 'minutes'
           ? 1
           : minAdvanceTime.type === 'hours'
-          ? 60
-          : 60 * 24),
+            ? 60
+            : 60 * 24),
       calendars: calendars.map(c => c.value),
       availability_ids: availabilityBlock.map(val => val.value),
       description,
@@ -488,8 +488,8 @@ const MeetingTypeModal: FC<IProps> = props => {
           (minAdvanceTime.type === 'minutes'
             ? 1
             : minAdvanceTime.type === 'hours'
-            ? 60
-            : 60 * 24)
+              ? 60
+              : 60 * 24)
         break
       case 'fixed_link':
         value = fixedLink
@@ -967,8 +967,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.meeting_platforms
                           ? 'red.500'
                           : selectedProviders.includes(provider)
-                          ? 'border-default-primary'
-                          : 'border-inverted-subtle'
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
                       }
                       colorScheme="primary"
                       value={provider}
@@ -989,8 +989,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                           !!errors.meeting_platforms
                             ? 'red.500'
                             : selectedProviders.includes(provider)
-                            ? 'border-default-primary'
-                            : 'border-inverted-subtle'
+                              ? 'border-default-primary'
+                              : 'border-inverted-subtle'
                         }
                         cursor="pointer"
                       >
@@ -1014,8 +1014,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                       !!errors.meeting_platforms
                         ? 'red.500'
                         : selectedProviders.includes(MeetingProvider.CUSTOM)
-                        ? 'border-default-primary'
-                        : 'border-inverted-subtle'
+                          ? 'border-default-primary'
+                          : 'border-inverted-subtle'
                     }
                     colorScheme="primary"
                     p={4}
@@ -1035,8 +1035,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.meeting_platforms
                           ? 'red.500'
                           : selectedProviders.includes(MeetingProvider.CUSTOM)
-                          ? 'border-default-primary'
-                          : 'border-inverted-subtle'
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
                       }
                       cursor="pointer"
                     >
@@ -1062,8 +1062,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                       !!errors.custom_link
                         ? 'red.300'
                         : fixedLink
-                        ? 'border-default-primary'
-                        : 'border-inverted-subtle'
+                          ? 'border-default-primary'
+                          : 'border-inverted-subtle'
                     }
                     w="100%"
                     borderRadius={8}
@@ -1353,8 +1353,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.plan?.payment_methods
                           ? 'red.500'
                           : paymentPlatforms.includes(PaymentType.CRYPTO)
-                          ? 'border-default-primary'
-                          : 'border-inverted-subtle'
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
                       }
                       colorScheme="primary"
                       isChecked={paymentPlatforms.includes(PaymentType.CRYPTO)}
@@ -1370,8 +1370,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                           !!errors.plan?.payment_methods
                             ? 'red.500'
                             : paymentPlatforms.includes(PaymentType.CRYPTO)
-                            ? 'border-default-primary'
-                            : 'border-inverted-subtle'
+                              ? 'border-default-primary'
+                              : 'border-inverted-subtle'
                         }
                         cursor="pointer"
                         textTransform="capitalize"
@@ -1392,8 +1392,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.plan?.payment_methods
                           ? 'red.500'
                           : paymentPlatforms.includes(PaymentType.FIAT)
-                          ? 'border-default-primary'
-                          : 'border-inverted-subtle'
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
                       }
                       colorScheme="primary"
                       isChecked={paymentPlatforms.includes(PaymentType.FIAT)}
@@ -1409,8 +1409,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                           !!errors.plan?.payment_methods
                             ? 'red.500'
                             : paymentPlatforms.includes(PaymentType.FIAT)
-                            ? 'border-default-primary'
-                            : 'border-inverted-subtle'
+                              ? 'border-default-primary'
+                              : 'border-inverted-subtle'
                         }
                         cursor="pointer"
                         textTransform="capitalize"

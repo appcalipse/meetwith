@@ -279,9 +279,8 @@ export const dmAccount = async (
         context = 'Missing access'
       }
     }
-    const notifications = await getAccountNotificationSubscriptions(
-      accountAddress
-    )
+    const notifications =
+      await getAccountNotificationSubscriptions(accountAddress)
 
     const discordSubs = notifications.notification_types.find(
       notif => notif.channel === NotificationChannel.DISCORD

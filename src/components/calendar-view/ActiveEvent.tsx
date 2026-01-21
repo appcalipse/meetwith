@@ -423,13 +423,13 @@ const ActiveEvent: React.FC = () => {
 
             return {
               calendarEvents: isCalEvent
-                ? old.calendarEvents?.filter(
+                ? (old.calendarEvents?.filter(
                     e => e.sourceEventId !== selectedSlot.sourceEventId
-                  ) ?? []
-                : old.calendarEvents ?? [],
+                  ) ?? [])
+                : (old.calendarEvents ?? []),
               mwwEvents: !isCalEvent
-                ? old.mwwEvents?.filter(e => e.id !== selectedSlot.id) ?? []
-                : old.mwwEvents ?? [],
+                ? (old.mwwEvents?.filter(e => e.id !== selectedSlot.id) ?? [])
+                : (old.mwwEvents ?? []),
             }
           }
         )
