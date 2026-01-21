@@ -386,7 +386,9 @@ const PublicPage: FC<IProps> = props => {
   const [paymentStep, setPaymentStep] = useState<PaymentStep | undefined>(
     undefined
   )
-  const [tx, setTx] = useState<Address | undefined>(undefined)
+  const [tx, setTx] = useState<Address | undefined>(
+    query.tx as Address | undefined
+  )
   const [key, setKey] = useState<string | undefined>(v4())
   const [isCancelled, setIsCancelled] = useState<boolean>(false)
   const [currentStep, setCurrentStep] = useState<PublicSchedulingSteps>(
@@ -787,6 +789,9 @@ const PublicPage: FC<IProps> = props => {
     }
     void getSlotInfo()
     setPageGettingReady(false)
+    if (query.tx) {
+      setTx(query.tx as Address)
+    }
   }, [query])
   useEffect(() => {
     void fetchNotificationSubscriptions()
