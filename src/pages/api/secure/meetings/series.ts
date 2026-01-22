@@ -9,6 +9,7 @@ import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
   saveMeeting,
+  saveRecurringMeetings,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
 import {
@@ -53,7 +54,7 @@ export const handleMeetingSchedule = async (
     )
 
     try {
-      const meetingResult: DBSlot = await saveMeeting(
+      const meetingResult: DBSlot = await saveRecurringMeetings(
         participantActing,
         meeting
       )
