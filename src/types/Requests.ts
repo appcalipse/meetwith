@@ -19,6 +19,7 @@ import {
   ConferenceMeeting,
   GroupNotificationType,
   MeetingDecrypted,
+  MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
   NotBefore,
@@ -97,7 +98,7 @@ export interface RequestParticipantMapping {
 }
 
 export interface MeetingCancelRequest {
-  meeting: MeetingDecrypted
+  meeting: MeetingInfo
   currentTimezone: string
 }
 export interface GuestMeetingCancelRequest extends MeetingCancelRequest {
@@ -130,7 +131,9 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   notification_hash?: string
   rrule: Array<string>
   skipCalendarSync?: boolean
+  ical_uid?: string
   skipNotify?: boolean
+  series_id?: string
 }
 export interface MeetingInstanceCreationSyncRequest
   extends Omit<MeetingCreationSyncRequest, 'meetingRepeat'> {
