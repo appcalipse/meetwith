@@ -68,7 +68,8 @@ const PollCard = ({
   // Determine if user is host based on participant type
   const isHost =
     poll.user_participant_type === QuickPollParticipantType.SCHEDULER
-  const pollIsExpired = new Date(poll.expires_at) < new Date()
+  const pollIsExpired =
+    poll.expires_at !== null && new Date(poll.expires_at) < new Date()
 
   const isPastPoll =
     poll.status === PollStatus.COMPLETED ||
@@ -78,7 +79,9 @@ const PollCard = ({
 
   // Format dates
   const dateRange = formatPollDateRange(poll.starts_at, poll.ends_at)
-  const closingDate = formatPollSingleDate(poll.expires_at)
+  const closingDate = poll.expires_at
+    ? formatPollSingleDate(poll.expires_at)
+    : null
 
   // Generate poll link
   const pollLink = `${appUrl}/poll/${poll.slug}`
@@ -112,7 +115,8 @@ const PollCard = ({
       const updateData: UpdateQuickPollRequest = {
         starts_at: now.toISOString(),
         ends_at: fourteenDaysFromNow.toISOString(),
-        expires_at: fourteenDaysFromNow.toISOString(),
+        expires_at:
+          poll.expires_at === null ? null : fourteenDaysFromNow.toISOString(),
         status: PollStatus.ONGOING,
       }
 
@@ -627,23 +631,25 @@ const PollCard = ({
               </HStack>
             </HStack>
 
-            {/* Poll closing date */}
-            <HStack spacing={2} flexWrap="wrap">
-              <Text
-                fontSize={{ base: '14px', md: '16px' }}
-                color="text-primary"
-                fontWeight="700"
-              >
-                Poll closing date:
-              </Text>
-              <Text
-                fontSize={{ base: '14px', md: '16px' }}
-                color="text-primary"
-                fontWeight="500"
-              >
-                {closingDate}
-              </Text>
-            </HStack>
+            {/* Poll closing date - only show if expiry exists */}
+            {closingDate && (
+              <HStack spacing={2} flexWrap="wrap">
+                <Text
+                  fontSize={{ base: '14px', md: '16px' }}
+                  color="text-primary"
+                  fontWeight="700"
+                >
+                  Poll closing date:
+                </Text>
+                <Text
+                  fontSize={{ base: '14px', md: '16px' }}
+                  color="text-primary"
+                  fontWeight="500"
+                >
+                  {closingDate}
+                </Text>
+              </HStack>
+            )}
           </VStack>
         </CardBody>
       </Card>

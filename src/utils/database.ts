@@ -6655,8 +6655,9 @@ const sendWalletDebitEmail = async (
     const notifications = prefs?.notification || []
     if (!notifications.includes(PaymentNotificationType.SEND_TOKENS)) return
 
-    const senderEmail =
-      await getAccountNotificationSubscriptionEmail(initiatorAddress)
+    const senderEmail = await getAccountNotificationSubscriptionEmail(
+      initiatorAddress
+    )
     if (!senderEmail) return
 
     await sendCryptoDebitEmail(senderEmail, {
@@ -8212,7 +8213,7 @@ const countActiveQuickPolls = async (
     .select('*', { count: 'exact', head: true })
     .in('id', pollIds)
     .eq('status', PollStatus.ONGOING)
-    .gt('expires_at', now)
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
 
   if (error) {
     Sentry.captureException(error)
@@ -8353,8 +8354,9 @@ const createQuickPoll = async (
 
     // Add the owner as a participant
     const ownerAccount = await getAccountFromDB(owner_address)
-    const ownerEmail =
-      await getAccountNotificationSubscriptionEmail(owner_address)
+    const ownerEmail = await getAccountNotificationSubscriptionEmail(
+      owner_address
+    )
 
     // Get owner's availability
     let ownerAvailableSlots: AvailabilitySlot[] = []
@@ -8930,6 +8932,7 @@ const expireStalePolls = async () => {
       .from('quick_polls')
       .update({ status: PollStatus.EXPIRED, updated_at: now })
       .eq('status', PollStatus.ONGOING)
+      .not('expires_at', 'is', null)
       .lt('expires_at', now)
       .select('id')
 
@@ -9902,8 +9905,9 @@ const isProAccountAsync = async (accountAddress: string): Promise<boolean> => {
     }
 
     // Check domain subscriptions (billing_plan_id is null, domain is not null)
-    const domainSubscriptions =
-      await getSubscriptionFromDBForAccount(accountAddress)
+    const domainSubscriptions = await getSubscriptionFromDBForAccount(
+      accountAddress
+    )
     const hasDomain = domainSubscriptions.some(
       sub => sub.billing_plan_id === null && sub.domain !== null
     )

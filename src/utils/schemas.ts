@@ -122,7 +122,7 @@ export const errorReducer = (
       if (isPlanFieldKey(action.field)) {
         const [field, subField] = action.field.split('.') as [
           SchemaKeys,
-          string,
+          string
         ]
         const existingField = state[field] as Record<string, string> | undefined
         return {
@@ -141,7 +141,7 @@ export const errorReducer = (
       if (isPlanFieldKey(action.field)) {
         const [localField, subField] = action.field.split('.') as [
           SchemaKeys,
-          string,
+          string
         ]
         const existingField = state[localField] as
           | Record<string, string>
@@ -237,9 +237,10 @@ export const quickPollSchema = z
     description: z.string().optional(),
     duration: z.number().min(1, 'Duration must be at least 1 minute'),
     endDate: z.date(),
-    expiryDate: z.date(),
-    expiryTime: z.date(),
+    expiryDate: z.date().optional(),
+    expiryTime: z.date().optional(),
     participants: z.array(z.any()),
+    removeExpiryDate: z.boolean().optional(),
     startDate: z.date(),
     title: z.string().min(1, 'Title is required'),
   })
@@ -249,6 +250,12 @@ export const quickPollSchema = z
   })
   .refine(
     data => {
+      if (data.removeExpiryDate) {
+        return true
+      }
+      if (!data.expiryDate || !data.expiryTime) {
+        return false
+      }
       const year = data.expiryDate.getFullYear()
       const month = data.expiryDate.getMonth()
       const day = data.expiryDate.getDate()
