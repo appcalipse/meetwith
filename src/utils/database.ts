@@ -6,7 +6,10 @@ import {
 } from '@meta/PaymentAccount'
 import * as Sentry from '@sentry/nextjs'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { getDiscordInfoForAddress } from '@utils/services/discord.helper'
+import {
+  dmAccount,
+  getDiscordInfoForAddress,
+} from '@utils/services/discord.helper'
 import {
   Currency,
   currenciesMap,
@@ -14,7 +17,7 @@ import {
   getChainIdFromOnrampMoneyNetwork,
   getOnrampMoneyTokenAddress,
 } from '@utils/services/onramp.money'
-import { getTelegramUserInfo } from '@utils/services/telegram.helper'
+import { getTelegramUserInfo, sendDm } from '@utils/services/telegram.helper'
 import * as argon2 from 'argon2'
 import { createHash } from 'crypto'
 import CryptoJS from 'crypto-js'
@@ -8823,6 +8826,47 @@ const updateQuickPollParticipants = async (
             participantData.status || QuickPollParticipantStatus.PENDING
           await addQuickPollParticipant(pollId, participantData, status)
 
+          // Send notifications for contacts added
+          if (participantData.account_address) {
+            try {
+              const notifications = await getAccountNotificationSubscriptions(
+                participantData.account_address
+              )
+              const pollLink = `${appUrl}/poll/${poll.slug}`
+              const message = `${inviterName} invited you to participate in "${poll.title}". View the poll and add your availability here: ${pollLink}`
+
+              // Send Discord notification if enabled
+              const discordNotif = notifications.notification_types.find(
+                n => n.channel === NotificationChannel.DISCORD && !n.disabled
+              )
+              if (discordNotif) {
+                try {
+                  await dmAccount(
+                    participantData.account_address,
+                    discordNotif.destination,
+                    message
+                  )
+                } catch (discordError) {
+                  Sentry.captureException(discordError)
+                }
+              }
+
+              // Send Telegram notification if enabled
+              const telegramNotif = notifications.notification_types.find(
+                n => n.channel === NotificationChannel.TELEGRAM && !n.disabled
+              )
+              if (telegramNotif) {
+                try {
+                  await sendDm(telegramNotif.destination, message)
+                } catch (telegramError) {
+                  Sentry.captureException(telegramError)
+                }
+              }
+            } catch (notifError) {
+              Sentry.captureException(notifError)
+            }
+          }
+
           if (status === QuickPollParticipantStatus.PENDING) {
             const participantEmail =
               participantData.guest_email ||
@@ -8842,10 +8886,7 @@ const updateQuickPollParticipants = async (
                   )
                   return true
                 } catch (emailError) {
-                  console.error(
-                    `Failed to send invitation email to ${participantEmail}:`,
-                    emailError
-                  )
+                  Sentry.captureException(emailError)
                   return false
                 }
               })
@@ -8984,6 +9025,67 @@ const updateQuickPollParticipantStatus = async (
     }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    // Notify host when email invite accepts
+    if (
+      status === QuickPollParticipantStatus.ACCEPTED &&
+      participant.guest_email &&
+      !participant.account_address
+    ) {
+      try {
+        // Get poll details
+        const { data: poll } = await db.supabase
+          .from('quick_polls')
+          .select('title, slug')
+          .eq('id', participant.poll_id)
+          .maybeSingle()
+
+        // Get host info
+        const { data: hostParticipant } = await db.supabase
+          .from('quick_poll_participants')
+          .select('account_address, guest_name')
+          .eq('poll_id', participant.poll_id)
+          .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+          .maybeSingle()
+
+        if (poll && hostParticipant?.account_address) {
+          const hostAddress = hostParticipant.account_address
+          const notifications = await getAccountNotificationSubscriptions(
+            hostAddress
+          )
+          const participantName =
+            participant.guest_name || participant.guest_email
+          const pollLink = `${appUrl}/poll/${poll.slug}`
+          const message = `${participantName} has accepted your invitation to participate in "${poll.title}". View the poll here: ${pollLink}`
+
+          // Send Discord notification if enabled
+          const discordNotif = notifications.notification_types.find(
+            n => n.channel === NotificationChannel.DISCORD && !n.disabled
+          )
+          if (discordNotif) {
+            try {
+              await dmAccount(hostAddress, discordNotif.destination, message)
+            } catch (discordError) {
+              Sentry.captureException(discordError)
+            }
+          }
+
+          // Send Telegram notification if enabled
+          const telegramNotif = notifications.notification_types.find(
+            n => n.channel === NotificationChannel.TELEGRAM && !n.disabled
+          )
+          if (telegramNotif) {
+            try {
+              await sendDm(telegramNotif.destination, message)
+            } catch (telegramError) {
+              Sentry.captureException(telegramError)
+            }
+          }
+        }
+      } catch (notifError) {
+        Sentry.captureException(notifError)
+      }
     }
 
     return participant
