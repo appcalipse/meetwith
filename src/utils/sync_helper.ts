@@ -43,7 +43,11 @@ export const getCalendarPrimaryEmail = async (
     const calendars = await getCalendars(targetAccount, meeting_type_id)
     for (const calendar of calendars) {
       for (const innerCalendar of calendar.calendars!) {
-        if (innerCalendar.enabled && innerCalendar.sync) {
+        if (
+          innerCalendar.enabled &&
+          innerCalendar.sync &&
+          !innerCalendar.isReadOnly
+        ) {
           return calendar.email
         }
       }
@@ -61,7 +65,8 @@ const syncCreatedEventWithCalendar = async (
     meetingDetails.meeting_type_id
   )
   let useParticipants = true
-  const promises = []
+  const addedEmails = new Set<string>()
+
   for (const calendar of calendars) {
     if (calendar.provider === TimeSlotSource.GOOGLE) {
       const integration = getConnectedCalendarIntegration(
@@ -73,18 +78,18 @@ const syncCreatedEventWithCalendar = async (
 
       for (const innerCalendar of calendar.calendars!) {
         if (innerCalendar.enabled && innerCalendar.sync) {
-          promises.push(
-            (async () => {
-              const event = await integration.createEvent(
-                targetAccount,
-                meetingDetails,
-                meetingDetails.created_at,
-                innerCalendar.calendarId,
-                useParticipants
-              )
-              return event.attendees?.map(attendee => attendee.email)
-            })()
+          const event = await integration.createEvent(
+            targetAccount,
+            meetingDetails,
+            meetingDetails.created_at,
+            innerCalendar.calendarId,
+            useParticipants
           )
+          event.attendees
+            ?.map(attendee => attendee.email)
+            .filter((email): email is string => !!email)
+            .forEach(email => addedEmails.add(email))
+
           useParticipants = false
         }
       }
@@ -98,20 +103,18 @@ const syncCreatedEventWithCalendar = async (
 
       for (const innerCalendar of calendar.calendars!) {
         if (innerCalendar.enabled && innerCalendar.sync) {
-          promises.push(
-            (async () => {
-              const event = await integration.createEvent(
-                targetAccount,
-                meetingDetails,
-                meetingDetails.created_at,
-                innerCalendar.calendarId,
-                useParticipants
-              )
-              return event.attendees?.map(
-                attendee => attendee.emailAddress.address
-              )
-            })()
+          const event = await integration.createEvent(
+            targetAccount,
+            meetingDetails,
+            meetingDetails.created_at,
+            innerCalendar.calendarId,
+            useParticipants
           )
+          event.attendees
+            ?.map(attendee => attendee.emailAddress.address)
+            .filter((email): email is string => !!email)
+            .forEach(email => addedEmails.add(email))
+
           useParticipants = false
         }
       }
@@ -128,36 +131,24 @@ const syncCreatedEventWithCalendar = async (
 
       for (const innerCalendar of calendar.calendars!) {
         if (innerCalendar.enabled && innerCalendar.sync) {
-          promises.push(
-            (async () => {
-              const event = await integration.createEvent(
-                targetAccount,
-                meetingDetails,
-                meetingDetails.created_at,
-                innerCalendar.calendarId,
-                useParticipants
-              )
-              return event.attendees?.map(attendee => attendee.email)
-            })()
+          const event = await integration.createEvent(
+            targetAccount,
+            meetingDetails,
+            meetingDetails.created_at,
+            innerCalendar.calendarId,
+            useParticipants
           )
+          event.attendees
+            ?.map(attendee => attendee.email)
+            .filter((email): email is string => !!email)
+            .forEach(email => addedEmails.add(email))
+
           useParticipants = false
         }
       }
     }
   }
-  const addedEmails = new Set<string>()
-  const resolutions = await Promise.all(promises)
-  const atendees = resolutions
-    .filter(
-      (r): r is string[] =>
-        Array.isArray(r) && r.filter(email => !!email).length > 0
-    )
-    .flat()
-  for (const attendee of atendees) {
-    if (attendee && !addedEmails.has(attendee)) {
-      addedEmails.add(attendee)
-    }
-  }
+
   const participantPromises = []
   for (const participant of meetingDetails.participants) {
     if (
