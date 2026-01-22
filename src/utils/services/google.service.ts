@@ -247,16 +247,23 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           )
           const ownerAccountAddress = ownerParticipant?.account_address
 
-          const changeUrl =
+          let changeUrl
+          if (
             meetingDetails.meeting_type_id &&
             ownerAccountAddress &&
             meetingDetails.meeting_type_id !== NO_MEETING_TYPE
-              ? `${await getOwnerPublicUrlServer(
-                  ownerAccountAddress,
-                  meetingDetails.meeting_type_id
-                )}?conferenceId=${meetingDetails.meeting_id}`
-              : `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
-
+          ) {
+            changeUrl = `${await getOwnerPublicUrlServer(
+              ownerAccountAddress,
+              meetingDetails.meeting_type_id
+            )}?conferenceId=${meetingDetails.meeting_id}`
+          } else {
+            changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+            // recurring meetings should have ical_uid as an extra identifier to avoid collisions
+            if (meetingDetails.ical_uid) {
+              changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}&ical_uid=${meetingDetails.ical_uid}`
+            }
+          }
           const payload: calendar_v3.Schema$Event = {
             attendees: [],
             created: new Date(meeting_creation_time).toISOString(),
@@ -289,12 +296,11 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             guestsCanModify: meetingDetails.meetingPermissions?.includes(
               MeetingPermissions.EDIT_MEETING
             ),
-            guestsCanSeeOtherGuests:
-              meetingDetails.meetingPermissions?.includes(
-                MeetingPermissions.SEE_GUEST_LIST
-              ),
+
             // yes, google event ids allows only letters and numbers
-            id: meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
+            id:
+              meetingDetails.ical_uid ||
+              meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
             location: meetingDetails.meeting_url,
             reminders: {
               overrides: [{ method: 'popup', minutes: 10 }],
@@ -323,7 +329,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             auth: myGoogleAuth,
             version: 'v3',
           })
-
           if (useParticipants) {
             // Build deduplicated attendees list using helper
             const attendees = await this.buildAttendeesList(
