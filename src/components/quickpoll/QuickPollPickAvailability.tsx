@@ -88,7 +88,7 @@ export const getBgColor = (state: State) => {
     case State.MOST_AVAILABLE:
       return 'yellow.600'
     case State.SOME_AVAILABLE:
-      return '#2F89F8'
+      return 'blue.400'
     case State.NONE_AVAILABLE:
       return 'text-primary'
   }
