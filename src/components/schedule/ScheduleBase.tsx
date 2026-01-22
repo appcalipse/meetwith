@@ -413,551 +413,590 @@ const ScheduleBase = () => {
   ) => {
     setMeetingProvider(newValue?.value || MeetingProvider.CUSTOM)
   }
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault()
+      if (
+        participants.length === 0 ||
+        !title ||
+        !duration ||
+        !pickedTime ||
+        !canEditMeetingDetails ||
+        isScheduling
+      ) {
+        if (!title) {
+          setIsTitleValid(false)
+        }
+        return
+      }
+      handleScheduleMeeting()
+    },
+    [
+      participants.length,
+      title,
+      duration,
+      pickedTime,
+      canEditMeetingDetails,
+      isScheduling,
+      handleScheduleMeeting,
+      setIsTitleValid,
+    ]
+  )
+
   return (
-    <Box w="100%">
-      <DiscoverATimeInfoModal
-        isOpen={openWhatIsThis}
-        key={'discover-a-time-info-modal'}
-        onClose={() => setOpenWhatIsThis(false)}
-      />
-      <ScheduleParticipantsOwnersModal
-        isOpen={isOpen}
-        key="schedule-participants-owners-modal"
-        onClose={onClose}
-        participants={mergedParticipants}
-      />
-      <ScheduleParticipantsSchedulerModal
-        isOpen={isSchedulerDeleteOpen}
-        onClose={OnSchedulerDeleteClose}
-        participants={mergedParticipants}
-      />
-      <DeleteMeetingModal
-        isOpen={isDeleteOpen}
-        isScheduler={isScheduler}
-        onClose={OnSchedulerClose}
-        openSchedulerModal={onSchedulerDeleteOpen}
-      />
-      <ConfirmEditModeModal
-        afterClose={handleActionAfterEditModeConfirm}
-        isOpen={isOpenEditModeConfirm}
-        onClose={onCloseEditModeConfirm}
-      />
-      <VStack
-        alignItems="flex-start"
-        gap={6}
-        m="auto"
-        w={{
-          base: '90%',
-          md: '600px',
-        }}
-      >
-        <VStack alignItems="flex-start" gap={4} width="100%">
-          {isUpdatingMeeting && !hasPickedNewTime ? (
-            <Link href={`/dashboard/${EditMode.MEETINGS}`}>
-              <HStack alignItems="flex-start" cursor="pointer" mb={0}>
+    <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+      <Box w="100%">
+        <DiscoverATimeInfoModal
+          isOpen={openWhatIsThis}
+          key={'discover-a-time-info-modal'}
+          onClose={() => setOpenWhatIsThis(false)}
+        />
+        <ScheduleParticipantsOwnersModal
+          isOpen={isOpen}
+          key="schedule-participants-owners-modal"
+          onClose={onClose}
+          participants={mergedParticipants}
+        />
+        <ScheduleParticipantsSchedulerModal
+          isOpen={isSchedulerDeleteOpen}
+          onClose={OnSchedulerDeleteClose}
+          participants={mergedParticipants}
+        />
+        <DeleteMeetingModal
+          isOpen={isDeleteOpen}
+          isScheduler={isScheduler}
+          onClose={OnSchedulerClose}
+          openSchedulerModal={onSchedulerDeleteOpen}
+        />
+        <ConfirmEditModeModal
+          afterClose={handleActionAfterEditModeConfirm}
+          isOpen={isOpenEditModeConfirm}
+          onClose={onCloseEditModeConfirm}
+        />
+        <VStack
+          alignItems="flex-start"
+          gap={6}
+          m="auto"
+          w={{
+            base: '90%',
+            md: '600px',
+          }}
+        >
+          <VStack alignItems="flex-start" gap={4} width="100%">
+            {isUpdatingMeeting && !hasPickedNewTime ? (
+              <Link href={`/dashboard/${EditMode.MEETINGS}`}>
+                <HStack alignItems="flex-start" cursor="pointer" mb={0}>
+                  <Icon as={FaArrowLeft} color={'primary.500'} size="1.5em" />
+                  <Heading color="primary.500" fontSize={16}>
+                    Back
+                  </Heading>
+                </HStack>
+              </Link>
+            ) : (
+              <HStack
+                alignItems="flex-start"
+                cursor="pointer"
+                mb={0}
+                onClick={handleClose}
+              >
                 <Icon as={FaArrowLeft} color={'primary.500'} size="1.5em" />
                 <Heading color="primary.500" fontSize={16}>
                   Back
                 </Heading>
               </HStack>
-            </Link>
-          ) : (
-            <HStack
-              alignItems="flex-start"
-              cursor="pointer"
-              mb={0}
-              onClick={handleClose}
-            >
-              <Icon as={FaArrowLeft} color={'primary.500'} size="1.5em" />
-              <Heading color="primary.500" fontSize={16}>
-                Back
-              </Heading>
-            </HStack>
-          )}
-          {!canEditMeetingDetails && (
-            <HStack
-              bg={'yellow.300'}
-              borderRadius={'6px'}
-              color={'neutral.900'}
-              gap={3}
-              px={4}
-              py={3}
-            >
-              <WarningTwoIcon h={5} w={5} />
-              <Text fontWeight="500">
-                You do not have permission to edit this meeting.
-              </Text>
-            </HStack>
-          )}
-        </VStack>
-        <Divider borderColor="neutral.400" w={{ base: '100%', md: '80%' }} />
+            )}
+            {!canEditMeetingDetails && (
+              <HStack
+                bg={'yellow.300'}
+                borderRadius={'6px'}
+                color={'neutral.900'}
+                gap={3}
+                px={4}
+                py={3}
+              >
+                <WarningTwoIcon h={5} w={5} />
+                <Text fontWeight="500">
+                  You do not have permission to edit this meeting.
+                </Text>
+              </HStack>
+            )}
+          </VStack>
+          <Divider borderColor="neutral.400" w={{ base: '100%', md: '80%' }} />
 
-        <VStack alignItems="flex-start" gap={6} w={{ base: '100%', md: '80%' }}>
-          <Heading fontSize="x-large">
-            {query.intent === Intents.UPDATE_MEETING
-              ? 'Update meeting'
-              : 'Meeting information'}
-          </Heading>
-          <VStack gap={4} width="100%">
-            <FormControl>
-              <FormLabel>Meeting participants</FormLabel>
-              <HStack alignItems="stretch" gap={3}>
-                {canViewParticipants ? (
+          <VStack
+            alignItems="flex-start"
+            gap={6}
+            w={{ base: '100%', md: '80%' }}
+          >
+            <Heading fontSize="x-large">
+              {query.intent === Intents.UPDATE_MEETING
+                ? 'Update meeting'
+                : 'Meeting information'}
+            </Heading>
+            <VStack gap={4} width="100%">
+              <FormControl>
+                <FormLabel>Meeting participants</FormLabel>
+                <HStack alignItems="stretch" gap={3}>
+                  {canViewParticipants ? (
+                    <Box
+                      flex="1"
+                      sx={{
+                        '& > div': {
+                          borderWidth: '1px',
+                          borderColor: 'neutral.400',
+                          borderRadius: '6px',
+                          backgroundColor: 'neutral.650',
+                          alignItems: 'center',
+                        },
+                      }}
+                    >
+                      <ChipInput
+                        addDisabled={!canManageParticipants}
+                        currentItems={displayParticipants}
+                        isReadOnly={!canManageParticipants}
+                        onChange={handleChipInputChange}
+                        placeholder="Add participants"
+                        renderItem={participant =>
+                          renderParticipantChipLabel(participant as Participant)
+                        }
+                      />
+                    </Box>
+                  ) : (
+                    <Flex
+                      alignItems="center"
+                      bg="neutral.650"
+                      borderColor="neutral.400"
+                      borderRadius="6px"
+                      borderWidth={1}
+                      flex="1"
+                      px={3}
+                      py={2}
+                    >
+                      <Text color="neutral.400">
+                        {getAllParticipantsDisplayName(
+                          meetingParticipants,
+                          currentAccount?.address,
+                          canViewParticipants
+                        )}
+                      </Text>
+                    </Flex>
+                  )}
+                  <IconButton
+                    _hover={{
+                      bg: 'primary.300',
+                    }}
+                    aria-label="Add participants"
+                    bg="primary.200"
+                    borderRadius="6px"
+                    color="neutral.900"
+                    icon={<IoPersonAddOutline size={20} />}
+                    isDisabled={!canManageParticipants}
+                    onClick={handleParticipantsClick}
+                  />
+                </HStack>
+              </FormControl>
+              <FormControl>
+                <FormLabel>Date/Time</FormLabel>
+                <HStack alignItems="stretch" gap={3}>
                   <Box
+                    cursor={canModifyDateTime ? 'pointer' : 'default'}
                     flex="1"
-                    sx={{
-                      '& > div': {
-                        borderWidth: '1px',
+                    onClick={canModifyDateTime ? handlePickNewTime : undefined}
+                  >
+                    <SingleDatepicker
+                      date={timezoneDate}
+                      iconColor="neutral.300"
+                      iconSize={20}
+                      inputProps={{
+                        py: 3,
+                        pl: 12,
                         borderColor: 'neutral.400',
                         borderRadius: '6px',
-                        backgroundColor: 'neutral.650',
-                        alignItems: 'center',
-                      },
-                    }}
-                  >
-                    <ChipInput
-                      addDisabled={!canManageParticipants}
-                      currentItems={displayParticipants}
-                      isReadOnly={!canManageParticipants}
-                      onChange={handleChipInputChange}
-                      placeholder="Add participants"
-                      renderItem={participant =>
-                        renderParticipantChipLabel(participant as Participant)
-                      }
+                        bg: 'neutral.650',
+                      }}
+                      onDateChange={() => undefined}
                     />
                   </Box>
-                ) : (
-                  <Flex
-                    alignItems="center"
-                    bg="neutral.650"
-                    borderColor="neutral.400"
-                    borderRadius="6px"
-                    borderWidth={1}
+                  <Box
+                    cursor={canModifyDateTime ? 'pointer' : 'default'}
                     flex="1"
-                    px={3}
-                    py={2}
+                    onClick={canModifyDateTime ? handlePickNewTime : undefined}
                   >
-                    <Text color="neutral.400">
-                      {getAllParticipantsDisplayName(
-                        meetingParticipants,
-                        currentAccount?.address,
-                        canViewParticipants
-                      )}
-                    </Text>
-                  </Flex>
-                )}
-                <IconButton
-                  _hover={{
-                    bg: 'primary.300',
-                  }}
-                  aria-label="Add participants"
-                  bg="primary.200"
-                  borderRadius="6px"
-                  color="neutral.900"
-                  icon={<IoPersonAddOutline size={20} />}
-                  isDisabled={!canManageParticipants}
-                  onClick={handleParticipantsClick}
-                />
-              </HStack>
-            </FormControl>
-            <FormControl>
-              <FormLabel>Date/Time</FormLabel>
-              <HStack alignItems="stretch" gap={3}>
-                <Box
-                  cursor={canModifyDateTime ? 'pointer' : 'default'}
-                  flex="1"
-                  onClick={canModifyDateTime ? handlePickNewTime : undefined}
-                >
-                  <SingleDatepicker
-                    date={timezoneDate}
-                    iconColor="neutral.300"
-                    iconSize={20}
-                    inputProps={{
-                      py: 3,
-                      pl: 12,
-                      borderColor: 'neutral.400',
-                      borderRadius: '6px',
-                      bg: 'neutral.650',
+                    <InputTimePicker
+                      currentDate={timezoneDate}
+                      iconColor="neutral.300"
+                      iconSize={20}
+                      inputProps={{
+                        py: 3,
+                        pl: 12,
+                        borderColor: 'neutral.400',
+                        borderRadius: '6px',
+                        bg: 'neutral.650',
+                      }}
+                      onChange={() => undefined}
+                      value={formattedTime}
+                    />
+                  </Box>
+                  <IconButton
+                    _hover={{
+                      bg: 'primary.300',
                     }}
-                    onDateChange={() => undefined}
+                    aria-label="Edit date and time"
+                    bg="primary.200"
+                    borderRadius="6px"
+                    color="neutral.900"
+                    icon={<MdOutlineEditCalendar size={20} />}
+                    isDisabled={!canModifyDateTime}
+                    onClick={handlePickNewTime}
                   />
-                </Box>
-                <Box
-                  cursor={canModifyDateTime ? 'pointer' : 'default'}
-                  flex="1"
-                  onClick={canModifyDateTime ? handlePickNewTime : undefined}
-                >
-                  <InputTimePicker
-                    currentDate={timezoneDate}
-                    iconColor="neutral.300"
-                    iconSize={20}
-                    inputProps={{
-                      py: 3,
-                      pl: 12,
-                      borderColor: 'neutral.400',
-                      borderRadius: '6px',
-                      bg: 'neutral.650',
-                    }}
-                    onChange={() => undefined}
-                    value={formattedTime}
-                  />
-                </Box>
-                <IconButton
-                  _hover={{
-                    bg: 'primary.300',
-                  }}
-                  aria-label="Edit date and time"
-                  bg="primary.200"
-                  borderRadius="6px"
-                  color="neutral.900"
-                  icon={<MdOutlineEditCalendar size={20} />}
-                  isDisabled={!canModifyDateTime}
-                  onClick={handlePickNewTime}
-                />
-              </HStack>
-            </FormControl>
-            <Flex gap={4} width="100%">
-              <FormControl
-                isDisabled={!canEditMeetingDetails || isScheduling}
-                isInvalid={!isTitleValid}
-              >
-                <FormLabel
-                  _invalid={{
-                    color: 'red.500',
-                  }}
-                >
-                  Title
-                  <Text color="red.500" display="inline">
-                    *
-                  </Text>
-                </FormLabel>
-                <Input
-                  _placeholder={{
-                    color: 'neutral.400',
-                  }}
-                  borderColor="neutral.400"
-                  errorBorderColor="red.500"
-                  isInvalid={!isTitleValid}
-                  onChange={e => {
-                    if (!isTitleValid && e.target.value) {
-                      setIsTitleValid(true)
-                    }
-                    return setTitle(e.target.value)
-                  }}
-                  placeholder="Enter meeting title"
-                  value={title}
-                />
-                {!isTitleValid && (
-                  <FormHelperText color="red.500">
-                    Title is required
-                  </FormHelperText>
-                )}
+                </HStack>
               </FormControl>
-            </Flex>
-            <FormControl isDisabled={!canEditMeetingDetails || isScheduling}>
-              <FormLabel htmlFor="info">Description (optional)</FormLabel>
-              <RichTextEditor
-                id="info"
-                isDisabled={!canEditMeetingDetails || isScheduling}
-                onValueChange={setContent}
-                placeholder="Any information you want to share prior to the meeting?"
-                value={content}
-              />
-            </FormControl>
-
-            <FormControl
-              isDisabled={!canEditMeetingDetails || isScheduling}
-              maxW="100%"
-              w="100%"
-            >
-              <FormLabel>Location</FormLabel>
-              <Select<Option<MeetingProvider>>
-                chakraStyles={{
-                  container: provided => ({
-                    ...provided,
-                    border: '1px solid',
-                    borderTopColor: 'currentColor',
-                    borderLeftColor: 'currentColor',
-                    borderRightColor: 'currentColor',
-                    borderBottomColor: 'currentColor',
-                    borderColor: 'inherit',
-                    borderRadius: 'md',
-                    maxW: '100%',
-                    display: 'block',
-                  }),
-                }}
-                className="noLeftBorder timezone-select"
-                colorScheme="primary"
-                components={getCustomSelectComponents<
-                  Option<MeetingProvider>,
-                  false
-                >()}
-                onChange={newValue => _onChangeProvider(newValue)}
-                options={meetingProviders}
-                value={meetingProviderValue}
-              />
-              {meetingProvider === MeetingProvider.CUSTOM && (
-                <Input
-                  isDisabled={isScheduling}
-                  my={4}
-                  onChange={e => setMeetingUrl(e.target.value)}
-                  placeholder="insert a custom meeting url"
-                  type="text"
-                  value={meetingUrl}
+              <Flex gap={4} width="100%">
+                <FormControl
+                  isDisabled={!canEditMeetingDetails || isScheduling}
+                  isInvalid={!isTitleValid}
+                >
+                  <FormLabel
+                    _invalid={{
+                      color: 'red.500',
+                    }}
+                  >
+                    Title
+                    <Text color="red.500" display="inline">
+                      *
+                    </Text>
+                  </FormLabel>
+                  <Input
+                    _placeholder={{
+                      color: 'neutral.400',
+                    }}
+                    borderColor="neutral.400"
+                    errorBorderColor="red.500"
+                    isInvalid={!isTitleValid}
+                    onChange={e => {
+                      if (!isTitleValid && e.target.value) {
+                        setIsTitleValid(true)
+                      }
+                      return setTitle(e.target.value)
+                    }}
+                    placeholder="Enter meeting title"
+                    value={title}
+                  />
+                  {!isTitleValid && (
+                    <FormHelperText color="red.500">
+                      Title is required
+                    </FormHelperText>
+                  )}
+                </FormControl>
+              </Flex>
+              <FormControl isDisabled={!canEditMeetingDetails || isScheduling}>
+                <FormLabel htmlFor="info">Description (optional)</FormLabel>
+                <RichTextEditor
+                  id="info"
+                  isDisabled={!canEditMeetingDetails || isScheduling}
+                  onValueChange={setContent}
+                  placeholder="Any information you want to share prior to the meeting?"
+                  value={content}
                 />
-              )}
-            </FormControl>
+              </FormControl>
 
-            <FormControl
-              isDisabled={!canEditMeetingDetails || isScheduling}
-              maxW="100%"
-              w="100%"
-            >
-              <FormLabel>Meeting Reminders</FormLabel>
-              <ChakraSelect
-                chakraStyles={{
-                  container: provided => ({
-                    ...provided,
-                    border: '1px solid',
-                    borderTopColor: 'currentColor',
-                    borderLeftColor: 'currentColor',
-                    borderRightColor: 'currentColor',
-                    borderBottomColor: 'currentColor',
-                    borderColor: 'inherit',
-                    borderRadius: 'md',
-                    maxW: '100%',
-                    display: 'block',
-                  }),
-
-                  placeholder: provided => ({
-                    ...provided,
-                    textAlign: 'left',
-                  }),
-                }}
-                className="noLeftBorder timezone-select"
-                colorScheme="gray"
-                components={noClearCustomSelectComponent}
-                isDisabled={!canEditMeetingDetails || isScheduling}
-                isMulti
-                onChange={val => {
-                  const meetingNotification = val as Array<{
-                    value: MeetingReminders
-                    label?: string
-                  }>
-                  // can't select more than 5 notifications
-                  if (meetingNotification.length > 5) {
-                    toast({
-                      title: 'Limit reached',
-                      description: 'You can select up to 5 notifications only.',
-                      status: 'warning',
-                      duration: 3000,
-                      isClosable: true,
-                    })
-                    return
-                  }
-                  setMeetingNotification(meetingNotification)
-                }}
-                options={MeetingNotificationOptions}
-                placeholder="Select Notification Alerts"
-                tagVariant={'solid'}
-                value={meetingNotification}
-              />
-            </FormControl>
-            {!seriesId && (
               <FormControl
                 isDisabled={!canEditMeetingDetails || isScheduling}
                 maxW="100%"
                 w="100%"
               >
-                <FormLabel>Meeting Repeat</FormLabel>
-                <ChakraSelect
+                <FormLabel>Location</FormLabel>
+                <Select<Option<MeetingProvider>>
                   chakraStyles={{
                     container: provided => ({
                       ...provided,
+                      border: '1px solid',
+                      borderTopColor: 'currentColor',
+                      borderLeftColor: 'currentColor',
+                      borderRightColor: 'currentColor',
+                      borderBottomColor: 'currentColor',
                       borderColor: 'inherit',
                       borderRadius: 'md',
                       maxW: '100%',
                       display: 'block',
                     }),
+                  }}
+                  className="noLeftBorder timezone-select"
+                  colorScheme="primary"
+                  components={getCustomSelectComponents<
+                    Option<MeetingProvider>,
+                    false
+                  >()}
+                  onChange={newValue => _onChangeProvider(newValue)}
+                  options={meetingProviders}
+                  value={meetingProviderValue}
+                />
+                {meetingProvider === MeetingProvider.CUSTOM && (
+                  <Input
+                    isDisabled={isScheduling}
+                    my={4}
+                    onChange={e => setMeetingUrl(e.target.value)}
+                    placeholder="insert a custom meeting url"
+                    type="text"
+                    value={meetingUrl}
+                  />
+                )}
+              </FormControl>
+
+              <FormControl
+                isDisabled={!canEditMeetingDetails || isScheduling}
+                maxW="100%"
+                w="100%"
+              >
+                <FormLabel>Meeting Reminders</FormLabel>
+                <ChakraSelect
+                  chakraStyles={{
+                    container: provided => ({
+                      ...provided,
+                      border: '1px solid',
+                      borderTopColor: 'currentColor',
+                      borderLeftColor: 'currentColor',
+                      borderRightColor: 'currentColor',
+                      borderBottomColor: 'currentColor',
+                      borderColor: 'inherit',
+                      borderRadius: 'md',
+                      maxW: '100%',
+                      display: 'block',
+                    }),
+
                     placeholder: provided => ({
-                      ...provided,
-                      textAlign: 'left',
-                    }),
-                    input: provided => ({
-                      ...provided,
-                      textAlign: 'left',
-                    }),
-                    control: provided => ({
                       ...provided,
                       textAlign: 'left',
                     }),
                   }}
                   className="noLeftBorder timezone-select"
-                  colorScheme="primary"
+                  colorScheme="gray"
                   components={noClearCustomSelectComponent}
                   isDisabled={!canEditMeetingDetails || isScheduling}
-                  onChange={newValue =>
-                    setMeetingRepeat(
-                      newValue as {
-                        value: MeetingRepeat
-                        label: string
-                      }
-                    )
-                  }
-                  options={MeetingRepeatOptions}
-                  value={meetingRepeat}
+                  isMulti
+                  onChange={val => {
+                    const meetingNotification = val as Array<{
+                      value: MeetingReminders
+                      label?: string
+                    }>
+                    // can't select more than 5 notifications
+                    if (meetingNotification.length > 5) {
+                      toast({
+                        title: 'Limit reached',
+                        description:
+                          'You can select up to 5 notifications only.',
+                        status: 'warning',
+                        duration: 3000,
+                        isClosable: true,
+                      })
+                      return
+                    }
+                    setMeetingNotification(meetingNotification)
+                  }}
+                  options={MeetingNotificationOptions}
+                  placeholder="Select Notification Alerts"
+                  tagVariant={'solid'}
+                  value={meetingNotification}
                 />
               </FormControl>
-            )}
-
-            {isScheduler && (
-              <VStack alignItems="flex-start" gap={4} w="100%">
-                <Heading fontSize="lg" fontWeight={500}>
-                  Permissions for guests
-                </Heading>
-
-                {MeetingSchedulePermissions.map(permission => (
-                  <Checkbox
-                    color="border-default-primary"
-                    colorScheme="primary"
-                    flexDir="row-reverse"
-                    fontSize="16px"
-                    fontWeight={700}
-                    isChecked={selectedPermissions?.includes(permission.value)}
-                    justifyContent={'space-between'}
-                    key={permission.value}
-                    marginInlineStart={0}
-                    onChange={e => {
-                      const { checked } = e.target
-                      setSelectedPermissions(prev =>
-                        checked
-                          ? (prev || []).concat(permission.value)
-                          : prev?.filter(p => p !== permission.value) || []
-                      )
+              {!seriesId && (
+                <FormControl
+                  isDisabled={!canEditMeetingDetails || isScheduling}
+                  maxW="100%"
+                  w="100%"
+                >
+                  <FormLabel>Meeting Repeat</FormLabel>
+                  <ChakraSelect
+                    chakraStyles={{
+                      container: provided => ({
+                        ...provided,
+                        borderColor: 'inherit',
+                        borderRadius: 'md',
+                        maxW: '100%',
+                        display: 'block',
+                      }),
+                      placeholder: provided => ({
+                        ...provided,
+                        textAlign: 'left',
+                      }),
+                      input: provided => ({
+                        ...provided,
+                        textAlign: 'left',
+                      }),
+                      control: provided => ({
+                        ...provided,
+                        textAlign: 'left',
+                      }),
                     }}
-                    p={0}
-                    size={'lg'}
-                    w="100%"
-                  >
-                    <HStack gap={0} marginInlineStart={-2}>
-                      <Text>{permission.label}</Text>
-                      {permission.info && (
-                        <InfoTooltip text={permission.info} />
+                    className="noLeftBorder timezone-select"
+                    colorScheme="primary"
+                    components={noClearCustomSelectComponent}
+                    isDisabled={!canEditMeetingDetails || isScheduling}
+                    onChange={newValue =>
+                      setMeetingRepeat(
+                        newValue as {
+                          value: MeetingRepeat
+                          label: string
+                        }
+                      )
+                    }
+                    options={MeetingRepeatOptions}
+                    value={meetingRepeat}
+                  />
+                </FormControl>
+              )}
+
+              {isScheduler && (
+                <VStack alignItems="flex-start" gap={4} w="100%">
+                  <Heading fontSize="lg" fontWeight={500}>
+                    Permissions for guests
+                  </Heading>
+
+                  {MeetingSchedulePermissions.map(permission => (
+                    <Checkbox
+                      color="border-default-primary"
+                      colorScheme="primary"
+                      flexDir="row-reverse"
+                      fontSize="16px"
+                      fontWeight={700}
+                      isChecked={selectedPermissions?.includes(
+                        permission.value
                       )}
-                    </HStack>
-                  </Checkbox>
-                ))}
-                <FormControl>
-                  <FormLabel
-                    alignItems="center"
-                    display="flex"
-                    fontSize="medium"
-                  >
-                    Make other participants meeting owners
-                    <InfoTooltip text="Granting ownership will allow them to manage the meeting" />
-                  </FormLabel>
+                      justifyContent={'space-between'}
+                      key={permission.value}
+                      marginInlineStart={0}
+                      onChange={e => {
+                        const { checked } = e.target
+                        setSelectedPermissions(prev =>
+                          checked
+                            ? (prev || []).concat(permission.value)
+                            : prev?.filter(p => p !== permission.value) || []
+                        )
+                      }}
+                      p={0}
+                      size={'lg'}
+                      w="100%"
+                    >
+                      <HStack gap={0} marginInlineStart={-2}>
+                        <Text>{permission.label}</Text>
+                        {permission.info && (
+                          <InfoTooltip text={permission.info} />
+                        )}
+                      </HStack>
+                    </Checkbox>
+                  ))}
+                  <FormControl>
+                    <FormLabel
+                      alignItems="center"
+                      display="flex"
+                      fontSize="medium"
+                    >
+                      Make other participants meeting owners
+                      <InfoTooltip text="Granting ownership will allow them to manage the meeting" />
+                    </FormLabel>
+                    <Button
+                      _hover={{
+                        textDecoration: 'none',
+                      }}
+                      bg="transparent"
+                      borderColor="inherit"
+                      borderRadius="0.375rem"
+                      borderWidth={1}
+                      color={meetingOwners.length > 0 ? 'white' : 'neutral.400'}
+                      cursor={'pointer'}
+                      fontSize="16"
+                      fontWeight="400"
+                      height={10}
+                      justifyContent="space-between"
+                      onClick={onOpen}
+                      px={4}
+                      textDecor="none"
+                      variant="link"
+                      width="100%"
+                    >
+                      <Text userSelect="none">
+                        {meetingOwners.length > 0
+                          ? meetingOwners
+                              .map(
+                                owner =>
+                                  owner.name ||
+                                  ellipsizeAddress(owner.account_address || '')
+                              )
+                              .join(', ')
+                          : 'Add Participants'}
+                      </Text>
+                      <Icon as={FaChevronDown} h={4} w={4} />
+                    </Button>
+                  </FormControl>
+                </VStack>
+              )}
+              <HStack flexWrap="wrap" w="100%">
+                <Button
+                  colorScheme="primary"
+                  flex={1}
+                  flexBasis="50%"
+                  h={'auto'}
+                  isDisabled={
+                    participants.length === 0 ||
+                    !title ||
+                    !duration ||
+                    !pickedTime ||
+                    !canEditMeetingDetails
+                  }
+                  isLoading={isScheduling}
+                  onClick={handleScheduleMeeting}
+                  py={3}
+                  w="100%"
+                >
+                  {query.intent === Intents.UPDATE_MEETING
+                    ? 'Update Meeting'
+                    : 'Schedule now'}
+                </Button>
+                {query.intent === Intents.UPDATE_MEETING && canCancel && (
                   <Button
                     _hover={{
-                      textDecoration: 'none',
+                      bg: 'red.500',
+                      color: 'white',
                     }}
                     bg="transparent"
-                    borderColor="inherit"
-                    borderRadius="0.375rem"
+                    borderColor="red.500"
                     borderWidth={1}
-                    color={meetingOwners.length > 0 ? 'white' : 'neutral.400'}
-                    cursor={'pointer'}
-                    fontSize="16"
-                    fontWeight="400"
-                    height={10}
-                    justifyContent="space-between"
-                    onClick={onOpen}
-                    px={4}
-                    textDecor="none"
-                    variant="link"
-                    width="100%"
+                    color="red.500"
+                    flex={1}
+                    flexBasis="40%"
+                    h={'auto'}
+                    onClick={handleCancelMeeting}
+                    py={3}
+                    variant="outline"
+                    w="100%"
                   >
-                    <Text userSelect="none">
-                      {meetingOwners.length > 0
-                        ? meetingOwners
-                            .map(
-                              owner =>
-                                owner.name ||
-                                ellipsizeAddress(owner.account_address || '')
-                            )
-                            .join(', ')
-                        : 'Add Participants'}
-                    </Text>
-                    <Icon as={FaChevronDown} h={4} w={4} />
+                    Cancel Meeting
                   </Button>
-                </FormControl>
-              </VStack>
-            )}
-            <HStack flexWrap="wrap" w="100%">
-              <Button
-                colorScheme="primary"
-                flex={1}
-                flexBasis="50%"
-                h={'auto'}
-                isDisabled={
-                  participants.length === 0 ||
-                  !title ||
-                  !duration ||
-                  !pickedTime ||
-                  !canEditMeetingDetails
-                }
-                isLoading={isScheduling}
-                onClick={handleScheduleMeeting}
-                py={3}
-                w="100%"
-              >
-                {query.intent === Intents.UPDATE_MEETING
-                  ? 'Update Meeting'
-                  : 'Schedule now'}
-              </Button>
-              {query.intent === Intents.UPDATE_MEETING && canCancel && (
-                <Button
-                  _hover={{
-                    bg: 'red.500',
-                    color: 'white',
-                  }}
-                  bg="transparent"
-                  borderColor="red.500"
-                  borderWidth={1}
-                  color="red.500"
-                  flex={1}
-                  flexBasis="40%"
-                  h={'auto'}
-                  onClick={handleCancelMeeting}
-                  py={3}
-                  variant="outline"
-                  w="100%"
-                >
-                  Cancel Meeting
-                </Button>
-              )}
-              {query.intent === Intents.UPDATE_MEETING && canDelete && (
-                <Button
-                  _hover={{
-                    opacity: 0.75,
-                  }}
-                  bg={'orangeButton.800'}
-                  color={'white'}
-                  flex={1}
-                  flexBasis="40%"
-                  h={'auto'}
-                  isLoading={isDeleting}
-                  onClick={handleDeleteMeeting}
-                  py={3}
-                  w="100%"
-                >
-                  Delete Meeting
-                </Button>
-              )}
-            </HStack>
+                )}
+                {query.intent === Intents.UPDATE_MEETING && canDelete && (
+                  <Button
+                    _hover={{
+                      opacity: 0.75,
+                    }}
+                    bg={'orangeButton.800'}
+                    color={'white'}
+                    flex={1}
+                    flexBasis="40%"
+                    h={'auto'}
+                    isLoading={isDeleting}
+                    onClick={handleDeleteMeeting}
+                    py={3}
+                    w="100%"
+                  >
+                    Delete Meeting
+                  </Button>
+                )}
+              </HStack>
+            </VStack>
           </VStack>
         </VStack>
-      </VStack>
-    </Box>
+      </Box>
+    </form>
   )
 }
 
