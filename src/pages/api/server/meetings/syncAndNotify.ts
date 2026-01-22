@@ -19,18 +19,18 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     request.start = new Date(request.start)
     request.end = new Date(request.end)
     request.created_at = new Date(request.created_at)
-    try {
-      await notifyForOrUpdateNewMeeting(MeetingChangeType.CREATE, request)
-    } catch (error) {
-      Sentry.captureException(error)
-    }
-
+    // creater calendar events then notify so notificastions don't automatically create an event before we can
     try {
       await ExternalCalendarSync.create(request)
     } catch (error) {
       console.error(error)
     }
 
+    try {
+      await notifyForOrUpdateNewMeeting(MeetingChangeType.CREATE, request)
+    } catch (error) {
+      Sentry.captureException(error)
+    }
     return res.status(200).send(true)
   } else if (req.method === 'PATCH') {
     const request = req.body as MeetingCreationSyncRequest
