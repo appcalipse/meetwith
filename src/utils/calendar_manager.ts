@@ -3095,8 +3095,16 @@ const meetWithSeriesPreprocessors = (
     const rule = rrulestr(slotSerie.rrule[0], {
       dtstart: new Date(slotSerie.template_start), // The original start time of the series
     })
+    const lookupEnd = slotSerie.effective_end
+      ? DateTime.fromJSDate(new Date(slotSerie.effective_end))
+      : endDate
+
     const ghostStartTimes = rule
-      .between(startDate.toJSDate(), endDate.toJSDate(), true)
+      .between(
+        startDate.toJSDate(),
+        endDate > lookupEnd ? lookupEnd.toJSDate() : endDate.toJSDate(),
+        true
+      )
       .map(date => DateTime.fromJSDate(date))
     for (const ghostStartTime of ghostStartTimes) {
       const difference =
