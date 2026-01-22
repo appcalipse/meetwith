@@ -184,6 +184,7 @@ import {
   SessionType,
   TokenType,
 } from '@/utils/constants/meeting-types'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
   AccountNotFoundError,
   AdminBelowOneError,
@@ -8467,16 +8468,65 @@ const createQuickPoll = async (
 
     if (participantsError) throw participantsError
 
-    // Send invitation emails to all participants (excluding the host)
+    // Send invitation emails and notifications to all participants (excluding the host)
     const inviterName =
       ownerAccount.preferences?.name || ellipsizeAddress(owner_address)
+    const pollLink = `${appUrl}/poll/${slug}`
 
     for (const participant of invitees) {
-      if (participant.guest_email) {
+      // Send Discord/Telegram notifications to contacts
+      if (participant.account_address) {
+        try {
+          const notifications = await getAccountNotificationSubscriptions(
+            participant.account_address
+          )
+          const message = `${inviterName} invited you to participate in "${pollData.title}". View the poll and add your availability here: ${pollLink}`
+
+          // Send Discord notification if enabled
+          const discordNotif = notifications.notification_types.find(
+            n => n.channel === NotificationChannel.DISCORD && !n.disabled
+          )
+          if (discordNotif) {
+            try {
+              await dmAccount(
+                participant.account_address,
+                discordNotif.destination,
+                message
+              )
+            } catch (discordError) {
+              Sentry.captureException(discordError)
+            }
+          }
+
+          // Send Telegram notification if enabled
+          const telegramNotif = notifications.notification_types.find(
+            n => n.channel === NotificationChannel.TELEGRAM && !n.disabled
+          )
+          if (telegramNotif) {
+            try {
+              await sendDm(telegramNotif.destination, message)
+            } catch (telegramError) {
+              Sentry.captureException(telegramError)
+            }
+          }
+        } catch (notifError) {
+          Sentry.captureException(notifError)
+        }
+      }
+
+      // Send email invitations
+      const participantEmail =
+        participant.guest_email ||
+        (participant.account_address
+          ? await getAccountNotificationSubscriptionEmail(
+              participant.account_address
+            )
+          : '')
+      if (participantEmail) {
         emailQueue.add(async () => {
           try {
             await sendPollInviteEmail(
-              participant.guest_email,
+              participantEmail,
               inviterName,
               pollData.title,
               slug
@@ -8484,7 +8534,7 @@ const createQuickPoll = async (
             return true
           } catch (error) {
             console.error(
-              `Failed to send invitation email to ${participant.guest_email}:`,
+              `Failed to send invitation email to ${participantEmail}:`,
               error
             )
             return false
@@ -8747,27 +8797,61 @@ const updateQuickPoll = async (
   updates: UpdateQuickPollRequest
 ) => {
   try {
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('permissions')
+      .eq('id', pollId)
+      .maybeSingle()
+
+    if (pollError) throw pollError
+    if (!poll) {
+      throw new QuickPollNotFoundError(pollId)
+    }
+
     // Verify the user can edit this poll
     const { data: participant, error: participantError } = await db.supabase
       .from('quick_poll_participants')
       .select('participant_type')
       .eq('poll_id', pollId)
       .eq('account_address', ownerAddress)
-      .in('participant_type', ['scheduler', 'owner'])
       .maybeSingle()
 
-    if (participantError || !participant) {
+    if (participantError) {
       throw new QuickPollUnauthorizedError('You cannot edit this poll')
     }
 
-    // Handle participant updates if provided
-    if (updates.participants) {
-      await updateQuickPollParticipants(pollId, updates.participants)
+    const isScheduler =
+      participant?.participant_type === QuickPollParticipantType.SCHEDULER
+    const hasInvitePermission =
+      poll.permissions?.includes(MeetingPermissions.INVITE_GUESTS) || false
+
+    const { participants: participantUpdates, ...otherUpdates } = updates
+    const hasOtherUpdates = Object.keys(otherUpdates).length > 0
+
+    if (hasOtherUpdates && !isScheduler) {
+      throw new QuickPollUnauthorizedError('You cannot edit this poll')
+    }
+
+    if (!isScheduler) {
+      if (!participantUpdates || !hasInvitePermission || !participant) {
+        throw new QuickPollUnauthorizedError('You cannot edit this poll')
+      }
+      await updateQuickPollParticipants(pollId, participantUpdates)
+      const { data: updatedPoll } = await db.supabase
+        .from('quick_polls')
+        .select('*')
+        .eq('id', pollId)
+        .maybeSingle()
+      return updatedPoll
+    }
+
+    if (participantUpdates && Object.keys(participantUpdates).length > 0) {
+      await updateQuickPollParticipants(pollId, participantUpdates)
     }
 
     const { participants: _, ...pollUpdates } = updates
 
-    const { data: poll, error } = await db.supabase
+    const { data: updatedPoll, error } = await db.supabase
       .from('quick_polls')
       .update({ ...pollUpdates, updated_at: new Date().toISOString() })
       .eq('id', pollId)
@@ -8776,9 +8860,12 @@ const updateQuickPoll = async (
 
     if (error) throw error
 
-    return poll
+    return updatedPoll
   } catch (error) {
-    if (error instanceof QuickPollUnauthorizedError) {
+    if (
+      error instanceof QuickPollUnauthorizedError ||
+      error instanceof QuickPollNotFoundError
+    ) {
       throw error
     }
     throw new QuickPollUpdateError(
@@ -8823,7 +8910,10 @@ const updateQuickPollParticipants = async (
       for (const participantData of participantUpdates.toAdd) {
         try {
           const status =
-            participantData.status || QuickPollParticipantStatus.PENDING
+            participantData.status ||
+            (participantData.account_address
+              ? QuickPollParticipantStatus.ACCEPTED
+              : QuickPollParticipantStatus.PENDING)
           await addQuickPollParticipant(pollId, participantData, status)
 
           // Send notifications for contacts added
@@ -8867,30 +8957,28 @@ const updateQuickPollParticipants = async (
             }
           }
 
-          if (status === QuickPollParticipantStatus.PENDING) {
-            const participantEmail =
-              participantData.guest_email ||
-              (participantData.account_address
-                ? await getAccountNotificationSubscriptionEmail(
-                    participantData.account_address
-                  )
-                : '')
-            if (participantEmail) {
-              emailQueue.add(async () => {
-                try {
-                  await sendPollInviteEmail(
-                    participantEmail,
-                    inviterName,
-                    poll.title,
-                    poll.slug
-                  )
-                  return true
-                } catch (emailError) {
-                  Sentry.captureException(emailError)
-                  return false
-                }
-              })
-            }
+          const participantEmail =
+            participantData.guest_email ||
+            (participantData.account_address
+              ? await getAccountNotificationSubscriptionEmail(
+                  participantData.account_address
+                )
+              : '')
+          if (participantEmail) {
+            emailQueue.add(async () => {
+              try {
+                await sendPollInviteEmail(
+                  participantEmail,
+                  inviterName,
+                  poll.title,
+                  poll.slug
+                )
+                return true
+              } catch (emailError) {
+                Sentry.captureException(emailError)
+                return false
+              }
+            })
           }
         } catch (addError) {
           throw addError

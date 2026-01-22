@@ -1241,6 +1241,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           key={inviteKey}
           isOpen={isInviteModalOpen}
           onClose={closeInviteModal}
+          isQuickPoll={true}
           groupAvailability={groupAvailability}
           groupParticipants={groupParticipants}
           participants={participants}

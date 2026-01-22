@@ -281,8 +281,12 @@ const InviteParticipants: FC<IProps> = ({
   )
 
   const handleQuickPollSaveChanges = useCallback(async () => {
-    if (!pollData) return
+    if (!pollData) {
+      hanleClose()
+      return
+    }
 
+    // For existing polls, add participants and send invites
     setIsLoading(true)
     try {
       const allToAdd: ParticipantInfo[] = [
@@ -301,7 +305,9 @@ const InviteParticipants: FC<IProps> = ({
         guest_name: p.name,
         guest_email: p.guest_email || '',
         participant_type: QuickPollParticipantType.INVITEE,
-        status: QuickPollParticipantStatus.PENDING,
+        status: p.account_address
+          ? QuickPollParticipantStatus.ACCEPTED
+          : QuickPollParticipantStatus.PENDING,
       }))
 
       await updateQuickPoll(pollData.poll.id, {

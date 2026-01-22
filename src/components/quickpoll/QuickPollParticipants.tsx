@@ -118,6 +118,16 @@ export function QuickPollParticipants({
     host?.account_address?.toLowerCase() ===
     currentAccount?.address?.toLowerCase()
 
+  // Check if guest has permission to add participants
+  const canAddParticipants = useMemo(() => {
+    if (isHost) return true
+    if (!pollData) return false
+    return (
+      pollData.poll.permissions?.includes(MeetingPermissions.INVITE_GUESTS) ||
+      false
+    )
+  }, [isHost, pollData])
+
   const groupKey = useMemo(() => {
     return pollData ? `quickpoll-${pollData.poll.id}` : ''
   }, [pollData])
@@ -210,6 +220,10 @@ export function QuickPollParticipants({
   }
 
   const handleParticipantRemove = (participant: ParticipantInfo) => {
+    if (participant.type === ParticipantType.Scheduler) {
+      return
+    }
+
     if (pollData?.poll?.participants) {
       const match = pollData.poll.participants.find(p => {
         const id1 = (p.account_address || p.guest_email || '').toLowerCase()
@@ -393,7 +407,7 @@ export function QuickPollParticipants({
                     )}
                 </VStack>
               </HStack>
-              {isHost && (
+              {isHost && participant.type !== ParticipantType.Scheduler && (
                 <Icon
                   as={IoMdClose}
                   w={{ base: 4, md: 5 }}
@@ -409,7 +423,7 @@ export function QuickPollParticipants({
         })}
       </VStack>
 
-      {isHost && (
+      {canAddParticipants && (
         <Button
           colorScheme="primary"
           w="100%"

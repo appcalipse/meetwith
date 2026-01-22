@@ -75,7 +75,7 @@ const PollInviteSection: FC<PollInviteSectionProps> = ({
       <Heading fontSize="22px" pb={2} mb={4}>
         Add participants from contacts
       </Heading>
-      <AddFromContact />
+      <AddFromContact isQuickPoll={true} />
       <Divider my={6} borderColor="neutral.400" />
       <FormControl w="100%" maxW="100%">
         <FormLabel htmlFor="invite-participants">
@@ -104,7 +104,7 @@ const PollInviteSection: FC<PollInviteSectionProps> = ({
         isLoading={isLoading}
         isDisabled={isDisabled}
       >
-        Add & Send Invites(s)
+        {pollData ? 'Add & Send Invites' : 'Save changes'}
       </Button>
       {pollData && (
         <>
