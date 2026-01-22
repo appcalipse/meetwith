@@ -23,7 +23,13 @@ const credentials = {
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { code, error, state }: OAuthCallbackQuery = req.query
+  const { method, query } = req
+
+  if (method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const { code, error, state }: OAuthCallbackQuery = query
 
   const stateObject =
     typeof state === 'string'

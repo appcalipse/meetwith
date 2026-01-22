@@ -12,6 +12,11 @@ import {
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method, query } = req
+
+  if (method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   const slug = query.slug as string
 
   if (!slug) {
