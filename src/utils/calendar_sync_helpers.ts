@@ -112,7 +112,7 @@ const handleUpdateParseMeetingInfo = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[],
   rrule?: Array<string> | null,
-  eventId?: string | null
+  isRecurringEventUpdate?: boolean
 ) => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -156,7 +156,8 @@ const handleUpdateParseMeetingInfo = async (
   const currentAccount = await getAccountFromDB(currentAccountAddress)
   const existingMeetingAccounts = await loadMeetingAccountAddresses(
     decryptedMeeting,
-    currentAccount.address
+    currentAccount.address,
+    isRecurringEventUpdate
   )
 
   // those are the users that we need to remove the slots
@@ -187,7 +188,8 @@ const handleUpdateParseMeetingInfo = async (
 
   const accountSlotMap = await mapRelatedSlots(
     decryptedMeeting,
-    currentAccountAddress
+    currentAccountAddress,
+    isRecurringEventUpdate
   )
 
   const oldGuests = decryptedMeeting.participants.filter(p => p.guest_email)
@@ -237,7 +239,6 @@ const handleUpdateParseMeetingInfo = async (
   )
   const payload = {
     ...meetingData,
-    eventId: eventId,
     guestsToRemove,
     rrule: rrule || meetingData.rrule,
     slotsToRemove: toRemove
@@ -623,7 +624,6 @@ const handleUpdateMeetingSeries = async (
   meetingProvider: MeetingProvider,
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[]
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
@@ -662,10 +662,10 @@ const handleUpdateMeetingSeries = async (
     meetingProvider,
     meetingTitle,
     meetingReminders,
-    meetingRepeat,
+    MeetingRepeat.NO_REPEAT, // This would be overridden by the calendar's repeat so safe to explicitly override
     selectedPermissions,
     masterEvent.recurrence,
-    masterEvent.id
+    true
   )
   const { slots } = await parseParticipantSlots(
     eventInstance.participantActing,
@@ -922,14 +922,59 @@ const handleUpdateSingleRecurringInstance = async (
   if (!conferenceMeeting || conferenceMeeting.version !== MeetingVersion.V3)
     return
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
+  const series = await getEventMasterSeries(meetingId, event.recurringEventId!)
+  const seriesMap = new Map(
+    series.map(serie => [serie.account_address || serie.guest_email, serie])
+  )
   if (!meetingInfo) return
+  const timeStamp = parseGoogleEventTimestamp(event.id)
   const parsedParticipants = await handleParseParticipants(
     meetingId,
     event.attendees || [],
     meetingInfo.participants,
     currentAccountAddress
   )
+  const participants = []
+  for (const participant of parsedParticipants) {
+    const serie = seriesMap.get(
+      participant?.account_address || participant.guest_email || ''
+    )
+    if (serie) {
+      participants.push({
+        ...participant,
+        slot_id: `${serie.id}_${timeStamp}`, // generate a new id for meeting
+      })
+    } else {
+      participants.push({
+        ...participant,
+        slot_id: uuidv4(), // generate a new id for meeting
+      })
+    }
+  }
+  const cleanedParticipants = []
+  for (const participant of meetingInfo.participants || []) {
+    const serie = seriesMap.get(
+      participant?.account_address || participant.guest_email || ''
+    )
+    if (serie) {
+      cleanedParticipants.push({
+        ...participant,
+        slot_id: `${serie.id}_${timeStamp}`, // generate a new id for meeting
+      })
+    } else {
+      cleanedParticipants.push({
+        ...participant,
+        slot_id: uuidv4(), // generate a new id for meeting
+      })
+    }
+  }
+  meetingInfo.participants = cleanedParticipants
+  meetingInfo.related_slot_ids = cleanedParticipants
+    .map(p => p.slot_id)
+    .filter((p): p is string => !!p)
+
   let eventInstance
+
   try {
     eventInstance = await handleUpdateParseMeetingInfo(
       currentAccountAddress,
@@ -937,7 +982,7 @@ const handleUpdateSingleRecurringInstance = async (
       new Date(startTime),
       new Date(endTime),
       meetingInfo,
-      parsedParticipants,
+      participants,
       extractMeetingDescription(event.description || '') || '',
       event.location || '',
       conferenceMeeting.provider,
@@ -945,8 +990,7 @@ const handleUpdateSingleRecurringInstance = async (
       conferenceMeeting.reminders,
       conferenceMeeting.recurrence,
       conferenceMeeting.permissions,
-      undefined,
-      event.id
+      undefined
     )
   } catch (e) {
     console.error(e)
@@ -967,53 +1011,74 @@ const handleUpdateSingleRecurringInstance = async (
       eventInstance.participantActing,
       eventInstance.payload
     )
-    const timeStamp = parseGoogleEventTimestamp(event.id)
     if (!timeStamp) return
     const version = (slots[0].version || 0) + 1
 
     const slotToUpdatePromises = slots.map(
-      async (slot): Promise<TablesUpdate<'slot_instance'> | null> => {
-        const series_id = await getSlotInstanceSeriesId(
-          meetingId,
-          event.recurringEventId || '',
-          slot.account_address,
-          slot.guest_email
+      async (
+        slot
+      ): Promise<
+        | {
+            instances: TablesUpdate<'slot_instance'>
+          }
+        | { slots: TablesUpdate<'slots'> }
+      > => {
+        const series = seriesMap.get(
+          slot?.account_address || slot.guest_email || ''
         )
-        if (series_id) {
+        if (series) {
           return {
-            account_address: slot.account_address,
-            end: new Date(endTime).toISOString(),
-            id: slot.id + '_' + timeStamp,
-            override_meeting_info_encrypted: slot.meeting_info_encrypted,
-            series_id,
-            start: new Date(startTime).toISOString(),
-            status: RecurringStatus.MODIFIED,
-            version: (slots[0].version || 0) + 1,
+            instances: {
+              account_address: slot.account_address,
+              end: new Date(endTime).toISOString(),
+              id: series.id + '_' + timeStamp,
+              override_meeting_info_encrypted: slot.meeting_info_encrypted,
+              series_id: series.id,
+              start: new Date(startTime).toISOString(),
+              status: RecurringStatus.MODIFIED,
+              version: (slots[0].version || 0) + 1,
+            },
           }
         } else {
           console.warn('No series found for slot', slot.id)
-          return null
+          // create a new slot
+          return {
+            slots: {
+              ...slot,
+            },
+          }
         }
       }
     )
     const slotsToRemovePromises = eventInstance?.payload.slotsToRemove.map(
-      async (slotId: string): Promise<TablesUpdate<'slot_instance'> | null> => {
+      async (
+        slotId: string
+      ): Promise<
+        | {
+            instances: TablesUpdate<'slot_instance'>
+          }
+        | { slots: string }
+      > => {
         const serie = await getSlotSeries(slotId)
         if (serie) {
           return {
-            account_address: serie.account_address,
-            end: new Date(endTime).toISOString(),
-            id: slotId + '_' + timeStamp,
-            override_meeting_info_encrypted: null,
-            series_id: serie.id,
-            start: new Date(startTime).toISOString(),
-            status: RecurringStatus.CANCELLED,
-            version: version + 1,
-            guest_email: serie.guest_email,
+            instances: {
+              account_address: serie.account_address,
+              end: new Date(endTime).toISOString(),
+              id: slotId + '_' + timeStamp,
+              override_meeting_info_encrypted: null,
+              series_id: serie.id,
+              start: new Date(startTime).toISOString(),
+              status: RecurringStatus.CANCELLED,
+              version: version + 1,
+              guest_email: serie.guest_email,
+            },
           }
         } else {
           console.warn('No series found for slot', slotId)
-          return null
+          return {
+            slots: slotId,
+          }
         }
       }
     )
@@ -1032,7 +1097,11 @@ const handleUpdateSingleRecurringInstance = async (
     ) {
       // TODO: handle update here
     }
-    return slotToUpdate.concat(slotsToRemove).filter(val => !!val)
+    return slotToUpdate
+      .filter(s => 'instances' in s)
+      .map(s => s.instances)
+      .concat(slotsToRemove.filter(s => 'instances' in s).map(s => s.instances))
+      .filter(val => !!val)
   }
   return undefined
 }
@@ -1111,8 +1180,7 @@ const handleCancelOrDeleteForRecurringInstance = async (
       conferenceMeeting.reminders,
       conferenceMeeting.recurrence,
       conferenceMeeting.permissions,
-      undefined,
-      event.id
+      undefined
     )
     const { slots } = await parseParticipantSlots(
       eventInstance.participantActing,
@@ -1122,7 +1190,7 @@ const handleCancelOrDeleteForRecurringInstance = async (
     try {
       for (const slot of slots) {
         if (!slot.account_address) continue
-        ExternalCalendarSync.delete(slot.account_address, [event.id!])
+        // ExternalCalendarSync.delete(slot.account_address, [event.id!])
       }
     } catch (_e) {}
     if (
@@ -1226,7 +1294,7 @@ const handleCancelOrDeleteForRecurringInstance = async (
         )
         for (const slot of removedSlots) {
           if (!slot.account_address) continue
-          ExternalCalendarSync.delete(slot.account_address, [event.id!])
+          // ExternalCalendarSync.delete(slot.account_address, [event.id!])
         }
       })
     } catch (e) {
@@ -1243,6 +1311,7 @@ const handleSendEventNotification = async (
   participantActing: ParticipantBaseInfo,
   eventId: string
 ) => {
+  return
   await ExternalCalendarSync.update({
     ...payload,
     created_at: new Date(),
@@ -1364,8 +1433,7 @@ const handleUpdateMeeting = async (
     meetingReminders,
     meetingRepeat,
     selectedPermissions,
-    rrule,
-    eventId
+    rrule
   )
 
   const meetingResult: DBSlot = await updateMeeting(participantActing, {
@@ -1414,25 +1482,41 @@ const handleParseParticipants = async (
     return typeOrder[a.type] - typeOrder[b.type]
   })
   const parsedParticipants: ParticipantInfo[] = []
+  const parsedAddressSet = new Set<string>()
   for (const attendee of attendees) {
     if (!attendee.email) continue
     const accounts = emailAccounts[attendee.email.toLowerCase()]
-    const participant = participants.find(
+    const accountAddressSet = new Set(
+      accounts?.map(acc => acc.address.toLowerCase()) ?? []
+    )
+    const addressParticipant = participants.find(p => {
+      const normalizedAddress = p.account_address?.toLowerCase()
+      return (
+        normalizedAddress &&
+        accountAddressSet.has(normalizedAddress) &&
+        !parsedAddressSet.has(normalizedAddress)
+      )
+    })
+
+    const emailParticipant = participants.find(
       p =>
-        p.account_address &&
-        accounts?.some(
-          acc => acc.address.toLowerCase() === p.account_address?.toLowerCase()
-        ) &&
-        !parsedParticipants.some(
-          parsed =>
-            parsed.account_address &&
-            parsed.account_address.toLowerCase() ===
-              p.account_address?.toLowerCase()
-        )
+        p.guest_email &&
+        p.guest_email.toLowerCase() === attendee.email!.toLowerCase()
     )
 
-    if (participant) {
-      parsedParticipants.push(participant)
+    if (emailParticipant) {
+      const newParticipant = {
+        ...emailParticipant,
+        status: getParticipationStatus(attendee.responseStatus || ''),
+      }
+      parsedParticipants.push(newParticipant)
+    } else if (addressParticipant) {
+      const newParticipant = {
+        ...addressParticipant,
+        status: getParticipationStatus(attendee.responseStatus || ''),
+      }
+      parsedParticipants.push(newParticipant)
+      parsedAddressSet.add(newParticipant.account_address!.toLowerCase())
     } else if (accounts && accounts.length > 0) {
       // Multiple accounts found, pick the first one that hasn't been added yet
       // This is a fallback and may need better handling
@@ -1454,6 +1538,7 @@ const handleParseParticipants = async (
           status: getParticipationStatus(attendee.responseStatus || ''),
           type: ParticipantType.Invitee,
         })
+        parsedAddressSet.add(firstAccount.address.toLowerCase())
       } else {
         // Guest participant
         parsedParticipants.push({
