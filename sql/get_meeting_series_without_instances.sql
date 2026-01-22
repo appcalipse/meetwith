@@ -1,20 +1,27 @@
+DROP FUNCTION get_meeting_series_without_instances(
+    p_account_address text,
+    p_time_min timestamptz,
+    p_time_max timestamptz
+);
 CREATE OR REPLACE FUNCTION get_meeting_series_without_instances(
     p_account_address text,
     p_time_min timestamptz,
     p_time_max timestamptz
 )
 RETURNS TABLE (
-    id text,
+    id uuid,
     account_address text,
     created_at timestamptz,
-    start timestamptz,
-    "end" timestamptz,
-    recurrence text,
+    effective_start timestamptz,
+    effective_end timestamptz,
     rrule text[],
-    slot_id text,
     guest_email text,
+    ical_uid text,
     meeting_info_encrypted jsonb,
-    conferenceData jsonb
+    conferenceData jsonb,
+    role text,
+    template_start timestamptz,
+    template_end timestamptz
 )
 LANGUAGE plpgsql
 AS $$
@@ -24,18 +31,20 @@ BEGIN
         ss.id,
         ss.account_address,
         ss.created_at,
-        ss.original_start as start,
-        ss.original_end as "end",
-        ss.recurrence::text,
+        ss.effective_start,
+        ss.effective_end,
         ss.rrule,
-        ss.slot_id,
         ss.guest_email,
+        ss.ical_uid,
         -- Use default_meeting_info_encrypted from series
         ss.default_meeting_info_encrypted::jsonb as meeting_info_encrypted,
         -- Meeting/Conference data from meetings table
-        to_jsonb(m.*) as conferenceData
+        to_jsonb(m.*) as conferenceData,
+        ss.role::text,
+        ss.template_start,
+        ss.template_end
     FROM slot_series ss
-    LEFT JOIN meetings m ON ss.slot_id = m.id
+    LEFT JOIN meetings m ON ss.meeting_id = m.id
     WHERE
         ss.account_address = p_account_address
     ORDER BY ss.created_at DESC;
