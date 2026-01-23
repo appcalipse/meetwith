@@ -23,15 +23,10 @@ import {
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
 
-import { handleRRULEForMeeting } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { NO_MEETING_TYPE } from '../constants/meeting-types'
 import { MeetingPermissions } from '../constants/schedule'
-import {
-  getGoogleEventMappingId,
-  getOwnerPublicUrlServer,
-  updateCalendarPayload,
-} from '../database'
+import { getOwnerPublicUrlServer, updateCalendarPayload } from '../database'
 import { extractUrlFromText } from '../generic_utils'
 import { getCalendarPrimaryEmail } from '../sync_helper'
 import { isValidUrl } from '../validations'
@@ -580,9 +575,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         auth: myGoogleAuth,
         version: 'v3',
       })
-      const eventId =
-        (await getGoogleEventMappingId(meeting_id, _calendarId)) ||
-        meeting_id.replaceAll('-', '')
+      const eventId = meeting_id.replaceAll('-', '')
       const calendarId = parseCalendarId(_calendarId)
       calendar.events.delete(
         {
@@ -1132,8 +1125,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             participant.status === ParticipationStatus.Accepted
               ? 'accepted'
               : participant.status === ParticipationStatus.Rejected
-                ? 'declined'
-                : 'needsAction',
+              ? 'declined'
+              : 'needsAction',
         }
         if (
           [ParticipantType.Owner, ParticipantType.Scheduler].includes(
@@ -1199,10 +1192,10 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             actorStatus
               ? actorStatus
               : participant.status === ParticipationStatus.Accepted
-                ? 'accepted'
-                : participant.status === ParticipationStatus.Rejected
-                  ? 'declined'
-                  : 'needsAction',
+              ? 'accepted'
+              : participant.status === ParticipationStatus.Rejected
+              ? 'declined'
+              : 'needsAction',
         })
       }
     }
@@ -1498,8 +1491,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             responseStatus === AttendeeStatus.ACCEPTED
               ? 'accepted'
               : responseStatus === AttendeeStatus.DECLINED
-                ? 'declined'
-                : 'needsAction',
+              ? 'declined'
+              : 'needsAction',
         }
       }
       return attendee
