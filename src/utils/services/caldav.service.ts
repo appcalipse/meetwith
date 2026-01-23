@@ -24,14 +24,16 @@ import {
 } from '@/types/CalendarConnections'
 import { Intents } from '@/types/Dashboard'
 import { MeetingChangeType } from '@/types/Meeting'
+import { ParticipantType } from '@/types/ParticipantInfo'
 import {
   MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
-
 import { appUrl } from '../constants'
+import { NO_MEETING_TYPE } from '../constants/meeting-types'
 import { decryptContent } from '../cryptography'
+import { getOwnerPublicUrlServer } from '../database'
 import { isValidEmail } from '../validations'
 import { WebDAVEvent, WebDAVEventMapper } from './caldav.mapper'
 import { generateIcsServer } from './calendar.backend.helper'
@@ -148,14 +150,35 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       const calendarToSync = calendarId
         ? calendars.find(c => c.url === calendarId)
         : calendars[0]
+      const ownerParticipant = meetingDetails.participants.find(
+        p => p.type === ParticipantType.Owner
+      )
+      const ownerAccountAddress = ownerParticipant?.account_address
 
+      let changeUrl
+      if (
+        meetingDetails.meeting_type_id &&
+        ownerAccountAddress &&
+        meetingDetails.meeting_type_id !== NO_MEETING_TYPE
+      ) {
+        changeUrl = `${await getOwnerPublicUrlServer(
+          ownerAccountAddress,
+          meetingDetails.meeting_type_id
+        )}?conferenceId=${meetingDetails.meeting_id}`
+      } else {
+        changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+        // recurring meetings should have ical_uid as an extra identifier to avoid collisions
+        if (meetingDetails.ical_uid) {
+          changeUrl += `&icalUid=${meetingDetails.ical_uid}`
+        }
+      }
       let ics: Awaited<ReturnType<typeof generateIcsServer>>
       try {
         ics = await generateIcsServer(
           meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          changeUrl,
           useParticipants,
           {
             accountAddress: calendarOwnerAccountAddress,
@@ -169,7 +192,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         // We create the event directly on iCal
         const response = await createCalendarObject({
           calendar: calendarToSync!,
-          filename: `${meetingDetails.meeting_id}.ics`,
+          filename: `${
+            meetingDetails.ical_uid || meetingDetails.meeting_id
+          }.ics`,
           headers: this.headers,
           // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
           iCalString: ics.value!.toString(),
@@ -190,7 +215,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
           meetingDetails,
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+          changeUrl,
           false
         )
 
@@ -200,7 +225,9 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         // We create the event directly on iCal
         const response = await createCalendarObject({
           calendar: calendarToSync!,
-          filename: `${meetingDetails.meeting_id}.ics`,
+          filename: `${
+            meetingDetails.ical_uid || meetingDetails.meeting_id
+          }.ics`,
           headers: this.headers,
           // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
           iCalString: ics.value!.toString(),
@@ -217,10 +244,12 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
       return {
         additionalInfo: {},
         attendees: ics.attendees,
-        id: meetingDetails.meeting_id,
+        id: meetingDetails.ical_uid || meetingDetails.meeting_id,
         password: '',
         type: 'Cal Dav',
-        uid: meetingDetails.meeting_id.replaceAll('-', ''),
+        uid:
+          meetingDetails.ical_uid ||
+          meetingDetails.meeting_id.replaceAll('-', ''),
         url: '',
       }
     } catch (reason) {
@@ -901,7 +930,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     meetingDetails: MeetingInstanceCreationSyncRequest,
     calendarId: string
   ): Promise<void> {
-    const eventUID = meetingDetails.meeting_id
+    const eventUID = meetingDetails.ical_uid || meetingDetails.meeting_id
     const originalStartTime = meetingDetails.original_start_time
 
     if (!originalStartTime) {
@@ -989,7 +1018,7 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     calendarId: string,
     meetingDetails: MeetingCancelSyncRequest
   ): Promise<void> {
-    const eventUID = meetingDetails.meeting_id
+    const eventUID = meetingDetails.ical_uid || meetingDetails.meeting_id
     const originalStartTime = meetingDetails.original_start_time
 
     if (!originalStartTime) {
@@ -1045,10 +1074,14 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
     const end = DateTime.fromJSDate(new Date(meetingDetails.end))
 
     // Find existing event to get current attendees if needed
-    const events = await this.getEventsByUID(meetingDetails.meeting_id)
+    const events = await this.getEventsByUID(
+      meetingDetails.ical_uid || meetingDetails.meeting_id
+    )
     const masterEvent = events.find(
       event =>
-        event.uid === meetingDetails.meeting_id.replaceAll('-', '') &&
+        event.uid ===
+          (meetingDetails.ical_uid ||
+            meetingDetails.meeting_id.replaceAll('-', '')) &&
         !event.recurrenceId
     )
 
@@ -1061,12 +1094,15 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
         .filter(
           (a: string) => isValidEmail(a) && a !== this.getConnectedEmail()
         ).length > 0
-
+    let changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    if (meetingDetails.ical_uid) {
+      changeUrl += `&icalUid=${meetingDetails.ical_uid}`
+    }
     const ics = await generateIcsServer(
       meetingDetails,
       calendarOwnerAccountAddress,
       MeetingChangeType.UPDATE,
-      `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`,
+      changeUrl,
       useParticipants,
       {
         accountAddress: calendarOwnerAccountAddress,

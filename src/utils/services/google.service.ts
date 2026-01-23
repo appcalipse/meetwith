@@ -261,7 +261,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
             // recurring meetings should have ical_uid as an extra identifier to avoid collisions
             if (meetingDetails.ical_uid) {
-              changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}&ical_uid=${meetingDetails.ical_uid}`
+              changeUrl += `&icalUid=${meetingDetails.ical_uid}`
             }
           }
           const payload: calendar_v3.Schema$Event = {
@@ -401,11 +401,11 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const actorStatus = event?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
-      const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
-      const eventId =
-        (await getGoogleEventMappingId(meeting_id, _calendarId)) ||
-        meetingDetails.eventId ||
-        meeting_id.replaceAll('-', '')
+      let changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+      if (meetingDetails.ical_uid) {
+        changeUrl += `&icalUid=${meetingDetails.ical_uid}`
+      }
+      const eventId = meetingDetails.ical_uid || meeting_id.replaceAll('-', '')
       const payload: calendar_v3.Schema$Event = {
         attendees: [],
         creator: {

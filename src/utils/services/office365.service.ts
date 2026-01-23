@@ -24,15 +24,21 @@ import {
   RecurrenceRange,
   RecurrenceRangeType,
 } from '@/types/Office365'
-import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
 import {
   MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
 import { appUrl } from '../constants'
+import { NO_MEETING_TYPE } from '../constants/meeting-types'
 import {
   getOfficeEventMappingId,
+  getOwnerPublicUrlServer,
   insertOfficeEventMapping,
   updateCalendarPayload,
 } from '../database'
@@ -144,7 +150,10 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         .post(JSON.stringify(body))
 
       if (event.id)
-        await insertOfficeEventMapping(event.id, meetingDetails.meeting_id)
+        await insertOfficeEventMapping(
+          event.id,
+          meetingDetails.ical_uid || meetingDetails.meeting_id
+        )
 
       return event
     } catch (error) {
@@ -159,7 +168,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     calendarId: string
   ): Promise<MicrosoftGraphEvent> {
     try {
-      const meeting_id = meetingDetails.meeting_id
+      const meeting_id = meetingDetails.ical_uid || meetingDetails.meeting_id
       const officeId = await getOfficeEventMappingId(meeting_id)
       const originalEvent = await this.getEvent(officeId!, calendarId)
 
@@ -421,7 +430,28 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         type: participant.type,
       })
     )
+    const ownerParticipant = participantsInfo.find(
+      p => p.type === ParticipantType.Owner
+    )
+    const ownerAccountAddress = ownerParticipant?.account_address
 
+    let changeUrl
+    if (
+      details.meeting_type_id &&
+      ownerAccountAddress &&
+      details.meeting_type_id !== NO_MEETING_TYPE
+    ) {
+      changeUrl = `${await getOwnerPublicUrlServer(
+        ownerAccountAddress,
+        details.meeting_type_id
+      )}?conferenceId=${details.meeting_id}`
+    } else {
+      changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${details.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+      // recurring meetings should have ical_uid as an extra identifier to avoid collisions
+      if (details.ical_uid) {
+        changeUrl += `&icalUid=${details.ical_uid}`
+      }
+    }
     const payload: MicrosoftGraphEvent = {
       allowNewTimeProposals: false,
       attendees: [],
@@ -429,7 +459,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
           details.meeting_url,
-          `${appUrl}/dashboard/schedule?conferenceId=${details.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+          changeUrl
         ),
         contentType: 'text',
       },
@@ -468,7 +498,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
         participantsInfo,
         details.title
       ),
-      transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
+      transactionId: details.ical_uid || meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
     }
     if (details.meetingReminders && details.meetingReminders.length > 0) {
       payload.isReminderOn = true
@@ -684,7 +714,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     calendarId: string,
     meetingDetails: MeetingCancelSyncRequest
   ): Promise<void> {
-    const meeting_id = meetingDetails.meeting_id
+    const meeting_id = meetingDetails.ical_uid || meetingDetails.meeting_id
     const original_start_time = meetingDetails.start
     const officeId = await getOfficeEventMappingId(meeting_id)
 
