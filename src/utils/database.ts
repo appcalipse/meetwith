@@ -24,12 +24,10 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
-import { writeFileSync } from 'fs'
 import { Credentials } from 'google-auth-library'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
 import { rrulestr } from 'rrule'
-import { ShardedMerkleTreeInfo } from 'thirdweb/dist/types/utils/extensions/drops/types'
 import { validate } from 'uuid'
 import { ResourceState } from '@/pages/api/server/webhook/calendar/sync'
 import {
@@ -2038,8 +2036,7 @@ const cancelSlotInstances = async (
  * Deletes composite slots and their recurring instances
  */
 const deleteCompositeSlots = async (
-  slotIds: string[],
-  skipRecurrenceUpdate: boolean
+  slotIds: string[]
 ): Promise<{
   addresses: Array<string>
   end: string | Date
@@ -2128,13 +2125,12 @@ const buildCancelPayload = (
     guestsToRemove?: ParticipantInfo[]
     reason?: string
     title?: string
-    eventId?: string | null
+    ical_uid?: string
   }
 ): MeetingCancelSyncRequest => ({
   addressesToRemove: options.addressesToRemove || [],
   created_at: new Date(slot.created_at || new Date()),
   end: new Date(slot.end),
-  eventId: options.eventId,
   guestsToRemove: options.guestsToRemove || [],
   meeting_id,
   participantActing,
@@ -2142,6 +2138,7 @@ const buildCancelPayload = (
   start: new Date(slot.start),
   timezone,
   title: options.title,
+  ical_uid: options.ical_uid,
 })
 
 /**
@@ -2155,8 +2152,7 @@ const deleteMeetingFromDB = async (
   timezone: string,
   reason?: string,
   title?: string,
-  eventId?: string | null,
-  skipRecurrenceUpdate = false
+  ical_uid?: string
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
@@ -2169,7 +2165,7 @@ const deleteMeetingFromDB = async (
       ? cancelSlotInstances(instanceIds)
       : Promise.resolve([]),
     compositeIds.length > 0
-      ? deleteCompositeSlots(compositeIds, skipRecurrenceUpdate)
+      ? deleteCompositeSlots(compositeIds)
       : Promise.resolve(undefined),
   ])
 
@@ -2184,9 +2180,9 @@ const deleteMeetingFromDB = async (
         addressesToRemove: cancelledInstances
           .map(s => s.account_address)
           .filter((s): s is string => !!s),
-        eventId,
         reason,
         title,
+        ical_uid,
       }
     )
     await notifyCancellation(payload, true)
@@ -2201,7 +2197,6 @@ const deleteMeetingFromDB = async (
       timezone,
       {
         addressesToRemove: deletedSlots.addresses,
-        eventId,
         reason,
         title,
       }
@@ -2225,7 +2220,6 @@ const deleteMeetingFromDB = async (
       participantActing,
       timezone,
       {
-        eventId,
         guestsToRemove,
         reason,
         title,
@@ -2559,7 +2553,6 @@ const updateRecurringMeeting = async (
     content: meetingUpdateRequest.content,
     created_at: new Date(meetingResponse.created_at!),
     end: meetingUpdateRequest.end,
-    eventId: meetingUpdateRequest.eventId,
     meeting_id: meetingUpdateRequest.meeting_id,
     meeting_type_id:
       meetingUpdateRequest.meetingTypeId === NO_MEETING_TYPE
@@ -2600,7 +2593,7 @@ const updateRecurringMeeting = async (
       timezone || 'UTC',
       undefined,
       meetingUpdateRequest.title,
-      meetingUpdateRequest.eventId
+      existingSerie.ical_uid
     )
 
   return {
@@ -4389,27 +4382,19 @@ const parseParticipantSlots = async (
 }
 const updateMeeting = async (
   participantActing: ParticipantBaseInfo,
-  meetingUpdateRequest: MeetingUpdateRequest,
-  options: {
-    force?: boolean
-    skipRecurrenceUpdate?: boolean
-    skipNoitfiation?: boolean
-  } = {}
+  meetingUpdateRequest: MeetingUpdateRequest
 ): Promise<DBSlot> => {
   const { meetingResponse, slots, index, changingTime, timezone } =
     await parseParticipantSlots(participantActing, meetingUpdateRequest)
 
   // one last check to make sure that the version did not change
-  if (!options.force) {
-    const everySlotId = meetingUpdateRequest.participants_mapping
-      .filter(it => it.slot_id)
-      .map(it => it.slot_id?.split('_')[0]) as string[]
-    const everySlot = await getMeetingsFromDB(everySlotId)
+  const everySlotId = meetingUpdateRequest.participants_mapping
+    .filter(it => it.slot_id)
+    .map(it => it.slot_id?.split('_')[0]) as string[]
+  const everySlot = await getMeetingsFromDB(everySlotId)
 
-    if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
-      throw new MeetingChangeConflictError()
-  }
-
+  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
+    throw new MeetingChangeConflictError()
   // there is no support from supabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts
@@ -4495,14 +4480,10 @@ const updateMeeting = async (
     )
 
   const body: MeetingCreationSyncRequest = {
-    changes:
-      !options.skipNoitfiation && changingTime
-        ? { dateChange: changingTime }
-        : undefined,
+    changes: changingTime ? { dateChange: changingTime } : undefined,
     content: meetingUpdateRequest.content,
     created_at: new Date(meetingResponse.created_at!),
     end: meetingUpdateRequest.end,
-    eventId: meetingUpdateRequest.eventId,
     meeting_id: meetingUpdateRequest.meeting_id,
     meeting_type_id:
       meetingUpdateRequest.meetingTypeId === NO_MEETING_TYPE
@@ -4515,7 +4496,6 @@ const updateMeeting = async (
     participantActing,
     participants: meetingUpdateRequest.participants_mapping,
     rrule: meetingUpdateRequest.rrule,
-    skipCalendarSync: options.skipRecurrenceUpdate || false,
     start: meetingUpdateRequest.start,
     timezone,
     title: meetingUpdateRequest.title,
@@ -4542,9 +4522,7 @@ const updateMeeting = async (
       meetingUpdateRequest.meeting_id,
       timezone || 'UTC',
       undefined,
-      meetingUpdateRequest.title,
-      meetingUpdateRequest.eventId,
-      options.skipRecurrenceUpdate
+      meetingUpdateRequest.title
     )
 
   return {
@@ -4577,7 +4555,8 @@ const getSeriesIdMapping = async (slot_id: string[]) => {
 }
 const updateMeetingInstance = async (
   participantActing: ParticipantBaseInfo,
-  meetingUpdateRequest: MeetingInstanceUpdateRequest
+  meetingUpdateRequest: MeetingInstanceUpdateRequest,
+  identifier: string
 ): Promise<DBSlot> => {
   const {
     meetingResponse,
@@ -4589,6 +4568,7 @@ const updateMeetingInstance = async (
   const seriesMapping = await getSeriesIdMapping(
     dbSlots.map(slot => slot.id.split('_')[0])
   )
+
   const slotInstances: Array<TablesInsert<'slot_instance'>> = []
   const slots: Array<TablesInsert<'slots'>> = []
   for (const slot of dbSlots) {
@@ -4652,14 +4632,8 @@ const updateMeetingInstance = async (
     .eq('id', data[0]?.series_id)
     .maybeSingle()
   if (slotSerie) {
-    const newDate = DateTime.fromJSDate(new Date(meetingUpdateRequest.start))
-    const originalStartTime = DateTime.fromJSDate(
-      new Date(slotSerie?.template_start)
-    ).set({
-      day: newDate.day,
-      month: newDate.month,
-      year: newDate.year,
-    })
+    const originalStartTime = new Date(identifier.split('_')[1])
+
     const body: MeetingInstanceCreationSyncRequest = {
       changes: changingTime ? { dateChange: changingTime } : undefined,
       content: meetingUpdateRequest.content,
@@ -4670,14 +4644,14 @@ const updateMeetingInstance = async (
       meetingPermissions: meetingUpdateRequest.meetingPermissions,
       meetingProvider: meetingUpdateRequest.meetingProvider,
       meetingReminders: meetingUpdateRequest.meetingReminders,
-      original_start_time: originalStartTime.toJSDate(),
+      original_start_time: originalStartTime,
       participantActing,
       participants: meetingUpdateRequest.participants_mapping,
       rrule: meetingUpdateRequest.rrule,
-      skipCalendarSync: false,
       start: meetingUpdateRequest.start,
       timezone,
       title: meetingUpdateRequest.title,
+      ical_uid: slotSerie?.ical_uid,
     }
     // Doing notifications and syncs asynchronously
     fetch(`${apiUrl}/server/meetings/instance/syncAndNotify`, {
@@ -4701,7 +4675,7 @@ const updateMeetingInstance = async (
       timezone || 'UTC',
       undefined,
       meetingUpdateRequest.title,
-      meetingUpdateRequest.eventId
+      slotSerie?.ical_uid
     )
 
   return {
@@ -7357,6 +7331,10 @@ const handleWebhookEvent = async (
     console.error(`Failed to sync  range:`, error)
   }
   const recentlyUpdated = allEvents.filter(event => {
+    // we only consider master events with multiple participants, events from sub calendars with only the calendar owner as participant are ignored
+    if (event?.extendedProperties?.private?.includesParticipants === 'false') {
+      return false
+    }
     const now = new Date()
     // We can't update recently updated meeting to prevent infinite syncing when we update or create meetings
     if (event.extendedProperties?.private?.lastUpdatedAt) {
@@ -7400,10 +7378,6 @@ const handleWebhookEvent = async (
   )
   const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
     meeting => !isRecurringInstance(meeting)
-  )
-  writeFileSync(
-    `events_${Date.now()}.json`,
-    JSON.stringify(recentlyUpdated, null, 2)
   )
 
   const actions = await Promise.all(
@@ -7514,14 +7488,6 @@ const handleSyncRecurringEvents = async (
     }
   }
   const exceptions = events.filter(e => e.recurringEventId)
-  writeFileSync(
-    `master_events_${Date.now()}.json`,
-    JSON.stringify(masterEvents, null, 2)
-  )
-  writeFileSync(
-    `exceptions_${Date.now()}.json`,
-    JSON.stringify(exceptions, null, 2)
-  )
   const slotInstanceUpdates: Array<TablesUpdate<'slot_instance'>> = []
 
   const masterPromises = Array.from(masterBatch.keys()).map(async meetingId => {
@@ -10552,4 +10518,5 @@ export {
   getSlotInstanceSeriesId,
   saveRecurringMeetings,
   updateRecurringMeeting,
+  insertGoogleEventMapping,
 }
