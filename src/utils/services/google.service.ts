@@ -17,6 +17,7 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import {
+  DeleteInstanceRequest,
   MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
@@ -142,36 +143,35 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
 
   async getEventById(
     meeting_id: string,
-    _calendarId?: string
+    _calendarId?: string,
+    isRetry = false
   ): Promise<calendar_v3.Schema$Event | undefined> {
-    return new Promise(async (resolve, _reject) => {
-      const auth = this.auth
-      const myGoogleAuth = await auth.getToken()
-      const calendar = google.calendar({
-        auth: myGoogleAuth,
-        version: 'v3',
-      })
-
+    try {
+      const auth = await this.auth.getToken()
+      const calendar = google.calendar({ auth, version: 'v3' })
       const calendarId = parseCalendarId(_calendarId)
 
-      calendar.events.get(
-        {
-          auth: myGoogleAuth,
-          calendarId,
-          eventId: meeting_id.replaceAll('-', ''),
-        },
-        function (err, event) {
-          if (err) {
-            console.error(
-              'There was an error contacting google calendar service: ',
-              err?.message
-            )
-            return resolve(undefined)
-          }
-          return resolve(event?.data)
-        }
-      )
-    })
+      // Normalize ID: try without dashes first, then without underscores
+
+      const response = await calendar.events.get({
+        calendarId,
+        eventId: meeting_id.replaceAll('-', ''),
+      })
+
+      return response.data
+    } catch (err: unknown) {
+      err instanceof Error &&
+        console.error('Google Calendar API error:', err?.message)
+
+      if (!isRetry) {
+        return this.getEventById(
+          meeting_id.replaceAll('_R', '').replaceAll('T', ''),
+          _calendarId,
+          true
+        )
+      }
+      return undefined
+    }
   }
 
   async listEvents(
@@ -216,7 +216,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         .getToken()
         .then(async myGoogleAuth => {
           const event = await this.getEventById(
-            meetingDetails.meeting_id,
+            meetingDetails.ical_uid || meetingDetails.meeting_id,
             _calendarId
           )
           if (event) {
@@ -299,7 +299,9 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
 
             // yes, google event ids allows only letters and numbers
             id:
-              meetingDetails.ical_uid ||
+              meetingDetails.ical_uid
+                ?.replaceAll('_R', '')
+                .replaceAll('T', '') || // for recurring meetings we remove the ical_uid underscores
               meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
             location: meetingDetails.meeting_url,
             reminders: {
@@ -355,12 +357,18 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
               }
 
               return resolve({
-                uid: meetingDetails.meeting_id,
+                uid:
+                  meetingDetails.ical_uid
+                    ?.replaceAll('_R', '')
+                    .replaceAll('T', '') || meetingDetails.meeting_id,
                 ...event.data,
                 additionalInfo: {
                   hangoutLink: event.data.hangoutLink || '',
                 },
-                id: meetingDetails.meeting_id,
+                id:
+                  meetingDetails.ical_uid
+                    ?.replaceAll('_R', '')
+                    .replaceAll('T', '') || meetingDetails.meeting_id,
                 password: '',
                 type: 'google_calendar',
                 url: '',
@@ -385,6 +393,20 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const myGoogleAuth = await auth.getToken()
       const calendarId = parseCalendarId(_calendarId)
       const meeting_id = meetingDetails.meeting_id
+      const existingEvent = await this.getEventById(
+        meetingDetails.ical_uid || meeting_id,
+        _calendarId
+      )
+      // if event doesn't exist we can assume it needs creating
+      if (!existingEvent) {
+        return this.createEvent(
+          calendarOwnerAccountAddress,
+          meetingDetails,
+          meetingDetails.created_at,
+          _calendarId,
+          false // event with participant is master event that is allowed to propagate changes. So when creating from update for child events, we create without participants to avoid conflicts.
+        ).catch(reject)
+      }
       const participantsInfo: ParticipantInfo[] =
         meetingDetails.participants.map(participant => ({
           account_address: participant.account_address,
@@ -394,18 +416,14 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           status: participant.status,
           type: participant.type,
         }))
-      const event = await this.getEventById(
-        meetingDetails.eventId || meeting_id,
-        _calendarId
-      )
-      const actorStatus = event?.attendees?.find(
+      const actorStatus = existingEvent?.attendees?.find(
         attendee => attendee.self
       )?.responseStatus
       let changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
       if (meetingDetails.ical_uid) {
         changeUrl += `&icalUid=${meetingDetails.ical_uid}`
       }
-      const eventId = meetingDetails.ical_uid || meeting_id.replaceAll('-', '')
+      const eventId = existingEvent.id!
       const payload: calendar_v3.Schema$Event = {
         attendees: [],
         creator: {
@@ -423,8 +441,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         extendedProperties: {
           private: {
             includesParticipants:
-              event?.extendedProperties?.private?.includesParticipants ||
-              'false',
+              existingEvent?.extendedProperties?.private
+                ?.includesParticipants || 'false',
             lastUpdatedAt: new Date().toISOString(),
             meetingId: meetingDetails.meeting_id,
             meetingTypeId: meetingDetails.meeting_type_id || '',
@@ -440,7 +458,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         guestsCanSeeOtherGuests: meetingDetails.meetingPermissions?.includes(
           MeetingPermissions.SEE_GUEST_LIST
         ),
-        id: eventId,
         reminders: {
           overrides: [{ method: 'popup', minutes: 10 }],
           useDefault: false,
@@ -471,7 +488,10 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         participant => participant.guest_email
       )
 
-      if (event?.extendedProperties?.private?.includesParticipants === 'true') {
+      if (
+        existingEvent?.extendedProperties?.private?.includesParticipants ===
+        'true'
+      ) {
         // Build deduplicated attendees list using helper
         const attendees = await this.buildAttendeesListForUpdate(
           meetingDetails.participants,
@@ -488,7 +508,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       })
       try {
         let event
-        if (eventId.includes('_')) {
+        // a recurring event instance needs patching instead of updating to avoid messing up the series
+        if (existingEvent.recurringEventId) {
           event = await calendar.events.patch({
             auth: myGoogleAuth,
             calendarId,
@@ -1274,7 +1295,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       auth: myGoogleAuth,
       version: 'v3',
     })
-    const seriesMasterId = meetingDetails.meeting_id.replaceAll('-', '')
+    const seriesMasterId =
+      meetingDetails.ical_uid || meetingDetails.meeting_id.replaceAll('-', '')
     const originalStartTime = meetingDetails.original_start_time
     const dateFrom = DateTime.fromJSDate(new Date(originalStartTime))
       .startOf('day')
@@ -1313,14 +1335,15 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
   }
   async deleteEventInstance(
     calendarId: string,
-    meetingDetails: MeetingCancelSyncRequest
+    meetingDetails: DeleteInstanceRequest
   ): Promise<void> {
     const myGoogleAuth = await this.auth.getToken()
     const calendar = google.calendar({
       auth: myGoogleAuth,
       version: 'v3',
     })
-    const seriesMasterId = meetingDetails.meeting_id.replaceAll('-', '')
+    const seriesMasterId =
+      meetingDetails.ical_uid || meetingDetails.meeting_id.replaceAll('-', '')
     const originalStartTime = meetingDetails.start
     const dateFrom = DateTime.fromJSDate(new Date(originalStartTime))
       .startOf('day')
@@ -1350,7 +1373,10 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
     meetingDetails: MeetingInstanceCreationSyncRequest,
     event?: calendar_v3.Schema$Event
   ) {
-    const changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    let changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    if (meetingDetails.ical_uid) {
+      changeUrl += `&icalUid=${meetingDetails.ical_uid}`
+    }
     const meeting_id = meetingDetails.meeting_id
 
     const participantsInfo: ParticipantInfo[] = meetingDetails.participants.map(

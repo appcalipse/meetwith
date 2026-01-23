@@ -26,6 +26,7 @@ import { Intents } from '@/types/Dashboard'
 import { MeetingChangeType } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import {
+  DeleteInstanceRequest,
   MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
@@ -269,12 +270,24 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
   > {
     try {
       const { meeting_id } = meetingDetails
-      const events = await this.getEventsByUID(meeting_id)
-      const eventToUpdate = events.find(
-        event => event.uid === meeting_id.replaceAll('-', '')
+      const events = await this.getEventsByUID(
+        meetingDetails.ical_uid || meeting_id.replaceAll('-', '')
       )
+      const eventToUpdate = events.find(
+        event =>
+          event.uid ===
+          (meetingDetails.ical_uid || meeting_id.replaceAll('-', ''))
+      )
+      if (!eventToUpdate) {
+        // event does not exists create a new one
+        return await this.createEvent(
+          calendarOwnerAccountAddress,
+          meetingDetails,
+          new Date(),
+          _calendarId
+        )
+      }
       const useParticipants =
-        eventToUpdate &&
         eventToUpdate.attendees
           .map((a: string[]) => a.map(val => val.replace(/^MAILTO:/i, '')))
           .flat()
@@ -1016,10 +1029,10 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
 
   async deleteEventInstance(
     calendarId: string,
-    meetingDetails: MeetingCancelSyncRequest
+    meetingDetails: DeleteInstanceRequest
   ): Promise<void> {
     const eventUID = meetingDetails.ical_uid || meetingDetails.meeting_id
-    const originalStartTime = meetingDetails.original_start_time
+    const originalStartTime = meetingDetails.start
 
     if (!originalStartTime) {
       throw new Error(

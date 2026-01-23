@@ -30,6 +30,7 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import {
+  DeleteInstanceRequest,
   MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
@@ -168,14 +169,21 @@ export class Office365CalendarService implements IOffcie365CalendarService {
     calendarId: string
   ): Promise<MicrosoftGraphEvent> {
     try {
-      const meeting_id = meetingDetails.ical_uid || meetingDetails.meeting_id
-      const officeId = await getOfficeEventMappingId(meeting_id)
-      const originalEvent = await this.getEvent(officeId!, calendarId)
+      const meeting_id = meetingDetails.meeting_id
+      const officeId = await getOfficeEventMappingId(
+        meetingDetails.ical_uid || meeting_id
+      )
 
       if (!officeId) {
-        Sentry.captureException("Can't find office event mapping")
-        throw new Error("Can't find office event mapping")
+        // event does not exists create a new one
+        return await this.createEvent(
+          owner,
+          meetingDetails,
+          new Date(),
+          calendarId
+        )
       }
+      const originalEvent = await this.getEvent(officeId, calendarId)
       const useParticipants =
         originalEvent.attendees &&
         originalEvent.attendees.filter(
@@ -712,7 +720,7 @@ export class Office365CalendarService implements IOffcie365CalendarService {
   }
   async deleteEventInstance(
     calendarId: string,
-    meetingDetails: MeetingCancelSyncRequest
+    meetingDetails: DeleteInstanceRequest
   ): Promise<void> {
     const meeting_id = meetingDetails.ical_uid || meetingDetails.meeting_id
     const original_start_time = meetingDetails.start
