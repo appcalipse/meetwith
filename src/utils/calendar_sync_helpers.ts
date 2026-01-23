@@ -33,13 +33,19 @@ import {
   isAccountSchedulerOrOwner,
 } from '@utils/generic_utils'
 import { getParticipantBaseInfoFromAccount } from '@utils/user_manager'
-import { calendar_v3 } from 'googleapis'
+import { calendar_v3, google } from 'googleapis'
 import { DateTime } from 'luxon'
 import { RRule, rrulestr } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
 import { MeetingReminders, RecurringStatus } from '@/types/common'
 import { Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
-import { MeetingCreationRequest } from '../types/Requests'
+import {
+  DeleteInstanceRequest,
+  MeetingCancelSyncRequest,
+  MeetingCreationRequest,
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '../types/Requests'
 import { PIN_ENABLE_TOKEN_EXPIRY } from './constants'
 import { MAX_RECURRING_LOOKAHEAD_MONTHS } from './constants/meeting'
 import { NO_MEETING_TYPE } from './constants/meeting-types'
@@ -63,6 +69,12 @@ import {
   upsertSeries,
 } from './database'
 import { ExternalCalendarSync } from './sync_helper'
+import {
+  queueCalendarDeleteSync,
+  queueCalendarInstanceDeleteSync,
+  queueCalendarInstanceUpdateSync,
+  queueCalendarUpdateSync,
+} from './workers/calendar-sync.queue'
 
 const getBaseEventId = (googleEventId: string): string => {
   const sanitizedMeetingId = googleEventId.split('_')[0] // '02cd383a77214840b5a1ad4ceb545ff8'
@@ -533,6 +545,12 @@ const handleCancelOrDeleteSeries = async (
   )
   if (isSchedulerOrOwner) {
     await deleteRecurringSlotInstances(series.map(serie => serie.id))
+    queueCalendarDeleteSync(
+      series
+        .map(s => s.account_address)
+        .filter((addr): addr is string => addr !== null),
+      [masterEvent.id]
+    ).catch(err => console.error('Failed to delete meeting update sync:', err))
     // TODO: Sync to ditrbuted calendars
   } else {
     const parsedInfo = await handleDeleteMeetingParseInfo(
@@ -608,6 +626,28 @@ const handleCancelOrDeleteSeries = async (
           await deleteSeriesInstantAfterDate(slotSerie.id, until)
         }
       })
+      await Promise.all(promises)
+      const serie = seriesMap.get(currentAccountAddress)
+
+      const syncDetail: MeetingCreationSyncRequest = {
+        created_at: serie?.created_at
+          ? new Date(serie?.created_at)
+          : new Date(),
+        participantActing: parsedInfo.participantActing,
+        ical_uid: masterEvent.id,
+        participants: parsedInfo.payload.participants_mapping,
+        timezone:
+          parsedInfo.payload.participants_mapping.find(
+            p => p.account_address === currentAccountAddress
+          )?.timeZone || 'UTC',
+        ...parsedInfo.payload,
+      }
+      queueCalendarUpdateSync(syncDetail).catch(err =>
+        console.error('Failed to queue meeting update sync:', err)
+      )
+      queueCalendarDeleteSync([currentAccountAddress], [masterEvent.id]).catch(
+        err => console.error('Failed to delete meeting update sync:', err)
+      )
     }
   }
 }
@@ -672,8 +712,10 @@ const handleUpdateMeetingSeries = async (
     eventInstance.payload,
     true
   )
-
-  const rule = rrulestr(masterEvent.recurrence[0])
+  const start = series?.[0]?.template_start || eventInstance.payload.start
+  const rule = rrulestr(masterEvent.recurrence[0], {
+    dtstart: new Date(start),
+  })
   const until = rule.options.until
   const toUpdate: Array<TablesInsert<'slot_series'>> = []
   const toInsert: Array<TablesInsert<'slot_series'>> = []
@@ -736,6 +778,25 @@ const handleUpdateMeetingSeries = async (
     }
   })
   await Promise.all(promises)
+
+  // Queue calendar sync for updated series
+
+  const serie = seriesMap.get(currentAccountAddress)
+  const syncDetail: MeetingCreationSyncRequest = {
+    created_at: serie?.created_at ? new Date(serie?.created_at) : new Date(),
+    participantActing: eventInstance.participantActing,
+    participants: eventInstance.payload.participants_mapping,
+    ical_uid: masterEvent.id,
+    timezone:
+      eventInstance.payload.participants_mapping.find(
+        p => p.account_address === currentAccountAddress
+      )?.timeZone || 'UTC',
+    ...eventInstance.payload,
+  }
+  queueCalendarUpdateSync(syncDetail).catch(err =>
+    console.error('Failed to queue meeting update sync:', err)
+  )
+
   const instancesToInsert = insertedSeries.map(serie => {
     const start = DateTime.fromJSDate(new Date(serie.template_start))
     const maxLimit = start.plus({ months: MAX_RECURRING_LOOKAHEAD_MONTHS })
@@ -810,7 +871,11 @@ const handleUpdateMeetingSeriesRsvps = async (
     payload,
     true
   )
-  const rule = rrulestr(masterEvent.recurrence[0])
+  const start = series?.[0]?.template_start || payload.start
+
+  const rule = rrulestr(masterEvent.recurrence[0], {
+    dtstart: new Date(start),
+  })
   const until = rule.options.until
   const toUpdate: Array<TablesInsert<'slot_series'>> = []
   const toInsert: Array<TablesInsert<'slot_series'>> = []
@@ -1007,7 +1072,7 @@ const handleUpdateSingleRecurringInstance = async (
     }
   }
   if (eventInstance) {
-    const { slots } = await parseParticipantSlots(
+    const { slots, changingTime } = await parseParticipantSlots(
       eventInstance.participantActing,
       eventInstance.payload
     )
@@ -1084,19 +1149,26 @@ const handleUpdateSingleRecurringInstance = async (
     )
     const slotToUpdate = await Promise.all(slotToUpdatePromises)
     const slotsToRemove = await Promise.all(slotsToRemovePromises)
-    handleSendEventNotification(
-      eventInstance.payload,
-      eventInstance.participantActing,
-      event.id
-    )
-    if (
-      DateTime.now().hasSame(
-        DateTime.fromJSDate(eventInstance.payload.start),
-        'day'
-      )
-    ) {
-      // TODO: handle update here
+
+    const serie = seriesMap.get(currentAccountAddress)
+    const syncDetail: MeetingInstanceCreationSyncRequest = {
+      created_at: serie?.created_at ? new Date(serie?.created_at) : new Date(),
+      ...eventInstance.payload,
+      meeting_id: meetingId,
+      ical_uid: event.recurringEventId,
+      participants: eventInstance.payload.participants_mapping,
+      participantActing: eventInstance.participantActing,
+      timezone:
+        eventInstance.payload.participants_mapping.find(
+          p => p.account_address === currentAccountAddress
+        )?.timeZone || 'UTC',
+      original_start_time: changingTime?.oldStart
+        ? changingTime?.oldStart
+        : new Date(startTime),
     }
+    queueCalendarInstanceUpdateSync(syncDetail).catch(err =>
+      console.error('Failed to queue meeting update sync:', err)
+    )
     return slotToUpdate
       .filter(s => 'instances' in s)
       .map(s => s.instances)
@@ -1141,6 +1213,10 @@ const handleCancelOrDeleteForRecurringInstance = async (
     return
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
   if (!meetingInfo) return
+  const series = await getEventMasterSeries(meetingId, event.recurringEventId!)
+  const seriesMap = new Map(
+    series.map(serie => [serie.account_address || serie.guest_email, serie])
+  )
   const db = initDB()
   const { data } = await db.supabase
     .from<Tables<'slots'>>('slots')
@@ -1157,13 +1233,52 @@ const handleCancelOrDeleteForRecurringInstance = async (
     meetingInfo.participants,
     currentAccountAddress
   )
+  const participants = []
+  const timeStamp = parseGoogleEventTimestamp(event.id)
 
+  for (const participant of parsedParticipants) {
+    const serie = seriesMap.get(
+      participant?.account_address || participant.guest_email || ''
+    )
+    if (serie) {
+      participants.push({
+        ...participant,
+        slot_id: `${serie.id}_${timeStamp}`, // generate a new id for meeting
+      })
+    } else {
+      // We can assume that this is a new foreighn participant and create a slot for them
+      participants.push({
+        ...participant,
+        slot_id: uuidv4(), // generate a new id for meeting
+      })
+    }
+  }
+  const cleanedParticipants = []
+  for (const participant of meetingInfo.participants || []) {
+    const serie = seriesMap.get(
+      participant?.account_address || participant.guest_email || ''
+    )
+    if (serie) {
+      cleanedParticipants.push({
+        ...participant,
+        slot_id: `${serie.id}_${timeStamp}`, // generate a new id for meeting
+      })
+    } else {
+      cleanedParticipants.push({
+        ...participant,
+        slot_id: uuidv4(), // generate a new id for meeting
+      })
+    }
+  }
+  meetingInfo.participants = cleanedParticipants
+  meetingInfo.related_slot_ids = cleanedParticipants
+    .map(p => p.slot_id)
+    .filter((p): p is string => !!p)
   const isSchedulerOrOwner = isAccountSchedulerOrOwner(
     meetingInfo.participants,
     currentAccountAddress
   )
 
-  const timeStamp = parseGoogleEventTimestamp(event.id)
   if (!timeStamp) return
   if (isSchedulerOrOwner) {
     const eventInstance = await handleUpdateParseMeetingInfo(
@@ -1172,7 +1287,7 @@ const handleCancelOrDeleteForRecurringInstance = async (
       new Date(startTime),
       new Date(endTime),
       meetingInfo,
-      parsedParticipants,
+      participants,
       meetingInfo.content || '',
       meetingInfo.meeting_url || '',
       conferenceMeeting.provider,
@@ -1182,50 +1297,42 @@ const handleCancelOrDeleteForRecurringInstance = async (
       conferenceMeeting.permissions,
       undefined
     )
-    const { slots } = await parseParticipantSlots(
+    const { slots, changingTime } = await parseParticipantSlots(
       eventInstance.participantActing,
       eventInstance.payload
     )
 
-    try {
-      for (const slot of slots) {
-        if (!slot.account_address) continue
-        // ExternalCalendarSync.delete(slot.account_address, [event.id!])
-      }
-    } catch (_e) {}
-    if (
-      DateTime.now().hasSame(
-        DateTime.fromJSDate(eventInstance.payload.start),
-        'day'
-      )
-    ) {
-      try {
-        // to do send notification
-      } catch (e) {
-        console.error('Error updating single recurring instance:', e)
-      }
+    const syncDetail: DeleteInstanceRequest = {
+      meeting_id: meetingId,
+      ical_uid: event.recurringEventId!,
+      start: changingTime?.oldStart
+        ? new Date(changingTime?.oldStart).toISOString()
+        : new Date(startTime).toISOString(),
     }
+    queueCalendarInstanceDeleteSync(
+      eventInstance.payload.participants_mapping
+        .map(p => p.account_address)
+        .filter((addr): addr is string => addr !== null),
+      syncDetail
+    ).catch(err => console.error('Failed to queue meeting update sync:', err))
+
     const toInsert = await Promise.all(
       slots.map(async (slot): Promise<TablesUpdate<'slot_instance'> | null> => {
-        const series_id = await getSlotInstanceSeriesId(
-          meetingId,
-          event.recurringEventId || '',
-          slot.account_address,
-          slot.guest_email
-        )
-        if (series_id) {
+        const serie = seriesMap.get(currentAccountAddress)
+        if (serie) {
           return {
             account_address: slot.account_address,
             end: new Date(endTime).toISOString(),
-            id: slot.id + '_' + timeStamp,
+            id: serie.id + '_' + timeStamp,
             override_meeting_info_encrypted: slot.meeting_info_encrypted,
-            series_id,
+            series_id: serie.id,
             start: new Date(startTime).toISOString(),
             status: RecurringStatus.CANCELLED,
             version: (slots[0].version || 0) + 1,
           }
         } else {
           console.warn('No series found for slot', slot.id)
+
           return null
         }
       })
@@ -1241,7 +1348,7 @@ const handleCancelOrDeleteForRecurringInstance = async (
     event.id
   )
   if (parsedInfo) {
-    const { slots } = await parseParticipantSlots(
+    const { slots, changingTime } = await parseParticipantSlots(
       parsedInfo.participantActing,
       parsedInfo.payload
     )
@@ -1262,19 +1369,22 @@ const handleCancelOrDeleteForRecurringInstance = async (
       }
     )
     const slotsToRemovePromises = parsedInfo?.payload.slotsToRemove.map(
-      async (slotId: string): Promise<TablesUpdate<'slot_instance'>> => {
-        const series_id = await getSlotSeriesId(slotId!)
-        const slot = await getSlotById(slotId)
-        return {
-          account_address: slot.account_address,
-          end: new Date(endTime).toISOString(),
-          guest_email: slot.guest_email,
-          id: slotId + '_' + timeStamp,
-          override_meeting_info_encrypted: null,
-          series_id,
-          start: new Date(startTime).toISOString(),
-          status: RecurringStatus.CANCELLED,
-          version: (slot.version || 0) + 1,
+      async (
+        slotId: string
+      ): Promise<TablesUpdate<'slot_instance'> | undefined> => {
+        const serie = series.find(s => s.id === slotId)
+        if (serie) {
+          return {
+            account_address: serie.account_address,
+            end: new Date(endTime).toISOString(),
+            guest_email: serie.guest_email,
+            id: slotId + '_' + timeStamp,
+            override_meeting_info_encrypted: null,
+            series_id: serie?.id,
+            start: new Date(startTime).toISOString(),
+            status: RecurringStatus.CANCELLED,
+            version: 0,
+          }
         }
       }
     )
@@ -1283,53 +1393,27 @@ const handleCancelOrDeleteForRecurringInstance = async (
       ...slotsToRemovePromises,
       ...slotToUpdatePromises,
     ])
-    try {
-      handleSendEventNotification(
-        parsedInfo.payload,
-        parsedInfo.participantActing,
-        event.id
-      ).then(() => {
-        const removedSlots = slotInstances.filter(
-          slot => slot.status === RecurringStatus.CANCELLED
-        )
-        for (const slot of removedSlots) {
-          if (!slot.account_address) continue
-          // ExternalCalendarSync.delete(slot.account_address, [event.id!])
-        }
-      })
-    } catch (e) {
-      console.error('Error cancelling or deleting recurring instance:', e)
+    const syncDetail: DeleteInstanceRequest = {
+      meeting_id: meetingId,
+      ical_uid: event.recurringEventId!,
+      start: changingTime?.oldStart
+        ? new Date(changingTime?.oldStart).toISOString()
+        : new Date(startTime).toISOString(),
     }
-    return slotInstances
+    queueCalendarInstanceDeleteSync(
+      parsedInfo.payload.participants_mapping
+        .map(p => p.account_address)
+        .filter((addr): addr is string => addr !== null),
+      syncDetail
+    ).catch(err => console.error('Failed to queue meeting update sync:', err))
+
+    return slotInstances.filter(
+      (s): s is TablesUpdate<'slot_instance'> => s !== undefined
+    )
   }
   return undefined
 }
 
-// TODO: Update so it syncs all participants calendars, skip the acting calendar, the idea is thatb only calendars with no attendees would need updating since all participants now share the same calendar event
-const handleSendEventNotification = async (
-  payload: MeetingCreationRequest,
-  participantActing: ParticipantBaseInfo,
-  eventId: string
-) => {
-  return
-  await ExternalCalendarSync.update({
-    ...payload,
-    created_at: new Date(),
-    end: new Date(payload.end),
-    eventId: eventId,
-    meeting_type_id:
-      payload.meetingTypeId === NO_MEETING_TYPE
-        ? undefined
-        : payload.meetingTypeId,
-    participantActing: participantActing,
-    participants: payload.participants_mapping,
-    start: new Date(payload.start),
-    timezone:
-      payload.participants_mapping.find(
-        p => p.account_address === participantActing.account_address
-      )?.timeZone || 'UTC',
-  })
-}
 const cancelMeeting = async (
   currentAccountAddress: string,
   decryptedMeeting: MeetingDecrypted
@@ -1440,6 +1524,7 @@ const handleUpdateMeeting = async (
     ...payload,
     calendar_id,
   })
+
   return meetingResult
 }
 const handleUpdateMeetingRsvps = async (
@@ -1457,6 +1542,7 @@ const handleUpdateMeetingRsvps = async (
   )
 
   const meetingResult: DBSlot = await updateMeeting(participantActing, payload)
+
   return meetingResult
 }
 const handleParseParticipants = async (
@@ -1575,7 +1661,6 @@ export {
   handleCancelOrDeleteForRecurringInstance,
   handleParseParticipants,
   handleParticipants,
-  handleSendEventNotification,
   handleUpdateMeeting,
   handleUpdateMeetingRsvps,
   handleUpdateParseMeetingInfo,
