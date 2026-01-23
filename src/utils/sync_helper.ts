@@ -4,6 +4,8 @@ import { Account } from '@/types/Account'
 import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import {
+  DeleteInstanceRequest,
+  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -367,6 +369,45 @@ const syncDeletedEventWithCalendar = async (
     await Promise.all(promises)
   }
 }
+const syncDeletedEventInstanceWithCalendar = async (
+  targetAccount: Account['address'],
+  meetingDetails: DeleteInstanceRequest
+) => {
+  const calendars = await getConnectedCalendars(targetAccount, {
+    syncOnly: true,
+  })
+
+  for (const calendar of calendars) {
+    const integration = getConnectedCalendarIntegration(
+      calendar.account_address,
+      calendar.email,
+      calendar.provider,
+      calendar.payload
+    )
+
+    const promises = []
+
+    for (const innerCalendar of calendar.calendars!) {
+      if (innerCalendar.enabled && innerCalendar.sync) {
+        promises.push(
+          new Promise<void>(async resolve => {
+            try {
+              await integration.deleteEventInstance(
+                innerCalendar.calendarId,
+                meetingDetails
+              )
+            } catch (error) {
+              console.error(error)
+              Sentry.captureException(error)
+            }
+            resolve()
+          })
+        )
+      }
+    }
+    await Promise.all(promises)
+  }
+}
 const getCalendarOrganizer = async (
   meetingDetails: MeetingCreationSyncRequest
 ) => {
@@ -400,7 +441,12 @@ const getCalendarOrganizer = async (
   return calendarOrganizer
 }
 export const ExternalCalendarSync = {
-  cancelInstance: async (targetAccount: Account['address']) => {},
+  deleteInstance: async (
+    targetAccount: Account['address'],
+    meetingDetails: DeleteInstanceRequest
+  ) => {
+    await syncDeletedEventInstanceWithCalendar(targetAccount, meetingDetails)
+  },
   create: async (meetingDetails: MeetingCreationSyncRequest) => {
     const calendarOrganizer = await getCalendarOrganizer(meetingDetails)
     if (!calendarOrganizer || !calendarOrganizer.account_address) {
