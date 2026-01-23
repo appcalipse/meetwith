@@ -4723,24 +4723,6 @@ const insertOfficeEventMapping = async (
     throw new Error(error.message)
   }
 }
-const _insertGoogleEventMapping = async (
-  event_id: string,
-  mww_id: string,
-  calendar_id: string
-): Promise<void> => {
-  await db.supabase
-    .from('google_events_mapping')
-    .delete()
-    .eq('mww_id', mww_id)
-    .eq('calendar_id', calendar_id)
-  const { error } = await db.supabase
-    .from('google_events_mapping')
-    .upsert({ calendar_id, event_id, mww_id })
-
-  if (error) {
-    throw new Error(error.message)
-  }
-}
 
 const getOfficeEventMappingId = async (
   mww_id: string
@@ -4777,26 +4759,6 @@ const getOfficeMeetingIdMappingId = async (
   }
   return data.mww_id
 }
-const getGoogleEventMappingId = async (
-  mww_id: string,
-  calendar_id: string
-): Promise<string | null> => {
-  const { data, error } = await db.supabase
-    .from('google_events_mapping')
-    .select()
-    .eq('mww_id', mww_id)
-    .eq('calendar_id', calendar_id)
-    .maybeSingle()
-
-  if (error) {
-    throw new Error(error.message)
-  }
-  if (!data) {
-    return null
-  }
-  return data.event_id
-}
-
 export const getDiscordAccount = async (
   account_address: string
 ): Promise<DiscordAccount | undefined> => {
@@ -6714,8 +6676,9 @@ const sendWalletDebitEmail = async (
     const notifications = prefs?.notification || []
     if (!notifications.includes(PaymentNotificationType.SEND_TOKENS)) return
 
-    const senderEmail =
-      await getAccountNotificationSubscriptionEmail(initiatorAddress)
+    const senderEmail = await getAccountNotificationSubscriptionEmail(
+      initiatorAddress
+    )
     if (!senderEmail) return
 
     await sendCryptoDebitEmail(senderEmail, {
@@ -8392,8 +8355,9 @@ const createQuickPoll = async (
 
     // Add the owner as a participant
     const ownerAccount = await getAccountFromDB(owner_address)
-    const ownerEmail =
-      await getAccountNotificationSubscriptionEmail(owner_address)
+    const ownerEmail = await getAccountNotificationSubscriptionEmail(
+      owner_address
+    )
 
     // Get owner's availability
     let ownerAvailableSlots: AvailabilitySlot[] = []
@@ -9941,8 +9905,9 @@ const isProAccountAsync = async (accountAddress: string): Promise<boolean> => {
     }
 
     // Check domain subscriptions (billing_plan_id is null, domain is not null)
-    const domainSubscriptions =
-      await getSubscriptionFromDBForAccount(accountAddress)
+    const domainSubscriptions = await getSubscriptionFromDBForAccount(
+      accountAddress
+    )
     const hasDomain = domainSubscriptions.some(
       sub => sub.billing_plan_id === null && sub.domain !== null
     )
@@ -10593,5 +10558,4 @@ export {
   getSlotInstanceSeriesId,
   saveRecurringMeetings,
   updateRecurringMeeting,
-  insertGoogleEventMapping,
 }
