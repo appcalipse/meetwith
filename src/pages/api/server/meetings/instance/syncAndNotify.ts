@@ -4,6 +4,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { MeetingChangeType } from '@/types/Meeting'
 import {
   MeetingCancelSyncRequest,
+  MeetingInstanceCancelSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
 import {
@@ -34,11 +35,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(200).send(true)
   } else if (req.method === 'DELETE') {
     const request = req.body as MeetingCancelSyncRequest
-    const { addressesToRemove, meeting_id } = request
+    const { addressesToRemove, meeting_id, start, ical_uid } = request
 
     for (const address of addressesToRemove) {
       try {
-        await ExternalCalendarSync.delete(address, [meeting_id])
+        await ExternalCalendarSync.deleteInstance(address, {
+          meeting_id,
+          start: new Date(start).toISOString(),
+          ical_uid,
+        })
       } catch (error) {
         Sentry.captureException(error)
       }
