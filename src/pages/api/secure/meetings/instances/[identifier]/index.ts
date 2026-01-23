@@ -49,7 +49,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const meetingResult: DBSlot = await updateMeetingInstance(
         getParticipantBaseInfoFromAccount(account),
-        meeting
+        meeting,
+        identifier
       )
       return res.status(200).json(meetingResult)
     } catch (e) {
