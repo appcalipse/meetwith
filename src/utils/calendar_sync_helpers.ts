@@ -7,7 +7,6 @@ import {
   SchedulingType,
 } from '@meta/Meeting'
 import {
-  ParticipantBaseInfo,
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
@@ -35,14 +34,12 @@ import {
 import { getParticipantBaseInfoFromAccount } from '@utils/user_manager'
 import { calendar_v3, google } from 'googleapis'
 import { DateTime } from 'luxon'
-import { RRule, rrulestr } from 'rrule'
+import { rrulestr } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
 import { MeetingReminders, RecurringStatus } from '@/types/common'
 import { Tables, TablesInsert, TablesUpdate } from '@/types/Supabase'
 import {
   DeleteInstanceRequest,
-  MeetingCancelSyncRequest,
-  MeetingCreationRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '../types/Requests'
@@ -58,11 +55,8 @@ import {
   getAccountFromDB,
   getConferenceMeetingFromDB,
   getEventMasterSeries,
-  getSlotById,
-  getSlotInstanceSeriesId,
   getSlotSeries,
   getSlotSeriesId,
-  initDB,
   isSlotFree,
   parseParticipantSlots,
   updateMeeting,
@@ -1217,14 +1211,9 @@ const handleCancelOrDeleteForRecurringInstance = async (
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
-  const db = initDB()
-  const { data } = await db.supabase
-    .from<Tables<'slots'>>('slots')
-    .select('version')
-    .in('id', conferenceMeeting.slots)
-    .limit(1)
+
   if (!event.id) return
-  meetingInfo.version = data?.[0]?.version || 0
+  meetingInfo.version = 0
   meetingInfo.start = new Date(startTime)
   meetingInfo.end = new Date(endTime)
   const parsedParticipants = await handleParseParticipants(
