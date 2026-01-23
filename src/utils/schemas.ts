@@ -122,7 +122,7 @@ export const errorReducer = (
       if (isPlanFieldKey(action.field)) {
         const [field, subField] = action.field.split('.') as [
           SchemaKeys,
-          string
+          string,
         ]
         const existingField = state[field] as Record<string, string> | undefined
         return {
@@ -141,7 +141,7 @@ export const errorReducer = (
       if (isPlanFieldKey(action.field)) {
         const [localField, subField] = action.field.split('.') as [
           SchemaKeys,
-          string
+          string,
         ]
         const existingField = state[localField] as
           | Record<string, string>

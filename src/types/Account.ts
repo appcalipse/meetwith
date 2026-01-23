@@ -171,8 +171,7 @@ export interface DiscordConnectedAccounts extends BaseConnectedAccounts {
 export interface GetMeetingTypesResponseWithMetadata {
   meetingTypes: MeetingType[]
   total: number
-  hidden: number
-  paidHidden: number
+  isPro: boolean
   upgradeRequired: boolean
 }
 

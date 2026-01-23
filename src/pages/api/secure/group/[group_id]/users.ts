@@ -30,25 +30,25 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
                 userId: group.id,
               }
             : group.group_members.length > 0
-            ? {
-                address: group.group_members?.[0]?.member_id as string,
-                displayName: group.preferences?.name,
-                domain:
-                  group.subscriptions?.find(
-                    sub => new Date(sub.expiry_time) > new Date()
-                  )?.domain ?? undefined,
-                invitePending: false,
-                role: group.group_members?.[0].role,
-                userId: group.group_members?.[0]?.id,
-              }
-            : {
-                address: (group.group_invites?.[0]?.user_id ||
-                  group.group_invites?.[0]?.email) as string,
-                displayName: group.preferences?.name,
-                invitePending: true,
-                role: group.group_invites?.[0].role,
-                userId: group.group_invites?.[0]?.id,
-              }
+              ? {
+                  address: group.group_members?.[0]?.member_id as string,
+                  displayName: group.preferences?.name,
+                  domain:
+                    group.subscriptions?.find(
+                      sub => new Date(sub.expiry_time) > new Date()
+                    )?.domain ?? undefined,
+                  invitePending: false,
+                  role: group.group_members?.[0].role,
+                  userId: group.group_members?.[0]?.id,
+                }
+              : {
+                  address: (group.group_invites?.[0]?.user_id ||
+                    group.group_invites?.[0]?.email) as string,
+                  displayName: group.preferences?.name,
+                  invitePending: true,
+                  role: group.group_invites?.[0].role,
+                  userId: group.group_invites?.[0]?.id,
+                }
         })
         .filter(Boolean)
       return res.status(200).json(responseJson)

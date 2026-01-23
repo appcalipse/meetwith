@@ -87,19 +87,7 @@
   },
   "overrides": [
     {
-      "includes": ["*.ts"],
-      "assist": {
-        "enabled": true,
-        "actions": {
-          "source": {
-            "useSortedKeys": "on",
-            "organizeImports": "on",
-            "useSortedAttributes": "on",
-            "useSortedProperties": "on",
-            "recommended": true
-          }
-        }
-      },
+      "includes": ["*.ts", "*.tsx", "*.mts", "*.cts"],
       "linter": {
         "rules": {
           "complexity": { "noArguments": "error" },
@@ -126,6 +114,19 @@
             "noVar": "error",
             "noWith": "off",
             "useGetterReturn": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["*.ts"],
+      "assist": {
+        "enabled": true,
+        "actions": {
+          "source": {
+            "organizeImports": "on",
+            "useSortedAttributes": "on",
+            "useSortedKeys": "on"
           }
         }
       }

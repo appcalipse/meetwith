@@ -9,7 +9,7 @@ import { FaChevronDown } from 'react-icons/fa'
 
 export const getCustomSelectComponents = <
   T = unknown,
-  IsMulti extends boolean = false
+  IsMulti extends boolean = false,
 >(): Props<T, IsMulti>['components'] => ({
   ClearIndicator: props => (
     <chakraComponents.ClearIndicator className="noBg" {...props}>

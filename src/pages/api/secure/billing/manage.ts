@@ -16,9 +16,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const accountAddress = req.session.account.address.toLowerCase()
 
       // Get active Stripe subscription for account
-      const stripeSubscription = await getStripeSubscriptionByAccount(
-        accountAddress
-      )
+      const stripeSubscription =
+        await getStripeSubscriptionByAccount(accountAddress)
 
       if (!stripeSubscription) {
         return res.status(404).json({

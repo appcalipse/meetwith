@@ -32,7 +32,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const promises: [
         Promise<Account[]>,
         Promise<Interval[]>,
-        Promise<Record<string, AvailabilityBlock[]>> | undefined
+        Promise<Record<string, AvailabilityBlock[]>> | undefined,
       ] = [
         getExistingAccountsFromDB(sanitizedAddresses, true),
         CalendarBackendHelper.getMergedBusySlotsForMultipleAccounts(

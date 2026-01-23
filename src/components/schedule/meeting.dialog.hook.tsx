@@ -26,7 +26,7 @@ type MeetingDialogReturnType = [
       meeting?: DBSlot,
       removedSlots?: string[]
     ) => void
-  ) => void
+  ) => void,
 ]
 export const useMeetingDialog = (): MeetingDialogReturnType => {
   const { isOpen, onOpen, onClose } = useDisclosure()

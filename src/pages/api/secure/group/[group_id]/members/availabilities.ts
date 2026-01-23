@@ -27,9 +27,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       await getGroup(group_id, account_address)
 
       // Get all members' availabilities
-      const membersAvailabilities = await getGroupMembersAvailabilities(
-        group_id
-      )
+      const membersAvailabilities =
+        await getGroupMembersAvailabilities(group_id)
 
       return res.status(200).json(membersAvailabilities)
     }

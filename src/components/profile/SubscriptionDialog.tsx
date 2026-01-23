@@ -645,10 +645,10 @@ const SubscriptionDialog: React.FC<IProps> = ({
             {couponCode
               ? 'Apply Coupon'
               : needsApproval
-              ? `Approve ${currentToken?.token} to be spent`
-              : _currentSubscription
-              ? 'Extend'
-              : 'Subscribe'}
+                ? `Approve ${currentToken?.token} to be spent`
+                : _currentSubscription
+                  ? 'Extend'
+                  : 'Subscribe'}
           </Button>
         </ModalFooter>
       </ModalContent>

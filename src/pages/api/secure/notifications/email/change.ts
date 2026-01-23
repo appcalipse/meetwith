@@ -60,9 +60,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const changeUrl = `${appUrl}/dashboard/change-email?token=${changeToken}`
 
-    const currentEmail = await getAccountNotificationSubscriptionEmail(
-      account_address
-    )
+    const currentEmail =
+      await getAccountNotificationSubscriptionEmail(account_address)
 
     if (!currentEmail) {
       return res.status(400).json({ error: 'No email found for this account' })

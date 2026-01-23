@@ -14,7 +14,6 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
@@ -27,11 +26,7 @@ import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
 import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
-import {
-  getGroupExternal,
-  getGroupsFullWithMetadata,
-  listConnectedCalendars,
-} from '@/utils/api_helper'
+import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
 import {
   getActiveProSubscription,
   isTrialEligible,
@@ -51,20 +46,12 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const groupRef = useRef<GroupRef>(null)
   const groupInviteRef = useRef<GroupInvitesRef>(null)
 
-  // Fetch metadata to get upgradeRequired status
-  const { data: groupsMetadata } = useQuery({
-    queryKey: ['groupsMetadata', currentAccount?.address],
-    queryFn: () => getGroupsFullWithMetadata(1, 0, '', true),
-    enabled: !!currentAccount?.address,
-    staleTime: 30000,
-  })
-
   // Trial eligibility from account context
   const trialEligible = isTrialEligible(currentAccount)
 
   const activeSubscription = getActiveProSubscription(currentAccount)
   const hasProAccess = Boolean(activeSubscription)
-  const canCreateGroup = hasProAccess && !groupsMetadata?.upgradeRequired
+  const canCreateGroup = hasProAccess
 
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
@@ -280,8 +267,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         {!canCreateGroup && currentAccount && (
           <HStack mb={4}>
             <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
-              You've maxed out your plan. Upgrade to create more groups and
-              schedule with groups.{' '}
+              Upgrade to create and schedule with groups.{' '}
               <Button
                 variant="link"
                 colorScheme="primary"
@@ -292,7 +278,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                 height="auto"
                 minW="auto"
               >
-                {trialEligible ? 'Try for free' : 'Go PRO'}
+                {trialEligible ? 'Try PRO for free' : 'Go PRO'}
               </Button>
             </Text>
           </HStack>

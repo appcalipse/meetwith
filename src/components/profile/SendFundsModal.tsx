@@ -129,10 +129,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
             token.walletSupported && token.contractAddress !== zeroAddress
         )
     )
-    .reduce((acc, chain) => {
-      acc[getNetworkDisplayName(chain.chain)] = chain.chain
-      return acc
-    }, {} as Record<string, SupportedChain>)
+    .reduce(
+      (acc, chain) => {
+        acc[getNetworkDisplayName(chain.chain)] = chain.chain
+        return acc
+      },
+      {} as Record<string, SupportedChain>
+    )
 
   const [sendNetwork, setSendNetwork] =
     useState<SupportedChain>(selectedNetwork)

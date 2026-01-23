@@ -108,9 +108,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(200).json(trialResponse)
       }
 
-      const existingSubscription = await getActiveSubscriptionPeriod(
-        accountAddress
-      )
+      const existingSubscription =
+        await getActiveSubscriptionPeriod(accountAddress)
       let _calculatedExpiryTime: Date
 
       if (existingSubscription) {

@@ -114,23 +114,20 @@ export class CurrencyService {
       return paikama.exchangeRate
     }
 
-    const fallBack1 = await this.getExchangeRateWithExchangeRateFallBack1(
-      currency
-    )
+    const fallBack1 =
+      await this.getExchangeRateWithExchangeRateFallBack1(currency)
     if (fallBack1.success && fallBack1.exchangeRate) {
       return fallBack1.exchangeRate
     }
 
-    const fallBack2 = await this.getExchangeRateWithExchangeRateFallBack2(
-      currency
-    )
+    const fallBack2 =
+      await this.getExchangeRateWithExchangeRateFallBack2(currency)
     if (fallBack2.success && fallBack2.exchangeRate) {
       return fallBack2.exchangeRate
     }
 
-    const fallBack3 = await this.getExchangeRateWithExchangeRateFallBack3(
-      currency
-    )
+    const fallBack3 =
+      await this.getExchangeRateWithExchangeRateFallBack3(currency)
     if (fallBack3.success && fallBack3.exchangeRate) {
       return fallBack3.exchangeRate
     }

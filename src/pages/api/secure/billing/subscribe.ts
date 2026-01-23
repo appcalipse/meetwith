@@ -68,9 +68,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       // Get or create Stripe customer
       let customerId: string | undefined
-      const existingStripeSubscription = await getStripeSubscriptionByAccount(
-        accountAddress
-      )
+      const existingStripeSubscription =
+        await getStripeSubscriptionByAccount(accountAddress)
 
       if (existingStripeSubscription?.stripe_customer_id) {
         // Customer already exists, use existing customer ID

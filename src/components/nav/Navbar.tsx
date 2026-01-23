@@ -469,8 +469,8 @@ const DesktopNav = ({
                     ? linkHoverColor
                     : 'neutral.0'
                   : pathname.includes(navItem.href)
-                  ? linkHoverColor
-                  : linkColor
+                    ? linkHoverColor
+                    : linkColor
               }
               _hover={{
                 textDecoration: 'none',

@@ -51,9 +51,14 @@ interface PollCardProps {
     user_status?: string
   }
   showActions?: boolean
+  canSchedule?: boolean
 }
 
-const PollCard = ({ poll, showActions = true }: PollCardProps) => {
+const PollCard = ({
+  poll,
+  showActions = true,
+  canSchedule = true,
+}: PollCardProps) => {
   const { showSuccessToast } = useToastHelpers()
   const { push } = useRouter()
   const { fetchPollCounts } = useContext(MetricStateContext)
@@ -326,6 +331,12 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                         _active={{
                           bg: 'primary.400',
                         }}
+                        isDisabled={!canSchedule}
+                        title={
+                          !canSchedule
+                            ? 'Upgrade to Pro to schedule more polls this month'
+                            : undefined
+                        }
                         onClick={() =>
                           push(
                             `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
@@ -379,6 +390,12 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                         _active={{
                           bg: 'primary.400',
                         }}
+                        isDisabled={!canSchedule}
+                        title={
+                          !canSchedule
+                            ? 'Upgrade to Pro to schedule more polls this month'
+                            : undefined
+                        }
                         onClick={() =>
                           push(
                             `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
@@ -430,6 +447,12 @@ const PollCard = ({ poll, showActions = true }: PollCardProps) => {
                     _active={{
                       bg: 'primary.400',
                     }}
+                    isDisabled={!canSchedule}
+                    title={
+                      !canSchedule
+                        ? 'Upgrade to Pro to schedule more polls this month'
+                        : undefined
+                    }
                     onClick={() =>
                       push(
                         `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`

@@ -176,8 +176,8 @@ export const ChipInput: React.FC<ChipInputProps> = ({
         inputProps?.isInvalid
           ? inputProps?.errorBorderColor
           : focused
-          ? hoverColor
-          : borderColor
+            ? hoverColor
+            : borderColor
       }
       boxShadow={focused ? `0 0 0 1px ${hoverColor}` : 'none'}
       borderRadius={'md'}

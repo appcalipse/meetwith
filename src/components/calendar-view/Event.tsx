@@ -114,13 +114,13 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
 
         return {
           calendarEvents: isCalEvent
-            ? old.calendarEvents?.filter(
+            ? (old.calendarEvents?.filter(
                 e => e.sourceEventId !== event.sourceEventId
-              ) ?? []
-            : old.calendarEvents ?? [],
+              ) ?? [])
+            : (old.calendarEvents ?? []),
           mwwEvents: !isCalEvent
-            ? old.mwwEvents?.filter(e => e.id !== event.id) ?? []
-            : old.mwwEvents ?? [],
+            ? (old.mwwEvents?.filter(e => e.id !== event.id) ?? [])
+            : (old.mwwEvents ?? []),
         }
       }
     )

@@ -14,9 +14,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const accountAddress = req.session.account.address.toLowerCase()
 
       // Get active subscription period
-      const subscriptionPeriod = await getActiveSubscriptionPeriod(
-        accountAddress
-      )
+      const subscriptionPeriod =
+        await getActiveSubscriptionPeriod(accountAddress)
 
       const hasActive =
         subscriptionPeriod &&

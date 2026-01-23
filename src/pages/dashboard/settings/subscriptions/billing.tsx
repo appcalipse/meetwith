@@ -118,11 +118,11 @@ const BillingCheckout = () => {
   const activeSubscription = getActiveProSubscription(currentAccount)
   const activeBillingSubscription = getActiveBillingSubscription(currentAccount)
 
-  const hasActiveSubscription = Boolean(
+  const _hasActiveSubscription = Boolean(
     activeSubscription || activeBillingSubscription
   )
 
-  const isActiveStripeSubscription = Boolean(
+  const _isActiveStripeSubscription = Boolean(
     activeBillingSubscription?.billing_plan_id &&
       !activeBillingSubscription?.transaction_id
   )

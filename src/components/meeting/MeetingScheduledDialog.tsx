@@ -244,8 +244,8 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 isCancelled
                   ? 'cancelled'
                   : isReschedule
-                  ? 'updated'
-                  : 'scheduled'
+                    ? 'updated'
+                    : 'scheduled'
               } successfully.`}
             </Text>
           )}

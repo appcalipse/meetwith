@@ -45,7 +45,7 @@ export default async function handler(
         : getOwnerPublicUrlServer(account_address),
     ] as [
       ReturnType<typeof getAccountPreferencesLean>,
-      ReturnType<typeof getOwnerPublicUrlServer>
+      ReturnType<typeof getOwnerPublicUrlServer>,
     ]
     const [user_preferences, calendar_url] = await Promise.all(promises)
 

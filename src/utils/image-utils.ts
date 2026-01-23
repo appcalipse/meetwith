@@ -184,8 +184,8 @@ export function readFile(file: Blob) {
           typeof reader.result == 'string'
             ? reader.result
             : reader.result
-            ? await arrayBufferToDataUrl(reader.result)
-            : undefined
+              ? await arrayBufferToDataUrl(reader.result)
+              : undefined
         ),
       false
     )

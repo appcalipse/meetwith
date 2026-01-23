@@ -37,7 +37,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       account_preferences: {
@@ -97,7 +97,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       accounts: {
@@ -165,7 +165,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       billing_plan_providers: {
@@ -200,7 +200,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'billing_plans'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       billing_plans: {
@@ -268,7 +268,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'connected_calendars'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       connected_calendars: {
@@ -312,7 +312,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       contact: {
@@ -344,7 +344,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       contact_invite: {
@@ -379,7 +379,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       coupons: {
@@ -435,7 +435,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       emails: {
@@ -485,7 +485,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       gate_definition: {
@@ -514,7 +514,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       gate_usage: {
@@ -637,7 +637,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       group_meeting_request: {
@@ -675,7 +675,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       group_members: {
@@ -714,7 +714,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       groups: {
@@ -774,7 +774,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'group_meeting_request'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meeting_sessions: {
@@ -848,7 +848,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'transactions'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meeting_type: {
@@ -913,7 +913,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       meeting_type_availabilities: {
@@ -949,7 +949,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'meeting_type'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meeting_type_calendars: {
@@ -985,7 +985,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'meeting_type'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meeting_type_plan: {
@@ -1038,7 +1038,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'meeting_type'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meetings: {
@@ -1148,7 +1148,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       payment_preferences: {
@@ -1183,7 +1183,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       quick_poll_calendars: {
@@ -1224,7 +1224,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'quick_poll_participants'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       quick_poll_participants: {
@@ -1287,7 +1287,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'quick_polls'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       quick_polls: {
@@ -1404,7 +1404,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       slot_series: {
@@ -1514,7 +1514,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       stripe_subscription_transactions: {
@@ -1550,7 +1550,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'transactions'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       stripe_subscriptions: {
@@ -1595,7 +1595,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'billing_plans'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       subscriptions: {
@@ -1662,7 +1662,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'transactions'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       telegram_connections: {
@@ -1691,7 +1691,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       transactions: {
@@ -1771,7 +1771,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'meeting_type'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       verifications: {
@@ -1806,7 +1806,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       video_meeting: {
@@ -2209,7 +2209,7 @@ export type Tables<
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
-    : never = never
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2220,14 +2220,14 @@ export type Tables<
     ? R
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
-      DefaultSchema['Views'])
-  ? (DefaultSchema['Tables'] &
-      DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-    ? R
+        DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] &
+        DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
-  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
@@ -2237,7 +2237,7 @@ export type TablesInsert<
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2247,12 +2247,12 @@ export type TablesInsert<
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-  ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I
-    }
-    ? I
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
     : never
-  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
@@ -2262,7 +2262,7 @@ export type TablesUpdate<
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2272,12 +2272,12 @@ export type TablesUpdate<
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-  ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U
-    }
-    ? U
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
     : never
-  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
@@ -2287,14 +2287,14 @@ export type Enums<
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
-    : never = never
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-  ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
@@ -2304,14 +2304,14 @@ export type CompositeTypes<
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
-    : never = never
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-  ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {

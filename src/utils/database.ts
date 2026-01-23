@@ -28,6 +28,7 @@ import { Credentials } from 'google-auth-library'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
 import { rrulestr } from 'rrule'
+import { ShardedMerkleTreeInfo } from 'thirdweb/dist/types/utils/extensions/drops/types'
 import { validate } from 'uuid'
 import { ResourceState } from '@/pages/api/server/webhook/calendar/sync'
 import {
@@ -176,6 +177,7 @@ import {
   PaymentDirection,
   PaymentStatus,
   PaymentType,
+  SessionType,
   TokenType,
 } from '@/utils/constants/meeting-types'
 import {
@@ -300,7 +302,7 @@ import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
 
 const PIN_SALT = process.env.PIN_SALT
-const posthogClient = PostHogClient()
+const _posthogClient = PostHogClient()
 // TODO: better typing
 type SupabaseRecords = { ready: boolean } & Record<string, SupabaseClient>
 const db: SupabaseRecords = {
@@ -1206,8 +1208,16 @@ const getAccountFromDBPublic = async (
   ) {
     payment_methods.push(PaymentType.FIAT)
   }
-  const meetingTypes = await getMeetingTypes(account.address, 100, 0)
-  account.meetingTypes = meetingTypes.map(val => ({
+
+  const isPro = await isProAccountAsync(account.address)
+
+  const allMeetingTypes = await getMeetingTypes(account.address, 100, 0)
+
+  const visibleMeetingTypes = isPro
+    ? allMeetingTypes
+    : allMeetingTypes.filter(mt => mt.type === SessionType.FREE)
+
+  account.meetingTypes = visibleMeetingTypes.map(val => ({
     ...val,
     calendars: undefined,
   }))
@@ -3479,17 +3489,14 @@ const getConnectedCalendars = async (
     limit?: number
   } = {}
 ): Promise<ConnectedCalendar[]> => {
-  const isPro = await isProAccountAsync(address)
-  const effectiveLimit = !isPro ? 2 : limit !== undefined ? limit : undefined
-
   const query = db.supabase
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
     .order('created', { ascending: true })
 
-  if (effectiveLimit) {
-    query.limit(effectiveLimit)
+  if (limit !== undefined) {
+    query.limit(limit)
   }
 
   const { data, error } = await query
@@ -4716,7 +4723,7 @@ const insertOfficeEventMapping = async (
     throw new Error(error.message)
   }
 }
-const insertGoogleEventMapping = async (
+const _insertGoogleEventMapping = async (
   event_id: string,
   mww_id: string,
   calendar_id: string
@@ -5971,6 +5978,24 @@ const countMeetingTypes = async (account_address: string): Promise<number> => {
   return count || 0
 }
 
+const countFreeMeetingTypes = async (
+  account_address: string
+): Promise<number> => {
+  const { count, error } = await db.supabase
+    .from('meeting_type')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_owner_address', account_address)
+    .eq('type', SessionType.FREE)
+    .is('deleted_at', null)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(`Failed to count free meeting types: ${error.message}`)
+  }
+
+  return count || 0
+}
+
 const getMeetingTypes = async (
   account_address: string,
   limit = 10,
@@ -6689,9 +6714,8 @@ const sendWalletDebitEmail = async (
     const notifications = prefs?.notification || []
     if (!notifications.includes(PaymentNotificationType.SEND_TOKENS)) return
 
-    const senderEmail = await getAccountNotificationSubscriptionEmail(
-      initiatorAddress
-    )
+    const senderEmail =
+      await getAccountNotificationSubscriptionEmail(initiatorAddress)
     if (!senderEmail) return
 
     await sendCryptoDebitEmail(senderEmail, {
@@ -7373,7 +7397,7 @@ const handleWebhookEvent = async (
       (!!meeting.id && recurringIdSet.has(extractBaseId(meeting.id)))
     )
   }
-  const recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
+  const _recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
     meeting => !!meeting.recurringEventId || !!meeting.recurrence // only consider events with recurringEventId
   )
   const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
@@ -7381,15 +7405,16 @@ const handleWebhookEvent = async (
   )
 
   const actions = await Promise.all(
-    recentlyUpdatedNonRecurringMeetings
-      .map(event => handleSyncEvent(event, calendar))
-      .concat(
-        handleSyncRecurringEvents(
-          recentlyUpdatedRecurringMeetings,
-          calendar,
-          data.calendar_id
-        )
-      )
+    recentlyUpdatedNonRecurringMeetings.map(event =>
+      handleSyncEvent(event, calendar)
+    )
+    // .concat(
+    //   handleSyncRecurringEvents(
+    //     recentlyUpdatedRecurringMeetings,
+    //     calendar,
+    //     data.calendar_id
+    //   )
+    // )
   )
   return actions.length > 0
 }
@@ -8236,7 +8261,7 @@ const countActiveQuickPolls = async (
   return count || 0
 }
 
-const countActiveQuickPollsCreatedThisMonth = async (
+const countQuickPollsCreatedThisMonth = async (
   account_address: string
 ): Promise<number> => {
   const now = new Date()
@@ -8257,7 +8282,7 @@ const countActiveQuickPollsCreatedThisMonth = async (
   if (participationError) {
     Sentry.captureException(participationError)
     throw new Error(
-      `Failed to count active QuickPolls: ${participationError.message}`
+      `Failed to count QuickPolls created this month: ${participationError.message}`
     )
   }
 
@@ -8267,19 +8292,69 @@ const countActiveQuickPollsCreatedThisMonth = async (
 
   const pollIds = participations.map(p => p.poll_id)
 
+  // Count all polls created this month
   const { count, error } = await db.supabase
     .from('quick_polls')
     .select('*', { count: 'exact', head: true })
     .in('id', pollIds)
-    .eq('status', PollStatus.ONGOING)
-    .gt('expires_at', nowISO)
     .gte('created_at', firstDayOfMonth)
     .lte('created_at', nowISO)
 
   if (error) {
     Sentry.captureException(error)
     throw new Error(
-      `Failed to count active QuickPolls created this month: ${error.message}`
+      `Failed to count QuickPolls created this month: ${error.message}`
+    )
+  }
+
+  return count || 0
+}
+
+const countScheduledQuickPollsThisMonth = async (
+  account_address: string
+): Promise<number> => {
+  const now = new Date()
+  const nowISO = now.toISOString()
+
+  const firstDayOfMonth = DateTime.now().startOf('month').toISO()
+
+  if (!firstDayOfMonth) {
+    throw new Error('Failed to calculate first day of month')
+  }
+
+  // Get all polls where user is SCHEDULER
+  const { data: participations, error: participationError } = await db.supabase
+    .from('quick_poll_participants')
+    .select('poll_id')
+    .eq('account_address', account_address.toLowerCase())
+    .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+
+  if (participationError) {
+    Sentry.captureException(participationError)
+    throw new Error(
+      `Failed to count scheduled QuickPolls: ${participationError.message}`
+    )
+  }
+
+  if (!participations || participations.length === 0) {
+    return 0
+  }
+
+  const pollIds = participations.map(p => p.poll_id)
+
+  // Count polls that were completed (scheduled) this month
+  const { count, error } = await db.supabase
+    .from('quick_polls')
+    .select('*', { count: 'exact', head: true })
+    .in('id', pollIds)
+    .eq('status', PollStatus.COMPLETED)
+    .gte('updated_at', firstDayOfMonth)
+    .lte('updated_at', nowISO)
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(
+      `Failed to count scheduled QuickPolls this month: ${error.message}`
     )
   }
 
@@ -8317,9 +8392,8 @@ const createQuickPoll = async (
 
     // Add the owner as a participant
     const ownerAccount = await getAccountFromDB(owner_address)
-    const ownerEmail = await getAccountNotificationSubscriptionEmail(
-      owner_address
-    )
+    const ownerEmail =
+      await getAccountNotificationSubscriptionEmail(owner_address)
 
     // Get owner's availability
     let ownerAvailableSlots: AvailabilitySlot[] = []
@@ -9867,9 +9941,8 @@ const isProAccountAsync = async (accountAddress: string): Promise<boolean> => {
     }
 
     // Check domain subscriptions (billing_plan_id is null, domain is not null)
-    const domainSubscriptions = await getSubscriptionFromDBForAccount(
-      accountAddress
-    )
+    const domainSubscriptions =
+      await getSubscriptionFromDBForAccount(accountAddress)
     const hasDomain = domainSubscriptions.some(
       sub => sub.billing_plan_id === null && sub.domain !== null
     )
@@ -10323,9 +10396,11 @@ export {
   connectedCalendarExists,
   contactInviteByEmailExists,
   countActiveQuickPolls,
-  countActiveQuickPollsCreatedThisMonth,
+  countQuickPollsCreatedThisMonth,
+  countScheduledQuickPollsThisMonth,
   countCalendarIntegrations,
   countCalendarSyncs,
+  countFreeMeetingTypes,
   countGroups,
   countMeetingTypes,
   createCheckOutTransaction,

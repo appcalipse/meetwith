@@ -36,9 +36,8 @@ export const useWalletTransactions = (
 
       const rates: Record<string, number> = { USD: 1 }
 
-      rates[selectedCurrency] = await CurrencyService.getExchangeRate(
-        selectedCurrency
-      )
+      rates[selectedCurrency] =
+        await CurrencyService.getExchangeRate(selectedCurrency)
 
       for (const currency of COMMON_CURRENCIES) {
         if (currency !== selectedCurrency) {

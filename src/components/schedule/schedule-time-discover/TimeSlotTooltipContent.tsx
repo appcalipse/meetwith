@@ -29,11 +29,24 @@ export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
       return 'your'
     }
     if (activeAvailabilityBlocks.length === 1) {
-      return `your "${activeAvailabilityBlocks[0].title}"`
+      return (
+        <>
+          your <b>&quot;{activeAvailabilityBlocks[0].title}&quot;</b>
+        </>
+      )
     }
-    // Multiple blocks - list them
-    const blockNames = activeAvailabilityBlocks.map(b => `"${b.title}"`)
-    return `your ${blockNames.join(', ')}`
+    // Multiple blocks
+    return (
+      <>
+        your{' '}
+        {activeAvailabilityBlocks.map((block, index) => (
+          <React.Fragment key={block.id}>
+            <b>&quot;{block.title}&quot;</b>
+            {index < activeAvailabilityBlocks.length - 1 && ', '}
+          </React.Fragment>
+        ))}
+      </>
+    )
   }
 
   const isSingleBlock =

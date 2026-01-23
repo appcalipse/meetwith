@@ -75,9 +75,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         )
 
         if (!existingIntegration) {
-          const integrationCount = await countCalendarIntegrations(
-            accountAddress
-          )
+          const integrationCount =
+            await countCalendarIntegrations(accountAddress)
           if (integrationCount >= 2) {
             throw new CalendarIntegrationLimitExceededError()
           }
