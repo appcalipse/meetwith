@@ -10431,7 +10431,6 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
-  getGoogleEventMappingId,
   getGroup,
   getGroupInternal,
   getGroupInvites,
