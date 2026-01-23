@@ -25,7 +25,7 @@ AS $$
               si.status::text,
               si.version,
               COALESCE(si.override_meeting_info_encrypted, ss.default_meeting_info_encrypted) as meeting_info_encrypted,
-               ss.slot_id
+               ss.series_id as slot_id
         FROM slot_instance si
         INNER JOIN slot_series ss ON si.series_id = ss.id
         WHERE si.id = instance_id;

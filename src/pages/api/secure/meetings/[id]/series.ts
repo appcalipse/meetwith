@@ -5,13 +5,15 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { DBSlot } from '@/types/Meeting'
 import {
   MeetingCancelRequest,
-  MeetingInstanceUpdateRequest,
+  MeetingSeriesUpdateRequest,
+  MeetingUpdateRequest,
 } from '@/types/Requests'
 import {
   deleteMeetingFromDB,
   getAccountFromDB,
-  getSlotInstance,
-  updateMeetingInstance,
+  getSlotSeries,
+  updateMeeting,
+  updateRecurringMeeting,
 } from '@/utils/database'
 import {
   GateConditionNotValidError,
@@ -23,34 +25,43 @@ import {
 } from '@/utils/errors'
 import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
 
-const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  if (req.method === 'GET') {
-    try {
-      const identifier = req.query.identifier as string
-      const meeting = await getSlotInstance(identifier)
-      return res.status(200).json(meeting)
-    } catch (error) {
-      console.error(error)
-      res.status(500).json({ error: 'Unknown error occurred' })
-    }
-  }
+const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    const identifier = req.query.identifier as string
-    const account_address = req.session.account!.address
+    const slotId = req.query.id as string
+    if (!slotId) {
+      return res.status(400).send('Required parameter not provided')
+    }
 
-    const existingSlot = await getSlotInstance(identifier)
-    if (existingSlot.account_address !== account_address) {
+    // load the original slot information that is already stored in the database
+    const existingSerie = await getSlotSeries(slotId)
+    // validate ownership
+    const account_address = req.session.account!.address
+    const account = await getAccountFromDB(account_address)
+
+    const meeting = req.body as MeetingSeriesUpdateRequest
+
+    if (existingSerie?.account_address !== account_address) {
       return res.status(403).send("You can't edit a meeting that is not yours")
     }
 
-    const account = await getAccountFromDB(account_address)
-    const meeting: MeetingInstanceUpdateRequest = req.body
+    if (
+      meeting.participants_mapping.filter(
+        participant =>
+          participant.account_address?.toLowerCase() ===
+          account.address.toLowerCase()
+      ).length === 0 &&
+      !meeting.slotsToRemove.includes(slotId) // if the user is attempting to delete a slot, we don't care if they are a participant of the meeting
+    ) {
+      return res
+        .status(403)
+        .send("You can't schedule a meeting for someone else")
+    }
 
     try {
-      const meetingResult: DBSlot = await updateMeetingInstance(
+      const meetingResult: DBSlot = await updateRecurringMeeting(
         getParticipantBaseInfoFromAccount(account),
         meeting,
-        identifier
+        existingSerie
       )
       return res.status(200).json(meetingResult)
     } catch (e) {
@@ -73,7 +84,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
     }
   } else if (req.method === 'DELETE') {
-    const slotId = req.query.identifier as string
+    const slotId = req.query.id as string
     if (!slotId) {
       return res.status(400).send('Required parameter not provided')
     }
@@ -119,7 +130,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
     }
   }
+
   return res.status(404).send('Not found')
 }
 
-export default withSessionRoute(handler)
+export default withSessionRoute(handle)

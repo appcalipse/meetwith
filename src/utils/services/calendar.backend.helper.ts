@@ -614,7 +614,7 @@ export const generateIcsServer = async (
       meeting.participants,
       meeting.title
     ),
-    uid: meeting.meeting_id.replaceAll('-', ''),
+    uid: meeting.ical_uid || meeting.meeting_id.replaceAll('-', ''),
     url,
   }
   if (!isPrivate) {

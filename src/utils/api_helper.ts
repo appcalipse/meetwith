@@ -77,6 +77,7 @@ import {
   MeetingDecrypted,
   MeetingInfo,
   SlotInstance,
+  SlotSeries,
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -105,6 +106,7 @@ import {
   MeetingCheckoutRequest,
   MeetingCreationRequest,
   MeetingInstanceUpdateRequest,
+  MeetingSeriesUpdateRequest,
   MeetingUpdateRequest,
   ParseParticipantInfo,
   ParseParticipantsRequest,
@@ -115,9 +117,9 @@ import {
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
+import { Tables } from '@/types/Supabase'
 import { TelegramConnection, TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
-
 import { UpdateCalendarEventRequest } from '../types/Requests'
 import { decodeMeeting, meetWithSeriesPreprocessors } from './calendar_manager'
 import {
@@ -589,6 +591,39 @@ export const apiUpdateMeetingInstance = async (
   }
 }
 
+export const apiUpdateMeetingSeries = async (
+  slotId: string,
+  meeting: MeetingSeriesUpdateRequest,
+  signal?: AbortSignal
+): Promise<DBSlot> => {
+  try {
+    const response = await internalFetch<DBSlot>(
+      `/secure/meetings/${slotId}/series`,
+      'POST',
+      meeting,
+      { signal }
+    )
+
+    return response
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status === 404) {
+        throw new MeetingNotFoundError(slotId)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      }
+    }
+    throw e
+  }
+}
 export const cancelMeeting = async (
   meeting: MeetingDecrypted,
   currentTimezone: string
@@ -600,6 +635,30 @@ export const cancelMeeting = async (
   try {
     return (await internalFetch(
       `/secure/meetings/${meeting.id}`,
+      'DELETE',
+      body
+    )) as { removed: string[] }
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    }
+    throw e
+  }
+}
+export const apiCancelMeetingSeries = async (
+  slotId: string,
+  meeting: MeetingInfo,
+  currentTimezone: string
+): Promise<{ removed: string[] }> => {
+  const body: MeetingCancelRequest = {
+    currentTimezone,
+    meeting,
+  }
+  try {
+    return (await internalFetch(
+      `/secure/meetings/${slotId}/series`,
       'DELETE',
       body
     )) as { removed: string[] }
@@ -2757,6 +2816,22 @@ export const getSlotInstanceById = async (
       end: new Date(slot.end),
       start: new Date(slot.start),
     }))
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
+}
+
+export const getSlotSeries = async (seriesId: string, signal?: AbortSignal) => {
+  try {
+    return await internalFetch<Tables<'slot_series'>>(
+      `/meetings/meeting/${seriesId}/series`,
+      'GET',
+      undefined,
+      { signal }
+    )
   } catch (e) {
     if (e instanceof ApiFetchError && e.status === 404) {
       return null

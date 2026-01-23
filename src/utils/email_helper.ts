@@ -61,14 +61,19 @@ const generateChangeUrl = async (
 ): Promise<string | undefined> => {
   // For guests, only scheduler gets reschedule link
   if (!destinationAccountAddress) {
-    return ownerAccountAddress
-      ? participantType === ParticipantType.Scheduler
-        ? `${await getOwnerPublicUrlServer(
-            ownerAccountAddress,
-            meetingTypeId
-          )}?conferenceId=${meeting_id}`
-        : undefined
-      : `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    let changeUrl
+    if (ownerAccountAddress) {
+      changeUrl =
+        participantType === ParticipantType.Scheduler
+          ? `${await getOwnerPublicUrlServer(
+              ownerAccountAddress,
+              meetingTypeId
+            )}?conferenceId=${meeting_id}`
+          : undefined
+    } else {
+      changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meeting_id}&intent=${Intents.UPDATE_MEETING}`
+    }
+    return changeUrl
   }
 
   const isGuestScheduling = participants?.some(p => !p.account_address)

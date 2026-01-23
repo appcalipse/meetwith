@@ -70,6 +70,7 @@ import {
   deleteMeetingInstance,
   deleteMeetingSeries,
   scheduleMeeting,
+  scheduleRecurringMeeting,
   selectDefaultProvider,
   updateMeeting,
   updateMeetingInstance,
@@ -517,7 +518,6 @@ const ScheduleMain: FC<IInitialProps> = ({
         if (editMode === UpdateMode.SINGLE_EVENT) {
           await deleteMeetingInstance(
             decryptedMeeting.id,
-            true,
             currentAccount?.address || '',
             decryptedMeeting,
             actor
@@ -525,7 +525,6 @@ const ScheduleMain: FC<IInitialProps> = ({
         } else {
           await deleteMeetingSeries(
             decryptedMeeting.id,
-            true,
             currentAccount?.address || '',
             actor
           )
@@ -710,24 +709,38 @@ const ScheduleMain: FC<IInitialProps> = ({
             meeting_id: '',
           })
         )
-
-        await scheduleMeeting(
-          true,
-          SchedulingType.REGULAR,
-          NO_MEETING_TYPE,
-          start,
-          end,
-          quickpollParticipants,
-          meetingProvider || MeetingProvider.HUDDLE,
-          currentAccount,
-          content,
-          meetingUrl,
-          undefined,
-          title,
-          meetingNotification.map(n => n.value),
-          selectedPermissions
-        )
-
+        if (meetingRepeat.value != MeetingRepeat.NO_REPEAT) {
+          await scheduleRecurringMeeting(
+            start,
+            end,
+            quickpollParticipants,
+            meetingRepeat.value,
+            meetingProvider || MeetingProvider.GOOGLE_MEET,
+            currentAccount,
+            content,
+            meetingUrl,
+            title,
+            meetingNotification.map(n => n.value),
+            selectedPermissions
+          )
+        } else {
+          await scheduleMeeting(
+            true,
+            SchedulingType.REGULAR,
+            NO_MEETING_TYPE,
+            start,
+            end,
+            quickpollParticipants,
+            meetingProvider || MeetingProvider.GOOGLE_MEET,
+            currentAccount,
+            content,
+            meetingUrl,
+            undefined,
+            title,
+            meetingNotification.map(n => n.value),
+            selectedPermissions
+          )
+        }
         try {
           await updateQuickPoll(pollId, { status: PollStatus.COMPLETED })
 
@@ -823,7 +836,6 @@ const ScheduleMain: FC<IInitialProps> = ({
           if (editMode === UpdateMode.SINGLE_EVENT) {
             await updateMeetingInstance(
               decryptedMeeting.id,
-              true,
               currentAccount!.address,
               start,
               end,
@@ -840,7 +852,6 @@ const ScheduleMain: FC<IInitialProps> = ({
           } else {
             await updateMeetingSeries(
               decryptedMeeting.id,
-              true,
               currentAccount!.address,
               start,
               end,
@@ -878,22 +889,38 @@ const ScheduleMain: FC<IInitialProps> = ({
           })
         }
       } else {
-        await scheduleMeeting(
-          true,
-          SchedulingType.REGULAR,
-          NO_MEETING_TYPE,
-          start,
-          end,
-          _participants.valid,
-          meetingProvider || MeetingProvider.HUDDLE,
-          currentAccount,
-          content,
-          meetingUrl,
-          undefined,
-          title,
-          meetingNotification.map(n => n.value),
-          selectedPermissions
-        )
+        if (meetingRepeat.value != MeetingRepeat.NO_REPEAT) {
+          await scheduleRecurringMeeting(
+            start,
+            end,
+            _participants.valid,
+            meetingRepeat.value,
+            meetingProvider || MeetingProvider.GOOGLE_MEET,
+            currentAccount,
+            content,
+            meetingUrl,
+            title,
+            meetingNotification.map(n => n.value),
+            selectedPermissions
+          )
+        } else {
+          await scheduleMeeting(
+            true,
+            SchedulingType.REGULAR,
+            NO_MEETING_TYPE,
+            start,
+            end,
+            _participants.valid,
+            meetingProvider || MeetingProvider.GOOGLE_MEET,
+            currentAccount,
+            content,
+            meetingUrl,
+            undefined,
+            title,
+            meetingNotification.map(n => n.value),
+            selectedPermissions
+          )
+        }
       }
       handlePageSwitch(Page.COMPLETED)
     } catch (e: unknown) {
@@ -1015,6 +1042,8 @@ const ScheduleMain: FC<IInitialProps> = ({
         handleApiError('Error scheduling meeting', e as Error)
       }
     } finally {
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
+      queryClient.invalidateQueries({ queryKey: ['meeting'] })
       setIsScheduling(false)
     }
   }

@@ -10,6 +10,8 @@ import {
 } from '@chakra-ui/react'
 import {
   InfiniteData,
+  QueryKey,
+  UseInfiniteQueryOptions,
   useInfiniteQuery,
   useQueryClient,
 } from '@tanstack/react-query'
@@ -77,7 +79,13 @@ const WEEKS_TO_LOAD = 1
 const createMeetingsQueryConfig = ({
   currentAccount,
   timeWindow,
-}: MeetingsQueryConfig) => ({
+}: MeetingsQueryConfig): UseInfiniteQueryOptions<
+  ExtendedCalendarEvents,
+  unknown,
+  ExtendedCalendarEvents,
+  ExtendedCalendarEvents,
+  QueryKey
+> => ({
   queryKey: ['meetings', currentAccount.address],
   queryFn: async ({ pageParam: offset = 0 }) => {
     const meetings = await getCalendarEvents(
@@ -89,7 +97,7 @@ const createMeetingsQueryConfig = ({
 
     return meetings
   },
-  getNextPageParam: () => WEEKS_TO_LOAD,
+  getNextPageParam: (_, allPages) => allPages.length * WEEKS_TO_LOAD,
   staleTime: 30_000,
   refetchOnWindowFocus: true,
 })

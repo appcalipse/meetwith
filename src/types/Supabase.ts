@@ -592,7 +592,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'group_members'
             referencedColumns: ['member_id', 'group_id']
-          },
+          }
         ]
       }
       group_invites: {
@@ -1467,7 +1467,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'meetings'
             referencedColumns: ['id']
-          },
+          }
         ]
       }
       slots: {

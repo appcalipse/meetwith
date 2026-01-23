@@ -19,6 +19,7 @@ import {
   ConferenceMeeting,
   GroupNotificationType,
   MeetingDecrypted,
+  MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
   NotBefore,
@@ -97,7 +98,7 @@ export interface RequestParticipantMapping {
 }
 
 export interface MeetingCancelRequest {
-  meeting: MeetingDecrypted
+  meeting: MeetingInfo
   currentTimezone: string
 }
 export interface GuestMeetingCancelRequest extends MeetingCancelRequest {
@@ -126,14 +127,11 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meetingProvider: MeetingProvider
   meetingReminders?: Array<MeetingReminders>
   meetingPermissions?: Array<MeetingPermissions>
-  eventId?: string | null
-  notification_hash?: string
   rrule: Array<string>
-  skipCalendarSync?: boolean
-  skipNotify?: boolean
+  ical_uid?: string
 }
 export interface MeetingInstanceCreationSyncRequest
-  extends Omit<MeetingCreationSyncRequest, 'meetingRepeat'> {
+  extends MeetingCreationSyncRequest {
   original_start_time: Date
 }
 export interface GroupInviteNotifyRequest {
@@ -146,10 +144,12 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   guestsToRemove: ParticipantInfo[]
   reason?: string
   title?: string
-  eventId?: string | null
-  original_start_time?: Date
+  ical_uid?: string
 }
-
+export interface MeetingInstanceCancelSyncRequest
+  extends DeleteInstanceRequest {
+  addressesToRemove: string[]
+}
 export interface DiscordAccountInfoRequest {
   scheduler_discord_id: string
   participantsDiscordIds: string[]
@@ -309,4 +309,10 @@ export interface ParseParticipantInfo {
 
 export interface ParseParticipantsRequest {
   participants: ParseParticipantInfo[]
+}
+
+export interface DeleteInstanceRequest {
+  ical_uid?: string
+  meeting_id: string
+  start: string
 }

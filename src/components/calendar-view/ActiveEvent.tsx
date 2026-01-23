@@ -259,7 +259,6 @@ const ActiveEvent: React.FC = () => {
           if (editMode === UpdateMode.SINGLE_EVENT) {
             await deleteMeetingInstance(
               decryptedMeeting.id,
-              true,
               currentAccount?.address || '',
               decryptedMeeting,
               actor
@@ -267,7 +266,6 @@ const ActiveEvent: React.FC = () => {
           } else {
             await deleteMeetingSeries(
               decryptedMeeting.id,
-              true,
               currentAccount?.address || '',
               actor
             )
@@ -530,7 +528,6 @@ const ActiveEvent: React.FC = () => {
           if (editMode === UpdateMode.SINGLE_EVENT) {
             await updateMeetingInstance(
               selectedSlot.id,
-              true,
               currentAccount!.address,
               start,
               end,
@@ -547,7 +544,6 @@ const ActiveEvent: React.FC = () => {
           } else {
             await updateMeetingSeries(
               selectedSlot.id,
-              true,
               currentAccount!.address,
               start,
               end,

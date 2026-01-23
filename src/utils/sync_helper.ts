@@ -4,6 +4,8 @@ import { Account } from '@/types/Account'
 import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import {
+  DeleteInstanceRequest,
+  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -43,7 +45,11 @@ export const getCalendarPrimaryEmail = async (
     const calendars = await getCalendars(targetAccount, meeting_type_id)
     for (const calendar of calendars) {
       for (const innerCalendar of calendar.calendars!) {
-        if (innerCalendar.enabled && innerCalendar.sync) {
+        if (
+          innerCalendar.enabled &&
+          innerCalendar.sync &&
+          !innerCalendar.isReadOnly
+        ) {
           return calendar.email
         }
       }
@@ -61,7 +67,8 @@ const syncCreatedEventWithCalendar = async (
     meetingDetails.meeting_type_id
   )
   let useParticipants = true
-  const promises = []
+  const addedEmails = new Set<string>()
+
   for (const calendar of calendars) {
     if (calendar.provider === TimeSlotSource.GOOGLE) {
       const integration = getConnectedCalendarIntegration(
@@ -73,18 +80,18 @@ const syncCreatedEventWithCalendar = async (
 
       for (const innerCalendar of calendar.calendars!) {
         if (innerCalendar.enabled && innerCalendar.sync) {
-          promises.push(
-            (async () => {
-              const event = await integration.createEvent(
-                targetAccount,
-                meetingDetails,
-                meetingDetails.created_at,
-                innerCalendar.calendarId,
-                useParticipants
-              )
-              return event.attendees?.map(attendee => attendee.email)
-            })()
+          const event = await integration.createEvent(
+            targetAccount,
+            meetingDetails,
+            meetingDetails.created_at,
+            innerCalendar.calendarId,
+            useParticipants
           )
+          event.attendees
+            ?.map(attendee => attendee.email)
+            .filter((email): email is string => !!email)
+            .forEach(email => addedEmails.add(email))
+
           useParticipants = false
         }
       }
@@ -98,20 +105,18 @@ const syncCreatedEventWithCalendar = async (
 
       for (const innerCalendar of calendar.calendars!) {
         if (innerCalendar.enabled && innerCalendar.sync) {
-          promises.push(
-            (async () => {
-              const event = await integration.createEvent(
-                targetAccount,
-                meetingDetails,
-                meetingDetails.created_at,
-                innerCalendar.calendarId,
-                useParticipants
-              )
-              return event.attendees?.map(
-                attendee => attendee.emailAddress.address
-              )
-            })()
+          const event = await integration.createEvent(
+            targetAccount,
+            meetingDetails,
+            meetingDetails.created_at,
+            innerCalendar.calendarId,
+            useParticipants
           )
+          event.attendees
+            ?.map(attendee => attendee.emailAddress.address)
+            .filter((email): email is string => !!email)
+            .forEach(email => addedEmails.add(email))
+
           useParticipants = false
         }
       }
@@ -128,36 +133,24 @@ const syncCreatedEventWithCalendar = async (
 
       for (const innerCalendar of calendar.calendars!) {
         if (innerCalendar.enabled && innerCalendar.sync) {
-          promises.push(
-            (async () => {
-              const event = await integration.createEvent(
-                targetAccount,
-                meetingDetails,
-                meetingDetails.created_at,
-                innerCalendar.calendarId,
-                useParticipants
-              )
-              return event.attendees?.map(attendee => attendee.email)
-            })()
+          const event = await integration.createEvent(
+            targetAccount,
+            meetingDetails,
+            meetingDetails.created_at,
+            innerCalendar.calendarId,
+            useParticipants
           )
+          event.attendees
+            ?.map(attendee => attendee.email)
+            .filter((email): email is string => !!email)
+            .forEach(email => addedEmails.add(email))
+
           useParticipants = false
         }
       }
     }
   }
-  const addedEmails = new Set<string>()
-  const resolutions = await Promise.all(promises)
-  const atendees = resolutions
-    .filter(
-      (r): r is string[] =>
-        Array.isArray(r) && r.filter(email => !!email).length > 0
-    )
-    .flat()
-  for (const attendee of atendees) {
-    if (attendee && !addedEmails.has(attendee)) {
-      addedEmails.add(attendee)
-    }
-  }
+
   const participantPromises = []
   for (const participant of meetingDetails.participants) {
     if (
@@ -376,6 +369,45 @@ const syncDeletedEventWithCalendar = async (
     await Promise.all(promises)
   }
 }
+const syncDeletedEventInstanceWithCalendar = async (
+  targetAccount: Account['address'],
+  meetingDetails: DeleteInstanceRequest
+) => {
+  const calendars = await getConnectedCalendars(targetAccount, {
+    syncOnly: true,
+  })
+
+  for (const calendar of calendars) {
+    const integration = getConnectedCalendarIntegration(
+      calendar.account_address,
+      calendar.email,
+      calendar.provider,
+      calendar.payload
+    )
+
+    const promises = []
+
+    for (const innerCalendar of calendar.calendars!) {
+      if (innerCalendar.enabled && innerCalendar.sync) {
+        promises.push(
+          new Promise<void>(async resolve => {
+            try {
+              await integration.deleteEventInstance(
+                innerCalendar.calendarId,
+                meetingDetails
+              )
+            } catch (error) {
+              console.error(error)
+              Sentry.captureException(error)
+            }
+            resolve()
+          })
+        )
+      }
+    }
+    await Promise.all(promises)
+  }
+}
 const getCalendarOrganizer = async (
   meetingDetails: MeetingCreationSyncRequest
 ) => {
@@ -409,7 +441,12 @@ const getCalendarOrganizer = async (
   return calendarOrganizer
 }
 export const ExternalCalendarSync = {
-  cancelInstance: async (targetAccount: Account['address']) => {},
+  deleteInstance: async (
+    targetAccount: Account['address'],
+    meetingDetails: DeleteInstanceRequest
+  ) => {
+    await syncDeletedEventInstanceWithCalendar(targetAccount, meetingDetails)
+  },
   create: async (meetingDetails: MeetingCreationSyncRequest) => {
     const calendarOrganizer = await getCalendarOrganizer(meetingDetails)
     if (!calendarOrganizer || !calendarOrganizer.account_address) {

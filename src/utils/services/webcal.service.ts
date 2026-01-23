@@ -9,6 +9,7 @@ import { rrulestr } from 'rrule'
 import { UnifiedEvent } from '@/types/Calendar'
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import {
+  DeleteInstanceRequest,
   MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
 } from '@/types/Requests'
@@ -483,7 +484,7 @@ export default class WebCalService implements BaseCalendarService {
   }
   deleteEventInstance(
     calendarId: string,
-    meetingDetails: MeetingCancelSyncRequest
+    meetingDetails: DeleteInstanceRequest
   ): Promise<void> {
     console.warn('ICS feeds are read-only. Cannot delete event instances.')
     return Promise.resolve()
