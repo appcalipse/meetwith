@@ -2842,3 +2842,18 @@ export const parsedDecryptedParticipants = async (
     { participants }
   )
 }
+
+export const addUserToPollAfterSignup = async (
+  accountAddress: string,
+  pollId: string,
+  notificationEmail: string
+): Promise<{ participant: QuickPollParticipant }> => {
+  return await internalFetch<{ participant: QuickPollParticipant }>(
+    `/secure/quickpoll/${pollId}/join`,
+    'POST',
+    {
+      account_address: accountAddress,
+      notification_email: notificationEmail,
+    }
+  )
+}

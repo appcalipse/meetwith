@@ -139,7 +139,6 @@ export function QuickPollPickAvailability({
   onSaveAvailability,
   onCancelEditing,
   onSharePoll,
-  onImportCalendar,
   isEditingAvailability,
   isSavingAvailability,
   isRefreshingAvailabilities,
