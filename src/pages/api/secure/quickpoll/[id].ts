@@ -72,7 +72,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         }
       }
 
-      if (updateData.expires_at) {
+      if (
+        updateData.expires_at !== null &&
+        updateData.expires_at !== undefined
+      ) {
         const expiresAt = new Date(updateData.expires_at)
         const now = new Date()
 

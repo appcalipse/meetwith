@@ -6,7 +6,10 @@ import {
 } from '@meta/PaymentAccount'
 import * as Sentry from '@sentry/nextjs'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { getDiscordInfoForAddress } from '@utils/services/discord.helper'
+import {
+  dmAccount,
+  getDiscordInfoForAddress,
+} from '@utils/services/discord.helper'
 import {
   Currency,
   currenciesMap,
@@ -14,7 +17,7 @@ import {
   getChainIdFromOnrampMoneyNetwork,
   getOnrampMoneyTokenAddress,
 } from '@utils/services/onramp.money'
-import { getTelegramUserInfo } from '@utils/services/telegram.helper'
+import { getTelegramUserInfo, sendDm } from '@utils/services/telegram.helper'
 import * as argon2 from 'argon2'
 import { createHash } from 'crypto'
 import CryptoJS from 'crypto-js'
@@ -180,6 +183,7 @@ import {
   SessionType,
   TokenType,
 } from '@/utils/constants/meeting-types'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
   AccountNotFoundError,
   AdminBelowOneError,
@@ -8214,7 +8218,7 @@ const countActiveQuickPolls = async (
     .select('*', { count: 'exact', head: true })
     .in('id', pollIds)
     .eq('status', PollStatus.ONGOING)
-    .gt('expires_at', now)
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
 
   if (error) {
     Sentry.captureException(error)
@@ -8465,16 +8469,65 @@ const createQuickPoll = async (
 
     if (participantsError) throw participantsError
 
-    // Send invitation emails to all participants (excluding the host)
+    // Send invitation emails and notifications to all participants (excluding the host)
     const inviterName =
       ownerAccount.preferences?.name || ellipsizeAddress(owner_address)
+    const pollLink = `${appUrl}/poll/${slug}`
 
     for (const participant of invitees) {
-      if (participant.guest_email) {
+      // Send Discord/Telegram notifications to contacts
+      if (participant.account_address) {
+        try {
+          const notifications = await getAccountNotificationSubscriptions(
+            participant.account_address
+          )
+          const message = `${inviterName} invited you to participate in "${pollData.title}". View the poll and add your availability here: ${pollLink}`
+
+          // Send Discord notification if enabled
+          const discordNotif = notifications.notification_types.find(
+            n => n.channel === NotificationChannel.DISCORD && !n.disabled
+          )
+          if (discordNotif) {
+            try {
+              await dmAccount(
+                participant.account_address,
+                discordNotif.destination,
+                message
+              )
+            } catch (discordError) {
+              Sentry.captureException(discordError)
+            }
+          }
+
+          // Send Telegram notification if enabled
+          const telegramNotif = notifications.notification_types.find(
+            n => n.channel === NotificationChannel.TELEGRAM && !n.disabled
+          )
+          if (telegramNotif) {
+            try {
+              await sendDm(telegramNotif.destination, message)
+            } catch (telegramError) {
+              Sentry.captureException(telegramError)
+            }
+          }
+        } catch (notifError) {
+          Sentry.captureException(notifError)
+        }
+      }
+
+      // Send email invitations
+      const participantEmail =
+        participant.guest_email ||
+        (participant.account_address
+          ? await getAccountNotificationSubscriptionEmail(
+              participant.account_address
+            )
+          : '')
+      if (participantEmail) {
         emailQueue.add(async () => {
           try {
             await sendPollInviteEmail(
-              participant.guest_email,
+              participantEmail,
               inviterName,
               pollData.title,
               slug
@@ -8482,7 +8535,7 @@ const createQuickPoll = async (
             return true
           } catch (error) {
             console.error(
-              `Failed to send invitation email to ${participant.guest_email}:`,
+              `Failed to send invitation email to ${participantEmail}:`,
               error
             )
             return false
@@ -8745,27 +8798,61 @@ const updateQuickPoll = async (
   updates: UpdateQuickPollRequest
 ) => {
   try {
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .select('permissions')
+      .eq('id', pollId)
+      .maybeSingle()
+
+    if (pollError) throw pollError
+    if (!poll) {
+      throw new QuickPollNotFoundError(pollId)
+    }
+
     // Verify the user can edit this poll
     const { data: participant, error: participantError } = await db.supabase
       .from('quick_poll_participants')
       .select('participant_type')
       .eq('poll_id', pollId)
       .eq('account_address', ownerAddress)
-      .in('participant_type', ['scheduler', 'owner'])
       .maybeSingle()
 
-    if (participantError || !participant) {
+    if (participantError) {
       throw new QuickPollUnauthorizedError('You cannot edit this poll')
     }
 
-    // Handle participant updates if provided
-    if (updates.participants) {
-      await updateQuickPollParticipants(pollId, updates.participants)
+    const isScheduler =
+      participant?.participant_type === QuickPollParticipantType.SCHEDULER
+    const hasInvitePermission =
+      poll.permissions?.includes(MeetingPermissions.INVITE_GUESTS) || false
+
+    const { participants: participantUpdates, ...otherUpdates } = updates
+    const hasOtherUpdates = Object.keys(otherUpdates).length > 0
+
+    if (hasOtherUpdates && !isScheduler) {
+      throw new QuickPollUnauthorizedError('You cannot edit this poll')
+    }
+
+    if (!isScheduler) {
+      if (!participantUpdates || !hasInvitePermission || !participant) {
+        throw new QuickPollUnauthorizedError('You cannot edit this poll')
+      }
+      await updateQuickPollParticipants(pollId, participantUpdates)
+      const { data: updatedPoll } = await db.supabase
+        .from('quick_polls')
+        .select('*')
+        .eq('id', pollId)
+        .maybeSingle()
+      return updatedPoll
+    }
+
+    if (participantUpdates && Object.keys(participantUpdates).length > 0) {
+      await updateQuickPollParticipants(pollId, participantUpdates)
     }
 
     const { participants: _, ...pollUpdates } = updates
 
-    const { data: poll, error } = await db.supabase
+    const { data: updatedPoll, error } = await db.supabase
       .from('quick_polls')
       .update({ ...pollUpdates, updated_at: new Date().toISOString() })
       .eq('id', pollId)
@@ -8774,9 +8861,12 @@ const updateQuickPoll = async (
 
     if (error) throw error
 
-    return poll
+    return updatedPoll
   } catch (error) {
-    if (error instanceof QuickPollUnauthorizedError) {
+    if (
+      error instanceof QuickPollUnauthorizedError ||
+      error instanceof QuickPollNotFoundError
+    ) {
       throw error
     }
     throw new QuickPollUpdateError(
@@ -8821,36 +8911,75 @@ const updateQuickPollParticipants = async (
       for (const participantData of participantUpdates.toAdd) {
         try {
           const status =
-            participantData.status || QuickPollParticipantStatus.PENDING
+            participantData.status ||
+            (participantData.account_address
+              ? QuickPollParticipantStatus.ACCEPTED
+              : QuickPollParticipantStatus.PENDING)
           await addQuickPollParticipant(pollId, participantData, status)
 
-          if (status === QuickPollParticipantStatus.PENDING) {
-            const participantEmail =
-              participantData.guest_email ||
-              (participantData.account_address
-                ? await getAccountNotificationSubscriptionEmail(
-                    participantData.account_address
-                  )
-                : '')
-            if (participantEmail) {
-              emailQueue.add(async () => {
+          // Send notifications for contacts added
+          if (participantData.account_address) {
+            try {
+              const notifications = await getAccountNotificationSubscriptions(
+                participantData.account_address
+              )
+              const pollLink = `${appUrl}/poll/${poll.slug}`
+              const message = `${inviterName} invited you to participate in "${poll.title}". View the poll and add your availability here: ${pollLink}`
+
+              // Send Discord notification if enabled
+              const discordNotif = notifications.notification_types.find(
+                n => n.channel === NotificationChannel.DISCORD && !n.disabled
+              )
+              if (discordNotif) {
                 try {
-                  await sendPollInviteEmail(
-                    participantEmail,
-                    inviterName,
-                    poll.title,
-                    poll.slug
+                  await dmAccount(
+                    participantData.account_address,
+                    discordNotif.destination,
+                    message
                   )
-                  return true
-                } catch (emailError) {
-                  console.error(
-                    `Failed to send invitation email to ${participantEmail}:`,
-                    emailError
-                  )
-                  return false
+                } catch (discordError) {
+                  Sentry.captureException(discordError)
                 }
-              })
+              }
+
+              // Send Telegram notification if enabled
+              const telegramNotif = notifications.notification_types.find(
+                n => n.channel === NotificationChannel.TELEGRAM && !n.disabled
+              )
+              if (telegramNotif) {
+                try {
+                  await sendDm(telegramNotif.destination, message)
+                } catch (telegramError) {
+                  Sentry.captureException(telegramError)
+                }
+              }
+            } catch (notifError) {
+              Sentry.captureException(notifError)
             }
+          }
+
+          const participantEmail =
+            participantData.guest_email ||
+            (participantData.account_address
+              ? await getAccountNotificationSubscriptionEmail(
+                  participantData.account_address
+                )
+              : '')
+          if (participantEmail) {
+            emailQueue.add(async () => {
+              try {
+                await sendPollInviteEmail(
+                  participantEmail,
+                  inviterName,
+                  poll.title,
+                  poll.slug
+                )
+                return true
+              } catch (emailError) {
+                Sentry.captureException(emailError)
+                return false
+              }
+            })
           }
         } catch (addError) {
           throw addError
@@ -8933,6 +9062,7 @@ const expireStalePolls = async () => {
       .from('quick_polls')
       .update({ status: PollStatus.EXPIRED, updated_at: now })
       .eq('status', PollStatus.ONGOING)
+      .not('expires_at', 'is', null)
       .lt('expires_at', now)
       .select('id')
 
@@ -8984,6 +9114,67 @@ const updateQuickPollParticipantStatus = async (
     }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    // Notify host when email invite accepts
+    if (
+      status === QuickPollParticipantStatus.ACCEPTED &&
+      participant.guest_email &&
+      !participant.account_address
+    ) {
+      try {
+        // Get poll details
+        const { data: poll } = await db.supabase
+          .from('quick_polls')
+          .select('title, slug')
+          .eq('id', participant.poll_id)
+          .maybeSingle()
+
+        // Get host info
+        const { data: hostParticipant } = await db.supabase
+          .from('quick_poll_participants')
+          .select('account_address, guest_name')
+          .eq('poll_id', participant.poll_id)
+          .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+          .maybeSingle()
+
+        if (poll && hostParticipant?.account_address) {
+          const hostAddress = hostParticipant.account_address
+          const notifications = await getAccountNotificationSubscriptions(
+            hostAddress
+          )
+          const participantName =
+            participant.guest_name || participant.guest_email
+          const pollLink = `${appUrl}/poll/${poll.slug}`
+          const message = `${participantName} has accepted your invitation to participate in "${poll.title}". View the poll here: ${pollLink}`
+
+          // Send Discord notification if enabled
+          const discordNotif = notifications.notification_types.find(
+            n => n.channel === NotificationChannel.DISCORD && !n.disabled
+          )
+          if (discordNotif) {
+            try {
+              await dmAccount(hostAddress, discordNotif.destination, message)
+            } catch (discordError) {
+              Sentry.captureException(discordError)
+            }
+          }
+
+          // Send Telegram notification if enabled
+          const telegramNotif = notifications.notification_types.find(
+            n => n.channel === NotificationChannel.TELEGRAM && !n.disabled
+          )
+          if (telegramNotif) {
+            try {
+              await sendDm(telegramNotif.destination, message)
+            } catch (telegramError) {
+              Sentry.captureException(telegramError)
+            }
+          }
+        }
+      } catch (notifError) {
+        Sentry.captureException(notifError)
+      }
     }
 
     return participant
@@ -9411,6 +9602,47 @@ const getQuickPollParticipantByIdentifier = async (
     )
   }
 }
+
+const findQuickPollParticipantByIdentifier = async (
+  pollId: string,
+  identifier: string
+) => {
+  try {
+    return await getQuickPollParticipantByIdentifier(pollId, identifier)
+  } catch (err: unknown) {
+    if (err instanceof QuickPollParticipantNotFoundError) {
+      return null
+    }
+    throw err
+  }
+}
+
+const linkQuickPollParticipantAccount = async (
+  participantId: string,
+  accountAddress: string
+) => {
+  try {
+    const { data: updatedParticipant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update({
+        account_address: accountAddress.toLowerCase(),
+        status: QuickPollParticipantStatus.ACCEPTED,
+      })
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return updatedParticipant
+  } catch (error) {
+    throw new QuickPollUpdateError(
+      error instanceof Error
+        ? error.message
+        : 'Failed to link account to participant'
+    )
+  }
+}
+
 const getActivePaymentAccountDB = async (
   account_address: string,
   provider = PaymentProvider.STRIPE
@@ -10464,6 +10696,7 @@ export {
   getQuickPollCalendars,
   getQuickPollParticipantById,
   getQuickPollParticipantByIdentifier,
+  findQuickPollParticipantByIdentifier,
   getQuickPollParticipants,
   getQuickPollsForAccount,
   getSlotById,
@@ -10498,6 +10731,7 @@ export {
   isSlotAvailable as isSlotFree,
   isUserContact,
   leaveGroup,
+  linkQuickPollParticipantAccount,
   linkTransactionToStripeSubscription,
   manageGroupInvite,
   parseParticipantSlots,

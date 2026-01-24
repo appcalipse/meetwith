@@ -88,6 +88,9 @@ export const colors = {
     400: '#FF9500',
     600: '#F9E800',
   },
+  blue: {
+    400: '#2F89F8',
+  },
 }
 
 const newTheme = {

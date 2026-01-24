@@ -14,7 +14,14 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react'
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import PublicGroupLink from '@/components/group/PublicGroupLink'
@@ -42,6 +49,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 import AddFromContact from './AddFromContact'
 import AddFromGroups from './AddFromGroups'
 import AllMeetingParticipants from './AllMeetingParticipants'
+import PollInviteSection from './PollInviteSection'
 
 interface IProps {
   isOpen: boolean
@@ -95,6 +103,9 @@ const InviteParticipants: FC<IProps> = ({
   const [standAloneParticipants, setStandAloneParticipants] = useState<
     Array<ParticipantInfo>
   >([])
+  const [inviteParticipants, setInviteParticipants] = useState<
+    Array<ParticipantInfo>
+  >([])
   const [groupParticipants, setGroupParticipants] = useState<
     Record<string, Array<string> | undefined>
   >(defaultGroupParticipants)
@@ -109,40 +120,64 @@ const InviteParticipants: FC<IProps> = ({
   const { showSuccessToast } = useToastHelpers()
 
   const [baselineIds, setBaselineIds] = useState<Set<string>>(new Set())
-  const toIdentifier = (p: ParticipantInfo) =>
-    (p.account_address || p.guest_email || '').toLowerCase()
+  const baselineInitializedRef = useRef(false)
+  const prevInviteIdsRef = useRef<Set<string>>(new Set())
+  const toIdentifier = (p: ParticipantInfo | IGroupParticipant): string => {
+    if (isGroupParticipant(p)) {
+      return ''
+    }
+    return (p.account_address || p.guest_email || '').toLowerCase()
+  }
 
   const combinedSelection = useMemo(() => {
+    if (isQuickPoll) {
+      const fromContacts = participants.filter(
+        (p): p is ParticipantInfo =>
+          !isGroupParticipant(p) && !!p.account_address
+      )
+      return [...fromContacts, ...inviteParticipants]
+    }
     const merged = getMergedParticipants(
       participants ?? [],
       groups,
       groupParticipants ?? {},
       undefined
     )
-    const fromContext = merged.filter(p => !!p.account_address)
+    const fromContext = merged.filter(
+      (p): p is ParticipantInfo => !!p.account_address
+    )
     return [...fromContext, ...standAloneParticipants]
-  }, [groupParticipants, groups, standAloneParticipants])
+  }, [
+    groupParticipants,
+    groups,
+    standAloneParticipants,
+    inviteParticipants,
+    participants,
+    isQuickPoll,
+  ])
 
   const newInvitees = useMemo(() => {
     if (!baselineIds) return combinedSelection
-    return combinedSelection.filter(p => {
+    return combinedSelection.filter((p): p is ParticipantInfo => {
       const id = toIdentifier(p)
       return !!id && !baselineIds.has(id)
     })
-  }, [combinedSelection, baselineIds])
+  }, [combinedSelection, baselineIds, toIdentifier])
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !baselineInitializedRef.current) {
       const ids = new Set<string>()
       combinedSelection.forEach(p => {
         const id = toIdentifier(p)
         if (id) ids.add(id)
       })
       setBaselineIds(ids)
-    } else {
+      baselineInitializedRef.current = true
+    } else if (!isOpen) {
       setBaselineIds(new Set())
+      baselineInitializedRef.current = false
     }
-  }, [isOpen])
+  }, [isOpen, combinedSelection, toIdentifier])
 
   const addGroup = (group: IGroupParticipant) => {
     setParticipants(prev => {
@@ -246,35 +281,65 @@ const InviteParticipants: FC<IProps> = ({
   )
 
   const handleQuickPollSaveChanges = useCallback(async () => {
-    if (!pollData) return
+    if (!pollData) {
+      hanleClose()
+      return
+    }
 
+    // For existing polls, add participants and send invites
     setIsLoading(true)
     try {
-      if (newInvitees.length === 0) {
+      const allToAdd: ParticipantInfo[] = [
+        ...newInvitees.filter((p): p is ParticipantInfo => !!p.account_address), // Contacts added
+        ...inviteParticipants,
+      ]
+
+      if (allToAdd.length === 0 && inviteParticipants.length === 0) {
         setIsLoading(false)
         hanleClose()
         return
       }
 
-      const toAdd = newInvitees.map(p => ({
+      const toAdd = allToAdd.map(p => ({
         account_address: p.account_address,
         guest_name: p.name,
         guest_email: p.guest_email || '',
         participant_type: QuickPollParticipantType.INVITEE,
-        status: QuickPollParticipantStatus.ACCEPTED,
+        status: p.account_address
+          ? QuickPollParticipantStatus.ACCEPTED
+          : QuickPollParticipantStatus.PENDING,
       }))
 
       await updateQuickPoll(pollData.poll.id, {
         participants: { toAdd },
       })
 
-      showSuccessToast(
-        'Participants added successfully',
-        `${toAdd.length} participant${toAdd.length > 1 ? 's' : ''} ${
-          toAdd.length === 1 ? 'has' : 'have'
-        } been added to the poll.`
-      )
+      const totalCount = toAdd.length
+      const hasContacts = newInvitees.length > 0
+      const hasInvites = inviteParticipants.length > 0
 
+      let title = 'Participants added successfully'
+      let description = `${totalCount} participant${
+        totalCount > 1 ? 's' : ''
+      } ${totalCount === 1 ? 'has' : 'have'} been added to the poll.`
+
+      if (hasInvites && hasContacts) {
+        title = 'Participants added and invites sent'
+        description = `${newInvitees.length} contact${
+          newInvitees.length > 1 ? 's' : ''
+        } added and ${inviteParticipants.length} invite${
+          inviteParticipants.length > 1 ? 's' : ''
+        } sent.`
+      } else if (hasInvites) {
+        title = 'Invitations sent successfully'
+        description = `${totalCount} invitation${totalCount > 1 ? 's' : ''} ${
+          totalCount === 1 ? 'has' : 'have'
+        } been sent.`
+      }
+
+      showSuccessToast(title, description)
+
+      setInviteParticipants([])
       onInviteSuccess?.()
       hanleClose()
     } catch (error) {
@@ -282,7 +347,13 @@ const InviteParticipants: FC<IProps> = ({
     } finally {
       setIsLoading(false)
     }
-  }, [pollData, newInvitees, onInviteSuccess, showSuccessToast])
+  }, [
+    pollData,
+    newInvitees,
+    inviteParticipants,
+    onInviteSuccess,
+    showSuccessToast,
+  ])
   const hanleClose = () => {
     handleUpdateParticipants(participants)
     handleUpdateGroups(groupAvailability, groupParticipants)
@@ -306,6 +377,57 @@ const InviteParticipants: FC<IProps> = ({
       return p.guest_email!
     }
   }, [])
+
+  const onInviteParticipantsChange = useCallback(
+    (_participants: Array<ParticipantInfo>) => {
+      setInviteParticipants(_participants)
+
+      const newInviteIds = new Set(
+        _participants
+          .map(
+            p =>
+              p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+          )
+          .filter((id): id is string => !!id)
+      )
+
+      const removedIds = new Set(
+        [...prevInviteIdsRef.current].filter(id => !newInviteIds.has(id))
+      )
+
+      setParticipants(prev => {
+        const filtered = prev.filter(p => {
+          if (isGroupParticipant(p)) return true
+          const id =
+            p.account_address?.toLowerCase() ||
+            p.guest_email?.toLowerCase() ||
+            ''
+          return !removedIds.has(id)
+        })
+
+        const existingIds = new Set(
+          filtered
+            .filter((p): p is ParticipantInfo => !isGroupParticipant(p))
+            .map(
+              p =>
+                p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+            )
+            .filter((id): id is string => !!id)
+        )
+
+        const newParticipantsToAdd = _participants.filter(p => {
+          const id =
+            p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+          return id && !existingIds.has(id)
+        })
+
+        return [...filtered, ...newParticipantsToAdd]
+      })
+
+      prevInviteIdsRef.current = newInviteIds
+    },
+    []
+  )
   const context: IParticipantsContext = {
     participants,
     standAloneParticipants,
@@ -359,15 +481,29 @@ const InviteParticipants: FC<IProps> = ({
             </Heading>
             <AllMeetingParticipants />
             <Divider my={6} borderColor="neutral.400" />
-            <Heading fontSize="22px" pb={2} mb={4}>
-              Add participants from groups/contacts
-            </Heading>
-            <AddFromGroups />
-            <Divider my={6} borderColor="neutral.400" />
-            <AddFromContact />
-
-            {!isQuickPoll && (
+            {isQuickPoll ? (
+              <PollInviteSection
+                pollData={pollData}
+                inviteParticipants={inviteParticipants}
+                onInviteParticipantsChange={onInviteParticipantsChange}
+                onSendInvite={handleSaveChangesClick}
+                isLoading={isLoading}
+                isDisabled={
+                  isLoading ||
+                  (newInvitees.filter(
+                    (p): p is ParticipantInfo => !!p.account_address
+                  ).length === 0 &&
+                    inviteParticipants.length === 0)
+                }
+              />
+            ) : (
               <>
+                <Heading fontSize="22px" pb={2} mb={4}>
+                  Add participants from groups/contacts
+                </Heading>
+                <AddFromGroups />
+                <Divider my={6} borderColor="neutral.400" />
+                <AddFromContact />
                 <Divider my={6} borderColor="neutral.400" />
                 <FormControl w="100%" maxW="100%">
                   <FormLabel htmlFor="participants">
@@ -389,24 +525,20 @@ const InviteParticipants: FC<IProps> = ({
                     </Text>
                   </FormHelperText>
                 </FormControl>
+                <Button
+                  mt={6}
+                  w="fit-content"
+                  colorScheme="primary"
+                  onClick={handleSaveChangesClick}
+                >
+                  Save Changes
+                </Button>
+                {groupId && (
+                  <Box mt={6}>
+                    <PublicGroupLink groupId={groupId} />
+                  </Box>
+                )}
               </>
-            )}
-
-            <Button
-              mt={6}
-              w="fit-content"
-              colorScheme="primary"
-              onClick={handleSaveChangesClick}
-              isLoading={isQuickPoll ? isLoading : false}
-              isDisabled={isQuickPoll ? isLoading : false}
-            >
-              Save Changes
-            </Button>
-
-            {groupId && (
-              <Box mt={6}>
-                <PublicGroupLink groupId={groupId} />
-              </Box>
             )}
           </ModalBody>
         </ModalContent>

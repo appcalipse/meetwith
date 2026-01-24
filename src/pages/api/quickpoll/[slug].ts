@@ -12,6 +12,11 @@ import {
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method, query } = req
+
+  if (method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   const slug = query.slug as string
 
   if (!slug) {
@@ -22,11 +27,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const result = await getQuickPollBySlug(slug)
 
     // Check if poll is expired or has ended
-    const now = new Date()
-    const expiresAt = new Date(result.poll.expires_at)
+    if (result.poll.expires_at !== null) {
+      const now = new Date()
+      const expiresAt = new Date(result.poll.expires_at)
 
-    if (now > expiresAt) {
-      throw new QuickPollExpiredError()
+      if (now > expiresAt) {
+        throw new QuickPollExpiredError()
+      }
     }
 
     if (result.poll.status === PollStatus.COMPLETED) {

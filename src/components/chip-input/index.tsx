@@ -176,8 +176,8 @@ export const ChipInput: React.FC<ChipInputProps> = ({
         inputProps?.isInvalid
           ? inputProps?.errorBorderColor
           : focused
-            ? hoverColor
-            : borderColor
+          ? hoverColor
+          : borderColor
       }
       boxShadow={focused ? `0 0 0 1px ${hoverColor}` : 'none'}
       borderRadius={'md'}
@@ -194,7 +194,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       width="100%"
     >
       {badges}
-      <Box pos="relative">
+      <Box pos="relative" flex={1} width="100%">
         <Input
           size={size}
           display={'inline-block'}
@@ -210,6 +210,8 @@ export const ChipInput: React.FC<ChipInputProps> = ({
           _placeholder={{
             color: 'neutral.400',
           }}
+          flex={1}
+          width="100%"
           {...inputProps}
         />
         {button}

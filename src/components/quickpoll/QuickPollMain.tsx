@@ -53,7 +53,7 @@ const QuickPollMain: React.FC<QuickPollMainProps> = ({
     <Tabs index={currentPage} isLazy>
       <TabPanels>
         <TabPanel p={0}>
-          <Box px={{ base: 0, md: 8 }} py={20}>
+          <Box px={{ base: 0, md: 8 }} py={12}>
             <QuickPollAvailabilityDiscover
               pollId={pollId}
               pollData={pollData}
