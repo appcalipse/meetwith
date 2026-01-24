@@ -20,7 +20,7 @@ import { Select, SingleValue } from 'chakra-react-select'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
 import { MdShare } from 'react-icons/md'
@@ -30,6 +30,7 @@ import InfoTooltip from '@/components/profile/components/Tooltip'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useDebounceCallback } from '@/hooks/useDebounceCallback'
 import useSlotsWithAvailability from '@/hooks/useSlotsWithAvailability'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import {
   Page,
@@ -68,10 +69,12 @@ import {
 } from '@/utils/quickpoll_helper'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { getEmptySlots } from '@/utils/slots.helper'
+import { saveQuickPollSignInContext } from '@/utils/storage'
 
 import { useAvailabilityTracker } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
 import { AccountAddressRecord } from '../schedule/schedule-time-discover/SchedulePickTime'
+import ChooseAvailabilityMethodModal from './ChooseAvailabilityMethodModal'
 import { QuickPollParticipationInstructions } from './QuickPollParticipationInstructions'
 
 export enum State {
@@ -156,6 +159,8 @@ export function QuickPollPickAvailability({
   const currentAccount = useAccountContext()
   const { currentGuestEmail, currentParticipantId } = useQuickPollAvailability()
   const { loadSlots } = useAvailabilityTracker()
+  const { openConnection } = useContext(OnboardingModalContext)
+  const [showMethodModal, setShowMethodModal] = useState(false)
 
   const isHost = useMemo(() => {
     if (!pollData || !currentAccount) return false
@@ -1072,6 +1077,33 @@ export function QuickPollPickAvailability({
     }
   }
 
+  const handleAvailabilityButtonClick = () => {
+    if (currentAccount) {
+      onSaveAvailability?.()
+    } else {
+      setShowMethodModal(true)
+    }
+  }
+
+  const handleSelectManual = () => {
+    setShowMethodModal(false)
+    onSaveAvailability?.()
+  }
+
+  const handleSelectImport = () => {
+    setShowMethodModal(false)
+    if (!pollData?.poll) return
+
+    saveQuickPollSignInContext({
+      pollSlug: pollData.poll.slug,
+      pollId: pollData.poll.id,
+      pollTitle: pollData.poll.title,
+      returnUrl: window.location.href,
+    })
+
+    openConnection()
+  }
+
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
@@ -1119,21 +1151,28 @@ export function QuickPollPickAvailability({
         >
           {onSaveAvailability && isEditAvailabilityIntent && (
             <HStack spacing={3}>
-              <Button
-                colorScheme="primary"
-                onClick={onSaveAvailability}
-                px="16px"
-                py="8px"
-                fontSize="16px"
-                fontWeight="700"
-                borderRadius="8px"
-                width="230px"
-                isLoading={isSavingAvailability}
-                loadingText="Saving..."
-                isDisabled={isSavingAvailability}
+              <ChooseAvailabilityMethodModal
+                isOpen={showMethodModal}
+                onClose={() => setShowMethodModal(false)}
+                onSelectManual={handleSelectManual}
+                onSelectImport={handleSelectImport}
               >
-                {getAvailabilityButtonText()}
-              </Button>
+                <Button
+                  colorScheme="primary"
+                  onClick={handleAvailabilityButtonClick}
+                  px="16px"
+                  py="8px"
+                  fontSize="16px"
+                  fontWeight="700"
+                  borderRadius="8px"
+                  width="230px"
+                  isLoading={isSavingAvailability}
+                  loadingText="Saving..."
+                  isDisabled={isSavingAvailability}
+                >
+                  {getAvailabilityButtonText()}
+                </Button>
+              </ChooseAvailabilityMethodModal>
               {isEditingAvailability && onCancelEditing && (
                 <Button
                   variant="outline"
@@ -1253,21 +1292,28 @@ export function QuickPollPickAvailability({
         <VStack gap={3} w="100%" display={{ base: 'flex', md: 'none' }}>
           {onSaveAvailability && (
             <>
-              <Button
-                colorScheme="primary"
-                size="md"
-                w="100%"
-                py={3}
-                fontSize="16px"
-                fontWeight="600"
-                borderRadius="8px"
-                onClick={onSaveAvailability}
-                isLoading={isSavingAvailability}
-                loadingText="Saving..."
-                isDisabled={isSavingAvailability}
+              <ChooseAvailabilityMethodModal
+                isOpen={showMethodModal}
+                onClose={() => setShowMethodModal(false)}
+                onSelectManual={handleSelectManual}
+                onSelectImport={handleSelectImport}
               >
-                {getAvailabilityButtonText()}
-              </Button>
+                <Button
+                  colorScheme="primary"
+                  size="md"
+                  w="100%"
+                  py={3}
+                  fontSize="16px"
+                  fontWeight="600"
+                  borderRadius="8px"
+                  onClick={handleAvailabilityButtonClick}
+                  isLoading={isSavingAvailability}
+                  loadingText="Saving..."
+                  isDisabled={isSavingAvailability}
+                >
+                  {getAvailabilityButtonText()}
+                </Button>
+              </ChooseAvailabilityMethodModal>
               {isEditingAvailability && onCancelEditing && (
                 <Button
                   variant="outline"
@@ -1285,20 +1331,6 @@ export function QuickPollPickAvailability({
                 </Button>
               )}
             </>
-          )}
-          {onImportCalendar && !isSchedulingIntent && (
-            <Button
-              variant="outline"
-              colorScheme="primary"
-              onClick={onImportCalendar}
-              w="100%"
-              py={3}
-              fontSize="16px"
-              fontWeight="600"
-              borderRadius="8px"
-            >
-              Import from calendar
-            </Button>
           )}
           {onSharePoll && (
             <Button
@@ -1468,16 +1500,6 @@ export function QuickPollPickAvailability({
                   isDisabled={isBackDisabled}
                   gap={0}
                 />
-                {onImportCalendar && !isSchedulingIntent && (
-                  <Button
-                    variant="outline"
-                    colorScheme="primary"
-                    onClick={onImportCalendar}
-                    display={{ lg: 'block', base: 'none' }}
-                  >
-                    Import from calendar
-                  </Button>
-                )}
                 {isHost && isSchedulingIntent && (
                   <Button
                     colorScheme="primary"

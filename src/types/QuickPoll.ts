@@ -232,3 +232,11 @@ export interface GuestPollDetails {
   email: string
   name: string
 }
+
+export interface QuickPollSignInContext {
+  pollSlug: string
+  pollId: string
+  pollTitle: string
+  returnUrl: string
+  timestamp: number
+}

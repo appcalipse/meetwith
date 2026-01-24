@@ -156,3 +156,6 @@ export {
   WEBHOOK_URL,
   YEAR_DURATION_IN_SECONDS,
 }
+
+export const QUICKPOLL_SIGNIN_CONTEXT_KEY = 'quickpoll_signin_context'
+export const CONTEXT_EXPIRY_MS = 30 * 60 * 1000 // 30 minutes
