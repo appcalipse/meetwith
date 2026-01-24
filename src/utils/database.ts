@@ -9601,6 +9601,47 @@ const getQuickPollParticipantByIdentifier = async (
     )
   }
 }
+
+const findQuickPollParticipantByIdentifier = async (
+  pollId: string,
+  identifier: string
+) => {
+  try {
+    return await getQuickPollParticipantByIdentifier(pollId, identifier)
+  } catch (err: unknown) {
+    if (err instanceof QuickPollParticipantNotFoundError) {
+      return null
+    }
+    throw err
+  }
+}
+
+const linkQuickPollParticipantAccount = async (
+  participantId: string,
+  accountAddress: string
+) => {
+  try {
+    const { data: updatedParticipant, error } = await db.supabase
+      .from('quick_poll_participants')
+      .update({
+        account_address: accountAddress.toLowerCase(),
+        status: QuickPollParticipantStatus.ACCEPTED,
+      })
+      .eq('id', participantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return updatedParticipant
+  } catch (error) {
+    throw new QuickPollUpdateError(
+      error instanceof Error
+        ? error.message
+        : 'Failed to link account to participant'
+    )
+  }
+}
+
 const getActivePaymentAccountDB = async (
   account_address: string,
   provider = PaymentProvider.STRIPE
@@ -10632,6 +10673,7 @@ export {
   getQuickPollCalendars,
   getQuickPollParticipantById,
   getQuickPollParticipantByIdentifier,
+  findQuickPollParticipantByIdentifier,
   getQuickPollParticipants,
   getQuickPollsForAccount,
   getSlotById,
@@ -10666,6 +10708,7 @@ export {
   isSlotAvailable as isSlotFree,
   isUserContact,
   leaveGroup,
+  linkQuickPollParticipantAccount,
   linkTransactionToStripeSubscription,
   manageGroupInvite,
   parseParticipantSlots,
