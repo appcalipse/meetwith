@@ -29,7 +29,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const pollId = query.id as string
-  const { notification_email } = body
+  const { notification_email, display_name } = body
 
   if (!pollId) {
     return res.status(400).json({ error: 'Poll ID is required' })
@@ -80,7 +80,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         {
           account_address: address.toLowerCase(),
           guest_email: notification_email || '',
-          guest_name: req.session.account?.preferences?.name || 'Guest',
+          guest_name:
+            display_name || req.session.account?.preferences?.name || 'Guest',
           participant_type: QuickPollParticipantType.INVITEE,
         },
         QuickPollParticipantStatus.ACCEPTED

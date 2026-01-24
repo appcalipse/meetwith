@@ -493,7 +493,8 @@ const OnboardingModal = () => {
           await addUserToPollAfterSignup(
             currentAccount.address,
             pollContext.pollId,
-            email
+            email,
+            name
           )
 
           clearQuickPollSignInContext()
