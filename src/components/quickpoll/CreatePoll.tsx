@@ -38,7 +38,7 @@ import React, {
   useState,
 } from 'react'
 import { FaArrowLeft, FaChevronDown } from 'react-icons/fa'
-import { FiArrowLeft } from 'react-icons/fi'
+import { FiArrowLeft, FiCheck } from 'react-icons/fi'
 import { HiOutlineUserAdd } from 'react-icons/hi'
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
@@ -170,6 +170,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
     MeetingPermissions.SCHEDULE_MEETING,
     MeetingPermissions.SEE_GUEST_LIST,
+    MeetingPermissions.INVITE_GUESTS,
   ])
   const [removeExpiryDate, setRemoveExpiryDate] = useState(false)
 
@@ -247,6 +248,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const router = useRouter()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const iconColor = useColorModeValue('#181F24', 'white')
+  const chevronColor = useColorModeValue('neutral.700', 'neutral.0')
+  const menuTextColor = useColorModeValue('neutral.800', 'neutral.0')
+  const menuBg = useColorModeValue('neutral.50', 'neutral.450')
 
   // Fetch poll data when in edit mode
   const {
@@ -708,6 +712,44 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     ]
   )
 
+  const isLoading =
+    createPollMutation.isLoading ||
+    updatePollMutation.isLoading ||
+    cancelPollMutation.isLoading
+
+  const handleRemovePermission = useCallback(
+    (permissionValue: string) => {
+      if (!isLoading) {
+        setSelectedPermissions(
+          prev => prev?.filter(p => p !== permissionValue) || []
+        )
+      }
+    },
+    [isLoading]
+  )
+
+  const handleChipClick = useCallback(
+    (e: React.MouseEvent, permissionValue: string) => {
+      e.stopPropagation()
+      handleRemovePermission(permissionValue)
+    },
+    [handleRemovePermission]
+  )
+
+  const handleTogglePermission = useCallback(
+    (permissionValue: string) => {
+      const isSelected = selectedPermissions?.includes(permissionValue)
+      if (isSelected) {
+        setSelectedPermissions(
+          prev => prev?.filter(p => p !== permissionValue) || []
+        )
+      } else {
+        setSelectedPermissions(prev => (prev || []).concat(permissionValue))
+      }
+    },
+    [selectedPermissions]
+  )
+
   // Show loading when fetching poll data in edit mode
   if (isEditMode && isPollLoading) {
     return (
@@ -758,44 +800,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       </Box>
     )
   }
-
-  const isLoading =
-    createPollMutation.isLoading ||
-    updatePollMutation.isLoading ||
-    cancelPollMutation.isLoading
-
-  const handleRemovePermission = useCallback(
-    (permissionValue: string) => {
-      if (!isLoading) {
-        setSelectedPermissions(
-          prev => prev?.filter(p => p !== permissionValue) || []
-        )
-      }
-    },
-    [isLoading]
-  )
-
-  const handleChipClick = useCallback(
-    (e: React.MouseEvent, permissionValue: string) => {
-      e.stopPropagation()
-      handleRemovePermission(permissionValue)
-    },
-    [handleRemovePermission]
-  )
-
-  const handleTogglePermission = useCallback(
-    (permissionValue: string) => {
-      const isSelected = selectedPermissions?.includes(permissionValue)
-      if (isSelected) {
-        setSelectedPermissions(
-          prev => prev?.filter(p => p !== permissionValue) || []
-        )
-      } else {
-        setSelectedPermissions(prev => (prev || []).concat(permissionValue))
-      }
-    },
-    [selectedPermissions]
-  )
 
   return (
     <Box
@@ -1153,7 +1157,19 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   cursor="pointer"
                   zIndex={0}
                 />
-                <MenuList bg="bg-surface" borderColor="neutral.400">
+                <MenuList
+                  bg={menuBg}
+                  borderColor="border-default"
+                  borderWidth="1px"
+                  borderRadius="7px"
+                  shadow="none"
+                  boxShadow="none"
+                  p={0}
+                  mt={2}
+                  w={{ base: '100%', md: '450px' }}
+                  minW={{ base: '100%', md: '450px' }}
+                  maxW={{ base: 'calc(100vw - 32px)', md: '450px' }}
+                >
                   {QuickPollPermissionsList.map(permission => {
                     const isSelected = selectedPermissions?.includes(
                       permission.value
@@ -1161,15 +1177,36 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                     return (
                       <MenuItem
                         key={permission.value}
-                        bg={isSelected ? 'neutral.800' : 'transparent'}
-                        _hover={{ bg: 'neutral.700' }}
+                        bg="transparent"
+                        color={menuTextColor}
+                        _hover={{ bg: 'menu-item-hover' }}
+                        _active={{ bg: 'menu-item-hover' }}
+                        _focus={{ bg: 'menu-item-hover' }}
+                        py="14px"
+                        px="14px"
+                        fontSize="md"
+                        fontWeight="500"
                         onClick={() => handleTogglePermission(permission.value)}
                       >
-                        <HStack gap={2} w="100%">
-                          <Text>{permission.label}</Text>
-                          {permission.info && (
-                            <InfoTooltip text={permission.info} />
-                          )}
+                        <HStack w="100%" justify="space-between" align="center">
+                          <Text color={menuTextColor}>{permission.label}</Text>
+                          <Box
+                            w="24px"
+                            h="24px"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="flex-end"
+                            flexShrink={0}
+                          >
+                            {isSelected && (
+                              <Icon
+                                as={FiCheck}
+                                w="20px"
+                                h="20px"
+                                color={menuTextColor}
+                              />
+                            )}
+                          </Box>
                         </HStack>
                       </MenuItem>
                     )
@@ -1188,7 +1225,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               )}
               <Icon
                 as={FaChevronDown}
-                color="white"
+                color={chevronColor}
                 position="absolute"
                 right={3}
                 top="50%"

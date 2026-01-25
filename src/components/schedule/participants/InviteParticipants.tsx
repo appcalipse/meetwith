@@ -122,12 +122,15 @@ const InviteParticipants: FC<IProps> = ({
   const [baselineIds, setBaselineIds] = useState<Set<string>>(new Set())
   const baselineInitializedRef = useRef(false)
   const prevInviteIdsRef = useRef<Set<string>>(new Set())
-  const toIdentifier = (p: ParticipantInfo | IGroupParticipant): string => {
-    if (isGroupParticipant(p)) {
-      return ''
-    }
-    return (p.account_address || p.guest_email || '').toLowerCase()
-  }
+  const toIdentifier = useCallback(
+    (p: ParticipantInfo | IGroupParticipant): string => {
+      if (isGroupParticipant(p)) {
+        return ''
+      }
+      return (p.account_address || p.guest_email || '').toLowerCase()
+    },
+    []
+  )
 
   const combinedSelection = useMemo(() => {
     if (isQuickPoll) {
@@ -173,7 +176,7 @@ const InviteParticipants: FC<IProps> = ({
       })
       setBaselineIds(ids)
       baselineInitializedRef.current = true
-    } else if (!isOpen) {
+    } else if (!isOpen && baselineInitializedRef.current) {
       setBaselineIds(new Set())
       baselineInitializedRef.current = false
     }
