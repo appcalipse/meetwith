@@ -775,6 +775,14 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     [isLoading]
   )
 
+  const handleChipClick = useCallback(
+    (e: React.MouseEvent, permissionValue: string) => {
+      e.stopPropagation()
+      handleRemovePermission(permissionValue)
+    },
+    [handleRemovePermission]
+  )
+
   const handleTogglePermission = useCallback(
     (permissionValue: string) => {
       const isSelected = selectedPermissions?.includes(permissionValue)
@@ -1111,6 +1119,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   pr={8}
                   position="relative"
                   zIndex={1}
+                  pointerEvents="none"
                 >
                   {selectedPermissions.map(permissionValue => {
                     const permission = QuickPollPermissionsList.find(
@@ -1122,7 +1131,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                         key={permission.value}
                         display="inline-block"
                         cursor="pointer"
-                        onClick={() => handleRemovePermission(permission.value)}
+                        pointerEvents="auto"
+                        onClick={e => handleChipClick(e, permission.value)}
                       >
                         <BadgeChip allowRemove={!isLoading}>
                           {permission.label}
