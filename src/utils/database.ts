@@ -6,7 +6,10 @@ import {
 } from '@meta/PaymentAccount'
 import * as Sentry from '@sentry/nextjs'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { getDiscordInfoForAddress } from '@utils/services/discord.helper'
+import {
+  dmAccount,
+  getDiscordInfoForAddress,
+} from '@utils/services/discord.helper'
 import {
   Currency,
   currenciesMap,
@@ -14,7 +17,7 @@ import {
   getChainIdFromOnrampMoneyNetwork,
   getOnrampMoneyTokenAddress,
 } from '@utils/services/onramp.money'
-import { getTelegramUserInfo } from '@utils/services/telegram.helper'
+import { getTelegramUserInfo, sendDm } from '@utils/services/telegram.helper'
 import * as argon2 from 'argon2'
 import { createHash } from 'crypto'
 import CryptoJS from 'crypto-js'
