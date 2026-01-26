@@ -7355,7 +7355,7 @@ const handleWebhookEvent = async (
       (!!meeting.id && recurringIdSet.has(extractBaseId(meeting.id)))
     )
   }
-  const _recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
+  const recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
     meeting => !!meeting.recurringEventId || !!meeting.recurrence // only consider events with recurringEventId
   )
   const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
