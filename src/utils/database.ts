@@ -7474,10 +7474,19 @@ const handleSyncRecurringEvents = async (
 
   const masterPromises = Array.from(masterBatch.keys()).map(async meetingId => {
     const masterEvents = masterBatch.get(meetingId)?.sort((a, b) => {
-      const timeA = a.start?.dateTime ? new Date(a.start.dateTime).getTime() : 0
-      const timeB = b.start?.dateTime ? new Date(b.start.dateTime).getTime() : 0
+      const timeA = a.created
+        ? new Date(a.created).getTime()
+        : a.start?.dateTime
+        ? new Date(a.start.dateTime).getTime()
+        : 0
+      const timeB = b.created
+        ? new Date(b.created).getTime()
+        : b.start?.dateTime
+        ? new Date(b.start.dateTime).getTime()
+        : 0
       return timeA - timeB
     })
+
     for (const masterEvent of masterEvents || []) {
       const startTime = masterEvent?.start?.dateTime
       const endTime = masterEvent?.end?.dateTime
