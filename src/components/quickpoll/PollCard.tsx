@@ -38,6 +38,7 @@ import {
 } from '@/types/QuickPoll'
 import { deleteQuickPoll, updateQuickPoll } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import { formatPollDateRange, formatPollSingleDate } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { queryClient } from '@/utils/react_query'
@@ -68,7 +69,11 @@ const PollCard = ({
   // Determine if user is host based on participant type
   const isHost =
     poll.user_participant_type === QuickPollParticipantType.SCHEDULER
-  const pollIsExpired = new Date(poll.expires_at) < new Date()
+  const pollIsExpired =
+    poll.expires_at !== null && new Date(poll.expires_at) < new Date()
+
+  const canScheduleAsGuest =
+    !isHost && poll.permissions?.includes(MeetingPermissions.SCHEDULE_MEETING)
 
   const isPastPoll =
     poll.status === PollStatus.COMPLETED ||
@@ -78,7 +83,9 @@ const PollCard = ({
 
   // Format dates
   const dateRange = formatPollDateRange(poll.starts_at, poll.ends_at)
-  const closingDate = formatPollSingleDate(poll.expires_at)
+  const closingDate = poll.expires_at
+    ? formatPollSingleDate(poll.expires_at)
+    : null
 
   // Generate poll link
   const pollLink = `${appUrl}/poll/${poll.slug}`
@@ -112,7 +119,8 @@ const PollCard = ({
       const updateData: UpdateQuickPollRequest = {
         starts_at: now.toISOString(),
         ends_at: fourteenDaysFromNow.toISOString(),
-        expires_at: fourteenDaysFromNow.toISOString(),
+        expires_at:
+          poll.expires_at === null ? null : fourteenDaysFromNow.toISOString(),
         status: PollStatus.ONGOING,
       }
 
@@ -314,38 +322,39 @@ const PollCard = ({
                 >
                   {/* Mobile: Stacked vertically, Tablet: Side by side */}
                   <Box display={{ base: 'block', sm: 'none' }} w="100%">
-                    {poll.status === PollStatus.ONGOING && isHost && (
-                      <Button
-                        bg="primary.200"
-                        color="button-text-dark"
-                        size="md"
-                        w="100%"
-                        py={2.5}
-                        fontSize="14px"
-                        fontWeight="600"
-                        borderRadius="8px"
-                        mb={2}
-                        _hover={{
-                          bg: 'primary.300',
-                        }}
-                        _active={{
-                          bg: 'primary.400',
-                        }}
-                        isDisabled={!canSchedule}
-                        title={
-                          !canSchedule
-                            ? 'Upgrade to Pro to schedule more polls this month'
-                            : undefined
-                        }
-                        onClick={() =>
-                          push(
-                            `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
-                          )
-                        }
-                      >
-                        Schedule now
-                      </Button>
-                    )}
+                    {poll.status === PollStatus.ONGOING &&
+                      (isHost || canScheduleAsGuest) && (
+                        <Button
+                          bg="primary.200"
+                          color="button-text-dark"
+                          size="md"
+                          w="100%"
+                          py={2.5}
+                          fontSize="14px"
+                          fontWeight="600"
+                          borderRadius="8px"
+                          mb={2}
+                          _hover={{
+                            bg: 'primary.300',
+                          }}
+                          _active={{
+                            bg: 'primary.400',
+                          }}
+                          isDisabled={!canSchedule}
+                          title={
+                            !canSchedule
+                              ? 'Upgrade to Pro to schedule more polls this month'
+                              : undefined
+                          }
+                          onClick={() =>
+                            push(
+                              `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
+                            )
+                          }
+                        >
+                          Schedule now
+                        </Button>
+                      )}
                     {!isPastPoll && (
                       <Button
                         variant="outline"
@@ -374,37 +383,38 @@ const PollCard = ({
                     w="100%"
                     display={{ base: 'none', sm: 'flex', md: 'none' }}
                   >
-                    {poll.status === PollStatus.ONGOING && isHost && (
-                      <Button
-                        bg="primary.200"
-                        color="button-text-dark"
-                        size="md"
-                        w="50%"
-                        py={2.5}
-                        fontSize="14px"
-                        fontWeight="600"
-                        borderRadius="8px"
-                        _hover={{
-                          bg: 'primary.300',
-                        }}
-                        _active={{
-                          bg: 'primary.400',
-                        }}
-                        isDisabled={!canSchedule}
-                        title={
-                          !canSchedule
-                            ? 'Upgrade to Pro to schedule more polls this month'
-                            : undefined
-                        }
-                        onClick={() =>
-                          push(
-                            `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
-                          )
-                        }
-                      >
-                        Schedule now
-                      </Button>
-                    )}
+                    {poll.status === PollStatus.ONGOING &&
+                      (isHost || canScheduleAsGuest) && (
+                        <Button
+                          bg="primary.200"
+                          color="button-text-dark"
+                          size="md"
+                          w="50%"
+                          py={2.5}
+                          fontSize="14px"
+                          fontWeight="600"
+                          borderRadius="8px"
+                          _hover={{
+                            bg: 'primary.300',
+                          }}
+                          _active={{
+                            bg: 'primary.400',
+                          }}
+                          isDisabled={!canSchedule}
+                          title={
+                            !canSchedule
+                              ? 'Upgrade to Pro to schedule more polls this month'
+                              : undefined
+                          }
+                          onClick={() =>
+                            push(
+                              `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
+                            )
+                          }
+                        >
+                          Schedule now
+                        </Button>
+                      )}
                     {!isPastPoll && (
                       <Button
                         variant="outline"
@@ -431,37 +441,38 @@ const PollCard = ({
 
               {/* Action buttons and menu on the right - Desktop layout */}
               <HStack spacing={3} display={{ base: 'none', md: 'flex' }}>
-                {poll.status === PollStatus.ONGOING && isHost && (
-                  <Button
-                    bg="primary.200"
-                    color="button-text-dark"
-                    size="md"
-                    px={5}
-                    py={2.5}
-                    fontSize="14px"
-                    fontWeight="600"
-                    borderRadius="8px"
-                    _hover={{
-                      bg: 'primary.300',
-                    }}
-                    _active={{
-                      bg: 'primary.400',
-                    }}
-                    isDisabled={!canSchedule}
-                    title={
-                      !canSchedule
-                        ? 'Upgrade to Pro to schedule more polls this month'
-                        : undefined
-                    }
-                    onClick={() =>
-                      push(
-                        `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
-                      )
-                    }
-                  >
-                    Schedule now
-                  </Button>
-                )}
+                {poll.status === PollStatus.ONGOING &&
+                  (isHost || canScheduleAsGuest) && (
+                    <Button
+                      bg="primary.200"
+                      color="button-text-dark"
+                      size="md"
+                      px={5}
+                      py={2.5}
+                      fontSize="14px"
+                      fontWeight="600"
+                      borderRadius="8px"
+                      _hover={{
+                        bg: 'primary.300',
+                      }}
+                      _active={{
+                        bg: 'primary.400',
+                      }}
+                      isDisabled={!canSchedule}
+                      title={
+                        !canSchedule
+                          ? 'Upgrade to Pro to schedule more polls this month'
+                          : undefined
+                      }
+                      onClick={() =>
+                        push(
+                          `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
+                        )
+                      }
+                    >
+                      Schedule now
+                    </Button>
+                  )}
                 {!isPastPoll && (
                   <Button
                     variant="outline"
@@ -627,23 +638,25 @@ const PollCard = ({
               </HStack>
             </HStack>
 
-            {/* Poll closing date */}
-            <HStack spacing={2} flexWrap="wrap">
-              <Text
-                fontSize={{ base: '14px', md: '16px' }}
-                color="text-primary"
-                fontWeight="700"
-              >
-                Poll closing date:
-              </Text>
-              <Text
-                fontSize={{ base: '14px', md: '16px' }}
-                color="text-primary"
-                fontWeight="500"
-              >
-                {closingDate}
-              </Text>
-            </HStack>
+            {/* Poll closing date - only show if expiry exists */}
+            {closingDate && (
+              <HStack spacing={2} flexWrap="wrap">
+                <Text
+                  fontSize={{ base: '14px', md: '16px' }}
+                  color="text-primary"
+                  fontWeight="700"
+                >
+                  Poll closing date:
+                </Text>
+                <Text
+                  fontSize={{ base: '14px', md: '16px' }}
+                  color="text-primary"
+                  fontWeight="500"
+                >
+                  {closingDate}
+                </Text>
+              </HStack>
+            )}
           </VStack>
         </CardBody>
       </Card>

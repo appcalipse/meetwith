@@ -1,10 +1,12 @@
 import {
   Accordion,
+  Button,
   FormControl,
   FormHelperText,
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
 import React from 'react'
 
 import Loading from '@/components/Loading'
@@ -13,14 +15,45 @@ import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 
 import ContactsCard from './ContactsCard'
 
-const AddFromContact = () => {
+interface AddFromContactProps {
+  isQuickPoll?: boolean
+}
+
+const AddFromContact: React.FC<AddFromContactProps> = ({
+  isQuickPoll = false,
+}) => {
   const currentAccount = useAccountContext()
+  const router = useRouter()
   const { contacts, isContactsPrefetching } = useParticipants()
-  return isContactsPrefetching ? (
-    <VStack mb={6} w="100%" justifyContent="center">
-      <Loading />
-    </VStack>
-  ) : (
+
+  const handleSignIn = () => {
+    router.push('/auth/signin')
+  }
+
+  if (isContactsPrefetching) {
+    return (
+      <VStack mb={6} w="100%" justifyContent="center">
+        <Loading />
+      </VStack>
+    )
+  }
+
+  // Show sign-in button for non-authenticated users in quickpoll context
+  if (isQuickPoll && !currentAccount) {
+    return (
+      <FormControl gap={0}>
+        <Text>Add from Contact list</Text>
+        <Button mt={2} colorScheme="primary" w="100%" onClick={handleSignIn}>
+          Sign in to see contacts
+        </Button>
+        <FormHelperText fontSize="12px" color="neutral.400" mt={2}>
+          Sign in to access your contact list
+        </FormHelperText>
+      </FormControl>
+    )
+  }
+
+  return (
     <FormControl gap={0}>
       <Text>Add from Contact list</Text>
       <Accordion gap={0} w="100%" allowToggle>

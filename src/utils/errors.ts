@@ -811,6 +811,13 @@ export class QuickPollPermissionDeniedError extends Error {
   }
 }
 
+export class QuickPollPrivatePollAccessDeniedError extends Error {
+  constructor() {
+    super('This is a private poll. You need to be invited to join.')
+    this.name = 'QuickPollPrivatePollAccessDeniedError'
+  }
+}
+
 export class QuickPollExpiredError extends Error {
   constructor() {
     super('This poll has expired and is no longer accepting responses')

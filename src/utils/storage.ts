@@ -1,4 +1,5 @@
-import { GuestPollDetails } from '@/types/QuickPoll'
+import { GuestPollDetails, QuickPollSignInContext } from '@/types/QuickPoll'
+import { CONTEXT_EXPIRY_MS, QUICKPOLL_SIGNIN_CONTEXT_KEY } from './constants'
 
 const SIGNATURE_KEY = 'current_user_sig'
 const SCHEDULES = 'meetings_scheduled'
@@ -147,4 +148,37 @@ export {
   saveNotificationTime,
   saveSignature,
   saveSubscriptionHandle,
+}
+
+export const saveQuickPollSignInContext = (
+  context: Omit<QuickPollSignInContext, 'timestamp'>
+) => {
+  const contextWithTimestamp: QuickPollSignInContext = {
+    ...context,
+    timestamp: Date.now(),
+  }
+  localStorage.setItem(
+    QUICKPOLL_SIGNIN_CONTEXT_KEY,
+    JSON.stringify(contextWithTimestamp)
+  )
+}
+
+export const getQuickPollSignInContext = (): QuickPollSignInContext | null => {
+  const stored = localStorage.getItem(QUICKPOLL_SIGNIN_CONTEXT_KEY)
+  if (!stored) return null
+
+  try {
+    const context: QuickPollSignInContext = JSON.parse(stored)
+    if (Date.now() - context.timestamp > CONTEXT_EXPIRY_MS) {
+      clearQuickPollSignInContext()
+      return null
+    }
+    return context
+  } catch {
+    return null
+  }
+}
+
+export const clearQuickPollSignInContext = () => {
+  localStorage.removeItem(QUICKPOLL_SIGNIN_CONTEXT_KEY)
 }

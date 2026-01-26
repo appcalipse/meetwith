@@ -55,7 +55,7 @@ export interface QuickPoll {
   duration_minutes: number
   starts_at: string
   ends_at: string
-  expires_at: string
+  expires_at: string | null
   status: PollStatus
   visibility: PollVisibility
   permissions: MeetingPermissions[]
@@ -109,7 +109,7 @@ export interface CreateQuickPollRequest {
   duration_minutes: number
   starts_at: string
   ends_at: string
-  expires_at: string
+  expires_at: string | null
   permissions: MeetingPermissions[]
   participants?: {
     account_address?: string
@@ -127,7 +127,7 @@ export interface UpdateQuickPollRequest {
   duration_minutes?: number
   starts_at?: string
   ends_at?: string
-  expires_at?: string
+  expires_at?: string | null
   permissions?: MeetingPermissions[]
   participants?: {
     toAdd?: AddParticipantData[]
@@ -231,4 +231,12 @@ export interface GuestPollDetails {
   participantId: string
   email: string
   name: string
+}
+
+export interface QuickPollSignInContext {
+  pollSlug: string
+  pollId: string
+  pollTitle: string
+  returnUrl: string
+  timestamp: number
 }

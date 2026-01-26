@@ -35,6 +35,7 @@ import { DiscordUserInfo } from '@/types/Discord'
 import { TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import {
+  addUserToPollAfterSignup,
   createAvailabilityBlock,
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
@@ -50,6 +51,10 @@ import { generateDefaultAvailabilities } from '@/utils/calendar_manager'
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import {
+  clearQuickPollSignInContext,
+  getQuickPollSignInContext,
+} from '@/utils/storage'
 import { isValidEmail } from '@/utils/validations'
 
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
@@ -480,6 +485,30 @@ const OnboardingModal = () => {
       }
       logEvent('Updated account details')
       login(updatedAccount)
+
+      const pollContext = getQuickPollSignInContext()
+
+      if (pollContext) {
+        try {
+          await addUserToPollAfterSignup(
+            currentAccount.address,
+            pollContext.pollId,
+            email,
+            name
+          )
+
+          clearQuickPollSignInContext()
+
+          await router.push(
+            `/dashboard/schedule?ref=quickpoll&pollId=${pollContext.pollId}&intent=edit_availability`
+          )
+          closeOnboarding()
+          return
+        } catch (error) {
+          console.error('Failed to add user to poll:', error)
+          clearQuickPollSignInContext()
+        }
+      }
 
       await router.push(
         !!stateObject.redirect

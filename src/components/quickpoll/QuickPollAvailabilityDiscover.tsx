@@ -44,7 +44,6 @@ import {
 import { getGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 
-import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import CustomError from '../CustomError'
 import CustomLoading from '../CustomLoading'
 import { Grid4 } from '../icons/Grid4'
@@ -72,18 +71,14 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 > = ({ pollId, pollData, onNavigateToGuestDetails }) => {
   const {
     isInviteParticipantsOpen,
-    showCalendarModal,
     showGuestIdModal,
-    showCalendarImportFlow,
     currentParticipantId,
     currentGuestEmail,
     isEditingAvailability,
     isSavingAvailability,
     isRefreshingAvailabilities,
     setIsInviteParticipantsOpen,
-    setShowCalendarModal,
     setShowGuestIdModal,
-    setShowCalendarImportFlow,
     setCurrentParticipantId,
     setCurrentGuestEmail,
     setIsEditingAvailability,
@@ -496,12 +491,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         setCurrentGuestEmail(email)
         setShowGuestIdModal(false)
 
-        if (showCalendarImportFlow) {
-          setShowCalendarImportFlow(false)
-          setShowCalendarModal(true)
-        } else {
-          setIsEditingAvailability(true)
-        }
+        setIsEditingAvailability(true)
       } else {
         showErrorToast(
           'Participant not found',
@@ -530,25 +520,8 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     })
   }
 
-  const handleCalendarImport = () => {
-    if (
-      !currentAccount &&
-      currentPollData?.poll.visibility === PollVisibility.PRIVATE
-    ) {
-      if (!currentParticipantId || !currentGuestEmail) {
-        setShowCalendarImportFlow(true)
-        setShowGuestIdModal(true)
-      } else {
-        setShowCalendarModal(true)
-      }
-    } else {
-      setShowCalendarModal(true)
-    }
-  }
-
   const handleCloseGuestIdModal = () => {
     setShowGuestIdModal(false)
-    setShowCalendarImportFlow(false)
   }
 
   const handleAvailabilityAction = () => {
@@ -680,7 +653,6 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           onSaveAvailability={handleAvailabilityAction}
           onCancelEditing={handleCancelEditing}
           onSharePoll={handleSharePoll}
-          onImportCalendar={handleCalendarImport}
           isEditingAvailability={isEditingAvailability}
           isSavingAvailability={isSavingAvailability}
           isRefreshingAvailabilities={isRefreshingAvailabilities}
@@ -736,24 +708,12 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             onSaveAvailability={handleAvailabilityAction}
             onCancelEditing={handleCancelEditing}
             onSharePoll={handleSharePoll}
-            onImportCalendar={handleCalendarImport}
             isEditingAvailability={isEditingAvailability}
             isSavingAvailability={isSavingAvailability}
             isRefreshingAvailabilities={isRefreshingAvailabilities}
           />
         </HStack>
       )}
-
-      {/* Calendar Import Modal */}
-      <ConnectCalendarModal
-        isOpen={showCalendarModal}
-        onClose={() => setShowCalendarModal(false)}
-        isQuickPoll={true}
-        participantId={currentParticipantId}
-        pollData={currentPollData}
-        refetch={refreshAvailabilities}
-        pollSlug={currentPollData?.poll.slug}
-      />
 
       {currentPollData?.poll.visibility === PollVisibility.PRIVATE && (
         <GuestIdentificationModal

@@ -69,11 +69,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       let upgradeRequired = false
       let canSchedule = true
       if (!isPro) {
-        const pollsCreatedThisMonth =
-          await countQuickPollsCreatedThisMonth(address)
+        const pollsCreatedThisMonth = await countQuickPollsCreatedThisMonth(
+          address
+        )
 
-        const scheduledPollsThisMonth =
-          await countScheduledQuickPollsThisMonth(address)
+        const scheduledPollsThisMonth = await countScheduledQuickPollsThisMonth(
+          address
+        )
         upgradeRequired = pollsCreatedThisMonth >= 1
         canSchedule = scheduledPollsThisMonth < 1
       }
@@ -98,7 +100,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         throw new QuickPollValidationError('Missing required fields')
       }
 
-      if (!pollData.starts_at || !pollData.ends_at || !pollData.expires_at) {
+      if (!pollData.starts_at || !pollData.ends_at) {
         throw new QuickPollValidationError('Missing date fields')
       }
 
@@ -109,15 +111,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Validate dates
       const startsAt = new Date(pollData.starts_at)
       const endsAt = new Date(pollData.ends_at)
-      const expiresAt = new Date(pollData.expires_at)
       const now = new Date()
 
       if (startsAt >= endsAt) {
         throw new QuickPollValidationError('Start date must be before end date')
       }
 
-      if (expiresAt <= now) {
-        throw new QuickPollValidationError('Expiry date must be in the future')
+      if (pollData.expires_at !== null && pollData.expires_at !== undefined) {
+        const expiresAt = new Date(pollData.expires_at)
+        if (expiresAt <= now) {
+          throw new QuickPollValidationError(
+            'Expiry date must be in the future'
+          )
+        }
       }
 
       if (
@@ -133,8 +139,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const isPro = await isProAccountAsync(address)
 
       if (!isPro) {
-        const pollsCreatedThisMonth =
-          await countQuickPollsCreatedThisMonth(address)
+        const pollsCreatedThisMonth = await countQuickPollsCreatedThisMonth(
+          address
+        )
         if (pollsCreatedThisMonth >= 1) {
           throw new QuickPollLimitExceededError()
         }
@@ -144,7 +151,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         description: pollData.description?.trim() || '',
         duration_minutes: pollData.duration_minutes,
         ends_at: pollData.ends_at,
-        expires_at: pollData.expires_at,
+        expires_at: pollData.expires_at ?? null,
         participants: pollData.participants || [],
         permissions: pollData.permissions,
         starts_at: pollData.starts_at,

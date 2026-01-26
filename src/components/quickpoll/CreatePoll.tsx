@@ -10,6 +10,10 @@ import {
   HStack,
   Icon,
   Input,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -33,12 +37,13 @@ import React, {
   useMemo,
   useState,
 } from 'react'
-import { FaArrowLeft } from 'react-icons/fa'
-import { FiArrowLeft } from 'react-icons/fi'
+import { FaArrowLeft, FaChevronDown } from 'react-icons/fa'
+import { FiArrowLeft, FiCheck } from 'react-icons/fi'
 import { HiOutlineUserAdd } from 'react-icons/hi'
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import { ChipInput } from '@/components/chip-input'
+import { BadgeChip } from '@/components/chip-input/chip'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import InfoTooltip from '@/components/profile/components/Tooltip'
@@ -163,9 +168,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   })
 
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
+    MeetingPermissions.SCHEDULE_MEETING,
     MeetingPermissions.SEE_GUEST_LIST,
-    MeetingPermissions.EDIT_MEETING,
+    MeetingPermissions.INVITE_GUESTS,
   ])
+  const [removeExpiryDate, setRemoveExpiryDate] = useState(false)
 
   // Get all participants
   const allMergedParticipants = useMemo(() => {
@@ -241,6 +248,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const router = useRouter()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const iconColor = useColorModeValue('#181F24', 'white')
+  const chevronColor = useColorModeValue('neutral.700', 'neutral.0')
+  const menuTextColor = useColorModeValue('neutral.800', 'neutral.0')
+  const menuBg = useColorModeValue('neutral.50', 'neutral.450')
 
   // Fetch poll data when in edit mode
   const {
@@ -263,14 +273,24 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       const pollResponse = pollData as QuickPollBySlugResponse
       const poll = pollResponse.poll
 
+      const hasExpiry = !!poll.expires_at
+      setRemoveExpiryDate(!hasExpiry)
+
       // Set form data
+      const defaultExpiryDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
       setFormData({
         title: poll.title,
         duration: poll.duration_minutes,
         startDate: new Date(poll.starts_at),
         endDate: new Date(poll.ends_at),
-        expiryDate: new Date(poll.expires_at),
-        expiryTime: new Date(poll.expires_at),
+        expiryDate:
+          hasExpiry && poll.expires_at !== null
+            ? new Date(poll.expires_at)
+            : defaultExpiryDate,
+        expiryTime:
+          hasExpiry && poll.expires_at !== null
+            ? new Date(poll.expires_at)
+            : new Date(),
         description: poll.description || '',
       })
 
@@ -342,7 +362,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const createPollMutation = useMutation({
     mutationFn: (pollData: CreateQuickPollRequest) => createQuickPoll(pollData),
-    onSuccess: () => {
+    onSuccess: response => {
       showSuccessToast(
         'Poll Created Successfully!',
         'Your quick poll has been created and is ready to share with participants.'
@@ -362,12 +382,21 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         expiryTime: new Date(),
         description: '',
       })
-      setSelectedPermissions([MeetingPermissions.SEE_GUEST_LIST])
+      setSelectedPermissions([
+        MeetingPermissions.SEE_GUEST_LIST,
+        MeetingPermissions.SCHEDULE_MEETING,
+      ])
+      setRemoveExpiryDate(false)
       setParticipants([])
       setGroupAvailability({})
       setGroupParticipants({})
 
-      router.push('/dashboard/quickpoll')
+      const pollId = (response as { poll?: { id?: string } })?.poll?.id
+      if (pollId) {
+        router.push(
+          `/dashboard/schedule?ref=quickpoll&pollId=${pollId}&intent=edit_availability`
+        )
+      }
     },
     onError: error => {
       handleApiError('Failed to create poll', error)
@@ -426,6 +455,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     const validationData = {
       ...formData,
       participants: allMergedParticipants,
+      removeExpiryDate,
     }
 
     const validationResult = quickPollSchema.safeParse(validationData)
@@ -449,11 +479,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           'Invalid Expiry Time',
           'The poll expiry time must be in the future. Please select a later date and time.'
         )
-      } else {
-        showErrorToast(
-          'Validation Error',
-          'Please check the form and fix any errors before submitting.'
-        )
       }
       return
     }
@@ -467,10 +492,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         duration_minutes: formData.duration,
         starts_at: createLocalDate(formData.startDate),
         ends_at: createLocalDate(formData.endDate),
-        expires_at: createLocalDateTime(
-          formData.expiryDate,
-          formData.expiryTime
-        ),
+        expires_at: removeExpiryDate
+          ? null
+          : createLocalDateTime(formData.expiryDate, formData.expiryTime),
         permissions: selectedPermissions as MeetingPermissions[],
         participants:
           participantChanges.toAdd.length > 0 ||
@@ -488,10 +512,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         duration_minutes: formData.duration,
         starts_at: createLocalDate(formData.startDate),
         ends_at: createLocalDate(formData.endDate),
-        expires_at: createLocalDateTime(
-          formData.expiryDate,
-          formData.expiryTime
-        ),
+        expires_at: removeExpiryDate
+          ? null
+          : createLocalDateTime(formData.expiryDate, formData.expiryTime),
         permissions: selectedPermissions as MeetingPermissions[],
         participants:
           allMergedParticipants.length > 0
@@ -510,6 +533,14 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const handleCancelPoll = () => {
     cancelPollMutation.mutate()
+  }
+
+  const handleBackToPolls = () => {
+    router.push('/dashboard/quickpoll')
+  }
+
+  const handleBackToPollsFromHeader = () => {
+    push('/dashboard/quickpoll')
   }
 
   // Function to calculate participant changes for update mode
@@ -681,6 +712,44 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     ]
   )
 
+  const isLoading =
+    createPollMutation.isLoading ||
+    updatePollMutation.isLoading ||
+    cancelPollMutation.isLoading
+
+  const handleRemovePermission = useCallback(
+    (permissionValue: string) => {
+      if (!isLoading) {
+        setSelectedPermissions(
+          prev => prev?.filter(p => p !== permissionValue) || []
+        )
+      }
+    },
+    [isLoading]
+  )
+
+  const handleChipClick = useCallback(
+    (e: React.MouseEvent, permissionValue: string) => {
+      e.stopPropagation()
+      handleRemovePermission(permissionValue)
+    },
+    [handleRemovePermission]
+  )
+
+  const handleTogglePermission = useCallback(
+    (permissionValue: string) => {
+      const isSelected = selectedPermissions?.includes(permissionValue)
+      if (isSelected) {
+        setSelectedPermissions(
+          prev => prev?.filter(p => p !== permissionValue) || []
+        )
+      } else {
+        setSelectedPermissions(prev => (prev || []).concat(permissionValue))
+      }
+    },
+    [selectedPermissions]
+  )
+
   // Show loading when fetching poll data in edit mode
   if (isEditMode && isPollLoading) {
     return (
@@ -721,7 +790,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 fontSize="14px"
                 fontWeight="600"
                 borderRadius="8px"
-                onClick={() => router.push('/dashboard/quickpoll')}
+                onClick={handleBackToPolls}
               >
                 Back to Polls
               </Button>
@@ -731,11 +800,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       </Box>
     )
   }
-
-  const isLoading =
-    createPollMutation.isLoading ||
-    updatePollMutation.isLoading ||
-    cancelPollMutation.isLoading
 
   return (
     <Box
@@ -747,13 +811,13 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       display="flex"
       justifyContent="center"
     >
-      <VStack spacing={8} align="stretch" maxW="600px" width="100%">
+      <VStack spacing={8} align="stretch" maxW="450px" width="100%">
         {/* Header with Back Button */}
         <VStack spacing={4} align="flex-start">
           <HStack
             color="primary.400"
             cursor="pointer"
-            onClick={() => push('/dashboard/quickpoll')}
+            onClick={handleBackToPollsFromHeader}
             _hover={{ color: 'primary.500' }}
           >
             <Icon as={FaArrowLeft} />
@@ -774,6 +838,53 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
         {/* Form */}
         <VStack spacing={6} align="stretch">
+          {/* Meeting Date Range */}
+          <FormControl>
+            <FormLabel htmlFor="date">
+              Meeting Date options (From → To)
+            </FormLabel>
+            <HStack w={'100%'} gap={4}>
+              <SingleDatepicker
+                date={formData.startDate}
+                onDateChange={date =>
+                  setFormData(prev => ({ ...prev, startDate: date }))
+                }
+                blockPast={true}
+                inputProps={{
+                  height: 'auto',
+                  py: 3,
+                  pl: 12,
+                  borderColor: 'neutral.400',
+                  _placeholder: {
+                    color: 'neutral.400',
+                  },
+                }}
+                iconColor="neutral.400"
+                iconSize={20}
+                disabled={isLoading}
+              />
+              <SingleDatepicker
+                date={formData.endDate}
+                onDateChange={date =>
+                  setFormData(prev => ({ ...prev, endDate: date }))
+                }
+                blockPast={true}
+                inputProps={{
+                  height: 'auto',
+                  py: 3,
+                  pl: 12,
+                  borderColor: 'neutral.400',
+                  _placeholder: {
+                    color: 'neutral.400',
+                  },
+                }}
+                iconColor="neutral.400"
+                iconSize={20}
+                disabled={isLoading}
+              />
+            </HStack>
+          </FormControl>
+
           {/* Title and Duration - Same Line */}
           <HStack spacing={4} align="start">
             <FormControl isInvalid={!!validationErrors.title} flex={3}>
@@ -856,55 +967,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             </FormControl>
           </HStack>
 
-          {/* Meeting Date Range */}
-          <FormControl>
-            <FormLabel htmlFor="date">
-              Meeting Date options (From → To)
-            </FormLabel>
-            <HStack w={'100%'} gap={4}>
-              <SingleDatepicker
-                date={formData.startDate}
-                onDateChange={date =>
-                  setFormData(prev => ({ ...prev, startDate: date }))
-                }
-                blockPast={true}
-                inputProps={{
-                  height: 'auto',
-                  py: 3,
-                  pl: 12,
-                  borderColor: 'neutral.400',
-                  _placeholder: {
-                    color: 'neutral.400',
-                  },
-                }}
-                iconColor="neutral.400"
-                iconSize={20}
-                disabled={isLoading}
-              />
-              <SingleDatepicker
-                date={formData.endDate}
-                onDateChange={date =>
-                  setFormData(prev => ({ ...prev, endDate: date }))
-                }
-                blockPast={true}
-                inputProps={{
-                  height: 'auto',
-                  py: 3,
-                  pl: 12,
-                  borderColor: 'neutral.400',
-                  _placeholder: {
-                    color: 'neutral.400',
-                  },
-                }}
-                iconColor="neutral.400"
-                iconSize={20}
-                disabled={isLoading}
-              />
-            </HStack>
-          </FormControl>
-
           {/* Add Guest from Groups */}
-          <FormControl w="100%" maxW="100%">
+          <FormControl w="100%" maxW="100%" mt={-2}>
             <FormLabel htmlFor="participants">
               Add Participants to the meeting{' '}
               <InfoTooltip text="Add participants from groups, contacts, or enter manually" />
@@ -950,13 +1014,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               />
             </Box>
             <FormHelperText minW={{ md: '600px' }}>
-              {validationErrors.participants ? (
+              {validationErrors.participants && (
                 <Text color="red.500">{validationErrors.participants}</Text>
-              ) : (
-                <Text>
-                  Separate participants by comma. You will be added
-                  automatically, no need to insert yourself.
-                </Text>
               )}
             </FormHelperText>
           </FormControl>
@@ -1001,7 +1060,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
-                disabled={isLoading}
+                disabled={isLoading || removeExpiryDate}
               />
               <InputTimePicker
                 value={format(formData.expiryTime, 'p')}
@@ -1017,50 +1076,163 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   _placeholder: {
                     color: 'neutral.400',
                   },
-                  isDisabled: isLoading,
+                  isDisabled: isLoading || removeExpiryDate,
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
               />
             </HStack>
+            <HStack w="100%" justifyContent="space-between" mt={2}>
+              <Text fontSize="sm" color="text-primary">
+                Remove expiry date
+              </Text>
+              <Checkbox
+                isChecked={removeExpiryDate}
+                onChange={e => setRemoveExpiryDate(e.target.checked)}
+                colorScheme="primary"
+                isDisabled={isLoading}
+              />
+            </HStack>
           </FormControl>
 
-          {/* Guest Permissions - Using ScheduleBase pattern */}
+          {/* Guest Permissions - Chip Select */}
           <VStack w="100%" gap={4} alignItems="flex-start">
             <Heading fontSize="lg" fontWeight={500}>
               Guest permissions
             </Heading>
 
-            {QuickPollPermissionsList.map(permission => (
-              <Checkbox
-                key={permission.value}
-                isChecked={selectedPermissions?.includes(permission.value)}
-                w="100%"
-                colorScheme="primary"
-                flexDir="row-reverse"
-                justifyContent={'space-between'}
-                fontWeight={700}
-                color="primary.200"
-                fontSize="16px"
-                size={'lg'}
-                p={0}
-                marginInlineStart={0}
-                onChange={e => {
-                  const { checked } = e.target
-                  setSelectedPermissions(prev =>
-                    checked
-                      ? (prev || []).concat(permission.value)
-                      : prev?.filter(p => p !== permission.value) || []
-                  )
-                }}
-                isDisabled={isLoading}
-              >
-                <HStack marginInlineStart={-2} gap={0}>
-                  <Text>{permission.label}</Text>
-                  {permission.info && <InfoTooltip text={permission.info} />}
+            <Box
+              w="100%"
+              borderWidth="1px"
+              borderColor="neutral.400"
+              borderRadius="md"
+              px={3}
+              py={2}
+              minH="40px"
+              display="flex"
+              alignItems="center"
+              gap={2}
+              flexWrap="wrap"
+              position="relative"
+            >
+              {selectedPermissions.length > 0 && (
+                <HStack
+                  spacing={2}
+                  flexWrap="wrap"
+                  flex={1}
+                  pr={8}
+                  position="relative"
+                  zIndex={1}
+                  pointerEvents="none"
+                >
+                  {selectedPermissions.map(permissionValue => {
+                    const permission = QuickPollPermissionsList.find(
+                      p => p.value === permissionValue
+                    )
+                    if (!permission) return null
+                    return (
+                      <Box
+                        key={permission.value}
+                        display="inline-block"
+                        cursor="pointer"
+                        pointerEvents="auto"
+                        onClick={e => handleChipClick(e, permission.value)}
+                      >
+                        <BadgeChip allowRemove={!isLoading}>
+                          {permission.label}
+                        </BadgeChip>
+                      </Box>
+                    )
+                  })}
                 </HStack>
-              </Checkbox>
-            ))}
+              )}
+              <Menu>
+                <MenuButton
+                  as={Box}
+                  position="absolute"
+                  top={0}
+                  left={0}
+                  right={0}
+                  bottom={0}
+                  cursor="pointer"
+                  zIndex={0}
+                />
+                <MenuList
+                  bg={menuBg}
+                  borderColor="border-default"
+                  borderWidth="1px"
+                  borderRadius="7px"
+                  shadow="none"
+                  boxShadow="none"
+                  p={0}
+                  mt={2}
+                  w={{ base: '100%', md: '450px' }}
+                  minW={{ base: '100%', md: '450px' }}
+                  maxW={{ base: 'calc(100vw - 32px)', md: '450px' }}
+                >
+                  {QuickPollPermissionsList.map(permission => {
+                    const isSelected = selectedPermissions?.includes(
+                      permission.value
+                    )
+                    return (
+                      <MenuItem
+                        key={permission.value}
+                        bg="transparent"
+                        color={menuTextColor}
+                        _hover={{ bg: 'menu-item-hover' }}
+                        _active={{ bg: 'menu-item-hover' }}
+                        _focus={{ bg: 'menu-item-hover' }}
+                        py="14px"
+                        px="14px"
+                        fontSize="md"
+                        fontWeight="500"
+                        onClick={() => handleTogglePermission(permission.value)}
+                      >
+                        <HStack w="100%" justify="space-between" align="center">
+                          <Text color={menuTextColor}>{permission.label}</Text>
+                          <Box
+                            w="24px"
+                            h="24px"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="flex-end"
+                            flexShrink={0}
+                          >
+                            {isSelected && (
+                              <Icon
+                                as={FiCheck}
+                                w="20px"
+                                h="20px"
+                                color={menuTextColor}
+                              />
+                            )}
+                          </Box>
+                        </HStack>
+                      </MenuItem>
+                    )
+                  })}
+                </MenuList>
+              </Menu>
+              {selectedPermissions.length === 0 && (
+                <Text
+                  color="neutral.400"
+                  fontSize="sm"
+                  pr={8}
+                  pointerEvents="none"
+                >
+                  Select permissions
+                </Text>
+              )}
+              <Icon
+                as={FaChevronDown}
+                color={chevronColor}
+                position="absolute"
+                right={3}
+                top="50%"
+                transform="translateY(-50%)"
+                pointerEvents="none"
+              />
+            </Box>
           </VStack>
 
           {/* Action Buttons */}
@@ -1116,6 +1288,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           key={inviteKey}
           isOpen={isInviteModalOpen}
           onClose={closeInviteModal}
+          isQuickPoll={true}
           groupAvailability={groupAvailability}
           groupParticipants={groupParticipants}
           participants={participants}
