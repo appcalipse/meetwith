@@ -31,7 +31,6 @@ import { Credentials } from 'google-auth-library'
 import { calendar_v3 } from 'googleapis'
 import { DateTime, Interval } from 'luxon'
 import { rrulestr } from 'rrule'
-import { ShardedMerkleTreeInfo } from 'thirdweb/dist/types/utils/extensions/drops/types'
 import { validate } from 'uuid'
 import { ResourceState } from '@/pages/api/server/webhook/calendar/sync'
 import {
@@ -242,7 +241,6 @@ import {
   SubscriptionDomainUpdateNotAllowed,
   SubscriptionHistoryCheckError,
   SubscriptionHistoryFetchError,
-  SubscriptionNotCustom,
   SubscriptionPeriodCreationError,
   SubscriptionPeriodFetchError,
   SubscriptionPeriodFindError,
@@ -285,7 +283,6 @@ import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { MAX_RECURRING_LOOKAHEAD_MONTHS } from './constants/meeting'
 import { decryptContent, encryptContent } from './cryptography'
-import { addRecurrence } from './date_helper'
 import {
   sendCryptoDebitEmail,
   sendPollInviteEmail,
@@ -294,11 +291,9 @@ import {
 } from './email_helper'
 import { deduplicateArray, deduplicateMembers, isJson } from './generic_utils'
 import PostHogClient from './posthog'
-import { CaldavCredentials } from './services/caldav.service'
 import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { IGoogleCalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
-import { O365AuthCredentials } from './services/office365.credential'
 import { StripeService } from './services/stripe.service'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
@@ -7364,7 +7359,7 @@ const handleWebhookEvent = async (
       (!!meeting.id && recurringIdSet.has(extractBaseId(meeting.id)))
     )
   }
-  const _recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
+  const recentlyUpdatedRecurringMeetings = recentlyUpdated.filter(
     meeting => !!meeting.recurringEventId || !!meeting.recurrence // only consider events with recurringEventId
   )
   const recentlyUpdatedNonRecurringMeetings = recentlyUpdated.filter(
@@ -7372,16 +7367,15 @@ const handleWebhookEvent = async (
   )
 
   const actions = await Promise.all(
-    recentlyUpdatedNonRecurringMeetings.map(event =>
-      handleSyncEvent(event, calendar)
-    )
-    // .concat(
-    //   handleSyncRecurringEvents(
-    //     recentlyUpdatedRecurringMeetings,
-    //     calendar,
-    //     data.calendar_id
-    //   )
-    // )
+    recentlyUpdatedNonRecurringMeetings
+      .map(event => handleSyncEvent(event, calendar))
+      .concat(
+        handleSyncRecurringEvents(
+          recentlyUpdatedRecurringMeetings,
+          calendar,
+          data.calendar_id
+        )
+      )
   )
   return actions.length > 0
 }
@@ -7488,6 +7482,7 @@ const handleSyncRecurringEvents = async (
       const timeB = b.start?.dateTime ? new Date(b.start.dateTime).getTime() : 0
       return timeA - timeB
     })
+
     for (const masterEvent of masterEvents || []) {
       const startTime = masterEvent?.start?.dateTime
       const endTime = masterEvent?.end?.dateTime
@@ -10585,6 +10580,7 @@ export {
   addOrUpdateConnectedCalendar,
   addQuickPollParticipant,
   addUserToGroup,
+  bulkUpdateSlotSeriesConfirmedSlots,
   cancelQuickPoll,
   changeGroupRole,
   checkContactExists,
@@ -10593,13 +10589,13 @@ export {
   connectedCalendarExists,
   contactInviteByEmailExists,
   countActiveQuickPolls,
-  countQuickPollsCreatedThisMonth,
-  countScheduledQuickPollsThisMonth,
   countCalendarIntegrations,
   countCalendarSyncs,
   countFreeMeetingTypes,
   countGroups,
   countMeetingTypes,
+  countQuickPollsCreatedThisMonth,
+  countScheduledQuickPollsThisMonth,
   createCheckOutTransaction,
   createCryptoTransaction,
   createMeetingType,
@@ -10615,9 +10611,12 @@ export {
   deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
+  deleteIcsFile,
   deleteMeetingFromDB,
   deleteMeetingType,
   deleteQuickPoll,
+  deleteRecurringSlotInstances,
+  deleteSeriesInstantAfterDate,
   deleteTgConnection,
   deleteVerifications,
   editGroup,
@@ -10628,6 +10627,7 @@ export {
   findAccountsByEmails,
   findAccountsByText,
   findExistingSubscriptionPeriod,
+  findQuickPollParticipantByIdentifier,
   findRecentSubscriptionPeriodByPlan,
   findSubscriptionPeriodByPlanAndExpiry,
   getAccountAvatarUrl,
@@ -10659,6 +10659,7 @@ export {
   getContactLean,
   getContacts,
   getDiscordAccounts,
+  getEventMasterSeries,
   getEventNotification,
   getExistingAccountsFromDB,
   getGateCondition,
@@ -10696,12 +10697,13 @@ export {
   getQuickPollCalendars,
   getQuickPollParticipantById,
   getQuickPollParticipantByIdentifier,
-  findQuickPollParticipantByIdentifier,
   getQuickPollParticipants,
   getQuickPollsForAccount,
+  getSeriesIdMapping,
   getSlotById,
   getSlotByMeetingIdAndAccount,
   getSlotInstance,
+  getSlotInstanceSeriesId,
   getSlotsByIds,
   getSlotSeries,
   getSlotSeriesId,
@@ -10747,10 +10749,12 @@ export {
   saveEmailToDB,
   saveMeeting,
   saveQuickPollCalendar,
+  saveRecurringMeetings,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   subscribeWithCoupon,
   syncAllSeries,
+  syncConnectedCalendars,
   syncWebhooks,
   updateAccountFromInvite,
   updateAccountPreferences,
@@ -10771,24 +10775,15 @@ export {
   updateQuickPollParticipantAvailability,
   updateQuickPollParticipants,
   updateQuickPollParticipantStatus,
+  updateRecurringMeeting,
   updateStripeSubscription,
   updateSubscriptionPeriodDomain,
   updateSubscriptionPeriodStatus,
   updateSubscriptionPeriodTransaction,
+  uploadIcsFile,
   upsertGateCondition,
+  upsertSeries,
   verifyUserPin,
   verifyVerificationCode,
   workMeetingTypeGates,
-  getSeriesIdMapping,
-  syncConnectedCalendars,
-  uploadIcsFile,
-  deleteIcsFile,
-  getEventMasterSeries,
-  upsertSeries,
-  bulkUpdateSlotSeriesConfirmedSlots,
-  deleteSeriesInstantAfterDate,
-  deleteRecurringSlotInstances,
-  getSlotInstanceSeriesId,
-  saveRecurringMeetings,
-  updateRecurringMeeting,
 }
