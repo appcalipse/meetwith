@@ -35,6 +35,7 @@ interface PollInviteSectionProps {
   onSendInvite: () => void
   isLoading: boolean
   isDisabled: boolean
+  onRequestSignIn?: () => void
 }
 
 const PollInviteSection: FC<PollInviteSectionProps> = ({
@@ -44,6 +45,7 @@ const PollInviteSection: FC<PollInviteSectionProps> = ({
   onSendInvite,
   isLoading,
   isDisabled,
+  onRequestSignIn,
 }) => {
   const { showSuccessToast, showErrorToast } = useToastHelpers()
 
@@ -75,7 +77,7 @@ const PollInviteSection: FC<PollInviteSectionProps> = ({
       <Heading fontSize="22px" pb={2} mb={4}>
         Add participants from contacts
       </Heading>
-      <AddFromContact isQuickPoll={true} />
+      <AddFromContact isQuickPoll={true} onRequestSignIn={onRequestSignIn} />
       <Divider my={6} borderColor="neutral.400" />
       <FormControl w="100%" maxW="100%">
         <FormLabel htmlFor="invite-participants">
@@ -104,7 +106,7 @@ const PollInviteSection: FC<PollInviteSectionProps> = ({
         isLoading={isLoading}
         isDisabled={isDisabled}
       >
-        {pollData ? 'Add & Send Invites' : 'Save changes'}
+        {pollData ? 'Send Invites' : 'Save changes'}
       </Button>
       {pollData && (
         <>

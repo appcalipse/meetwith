@@ -47,6 +47,8 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     clearGuestAvailabilitySlots,
     currentParticipantId,
     setIsEditingAvailability,
+    setCurrentParticipantId,
+    setCurrentGuestEmail,
   } = useQuickPollAvailability()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -143,6 +145,8 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
           email: email.trim().toLowerCase(),
           name: fullName.trim(),
         })
+        setCurrentParticipantId(participantId)
+        setCurrentGuestEmail(email.trim().toLowerCase())
       }
 
       setIsEditingAvailability(false)

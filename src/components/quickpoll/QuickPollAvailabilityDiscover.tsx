@@ -120,7 +120,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   } = useQuery({
     queryKey: ['quickpoll-schedule', pollId],
     queryFn: () => getQuickPollById(pollId!),
-    enabled: !!pollId && !pollData,
+    enabled: !!pollId,
     onError: (err: unknown) => {
       showErrorToast(
         'Failed to load poll',
@@ -130,7 +130,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   })
 
   const currentPollData =
-    pollData || (fetchedPollData as QuickPollBySlugResponse)
+    (fetchedPollData as QuickPollBySlugResponse) || pollData
 
   const isDesktop = useBreakpointValue({ base: false, md: true }) ?? false
 

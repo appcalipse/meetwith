@@ -151,6 +151,8 @@ export interface AddParticipantData {
   status?: QuickPollParticipantStatus
 }
 
+export type QuickPollBulkAddParticipants = AddParticipantData[]
+
 export interface QuickPollParticipantUpdateFields {
   status: QuickPollParticipantStatus
   guest_name?: string

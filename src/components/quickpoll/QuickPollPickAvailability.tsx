@@ -15,7 +15,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { Select, SingleValue } from 'chakra-react-select'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
@@ -48,7 +48,6 @@ import {
 import {
   fetchBusySlotsRawForQuickPollParticipants,
   getExistingAccounts,
-  getPollParticipantCalendars,
   getSuggestedSlots,
 } from '@/utils/api_helper'
 import { customSelectComponents, Option } from '@/utils/constants/select'
@@ -194,16 +193,6 @@ export function QuickPollPickAvailability({
     return null
   }, [pollData, currentAccount, currentGuestEmail, currentParticipantId])
 
-  // Check if participant has calendar imported
-  const { data: participantCalendars } = useQuery({
-    queryKey: ['poll-participant-calendars', currentParticipant?.id],
-    queryFn: () =>
-      currentParticipant?.id
-        ? getPollParticipantCalendars(currentParticipant.id)
-        : Promise.resolve([]),
-    enabled: !!currentParticipant?.id,
-  })
-
   // Check if user has any availability
   const hasAvailability = useMemo(() => {
     if (!currentParticipant) return false
@@ -213,21 +202,14 @@ export function QuickPollPickAvailability({
       currentParticipant.available_slots &&
       currentParticipant.available_slots.length > 0
 
-    // Check if they have calendar imported
-    const hasCalendar = participantCalendars && participantCalendars.length > 0
-
     // Check if account owner has default availability blocks
     const hasDefaultAvailability =
       currentAccount &&
       currentAccount.preferences?.availabilities &&
       currentAccount.preferences.availabilities.length > 0
 
-    return hasManualAvailability || hasCalendar || hasDefaultAvailability
-  }, [
-    currentParticipant,
-    participantCalendars,
-    currentAccount?.preferences?.availabilities,
-  ])
+    return hasManualAvailability || hasDefaultAvailability
+  }, [currentParticipant, currentAccount?.preferences?.availabilities])
 
   const { currentIntent } = useQuickPollAvailability()
   const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
@@ -929,6 +911,7 @@ export function QuickPollPickAvailability({
     isBreakpointResolved,
     pollData,
     isRefreshingAvailabilities,
+    currentParticipant,
   ])
 
   useEffect(() => {
@@ -1077,7 +1060,7 @@ export function QuickPollPickAvailability({
   }
 
   const handleAvailabilityButtonClick = () => {
-    if (currentAccount) {
+    if (currentAccount || isEditingAvailability) {
       onSaveAvailability?.()
     } else {
       setShowMethodModal(true)
