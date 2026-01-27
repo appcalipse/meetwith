@@ -2495,6 +2495,15 @@ export const addQuickPollParticipants = async (
   )
 }
 
+export const addQuickPollParticipantsBySlugAsGuest = async (
+  slug: string,
+  participants: BulkAddParticipantsRequest['participants']
+) => {
+  return await internalFetch(`/quickpoll/${slug}/participants/bulk`, 'POST', {
+    participants,
+  })
+}
+
 export const getQuickPollBySlug = async (slug: string) => {
   return await internalFetch(`/quickpoll/${slug}`)
 }

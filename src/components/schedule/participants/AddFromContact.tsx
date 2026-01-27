@@ -7,27 +7,32 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React from 'react'
+import React, { useContext } from 'react'
 
 import Loading from '@/components/Loading'
 import useAccountContext from '@/hooks/useAccountContext'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 
 import ContactsCard from './ContactsCard'
 
 interface AddFromContactProps {
   isQuickPoll?: boolean
+  onRequestSignIn?: () => void
 }
 
 const AddFromContact: React.FC<AddFromContactProps> = ({
   isQuickPoll = false,
+  onRequestSignIn,
 }) => {
   const currentAccount = useAccountContext()
   const router = useRouter()
+  const { openConnection } = useContext(OnboardingModalContext)
   const { contacts, isContactsPrefetching } = useParticipants()
 
   const handleSignIn = () => {
-    router.push('/auth/signin')
+    onRequestSignIn?.()
+    openConnection(router.asPath, true)
   }
 
   if (isContactsPrefetching) {

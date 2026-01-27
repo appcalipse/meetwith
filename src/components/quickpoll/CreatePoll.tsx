@@ -298,33 +298,25 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       setSelectedPermissions(poll.permissions || [])
 
       const originalParticipantsData =
-        poll.participants
-          ?.filter(
-            p => p.participant_type !== QuickPollParticipantType.SCHEDULER
-          )
-          .map(p => ({
-            id: p.id,
-            account_address: p.account_address,
-            guest_email: p.guest_email,
-          })) || []
+        poll.participants?.map(p => ({
+          id: p.id,
+          account_address: p.account_address,
+          guest_email: p.guest_email,
+        })) || []
 
       setOriginalParticipants(originalParticipantsData)
 
       // Convert poll participants to ParticipantInfo format and set them
       const participantInfos =
-        poll.participants
-          ?.filter(
-            p => p.participant_type !== QuickPollParticipantType.SCHEDULER
-          ) // Exclude the scheduler/host
-          .map(participant => ({
-            account_address: participant.account_address,
-            name: participant.guest_name,
-            guest_email: participant.guest_email,
-            status: mapQuickPollStatus(participant.status),
-            meeting_id: '',
-            type: mapQuickPollType(participant.participant_type),
-            isHidden: true,
-          })) || []
+        poll.participants?.map(participant => ({
+          account_address: participant.account_address,
+          name: participant.guest_name,
+          guest_email: participant.guest_email,
+          status: mapQuickPollStatus(participant.status),
+          meeting_id: '',
+          type: mapQuickPollType(participant.participant_type),
+          isHidden: true,
+        })) || []
 
       setParticipants(participantInfos)
 

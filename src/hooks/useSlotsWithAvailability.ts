@@ -126,9 +126,10 @@ const useSlotsWithAvailability = (
             const isUserAvailable = ignoreBusyOverlaps
               ? hasAvailability
               : !isBusy && hasAvailability
-            if (isUserAvailable && isAfterNow) {
+            if (isUserAvailable) {
               numberOfAvailable++
             }
+
             return {
               displayName: accountDisplayNames.get(account) || '',
               state: isUserAvailable,
