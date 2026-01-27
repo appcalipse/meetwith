@@ -203,6 +203,7 @@ const InviteParticipants: FC<IProps> = ({
         const id = toIdentifier(p)
         if (id) ids.add(id)
       })
+
       setBaselineIds(ids)
       baselineInitializedRef.current = true
     }
@@ -330,12 +331,16 @@ const InviteParticipants: FC<IProps> = ({
     // For existing polls, add participants and send invites
     setIsLoading(true)
     try {
-      const allToAdd: ParticipantInfo[] = [
-        ...newInvitees.filter((p): p is ParticipantInfo => !!p.account_address), // Contacts added
-        ...inviteParticipants,
-      ]
+      const allToAdd = currentAccount
+        ? [
+            ...newInvitees.filter(
+              (p): p is ParticipantInfo => !!p.account_address
+            ),
+            ...inviteParticipants,
+          ]
+        : inviteParticipants
 
-      if (allToAdd.length === 0 && inviteParticipants.length === 0) {
+      if (allToAdd.length === 0) {
         setIsLoading(false)
         hanleClose()
         return
@@ -362,39 +367,7 @@ const InviteParticipants: FC<IProps> = ({
         })
       }
 
-      const totalCount = toAdd.length
-      const inviteIdSet = new Set(
-        inviteParticipants.map(p => toIdentifier(p)).filter(Boolean)
-      )
-      const contactsAddedCount = newInvitees.filter(p => {
-        if (!p.account_address) return false
-        const id = toIdentifier(p)
-        return !!id && !inviteIdSet.has(id)
-      }).length
-      const invitesSentCount = inviteParticipants.length
-      const hasContacts = contactsAddedCount > 0
-      const hasInvites = invitesSentCount > 0
-
-      let title = 'Participants added successfully'
-      let description = `${totalCount} participant${
-        totalCount > 1 ? 's' : ''
-      } ${totalCount === 1 ? 'has' : 'have'} been added to the poll.`
-
-      if (hasInvites && hasContacts) {
-        title = 'Participants added and invites sent'
-        description = `${contactsAddedCount} contact${
-          contactsAddedCount > 1 ? 's' : ''
-        } added and ${invitesSentCount} invite${
-          invitesSentCount > 1 ? 's' : ''
-        } sent.`
-      } else if (hasInvites) {
-        title = 'Invitations sent successfully'
-        description = `${invitesSentCount} invitation${
-          invitesSentCount > 1 ? 's' : ''
-        } ${invitesSentCount === 1 ? 'has' : 'have'} been sent.`
-      }
-
-      showSuccessToast(title, description)
+      showSuccessToast('invite(s) sent successfully', '')
 
       setInviteParticipants([])
       onInviteSuccess?.()
@@ -408,6 +381,7 @@ const InviteParticipants: FC<IProps> = ({
     pollData,
     newInvitees,
     inviteParticipants,
+    currentAccount,
     onInviteSuccess,
     showSuccessToast,
   ])
