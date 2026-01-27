@@ -7160,10 +7160,6 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
     .from<ConnectedCalendar>('connected_calendars')
     .select('*')
     .eq('provider', provider)
-    .eq(
-      'account_address',
-      '0x546F67e57a3980F41251B1cace8AbD10d764cC3F'.toLowerCase()
-    )
     .filter('calendars', 'cs', '[{"sync": true}]')
   if (error) {
     throw new Error(error.message)
