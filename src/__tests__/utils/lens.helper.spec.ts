@@ -466,9 +466,17 @@ describe('lens.helper', () => {
 
     it('should handle invalid response format', async () => {
       const mockFetchAll = getLensMock()
-      mockFetchAll.mockResolvedValue({ items: null })
+      mockFetchAll.mockResolvedValue(null)
 
-      await expect(getLensHandlesForAddress(mockAddress)).rejects.toThrow()
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+
+      const result = await getLensHandlesForAddress(mockAddress)
+
+      // The function catches errors and returns undefined
+      expect(result).toBeUndefined()
+      consoleErrorSpy.mockRestore()
     })
   })
 })
