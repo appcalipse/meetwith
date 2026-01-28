@@ -20,7 +20,7 @@ const DesktopUpcomingEvents: FC<DesktopUpcomingEventsProps> = ({ data }) => {
           {data.map(meeting => (
             <UpComingEvent key={meeting.id} meeting={meeting} />
           ))}
-          <Button variant="outline" colorScheme="primary" mt={2} mx="auto">
+          <Button w="100%" variant="outline" colorScheme="primary" my={2}>
             View All Meetings
           </Button>
         </>

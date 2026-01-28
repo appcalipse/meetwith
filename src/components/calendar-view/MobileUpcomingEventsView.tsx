@@ -59,7 +59,7 @@ const MobileUpcomingEvents: FC<MobileUpcomingEventsProps> = ({ data }) => {
                     variant="outline"
                     colorScheme="primary"
                     mt={2}
-                    mx="auto"
+                    w="100%"
                   >
                     View All Meetings
                   </Button>
