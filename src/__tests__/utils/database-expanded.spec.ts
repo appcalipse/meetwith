@@ -48,30 +48,10 @@ jest.mock('@/utils/quickpoll_helper', () => ({
 }))
 
 // Mock Supabase client
-const mockFrom = jest.fn()
-const mockSelect = jest.fn()
-const mockInsert = jest.fn()
-const mockUpdate = jest.fn()
-const mockDelete = jest.fn()
-const mockEq = jest.fn()
-const mockIn = jest.fn()
-const mockGt = jest.fn()
-const mockLt = jest.fn()
-const mockOr = jest.fn()
-const mockOrder = jest.fn()
-const mockLimit = jest.fn()
-const mockSingle = jest.fn()
-const mockMaybeSingle = jest.fn()
-const mockRange = jest.fn()
-const mockFilter = jest.fn()
-const mockNeq = jest.fn()
-const mockContains = jest.fn()
-const mockRpc = jest.fn()
-
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
-    from: mockFrom,
-    rpc: mockRpc,
+    from: jest.fn(),
+    rpc: jest.fn(),
   })),
 }))
 
@@ -99,10 +79,63 @@ import {
   getWalletTransactions,
   getWalletTransactionsByToken,
 } from '@/utils/database'
+import { createClient } from '@supabase/supabase-js'
 
 describe('database.ts - Expanded Tests', () => {
+  const mockCreateClient = createClient as jest.Mock
+  let mockFrom: jest.Mock
+  let mockRpc: jest.Mock
+describe('database.ts - Expanded Tests', () => {
+  const mockCreateClient = createClient as jest.Mock
+  let mockFrom: jest.Mock
+  let mockRpc: jest.Mock
+  let mockSelect: jest.Mock
+  let mockInsert: jest.Mock
+  let mockUpdate: jest.Mock
+  let mockDelete: jest.Mock
+  let mockEq: jest.Mock
+  let mockIn: jest.Mock
+  let mockGt: jest.Mock
+  let mockLt: jest.Mock
+  let mockOr: jest.Mock
+  let mockOrder: jest.Mock
+  let mockLimit: jest.Mock
+  let mockSingle: jest.Mock
+  let mockMaybeSingle: jest.Mock
+  let mockRange: jest.Mock
+  let mockFilter: jest.Mock
+  let mockNeq: jest.Mock
+  let mockContains: jest.Mock
+
   beforeEach(() => {
     jest.clearAllMocks()
+    
+    // Create fresh mocks for each test
+    mockFrom = jest.fn()
+    mockRpc = jest.fn()
+    mockSelect = jest.fn()
+    mockInsert = jest.fn()
+    mockUpdate = jest.fn()
+    mockDelete = jest.fn()
+    mockEq = jest.fn()
+    mockIn = jest.fn()
+    mockGt = jest.fn()
+    mockLt = jest.fn()
+    mockOr = jest.fn()
+    mockOrder = jest.fn()
+    mockLimit = jest.fn()
+    mockSingle = jest.fn()
+    mockMaybeSingle = jest.fn()
+    mockRange = jest.fn()
+    mockFilter = jest.fn()
+    mockNeq = jest.fn()
+    mockContains = jest.fn()
+    
+    // Setup mock client
+    mockCreateClient.mockReturnValue({
+      from: mockFrom,
+      rpc: mockRpc,
+    })
     
     // Setup default mock chain
     mockFrom.mockReturnValue({
