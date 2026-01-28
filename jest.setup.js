@@ -5,6 +5,11 @@ import { Crypto } from '@peculiar/webcrypto'
 import { ReadableStream } from 'stream/web'
 import { TextDecoder, TextEncoder } from 'util'
 
+// Set required environment variables for tests
+process.env.NEXT_PUBLIC_THIRDWEB_ID = 'test-thirdweb-id'
+process.env.FROM_MAIL = 'noreply@meetwith.com'
+process.env.RESEND_API_KEY = 'test-resend-key'
+
 global.TextDecoder = TextDecoder
 global.TextEncoder = TextEncoder
 global.ReadableStream = ReadableStream
