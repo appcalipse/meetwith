@@ -13,8 +13,8 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useState } from 'react'
-
+import { FC, useState } from 'react'
+import useAccountContext from '@/hooks/useAccountContext'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import { MeetingDecrypted } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
@@ -28,6 +28,7 @@ interface IProps {
 }
 const ScheduleParticipantsSchedulerModal: FC<IProps> = props => {
   const { handleDelete } = useScheduleActions()
+  const currentAccount = useAccountContext()
   const [scheduler, setScheduler] = useState<ParticipantInfo | undefined>(
     undefined
   )
@@ -88,50 +89,55 @@ const ScheduleParticipantsSchedulerModal: FC<IProps> = props => {
                 w={'100%'}
               >
                 <VStack w={'100%'} gap={0}>
-                  {props.participants.map(participant => (
-                    <HStack
-                      key={participant.account_address}
-                      p={0}
-                      justifyContent="space-between"
-                      width="100%"
-                      h={'auto'}
-                      _hover={{
-                        bgColor: 'transparent',
-                      }}
-                      borderTopWidth={1}
-                      borderBottomWidth={1}
-                      borderColor="neutral.600"
-                    >
-                      <Radio
-                        flexDirection="row-reverse"
+                  {props.participants
+                    .filter(
+                      participant =>
+                        participant.account_address !== currentAccount
+                    )
+                    .map(participant => (
+                      <HStack
+                        key={participant.account_address}
+                        p={0}
                         justifyContent="space-between"
-                        w="100%"
-                        colorScheme="primary"
-                        value={
-                          participant.account_address ||
-                          participant.guest_email ||
-                          participant.name
-                        }
-                        key={
-                          participant.account_address ||
-                          participant.guest_email ||
-                          participant.name
-                        }
-                        minH={24}
+                        width="100%"
+                        h={'auto'}
+                        _hover={{
+                          bgColor: 'transparent',
+                        }}
+                        borderTopWidth={1}
+                        borderBottomWidth={1}
+                        borderColor="neutral.600"
                       >
-                        <Text
-                          fontWeight="600"
-                          color={'primary.200'}
-                          cursor="pointer"
+                        <Radio
+                          flexDirection="row-reverse"
+                          justifyContent="space-between"
+                          w="100%"
+                          colorScheme="primary"
+                          value={
+                            participant.account_address ||
+                            participant.guest_email ||
+                            participant.name
+                          }
+                          key={
+                            participant.account_address ||
+                            participant.guest_email ||
+                            participant.name
+                          }
+                          minH={24}
                         >
-                          {participant.name ||
-                            (participant.account_address
-                              ? ellipsizeAddress(participant.account_address)
-                              : participant.guest_email)}
-                        </Text>
-                      </Radio>
-                    </HStack>
-                  ))}
+                          <Text
+                            fontWeight="600"
+                            color={'primary.200'}
+                            cursor="pointer"
+                          >
+                            {participant.name ||
+                              (participant.account_address
+                                ? ellipsizeAddress(participant.account_address)
+                                : participant.guest_email)}
+                          </Text>
+                        </Radio>
+                      </HStack>
+                    ))}
                 </VStack>
               </RadioGroup>
             )}

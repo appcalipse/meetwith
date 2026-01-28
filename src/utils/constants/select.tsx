@@ -9,13 +9,24 @@ import { FaChevronDown } from 'react-icons/fa'
 
 export const getCustomSelectComponents = <
   T = unknown,
-  IsMulti extends boolean = false,
+  IsMulti extends boolean = false
 >(): Props<T, IsMulti>['components'] => ({
   ClearIndicator: props => (
     <chakraComponents.ClearIndicator className="noBg" {...props}>
       <Icon as={FaChevronDown} h={4} w={4} />
     </chakraComponents.ClearIndicator>
   ),
+  DropdownIndicator: props => (
+    <chakraComponents.DropdownIndicator className="noBg" {...props}>
+      <Icon as={FaChevronDown} h={4} w={4} />
+    </chakraComponents.DropdownIndicator>
+  ),
+})
+export const getnoClearCustomSelectComponent = <
+  T = unknown,
+  IsMulti extends boolean = false
+>(): Props<T, IsMulti>['components'] => ({
+  ClearIndicator: () => null,
   DropdownIndicator: props => (
     <chakraComponents.DropdownIndicator className="noBg" {...props}>
       <Icon as={FaChevronDown} h={4} w={4} />
