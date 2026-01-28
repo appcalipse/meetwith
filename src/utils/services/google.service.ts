@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { GaxiosError, RetryConfig } from 'gaxios'
+import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
 import { DateTime } from 'luxon'
 
@@ -10,7 +10,7 @@ import {
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
-import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
+import { TimeSlotSource } from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -18,7 +18,6 @@ import {
 } from '@/types/ParticipantInfo'
 import {
   DeleteInstanceRequest,
-  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -33,7 +32,7 @@ import { isValidUrl } from '../validations'
 import { CalendarServiceHelper } from './calendar.helper'
 import { EventList, IGoogleCalendarService } from './calendar.service.types'
 import { GoogleEventMapper } from './google.mapper'
-import { RetryOptions, withRetry } from './retry.service'
+import { withRetry } from './retry.service'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
