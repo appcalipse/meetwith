@@ -4,7 +4,6 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { MeetingChangeType } from '@/types/Meeting'
 import {
   MeetingCancelSyncRequest,
-  MeetingInstanceCancelSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
 import {
@@ -21,13 +20,14 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     request.end = new Date(request.end)
     request.created_at = new Date(request.created_at)
     try {
-      await notifyForOrUpdateNewMeeting(MeetingChangeType.UPDATE, request)
+      await ExternalCalendarSync.updateInstance(request)
     } catch (error) {
+      console.error('Error updating instance:', error)
       Sentry.captureException(error)
     }
 
     try {
-      await ExternalCalendarSync.updateInstance(request)
+      await notifyForOrUpdateNewMeeting(MeetingChangeType.UPDATE, request)
     } catch (error) {
       Sentry.captureException(error)
     }
