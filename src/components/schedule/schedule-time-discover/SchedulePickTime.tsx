@@ -2,10 +2,7 @@ import { InfoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
-  Select as ChakraSelect,
   Flex,
-  FormControl,
-  FormLabel,
   Grid,
   Heading,
   HStack,
@@ -40,7 +37,6 @@ import {
   getExistingAccounts,
   getSuggestedSlots,
 } from '@/utils/api_helper'
-import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import {
@@ -50,6 +46,11 @@ import {
   timeZoneFilter,
 } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
+import {
+  buildHourlyTimeRangeLabelRows,
+  calculateEffectiveDuration,
+  getLabelRowHeightPx,
+} from '@/utils/duration.helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { mergeAvailabilityBlocks } from '@/utils/schedule.helper'
 import { getEmptySlots } from '@/utils/slots.helper'
@@ -61,8 +62,11 @@ export interface AccountAddressRecord extends ParticipantInfo {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import useSlotCache from '@/hooks/useSlotCache'
+import useTimeRangeSlotCache from '@/hooks/useTimeRangeSlotCache'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { ActiveAvailabilityBlock } from '@/types/schedule'
+import { Option } from '@/utils/constants/select'
+import { DurationSelector } from './DurationSelector'
 import ScheduleDateSection from './ScheduleDateSection'
 
 export enum State {
@@ -123,6 +127,10 @@ export function SchedulePickTime({
     pickedTime,
     duration,
     setDuration,
+    durationMode,
+    setDurationMode,
+    timeRange,
+    setTimeRange,
     isScheduling,
     currentSelectedDate,
     setCurrentSelectedDate,
@@ -178,9 +186,15 @@ export function SchedulePickTime({
         signal
       ),
   })
+  // Calculate effective duration based on mode
+  const effectiveDuration = useMemo(
+    () => calculateEffectiveDuration(durationMode, duration, timeRange),
+    [durationMode, duration, timeRange]
+  )
+
   const { mutateAsync: fetchBestSlot, isLoading: isBestSlotLoading } =
     useMutation({
-      mutationKey: ['busySlots', addresses.join(','), duration],
+      mutationKey: ['busySlots', addresses.join(','), effectiveDuration],
       mutationFn: ({
         endDate,
         startDate,
@@ -192,7 +206,7 @@ export function SchedulePickTime({
           addresses,
           startDate,
           endDate,
-          duration,
+          effectiveDuration,
           groupId as string
         ),
       onError: () =>
@@ -374,7 +388,17 @@ export function SchedulePickTime({
   ])
 
   const { handlePageSwitch } = useScheduleNavigation()
-  const slotTemplate = useSlotCache(duration, timezone)
+
+  const gridSlotDuration =
+    durationMode === 'timeRange' ? effectiveDuration : duration
+  const timeRangeSlotTemplate = useTimeRangeSlotCache(
+    timeRange?.startTime ?? '09:00',
+    timeRange?.endTime ?? '10:00',
+    timezone
+  )
+  const regularSlotTemplate = useSlotCache(gridSlotDuration, timezone)
+  const slotTemplate =
+    durationMode === 'timeRange' ? timeRangeSlotTemplate : regularSlotTemplate
 
   const dates = useMemo(() => {
     const baseDate = currentSelectedDate.setZone(timezone).startOf('day')
@@ -387,6 +411,8 @@ export function SchedulePickTime({
         days.push(day)
       }
     }
+
+    if (slotTemplate.length === 0) return []
 
     return days.map(date => {
       const dateStart = date.startOf('day')
@@ -586,16 +612,37 @@ export function SchedulePickTime({
     setCurrentSelectedDate(newDate)
   }
   const HOURS_SLOTS = useMemo(() => {
-    const slots = getEmptySlots(
-      DateTime.now(),
-      duration >= 45 ? duration : 60,
-      timezone
-    )
+    if (durationMode === 'timeRange' && timeRange && slotTemplate.length > 0) {
+      if (effectiveDuration < 45) {
+        return buildHourlyTimeRangeLabelRows(slotTemplate, timezone)
+      }
+      return slotTemplate.map(slot => {
+        const zonedTime = slot.start.setZone(timezone)
+        return {
+          label: zonedTime.toFormat(
+            zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a'
+          ),
+          heightMinutes: slot.toDuration('minutes').minutes,
+        }
+      })
+    }
+    const labelSlotSize = gridSlotDuration >= 45 ? gridSlotDuration : 60
+    const slots = getEmptySlots(DateTime.now(), labelSlotSize, timezone)
     return slots.map(val => {
       const zonedTime = val.start.setZone(timezone)
-      return zonedTime.toFormat(zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a')
+      return {
+        label: zonedTime.toFormat(zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a'),
+        heightMinutes: labelSlotSize,
+      }
     })
-  }, [duration, timezone])
+  }, [
+    durationMode,
+    timeRange,
+    slotTemplate,
+    gridSlotDuration,
+    effectiveDuration,
+    timezone,
+  ])
 
   const isBackDisabled = useMemo(() => {
     const selectedDate = currentSelectedDate.setZone(timezone)
@@ -633,6 +680,35 @@ export function SchedulePickTime({
     handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
 
+  const handleDurationChange = (
+    newValue: Option<number> | { value: string; label: string } | null
+  ) => {
+    if (!newValue) {
+      setDurationMode('preset')
+      setDuration(30)
+      setTimeRange(null)
+      return
+    }
+
+    if (newValue.value === 'TIME_RANGE') {
+      setDurationMode('timeRange')
+      if (!timeRange) {
+        setTimeRange({ startTime: '09:00', endTime: '10:00' })
+      }
+    } else {
+      // Regular duration option
+      const durationValue = (newValue as Option<number>).value
+      setDuration(durationValue)
+      // Determine if it's a preset or custom
+      const isPreset = DEFAULT_GROUP_SCHEDULING_DURATION.some(
+        (preset: { duration: number; id: string }) =>
+          preset.duration === durationValue
+      )
+      setDurationMode(isPreset ? 'preset' : 'custom')
+      setTimeRange(null)
+    }
+  }
+
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
@@ -648,7 +724,7 @@ export function SchedulePickTime({
             gap={2}
             alignItems={'flex-start'}
             width="fit-content"
-            minW={'300px'}
+            minW={'10px'}
           >
             <HStack width="fit-content" gap={0}>
               <Heading fontSize="16px">Show times in</Heading>
@@ -695,37 +771,16 @@ export function SchedulePickTime({
               }}
             />
           </VStack>
-          <FormControl
-            w={'fit-content'}
+          <DurationSelector
+            value={durationMode === 'timeRange' ? 'TIME_RANGE' : duration}
+            durationMode={durationMode}
+            timeRange={timeRange}
+            onChange={handleDurationChange}
+            onTimeRangeChange={(startTime, endTime) => {
+              setTimeRange({ startTime, endTime })
+            }}
             isDisabled={!canEditMeetingDetails || isScheduling}
-          >
-            <FormLabel htmlFor="date">
-              Duration
-              <Text color="red.500" display="inline">
-                *
-              </Text>
-            </FormLabel>
-
-            <ChakraSelect
-              id="duration"
-              placeholder="Duration"
-              onChange={e =>
-                Number(e.target.value) && setDuration(Number(e.target.value))
-              }
-              value={duration}
-              borderColor="input-border"
-              width={'max-content'}
-              maxW="350px"
-              errorBorderColor="red.500"
-              bg="select-bg"
-            >
-              {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                <option key={type.id} value={type.duration}>
-                  {durationToHumanReadable(type.duration)}
-                </option>
-              ))}
-            </ChakraSelect>
-          </FormControl>
+          />
           {isUpdatingMeeting && (
             <Button
               rightIcon={<FaArrowRight />}
@@ -995,14 +1050,19 @@ export function SchedulePickTime({
                 gap={2}
               >
                 <VStack align={'flex-start'} p={1} gap={0}>
-                  {HOURS_SLOTS.map((slot, index) => {
+                  {HOURS_SLOTS.map((row, index) => {
+                    const h = getLabelRowHeightPx(
+                      row,
+                      gridSlotDuration || 30,
+                      durationMode
+                    )
                     return (
                       <HStack
                         key={index}
                         w="100%"
                         justify={'center'}
                         align={'center'}
-                        h={12}
+                        h={`${h}px`}
                         my={'1px'}
                       >
                         <Text
@@ -1012,7 +1072,7 @@ export function SchedulePickTime({
                             md: 'medium',
                           }}
                         >
-                          {slot}
+                          {row.label}
                         </Text>
                       </HStack>
                     )
@@ -1024,7 +1084,7 @@ export function SchedulePickTime({
                   <ScheduleDateSection
                     key={index + date.date.toDateString()}
                     pickedTime={pickedTime}
-                    duration={duration}
+                    duration={gridSlotDuration}
                     timezone={timezone}
                     currentAccountAddress={currentAccount?.address}
                     displayNameToAddress={displayNameToAddress}
