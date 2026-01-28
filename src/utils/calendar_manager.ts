@@ -9,7 +9,7 @@ import {
   ReturnObject,
 } from 'ics'
 import { DateTime } from 'luxon'
-import { Frequency, Options, RRule, rrulestr, Weekday } from 'rrule'
+import { Frequency, Options, RRule, rrulestr } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability } from '@/types/Account'
@@ -367,11 +367,11 @@ const buildMeetingData = async (
     // we use participant key if it is an actual participant, otherwise, it is a
     // guest and have not a PK yet, so we encode data using our pk.
     const encodingKey =
-      allAccounts.filter(
+      allAccounts.find(
         account =>
           account.address.toLowerCase() ===
           participant.account_address?.toLowerCase()
-      )[0]?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
+      )?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
 
     const privateInfoComplete = JSON.stringify({
       ...privateInfo,
@@ -3160,23 +3160,19 @@ const rsvpMeeting = async (
   signal: AbortSignal
 ) => {
   const isRecurringMeeting = eventId.includes('_')
-  const currentAccount = await getAccount(accountAddress)
-  let decryptedMeeting: MeetingDecrypted | null = null
-  let _series_id: string | null = null
   if (isRecurringMeeting) {
-    const slot = await getSlotInstanceById(eventId, signal)
-    if (!slot || !slot.account_address) {
-      throw new MeetingNotFoundError(eventId)
-    }
-    _series_id = slot.series_id
-    decryptedMeeting = await decodeMeeting(slot, currentAccount)
-  } else {
-    const existingDBSlot = await getMeeting(eventId, signal)
-    if (!existingDBSlot || !existingDBSlot.account_address) {
-      throw new MeetingNotFoundError(eventId)
-    }
-    decryptedMeeting = await decryptMeeting(existingDBSlot, currentAccount)
+    return rsvpMeetingInstance(eventId, accountAddress, status, signal)
   }
+  const [currentAccount, existingDBSlot] = await Promise.all([
+    getAccount(accountAddress),
+    getMeeting(eventId, signal),
+  ])
+
+  if (!existingDBSlot || !existingDBSlot.account_address) {
+    throw new MeetingNotFoundError(eventId)
+  }
+  const decryptedMeeting = await decryptMeeting(existingDBSlot, currentAccount)
+
   const participants = (decryptedMeeting?.participants || []).map(
     participant => {
       if (participant.account_address === accountAddress) {
@@ -3209,7 +3205,128 @@ const rsvpMeeting = async (
 
   // those are the guests that must receive an update email
 
-  const accountSlotMap = participants.reduce(
+  const accountSlotMap = participants.reduce((acc, participant) => {
+    if (participant.account_address) {
+      const lowerCasedAddress = participant.account_address.toLowerCase()
+      acc[lowerCasedAddress] = participant.slot_id!
+    } else if (participant.guest_email) {
+      acc[participant.guest_email] = participant.slot_id!
+    }
+    return acc
+  }, {} as Record<string, string>)
+  const meetingData = await buildMeetingData(
+    SchedulingType.REGULAR,
+    '',
+    decryptedMeeting.start,
+    decryptedMeeting.end,
+    participantData.sanitizedParticipants,
+    participantData.allAccounts,
+    [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
+      acc[it] = accountSlotMap[it] || it
+      return acc
+    }, {}),
+    decryptedMeeting.provider || MeetingProvider.GOOGLE_MEET,
+    decryptedMeeting.content,
+    decryptedMeeting.meeting_url,
+    decryptedMeeting.meeting_id,
+    decryptedMeeting.title,
+    decryptedMeeting.reminders,
+    decryptedMeeting.recurrence,
+    decryptedMeeting.permissions,
+    null
+  )
+  const payload: MeetingInstanceUpdateRequest = {
+    ...meetingData,
+    guestsToRemove: [],
+    ignoreOwnerAvailability: true,
+    slotsToRemove: [],
+    version: decryptedMeeting.version + 1,
+  }
+  const slot: DBSlot = await apiUpdateMeeting(
+    decryptedMeeting.id,
+    payload,
+    signal
+  )
+  return await decryptMeeting(slot, currentAccount)!
+}
+const rsvpMeetingInstance = async (
+  eventId: string,
+  accountAddress: string,
+  status: ParticipationStatus,
+  signal: AbortSignal
+) => {
+  const [currentAccount, slot] = await Promise.all([
+    getAccount(accountAddress),
+    getSlotInstanceById(eventId, signal),
+  ])
+
+  if (!slot || !slot.account_address) {
+    throw new MeetingNotFoundError(eventId)
+  }
+  const decryptedMeeting = await decodeMeeting(slot, currentAccount)
+  if (!decryptedMeeting) {
+    throw new DecryptionFailedError()
+  }
+  const oldParticipantsParsing = await parsedDecryptedParticipants(
+    eventId,
+    decryptedMeeting.participants
+      .filter(p => !!p.slot_id)
+      .map(p => ({
+        account_address: p.account_address,
+        guest_email: p.guest_email,
+        slot_id: p.slot_id!,
+      }))
+  )
+  const oldParticipantMap = new Map(
+    oldParticipantsParsing.map(p => [
+      p.account_address || p.guest_email,
+      p.slot_id,
+    ])
+  )
+  decryptedMeeting.related_slot_ids = oldParticipantsParsing.map(p => p.slot_id)
+
+  decryptedMeeting.participants = decryptedMeeting.participants.map(
+    participant => {
+      const participantStatus =
+        participant.account_address === accountAddress
+          ? status
+          : participant.status
+      const key = participant.account_address || participant.guest_email
+      if (oldParticipantMap.has(key)) {
+        return {
+          ...participant,
+          slot_id: oldParticipantMap.get(key),
+          status: participantStatus,
+        }
+      }
+      return {
+        ...participant,
+        status: participantStatus,
+      }
+    }
+  )
+
+  const participantData = await handleParticipants(
+    decryptedMeeting.participants,
+    currentAccount
+  ) // check participants before proceeding
+  const existingMeetingAccounts = await loadMeetingAccountAddresses(
+    decryptedMeeting!,
+    currentAccount.address
+  )
+  const toKeep = intersec(existingMeetingAccounts, [
+    currentAccount.address.toLowerCase(),
+    ...decryptedMeeting.participants
+      .filter(p => p.account_address)
+      .map(p => p.account_address!.toLowerCase()),
+  ])
+  const guestsToKeep = decryptedMeeting.participants
+    .filter(p => p.guest_email)
+    .map(p => p.guest_email!)
+
+  // those are the guests that must receive an update email
+
+  const accountSlotMap = decryptedMeeting.participants.reduce(
     (acc, participant) => {
       if (participant.account_address) {
         const lowerCasedAddress = participant.account_address.toLowerCase()
@@ -3242,6 +3359,7 @@ const rsvpMeeting = async (
     decryptedMeeting.permissions,
     null
   )
+
   const payload: MeetingInstanceUpdateRequest = {
     ...meetingData,
     guestsToRemove: [],
@@ -3249,21 +3367,13 @@ const rsvpMeeting = async (
     slotsToRemove: [],
     version: decryptedMeeting.version + 1,
   }
-  if (isRecurringMeeting) {
-    const slot: DBSlot = await apiUpdateMeetingInstance(
-      decryptedMeeting.id,
-      payload,
-      signal
-    )
-    return await decryptMeeting(slot, currentAccount)!
-  } else {
-    const slot: DBSlot = await apiUpdateMeeting(
-      decryptedMeeting.id,
-      payload,
-      signal
-    )
-    return await decryptMeeting(slot, currentAccount)!
-  }
+
+  const dbSlot: DBSlot = await apiUpdateMeetingInstance(
+    decryptedMeeting.id,
+    payload,
+    signal
+  )
+  return await decryptMeeting(dbSlot, currentAccount)!
 }
 
 export {
@@ -3271,6 +3381,8 @@ export {
   buildMeetingData,
   cancelMeeting,
   cancelMeetingGuest,
+  cancelMeetingInstance,
+  cancelMeetingSeries,
   dateToHumanReadable,
   dateToLocalizedRange,
   decodeMeeting,
@@ -3279,6 +3391,8 @@ export {
   decryptMeetingGuest,
   defaultTimeRange,
   deleteMeeting,
+  deleteMeetingInstance,
+  deleteMeetingSeries,
   durationToHumanReadable,
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
@@ -3300,15 +3414,11 @@ export {
   outLookUrlParsedDate,
   rsvpMeeting,
   scheduleMeeting,
+  scheduleRecurringMeeting,
   selectDefaultProvider,
   updateMeeting,
   updateMeetingAsGuest,
   updateMeetingConferenceGuest,
   updateMeetingInstance,
   updateMeetingSeries,
-  deleteMeetingInstance,
-  cancelMeetingInstance,
-  deleteMeetingSeries,
-  cancelMeetingSeries,
-  scheduleRecurringMeeting,
 }

@@ -4357,11 +4357,12 @@ const parseParticipantSlots = async (
       slots.push(dbSlot)
 
       if (
-        participant.account_address.toLowerCase() ===
-          schedulerAccount?.account_address?.toLowerCase() ||
-        (!schedulerAccount?.account_address &&
+        (participant.account_address &&
           participant.account_address.toLowerCase() ===
-            ownerAccount?.address.toLowerCase())
+            participantActing?.account_address?.toLowerCase()) ||
+        (participant.guest_email &&
+          participant.guest_email.toLowerCase() ===
+            participantActing?.guest_email?.toLowerCase())
       ) {
         index = i
         meetingResponse = {
@@ -4546,7 +4547,7 @@ const updateMeeting = async (
 const getSeriesIdMapping = async (slot_id: string[]) => {
   const { data, error } = await db.supabase
     .from<Tables<'slot_series'>>('slot_series')
-    .select('id, slot_id')
+    .select('id')
     .in(
       'id',
       slot_id.map(id => id.split('_')[0])
@@ -4638,8 +4639,8 @@ const updateMeetingInstance = async (
     .eq('id', data[0]?.series_id)
     .maybeSingle()
   if (slotSerie) {
-    const originalStartTime = new Date(identifier.split('_')[1])
-
+    const originalStartTime =
+      changingTime?.oldStart || meetingUpdateRequest.start
     const body: MeetingInstanceCreationSyncRequest = {
       changes: changingTime ? { dateChange: changingTime } : undefined,
       content: meetingUpdateRequest.content,
