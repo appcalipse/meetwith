@@ -5,6 +5,14 @@ import { Crypto } from '@peculiar/webcrypto'
 import { ReadableStream } from 'stream/web'
 import { TextDecoder, TextEncoder } from 'util'
 
+// Set required environment variables for tests
+process.env.NEXT_PUBLIC_THIRDWEB_ID = 'test-thirdweb-id'
+process.env.FROM_MAIL = 'noreply@meetwith.com'
+process.env.RESEND_API_KEY = 'test-resend-key'
+process.env.NEXT_PUBLIC_POSTHOG_KEY = 'test-posthog-key'
+process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+process.env.NEXT_SUPABASE_KEY = 'test-key'
+
 global.TextDecoder = TextDecoder
 global.TextEncoder = TextEncoder
 global.ReadableStream = ReadableStream
