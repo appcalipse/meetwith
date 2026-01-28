@@ -5,7 +5,6 @@ import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import {
   DeleteInstanceRequest,
-  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -469,6 +468,30 @@ export const ExternalCalendarSync = {
     const calendarOrganizer = await getCalendarOrganizer(meetingDetails)
     if (!calendarOrganizer || !calendarOrganizer.account_address) {
       throw new Error('Organizer Account not found for meeting calendar sync')
+    }
+    // New scheduler was assigned AND they're now the computed organizer → recreate event under them
+    const newSchedulerAssigned =
+      meetingDetails.calendar_organizer_address &&
+      meetingDetails.calendar_organizer_address ===
+        calendarOrganizer.account_address &&
+      calendarOrganizer.type === ParticipantType.Scheduler
+    if (newSchedulerAssigned) {
+      for (const participant of meetingDetails.participants) {
+        try {
+          participant.account_address &&
+            (await syncDeletedEventWithCalendar(
+              participant.account_address,
+              meetingDetails.meeting_id
+            ))
+        } catch (error) {
+          console.error(`Failed to delete from previous organizer:`, error)
+          Sentry.captureException(error)
+        }
+      }
+      return syncCreatedEventWithCalendar(
+        calendarOrganizer.account_address,
+        meetingDetails
+      )
     }
     await syncUpdatedEventWithCalendar(
       calendarOrganizer.account_address!,

@@ -18,7 +18,6 @@ import { MemberType } from './Group'
 import {
   ConferenceMeeting,
   GroupNotificationType,
-  MeetingDecrypted,
   MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
@@ -38,6 +37,7 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   guestsToRemove: ParticipantInfo[]
   eventId?: string | null
   calendar_id?: string | null
+  calendar_organizer_address?: string
 }
 export interface MeetingSeriesUpdateRequest extends MeetingUpdateRequest {
   /**
@@ -129,6 +129,7 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meetingPermissions?: Array<MeetingPermissions>
   rrule: Array<string>
   ical_uid?: string
+  calendar_organizer_address?: string
 }
 export interface MeetingInstanceCreationSyncRequest
   extends MeetingCreationSyncRequest {
