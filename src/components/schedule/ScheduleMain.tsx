@@ -84,6 +84,7 @@ import {
   MeetingPermissions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
+import { calculateEffectiveDuration } from '@/utils/duration.helper'
 import { handleApiError } from '@/utils/error_helper'
 import {
   GateConditionNotValidError,
@@ -128,6 +129,8 @@ const ScheduleMain: FC<IInitialProps> = ({
     title,
     content,
     duration,
+    durationMode,
+    timeRange,
     pickedTime,
     meetingProvider,
     meetingUrl,
@@ -669,6 +672,11 @@ const ScheduleMain: FC<IInitialProps> = ({
     setIsDeleting(false)
   }
 
+  const effectiveDuration = useMemo(
+    () => calculateEffectiveDuration(durationMode, duration, timeRange),
+    [durationMode, duration, timeRange]
+  )
+
   const handleSchedule = async () => {
     try {
       setIsScheduling(true)
@@ -690,7 +698,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         }
 
         const start = new Date(pickedTime)
-        const end = addMinutes(new Date(start), duration)
+        const end = addMinutes(new Date(start), effectiveDuration)
 
         // Get quickpoll participants
         const quickpollParticipants = pollData.poll.participants.map(
@@ -804,7 +812,7 @@ const ScheduleMain: FC<IInitialProps> = ({
       }
       if (!pickedTime) return
       const start = new Date(pickedTime)
-      const end = addMinutes(new Date(start), duration)
+      const end = addMinutes(new Date(start), effectiveDuration)
 
       const canUpdateOtherGuests = canAccountAccessPermission(
         decryptedMeeting?.permissions,
