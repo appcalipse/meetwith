@@ -14,7 +14,6 @@ import {
   MenuItem,
   MenuList,
   Portal,
-  Spinner,
   Tag,
   TagLabel,
   Text,
@@ -45,7 +44,6 @@ import {
 } from '@/types/Calendar'
 import { Intents } from '@/types/Dashboard'
 import {
-  ExtendedDBSlot,
   isSlotInstance,
   MeetingChangeType,
   MeetingDecrypted,
@@ -59,7 +57,6 @@ import {
 import { logEvent } from '@/utils/analytics'
 import {
   dateToLocalizedRange,
-  decodeMeeting,
   generateGoogleCalendarUrl,
   generateIcs,
   generateOffice365CalendarUrl,
@@ -502,7 +499,13 @@ const MeetingCard = ({
                     />
                   </Tooltip>
                 )}
-                <Tooltip label="Delete meeting" placement="top">
+                <Tooltip
+                  label="Delete meeting"
+                  placement="top"
+                  hidden={
+                    meeting.decrypted.participants.length === 2 ? true : false
+                  }
+                >
                   <IconButton
                     aria-label="delete"
                     color={iconColor}
