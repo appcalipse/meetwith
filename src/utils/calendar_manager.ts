@@ -2191,7 +2191,11 @@ const scheduleMeeting = async (
   emailToSendReminders?: string,
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
-  selectedPermissions?: MeetingPermissions[],
+  selectedPermissions: MeetingPermissions[] = [
+    MeetingPermissions.SEE_GUEST_LIST,
+    MeetingPermissions.INVITE_GUESTS,
+    MeetingPermissions.EDIT_MEETING,
+  ],
   txHash?: Address | null
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
@@ -2321,7 +2325,11 @@ const scheduleRecurringMeeting = async (
   meetingUrl?: string,
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
-  selectedPermissions?: MeetingPermissions[]
+  selectedPermissions: MeetingPermissions[] = [
+    MeetingPermissions.SEE_GUEST_LIST,
+    MeetingPermissions.INVITE_GUESTS,
+    MeetingPermissions.EDIT_MEETING,
+  ]
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
