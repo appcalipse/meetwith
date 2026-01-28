@@ -4485,6 +4485,20 @@ const updateMeeting = async (
     throw new Error(
       'Could not update your meeting right now, get in touch with us if the problem persists'
     )
+  // delete participants and ensure cleanup before meeting update
+  if (
+    meetingUpdateRequest.slotsToRemove.length > 0 ||
+    meetingUpdateRequest.guestsToRemove.length > 0
+  )
+    await deleteMeetingFromDB(
+      participantActing,
+      meetingUpdateRequest.slotsToRemove,
+      meetingUpdateRequest.guestsToRemove,
+      meetingUpdateRequest.meeting_id,
+      timezone || 'UTC',
+      undefined,
+      meetingUpdateRequest.title
+    )
 
   const body: MeetingCreationSyncRequest = {
     changes: changingTime ? { dateChange: changingTime } : undefined,
@@ -4506,6 +4520,7 @@ const updateMeeting = async (
     start: meetingUpdateRequest.start,
     timezone,
     title: meetingUpdateRequest.title,
+    calendar_organizer_address: meetingUpdateRequest.calendar_organizer_address,
   }
 
   // Doing notifications and syncs asynchronously
@@ -4517,20 +4532,6 @@ const updateMeeting = async (
     },
     method: 'PATCH',
   })
-
-  if (
-    meetingUpdateRequest.slotsToRemove.length > 0 ||
-    meetingUpdateRequest.guestsToRemove.length > 0
-  )
-    await deleteMeetingFromDB(
-      participantActing,
-      meetingUpdateRequest.slotsToRemove,
-      meetingUpdateRequest.guestsToRemove,
-      meetingUpdateRequest.meeting_id,
-      timezone || 'UTC',
-      undefined,
-      meetingUpdateRequest.title
-    )
 
   return {
     ...meetingResponse,

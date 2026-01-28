@@ -2040,6 +2040,7 @@ const deleteMeeting = async (
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
     version: existingMeeting.version + 1,
+    calendar_organizer_address: scheduler?.account_address,
   }
   const slotId = decryptedMeeting.id.split('_')[0]
 
