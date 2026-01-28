@@ -1,7 +1,7 @@
 /**
  * COMPREHENSIVE UNIT TESTS FOR database.ts
  * 
- * Target: 200+ tests covering 40%+ of database.ts (10,787 lines)
+ * Target: 215 tests covering 40%+ of database.ts (10,787 lines)
  * 
  * Coverage areas:
  * - Account Management (getAccountPreferences, updateAccountPreferences, etc.)
@@ -72,7 +72,11 @@ jest.mock('@/utils/quickpoll_helper', () => ({
 }))
 
 jest.mock('uuid', () => ({
-  validate: jest.fn((uuid) => uuid && uuid.includes('-')),
+  validate: jest.fn((uuid) => {
+    // More realistic UUID validation pattern
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    return typeof uuid === 'string' && uuidRegex.test(uuid)
+  }),
 }))
 
 // Mock Supabase client
@@ -2648,7 +2652,7 @@ describe('database.ts - COMPREHENSIVE TESTS', () => {
     })
 
     describe('Race Conditions', () => {
-      it('should handle concurrent group membership updates', async () => {
+      it('should handle concurrent group membership updates without conflicts', async () => {
         mockSingle.mockResolvedValue({
           data: { group_id: 'group_123' },
           error: null,
@@ -2660,7 +2664,7 @@ describe('database.ts - COMPREHENSIVE TESTS', () => {
         await expect(Promise.all([promise1, promise2])).resolves.toBeDefined()
       })
 
-      it('should handle concurrent meeting creation', async () => {
+      it('should handle concurrent meeting creation without conflicts', async () => {
         mockSingle.mockResolvedValue({
           data: { id: 'slot_123' },
           error: null,
@@ -2729,7 +2733,7 @@ describe('database.ts - COMPREHENSIVE TESTS', () => {
     })
 
     describe('Timestamp Handling', () => {
-      it('should handle timezone differences in availability blocks', async () => {
+      it('should store timezone in availability blocks', async () => {
         const mockBlock = {
           id: 'block_123',
           timezone: 'America/New_York',
@@ -2746,7 +2750,7 @@ describe('database.ts - COMPREHENSIVE TESTS', () => {
         expect(result.timezone).toBe('America/New_York')
       })
 
-      it('should handle daylight saving time transitions', async () => {
+      it('should create availability block with timezone', async () => {
         const mockBlock = {
           timezone: 'America/New_York',
           weekly_availability: [],
@@ -2767,7 +2771,7 @@ describe('database.ts - COMPREHENSIVE TESTS', () => {
   // ==================== PERFORMANCE & OPTIMIZATION TESTS ====================
   
   describe('Performance & Optimization', () => {
-    it('should efficiently query with proper indexing', async () => {
+    it('should complete queries efficiently with mocked client', async () => {
       mockMaybeSingle.mockResolvedValue({
         data: { address: '0x123' },
         error: null,
