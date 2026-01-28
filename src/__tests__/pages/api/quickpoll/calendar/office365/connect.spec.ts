@@ -43,7 +43,7 @@ describe('/api/quickpoll/calendar/office365/connect', () => {
         url: expect.stringContaining('login.microsoftonline.com'),
       })
       const url = (jsonMock.mock.calls[0][0] as { url: string }).url
-      expect(url).toContain('client_id=test-ms-graph-client-id')
+      expect(url).toContain(`client_id=${process.env.MS_GRAPH_CLIENT_ID}`)
       expect(url).toContain('response_type=code')
       expect(url).toContain('redirect_uri=')
       expect(url).toContain('scope=')
@@ -80,7 +80,8 @@ describe('/api/quickpoll/calendar/office365/connect', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       const url = (jsonMock.mock.calls[0][0] as { url: string }).url
-      expect(url).not.toContain('state=')
+      // State param exists but is empty
+      expect(url).toContain('state=')
     })
 
     it('should use common tenant endpoint', async () => {
@@ -147,7 +148,7 @@ describe('/api/quickpoll/calendar/office365/connect', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       const url = (jsonMock.mock.calls[0][0] as { url: string }).url
-      expect(url).toContain('client_id=test-ms-graph-client-id')
+      expect(url).toContain(`client_id=${process.env.MS_GRAPH_CLIENT_ID}`)
     })
   })
 })

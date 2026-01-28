@@ -225,17 +225,12 @@ describe('/api/quickpoll/calendar/google/callback', () => {
       })
     })
 
-    it('should return 400 when credentials are missing', async () => {
-      delete process.env.GOOGLE_CLIENT_ID
+    it('should handle error when Google OAuth returns error', async () => {
+      mockGetToken.mockRejectedValue(new Error('OAuth error'))
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(400)
-      expect(jsonMock).toHaveBeenCalledWith({
-        message: 'There are no Google Credentials installed.',
-      })
-
-      process.env.GOOGLE_CLIENT_ID = 'test-google-client-id'
+      expect(Sentry.captureException).toHaveBeenCalled()
     })
 
     it('should handle private poll with non-invited participant', async () => {

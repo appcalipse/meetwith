@@ -113,8 +113,8 @@ describe('/api/quickpoll/calendar/google/connect', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(OAuth2Mock).toHaveBeenCalledWith(
-        'test-google-client-id',
-        'test-google-client-secret',
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
         expect.stringContaining('/quickpoll/calendar/google/callback')
       )
     })

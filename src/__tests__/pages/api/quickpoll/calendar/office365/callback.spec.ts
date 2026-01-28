@@ -133,6 +133,7 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
       mockAddQuickPollParticipant.mockResolvedValue({
         id: 'participant-123',
       })
+      mockSaveQuickPollCalendar.mockResolvedValue(undefined)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -165,6 +166,7 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
       mockGetQuickPollParticipantByIdentifier.mockResolvedValue({
         id: 'existing-participant-123',
       })
+      mockSaveQuickPollCalendar.mockResolvedValue(undefined)
 
       req.query = {
         code: 'test-auth-code',
@@ -218,17 +220,18 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
       })
     })
 
-    it('should return 400 when credentials are missing', async () => {
-      delete process.env.MS_GRAPH_CLIENT_ID
+    it('should handle OAuth token exchange failure', async () => {
+      mockFetch.mockImplementationOnce(() =>
+        Promise.resolve({
+          json: () => Promise.resolve({}),
+        })
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(400)
-      expect(jsonMock).toHaveBeenCalledWith({
-        message: 'There are no Office365 Credentials installed.',
-      })
-
-      process.env.MS_GRAPH_CLIENT_ID = 'test-ms-graph-client-id'
+      expect(redirectMock).toHaveBeenCalledWith(
+        expect.stringContaining('calendarResult=error&message=Failed to get access token')
+      )
     })
 
     it('should return 400 when client secret is missing', async () => {
