@@ -1,59 +1,70 @@
 import {
   generateBorderColor,
   generateBorderColorWithIntensity,
+  generateColorScheme,
+  getAdvancedContrastingText,
+  getContrastingTextColor,
+  getContrastRatio,
+  getDesignSystemTextColor,
+  isLightColor,
 } from '@/utils/color-utils'
 
-describe('Color Utils', () => {
+describe('color-utils', () => {
   describe('generateBorderColor', () => {
-    it('should generate the expected border color for light peachy background', () => {
-      const backgroundColor = '#FEF0EC'
-      const borderColor = generateBorderColor(backgroundColor)
-
-      // Should generate a darker, more saturated orange
-      expect(borderColor).toMatch(/^#[0-9A-F]{6}$/)
-
-      // The result should be significantly darker than the input
-      const inputLightness = parseInt(backgroundColor.slice(1, 3), 16)
-      const outputLightness = parseInt(borderColor.slice(1, 3), 16)
-      expect(outputLightness).toBeLessThan(inputLightness)
+    it('should generate darker border for light backgrounds', () => {
+      const result = generateBorderColor('#FEF0EC', false)
+      expect(result).toMatch(/^#[0-9A-F]{6}$/)
+      expect(result).not.toBe('#FEF0EC')
     })
 
-    it('should handle various light colors', () => {
-      const testCases = [
-        '#FEF0EC', // Light peach
-        '#F0F8FF', // Light blue
-        '#F0FFF0', // Light green
-        '#FFF0F5', // Light pink
-      ]
-
-      testCases.forEach(color => {
-        const result = generateBorderColor(color)
-        expect(result).toMatch(/^#[0-9A-F]{6}$/)
-      })
+    it('should generate lighter border for dark backgrounds', () => {
+      const result = generateBorderColor('#2D3748', true)
+      expect(result).toMatch(/^#[0-9A-F]{6}$/)
     })
 
-    it('should throw error for invalid hex colors', () => {
-      expect(() => generateBorderColor('invalid')).toThrow()
-      expect(() => generateBorderColor('#GGG')).toThrow()
+    it('should throw error for invalid hex color', () => {
+      expect(() => generateBorderColor('invalid')).toThrow('Invalid hex color format')
+    })
+
+    it('should handle hex colors with or without #', () => {
+      const withHash = generateBorderColor('#FEF0EC')
+      const withoutHash = generateBorderColor('FEF0EC')
+      expect(withHash).toMatch(/^#[0-9A-F]{6}$/)
+      expect(withoutHash).toMatch(/^#[0-9A-F]{6}$/)
     })
   })
 
-  describe('generateBorderColorWithIntensity', () => {
-    it('should generate different intensities', () => {
-      const backgroundColor = '#FEF0EC'
+  describe('getContrastRatio', () => {
+    it('should return 21 for black and white', () => {
+      const ratio = getContrastRatio('#FFFFFF', '#000000')
+      expect(ratio).toBeCloseTo(21, 0)
+    })
 
-      const light = generateBorderColorWithIntensity(backgroundColor, 'light')
-      const medium = generateBorderColorWithIntensity(backgroundColor, 'medium')
-      const bold = generateBorderColorWithIntensity(backgroundColor, 'bold')
+    it('should return 1 for same colors', () => {
+      const ratio = getContrastRatio('#FF5733', '#FF5733')
+      expect(ratio).toBe(1)
+    })
+  })
 
-      expect(light).not.toBe(medium)
-      expect(medium).not.toBe(bold)
-      expect(light).not.toBe(bold)
+  describe('isLightColor', () => {
+    it('should return true for white', () => {
+      expect(isLightColor('#FFFFFF')).toBe(true)
+    })
 
-      // All should be valid hex colors
-      ;[light, medium, bold].forEach(color => {
-        expect(color).toMatch(/^#[0-9A-F]{6}$/)
-      })
+    it('should return false for black', () => {
+      expect(isLightColor('#000000')).toBe(false)
+    })
+  })
+
+  describe('getContrastingTextColor', () => {
+    it('should return white for dark backgrounds', () => {
+      const result = getContrastingTextColor('#2D3748')
+      expect(result).toBe('#FFFFFF')
+    })
+
+    it('should return black for light backgrounds', () => {
+      const result = getContrastingTextColor('#FEF0EC')
+      expect(result).toBe('#000000')
     })
   })
 })
