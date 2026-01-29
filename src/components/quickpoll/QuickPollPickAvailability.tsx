@@ -1083,7 +1083,7 @@ export function QuickPollPickAvailability({
       returnUrl: window.location.href,
     })
 
-    openConnection()
+    openConnection(`/poll/${pollData.poll.slug}?signUp=true`)
   }
 
   return (

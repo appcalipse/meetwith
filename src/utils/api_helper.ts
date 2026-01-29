@@ -2927,19 +2927,20 @@ export const parsedDecryptedParticipants = async (
   )
 }
 
-export const addUserToPollAfterSignup = async (
-  accountAddress: string,
+export const joinQuickPollAsParticipant = async (
   pollId: string,
   notificationEmail?: string,
   displayName?: string
-): Promise<{ participant: QuickPollParticipant }> => {
-  return await internalFetch<{ participant: QuickPollParticipant }>(
-    `/secure/quickpoll/${pollId}/join`,
-    'POST',
-    {
-      account_address: accountAddress,
-      notification_email: notificationEmail,
-      display_name: displayName,
-    }
-  )
+): Promise<{ participant: QuickPollParticipant; alreadyInPoll: boolean }> => {
+  const data = await internalFetch<{
+    participant: QuickPollParticipant
+    already_in_poll: boolean
+  }>(`/secure/quickpoll/${pollId}/join`, 'POST', {
+    notification_email: notificationEmail,
+    display_name: displayName,
+  })
+  return {
+    participant: data.participant,
+    alreadyInPoll: data.already_in_poll,
+  }
 }
