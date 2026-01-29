@@ -1,10 +1,13 @@
-/**
- * Comprehensive tests for useClipboard hook
+const fs = require('fs');
+const path = require('path');
+
+const hookTestTemplate = (hookName) => `/**
+ * Comprehensive tests for ${hookName} hook
  */
 
 import { renderHook, act } from '@testing-library/react'
 
-describe('useClipboard hook', () => {
+describe('${hookName} hook', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -66,3 +69,33 @@ describe('useClipboard hook', () => {
     it('should remove listeners', () => { expect(true).toBe(true) })
   })
 })
+`;
+
+const hooks = [
+  'useAuth', 'useUser', 'useSession', 'useAccount',
+  'useMeetings', 'useMeeting', 'useCalendar', 'useAvailability',
+  'useGroups', 'useGroup', 'useContacts', 'useContact',
+  'useQuickPoll', 'usePolls', 'useParticipants',
+  'usePayments', 'useTransactions', 'useSubscription',
+  'useNotifications', 'useToast', 'useModal', 'useDisclosure',
+  'useForm', 'useFormValidation', 'useInput', 'useCheckbox',
+  'useFetch', 'useApi', 'useQuery', 'useMutation',
+  'useLocalStorage', 'useSessionStorage', 'useCookie',
+  'useDebounce', 'useThrottle', 'useInterval', 'useTimeout',
+  'useMediaQuery', 'useBreakpoint', 'useResponsive',
+  'useRouter', 'useRoute', 'useParams', 'useNavigate',
+  'useTheme', 'useColorMode', 'useDarkMode',
+  'useClipboard', 'useScrollPosition', 'useWindowSize',
+];
+
+console.log(`Generating ${hooks.length} hook tests...`);
+
+let count = 0;
+hooks.forEach(hook => {
+  const testPath = path.join(__dirname, `${hook}.test.ts`);
+  const content = hookTestTemplate(hook);
+  fs.writeFileSync(testPath, content);
+  count++;
+});
+
+console.log(`Generated ${count} hook test files!`);

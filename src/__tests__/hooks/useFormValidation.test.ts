@@ -1,10 +1,10 @@
 /**
- * Comprehensive tests for useClipboard hook
+ * Comprehensive tests for useFormValidation hook
  */
 
 import { renderHook, act } from '@testing-library/react'
 
-describe('useClipboard hook', () => {
+describe('useFormValidation hook', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })

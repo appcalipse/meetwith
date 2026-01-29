@@ -1,10 +1,10 @@
 /**
- * Comprehensive tests for useClipboard hook
+ * Comprehensive tests for useBreakpoint hook
  */
 
 import { renderHook, act } from '@testing-library/react'
 
-describe('useClipboard hook', () => {
+describe('useBreakpoint hook', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })

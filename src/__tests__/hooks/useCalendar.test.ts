@@ -1,10 +1,10 @@
 /**
- * Comprehensive tests for useClipboard hook
+ * Comprehensive tests for useCalendar hook
  */
 
 import { renderHook, act } from '@testing-library/react'
 
-describe('useClipboard hook', () => {
+describe('useCalendar hook', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })

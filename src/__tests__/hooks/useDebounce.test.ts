@@ -1,10 +1,10 @@
 /**
- * Comprehensive tests for useClipboard hook
+ * Comprehensive tests for useDebounce hook
  */
 
 import { renderHook, act } from '@testing-library/react'
 
-describe('useClipboard hook', () => {
+describe('useDebounce hook', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })

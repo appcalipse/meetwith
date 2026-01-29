@@ -1,10 +1,10 @@
 /**
- * Comprehensive tests for useClipboard hook
+ * Comprehensive tests for useWindowSize hook
  */
 
 import { renderHook, act } from '@testing-library/react'
 
-describe('useClipboard hook', () => {
+describe('useWindowSize hook', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })

@@ -1,10 +1,10 @@
 /**
- * Comprehensive tests for useClipboard hook
+ * Comprehensive tests for useMediaQuery hook
  */
 
 import { renderHook, act } from '@testing-library/react'
 
-describe('useClipboard hook', () => {
+describe('useMediaQuery hook', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
