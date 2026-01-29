@@ -1,13 +1,11 @@
 import { Button } from '@chakra-ui/button'
 import { Heading, VStack } from '@chakra-ui/layout'
 import type { FC } from 'react'
-
-import { MeetingDecrypted } from '@/types/Meeting'
-
+import { DashboardEvent } from '@/types/Calendar'
 import UpComingEvent from './UpcomingEvent'
 
 interface DesktopUpcomingEventsProps {
-  data?: Array<MeetingDecrypted>
+  data?: Array<DashboardEvent>
 }
 
 const DesktopUpcomingEvents: FC<DesktopUpcomingEventsProps> = ({ data }) => {
