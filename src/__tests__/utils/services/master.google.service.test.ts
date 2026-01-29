@@ -1,12 +1,12 @@
-import * as master_google.serviceService from '@/utils/services/master_google.service'
+import * as masterGoogleServiceService from '@/utils/services/master_google.service'
 
 describe('master_google.service service', () => {
   it('exports service', () => {
-    expect(master_google.serviceService).toBeDefined()
+    expect(masterGoogleServiceService).toBeDefined()
   })
 
   it('has functions', () => {
-    expect(typeof master_google.serviceService).toBe('object')
+    expect(typeof masterGoogleServiceService).toBe('object')
   })
 
   it('is importable', () => {

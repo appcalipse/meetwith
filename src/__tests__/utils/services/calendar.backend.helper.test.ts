@@ -1,12 +1,12 @@
-import * as calendar_backend.helperService from '@/utils/services/calendar_backend.helper'
+import * as calendarBackendHelperService from '@/utils/services/calendar_backend.helper'
 
 describe('calendar_backend.helper service', () => {
   it('exports service', () => {
-    expect(calendar_backend.helperService).toBeDefined()
+    expect(calendarBackendHelperService).toBeDefined()
   })
 
   it('has functions', () => {
-    expect(typeof calendar_backend.helperService).toBe('object')
+    expect(typeof calendarBackendHelperService).toBe('object')
   })
 
   it('is importable', () => {
