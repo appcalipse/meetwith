@@ -1,20 +1,16 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { isProduction } from '@/utils/constants'
 import { handleWebhookEvent } from '@/utils/database'
 export type ResourceState = 'sync' | 'exists'
-
+const lastProcessedEvent = new Map<string, number>()
+const WINDOW_DURATION = 10 * 1000
 export default async function recurrenceSync(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === 'POST') {
     try {
-      if (isProduction) {
-        return res
-          .status(200)
-          .json({ message: 'Webhook received in production, no action taken' })
-      }
+      const now = Date.now()
       const channelId = req.headers['x-goog-channel-id'] as string
       const resourceId = req.headers['x-goog-resource-id'] as string
       const resourceState = req.headers[
@@ -24,15 +20,18 @@ export default async function recurrenceSync(
       if (!channelId || !resourceId || !resourceState) {
         return res.status(400).json({ error: 'Missing required headers' })
       }
-      const event = await handleWebhookEvent(
-        channelId,
-        resourceId,
-        resourceState
-      )
-      if (!event) {
-        return res.status(404).json({ error: 'Event not found' })
+      // we don't want to process events that are too close together
+      if (
+        lastProcessedEvent.has(channelId) &&
+        now - lastProcessedEvent.get(channelId)! < WINDOW_DURATION
+      ) {
+        console.info(`Skipping event for channel ${channelId} due to timeout.`)
+        return res.status(200).json('OK')
       }
-      return res.status(200).json(event)
+      lastProcessedEvent.set(channelId, now)
+      await handleWebhookEvent(channelId, resourceId, resourceState)
+
+      return res.status(200).json('OK')
     } catch (error) {
       console.error(error)
       return res.status(500).json({ error: (error as Error).message })
