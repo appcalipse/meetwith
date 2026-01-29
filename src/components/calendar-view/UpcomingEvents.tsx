@@ -45,8 +45,9 @@ const UpComingEvents: React.FC<UpComingEventsProps> = ({ isMobile }) => {
         start: new Date(event.start),
         end: new Date(event.end),
       }))
-      .filter(event => DateTime.fromJSDate(event.start) >= now) // ← Add this
+      .filter(event => DateTime.fromJSDate(event.start) >= now)
       .sort((a, b) => a.start.getTime() - b.start.getTime())
+      .slice(0, 3)
 
     return allEvents
   }, [data])

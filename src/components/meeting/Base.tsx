@@ -264,7 +264,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
         start: new Date(event.start),
         end: new Date(event.end),
       }))
-      .filter(event => DateTime.fromJSDate(event.start) >= now) // ← Add this
+      .filter(event => DateTime.fromJSDate(event.start) >= now)
       .sort((a, b) => a.start.getTime() - b.start.getTime())
 
     return allEvents
