@@ -52,8 +52,7 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
-import { getSignature } from '@/utils/storage'
-
+import QueryKeys from '@/utils/query_keys'
 import { useCancelDialog } from '../schedule/cancel.dialog.hook'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 import CalendarEventCard from './CalendarEventCard'
@@ -86,7 +85,7 @@ const createMeetingsQueryConfig = ({
   ExtendedCalendarEvents,
   QueryKey
 > => ({
-  queryKey: ['meetings', currentAccount.address],
+  queryKey: QueryKeys.meetingsByAccount(currentAccount.address),
   queryFn: async ({ pageParam: offset = 0 }) => {
     const meetings = await getCalendarEvents(
       timeWindow.start.plus({ weeks: offset }),

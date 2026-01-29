@@ -86,15 +86,11 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     setIsRefreshingAvailabilities,
   } = useQuickPollAvailability()
   const {
-    addGroup,
     groupAvailability,
     groupParticipants,
-    groups,
-    meetingOwners,
     participants,
     setGroupAvailability,
     setGroupParticipants,
-    setMeetingOwners,
     setParticipants,
   } = useParticipants()
   const inviteKey = useMemo(
@@ -109,8 +105,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const currentAccount = useAccountContext()
   const { timezone, currentSelectedDate } = useScheduleState()
-  const { getAvailabilitySlots, clearSlots, selectedSlots } =
-    useAvailabilityTracker()
+  const { clearSlots, selectedSlots } = useAvailabilityTracker()
   const queryClient = useQueryClient()
 
   const {

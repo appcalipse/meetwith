@@ -135,7 +135,7 @@ const ScheduleBase = () => {
   } = useScheduleState()
   const {
     groupParticipants,
-    groups,
+    group,
     meetingOwners,
     participants,
     standAloneParticipants,
@@ -181,18 +181,18 @@ const ScheduleBase = () => {
     () =>
       getMergedParticipants(
         participants,
-        groups,
         groupParticipants,
+        group,
         currentAccount?.address || ''
       ),
-    [participants, groups, groupParticipants]
+    [participants, group, groupParticipants]
   )
 
   useEffect(() => {
     const mergedParticipants = getMergedParticipants(
       participants,
-      groups,
-      groupParticipants
+      groupParticipants,
+      group
     )
     if (mergedParticipants.length > 0) {
       const filteredMeetingOwners = meetingOwners.filter(owner =>
@@ -204,10 +204,10 @@ const ScheduleBase = () => {
     } else {
       setMeetingOwners([])
     }
-  }, [participants])
+  }, [participants, group])
   const meetingParticipants = useMemo(
-    () => getMergedParticipants(participants, groups, groupParticipants),
-    [participants, groups, groupParticipants]
+    () => getMergedParticipants(participants, groupParticipants, group),
+    [participants, group, groupParticipants]
   )
 
   const standAloneIdentifiers = useMemo(() => {

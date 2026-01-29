@@ -854,7 +854,7 @@ const deleteIcsFile = async (publicUrl: string) => {
     }
     const filePath = pathParts[1]
 
-    const { error, data } = await db.supabase.storage
+    const { error } = await db.supabase.storage
       .from('ics-files')
       .remove([decodeURI(filePath)])
     if (error) {
