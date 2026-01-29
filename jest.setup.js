@@ -52,3 +52,134 @@ Object.defineProperty(window, 'matchMedia', {
 Object.defineProperty(globalThis, 'crypto', {
   value: new Crypto(),
 })
+
+// Mock Supabase client globally
+jest.mock('@supabase/supabase-js', () => ({
+  createClient: jest.fn(() => ({
+    from: jest.fn(() => ({
+      select: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      upsert: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      neq: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      like: jest.fn().mockReturnThis(),
+      ilike: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      contains: jest.fn().mockReturnThis(),
+      containedBy: jest.fn().mockReturnThis(),
+      range: jest.fn().mockReturnThis(),
+      match: jest.fn().mockReturnThis(),
+      not: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      filter: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      range: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+      then: jest.fn((resolve) => resolve({ data: [], error: null })),
+    })),
+    auth: {
+      getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
+      signIn: jest.fn().mockResolvedValue({ data: null, error: null }),
+      signOut: jest.fn().mockResolvedValue({ error: null }),
+    },
+    storage: {
+      from: jest.fn(() => ({
+        upload: jest.fn().mockResolvedValue({ data: null, error: null }),
+        download: jest.fn().mockResolvedValue({ data: null, error: null }),
+        remove: jest.fn().mockResolvedValue({ data: null, error: null }),
+      })),
+    },
+  })),
+}))
+
+// Mock sharp for image processing
+jest.mock('sharp', () => {
+  return jest.fn(() => ({
+    resize: jest.fn().mockReturnThis(),
+    toFormat: jest.fn().mockReturnThis(),
+    toBuffer: jest.fn().mockResolvedValue(Buffer.from('test')),
+    rotate: jest.fn().mockReturnThis(),
+    extract: jest.fn().mockReturnThis(),
+    metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
+    lanczos3: jest.fn().mockReturnThis(),
+  }))
+})
+
+// Mock email templates
+jest.mock('resend', () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    emails: {
+      send: jest.fn().mockResolvedValue({ id: 'test-email-id' }),
+    },
+  })),
+}))
+
+// Mock Sentry
+jest.mock('@sentry/nextjs', () => ({
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  init: jest.fn(),
+}))
+
+// Mock PostHog
+jest.mock('posthog-js', () => ({
+  init: jest.fn(),
+  capture: jest.fn(),
+  identify: jest.fn(),
+}))
+
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    pathname: '/',
+    query: {},
+    asPath: '/',
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
+// Mock next/router
+jest.mock('next/router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    pathname: '/',
+    query: {},
+    asPath: '/',
+    events: {
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+    },
+  }),
+}))
+
+// Mock react-query
+jest.mock('react-query', () => ({
+  useQuery: jest.fn(() => ({ data: null, isLoading: false, error: null })),
+  useMutation: jest.fn(() => ({ mutate: jest.fn(), isLoading: false })),
+  QueryClient: jest.fn(),
+  QueryClientProvider: ({ children }) => children,
+}))
+
+// Mock uuid
+jest.mock('uuid', () => ({
+  v4: jest.fn(() => '00000000-0000-0000-0000-000000000000'),
+  validate: jest.fn(() => true),
+}))
