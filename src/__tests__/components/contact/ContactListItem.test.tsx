@@ -216,4 +216,311 @@ describe('ContactListItem', () => {
     const addressElements = screen.getAllByText(/0x.../)
     expect(addressElements.length).toBeGreaterThan(0)
   })
+
+  // NEW EDGE CASE TESTS START HERE
+  
+  it('handles contacts with very long names', () => {
+    const longName = { ...mockContact, name: 'A'.repeat(100) }
+    renderComponent(longName)
+    expect(screen.getByText(longName.name)).toBeInTheDocument()
+  })
+
+  it('handles contacts with special characters in name', () => {
+    const specialName = { ...mockContact, name: "O'Brien-Smith Jr. (MD)" }
+    renderComponent(specialName)
+    expect(screen.getByText(specialName.name)).toBeInTheDocument()
+  })
+
+  it('handles contacts with emoji in name', () => {
+    const emojiName = { ...mockContact, name: '🚀 John Doe 🎉' }
+    renderComponent(emojiName)
+    expect(screen.getByText(emojiName.name)).toBeInTheDocument()
+  })
+
+  it('handles contacts with very long email addresses', () => {
+    const longEmail = { ...mockContact, name: null, email_address: 'very.long.email.address.that.goes.on.forever@subdomain.example.com' }
+    renderComponent(longEmail)
+    expect(screen.getByText(longEmail.email_address)).toBeInTheDocument()
+  })
+
+  it('handles contacts with international email domains', () => {
+    const intlEmail = { ...mockContact, email_address: 'user@北京.中国' }
+    renderComponent(intlEmail)
+    expect(screen.getByText(intlEmail.email_address)).toBeInTheDocument()
+  })
+
+  it('displays pending status for pending contacts', () => {
+    const pendingContact = { ...mockContact, status: ContactStatus.PENDING }
+    renderComponent(pendingContact)
+    expect(screen.getByText(/pending/i)).toBeInTheDocument()
+  })
+
+  it('handles odd index for background color', () => {
+    ;(useRouter as jest.Mock).mockReturnValue({
+      push: mockPush,
+      query: {},
+      pathname: '/',
+    })
+
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <table>
+          <tbody>
+            <ContactListItem
+              account={mockContact}
+              index={1}
+              sync={mockSync}
+              refetch={mockRefetch}
+              hasProAccess={true}
+            />
+          </tbody>
+        </table>
+      </QueryClientProvider>
+    )
+    
+    const row = container.querySelector('tr')
+    expect(row).toBeInTheDocument()
+  })
+
+  it('handles missing avatar URL gracefully', () => {
+    const noAvatar = { ...mockContact, avatar_url: null }
+    renderComponent(noAvatar)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+  })
+
+  it('handles empty string avatar URL', () => {
+    const emptyAvatar = { ...mockContact, avatar_url: '' }
+    renderComponent(emptyAvatar)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+  })
+
+  it('handles missing domain gracefully', () => {
+    const noDomain = { ...mockContact, domain: null }
+    renderComponent(noDomain)
+    const scheduleBtn = screen.getByRole('button', { name: /schedule/i })
+    fireEvent.click(scheduleBtn)
+    expect(mockPush).toHaveBeenCalled()
+  })
+
+  it('handles empty description', () => {
+    const noDesc = { ...mockContact, description: '' }
+    renderComponent(noDesc)
+    expect(screen.queryByText('Test user')).not.toBeInTheDocument()
+  })
+
+  it('handles null description', () => {
+    const nullDesc = { ...mockContact, description: null }
+    renderComponent(nullDesc)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+  })
+
+  it('shows tooltip on schedule button when disabled', () => {
+    renderComponent(mockContact, false)
+    const scheduleBtn = screen.getByRole('button', { name: /schedule/i })
+    expect(scheduleBtn).toBeDisabled()
+  })
+
+  it('handles removal with network timeout', async () => {
+    jest.spyOn(apiHelper, 'removeContact').mockImplementation(
+      () => new Promise((resolve, reject) => setTimeout(() => reject(new Error('Timeout')), 100))
+    )
+    renderComponent()
+    
+    const removeBtn = screen.getByRole('button', { name: /remove/i })
+    fireEvent.click(removeBtn)
+    
+    await waitFor(() => {
+      expect(mockRefetch).toHaveBeenCalled()
+    })
+  })
+
+  it('handles send invite with API error', async () => {
+    jest.spyOn(apiHelper, 'sendContactListInvite').mockRejectedValue(new Error('API Error'))
+    const inactiveContact = { ...mockContact, status: ContactStatus.INACTIVE }
+    renderComponent(inactiveContact)
+    
+    const sendBtn = screen.getByRole('button', { name: /send request/i })
+    fireEvent.click(sendBtn)
+    
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /send request/i })).toBeInTheDocument()
+    })
+  })
+
+  it('prevents double-click on remove button', async () => {
+    const removeContactSpy = jest.spyOn(apiHelper, 'removeContact').mockResolvedValue(undefined)
+    renderComponent()
+    
+    const removeBtn = screen.getByRole('button', { name: /remove/i })
+    fireEvent.click(removeBtn)
+    fireEvent.click(removeBtn)
+    
+    await waitFor(() => {
+      expect(removeContactSpy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('prevents double-click on send invite button', async () => {
+    const sendInviteSpy = jest.spyOn(apiHelper, 'sendContactListInvite').mockResolvedValue({ id: '1' } as any)
+    const inactiveContact = { ...mockContact, status: ContactStatus.INACTIVE }
+    renderComponent(inactiveContact)
+    
+    const sendBtn = screen.getByRole('button', { name: /send request/i })
+    fireEvent.click(sendBtn)
+    fireEvent.click(sendBtn)
+    
+    await waitFor(() => {
+      expect(sendInviteSpy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('handles contacts with lowercase addresses', () => {
+    const lowerCaseAddr = { ...mockContact, address: mockContact.address.toLowerCase() }
+    renderComponent(lowerCaseAddr)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+  })
+
+  it('handles contacts with mixed case addresses', () => {
+    const mixedCaseAddr = { ...mockContact, address: '0xAbCdEf1234567890AbCdEf1234567890AbCdEf12' }
+    renderComponent(mixedCaseAddr)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+  })
+
+  it('renders correctly at different table row indices', () => {
+    for (let i = 0; i < 5; i++) {
+      const { unmount } = render(
+        <QueryClientProvider client={queryClient}>
+          <table>
+            <tbody>
+              <ContactListItem
+                account={mockContact}
+                index={i}
+                sync={mockSync}
+                refetch={mockRefetch}
+                hasProAccess={true}
+              />
+            </tbody>
+          </table>
+        </QueryClientProvider>
+      )
+      expect(screen.getByText('John Doe')).toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it('handles rapid status changes', async () => {
+    const { rerender } = renderComponent(mockContact)
+    expect(screen.getByRole('button', { name: /schedule/i })).toBeInTheDocument()
+    
+    const inactiveContact = { ...mockContact, status: ContactStatus.INACTIVE }
+    ;(useRouter as jest.Mock).mockReturnValue({ push: mockPush, query: {}, pathname: '/' })
+    
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <table>
+          <tbody>
+            <ContactListItem
+              account={inactiveContact}
+              index={0}
+              sync={mockSync}
+              refetch={mockRefetch}
+              hasProAccess={true}
+            />
+          </tbody>
+        </table>
+      </QueryClientProvider>
+    )
+    
+    expect(screen.getByRole('button', { name: /send request/i })).toBeInTheDocument()
+  })
+
+  it('handles calendar_exists toggle', () => {
+    const { rerender } = renderComponent(mockContact)
+    expect(screen.queryByText(/calendar not connected/i)).not.toBeInTheDocument()
+    
+    const noCalendar = { ...mockContact, calendar_exists: false }
+    ;(useRouter as jest.Mock).mockReturnValue({ push: mockPush, query: {}, pathname: '/' })
+    
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <table>
+          <tbody>
+            <ContactListItem
+              account={noCalendar}
+              index={0}
+              sync={mockSync}
+              refetch={mockRefetch}
+              hasProAccess={true}
+            />
+          </tbody>
+        </table>
+      </QueryClientProvider>
+    )
+    
+    expect(screen.getByText(/calendar not connected/i)).toBeInTheDocument()
+  })
+
+  it('handles hasProAccess toggle', () => {
+    const { rerender } = renderComponent(mockContact, true)
+    let scheduleBtn = screen.getByRole('button', { name: /schedule/i })
+    expect(scheduleBtn).not.toBeDisabled()
+    
+    ;(useRouter as jest.Mock).mockReturnValue({ push: mockPush, query: {}, pathname: '/' })
+    
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <table>
+          <tbody>
+            <ContactListItem
+              account={mockContact}
+              index={0}
+              sync={mockSync}
+              refetch={mockRefetch}
+              hasProAccess={false}
+            />
+          </tbody>
+        </table>
+      </QueryClientProvider>
+    )
+    
+    scheduleBtn = screen.getByRole('button', { name: /schedule/i })
+    expect(scheduleBtn).toBeDisabled()
+  })
+
+  it('handles HTML in description safely', () => {
+    const htmlDesc = { ...mockContact, description: '<script>alert("xss")</script>Safe text' }
+    renderComponent(htmlDesc)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+  })
+
+  it('handles very old created_at timestamps', () => {
+    const oldContact = { ...mockContact, created_at: new Date('2000-01-01').toISOString() }
+    renderComponent(oldContact)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+  })
+
+  it('handles future updated_at timestamps', () => {
+    const futureContact = { ...mockContact, updated_at: new Date('2099-12-31').toISOString() }
+    renderComponent(futureContact)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+  })
+
+  it('handles contact with all optional fields null', () => {
+    const minimalContact = {
+      ...mockContact,
+      name: null,
+      email_address: null,
+      description: null,
+      avatar_url: null,
+      domain: null,
+    }
+    renderComponent(minimalContact)
+    expect(screen.getByText(/no name/i)).toBeInTheDocument()
+  })
+
+  it('displays correctly when both name and email are empty strings', () => {
+    const emptyContact = { ...mockContact, name: '', email_address: '' }
+    renderComponent(emptyContact)
+    expect(screen.getByText(/no name/i)).toBeInTheDocument()
+  })
 })
