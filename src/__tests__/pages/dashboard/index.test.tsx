@@ -1,38 +1,47 @@
-import { render, screen } from '@testing-library/react'
-import React from 'react'
+import { render } from '@testing-library/react'
+import { NextPageContext } from 'next'
+import Dashboard from '../index'
+import redirectTo from '@/utils/redirect'
 
-import Dashboard from '@/pages/dashboard/index'
-
-jest.mock('next/router', () => ({
-  useRouter: () => ({ push: jest.fn(), query: {}, pathname: '/dashboard' }),
+jest.mock('@/session/forceAuthenticationCheck', () => ({
+  forceAuthenticationCheck: (component: any) => component,
 }))
 
-jest.mock('@/providers/AccountProvider', () => ({
-  useAccount: () => ({
-    account: { id: '1', name: 'Test User' },
-    loading: false,
-  }),
+jest.mock('@/session/requireAuthentication', () => ({
+  withLoginRedirect: (component: any) => {
+    component.getInitialProps = Dashboard.getInitialProps
+    return component
+  },
 }))
 
-describe('Dashboard Page', () => {
-  it('renders dashboard', () => {
+jest.mock('@/utils/redirect')
+
+describe('Dashboard Index Page', () => {
+  it('should render empty component', () => {
     const { container } = render(<Dashboard />)
-    expect(container).toBeInTheDocument()
+    expect(container.firstChild).toBeNull()
   })
 
-  it('shows welcome message', () => {
-    render(<Dashboard />)
-    expect(screen.getByText(/dashboard|welcome/i)).toBeInTheDocument()
+  it('should redirect to meetings page in getInitialProps', async () => {
+    const ctx = {} as NextPageContext
+    const mockRedirectTo = redirectTo as jest.MockedFunction<typeof redirectTo>
+    mockRedirectTo.mockResolvedValue({})
+
+    await Dashboard.getInitialProps?.(ctx)
+
+    expect(redirectTo).toHaveBeenCalledWith('/dashboard/MEETINGS', 302, ctx)
   })
 
-  it('displays navigation sections', () => {
-    render(<Dashboard />)
-    expect(screen.getByText(/meeting|poll|group/i)).toBeInTheDocument()
-  })
+  it('should handle getInitialProps with different contexts', async () => {
+    const contexts = [
+      { req: {}, res: {} },
+      { pathname: '/dashboard' },
+      { query: { test: 'value' } },
+    ]
 
-  it('has quick actions', () => {
-    render(<Dashboard />)
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThan(0)
+    for (const ctx of contexts) {
+      await Dashboard.getInitialProps?.(ctx as any)
+      expect(redirectTo).toHaveBeenCalled()
+    }
   })
 })

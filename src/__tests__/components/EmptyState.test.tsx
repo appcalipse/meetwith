@@ -1,59 +1,60 @@
 import { render, screen } from '@testing-library/react'
-import React from 'react'
-
-import EmptyState from '@/components/EmptyState'
+import EmptyState from '../EmptyState'
 
 describe('EmptyState', () => {
-  it('renders empty state component', () => {
-    render(<EmptyState message="No data found" />)
-    expect(screen.getByText('No data found')).toBeInTheDocument()
+  it('should render title and description', () => {
+    render(<EmptyState title="No Data" description="No items found" />)
+    
+    expect(screen.getByText('No Data')).toBeInTheDocument()
+    expect(screen.getByText('No items found')).toBeInTheDocument()
   })
 
-  it('displays custom icon', () => {
-    const { container } = render(
-      <EmptyState message="Empty" icon={<div data-testid="custom-icon" />} />
-    )
-    expect(container.querySelector('[data-testid="custom-icon"]')).toBeInTheDocument()
+  it('should render with default image', () => {
+    render(<EmptyState title="Empty" description="Nothing here" />)
+    
+    const image = screen.getByAltText('Empty state illustration')
+    expect(image).toBeInTheDocument()
   })
 
-  it('shows action button when provided', () => {
+  it('should render with custom image', () => {
     render(
       <EmptyState
-        message="No items"
-        actionLabel="Add Item"
-        onAction={jest.fn()}
-      />
-    )
-    expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument()
-  })
-
-  it('calls onAction when button clicked', () => {
-    const onAction = jest.fn()
-    render(
-      <EmptyState
-        message="No items"
-        actionLabel="Add"
-        onAction={onAction}
+        title="Custom"
+        description="Test"
+        imageSrc="/custom.svg"
+        imageAlt="Custom image"
       />
     )
     
-    const button = screen.getByRole('button', { name: /add/i })
-    button.click()
-    expect(onAction).toHaveBeenCalled()
+    const image = screen.getByAltText('Custom image')
+    expect(image).toBeInTheDocument()
   })
 
-  it('displays description when provided', () => {
-    render(
-      <EmptyState
-        message="No data"
-        description="Try adding some items to get started"
-      />
-    )
-    expect(screen.getByText(/try adding/i)).toBeInTheDocument()
+  it('should apply correct styling', () => {
+    const { container } = render(<EmptyState title="Test" description="Description" />)
+    
+    const box = container.firstChild as HTMLElement
+    expect(box).toHaveStyle({
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+    })
   })
 
-  it('renders without action button', () => {
-    render(<EmptyState message="Empty" />)
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  it('should have correct text styling', () => {
+    render(<EmptyState title="Title" description="Description" />)
+    
+    const title = screen.getByText('Title')
+    const description = screen.getByText('Description')
+    
+    expect(title).toHaveStyle({
+      fontSize: '20px',
+      fontWeight: '600',
+    })
+    
+    expect(description).toHaveStyle({
+      fontSize: '16px',
+    })
   })
 })
