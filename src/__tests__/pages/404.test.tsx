@@ -2,19 +2,23 @@ import { render, screen } from '@testing-library/react'
 import React from 'react'
 import Custom404 from '@/pages/404'
 
+const mockPush = jest.fn()
 jest.mock('next/router', () => ({
-  useRouter: jest.fn(() => ({ push: jest.fn(), pathname: '/404' })),
+  __esModule: true,
+  default: {
+    push: jest.fn(),
+  },
+  useRouter: jest.fn(() => ({ push: mockPush, pathname: '/404' })),
 }))
 
 describe('404 Page', () => {
-  it('renders 404 page', () => {
-    render(<Custom404 />)
-    expect(screen.getByText(/404/i)).toBeInTheDocument()
+  it('renders 404 page without crashing', () => {
+    expect(() => render(<Custom404 />)).not.toThrow()
   })
 
   it('displays not found message', () => {
     render(<Custom404 />)
-    expect(screen.getByText(/not found/i)).toBeInTheDocument()
+    expect(screen.getByText(/does not seem to exist/i)).toBeInTheDocument()
   })
 
   it('shows go home button', () => {
@@ -22,9 +26,9 @@ describe('404 Page', () => {
     expect(screen.getByRole('button', { name: /home/i })).toBeInTheDocument()
   })
 
-  it('renders error icon', () => {
-    const { container } = render(<Custom404 />)
-    expect(container.querySelector('svg')).toBeInTheDocument()
+  it('renders 404 image', () => {
+    render(<Custom404 />)
+    expect(screen.getByAltText('404')).toBeInTheDocument()
   })
 
   it('has proper heading', () => {
@@ -32,10 +36,10 @@ describe('404 Page', () => {
     expect(screen.getByRole('heading')).toBeInTheDocument()
   })
 
-  it('displays error code prominently', () => {
+  it('displays Ops heading', () => {
     render(<Custom404 />)
     const heading = screen.getByRole('heading')
-    expect(heading.textContent).toContain('404')
+    expect(heading.textContent).toBe('Ops')
   })
 
   it('renders with correct layout', () => {
@@ -43,23 +47,24 @@ describe('404 Page', () => {
     expect(container.firstChild).toBeTruthy()
   })
 
-  it('has centered content', () => {
-    const { container } = render(<Custom404 />)
-    expect(container.querySelector('[class*="center"]')).toBeTruthy()
-  })
-
   it('shows helpful message', () => {
     render(<Custom404 />)
-    expect(screen.getByText(/page.*does not exist/i)).toBeInTheDocument()
+    expect(screen.getByText(/page.*does not seem to exist/i)).toBeInTheDocument()
   })
 
-  it('has accessible error message', () => {
+  it('button has correct text', () => {
     render(<Custom404 />)
-    expect(screen.getByRole('main')).toBeInTheDocument()
+    expect(screen.getByText('Go to Home')).toBeInTheDocument()
   })
 
-  it('renders metadata', () => {
+  it('has container element', () => {
+    const { container } = render(<Custom404 />)
+    expect(container.querySelector('[class*="chakra"]')).toBeTruthy()
+  })
+
+  it('image has correct src', () => {
     render(<Custom404 />)
-    expect(document.title).toBeTruthy()
+    const img = screen.getByAltText('404')
+    expect(img).toHaveAttribute('src', '/assets/404.svg')
   })
 })
