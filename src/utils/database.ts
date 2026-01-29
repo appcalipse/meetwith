@@ -7256,9 +7256,6 @@ const handleWebhookEvent = async (
   resourceId: string,
   resourceState: ResourceState
 ): Promise<boolean> => {
-  console.trace(
-    `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
-  )
   const { data } = await db.supabase
     .from<
       Tables<'calendar_webhooks'> & {
@@ -7275,10 +7272,12 @@ const handleWebhookEvent = async (
     .eq('resource_id', resourceId)
     .maybeSingle()
   if (!data) {
-    throw new Error(
-      `No webhook found for channel: ${channelId}, resource: ${resourceId}`
-    )
+    // return okay so google doesn't keep polling us
+    return true
   }
+  console.trace(
+    `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
+  )
   const calendar: ConnectedCalendar = data?.connected_calendar
   if (!calendar) return false
   const start = DateTime.now()
