@@ -21,6 +21,7 @@ const customJestConfig = {
   moduleDirectories: ['node_modules', __dirname],
   moduleFileExtensions: ['js', 'jsx', 'tsx', 'ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  testMatch: ['**/__tests__/**/*.(spec|test).(ts|tsx|js|jsx)', '**/*.(spec|test).(ts|tsx|js|jsx)'],
   collectCoverageFrom: ['./src/**'],
   verbose: true,
   resolver: `./resolver.js`,
