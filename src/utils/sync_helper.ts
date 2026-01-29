@@ -49,13 +49,20 @@ const syncCreatedEventWithCalendar = async (
     for (const innerCalendar of calendar.calendars!) {
       if (innerCalendar.enabled && innerCalendar.sync) {
         promises.push(
-          integration.createEvent(
-            targetAccount,
-            meetingDetails,
-            meetingDetails.created_at,
-            innerCalendar.calendarId,
-            false
-          )
+          integration
+            .createEvent(
+              targetAccount,
+              meetingDetails,
+              meetingDetails.created_at,
+              innerCalendar.calendarId,
+              false
+            )
+            .catch(error => {
+              console.error(
+                'An error occurred while creating the event:',
+                error
+              )
+            })
         )
       }
     }
