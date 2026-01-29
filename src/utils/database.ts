@@ -1463,7 +1463,9 @@ const syncAllSeries = async () => {
       const newInstances = ghostStartTimes.map(ghostStartRaw => {
         const ghostStartDate = DateTime.fromJSDate(ghostStartRaw)
         const startDateTime = ghostStartDate.set(templateTime)
-        const endDateTime = startDateTime.plus({ minutes: duration_minutes })
+        const endDateTime = startDateTime.plus({
+          minutes: Math.abs(duration_minutes),
+        })
 
         const startMillis = startDateTime.toMillis()
         const startISO = startDateTime.toISO()

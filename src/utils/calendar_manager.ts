@@ -3100,7 +3100,9 @@ const meetWithSeriesPreprocessors = (
             'minutes'
           )
           .toObject().minutes || 0
-      const ghostEndTime = ghostStartTime.plus({ minutes: difference })
+      const ghostEndTime = ghostStartTime.plus({
+        minutes: Math.abs(difference),
+      })
 
       // Check if an instance already exists for this occurrence
       const instanceExists = slotInstances.some(
@@ -3111,10 +3113,10 @@ const meetWithSeriesPreprocessors = (
       )
       if (!instanceExists) {
         const slotInstance: SlotInstance = {
-          end: ghostEndTime.toJSDate(),
           id: `${slotSerie.id}_${ghostStartTime.toJSDate().getTime()}`, // Unique ID for the ghost instance
           series_id: slotSerie.id!,
           start: ghostStartTime.toJSDate(),
+          end: ghostEndTime.toJSDate(),
           status: RecurringStatus.CONFIRMED,
           meeting_info_encrypted: slotSerie.meeting_info_encrypted,
           slot_id: slotSerie.id || '',
