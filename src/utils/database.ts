@@ -7302,7 +7302,7 @@ const handleWebhookEvent = async (
     return true
   }
   let allEvents: calendar_v3.Schema$Event[] = []
-  let newSyncToken: string | undefined
+  let newSyncToken: string | null | undefined
   try {
     const { events, nextSyncToken } = await integration.listEvents(
       data.calendar_id,
@@ -7377,15 +7377,16 @@ const handleWebhookEvent = async (
         )
       )
   )
-  // we need to sync all updates right after we're done processing them
-  const { nextSyncToken } = await integration.listEvents(
-    data.calendar_id,
-    newSyncToken
-  )
+  if (newSyncToken) {
+    // we need to sync all updates right after we're done processing them
+    const { nextSyncToken } = await integration.listEvents(
+      data.calendar_id,
+      newSyncToken
+    )
 
-  if (nextSyncToken)
-    await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
-
+    if (nextSyncToken)
+      await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
+  }
   return actions.length > 0
 }
 
