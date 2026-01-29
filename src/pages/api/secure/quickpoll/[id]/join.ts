@@ -48,6 +48,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Already a participant
       return res.status(200).json({
         participant: existingByAddress,
+        already_in_poll: true,
       })
     }
 
@@ -68,6 +69,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         if (updatedParticipant) {
           return res.status(200).json({
             participant: updatedParticipant,
+            already_in_poll: false,
           })
         }
       }
@@ -87,7 +89,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         QuickPollParticipantStatus.ACCEPTED
       )
 
-      return res.status(201).json({ participant })
+      return res.status(201).json({ participant, already_in_poll: false })
     }
 
     // for private polls without matching email, reject

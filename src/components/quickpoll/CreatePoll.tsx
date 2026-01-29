@@ -16,7 +16,6 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  Select,
   Text,
   Textarea,
   useColorModeValue,
@@ -173,6 +172,15 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     MeetingPermissions.INVITE_GUESTS,
   ])
   const [removeExpiryDate, setRemoveExpiryDate] = useState(false)
+
+  const durationOptions: Option<number>[] = useMemo(
+    () =>
+      DEFAULT_GROUP_SCHEDULING_DURATION.map(type => ({
+        value: type.duration,
+        label: durationToHumanReadable(type.duration),
+      })),
+    []
+  )
 
   // Get all participants
   const allMergedParticipants = useMemo(() => {
@@ -925,30 +933,45 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   *
                 </Text>
               </FormLabel>
-              <Select
+              <ChakraSelect<Option<number>>
                 id="duration"
                 placeholder="Duration"
-                onChange={e => {
-                  setFormData(prev => ({
-                    ...prev,
-                    duration: Number(e.target.value),
-                  }))
+                value={
+                  durationOptions.find(o => o.value === formData.duration) ??
+                  null
+                }
+                onChange={opt => {
+                  if (opt) {
+                    clearValidationError(setValidationErrors, 'duration')
+                    setFormData(prev => ({
+                      ...prev,
+                      duration: opt.value,
+                    }))
+                  }
                 }}
-                onBlur={clearValidationError(setValidationErrors, 'duration')}
-                value={formData.duration}
-                borderColor="neutral.400"
-                width={'max-content'}
-                maxW="350px"
-                isInvalid={!!validationErrors.duration}
-                errorBorderColor="red.500"
+                onBlur={() =>
+                  clearValidationError(setValidationErrors, 'duration')
+                }
+                options={durationOptions}
+                colorScheme="primary"
+                className="noLeftBorder timezone-select"
+                components={getnoClearCustomSelectComponent<
+                  Option<number>,
+                  false
+                >()}
+                chakraStyles={{
+                  container: provided => ({
+                    ...provided,
+                    borderColor: validationErrors.duration
+                      ? 'red.500'
+                      : 'input-border',
+                    bg: 'select-bg',
+                    width: 'max-content',
+                    maxW: '350px',
+                  }),
+                }}
                 isDisabled={isLoading}
-              >
-                {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                  <option key={type.id} value={type.duration}>
-                    {durationToHumanReadable(type.duration)}
-                  </option>
-                ))}
-              </Select>
+              />
               <Box minH="20px">
                 {validationErrors.duration && (
                   <FormHelperText color="red.500" mt={1}>

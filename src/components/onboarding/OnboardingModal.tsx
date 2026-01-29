@@ -24,7 +24,7 @@ import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
-
+import JoinPollConfirmModal from '@/components/quickpoll/JoinPollConfirmModal'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { TimeRange } from '@/types/Account'
@@ -33,13 +33,13 @@ import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { EditMode } from '@/types/Dashboard'
 import { DiscordUserInfo } from '@/types/Discord'
 import { TimeSlotSource } from '@/types/Meeting'
+import { QuickPollJoinContext } from '@/types/QuickPoll'
 import { logEvent } from '@/utils/analytics'
 import {
-  addUserToPollAfterSignup,
-  createAvailabilityBlock,
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
   internalFetch,
+  joinQuickPollAsParticipant,
   listConnectedCalendars,
   saveAccountChanges,
   setNotificationSubscriptions,
@@ -55,8 +55,8 @@ import {
   clearQuickPollSignInContext,
   getQuickPollSignInContext,
 } from '@/utils/storage'
+import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
-
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
 import TimezoneSelector from '../TimezoneSelector'
 import { OnboardingAvailabilityStep } from './OnboardingAvailabilityStep'
@@ -84,6 +84,10 @@ const OnboardingModal = () => {
   )
 
   const [didOpenConnectWallet, setDidOpenConnectWallet] = useState(false)
+  const [showJoinPollConfirmation, setShowJoinPollConfirmation] =
+    useState(false)
+  const [pollContextForConfirmation, setPollContextForConfirmation] =
+    useState<QuickPollJoinContext | null>(null)
 
   // Color Control
   const bgColor = useColorModeValue('gray.100', 'gray.600')
@@ -489,25 +493,15 @@ const OnboardingModal = () => {
       const pollContext = getQuickPollSignInContext()
 
       if (pollContext) {
-        try {
-          await addUserToPollAfterSignup(
-            currentAccount.address,
-            pollContext.pollId,
-            email,
-            name
-          )
-
-          clearQuickPollSignInContext()
-
-          await router.push(
-            `/dashboard/schedule?ref=quickpoll&pollId=${pollContext.pollId}&intent=edit_availability`
-          )
-          closeOnboarding()
-          return
-        } catch (error) {
-          console.error('Failed to add user to poll:', error)
-          clearQuickPollSignInContext()
-        }
+        setPollContextForConfirmation({
+          pollId: pollContext.pollId,
+          pollSlug: pollContext.pollSlug,
+          pollTitle: pollContext.pollTitle,
+        })
+        setShowJoinPollConfirmation(true)
+        setLoadingSave(false)
+        closeOnboarding()
+        return
       }
 
       await router.push(
@@ -524,7 +518,54 @@ const OnboardingModal = () => {
 
   const activeStepColor = useColorModeValue('neutral.400', 'neutral.50')
   const stepColor = useColorModeValue('neutral.50', 'neutral.400')
-  const handleClose = () => closeOnboarding(stateObject.redirect)
+
+  const handleClose = () => {
+    const pollContext = getQuickPollSignInContext()
+    if (pollContext) {
+      setPollContextForConfirmation({
+        pollId: pollContext.pollId,
+        pollSlug: pollContext.pollSlug,
+        pollTitle: pollContext.pollTitle,
+      })
+      setShowJoinPollConfirmation(true)
+      closeOnboarding()
+    } else {
+      closeOnboarding(stateObject.redirect)
+    }
+  }
+
+  const { showErrorToast, showSuccessToast } = useToastHelpers()
+
+  const handleJoinPollConfirmSave = async (
+    pollName: string,
+    pollEmail: string
+  ) => {
+    if (!currentAccount || !pollContextForConfirmation) return
+    try {
+      await joinQuickPollAsParticipant(
+        pollContextForConfirmation.pollId,
+        pollEmail,
+        pollName
+      )
+      clearQuickPollSignInContext()
+      setShowJoinPollConfirmation(false)
+      setPollContextForConfirmation(null)
+      showSuccessToast(
+        "You've been added to the poll",
+        'Redirecting you to add your availability.'
+      )
+      await router.push(
+        `/dashboard/schedule?ref=quickpoll&pollId=${pollContextForConfirmation.pollId}&intent=edit_availability`
+      )
+      closeOnboarding()
+    } catch (error) {
+      showErrorToast(
+        'Failed to join poll',
+        'There was an error adding you to the poll. Please try again.'
+      )
+    }
+  }
+
   return (
     <>
       <Modal
@@ -991,6 +1032,21 @@ const OnboardingModal = () => {
           </Box>
         </ModalContent>
       </Modal>
+      {pollContextForConfirmation && showJoinPollConfirmation && (
+        <JoinPollConfirmModal
+          isOpen={true}
+          onClose={() => {
+            setShowJoinPollConfirmation(false)
+            setPollContextForConfirmation(null)
+          }}
+          pollId={pollContextForConfirmation.pollId}
+          pollSlug={pollContextForConfirmation.pollSlug}
+          pollTitle={pollContextForConfirmation.pollTitle}
+          initialFullName={name}
+          initialEmail={email}
+          onSave={handleJoinPollConfirmSave}
+        />
+      )}
     </>
   )
 }
