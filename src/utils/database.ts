@@ -7296,12 +7296,13 @@ const handleWebhookEvent = async (
       start.toISO(),
       end.toISO()
     )
-    // eslint-disable-next-line no-restricted-syntax
+
     if (syncToken)
       await updateResourcesSyncToken(channelId, resourceId, syncToken)
     return true
   }
   let allEvents: calendar_v3.Schema$Event[] = []
+  let newSyncToken: string | undefined
   try {
     const { events, nextSyncToken } = await integration.listEvents(
       data.calendar_id,
@@ -7309,6 +7310,7 @@ const handleWebhookEvent = async (
     )
 
     allEvents = events
+    newSyncToken = nextSyncToken
     if (nextSyncToken)
       await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
   } catch (error) {
@@ -7375,6 +7377,15 @@ const handleWebhookEvent = async (
         )
       )
   )
+  // we need to sync all updates right after we're done processing them
+  const { nextSyncToken } = await integration.listEvents(
+    data.calendar_id,
+    newSyncToken
+  )
+
+  if (nextSyncToken)
+    await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
+
   return actions.length > 0
 }
 
