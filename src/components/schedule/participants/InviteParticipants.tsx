@@ -510,7 +510,6 @@ const InviteParticipants: FC<IProps> = ({
               Meeting participants
             </Heading>
             <AllMeetingParticipants />
-            <Divider my={6} borderColor="neutral.400" />
             {isQuickPoll ? (
               <PollInviteSection
                 pollData={pollData}
@@ -529,11 +528,7 @@ const InviteParticipants: FC<IProps> = ({
               />
             ) : (
               <>
-                <Heading fontSize="22px" pb={2} mb={4}>
-                  Add participants from groups/contacts
-                </Heading>
                 <AddFromGroups />
-                <Divider my={6} borderColor="neutral.400" />
                 <AddFromContact />
                 <Divider my={6} borderColor="neutral.400" />
                 <FormControl w="100%" maxW="100%">
