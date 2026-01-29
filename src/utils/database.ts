@@ -1593,7 +1593,7 @@ const isSlotAvailable = async (
     }
     const minTime = meetingType.min_notice_minutes
     if (meetingType?.plan) {
-      if (meeting_id) {
+      if (meeting_id && !txHash) {
         const meetingSession = await getMeetingSessionByMeetingId(
           meeting_id,
           meetingTypeId
@@ -4285,7 +4285,7 @@ const parseParticipantSlots = async (
             new Date(meetingUpdateRequest.start),
             new Date(meetingUpdateRequest.end),
             meetingUpdateRequest.meetingTypeId,
-            undefined,
+            meetingUpdateRequest.txHash,
             meetingUpdateRequest.meeting_id
           ))
 
@@ -7111,7 +7111,7 @@ const getMeetingSessionByMeetingId = async (
   const { data: meetingSession, error } = await db.supabase
     .from('meeting_sessions')
     .select('*')
-    .eq('id', meeting_id)
+    .eq('meeting_id', meeting_id)
     .eq('meeting_type_id', meeting_type_id)
     .maybeSingle()
   if (error) {
