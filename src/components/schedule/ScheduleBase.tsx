@@ -519,6 +519,7 @@ const ScheduleBase = () => {
               </HStack>
             )}
           </VStack>
+
           <Divider borderColor="neutral.400" w={{ base: '100%', md: '80%' }} />
 
           <VStack
@@ -925,7 +926,12 @@ const ScheduleBase = () => {
                       variant="link"
                       width="100%"
                     >
-                      <Text userSelect="none">
+                      <Text
+                        userSelect="none"
+                        maxW="90%"
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                      >
                         {meetingOwners.length > 0
                           ? meetingOwners
                               .map(
