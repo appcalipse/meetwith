@@ -2,7 +2,7 @@ import { Heading, Link, Text, VStack } from '@chakra-ui/layout'
 import { Button } from '@chakra-ui/react'
 import { DateTime } from 'luxon'
 import * as React from 'react'
-
+import { DashboardEvent, isDashboardMwwEvent, Optional } from '@/types/Calendar'
 import {
   MeetingDecrypted,
   MeetingProvider,
@@ -12,10 +12,10 @@ import { logEvent } from '@/utils/analytics'
 import { addUTMParams } from '@/utils/huddle.helper'
 
 interface UpComingEventProps {
-  meeting: MeetingDecrypted
+  meeting: DashboardEvent
 }
 
-const getLinkDisplay = (platform?: MeetingProvider, url?: string) => {
+const getLinkDisplay = (platform?: MeetingProvider, url?: Optional<string>) => {
   switch (platform) {
     case MeetingProvider.ZOOM:
       return 'zoom.us'
@@ -31,6 +31,23 @@ const getLinkDisplay = (platform?: MeetingProvider, url?: string) => {
   }
 }
 const UpComingEvent: React.FC<UpComingEventProps> = ({ meeting }) => {
+  const title = isDashboardMwwEvent(meeting)
+    ? meeting.decrypted.title
+    : meeting.title
+  const recurrence = isDashboardMwwEvent(meeting)
+    ? meeting.decrypted.recurrence
+    : meeting.recurrence?.frequency
+  const start = isDashboardMwwEvent(meeting)
+    ? meeting.decrypted.start
+    : meeting.start
+  const end = isDashboardMwwEvent(meeting) ? meeting.decrypted.end : meeting.end
+  const meeting_url = isDashboardMwwEvent(meeting)
+    ? meeting.decrypted.meeting_url
+    : meeting.meeting_url
+  const provider = isDashboardMwwEvent(meeting)
+    ? meeting.decrypted.provider
+    : undefined
+
   return (
     <VStack
       alignItems="flex-start"
@@ -49,7 +66,7 @@ const UpComingEvent: React.FC<UpComingEventProps> = ({ meeting }) => {
           fontWeight={500}
           color="neutral.400"
         >
-          {meeting.recurrence && meeting.recurrence !== MeetingRepeat.NO_REPEAT
+          {recurrence && recurrence !== MeetingRepeat.NO_REPEAT
             ? 'RECURRING'
             : 'ONE-TIME'}
         </Text>
@@ -63,10 +80,10 @@ const UpComingEvent: React.FC<UpComingEventProps> = ({ meeting }) => {
           textOverflow="ellipsis"
           color="upcoming-event-title"
         >
-          {meeting.title || 'No Title'}
+          {title}
         </Heading>
         <Text fontWeight={500} w="100%" color="upcoming-event-text">
-          {`${DateTime.fromJSDate(meeting.start).toFormat(
+          {`${DateTime.fromJSDate(new Date(meeting.start)).toFormat(
             "dd LLL yyyy 'at' h:mma"
           )}`}
         </Text>
@@ -74,17 +91,17 @@ const UpComingEvent: React.FC<UpComingEventProps> = ({ meeting }) => {
           whiteSpace="nowrap"
           textOverflow="ellipsis"
           overflow="hidden"
-          href={addUTMParams(meeting.meeting_url || '')}
+          href={addUTMParams(meeting_url || '')}
           color="primary.200"
           textDecor="underline"
           isExternal
           onClick={() => logEvent('Clicked to start meeting')}
         >
-          {getLinkDisplay(meeting.provider, meeting.meeting_url)}
+          {getLinkDisplay(provider, meeting_url)}
         </Link>
       </VStack>
       <Link
-        href={addUTMParams(meeting.meeting_url || '')}
+        href={addUTMParams(meeting_url || '')}
         isExternal
         onClick={() => logEvent('Joined a meeting')}
         whiteSpace="nowrap"

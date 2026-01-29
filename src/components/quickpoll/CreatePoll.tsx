@@ -144,7 +144,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     setGroupAvailability,
     groupParticipants,
     setGroupParticipants,
-    groups: allGroups,
+    group,
   } = useParticipants()
   const inviteKey = useMemo(
     () =>
@@ -186,8 +186,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const allMergedParticipants = useMemo(() => {
     const merged = getMergedParticipants(
       participants,
-      allGroups,
       groupParticipants,
+      group,
       currentAccount?.address
     )
 
@@ -202,7 +202,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     })
 
     return deduplicatedParticipants
-  }, [participants, allGroups, groupParticipants, currentAccount?.address])
+  }, [participants, group, groupParticipants, currentAccount?.address])
 
   useEffect(() => {
     const needsUpdate = participants.some(participant => {
@@ -256,10 +256,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const router = useRouter()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const iconColor = useColorModeValue('#181F24', 'white')
-  const chevronColor = useColorModeValue('neutral.700', 'neutral.0')
-  const menuTextColor = useColorModeValue('neutral.800', 'neutral.0')
-  const menuBg = useColorModeValue('neutral.50', 'neutral.450')
-
   // Fetch poll data when in edit mode
   const {
     data: pollData,
@@ -716,39 +712,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     createPollMutation.isLoading ||
     updatePollMutation.isLoading ||
     cancelPollMutation.isLoading
-
-  const handleRemovePermission = useCallback(
-    (permissionValue: string) => {
-      if (!isLoading) {
-        setSelectedPermissions(
-          prev => prev?.filter(p => p !== permissionValue) || []
-        )
-      }
-    },
-    [isLoading]
-  )
-
-  const handleChipClick = useCallback(
-    (e: React.MouseEvent, permissionValue: string) => {
-      e.stopPropagation()
-      handleRemovePermission(permissionValue)
-    },
-    [handleRemovePermission]
-  )
-
-  const handleTogglePermission = useCallback(
-    (permissionValue: string) => {
-      const isSelected = selectedPermissions?.includes(permissionValue)
-      if (isSelected) {
-        setSelectedPermissions(
-          prev => prev?.filter(p => p !== permissionValue) || []
-        )
-      } else {
-        setSelectedPermissions(prev => (prev || []).concat(permissionValue))
-      }
-    },
-    [selectedPermissions]
-  )
 
   // Show loading when fetching poll data in edit mode
   if (isEditMode && isPollLoading) {

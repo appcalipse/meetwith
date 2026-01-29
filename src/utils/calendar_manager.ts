@@ -13,6 +13,7 @@ import { Frequency, Options, RRule, rrulestr } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability } from '@/types/Account'
+import { isCalendarEvent, UnifiedEvent, WithInterval } from '@/types/Calendar'
 import { MeetingReminders, RecurringStatus } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
@@ -77,7 +78,6 @@ import {
   scheduleMeetingFromServer,
   syncMeeting,
 } from '@/utils/api_helper'
-
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { NO_MEETING_TYPE, SessionType } from './constants/meeting-types'
@@ -835,6 +835,8 @@ const updateMeeting = async (
   }
 
   const slotId = decryptedMeeting.id.split('_')[0]
+  invalidateMeetingState(currentAccount, participants)
+
   if (decryptedMeeting.user_type === 'guest') {
     const slot: DBSlot = await apiUpdateMeetingAsGuest(slotId, payload)
     return {
@@ -1066,6 +1068,7 @@ const updateMeetingInstance = async (
   }
 
   const slot: DBSlot = await apiUpdateMeetingInstance(instanceId, payload)
+  invalidateMeetingState(currentAccount, participants)
   return (await decryptMeeting(slot, currentAccount))!
 }
 const deleteMeetingInstance = async (
@@ -1234,6 +1237,7 @@ const deleteMeetingInstance = async (
 
   // Fetch the updated data one last time
   const slot: DBSlot = await apiUpdateMeetingInstance(slotId, payload)
+  invalidateMeetingState(currentAccount, participants)
   return (await decryptMeeting(slot, currentAccount))!
 }
 const cancelMeetingSeries = async (
@@ -1730,6 +1734,7 @@ const updateMeetingSeries = async (
     focus_instance_id: currentInstanceId,
   }
   const slot: DBSlot = await apiUpdateMeetingSeries(slotId, payload)
+  invalidateMeetingState(currentAccount, participants)
   return (await decryptMeeting(slot, currentAccount))!
 }
 const deleteMeetingSeries = async (
@@ -1865,6 +1870,8 @@ const deleteMeetingSeries = async (
     focus_instance_id: currentInstanceId,
   }
   const slot: DBSlot = await apiUpdateMeetingSeries(slotId, payload)
+  invalidateMeetingState(currentAccount, participants)
+
   return (await decryptMeeting(slot, currentAccount))!
 }
 
@@ -2045,6 +2052,8 @@ const deleteMeeting = async (
 
   // Fetch the updated data one last time
   const slot: DBSlot = await apiUpdateMeeting(slotId, payload)
+  invalidateMeetingState(currentAccount, participants)
+
   return slot
 }
 
@@ -2276,24 +2285,8 @@ const scheduleMeeting = async (
       return meeting
     }
 
-    // Invalidate meetings cache and update meetings where required
-    queryClient.invalidateQueries(
-      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
-    )
-    queryClient.invalidateQueries(
-      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
-    )
+    invalidateMeetingState(currentAccount, participants)
 
-    participants.forEach(p => {
-      queryClient.invalidateQueries(
-        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
-      )
-      queryClient.invalidateQueries(
-        QueryKeys.busySlots({
-          id: p.account_address?.toLowerCase(),
-        })
-      )
-    })
     return {
       id: slot.id!,
       ...meeting,
@@ -2372,23 +2365,8 @@ const scheduleRecurringMeeting = async (
     const slot: DBSlot = await apiScheduleMeetingSeries(meeting)
 
     // Invalidate meetings cache and update meetings where required
-    queryClient.invalidateQueries(
-      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
-    )
-    queryClient.invalidateQueries(
-      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
-    )
+    invalidateMeetingState(currentAccount, participants)
 
-    participants.forEach(p => {
-      queryClient.invalidateQueries(
-        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
-      )
-      queryClient.invalidateQueries(
-        QueryKeys.busySlots({
-          id: p.account_address?.toLowerCase(),
-        })
-      )
-    })
     return {
       id: slot.id!,
       ...meeting,
@@ -3122,7 +3100,9 @@ const meetWithSeriesPreprocessors = (
             'minutes'
           )
           .toObject().minutes || 0
-      const ghostEndTime = ghostStartTime.plus({ minutes: difference })
+      const ghostEndTime = ghostStartTime.plus({
+        minutes: Math.abs(difference),
+      })
 
       // Check if an instance already exists for this occurrence
       const instanceExists = slotInstances.some(
@@ -3133,10 +3113,10 @@ const meetWithSeriesPreprocessors = (
       )
       if (!instanceExists) {
         const slotInstance: SlotInstance = {
-          end: ghostEndTime.toJSDate(),
           id: `${slotSerie.id}_${ghostStartTime.toJSDate().getTime()}`, // Unique ID for the ghost instance
           series_id: slotSerie.id!,
           start: ghostStartTime.toJSDate(),
+          end: ghostEndTime.toJSDate(),
           status: RecurringStatus.CONFIRMED,
           meeting_info_encrypted: slotSerie.meeting_info_encrypted,
           slot_id: slotSerie.id || '',
@@ -3255,6 +3235,8 @@ const rsvpMeeting = async (
     payload,
     signal
   )
+  invalidateMeetingState(currentAccount, participants)
+
   return await decryptMeeting(slot, currentAccount)!
 }
 const rsvpMeetingInstance = async (
@@ -3381,9 +3363,49 @@ const rsvpMeetingInstance = async (
     payload,
     signal
   )
+  invalidateMeetingState(currentAccount, decryptedMeeting.participants)
+
   return await decryptMeeting(dbSlot, currentAccount)!
 }
 
+const invalidateMeetingState = (
+  currentAccount?: Account | null,
+  participants?: ParticipantInfo[]
+) => {
+  queryClient.invalidateQueries(
+    QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
+  )
+  queryClient.invalidateQueries(
+    QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
+  )
+  queryClient.invalidateQueries(QueryKeys.calendarEvents())
+  if (participants) {
+    participants.forEach(p => {
+      queryClient.invalidateQueries(
+        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
+      )
+      queryClient.invalidateQueries(
+        QueryKeys.busySlots({
+          id: p.account_address?.toLowerCase(),
+        })
+      )
+    })
+  }
+}
+const getActor = (
+  slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>,
+  currentAccount: Account
+) => {
+  if (isCalendarEvent(slot)) {
+    return slot.attendees?.find(
+      attendee => attendee.email === slot.accountEmail
+    )
+  } else {
+    return slot.participants.find(
+      participant => participant.account_address === currentAccount?.address
+    )
+  }
+}
 export {
   allSlots,
   buildMeetingData,
@@ -3429,4 +3451,5 @@ export {
   updateMeetingConferenceGuest,
   updateMeetingInstance,
   updateMeetingSeries,
+  getActor,
 }

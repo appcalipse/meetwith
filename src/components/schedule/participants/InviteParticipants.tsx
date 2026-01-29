@@ -49,7 +49,6 @@ import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
-import { getGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
@@ -91,8 +90,8 @@ const InviteParticipants: FC<IProps> = ({
 }) => {
   const currentAccount = useAccountContext()
   const {
-    groups,
-    setGroups,
+    group,
+    setGroup,
     isGroupPrefetching,
     setIsGroupPrefetching,
     contacts,
@@ -163,8 +162,8 @@ const InviteParticipants: FC<IProps> = ({
     }
     const merged = getMergedParticipants(
       participants ?? [],
-      groups,
       groupParticipants ?? {},
+      group,
       undefined
     )
     const fromContext = merged.filter(
@@ -173,7 +172,7 @@ const InviteParticipants: FC<IProps> = ({
     return [...fromContext, ...standAloneParticipants]
   }, [
     groupParticipants,
-    groups,
+    group,
     standAloneParticipants,
     inviteParticipants,
     participants,
@@ -467,8 +466,8 @@ const InviteParticipants: FC<IProps> = ({
     groupMembersAvailabilities,
     meetingMembers,
     meetingOwners,
-    groups,
-    setGroups,
+    group,
+    setGroup,
     isGroupPrefetching,
     setParticipants,
     setGroupParticipants,
@@ -511,7 +510,6 @@ const InviteParticipants: FC<IProps> = ({
               Meeting participants
             </Heading>
             <AllMeetingParticipants />
-            <Divider my={6} borderColor="neutral.400" />
             {isQuickPoll ? (
               <PollInviteSection
                 pollData={pollData}
@@ -530,11 +528,7 @@ const InviteParticipants: FC<IProps> = ({
               />
             ) : (
               <>
-                <Heading fontSize="22px" pb={2} mb={4}>
-                  Add participants from groups/contacts
-                </Heading>
                 <AddFromGroups />
-                <Divider my={6} borderColor="neutral.400" />
                 <AddFromContact />
                 <Divider my={6} borderColor="neutral.400" />
                 <FormControl w="100%" maxW="100%">

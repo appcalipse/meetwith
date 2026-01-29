@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import { Address } from '@/types/Transactions'
 
 export default class QueryKeys {
@@ -13,10 +14,17 @@ export default class QueryKeys {
     return ['meetingsByAccount', account]
   }
 
+  static calendarEvents(date?: DateTime) {
+    return [
+      'calendarEvents',
+      date?.startOf('month').startOf('week').toISODate() || '',
+      date?.endOf('month').endOf('week').toISODate() || '',
+    ].filter(Boolean)
+  }
+
   static meeting(slot_id?: string) {
     return ['meeting', slot_id]
   }
-
   static account(id?: string) {
     return ['account', id]
   }
@@ -80,5 +88,8 @@ export default class QueryKeys {
   }
   static contactRequests(accountAddress?: string, search?: string) {
     return ['contactRequests', accountAddress, search]
+  }
+  static upcomingMeetings(accountAddress?: string) {
+    return ['upcomingMeetings', accountAddress || '']
   }
 }
