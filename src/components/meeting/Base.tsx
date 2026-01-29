@@ -25,6 +25,7 @@ import { Account } from '@/types/Account'
 import {
   AttendeeStatus,
   DashBoardMwwEvents,
+  DashboardEvent,
   ExtendedCalendarEvents,
   UnifiedEvent,
 } from '@/types/Calendar'
@@ -61,7 +62,6 @@ import MeetingCard from './MeetingCard'
 interface MeetingBaseProps {
   currentAccount: Account
 }
-type DashboardEvent = DashBoardMwwEvents | UnifiedEvent
 
 const isCalendarEvent = (event: DashboardEvent): event is UnifiedEvent => {
   return 'calendarId' in event
