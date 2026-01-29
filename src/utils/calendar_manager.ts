@@ -13,6 +13,7 @@ import { Frequency, Options, RRule, rrulestr } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability } from '@/types/Account'
+import { isCalendarEvent, UnifiedEvent, WithInterval } from '@/types/Calendar'
 import { MeetingReminders, RecurringStatus } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
@@ -77,7 +78,6 @@ import {
   scheduleMeetingFromServer,
   syncMeeting,
 } from '@/utils/api_helper'
-
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { NO_MEETING_TYPE, SessionType } from './constants/meeting-types'
@@ -3390,6 +3390,20 @@ const invalidateMeetingState = (
     })
   }
 }
+const getActor = (
+  slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>,
+  currentAccount: Account
+) => {
+  if (isCalendarEvent(slot)) {
+    return slot.attendees?.find(
+      attendee => attendee.email === slot.accountEmail
+    )
+  } else {
+    return slot.participants.find(
+      participant => participant.account_address === currentAccount?.address
+    )
+  }
+}
 export {
   allSlots,
   buildMeetingData,
@@ -3435,4 +3449,5 @@ export {
   updateMeetingConferenceGuest,
   updateMeetingInstance,
   updateMeetingSeries,
+  getActor,
 }
