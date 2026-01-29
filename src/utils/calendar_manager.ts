@@ -752,7 +752,6 @@ const updateMeeting = async (
     existingMeeting!,
     currentAccountAddress
   )
-
   const oldGuests = decryptedMeeting.participants.filter(p => p.guest_email)
 
   const guests = participants
@@ -813,7 +812,7 @@ const updateMeeting = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
@@ -1044,7 +1043,7 @@ const updateMeetingInstance = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
@@ -1211,7 +1210,7 @@ const deleteMeetingInstance = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     existingMeeting?.provider || MeetingProvider.GOOGLE_MEET,
@@ -1448,7 +1447,7 @@ const updateMeetingConferenceGuest = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
@@ -1709,7 +1708,7 @@ const updateMeetingSeries = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
@@ -1844,7 +1843,7 @@ const deleteMeetingSeries = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingInfo.provider || MeetingProvider.GOOGLE_MEET,
@@ -2022,7 +2021,7 @@ const deleteMeeting = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     existingMeeting?.provider || MeetingProvider.GOOGLE_MEET,
@@ -3231,7 +3230,7 @@ const rsvpMeeting = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     decryptedMeeting.provider || MeetingProvider.GOOGLE_MEET,
@@ -3355,7 +3354,7 @@ const rsvpMeetingInstance = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     decryptedMeeting.provider || MeetingProvider.GOOGLE_MEET,
