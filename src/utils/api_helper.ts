@@ -354,9 +354,7 @@ export const saveAvatar = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
@@ -371,9 +369,7 @@ export const saveBanner = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
@@ -1100,9 +1096,7 @@ export const uploadGroupAvatar = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   return response
