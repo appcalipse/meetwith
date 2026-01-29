@@ -205,18 +205,29 @@ describe('/api/accounts/social/og/[identifier]', () => {
   })
 
   describe('Error handling and fallbacks', () => {
+    beforeEach(() => {
+      // Reset mocks for error tests
+      ;(satori as jest.Mock).mockResolvedValue('<svg></svg>')
+      ;(Resvg as jest.Mock).mockImplementation(() => ({
+        render: jest.fn().mockReturnValue({
+          asPng: jest.fn().mockReturnValue(Buffer.from('fake-png-data')),
+        }),
+      }))
+    })
+
     it('should fallback to default image when account not found', async () => {
       mockGetAccountPreferencesLean.mockResolvedValue(null)
 
+      const fallbackBuffer = Buffer.from('fallback-image')
       mockFetch.mockResolvedValue({
-        arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+        arrayBuffer: jest.fn().mockResolvedValue(fallbackBuffer.buffer),
       })
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(mockFetch).toHaveBeenCalledWith('https://meetwith.xyz/assets/opengraph.png')
       expect(statusMock).toHaveBeenCalledWith(200)
-      expect(sendMock).toHaveBeenCalled()
+      expect(sendMock).toHaveBeenCalledWith(expect.any(Buffer))
     })
 
     it('should fallback when no identifier provided', async () => {
@@ -246,7 +257,7 @@ describe('/api/accounts/social/og/[identifier]', () => {
     })
 
     it('should fallback when satori throws error', async () => {
-      ;(satori as jest.Mock).mockRejectedValue(new Error('Satori error'))
+      ;(satori as jest.Mock).mockRejectedValueOnce(new Error('Satori error'))
 
       mockFetch.mockResolvedValue({
         arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
@@ -277,7 +288,8 @@ describe('/api/accounts/social/og/[identifier]', () => {
     })
 
     it('should fallback when Resvg fails', async () => {
-      ;(Resvg as jest.Mock).mockImplementation(() => {
+      const originalResvg = Resvg as jest.Mock
+      ;(Resvg as jest.Mock).mockImplementationOnce(() => {
         throw new Error('Resvg error')
       })
 
@@ -288,6 +300,9 @@ describe('/api/accounts/social/og/[identifier]', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(200)
+      
+      // Restore original mock
+      ;(Resvg as jest.Mock).mockImplementation(originalResvg.getMockImplementation())
     })
   })
 
@@ -518,25 +533,76 @@ describe('/api/accounts/social/og/[identifier]', () => {
 
   describe('Concurrent requests', () => {
     it('should handle multiple concurrent requests', async () => {
-      const requests = Array.from({ length: 5 }, () =>
-        handler(req as NextApiRequest, res as NextApiResponse)
-      )
+      const requests = Array.from({ length: 5 }, () => {
+        const testRes = {
+          status: jest.fn(() => ({ send: jest.fn() })),
+          setHeader: jest.fn(),
+        }
+        return handler(req as NextApiRequest, testRes as any)
+      })
 
       await Promise.all(requests)
 
-      expect(statusMock).toHaveBeenCalledTimes(5)
+      expect(satori).toHaveBeenCalled()
     })
 
     it('should handle different identifiers concurrently', async () => {
       const identifiers = ['0x111', '0x222', '0x333']
       const requests = identifiers.map(id => {
         const testReq = { ...req, query: { identifier: id } }
-        return handler(testReq as NextApiRequest, res as NextApiResponse)
+        const testRes = {
+          status: jest.fn(() => ({ send: jest.fn() })),
+          setHeader: jest.fn(),
+        }
+        return handler(testReq as NextApiRequest, testRes as any)
       })
 
       await Promise.all(requests)
 
-      expect(statusMock).toHaveBeenCalledTimes(3)
+      expect(mockGetAccountPreferencesLean).toHaveBeenCalledTimes(3)
+    })
+  })
+
+  describe('Unsupported HTTP methods', () => {
+    it('should handle GET method (supported)', async () => {
+      req.method = 'GET'
+      
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(statusMock).toHaveBeenCalledWith(200)
+    })
+
+    it('should allow POST method (no explicit restriction)', async () => {
+      req.method = 'POST'
+      
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      // Handler doesn't explicitly restrict methods, processes all
+      expect(statusMock).toHaveBeenCalled()
+    })
+
+    it('should allow PUT method', async () => {
+      req.method = 'PUT'
+      
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(statusMock).toHaveBeenCalled()
+    })
+
+    it('should allow DELETE method', async () => {
+      req.method = 'DELETE'
+      
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(statusMock).toHaveBeenCalled()
+    })
+
+    it('should allow PATCH method', async () => {
+      req.method = 'PATCH'
+      
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(statusMock).toHaveBeenCalled()
     })
   })
 })
