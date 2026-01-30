@@ -72,6 +72,7 @@ jest.mock('@/utils/quickpoll_helper', () => ({
 }))
 
 jest.mock('uuid', () => ({
+  v4: jest.fn(() => '12345678-1234-1234-1234-123456789012'),
   validate: jest.fn((uuid) => {
     // More realistic UUID validation pattern
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
