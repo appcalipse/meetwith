@@ -66,11 +66,7 @@ const PollPage = () => {
       return
     }
     const context = getQuickPollSignInContext()
-    if (
-      context &&
-      context.pollSlug === slug &&
-      router.query.signUp !== 'true'
-    ) {
+    if (context && context.pollSlug === slug) {
       setPollContextForConfirmation({
         pollId: context.pollId,
         pollSlug: context.pollSlug,
@@ -78,7 +74,7 @@ const PollPage = () => {
       })
       setShowJoinPollConfirmation(true)
     }
-  }, [currentAccount?.address, slug, router.isReady, router.query.signUp])
+  }, [currentAccount?.address, slug, router.isReady, router.query.calState])
 
   const handleJoinPollConfirmation = async (
     pollName: string,
