@@ -84,6 +84,7 @@ import {
   MeetingPermissions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
+import { calculateEffectiveDuration } from '@/utils/duration.helper'
 import { handleApiError } from '@/utils/error_helper'
 import {
   GateConditionNotValidError,
@@ -128,6 +129,8 @@ const ScheduleMain: FC<IInitialProps> = ({
     title,
     content,
     duration,
+    durationMode,
+    timeRange,
     pickedTime,
     meetingProvider,
     meetingUrl,
@@ -152,7 +155,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     addGroup,
     groupAvailability,
     groupParticipants,
-    groups,
+    group,
     meetingOwners,
     participants,
     setGroupAvailability,
@@ -160,6 +163,8 @@ const ScheduleMain: FC<IInitialProps> = ({
     setGroupParticipants,
     setMeetingOwners,
     setParticipants,
+    setGroup,
+    setIsGroupPrefetching,
   } = useParticipants()
   const { currentPage, handlePageSwitch, setInviteModalOpen, inviteModalOpen } =
     useScheduleNavigation()
@@ -181,12 +186,18 @@ const ScheduleMain: FC<IInitialProps> = ({
   const handleGroupPrefetch = async () => {
     if (!groupId) return
     try {
+      setIsGroupPrefetching(true)
       const [group, fetchedGroupMembers, groupMembersAvailabilitiesData] =
         await Promise.all([
           getGroup(groupId),
           getGroupsMembers(groupId),
           getGroupMembersAvailabilities(groupId),
         ])
+
+      setGroup({
+        ...group,
+        members: fetchedGroupMembers.filter(member => !!member.address),
+      })
       const actualMembers = fetchedGroupMembers
         .filter(val => !val.invitePending)
         .filter(val => !!val.address)
@@ -214,6 +225,8 @@ const ScheduleMain: FC<IInitialProps> = ({
       }
     } catch (error: unknown) {
       handleApiError('Error prefetching group.', error)
+    } finally {
+      setIsGroupPrefetching(false)
     }
   }
   const handleContactPrefetch = async () => {
@@ -669,6 +682,11 @@ const ScheduleMain: FC<IInitialProps> = ({
     setIsDeleting(false)
   }
 
+  const effectiveDuration = useMemo(
+    () => calculateEffectiveDuration(durationMode, duration, timeRange),
+    [durationMode, duration, timeRange]
+  )
+
   const handleSchedule = async () => {
     try {
       setIsScheduling(true)
@@ -690,7 +708,7 @@ const ScheduleMain: FC<IInitialProps> = ({
         }
 
         const start = new Date(pickedTime)
-        const end = addMinutes(new Date(start), duration)
+        const end = addMinutes(new Date(start), effectiveDuration)
 
         // Get quickpoll participants
         const quickpollParticipants = pollData.poll.participants.map(
@@ -776,8 +794,8 @@ const ScheduleMain: FC<IInitialProps> = ({
             .concat(decryptedMeeting?.participants || [])
       const allParticipants = getMergedParticipants(
         actualParticipants,
-        groups,
-        groupParticipants
+        groupParticipants,
+        group
       ).map(val => ({
         ...val,
         type: meetingOwners.some(
@@ -804,7 +822,7 @@ const ScheduleMain: FC<IInitialProps> = ({
       }
       if (!pickedTime) return
       const start = new Date(pickedTime)
-      const end = addMinutes(new Date(start), duration)
+      const end = addMinutes(new Date(start), effectiveDuration)
 
       const canUpdateOtherGuests = canAccountAccessPermission(
         decryptedMeeting?.permissions,

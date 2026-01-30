@@ -43,6 +43,7 @@ interface QuickPollParticipantsProps {
   currentGuestEmail?: string
   onParticipantAdded?: () => void
   onParticipantRemoved?: (participantId: string) => void
+  onClose?: () => void
 }
 
 const convertQuickPollParticipant = (
@@ -73,6 +74,7 @@ export function QuickPollParticipants({
   currentGuestEmail,
   onParticipantAdded,
   onParticipantRemoved,
+  onClose,
 }: QuickPollParticipantsProps) {
   const { currentAccount } = useContext(AccountContext)
   const router = useRouter()
@@ -104,6 +106,11 @@ export function QuickPollParticipants({
     }
     setIsInviteModalOpen(true)
   }, [pollData, setParticipants])
+
+  const handleCloseInviteModal = useCallback(() => {
+    setIsInviteModalOpen(false)
+    onClose?.()
+  }, [onClose])
   const inviteKey = useMemo(
     () =>
       `${Object.values(groupAvailability).flat().length}-${
@@ -439,7 +446,7 @@ export function QuickPollParticipants({
       <InviteParticipants
         key={inviteKey}
         isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
+        onClose={handleCloseInviteModal}
         isQuickPoll={true}
         pollData={pollData}
         groupAvailability={groupAvailability}

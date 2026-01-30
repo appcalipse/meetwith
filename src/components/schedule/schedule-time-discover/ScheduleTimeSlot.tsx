@@ -66,8 +66,16 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
     ? slot.start.hasSame(DateTime.fromJSDate(pickedTime), 'minute')
     : false
 
-  const { isTopElement, isBottomElement } = getMeetingBoundaries(slot, duration)
+  const slotDurationMinutes = slot.toDuration('minutes').minutes
+  const { isTopElement, isBottomElement } = getMeetingBoundaries(
+    slot,
+    slotDurationMinutes
+  )
   const [isTooltipOpen, setIsTooltipOpen] = useState(false)
+
+  const slotHeight =
+    (slotDurationMinutes >= 45 ? 12 : 12 / (60 / (slotDurationMinutes || 30))) *
+    4
 
   // Get current user event and URL from slotData
   const currentUserEvent = slotData.currentUserEvent
@@ -79,7 +87,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
         <Button
           bg={getBgColor(state)}
           w="100%"
-          h={`${(duration >= 45 ? 12 : 12 / (60 / (duration || 30))) * 4}px`}
+          h={`${slotHeight}px`}
           m={0}
           mb={isBottomElement ? '1px' : 0}
           mt={isTopElement ? '1px' : 0}

@@ -86,7 +86,9 @@ export const useLogin = () => {
           shouldRedirect &&
             (await router.push(
               redirectPath
-                ? `${redirectPath}&authstate=${state}`
+                ? `${redirectPath}${
+                    redirectPath.includes('?') ? '&' : '?'
+                  }state=${state}`
                 : `/dashboard/settings/details?state=${state}`
             ))
           return

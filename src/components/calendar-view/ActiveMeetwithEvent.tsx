@@ -42,7 +42,7 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
-import { rsvpMeeting } from '@/utils/calendar_manager'
+import { getActor, rsvpMeeting } from '@/utils/calendar_manager'
 import { MeetingAction } from '@/utils/constants/meeting'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
@@ -68,7 +68,6 @@ import { InputTimePicker } from '../input-time-picker'
 import RichTextEditor from '../profile/components/RichTextEditor'
 import { DeleteMeetingDialog } from '../schedule/delete-dialog'
 import ScheduleParticipantsSchedulerModal from '../schedule/ScheduleParticipantsSchedulerModal'
-import { getActor } from './EventDetailsPopOver'
 import MeetingMenu from './MeetingMenu'
 import ParticipantsControl from './ParticipantsControl'
 

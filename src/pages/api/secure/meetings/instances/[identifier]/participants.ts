@@ -1,9 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { MeetingCancelSyncRequest } from '@/types/Meeting'
 import { ParseParticipantsRequest } from '@/types/Requests'
-import { getSeriesIdMapping, handleMeetingCancelSync } from '@/utils/database'
+import { getSeriesIdMapping } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -21,7 +20,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (seriesId) {
         result.push({
           ...participant,
-          slot_id: `${slot_id}_${instance_id_parts}`,
+          slot_id: `${seriesId}_${instance_id_parts}`,
         })
       } else {
         result.push({ ...participant, slot_id })

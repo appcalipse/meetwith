@@ -86,15 +86,11 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     setIsRefreshingAvailabilities,
   } = useQuickPollAvailability()
   const {
-    addGroup,
     groupAvailability,
     groupParticipants,
-    groups,
-    meetingOwners,
     participants,
     setGroupAvailability,
     setGroupParticipants,
-    setMeetingOwners,
     setParticipants,
   } = useParticipants()
   const inviteKey = useMemo(
@@ -109,8 +105,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const currentAccount = useAccountContext()
   const { timezone, currentSelectedDate } = useScheduleState()
-  const { getAvailabilitySlots, clearSlots, selectedSlots } =
-    useAvailabilityTracker()
+  const { clearSlots, selectedSlots } = useAvailabilityTracker()
   const queryClient = useQueryClient()
 
   const {
@@ -120,7 +115,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   } = useQuery({
     queryKey: ['quickpoll-schedule', pollId],
     queryFn: () => getQuickPollById(pollId!),
-    enabled: !!pollId && !pollData,
+    enabled: !!pollId,
     onError: (err: unknown) => {
       showErrorToast(
         'Failed to load poll',
@@ -130,7 +125,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   })
 
   const currentPollData =
-    pollData || (fetchedPollData as QuickPollBySlugResponse)
+    (fetchedPollData as QuickPollBySlugResponse) || pollData
 
   const isDesktop = useBreakpointValue({ base: false, md: true }) ?? false
 

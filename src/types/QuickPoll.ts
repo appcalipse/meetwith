@@ -78,6 +78,12 @@ export interface QuickPollParticipant {
   participant_type: QuickPollParticipantType
 }
 
+export interface QuickPollJoinContext {
+  pollId: string
+  pollSlug: string
+  pollTitle: string
+}
+
 export interface QuickPollCalendar {
   id: number
   created_at: string
@@ -150,6 +156,8 @@ export interface AddParticipantData {
   participant_type: QuickPollParticipantType
   status?: QuickPollParticipantStatus
 }
+
+export type QuickPollBulkAddParticipants = AddParticipantData[]
 
 export interface QuickPollParticipantUpdateFields {
   status: QuickPollParticipantStatus

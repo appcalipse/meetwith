@@ -32,6 +32,7 @@ import { Account } from '@/types/Account'
 import {
   AttendeeStatus,
   isAccepted,
+  isCalendarEvent,
   isDeclined,
   isPendingAction,
   mapParticipationStatusToAttendeeStatus,
@@ -44,7 +45,11 @@ import { Attendee } from '@/types/Office365'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import { updateCalendarRsvpStatus } from '@/utils/api_helper'
-import { dateToLocalizedRange, rsvpMeeting } from '@/utils/calendar_manager'
+import {
+  dateToLocalizedRange,
+  getActor,
+  rsvpMeeting,
+} from '@/utils/calendar_manager'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
   canAccountAccessPermission,
@@ -61,30 +66,18 @@ interface EventDetailsPopOverProps {
   onSelectEvent: () => void
   onClose: () => void
   onCancelOpen: () => void
+  actor: UnifiedAttendee | ParticipantInfo | undefined
+  setActor: React.Dispatch<
+    React.SetStateAction<UnifiedAttendee | ParticipantInfo | undefined>
+  >
 }
-const isCalendarEvent = (
-  slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>
-): slot is WithInterval<UnifiedEvent<DateTime>> => {
-  return 'calendarId' in slot
-}
-export const getActor = (
-  slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>,
-  currentAccount: Account
-) => {
-  if (isCalendarEvent(slot)) {
-    return slot.attendees?.find(
-      attendee => attendee.email === slot.accountEmail
-    )
-  } else {
-    return slot.participants.find(
-      participant => participant.account_address === currentAccount?.address
-    )
-  }
-}
+
 const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
   slot,
   onSelectEvent,
   onCancelOpen,
+  actor,
+  setActor,
 }) => {
   const rsvpAbortControllerRef = React.useRef<AbortController | null>(null)
 
@@ -127,9 +120,6 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
       )
     }
   }, [currentAccount])
-  const [actor, setActor] = React.useState<
-    UnifiedAttendee | ParticipantInfo | undefined
-  >(getActor(slot, currentAccount!))
 
   React.useEffect(() => {
     setActor(getActor(slot, currentAccount!))

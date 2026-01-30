@@ -39,7 +39,11 @@ const MobileQuickPollParticipantModal: React.FC<
       >
         <ModalCloseButton zIndex={90} size={'25'} />
         <Box height={10} w={'100%'} bg="none" />
-        <QuickPollParticipants isMobile pollData={props.pollData} />
+        <QuickPollParticipants
+          isMobile
+          pollData={props.pollData}
+          onClose={props.onClose}
+        />
       </ModalContent>
     </Modal>
   )

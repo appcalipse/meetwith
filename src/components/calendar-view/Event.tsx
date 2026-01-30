@@ -24,16 +24,18 @@ import {
   isCalendarEvent,
   isDeclined,
   isPendingAction,
+  UnifiedAttendee,
   UnifiedEvent,
   WithInterval,
 } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { getActor } from '@/utils/calendar_manager'
 import {
   generateBorderColor,
   getDesignSystemTextColor,
 } from '@/utils/color-utils'
 import { queryClient } from '@/utils/react_query'
-
 import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import { DeleteEventDialog } from '../schedule/delete-event-dialog'
 import EventDetailsPopOver from './EventDetailsPopOver'
@@ -61,17 +63,10 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
     onOpen: onDeleteEventOpen,
     onClose: onDeleteEventClose,
   } = useDisclosure()
-  const actor = React.useMemo(() => {
-    if (isCalendarEvent(event)) {
-      return event.attendees?.find(
-        attendee => attendee.email === event.accountEmail
-      )
-    } else {
-      return event.participants.find(
-        participant => participant.account_address === currentAccount?.address
-      )
-    }
-  }, [event, currentAccount])
+  const [actor, setActor] = React.useState<
+    UnifiedAttendee | ParticipantInfo | undefined
+  >(getActor(event, currentAccount!))
+
   const isDeclinedStatus = isDeclined(actor?.status)
   const handleOpenDeleteDialog = () => {
     if (isCalendarEvent(event)) {
@@ -114,13 +109,13 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
 
         return {
           calendarEvents: isCalEvent
-            ? (old.calendarEvents?.filter(
+            ? old.calendarEvents?.filter(
                 e => e.sourceEventId !== event.sourceEventId
-              ) ?? [])
-            : (old.calendarEvents ?? []),
+              ) ?? []
+            : old.calendarEvents ?? [],
           mwwEvents: !isCalEvent
-            ? (old.mwwEvents?.filter(e => e.id !== event.id) ?? [])
-            : (old.mwwEvents ?? []),
+            ? old.mwwEvents?.filter(e => e.id !== event.id) ?? []
+            : old.mwwEvents ?? [],
         }
       }
     )
@@ -231,6 +226,8 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
                 onSelectEvent={() => handleSelectEvent(onClose)}
                 onClose={onClose}
                 onCancelOpen={handleOpenDeleteDialog}
+                actor={actor}
+                setActor={setActor}
               />
             </PopoverBody>
           </PopoverContent>

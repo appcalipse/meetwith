@@ -354,9 +354,7 @@ export const saveAvatar = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
@@ -371,9 +369,7 @@ export const saveBanner = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
@@ -1100,9 +1096,7 @@ export const uploadGroupAvatar = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   return response
@@ -2495,6 +2489,15 @@ export const addQuickPollParticipants = async (
   )
 }
 
+export const addQuickPollParticipantsBySlugAsGuest = async (
+  slug: string,
+  participants: BulkAddParticipantsRequest['participants']
+) => {
+  return await internalFetch(`/quickpoll/${slug}/participants/bulk`, 'POST', {
+    participants,
+  })
+}
+
 export const getQuickPollBySlug = async (slug: string) => {
   return await internalFetch(`/quickpoll/${slug}`)
 }
@@ -2918,19 +2921,20 @@ export const parsedDecryptedParticipants = async (
   )
 }
 
-export const addUserToPollAfterSignup = async (
-  accountAddress: string,
+export const joinQuickPollAsParticipant = async (
   pollId: string,
   notificationEmail?: string,
   displayName?: string
-): Promise<{ participant: QuickPollParticipant }> => {
-  return await internalFetch<{ participant: QuickPollParticipant }>(
-    `/secure/quickpoll/${pollId}/join`,
-    'POST',
-    {
-      account_address: accountAddress,
-      notification_email: notificationEmail,
-      display_name: displayName,
-    }
-  )
+): Promise<{ participant: QuickPollParticipant; alreadyInPoll: boolean }> => {
+  const data = await internalFetch<{
+    participant: QuickPollParticipant
+    already_in_poll: boolean
+  }>(`/secure/quickpoll/${pollId}/join`, 'POST', {
+    notification_email: notificationEmail,
+    display_name: displayName,
+  })
+  return {
+    participant: data.participant,
+    alreadyInPoll: data.already_in_poll,
+  }
 }

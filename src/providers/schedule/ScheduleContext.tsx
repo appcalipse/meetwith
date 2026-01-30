@@ -11,10 +11,14 @@ import {
 import { UpdateMode } from '@/utils/constants/meeting'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
+export type DurationMode = 'preset' | 'custom' | 'timeRange'
+
 interface IScheduleStateContext {
   title: string
   content: string
   duration: number
+  durationMode: DurationMode
+  timeRange: { startTime: string; endTime: string } | null
   pickedTime: Date | null
   currentSelectedDate: DateTime
   timezone: string
@@ -32,6 +36,10 @@ interface IScheduleStateContext {
   setTitle: React.Dispatch<React.SetStateAction<string>>
   setContent: React.Dispatch<React.SetStateAction<string>>
   setDuration: React.Dispatch<React.SetStateAction<number>>
+  setDurationMode: React.Dispatch<React.SetStateAction<DurationMode>>
+  setTimeRange: React.Dispatch<
+    React.SetStateAction<{ startTime: string; endTime: string } | null>
+  >
   setPickedTime: React.Dispatch<React.SetStateAction<Date | null>>
   setCurrentSelectedDate: React.Dispatch<React.SetStateAction<DateTime>>
   setTimezone: React.Dispatch<React.SetStateAction<string>>
@@ -77,6 +85,11 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [duration, setDuration] = useState(30)
+  const [durationMode, setDurationMode] = useState<DurationMode>('preset')
+  const [timeRange, setTimeRange] = useState<{
+    startTime: string
+    endTime: string
+  } | null>(null)
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [currentSelectedDate, setCurrentSelectedDate] = useState<DateTime>(
     DateTime.now()
@@ -121,6 +134,8 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     currentSelectedDate,
     decryptedMeeting,
     duration,
+    durationMode,
+    timeRange,
     editMode,
     isScheduling,
     meetingNotification,
@@ -133,6 +148,8 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     setCurrentSelectedDate,
     setDecryptedMeeting,
     setDuration,
+    setDurationMode,
+    setTimeRange,
     setEditMode,
     setIsScheduling,
     setMeetingNotification,

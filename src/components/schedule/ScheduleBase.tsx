@@ -2,7 +2,6 @@ import { WarningTwoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
-  Checkbox,
   Divider,
   Flex,
   FormControl,
@@ -14,8 +13,6 @@ import {
   IconButton,
   Input,
   Link,
-  Radio,
-  RadioGroup,
   Text,
   useDisclosure,
   useToast,
@@ -74,6 +71,7 @@ import {
 } from '@/utils/constants/schedule'
 import {
   getCustomSelectComponents,
+  getnoClearCustomSelectComponent,
   noClearCustomSelectComponent,
   Option,
 } from '@/utils/constants/select'
@@ -137,7 +135,7 @@ const ScheduleBase = () => {
   } = useScheduleState()
   const {
     groupParticipants,
-    groups,
+    group,
     meetingOwners,
     participants,
     standAloneParticipants,
@@ -183,18 +181,18 @@ const ScheduleBase = () => {
     () =>
       getMergedParticipants(
         participants,
-        groups,
         groupParticipants,
+        group,
         currentAccount?.address || ''
       ),
-    [participants, groups, groupParticipants]
+    [participants, group, groupParticipants]
   )
 
   useEffect(() => {
     const mergedParticipants = getMergedParticipants(
       participants,
-      groups,
-      groupParticipants
+      groupParticipants,
+      group
     )
     if (mergedParticipants.length > 0) {
       const filteredMeetingOwners = meetingOwners.filter(owner =>
@@ -206,10 +204,10 @@ const ScheduleBase = () => {
     } else {
       setMeetingOwners([])
     }
-  }, [participants])
+  }, [participants, group])
   const meetingParticipants = useMemo(
-    () => getMergedParticipants(participants, groups, groupParticipants),
-    [participants, groups, groupParticipants]
+    () => getMergedParticipants(participants, groupParticipants, group),
+    [participants, group, groupParticipants]
   )
 
   const standAloneIdentifiers = useMemo(() => {
@@ -521,6 +519,7 @@ const ScheduleBase = () => {
               </HStack>
             )}
           </VStack>
+
           <Divider borderColor="neutral.400" w={{ base: '100%', md: '80%' }} />
 
           <VStack
@@ -852,39 +851,52 @@ const ScheduleBase = () => {
                     Permissions for guests
                   </Heading>
 
-                  {MeetingSchedulePermissions.map(permission => (
-                    <Checkbox
-                      color="border-default-primary"
-                      colorScheme="primary"
-                      flexDir="row-reverse"
-                      fontSize="16px"
-                      fontWeight={700}
-                      isChecked={selectedPermissions?.includes(
-                        permission.value
-                      )}
-                      justifyContent={'space-between'}
-                      key={permission.value}
-                      marginInlineStart={0}
-                      onChange={e => {
-                        const { checked } = e.target
-                        setSelectedPermissions(prev =>
-                          checked
-                            ? (prev || []).concat(permission.value)
-                            : prev?.filter(p => p !== permission.value) || []
-                        )
-                      }}
-                      p={0}
-                      size={'lg'}
-                      w="100%"
-                    >
-                      <HStack gap={0} marginInlineStart={-2}>
-                        <Text>{permission.label}</Text>
-                        {permission.info && (
-                          <InfoTooltip text={permission.info} />
-                        )}
-                      </HStack>
-                    </Checkbox>
-                  ))}
+                  <ChakraSelect<Option<MeetingPermissions>, true>
+                    chakraStyles={{
+                      container: provided => ({
+                        ...provided,
+                        border: '0px solid',
+                        borderTopColor: 'currentColor',
+                        borderLeftColor: 'currentColor',
+                        borderRightColor: 'currentColor',
+                        borderBottomColor: 'currentColor',
+                        borderColor: 'inherit',
+                        borderRadius: 'md',
+                        maxW: '100%',
+                        display: 'block',
+                      }),
+
+                      placeholder: provided => ({
+                        ...provided,
+                        textAlign: 'left',
+                      }),
+                    }}
+                    className="noLeftBorder permissions-select"
+                    colorScheme="gray"
+                    components={getnoClearCustomSelectComponent<
+                      Option<MeetingPermissions>,
+                      true
+                    >()}
+                    isDisabled={!canEditMeetingDetails || isScheduling}
+                    isMulti
+                    onChange={val => {
+                      const selected = val
+                      setSelectedPermissions(selected.map(item => item.value))
+                    }}
+                    options={MeetingSchedulePermissions.map(permission => ({
+                      value: permission.value,
+                      label: permission.label,
+                    }))}
+                    placeholder="Select Permissions"
+                    tagVariant={'solid'}
+                    value={MeetingSchedulePermissions.filter(permission =>
+                      selectedPermissions?.includes(permission.value)
+                    ).map(permission => ({
+                      value: permission.value,
+                      label: permission.label,
+                    }))}
+                  />
+
                   <FormControl>
                     <FormLabel
                       alignItems="center"
@@ -914,7 +926,12 @@ const ScheduleBase = () => {
                       variant="link"
                       width="100%"
                     >
-                      <Text userSelect="none">
+                      <Text
+                        userSelect="none"
+                        maxW="90%"
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                      >
                         {meetingOwners.length > 0
                           ? meetingOwners
                               .map(

@@ -1,4 +1,3 @@
-import { ALL } from 'node:dns'
 import {
   Box,
   Drawer,
@@ -9,12 +8,10 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { addMinutes } from 'date-fns'
-import { DateTime } from 'luxon'
 import * as React from 'react'
 import useAccountContext from '@/hooks/useAccountContext'
 import {
   CalendarEventsData,
-  createEventsQueryKey,
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
 import { ActionsContext } from '@/providers/schedule/ActionsContext'
@@ -24,7 +21,6 @@ import { useParticipantPermissions } from '@/providers/schedule/PermissionsConte
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import {
   isCalendarEvent,
-  isCalendarEventWithoutDateTime,
   mapAttendeeStatusToParticipationStatus,
 } from '@/types/Calendar'
 import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
@@ -71,7 +67,6 @@ import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import { DeleteEventDialog } from '../schedule/delete-event-dialog'
 import InviteParticipants from '../schedule/participants/InviteParticipants'
 import ScheduleTimeDiscover from '../schedule/ScheduleTimeDiscover'
-import ActiveCalendarEvent from './ActiveCalendarEvent'
 import ActiveMeetwithEvent from './ActiveMeetwithEvent'
 
 const ActiveEvent: React.FC = () => {
@@ -138,7 +133,7 @@ const ActiveEvent: React.FC = () => {
     participants,
     groupParticipants,
     groupAvailability,
-    groups,
+    group,
   } = useParticipants()
   const { setInviteModalOpen, inviteModalOpen } = useScheduleNavigation()
   const { setCanEditMeetingDetails, setCanEditMeetingParticipants } =
@@ -421,13 +416,13 @@ const ActiveEvent: React.FC = () => {
 
             return {
               calendarEvents: isCalEvent
-                ? (old.calendarEvents?.filter(
+                ? old.calendarEvents?.filter(
                     e => e.sourceEventId !== selectedSlot.sourceEventId
-                  ) ?? [])
-                : (old.calendarEvents ?? []),
+                  ) ?? []
+                : old.calendarEvents ?? [],
               mwwEvents: !isCalEvent
-                ? (old.mwwEvents?.filter(e => e.id !== selectedSlot.id) ?? [])
-                : (old.mwwEvents ?? []),
+                ? old.mwwEvents?.filter(e => e.id !== selectedSlot.id) ?? []
+                : old.mwwEvents ?? [],
             }
           }
         )
@@ -476,8 +471,8 @@ const ActiveEvent: React.FC = () => {
               .concat(selectedSlot?.participants || [])
         const allParticipants = getMergedParticipants(
           actualParticipants,
-          groups,
-          groupParticipants
+          groupParticipants,
+          group
         ).map(val => ({
           ...val,
           type: meetingOwners.some(
@@ -752,7 +747,7 @@ const ActiveEvent: React.FC = () => {
     duration,
     duration,
     participants,
-    groups,
+    group,
     groupParticipants,
     meetingOwners,
     content,

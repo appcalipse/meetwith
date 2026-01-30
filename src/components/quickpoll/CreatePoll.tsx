@@ -10,17 +10,12 @@ import {
   HStack,
   Icon,
   Input,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
   Modal,
   ModalBody,
   ModalCloseButton,
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  Select,
   Text,
   Textarea,
   useColorModeValue,
@@ -28,6 +23,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, {
@@ -37,13 +33,12 @@ import React, {
   useMemo,
   useState,
 } from 'react'
-import { FaArrowLeft, FaChevronDown } from 'react-icons/fa'
-import { FiArrowLeft, FiCheck } from 'react-icons/fi'
+import { FaArrowLeft } from 'react-icons/fa'
+import { FiArrowLeft } from 'react-icons/fi'
 import { HiOutlineUserAdd } from 'react-icons/hi'
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import { ChipInput } from '@/components/chip-input'
-import { BadgeChip } from '@/components/chip-input/chip'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import InfoTooltip from '@/components/profile/components/Tooltip'
@@ -79,6 +74,10 @@ import {
   MeetingPermissions,
   QuickPollPermissionsList,
 } from '@/utils/constants/schedule'
+import {
+  getnoClearCustomSelectComponent,
+  Option,
+} from '@/utils/constants/select'
 import { createLocalDate, createLocalDateTime } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import {
@@ -145,7 +144,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     setGroupAvailability,
     groupParticipants,
     setGroupParticipants,
-    groups: allGroups,
+    group,
   } = useParticipants()
   const inviteKey = useMemo(
     () =>
@@ -174,12 +173,21 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   ])
   const [removeExpiryDate, setRemoveExpiryDate] = useState(false)
 
+  const durationOptions: Option<number>[] = useMemo(
+    () =>
+      DEFAULT_GROUP_SCHEDULING_DURATION.map(type => ({
+        value: type.duration,
+        label: durationToHumanReadable(type.duration),
+      })),
+    []
+  )
+
   // Get all participants
   const allMergedParticipants = useMemo(() => {
     const merged = getMergedParticipants(
       participants,
-      allGroups,
       groupParticipants,
+      group,
       currentAccount?.address
     )
 
@@ -194,7 +202,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     })
 
     return deduplicatedParticipants
-  }, [participants, allGroups, groupParticipants, currentAccount?.address])
+  }, [participants, group, groupParticipants, currentAccount?.address])
 
   useEffect(() => {
     const needsUpdate = participants.some(participant => {
@@ -248,10 +256,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const router = useRouter()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const iconColor = useColorModeValue('#181F24', 'white')
-  const chevronColor = useColorModeValue('neutral.700', 'neutral.0')
-  const menuTextColor = useColorModeValue('neutral.800', 'neutral.0')
-  const menuBg = useColorModeValue('neutral.50', 'neutral.450')
-
   // Fetch poll data when in edit mode
   const {
     data: pollData,
@@ -298,33 +302,25 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       setSelectedPermissions(poll.permissions || [])
 
       const originalParticipantsData =
-        poll.participants
-          ?.filter(
-            p => p.participant_type !== QuickPollParticipantType.SCHEDULER
-          )
-          .map(p => ({
-            id: p.id,
-            account_address: p.account_address,
-            guest_email: p.guest_email,
-          })) || []
+        poll.participants?.map(p => ({
+          id: p.id,
+          account_address: p.account_address,
+          guest_email: p.guest_email,
+        })) || []
 
       setOriginalParticipants(originalParticipantsData)
 
       // Convert poll participants to ParticipantInfo format and set them
       const participantInfos =
-        poll.participants
-          ?.filter(
-            p => p.participant_type !== QuickPollParticipantType.SCHEDULER
-          ) // Exclude the scheduler/host
-          .map(participant => ({
-            account_address: participant.account_address,
-            name: participant.guest_name,
-            guest_email: participant.guest_email,
-            status: mapQuickPollStatus(participant.status),
-            meeting_id: '',
-            type: mapQuickPollType(participant.participant_type),
-            isHidden: true,
-          })) || []
+        poll.participants?.map(participant => ({
+          account_address: participant.account_address,
+          name: participant.guest_name,
+          guest_email: participant.guest_email,
+          status: mapQuickPollStatus(participant.status),
+          meeting_id: '',
+          type: mapQuickPollType(participant.participant_type),
+          isHidden: true,
+        })) || []
 
       setParticipants(participantInfos)
 
@@ -717,39 +713,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     updatePollMutation.isLoading ||
     cancelPollMutation.isLoading
 
-  const handleRemovePermission = useCallback(
-    (permissionValue: string) => {
-      if (!isLoading) {
-        setSelectedPermissions(
-          prev => prev?.filter(p => p !== permissionValue) || []
-        )
-      }
-    },
-    [isLoading]
-  )
-
-  const handleChipClick = useCallback(
-    (e: React.MouseEvent, permissionValue: string) => {
-      e.stopPropagation()
-      handleRemovePermission(permissionValue)
-    },
-    [handleRemovePermission]
-  )
-
-  const handleTogglePermission = useCallback(
-    (permissionValue: string) => {
-      const isSelected = selectedPermissions?.includes(permissionValue)
-      if (isSelected) {
-        setSelectedPermissions(
-          prev => prev?.filter(p => p !== permissionValue) || []
-        )
-      } else {
-        setSelectedPermissions(prev => (prev || []).concat(permissionValue))
-      }
-    },
-    [selectedPermissions]
-  )
-
   // Show loading when fetching poll data in edit mode
   if (isEditMode && isPollLoading) {
     return (
@@ -933,30 +896,45 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   *
                 </Text>
               </FormLabel>
-              <Select
+              <ChakraSelect<Option<number>>
                 id="duration"
                 placeholder="Duration"
-                onChange={e => {
-                  setFormData(prev => ({
-                    ...prev,
-                    duration: Number(e.target.value),
-                  }))
+                value={
+                  durationOptions.find(o => o.value === formData.duration) ??
+                  null
+                }
+                onChange={opt => {
+                  if (opt) {
+                    clearValidationError(setValidationErrors, 'duration')
+                    setFormData(prev => ({
+                      ...prev,
+                      duration: opt.value,
+                    }))
+                  }
                 }}
-                onBlur={clearValidationError(setValidationErrors, 'duration')}
-                value={formData.duration}
-                borderColor="neutral.400"
-                width={'max-content'}
-                maxW="350px"
-                isInvalid={!!validationErrors.duration}
-                errorBorderColor="red.500"
+                onBlur={() =>
+                  clearValidationError(setValidationErrors, 'duration')
+                }
+                options={durationOptions}
+                colorScheme="primary"
+                className="noLeftBorder timezone-select"
+                components={getnoClearCustomSelectComponent<
+                  Option<number>,
+                  false
+                >()}
+                chakraStyles={{
+                  container: provided => ({
+                    ...provided,
+                    borderColor: validationErrors.duration
+                      ? 'red.500'
+                      : 'input-border',
+                    bg: 'select-bg',
+                    width: 'max-content',
+                    maxW: '350px',
+                  }),
+                }}
                 isDisabled={isLoading}
-              >
-                {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                  <option key={type.id} value={type.duration}>
-                    {durationToHumanReadable(type.duration)}
-                  </option>
-                ))}
-              </Select>
+              />
               <Box minH="20px">
                 {validationErrors.duration && (
                   <FormHelperText color="red.500" mt={1}>
@@ -1101,138 +1079,52 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               Guest permissions
             </Heading>
 
-            <Box
-              w="100%"
-              borderWidth="1px"
-              borderColor="neutral.400"
-              borderRadius="md"
-              px={3}
-              py={2}
-              minH="40px"
-              display="flex"
-              alignItems="center"
-              gap={2}
-              flexWrap="wrap"
-              position="relative"
-            >
-              {selectedPermissions.length > 0 && (
-                <HStack
-                  spacing={2}
-                  flexWrap="wrap"
-                  flex={1}
-                  pr={8}
-                  position="relative"
-                  zIndex={1}
-                  pointerEvents="none"
-                >
-                  {selectedPermissions.map(permissionValue => {
-                    const permission = QuickPollPermissionsList.find(
-                      p => p.value === permissionValue
-                    )
-                    if (!permission) return null
-                    return (
-                      <Box
-                        key={permission.value}
-                        display="inline-block"
-                        cursor="pointer"
-                        pointerEvents="auto"
-                        onClick={e => handleChipClick(e, permission.value)}
-                      >
-                        <BadgeChip allowRemove={!isLoading}>
-                          {permission.label}
-                        </BadgeChip>
-                      </Box>
-                    )
-                  })}
-                </HStack>
-              )}
-              <Menu>
-                <MenuButton
-                  as={Box}
-                  position="absolute"
-                  top={0}
-                  left={0}
-                  right={0}
-                  bottom={0}
-                  cursor="pointer"
-                  zIndex={0}
-                />
-                <MenuList
-                  bg={menuBg}
-                  borderColor="border-default"
-                  borderWidth="1px"
-                  borderRadius="7px"
-                  shadow="none"
-                  boxShadow="none"
-                  p={0}
-                  mt={2}
-                  w={{ base: '100%', md: '450px' }}
-                  minW={{ base: '100%', md: '450px' }}
-                  maxW={{ base: 'calc(100vw - 32px)', md: '450px' }}
-                >
-                  {QuickPollPermissionsList.map(permission => {
-                    const isSelected = selectedPermissions?.includes(
-                      permission.value
-                    )
-                    return (
-                      <MenuItem
-                        key={permission.value}
-                        bg="transparent"
-                        color={menuTextColor}
-                        _hover={{ bg: 'menu-item-hover' }}
-                        _active={{ bg: 'menu-item-hover' }}
-                        _focus={{ bg: 'menu-item-hover' }}
-                        py="14px"
-                        px="14px"
-                        fontSize="md"
-                        fontWeight="500"
-                        onClick={() => handleTogglePermission(permission.value)}
-                      >
-                        <HStack w="100%" justify="space-between" align="center">
-                          <Text color={menuTextColor}>{permission.label}</Text>
-                          <Box
-                            w="24px"
-                            h="24px"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="flex-end"
-                            flexShrink={0}
-                          >
-                            {isSelected && (
-                              <Icon
-                                as={FiCheck}
-                                w="20px"
-                                h="20px"
-                                color={menuTextColor}
-                              />
-                            )}
-                          </Box>
-                        </HStack>
-                      </MenuItem>
-                    )
-                  })}
-                </MenuList>
-              </Menu>
-              {selectedPermissions.length === 0 && (
-                <Text
-                  color="neutral.400"
-                  fontSize="sm"
-                  pr={8}
-                  pointerEvents="none"
-                >
-                  Select permissions
-                </Text>
-              )}
-              <Icon
-                as={FaChevronDown}
-                color={chevronColor}
-                position="absolute"
-                right={3}
-                top="50%"
-                transform="translateY(-50%)"
-                pointerEvents="none"
-              />
-            </Box>
+            <ChakraSelect<Option<MeetingPermissions>, true>
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  border: '0px solid',
+                  borderTopColor: 'currentColor',
+                  borderLeftColor: 'currentColor',
+                  borderRightColor: 'currentColor',
+                  borderBottomColor: 'currentColor',
+                  borderColor: 'neutral.400',
+                  borderRadius: 'md',
+                  w: '100%',
+                  display: 'block',
+                }),
+                placeholder: provided => ({
+                  ...provided,
+                  color: 'neutral.400',
+                  fontSize: 'sm',
+                  textAlign: 'left',
+                }),
+              }}
+              className="permissions-select"
+              colorScheme="gray"
+              components={getnoClearCustomSelectComponent<
+                Option<MeetingPermissions>,
+                true
+              >()}
+              isDisabled={isLoading}
+              isMulti
+              onChange={val => {
+                const selected = val
+                setSelectedPermissions(selected.map(item => item.value))
+              }}
+              options={QuickPollPermissionsList.map(permission => ({
+                value: permission.value,
+                label: permission.label,
+              }))}
+              placeholder="Select permissions"
+              tagVariant={'solid'}
+              value={QuickPollPermissionsList.filter(permission =>
+                selectedPermissions?.includes(permission.value)
+              ).map(permission => ({
+                value: permission.value,
+                label: permission.label,
+              }))}
+            />
           </VStack>
 
           {/* Action Buttons */}
