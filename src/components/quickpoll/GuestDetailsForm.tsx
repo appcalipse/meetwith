@@ -172,7 +172,7 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
       pollTitle: pollData.poll.title,
       returnUrl: window.location.href,
     })
-    openConnection(`/poll/${pollData.poll.slug}?signUp=true`)
+    openConnection(`/poll/${pollData.poll.slug}`)
   }
 
   const handleSignIn = () => {

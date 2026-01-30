@@ -1083,7 +1083,7 @@ export function QuickPollPickAvailability({
       returnUrl: window.location.href,
     })
 
-    openConnection(`/poll/${pollData.poll.slug}?signUp=true`)
+    openConnection(`/poll/${pollData.poll.slug}`)
   }
 
   return (
@@ -1335,10 +1335,10 @@ export function QuickPollPickAvailability({
         <VStack
           gap={4}
           w="100%"
-          alignItems="flex-start"
+          alignItems="center"
           display={{ base: 'flex', md: 'none' }}
         >
-          <VStack align="flex-start" gap={2} w="100%">
+          <VStack align="center" gap={2} w="100%" textAlign="center">
             <Heading fontSize="16px" fontWeight={700} color="text-primary">
               Select all the time slots that work for you
             </Heading>
@@ -1496,6 +1496,7 @@ export function QuickPollPickAvailability({
 
               <Box
                 maxW="400px"
+                mx="auto"
                 textAlign="center"
                 display={{ lg: 'block', base: 'none' }}
               >

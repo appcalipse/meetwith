@@ -66,7 +66,7 @@ const OnboardingModal = () => {
 
   // Callback Control
   const queryParams = useSearchParams()
-  const state = queryParams.get('state')
+  const state = queryParams.get('calState') ?? queryParams.get('state')
   const stateObject =
     typeof state === 'string'
       ? JSON.parse(Buffer.from(state as string, 'base64').toString())
@@ -576,8 +576,16 @@ const OnboardingModal = () => {
         size="xl"
         isCentered
       >
-        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-        <ModalContent padding={{ base: 4, sm: 10, md: 20 }} maxW="45rem">
+        <ModalOverlay
+          bg="blackAlpha.600"
+          backdropFilter="blur(10px)"
+          zIndex={1600}
+        />
+        <ModalContent
+          padding={{ base: 4, sm: 10, md: 20 }}
+          maxW="45rem"
+          containerProps={{ zIndex: 1600 }}
+        >
           <Flex justifyContent="flex-end" mb={4}>
             <Button
               variant="ghost"
