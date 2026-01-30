@@ -1,7 +1,7 @@
 import { Box } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
@@ -11,6 +11,7 @@ import QuickPollMain, {
 } from '@/components/quickpoll/QuickPollMain'
 import { AvailabilityTrackerProvider } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import useAccountContext from '@/hooks/useAccountContext'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { QuickPollAvailabilityProvider } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { NavigationProvider } from '@/providers/schedule/NavigationContext'
 import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
@@ -40,6 +41,7 @@ const PollPage = () => {
   const router = useRouter()
   const { slug, tab, participantId } = router.query
   const currentAccount = useAccountContext()
+  const { isOnboardingOpened } = useContext(OnboardingModalContext)
   const [showJoinPollConfirmation, setShowJoinPollConfirmation] =
     useState(false)
   const [pollContextForConfirmation, setPollContextForConfirmation] =
@@ -215,7 +217,7 @@ const PollPage = () => {
       </QuickPollAvailabilityProvider>
       {pollContextForConfirmation && pollData && (
         <JoinPollConfirmModal
-          isOpen={showJoinPollConfirmation}
+          isOpen={showJoinPollConfirmation && !isOnboardingOpened}
           onClose={() => {
             setShowJoinPollConfirmation(false)
             setPollContextForConfirmation(null)
