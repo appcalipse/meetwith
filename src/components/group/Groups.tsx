@@ -48,6 +48,10 @@ import InviteModal from '../group/InviteModal'
 type Props = {
   currentAccount: Account
   search: string
+  onEmptyStateChange?: (isEmpty: boolean) => void
+  canCreateGroup?: boolean
+  trialEligible?: boolean
+  onUpgradeClick?: () => void
 }
 
 export interface GroupRef {
@@ -85,7 +89,17 @@ const DEFAULT_STATE: IGroupModal = {
 export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 
 const Groups = forwardRef<GroupRef, Props>(
-  ({ currentAccount, search }: Props, ref) => {
+  (
+    {
+      currentAccount,
+      search,
+      onEmptyStateChange,
+      canCreateGroup: canCreateGroupProp,
+      trialEligible,
+      onUpgradeClick,
+    }: Props,
+    ref
+  ) => {
     const toast = useToast()
 
     const {
@@ -118,8 +132,14 @@ const Groups = forwardRef<GroupRef, Props>(
       refetchOnMount: true,
     })
     const groups = data?.pages.flatMap(page => page.groups || []) ?? []
-    const canCreateGroup = data?.pages[0]?.isPro ?? true
+    const canCreateGroupFromApi = data?.pages[0]?.isPro ?? true
+    const canCreateGroup = canCreateGroupProp ?? canCreateGroupFromApi
     const firstFetch = isLoading
+
+    useEffect(() => {
+      if (firstFetch) return
+      onEmptyStateChange?.(groups.length === 0)
+    }, [firstFetch, groups.length])
 
     // Fetch user's availability blocks (used in settings modal)
     const { data: availabilityBlocks } = useQuery<AvailabilityBlock[]>({
@@ -275,7 +295,7 @@ const Groups = forwardRef<GroupRef, Props>(
             colorScheme="primary"
             display={{ base: 'none', md: 'flex' }}
             mt={{ base: 4, md: 0 }}
-            mb={4}
+            mb={0}
             leftIcon={<FaPlus />}
             isDisabled={!canCreateGroup}
             title={
@@ -286,6 +306,23 @@ const Groups = forwardRef<GroupRef, Props>(
           >
             Create new group
           </Button>
+          {!canCreateGroup && onUpgradeClick && (
+            <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
+              Upgrade to create and schedule with groups.{' '}
+              <Button
+                variant="link"
+                colorScheme="primary"
+                px={0}
+                onClick={onUpgradeClick}
+                textDecoration="underline"
+                fontSize="14px"
+                height="auto"
+                minW="auto"
+              >
+                {trialEligible ? 'Try PRO for free' : 'Go PRO'}
+              </Button>
+            </Text>
+          )}
         </VStack>
       )
     } else {
