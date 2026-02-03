@@ -187,6 +187,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     const merged = getMergedParticipants(
       participants,
       groupParticipants,
+      undefined,
       isEditMode ? undefined : currentAccount?.address
     )
 
@@ -201,13 +202,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     })
 
     return deduplicatedParticipants
-  }, [
-    participants,
-    allGroups,
-    groupParticipants,
-    currentAccount?.address,
-    isEditMode,
-  ])
+  }, [participants, groupParticipants, currentAccount?.address, isEditMode])
 
   useEffect(() => {
     const needsUpdate = participants.some(participant => {

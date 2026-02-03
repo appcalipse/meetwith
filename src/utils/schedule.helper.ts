@@ -64,6 +64,13 @@ export const getMergedParticipants = (
     }
   }
 
+  if (accountAddress) {
+    const addr = accountAddress.toLowerCase()
+    return allParticipants.filter(
+      p => (p.account_address || '').toLowerCase() !== addr
+    )
+  }
+
   return allParticipants
 }
 
