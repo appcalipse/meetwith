@@ -1,4 +1,5 @@
 import { Auth } from 'googleapis'
+import { DateTime } from 'luxon'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { CaldavCredentials } from '@/utils/services/caldav.service'
 import { O365AuthCredentials } from '@/utils/services/office365.credential'
@@ -248,3 +249,10 @@ export interface QuickPollSignInContext {
   returnUrl: string
   timestamp: number
 }
+
+export type PollDateRange = {
+  pollStart: DateTime
+  pollEnd: DateTime
+}
+
+export type MonthOption = { value: string; label: string }

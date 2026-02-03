@@ -324,8 +324,8 @@ export const getFormattedDateAndDuration = (
 // Format a date range for QuickPoll display (e.g., "24th April - 24th June, 2025")
 
 export const formatPollDateRange = (startDate: string, endDate: string) => {
-  const start = DateTime.fromISO(startDate)
-  const end = DateTime.fromISO(endDate)
+  const start = DateTime.fromISO(startDate, { zone: 'utc' })
+  const end = DateTime.fromISO(endDate, { zone: 'utc' })
 
   const getOrdinalSuffix = (day: number) => {
     const j = day % 10
@@ -393,15 +393,14 @@ export const createLocalDateTime = (date: Date, time: Date): string => {
   return localDateTime.toISOString()
 }
 
-// Helper function to create a date at start of day in local timezone
+// Helper to create an ISO string for a calendar date (midnight UTC) so display is consistent across timezones
 export const createLocalDate = (date: Date): string => {
   const year = date.getFullYear()
   const month = date.getMonth()
   const day = date.getDate()
 
-  const localDate = new Date(year, month, day, 0, 0, 0)
-
-  return localDate.toISOString()
+  const utcMidnight = new Date(Date.UTC(year, month, day, 0, 0, 0))
+  return utcMidnight.toISOString()
 }
 
 export const checkHasSameScheduleTime = (date: Date, date2: Date): boolean => {

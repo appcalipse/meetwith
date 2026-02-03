@@ -55,13 +55,22 @@ import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import {
+  clampDateTimeToPollRange,
+  clampMonthRangeToPollRange,
+  clampSlotTimeToPollRange,
   clipIntervalsToBounds,
   computeBaseAvailability,
   convertAvailabilityToSelectedSlots,
   createMockMeetingMembers,
   extractOverrideIntervals,
+  filterSlotsToPollRange,
   generateFullDayBlocks,
+  getDefaultMonthOptions,
+  getMonthOptionsForPollRange,
+  isDayInPollRange,
+  isPollRangeNextDisabled,
   mergeLuxonIntervals,
+  parsePollMeetingDateRange,
   processPollParticipantAvailabilities,
   subtractBusyTimesFromBlocks,
   subtractRemovalIntervals,
@@ -341,18 +350,46 @@ export function QuickPollPickAvailability({
     return Array.from(participantsSet)
   }, [pollData, groupAvailability])
 
+  // Only days/slots within meeting date range are shown and selectable
+  const pollDateRange = useMemo(() => {
+    if (!pollData?.poll?.starts_at || !pollData?.poll?.ends_at) return null
+    return parsePollMeetingDateRange(
+      pollData.poll.starts_at,
+      pollData.poll.ends_at,
+      timezone
+    )
+  }, [pollData?.poll?.starts_at, pollData?.poll?.ends_at, timezone])
+
+  const pollStart = pollDateRange?.pollStart ?? null
+  const pollEnd = pollDateRange?.pollEnd ?? null
+
   const months = useMemo(() => {
-    const monthsArray = []
-    let currentDateInTimezone = DateTime.now().setZone(timezone)
-    while (monthsArray.length < 12) {
-      monthsArray.push({
-        value: String(currentDateInTimezone.month),
-        label: currentDateInTimezone.toFormat('MMMM yyyy'),
-      })
-      currentDateInTimezone = currentDateInTimezone.plus({ months: 1 })
+    if (pollStart && pollEnd)
+      return getMonthOptionsForPollRange(pollStart, pollEnd)
+    return getDefaultMonthOptions(timezone, 12)
+  }, [pollStart, pollEnd, timezone])
+
+  // Keep currentSelectedDate within poll range and sync month dropdown when pollData exists
+  useEffect(() => {
+    if (!pollStart || !pollEnd) return
+    const current = currentSelectedDate.setZone(timezone).startOf('day')
+    const clamped = clampDateTimeToPollRange(current, pollStart, pollEnd)
+    if (!clamped.equals(current)) {
+      setCurrentSelectedDate(clamped)
     }
-    return monthsArray
-  }, [currentSelectedDate.year, timezone])
+    if (months.length > 0) {
+      const label = clamped.toFormat('MMMM yyyy')
+      const option = months.find(m => m.label === label)
+      if (option) setMonthValue(option)
+    }
+  }, [
+    pollStart,
+    pollEnd,
+    timezone,
+    setCurrentSelectedDate,
+    currentSelectedDate,
+    months,
+  ])
 
   const [dates, setDates] = useState<Array<Dates>>([])
 
@@ -451,16 +488,18 @@ export function QuickPollPickAvailability({
     const month = newValue as SingleValue<{ label: string; value: string }>
     setMonthValue(month)
     if (!month?.value) return
-    if (!newMonth) {
-      const year = month.label.split(' ')[1]
-      setCurrentSelectedDate(
-        DateTime.now().set({
-          month: Number(month.value),
-          day: 1,
-          year: Number(year),
-        })
-      )
+    const year = month.label.split(' ')[1]
+    const firstOfMonth = DateTime.now()
+      .set({ month: Number(month.value), day: 1, year: Number(year) })
+      .setZone(timezone)
+      .startOf('day')
+    let target = newMonth
+      ? DateTime.fromJSDate(newMonth).setZone(timezone).startOf('day')
+      : firstOfMonth
+    if (pollStart && pollEnd) {
+      target = clampDateTimeToPollRange(target, pollStart, pollEnd)
     }
+    setCurrentSelectedDate(target)
   }
 
   const _onChangeDuration = (newValue: unknown) => {
@@ -509,21 +548,19 @@ export function QuickPollPickAvailability({
   }
 
   const getDates = (scheduleDuration = duration) => {
+    const monthStart = currentSelectedDate.setZone(timezone).startOf('month')
     const days = Array.from({ length: SLOT_LENGTH }, (v, k) => k)
-      .map(k =>
-        currentSelectedDate.plus({
-          days: k,
-        })
-      )
-      .filter(val =>
-        currentSelectedDate
-          .setZone(timezone)
-          .startOf('month')
-          .hasSame(val, 'month')
-      )
-    return days.map(date => {
-      const slots = getEmptySlots(date, scheduleDuration, timezone)
-
+      .map(k => currentSelectedDate.plus({ days: k }))
+      .filter(val => monthStart.hasSame(val, 'month'))
+    const filteredDays =
+      pollStart && pollEnd
+        ? days.filter(d => isDayInPollRange(d, pollStart, pollEnd, timezone))
+        : days
+    return filteredDays.map(date => {
+      let slots = getEmptySlots(date, scheduleDuration, timezone)
+      if (pollStart && pollEnd) {
+        slots = filterSlotsToPollRange(slots, pollStart, pollEnd)
+      }
       return {
         date: date.setZone(timezone).startOf('day').toJSDate(),
         slots,
@@ -537,14 +574,21 @@ export function QuickPollPickAvailability({
     try {
       setAvailableSlots(new Map())
       setBusySlots(new Map())
-      const monthStart = currentSelectedDate
+      const rawMonthStart = currentSelectedDate
         .setZone(timezone)
         .startOf('month')
-        .toJSDate()
-      const monthEnd = currentSelectedDate
-        .setZone(timezone)
-        .endOf('month')
-        .toJSDate()
+      const rawMonthEnd = currentSelectedDate.setZone(timezone).endOf('month')
+      const { monthStart, monthEnd } =
+        pollStart && pollEnd
+          ? clampMonthRangeToPollRange(
+              rawMonthStart,
+              rawMonthEnd,
+              pollStart,
+              pollEnd
+            )
+          : { monthStart: rawMonthStart, monthEnd: rawMonthEnd }
+      const monthStartDate = monthStart.toJSDate()
+      const monthEndDate = monthEnd.toJSDate()
 
       if (pollData) {
         const filteredGroupAvailability = Object.fromEntries(
@@ -554,8 +598,8 @@ export function QuickPollPickAvailability({
         const manualAvailabilityMap = processPollParticipantAvailabilities(
           pollData,
           filteredGroupAvailability,
-          monthStart,
-          monthEnd,
+          monthStartDate,
+          monthEndDate,
           timezone,
           currentAccount,
           isHost,
@@ -596,8 +640,8 @@ export function QuickPollPickAvailability({
             const defaultAvailability = mergeLuxonIntervals(
               parseMonthAvailabilitiesToDate(
                 account.preferences?.availabilities || [],
-                monthStart,
-                monthEnd,
+                monthStartDate,
+                monthEndDate,
                 account.preferences?.timezone || timezone
               )
             )
@@ -639,8 +683,8 @@ export function QuickPollPickAvailability({
 
         const busySlotsRaw = await fetchBusySlotsRawForQuickPollParticipants(
           quickPollParticipants,
-          monthStart,
-          monthEnd
+          monthStartDate,
+          monthEndDate
         )
 
         const busySlotsMap: Map<string, Interval[]> = new Map()
@@ -695,8 +739,8 @@ export function QuickPollPickAvailability({
           const overrides = participant
             ? extractOverrideIntervals(
                 participant,
-                monthStart,
-                monthEnd,
+                monthStartDate,
+                monthEndDate,
                 timezone
               )
             : { additions: [], removals: [] }
@@ -718,15 +762,15 @@ export function QuickPollPickAvailability({
                 calendarBase = manualAvailability
               } else {
                 calendarBase = generateFullDayBlocks(
-                  monthStart,
-                  monthEnd,
+                  monthStartDate,
+                  monthEndDate,
                   timezone
                 )
               }
             } else {
               calendarBase = generateFullDayBlocks(
-                monthStart,
-                monthEnd,
+                monthStartDate,
+                monthEndDate,
                 timezone
               )
             }
@@ -759,8 +803,8 @@ export function QuickPollPickAvailability({
                 manualAvailability,
                 defaultAvailability,
                 busyTimes,
-                monthStart,
-                monthEnd,
+                monthStartDate,
+                monthEndDate,
                 timezone
               )
             : mergeLuxonIntervals([...manualToInclude, ...calendarFree])
@@ -837,8 +881,8 @@ export function QuickPollPickAvailability({
       const [busySlots, meetingMembers] = await Promise.all([
         fetchBusySlotsRawForQuickPollParticipants(
           quickPollParticipants,
-          monthStart,
-          monthEnd
+          monthStartDate,
+          monthEndDate
         ).then(busySlots =>
           busySlots.map(busySlot => ({
             account_address: busySlot.account_address,
@@ -867,8 +911,8 @@ export function QuickPollPickAvailability({
         if (!memberAccount.address) continue
         const availabilities = parseMonthAvailabilitiesToDate(
           memberAccount?.preferences?.availabilities || [],
-          monthStart,
-          monthEnd,
+          monthStartDate,
+          monthEndDate,
           memberAccount?.preferences?.timezone || 'UTC'
         )
         availableSlotsMap.set(
@@ -979,8 +1023,10 @@ export function QuickPollPickAvailability({
     if (differenceInDays && differenceInDays < SLOT_LENGTH) {
       newDate = currentDate.startOf('month')
     }
+    if (pollStart && pollEnd) {
+      newDate = clampDateTimeToPollRange(newDate, pollStart, pollEnd)
+    }
     if (!newDate.hasSame(currentDate, 'month')) {
-      newDate = newDate.endOf('month').startOf('week')
       _onChangeMonth(
         {
           label: `${newDate.toFormat('MMMM yyyy')}`,
@@ -995,8 +1041,10 @@ export function QuickPollPickAvailability({
   const handleScheduledTimeNext = () => {
     const currentDate = currentSelectedDate.setZone(timezone).startOf('day')
     let newDate = currentDate.plus({ days: SLOT_LENGTH })
+    if (pollStart && pollEnd) {
+      newDate = clampDateTimeToPollRange(newDate, pollStart, pollEnd)
+    }
     if (!newDate.hasSame(currentDate, 'month')) {
-      newDate = newDate.startOf('month')
       _onChangeMonth(
         {
           label: `${newDate.toFormat('MMMM yyyy')}`,
@@ -1005,7 +1053,6 @@ export function QuickPollPickAvailability({
         newDate.toJSDate()
       )
     }
-
     setCurrentSelectedDate(newDate)
   }
 
@@ -1018,32 +1065,56 @@ export function QuickPollPickAvailability({
   }, [duration, timezone])
 
   const isBackDisabled = useMemo(() => {
-    const selectedDate = currentSelectedDate.setZone(timezone)
-    const currentDate = DateTime.now().setZone(timezone)
+    const selectedDate = currentSelectedDate.setZone(timezone).startOf('day')
+    const currentDate = DateTime.now().setZone(timezone).startOf('day')
+    if (pollStart && selectedDate <= pollStart) return true
     return selectedDate < currentDate || isLoading
-  }, [currentSelectedDate, timezone, isLoading])
+  }, [currentSelectedDate, timezone, isLoading, pollStart])
+
+  const isNextDisabled = useMemo(
+    () =>
+      isPollRangeNextDisabled(
+        currentSelectedDate,
+        timezone,
+        SLOT_LENGTH,
+        pollEnd
+      ),
+    [currentSelectedDate, timezone, pollEnd, SLOT_LENGTH]
+  )
 
   const handleJumpToBestSlot = async () => {
+    const rangeStart = pollStart
+      ? pollStart.toJSDate()
+      : currentSelectedDate.toJSDate()
+    const rangeEnd = pollEnd
+      ? pollEnd.toJSDate()
+      : currentSelectedDate.plus({ months: 1 }).toJSDate()
     const suggestedTimes = await fetchBestSlot({
-      startDate: currentSelectedDate.toJSDate(),
-      endDate: currentSelectedDate.plus({ months: 1 }).toJSDate(),
+      startDate: rangeStart,
+      endDate: rangeEnd,
     })
     if (suggestedTimes.length === 0) {
       toast({
         title: 'No Matching Times',
         description:
-          'No slots in the next 30 days work for all participants. Choose a time from the calendar grid that works best.',
+          'No slots in the poll date range work for all participants. Choose a time from the calendar grid that works best.',
         status: 'info',
         duration: 5000,
         isClosable: true,
       })
       return
     }
-    const bestSlotStart = new Date(suggestedTimes[0].start)
-    setPickedTime(bestSlotStart)
-    setCurrentSelectedDate(
-      DateTime.fromJSDate(bestSlotStart).setZone(timezone).startOf('day')
-    )
+    let bestSlotStart = DateTime.fromJSDate(new Date(suggestedTimes[0].start))
+    if (pollStart && pollEnd) {
+      bestSlotStart = clampSlotTimeToPollRange(
+        bestSlotStart,
+        pollStart,
+        pollEnd
+      )
+    }
+    const bestSlotStartDate = bestSlotStart.toJSDate()
+    setPickedTime(bestSlotStartDate)
+    setCurrentSelectedDate(bestSlotStart.setZone(timezone).startOf('day'))
 
     handlePageSwitch(Page.SCHEDULE_DETAILS)
   }
@@ -1461,6 +1532,7 @@ export function QuickPollPickAvailability({
                 aria-label={'right-icon'}
                 icon={<FaChevronRight />}
                 onClick={handleScheduledTimeNext}
+                isDisabled={isNextDisabled}
                 size="sm"
                 bg="bg-surface-tertiary"
                 _hover={{ bg: 'bg-surface-tertiary' }}
@@ -1470,7 +1542,7 @@ export function QuickPollPickAvailability({
             {/* Desktop Date Navigation */}
             <HStack
               w="100%"
-              justify={'space-between'}
+              justify="flex-start"
               position="relative"
               display={{ base: 'none', md: 'flex' }}
             >
@@ -1496,7 +1568,9 @@ export function QuickPollPickAvailability({
 
               <Box
                 maxW="400px"
-                mx="auto"
+                position="absolute"
+                left="50%"
+                transform="translateX(-50%)"
                 textAlign="center"
                 display={{ lg: 'block', base: 'none' }}
               >
@@ -1509,9 +1583,7 @@ export function QuickPollPickAvailability({
                 </Text>
               </Box>
 
-              <HStack spacing={4}>{/* Placeholder for alignment */}</HStack>
-
-              <HStack gap={0}>
+              <HStack gap={0} ml="auto">
                 <Grid
                   gridTemplateColumns={'1fr 1fr'}
                   justifyContent={'space-between'}
@@ -1583,6 +1655,7 @@ export function QuickPollPickAvailability({
                 aria-label={'left-icon'}
                 icon={<FaChevronRight />}
                 onClick={handleScheduledTimeNext}
+                isDisabled={isNextDisabled}
                 position="sticky"
                 top={28}
                 bg="bg-surface-secondary"

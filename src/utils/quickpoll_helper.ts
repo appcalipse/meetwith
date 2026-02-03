@@ -4,6 +4,8 @@ import slugify from 'slugify'
 import { Account } from '@/types/Account'
 import {
   AvailabilitySlot,
+  MonthOption,
+  PollDateRange,
   QuickPollBySlugResponse,
   QuickPollParticipant,
   QuickPollParticipantType,
@@ -91,6 +93,125 @@ export const mergeTimeRanges = (
   }
 
   return merged
+}
+
+export const parsePollMeetingDateRange = (
+  startsAt: string,
+  endsAt: string,
+  timezone: string
+): PollDateRange | null => {
+  const start = DateTime.fromISO(startsAt, { zone: 'utc' })
+    .setZone(timezone)
+    .startOf('day')
+  const end = DateTime.fromISO(endsAt, { zone: 'utc' })
+    .setZone(timezone)
+    .endOf('day')
+  if (!start.isValid || !end.isValid) return null
+  return { pollStart: start, pollEnd: end }
+}
+
+export const getMonthOptionsForPollRange = (
+  pollStart: DateTime,
+  pollEnd: DateTime
+): MonthOption[] => {
+  const options: MonthOption[] = []
+  let cursor = pollStart.startOf('month')
+  while (cursor <= pollEnd) {
+    options.push({
+      value: String(cursor.month),
+      label: cursor.toFormat('MMMM yyyy'),
+    })
+    cursor = cursor.plus({ months: 1 })
+  }
+  return options
+}
+
+export const getDefaultMonthOptions = (
+  timezone: string,
+  count = 12
+): MonthOption[] => {
+  const options: MonthOption[] = []
+  let cursor = DateTime.now().setZone(timezone)
+  for (let i = 0; i < count; i++) {
+    options.push({
+      value: String(cursor.month),
+      label: cursor.toFormat('MMMM yyyy'),
+    })
+    cursor = cursor.plus({ months: 1 })
+  }
+  return options
+}
+
+export const isDayInPollRange = (
+  day: DateTime,
+  pollStart: DateTime,
+  pollEnd: DateTime,
+  timezone: string
+): boolean => {
+  const dayStart = day.setZone(timezone).startOf('day')
+  return dayStart >= pollStart && dayStart <= pollEnd.startOf('day')
+}
+
+export const clampDateTimeToPollRange = (
+  dateTime: DateTime,
+  pollStart: DateTime,
+  pollEnd: DateTime
+): DateTime => {
+  const dayStart = dateTime.startOf('day')
+  if (dayStart < pollStart) return pollStart
+  if (dayStart > pollEnd.startOf('day')) return pollEnd.startOf('day')
+  return dateTime
+}
+
+export const clampSlotTimeToPollRange = (
+  slotStart: DateTime,
+  pollStart: DateTime,
+  pollEnd: DateTime
+): DateTime => {
+  if (slotStart < pollStart) return pollStart
+  if (slotStart > pollEnd) return pollEnd
+  return slotStart
+}
+
+export const filterSlotsToPollRange = <
+  T extends { start: DateTime; end: DateTime }
+>(
+  slots: T[],
+  pollStart: DateTime,
+  pollEnd: DateTime
+): T[] => {
+  return slots.filter(slot => slot.start >= pollStart && slot.end <= pollEnd)
+}
+
+export const clampMonthRangeToPollRange = (
+  monthStart: DateTime,
+  monthEnd: DateTime,
+  pollStart: DateTime,
+  pollEnd: DateTime
+): { monthStart: DateTime; monthEnd: DateTime } => {
+  let start = monthStart
+  let end = monthEnd
+  if (monthStart < pollStart) start = pollStart
+  if (monthEnd > pollEnd) end = pollEnd
+  return { monthStart: start, monthEnd: end }
+}
+
+export const isPollRangeNextDisabled = (
+  currentSelectedDate: DateTime,
+  timezone: string,
+  slotLength: number,
+  pollEnd: DateTime | null
+): boolean => {
+  if (!pollEnd) return false
+  const startOfView = currentSelectedDate.setZone(timezone).startOf('day')
+  const lastDayInView = startOfView.plus({ days: slotLength - 1 })
+  const endOfMonth = startOfView.endOf('month').startOf('day')
+  const lastVisibleDay =
+    lastDayInView <= endOfMonth ? lastDayInView : endOfMonth
+  const pollEndStart = pollEnd.startOf('day')
+  const effectiveLast =
+    lastVisibleDay > pollEndStart ? pollEndStart : lastVisibleDay
+  return effectiveLast >= pollEndStart
 }
 
 export const convertSelectedSlotsToAvailabilitySlots = (
