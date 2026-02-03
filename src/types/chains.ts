@@ -14,8 +14,6 @@ import { metis } from 'viem/chains'
 
 import { zeroAddress } from '@/utils/generic_utils'
 
-import { Address } from './Transactions'
-
 export interface ChainInfo {
   chain: SupportedChain
   thirdwebChain: Chain
@@ -454,7 +452,8 @@ export const supportedChains: ChainInfo[] = [
     walletSupported: true, // Supported in wallet
   },
 ]
-export const DEFAULT_CHAIN_ID = 42220
+
+export const DEFAULT_CHAIN_ID = 42161
 
 export const getTestnetChains = (): ChainInfo[] => {
   return supportedChains.filter(chain => chain.testnet)

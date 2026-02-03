@@ -14,6 +14,7 @@ import {
   decodeMeeting,
   meetWithSeriesPreprocessors,
 } from '@/utils/calendar_manager'
+import QueryKeys from '@/utils/query_keys'
 
 interface ICalendarContext {
   calendars: undefined | ConnectedCalendarCore[]
@@ -62,11 +63,8 @@ export const CalendarContext = React.createContext<ICalendarContext>({
   setSelectedCalendars: () => {},
   setSelectedSlot: () => {},
 })
-export const createEventsQueryKey = (date: DateTime) => [
-  'calendar-events',
-  date.startOf('month').startOf('week').toISODate() || '',
-  date.endOf('month').endOf('week').toISODate() || '',
-]
+export const createEventsQueryKey = (date: DateTime) =>
+  QueryKeys.calendarEvents(date)
 export const useCalendarContext = () => {
   const context = React.useContext(CalendarContext)
   if (!context) {

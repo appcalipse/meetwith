@@ -11,7 +11,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 
 const AllMeetingParticipants = () => {
   const {
-    groups,
+    group,
     participants,
     setParticipants,
     groupParticipants,
@@ -20,8 +20,8 @@ const AllMeetingParticipants = () => {
   } = useParticipants()
   const allParticipants = getMergedParticipants(
     participants,
-    groups,
-    groupParticipants
+    groupParticipants,
+    group
   )
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {

@@ -25,6 +25,7 @@ import { Account } from '@/types/Account'
 import {
   AttendeeStatus,
   DashBoardMwwEvents,
+  DashboardEvent,
   ExtendedCalendarEvents,
   UnifiedEvent,
 } from '@/types/Calendar'
@@ -52,8 +53,7 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
-import { getSignature } from '@/utils/storage'
-
+import QueryKeys from '@/utils/query_keys'
 import { useCancelDialog } from '../schedule/cancel.dialog.hook'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 import CalendarEventCard from './CalendarEventCard'
@@ -62,7 +62,6 @@ import MeetingCard from './MeetingCard'
 interface MeetingBaseProps {
   currentAccount: Account
 }
-type DashboardEvent = DashBoardMwwEvents | UnifiedEvent
 
 const isCalendarEvent = (event: DashboardEvent): event is UnifiedEvent => {
   return 'calendarId' in event
@@ -86,7 +85,7 @@ const createMeetingsQueryConfig = ({
   ExtendedCalendarEvents,
   QueryKey
 > => ({
-  queryKey: ['meetings', currentAccount.address],
+  queryKey: QueryKeys.meetingsByAccount(currentAccount.address),
   queryFn: async ({ pageParam: offset = 0 }) => {
     const meetings = await getCalendarEvents(
       timeWindow.start.plus({ weeks: offset }),
@@ -265,7 +264,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
         start: new Date(event.start),
         end: new Date(event.end),
       }))
-      .filter(event => DateTime.fromJSDate(event.start) >= now) // ← Add this
+      .filter(event => DateTime.fromJSDate(event.start) >= now)
       .sort((a, b) => a.start.getTime() - b.start.getTime())
 
     return allEvents

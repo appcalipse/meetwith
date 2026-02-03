@@ -18,14 +18,18 @@ import { mergeLuxonIntervals } from './quickpoll_helper'
 
 export const getMergedParticipants = (
   participants: Array<Participant>,
-  groups: Array<GetGroupsFullResponse>,
   groupParticipants: Record<string, Array<string> | undefined>,
+  activeGroup?: GetGroupsFullResponse,
   accountAddress?: string
 ) => {
   const seenAddresses = new Set<string>()
   const allParticipants: Array<ParticipantInfo> = []
 
-  const groupsMap = new Map(groups.map(g => [g.id, g]))
+  const groupsMap = new Map(
+    [activeGroup]
+      .filter((g): g is GetGroupsFullResponse => Boolean(g))
+      .map(g => [g.id, g])
+  )
 
   for (const participant of participants) {
     if (isGroupParticipant(participant)) {

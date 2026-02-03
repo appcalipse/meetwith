@@ -155,7 +155,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     addGroup,
     groupAvailability,
     groupParticipants,
-    groups,
+    group,
     meetingOwners,
     participants,
     setGroupAvailability,
@@ -163,6 +163,8 @@ const ScheduleMain: FC<IInitialProps> = ({
     setGroupParticipants,
     setMeetingOwners,
     setParticipants,
+    setGroup,
+    setIsGroupPrefetching,
   } = useParticipants()
   const { currentPage, handlePageSwitch, setInviteModalOpen, inviteModalOpen } =
     useScheduleNavigation()
@@ -184,12 +186,18 @@ const ScheduleMain: FC<IInitialProps> = ({
   const handleGroupPrefetch = async () => {
     if (!groupId) return
     try {
+      setIsGroupPrefetching(true)
       const [group, fetchedGroupMembers, groupMembersAvailabilitiesData] =
         await Promise.all([
           getGroup(groupId),
           getGroupsMembers(groupId),
           getGroupMembersAvailabilities(groupId),
         ])
+
+      setGroup({
+        ...group,
+        members: fetchedGroupMembers.filter(member => !!member.address),
+      })
       const actualMembers = fetchedGroupMembers
         .filter(val => !val.invitePending)
         .filter(val => !!val.address)
@@ -217,6 +225,8 @@ const ScheduleMain: FC<IInitialProps> = ({
       }
     } catch (error: unknown) {
       handleApiError('Error prefetching group.', error)
+    } finally {
+      setIsGroupPrefetching(false)
     }
   }
   const handleContactPrefetch = async () => {
@@ -792,8 +802,8 @@ const ScheduleMain: FC<IInitialProps> = ({
             .concat(decryptedMeeting?.participants || [])
       const allParticipants = getMergedParticipants(
         actualParticipants,
-        groups,
-        groupParticipants
+        groupParticipants,
+        group
       ).map(val => ({
         ...val,
         type: meetingOwners.some(

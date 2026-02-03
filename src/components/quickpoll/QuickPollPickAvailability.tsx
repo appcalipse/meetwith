@@ -245,7 +245,7 @@ export function QuickPollPickAvailability({
     meetingMembers,
     setMeetingMembers,
     participants,
-    groups,
+    group,
     allAvailaibility,
   } = useParticipants()
 
@@ -872,9 +872,8 @@ export function QuickPollPickAvailability({
       const accounts = deduplicateArray(Object.values(groupAvailability).flat())
       const allParticipants = getMergedParticipants(
         participants,
-        groups,
         groupAvailability,
-        undefined
+        group
       )
 
       const quickPollParticipants = allParticipants

@@ -854,7 +854,7 @@ const deleteIcsFile = async (publicUrl: string) => {
     }
     const filePath = pathParts[1]
 
-    const { error, data } = await db.supabase.storage
+    const { error } = await db.supabase.storage
       .from('ics-files')
       .remove([decodeURI(filePath)])
     if (error) {
@@ -1463,7 +1463,9 @@ const syncAllSeries = async () => {
       const newInstances = ghostStartTimes.map(ghostStartRaw => {
         const ghostStartDate = DateTime.fromJSDate(ghostStartRaw)
         const startDateTime = ghostStartDate.set(templateTime)
-        const endDateTime = startDateTime.plus({ minutes: duration_minutes })
+        const endDateTime = startDateTime.plus({
+          minutes: Math.abs(duration_minutes),
+        })
 
         const startMillis = startDateTime.toMillis()
         const startISO = startDateTime.toISO()
@@ -1593,7 +1595,7 @@ const isSlotAvailable = async (
     }
     const minTime = meetingType.min_notice_minutes
     if (meetingType?.plan) {
-      if (meeting_id) {
+      if (meeting_id && !txHash) {
         const meetingSession = await getMeetingSessionByMeetingId(
           meeting_id,
           meetingTypeId
@@ -4285,7 +4287,7 @@ const parseParticipantSlots = async (
             new Date(meetingUpdateRequest.start),
             new Date(meetingUpdateRequest.end),
             meetingUpdateRequest.meetingTypeId,
-            undefined,
+            meetingUpdateRequest.txHash,
             meetingUpdateRequest.meeting_id
           ))
 
@@ -7111,7 +7113,7 @@ const getMeetingSessionByMeetingId = async (
   const { data: meetingSession, error } = await db.supabase
     .from('meeting_sessions')
     .select('*')
-    .eq('id', meeting_id)
+    .eq('meeting_id', meeting_id)
     .eq('meeting_type_id', meeting_type_id)
     .maybeSingle()
   if (error) {
@@ -7256,9 +7258,6 @@ const handleWebhookEvent = async (
   resourceId: string,
   resourceState: ResourceState
 ): Promise<boolean> => {
-  console.trace(
-    `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
-  )
   const { data } = await db.supabase
     .from<
       Tables<'calendar_webhooks'> & {
@@ -7275,10 +7274,12 @@ const handleWebhookEvent = async (
     .eq('resource_id', resourceId)
     .maybeSingle()
   if (!data) {
-    throw new Error(
-      `No webhook found for channel: ${channelId}, resource: ${resourceId}`
-    )
+    // return okay so google doesn't keep polling us
+    return true
   }
+  console.trace(
+    `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
+  )
   const calendar: ConnectedCalendar = data?.connected_calendar
   if (!calendar) return false
   const start = DateTime.now()
@@ -7296,12 +7297,13 @@ const handleWebhookEvent = async (
       start.toISO(),
       end.toISO()
     )
-    // eslint-disable-next-line no-restricted-syntax
+
     if (syncToken)
       await updateResourcesSyncToken(channelId, resourceId, syncToken)
     return true
   }
   let allEvents: calendar_v3.Schema$Event[] = []
+  let newSyncToken: string | null | undefined
   try {
     const { events, nextSyncToken } = await integration.listEvents(
       data.calendar_id,
@@ -7309,6 +7311,7 @@ const handleWebhookEvent = async (
     )
 
     allEvents = events
+    newSyncToken = nextSyncToken
     if (nextSyncToken)
       await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
   } catch (error) {
@@ -7375,6 +7378,16 @@ const handleWebhookEvent = async (
         )
       )
   )
+  if (newSyncToken) {
+    // we need to sync all updates right after we're done processing them
+    const { nextSyncToken } = await integration.listEvents(
+      data.calendar_id,
+      newSyncToken
+    )
+
+    if (nextSyncToken)
+      await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
+  }
   return actions.length > 0
 }
 
