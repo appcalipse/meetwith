@@ -285,7 +285,12 @@ const Groups = forwardRef<GroupRef, Props>(
     } else if (groups.length === 0) {
       return (
         <VStack alignItems="center" gap={4}>
-          <Image src="/assets/no_group.svg" height="200px" alt="Loading..." />
+          <Image
+            src="/assets/no_group.svg"
+            height="200px"
+            alt="Loading..."
+            mt={8}
+          />
           <Text fontSize="lg">
             You will see your Groups here once you created a new Group.
           </Text>
