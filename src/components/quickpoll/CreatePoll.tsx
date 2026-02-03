@@ -188,7 +188,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       participants,
       allGroups,
       groupParticipants,
-      currentAccount?.address
+      isEditMode ? undefined : currentAccount?.address
     )
 
     const processedKeys = new Set<string>()
@@ -202,7 +202,13 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     })
 
     return deduplicatedParticipants
-  }, [participants, allGroups, groupParticipants, currentAccount?.address])
+  }, [
+    participants,
+    allGroups,
+    groupParticipants,
+    currentAccount?.address,
+    isEditMode,
+  ])
 
   useEffect(() => {
     const needsUpdate = participants.some(participant => {
@@ -273,7 +279,12 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   })
 
   const [originalParticipants, setOriginalParticipants] = useState<
-    Array<{ id: string; account_address?: string; guest_email: string }>
+    Array<{
+      id: string
+      account_address?: string
+      guest_email: string
+      participant_type?: QuickPollParticipantType
+    }>
   >([])
 
   useEffect(() => {
@@ -310,6 +321,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           id: p.id,
           account_address: p.account_address,
           guest_email: p.guest_email,
+          participant_type: p.participant_type,
         })) || []
 
       setOriginalParticipants(originalParticipantsData)
@@ -573,21 +585,21 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     // original participants not in current list
     const toRemove = originalParticipants
       .filter(original => {
-        // Check if this original participant is still in the current list
+        if (original.participant_type === QuickPollParticipantType.SCHEDULER) {
+          return false
+        }
         const existsInCurrent = currentParticipants.some(current => {
-          // Match by account_address if available, otherwise by guest_email
           if (current.account_address && original.account_address) {
             return (
               current.account_address.toLowerCase() ===
               original.account_address.toLowerCase()
             )
           }
-          // For guests without account_address, match by email
           return current.guest_email === original.guest_email
         })
         return !existsInCurrent
       })
-      .map(p => p.id) // Return participant IDs for removal
+      .map(p => p.id)
 
     return {
       toAdd: toAdd.map(p => ({

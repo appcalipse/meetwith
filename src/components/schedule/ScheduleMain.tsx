@@ -260,24 +260,32 @@ const ScheduleMain: FC<IInitialProps> = ({
         setSelectedPermissions(poll.poll.permissions as MeetingPermissions[])
       }
 
+      const currentAddress = currentAccount?.address?.toLowerCase()
       const pollParticipants: ParticipantInfo[] = poll.poll.participants.map(
-        participant => ({
-          account_address: participant.account_address || '',
-          name: participant.guest_name || participant.guest_email || 'Unknown',
-          status:
-            participant.status === QuickPollParticipantStatus.ACCEPTED
-              ? ParticipationStatus.Accepted
-              : ParticipationStatus.Pending,
-          type:
-            participant.participant_type === QuickPollParticipantType.SCHEDULER
+        participant => {
+          const isCurrentUser =
+            !!currentAddress &&
+            (participant.account_address?.toLowerCase() === currentAddress ||
+              participant.guest_email?.toLowerCase() === currentAddress)
+          return {
+            account_address: participant.account_address || '',
+            name:
+              participant.guest_name || participant.guest_email || 'Unknown',
+            status:
+              participant.status === QuickPollParticipantStatus.ACCEPTED
+                ? ParticipationStatus.Accepted
+                : ParticipationStatus.Pending,
+            type: isCurrentUser
               ? ParticipantType.Scheduler
               : ParticipantType.Invitee,
-          slot_id: '',
-          meeting_id: '',
-        })
+            slot_id: '',
+            meeting_id: '',
+          }
+        }
       )
 
       setParticipants(pollParticipants)
+      setIsScheduler(true)
     } catch (error: unknown) {
       handleApiError('Error prefetching poll.', error)
     }

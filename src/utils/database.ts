@@ -8818,15 +8818,18 @@ const updateQuickPoll = async (
       participant?.participant_type === QuickPollParticipantType.SCHEDULER
     const hasInvitePermission =
       poll.permissions?.includes(MeetingPermissions.INVITE_GUESTS) || false
+    const hasSchedulePermission =
+      poll.permissions?.includes(MeetingPermissions.SCHEDULE_MEETING) ?? false
+    const canUpdateStatusAsParticipant = !!participant && hasSchedulePermission
 
     const { participants: participantUpdates, ...otherUpdates } = updates
     const hasOtherUpdates = Object.keys(otherUpdates).length > 0
 
-    if (hasOtherUpdates && !isScheduler) {
+    if (hasOtherUpdates && !isScheduler && !canUpdateStatusAsParticipant) {
       throw new QuickPollUnauthorizedError('You cannot edit this poll')
     }
 
-    if (!isScheduler) {
+    if (!isScheduler && !canUpdateStatusAsParticipant) {
       if (!participantUpdates || !hasInvitePermission || !participant) {
         throw new QuickPollUnauthorizedError('You cannot edit this poll')
       }

@@ -50,6 +50,7 @@ import {
   getExistingAccounts,
   getSuggestedSlots,
 } from '@/utils/api_helper'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import { customSelectComponents, Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
@@ -178,6 +179,17 @@ export function QuickPollPickAvailability({
         p.participant_type === QuickPollParticipantType.SCHEDULER
     )
   }, [pollData, currentAccount])
+
+  const canScheduleFromPoll = useMemo(() => {
+    if (!pollData?.poll) return false
+    return (
+      isHost ||
+      (pollData.poll.permissions?.includes(
+        MeetingPermissions.SCHEDULE_MEETING
+      ) ??
+        false)
+    )
+  }, [pollData?.poll, isHost])
 
   // Get current participant
   const currentParticipant = useMemo(() => {
@@ -1123,7 +1135,7 @@ export function QuickPollPickAvailability({
       setPickedTime(time)
     })
 
-    if (isHost && isSchedulingIntent) {
+    if (canScheduleFromPoll && isSchedulingIntent) {
       if (pollData) {
         handlePageSwitch(Page.SCHEDULE_DETAILS)
       }
@@ -1419,7 +1431,7 @@ export function QuickPollPickAvailability({
             </Text>
           </VStack>
 
-          {isHost && isSchedulingIntent && (
+          {canScheduleFromPoll && isSchedulingIntent && (
             <Button
               colorScheme="primary"
               onClick={handleJumpToBestSlot}
@@ -1554,7 +1566,7 @@ export function QuickPollPickAvailability({
                   isDisabled={isBackDisabled}
                   gap={0}
                 />
-                {isHost && isSchedulingIntent && (
+                {canScheduleFromPoll && isSchedulingIntent && (
                   <Button
                     colorScheme="primary"
                     onClick={handleJumpToBestSlot}
