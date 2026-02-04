@@ -421,7 +421,12 @@ const PublicPage: FC<IProps> = props => {
       value: MeetingReminders
       label?: string
     }>
-  >([])
+  >([
+    {
+      value: MeetingReminders['1_HOUR_BEFORE'],
+      label: '1 hour before',
+    },
+  ])
 
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
@@ -515,8 +520,9 @@ const PublicPage: FC<IProps> = props => {
       const baseId = slot || slotId
       const rescheduleSlotId = Array.isArray(baseId) ? baseId[0] : baseId
       if (rescheduleSlotId) {
-        const meeting: ConferenceMeetingData =
-          await getMeetingGuest(rescheduleSlotId)
+        const meeting: ConferenceMeetingData = await getMeetingGuest(
+          rescheduleSlotId
+        )
         if (!meeting) {
           toast({
             title: 'Meeting not found',
@@ -646,8 +652,8 @@ const PublicPage: FC<IProps> = props => {
           query.checkoutState === 'cancelled'
           ? PaymentStep.SELECT_PAYMENT_METHOD
           : query.type === PaymentRedirectType.CHECKOUT
-            ? PaymentStep.FIAT_PAYMENT_VERIFYING
-            : PaymentStep.CONFIRM_PAYMENT
+          ? PaymentStep.FIAT_PAYMENT_VERIFYING
+          : PaymentStep.CONFIRM_PAYMENT
       )
       setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
       if (paymentType === PaymentType.CRYPTO) {
