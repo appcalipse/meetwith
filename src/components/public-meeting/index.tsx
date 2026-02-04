@@ -18,7 +18,7 @@ import PaymentComponent from '@components/public-meeting/PaymentComponent'
 import type { MeetingType, PublicAccount } from '@meta/Account'
 import type { AccountNotifications } from '@meta/AccountNotifications'
 import type { ConnectedCalendarCore } from '@meta/CalendarConnections'
-import type { MeetingReminders } from '@meta/common'
+import { MeetingReminders } from '@meta/common'
 import {
   type ConferenceMeeting,
   type MeetingDecrypted,
@@ -47,7 +47,7 @@ import {
   PublicSchedulingSteps,
   SessionType,
 } from '@utils/constants/meeting-types'
-import { type TimeZoneOption, Option } from '@utils/constants/select'
+import { type TimeZoneOption } from '@utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@utils/date_helper'
 import {
   AllMeetingSlotsUsedError,
@@ -414,7 +414,12 @@ const PublicPage: FC<IProps> = props => {
       value: MeetingReminders
       label?: string
     }>
-  >([])
+  >([
+    {
+      value: MeetingReminders['1_HOUR_BEFORE'],
+      label: '1 hour before',
+    },
+  ])
 
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
