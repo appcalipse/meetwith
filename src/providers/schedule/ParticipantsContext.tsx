@@ -95,7 +95,6 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   >([
     {
       account_address: currentAccount?.address,
-      isHidden: true,
       meeting_id: '',
       name: currentAccount?.preferences?.name,
       slot_id: '',
@@ -202,7 +201,12 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   }, [groupAvailability])
 
   const allAvailaibility = useMemo(
-    () => getMergedParticipants(participants, groupAvailability, group),
+    () =>
+      getMergedParticipants(participants, groupAvailability, group).filter(
+        p => {
+          return !p.isHidden
+        }
+      ),
     [participants, groupAvailability, currentAccount?.address, group]
   )
   const allParticipants = useMemo(

@@ -1,6 +1,14 @@
-import { Grid, GridItem, Heading, Text, VStack } from '@chakra-ui/layout'
+import { IconButton } from '@chakra-ui/button'
+import {
+  Grid,
+  GridItem,
+  Heading,
+  HStack,
+  Text,
+  VStack,
+} from '@chakra-ui/layout'
 import * as React from 'react'
-
+import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 
 const CalendarPicker: React.FC = () => {
@@ -22,9 +30,27 @@ const CalendarPicker: React.FC = () => {
   const header = monthDays.slice(0, 7)
   return (
     <VStack w="100%" alignItems="start" justifyContent="flex-start" gap={4}>
-      <Heading size="ms" fontSize="20px">
-        {currentDate.toFormat('MMMM')}
-      </Heading>
+      <HStack>
+        <Heading size="ms" fontSize="20px">
+          {currentDate.toFormat('MMMM, yyyy')}
+        </Heading>
+        <IconButton
+          aria-label="previous month"
+          icon={<FaChevronUp size={16} />}
+          size="sm"
+          onClick={() =>
+            setCurrentDate(currentDate.startOf('month').minus({ months: 1 }))
+          }
+        />
+        <IconButton
+          aria-label="next month"
+          icon={<FaChevronDown size={16} />}
+          size="sm"
+          onClick={() =>
+            setCurrentDate(currentDate.startOf('month').plus({ months: 1 }))
+          }
+        />
+      </HStack>
       <Grid
         templateColumns="repeat(7, 1fr)"
         w="100%"

@@ -3,11 +3,7 @@ import { Button } from '@chakra-ui/react'
 import { DateTime } from 'luxon'
 import * as React from 'react'
 import { DashboardEvent, isDashboardMwwEvent, Optional } from '@/types/Calendar'
-import {
-  MeetingDecrypted,
-  MeetingProvider,
-  MeetingRepeat,
-} from '@/types/Meeting'
+import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import { addUTMParams } from '@/utils/huddle.helper'
 
@@ -35,19 +31,18 @@ const UpComingEvent: React.FC<UpComingEventProps> = ({ meeting }) => {
     ? meeting.decrypted.title
     : meeting.title
   const recurrence = isDashboardMwwEvent(meeting)
-    ? meeting.decrypted.recurrence
-    : meeting.recurrence?.frequency
-  const start = isDashboardMwwEvent(meeting)
-    ? meeting.decrypted.start
-    : meeting.start
-  const end = isDashboardMwwEvent(meeting) ? meeting.decrypted.end : meeting.end
+    ? meeting.recurrence
+      ? meeting.recurrence
+      : meeting.decrypted.recurrence
+    : meeting.recurrence?.frequency ||
+      meeting.providerData?.google?.recurringEventId
+
   const meeting_url = isDashboardMwwEvent(meeting)
     ? meeting.decrypted.meeting_url
     : meeting.meeting_url
   const provider = isDashboardMwwEvent(meeting)
     ? meeting.decrypted.provider
     : undefined
-
   return (
     <VStack
       alignItems="flex-start"

@@ -22,7 +22,9 @@ const AllMeetingParticipants = () => {
     participants,
     groupParticipants,
     group
-  )
+  ).filter(p => {
+    return !p.isHidden
+  })
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
       const participantsDiff = allParticipants.find(

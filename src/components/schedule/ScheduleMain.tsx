@@ -410,34 +410,22 @@ const ScheduleMain: FC<IInitialProps> = ({
           MeetingPermissions.SEE_GUEST_LIST
         )
         if (!canViewParticipants) {
-          const schedulerParticipant = participants.find(
-            p => p.type === ParticipantType.Scheduler
-          )
-          const actorParticipant = participants.find(
-            p => p.account_address === currentAccount?.address
-          )
-          const othersCount = participants.length - 2 // exclude scheduler and self
-          const allParticipants = []
-          if (actorParticipant) {
-            allParticipants.push(actorParticipant)
-          }
-          if (schedulerParticipant) {
-            allParticipants.push(schedulerParticipant)
-          }
-          if (othersCount > 0) {
-            allParticipants.push({
-              name: `+${othersCount} other participant${
-                othersCount > 1 ? 's' : ''
-              }`,
-              meeting_id: '',
-              status: ParticipationStatus.Accepted,
-              type: ParticipantType.Invitee,
-              slot_id: '',
-              isHidden: true,
+          setParticipants(
+            participants.map(p => {
+              delete p.isHidden
+              if (
+                p.type === ParticipantType.Scheduler ||
+                p.account_address === currentAccount?.address
+              ) {
+                return p
+              } else {
+                return {
+                  ...p,
+                  isHidden: true,
+                }
+              }
             })
-          }
-
-          setParticipants(allParticipants)
+          )
         }
       }
       setMeetingUrl(decryptedMeeting.meeting_url)
@@ -490,7 +478,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     if (pollId) {
       promises.push(handlePollPrefetch())
     }
-    if (meetingId || conferenceId) {
+    if (meetingId || conferenceId || seriesId) {
       promises.push(handleFetchMeetingInformation())
     }
     if (promises.length === 0) {
@@ -515,6 +503,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     meetingId,
     conferenceId,
     currentAccount?.address,
+    seriesId,
   ])
 
   useEffect(() => {
@@ -804,14 +793,27 @@ const ScheduleMain: FC<IInitialProps> = ({
         actualParticipants,
         groupParticipants,
         group
-      ).map(val => ({
-        ...val,
-        type: meetingOwners.some(
-          owner => owner.account_address === val.account_address
-        )
-          ? ParticipantType.Owner
-          : val.type,
-      }))
+      )
+        // we first need to remove all the owners
+        .map(participant => {
+          return {
+            ...participant,
+            type:
+              participant.type === ParticipantType.Owner
+                ? ParticipantType.Invitee
+                : participant.type,
+          }
+        })
+        .map(val => {
+          if (
+            meetingOwners.some(
+              owner => owner.account_address === val.account_address
+            )
+          ) {
+            return { ...val, type: ParticipantType.Owner }
+          }
+          return val
+        })
       const _participants = await parseAccounts(allParticipants)
 
       if (_participants.invalid.length > 0) {
