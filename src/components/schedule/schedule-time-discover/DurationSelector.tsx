@@ -17,13 +17,11 @@ import {
   Option,
 } from '@/utils/constants/select'
 import {
-  addMinutesToTime,
   compareTimes,
   durationToAddLabel,
   formatDurationCreateLabel,
   isValidDurationOption,
   parseDurationInput,
-  subtractMinutesFromTime,
 } from '@/utils/duration.helper'
 
 const TIME_RANGE_VALUE = 'TIME_RANGE'
@@ -170,26 +168,30 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
     []
   )
 
+  const startTimeOptions = useMemo(() => {
+    if (!timeRange) return timeOptions
+    return timeOptions.filter(t => compareTimes(t.value, timeRange.endTime) < 0)
+  }, [timeOptions, timeRange?.endTime])
+
+  const endTimeOptions = useMemo(() => {
+    if (!timeRange) return timeOptions
+    return timeOptions.filter(
+      t => compareTimes(t.value, timeRange.startTime) > 0
+    )
+  }, [timeOptions, timeRange?.startTime])
+
   const handleStartTimeChange = (
     opt: { value: string; label: string } | null
   ) => {
     if (!opt || !timeRange) return
-    const end = timeRange.endTime
-    let newStart = opt.value
-    if (compareTimes(newStart, end) >= 0)
-      newStart = subtractMinutesFromTime(end, 15)
-    onTimeRangeChange(newStart, end)
+    onTimeRangeChange(opt.value, timeRange.endTime)
   }
 
   const handleEndTimeChange = (
     opt: { value: string; label: string } | null
   ) => {
     if (!opt || !timeRange) return
-    const newEnd = opt.value
-    const start = timeRange.startTime
-    if (compareTimes(newEnd, start) <= 0)
-      onTimeRangeChange(start, addMinutesToTime(start, 15))
-    else onTimeRangeChange(start, newEnd)
+    onTimeRangeChange(timeRange.startTime, opt.value)
   }
 
   const startValue = useMemo(() => {
@@ -267,7 +269,7 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
                   v as { value: string; label: string } | null
                 )
               }
-              options={timeOptions}
+              options={startTimeOptions}
               colorScheme="primary"
               className="noLeftBorder duration-time-select"
               components={customSelectComponents}
@@ -293,7 +295,7 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
                   v as { value: string; label: string } | null
                 )
               }
-              options={timeOptions}
+              options={endTimeOptions}
               colorScheme="primary"
               className="noLeftBorder duration-time-select"
               components={customSelectComponents}
