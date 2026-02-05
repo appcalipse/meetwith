@@ -4565,8 +4565,7 @@ const getSeriesIdMapping = async (slot_id: string[]) => {
 }
 const updateMeetingInstance = async (
   participantActing: ParticipantBaseInfo,
-  meetingUpdateRequest: MeetingInstanceUpdateRequest,
-  identifier: string
+  meetingUpdateRequest: MeetingInstanceUpdateRequest
 ): Promise<DBSlot> => {
   const {
     meetingResponse,
