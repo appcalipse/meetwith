@@ -13,8 +13,17 @@ import {
   countCalendarIntegrations,
   getAccountFromDB,
   isProAccountAsync,
+  uploadIcsFile,
 } from '@/utils/database'
 import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
+import { SIZE_5_MB, withFileUpload } from '@/utils/uploads'
+import { isValidEmail } from '@/utils/validations'
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+}
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!req.session.account) {
@@ -23,22 +32,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const body: WebcalRequestBody = req.body
   const accountAddress = req.session.account.address
+  const { resource } = req.body?.files
 
-  if (!body.url) {
+  if (!body.url && !resource) {
     return res.status(400).json({ message: 'Calendar URL is required' })
   }
-
+  let url
+  if (body.url) {
+    url = body.url
+  } else {
+    const { filename, buffer, mimeType } = resource
+    url = await uploadIcsFile(filename, buffer, mimeType)
+  }
+  if (!url) {
+    return res.status(400).json({ message: 'Calendar URL is required' })
+  }
   if (req.method === 'POST') {
     try {
-      const account = await getAccountFromDB(accountAddress)
-
       const isPro = await isProAccountAsync(accountAddress)
 
-      const validationResult = await validateWebcalFeed(
-        body.url!,
-        body.email,
-        account
-      )
+      const validationResult = await validateWebcalFeed(url, body.title)
 
       if (!validationResult.valid) {
         return res.status(400).json({
@@ -62,10 +75,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         )
 
         if (!existingIntegration) {
-          const integrationCount = await countCalendarIntegrations(
-            accountAddress
-          )
-          if (integrationCount >= 1) {
+          const integrationCount =
+            await countCalendarIntegrations(accountAddress)
+          if (integrationCount >= 2) {
             throw new CalendarIntegrationLimitExceededError()
           }
         }
@@ -73,12 +85,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       const calendars: CalendarSyncInfo[] = [
         {
-          calendarId: body.url!,
-          name: validationResult.calendarName || 'External Calendar',
+          calendarId: url,
           color: undefined,
-          sync: false, // Webcal is read-only, no sync
           enabled: true,
           isReadOnly: true,
+          name: body.title || 'External Calendar',
+          sync: false, // Webcal is read-only, no sync
         },
       ]
 
@@ -87,18 +99,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         validationResult.userEmail,
         TimeSlotSource.WEBCAL,
         calendars,
-        { url: body.url } // Store the URL in payload
+        { url: url } // Store the URL in payload
       )
 
       return res.status(200).json({
+        calendarName: body.title,
         connected: true,
         email: validationResult.userEmail,
-        calendarName: validationResult.calendarName,
         eventCount: validationResult.eventCount,
       })
     } catch (error) {
+      console.error(error)
       Sentry.captureException(error, {
-        extra: { accountAddress, url: body.url },
+        extra: { accountAddress, url: url },
       })
 
       if (error instanceof CalendarIntegrationLimitExceededError) {
@@ -106,42 +119,38 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       return res.status(500).json({
-        message: 'Failed to connect webcal feed',
         error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to connect webcal feed',
       })
     }
   } else if (req.method === 'PUT') {
     try {
-      const account = await getAccountFromDB(accountAddress)
-      const validationResult = await validateWebcalFeed(
-        body.url!,
-        body.email,
-        account
-      )
+      const validationResult = await validateWebcalFeed(body.url!, body.title)
 
       if (!validationResult.valid) {
         return res.status(400).json({
-          valid: false,
           error: validationResult.error,
+          valid: false,
         })
       }
 
       return res.status(200).json({
-        valid: true,
         calendarName: validationResult.calendarName,
-        eventCount: validationResult.eventCount,
-        userEmail: validationResult.userEmail,
         emailFound: !!validationResult.userEmail,
+        eventCount: validationResult.eventCount,
         url: body.url,
+        userEmail: validationResult.userEmail,
+        valid: true,
       })
     } catch (error) {
+      console.error(error)
       Sentry.captureException(error, {
         extra: { accountAddress, url: body.url },
       })
 
       return res.status(400).json({
-        valid: false,
         error: error instanceof Error ? error.message : 'Invalid ICS feed',
+        valid: false,
       })
     }
   }
@@ -156,10 +165,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
  * - Searches for user's email in calendar events
  * - Extracts calendar metadata
  */
-async function validateWebcalFeed(
+export async function validateWebcalFeed(
   url: string,
-  providedEmail?: string,
-  account?: any
+  title: string
 ): Promise<{
   valid: boolean
   error?: string
@@ -175,8 +183,8 @@ async function validateWebcalFeed(
       new URL(feedUrl)
     } catch {
       return {
-        valid: false,
         error: 'Invalid URL format',
+        valid: false,
       }
     }
 
@@ -186,11 +194,11 @@ async function validateWebcalFeed(
     let response: Response
     try {
       response = await fetch(feedUrl, {
-        method: 'GET',
         headers: {
-          'User-Agent': 'MeetWithWallet/1.0',
           Accept: 'text/calendar, application/ics, text/plain',
+          'User-Agent': 'MeetWithWallet/1.0',
         },
+        method: 'GET',
         signal: controller.signal,
       })
     } finally {
@@ -199,8 +207,8 @@ async function validateWebcalFeed(
 
     if (!response.ok) {
       return {
-        valid: false,
         error: `Feed unavailable: ${response.status} ${response.statusText}`,
+        valid: false,
       }
     }
 
@@ -218,8 +226,8 @@ async function validateWebcalFeed(
 
     if (!icsData || icsData.trim().length === 0) {
       return {
-        valid: false,
         error: 'Feed is empty',
+        valid: false,
       }
     }
 
@@ -228,10 +236,10 @@ async function validateWebcalFeed(
       jcalData = ICAL.parse(icsData)
     } catch (parseError) {
       return {
-        valid: false,
         error: `Invalid ICS format: ${
           parseError instanceof Error ? parseError.message : 'Parse failed'
         }`,
+        valid: false,
       }
     }
 
@@ -239,16 +247,10 @@ async function validateWebcalFeed(
 
     if (vcalendar.name !== 'vcalendar') {
       return {
-        valid: false,
         error: 'Not a valid VCALENDAR resource',
+        valid: false,
       }
     }
-
-    const calendarName =
-      vcalendar.getFirstPropertyValue('x-wr-calname')?.toString() ||
-      vcalendar.getFirstPropertyValue('name')?.toString() ||
-      'External Calendar'
-
     const vevents = vcalendar.getAllSubcomponents('vevent')
     const eventCount = vevents.length
 
@@ -256,17 +258,20 @@ async function validateWebcalFeed(
       console.warn('Calendar feed has no events')
     }
 
-    let userEmail = providedEmail
-
-    if (!userEmail && account) {
-      userEmail = await findUserEmailInCalendar(vcalendar, vevents, account)
-    }
+    const calendarName =
+      vcalendar.getFirstPropertyValue('x-wr-calname') ||
+      vcalendar.getFirstPropertyValue('name') ||
+      title
+    const userEmail = await findUserEmailInCalendar(
+      vcalendar,
+      vevents,
+      calendarName as string
+    )
 
     return {
-      valid: true,
-      calendarName,
       eventCount,
       userEmail,
+      valid: true,
     }
   } catch (error) {
     Sentry.captureException(error, {
@@ -274,11 +279,11 @@ async function validateWebcalFeed(
     })
 
     return {
-      valid: false,
       error:
         error instanceof Error
           ? error.message
           : 'Failed to validate calendar feed',
+      valid: false,
     }
   }
 }
@@ -290,17 +295,10 @@ async function validateWebcalFeed(
 async function findUserEmailInCalendar(
   vcalendar: any,
   vevents: any[],
-  account: any
+  calendarName: string
 ): Promise<string | undefined> {
   const possibleEmails = new Set<string>()
 
-  // Get user's known emails from account preferences if available
-  const accountEmail = account.preferences?.name // Sometimes stored here
-  if (accountEmail && isValidEmail(accountEmail)) {
-    possibleEmails.add(accountEmail.toLowerCase())
-  }
-
-  // Search through all events
   for (const vevent of vevents) {
     try {
       const event = new ICAL.Event(vevent)
@@ -323,19 +321,30 @@ async function findUserEmailInCalendar(
           }
         }
       }
-    } catch (error) {
-      // Skip malformed events
+
+      // CRITICAL: Check VALARM components for ATTENDEE (Proton Calendar format)
+      const valarms = vevent.getAllSubcomponents('valarm')
+      for (const valarm of valarms) {
+        const attendeeProp = valarm.getFirstProperty('attendee')
+        if (attendeeProp) {
+          const attendeeValue = attendeeProp.getFirstValue()
+          const email = extractEmailFromICalAddress(attendeeValue)
+          if (email) {
+            possibleEmails.add(email.toLowerCase())
+          }
+        }
+      }
+    } catch (_error) {
       continue
     }
   }
 
-  // Return the most common email (simple heuristic)
-  // In a real scenario, you might want to prompt the user to select
   if (possibleEmails.size === 1) {
     return Array.from(possibleEmails)[0]
   } else if (possibleEmails.size > 1) {
-    // Return first valid email (could be improved with better logic)
     return Array.from(possibleEmails)[0]
+  } else {
+    return calendarName
   }
 
   return undefined
@@ -374,12 +383,9 @@ function extractEmailFromAttendeeValues(values: string[]): string | undefined {
   return undefined
 }
 
-/**
- * Simple email validation
- */
-function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
-}
-
-export default withSessionRoute(handler)
+export default withSessionRoute(
+  withFileUpload(handler, {
+    allowedMimeTypes: ['text/calendar', 'application/ics'],
+    maxFileSize: SIZE_5_MB,
+  })
+)

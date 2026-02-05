@@ -17,7 +17,12 @@ import {
 } from '@/utils/database'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { query, body } = req
+  const { method, query, body } = req
+
+  if (method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   const slug = query.slug as string
 
   if (!slug) {
@@ -53,7 +58,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         guest_email.trim().toLowerCase()
       )
       participantExists = true
-    } catch (error) {
+    } catch (_error) {
       participantExists = false
     }
 

@@ -18,17 +18,17 @@ const PARTICIPATION_INSTRUCTIONS = [
   "When you get to the poll page, you'll see the current participants(if any), the host, and their availability.",
   <>
     You can go ahead and provide your availability by either Clicking on{' '}
-    <strong>Add availability</strong> or <strong>Import from Calendar</strong>.
+    <strong>Add availability</strong>.
   </>,
   <>
     If you want to add your availability manually, you click on{' '}
-    <strong>Add availability</strong> and go ahead to select the slots
-    you&apos;re available from the grid. When you select a slot, you should see
-    the colour change to orange.
+    <strong>Input manually</strong> and go ahead to select the slots you&apos;re
+    available from the grid. When you select a slot, you should see the colour
+    change to orange.
   </>,
   <>
     Alternatively, you can import your availability directly from your calendar
-    by clicking on <strong>Import from Calendar</strong>.
+    by clicking on <strong>Import from Calendar</strong> to sign in/sign up.
   </>,
   <>
     Then click <strong>Save availability</strong> (if you&apos;re adding it

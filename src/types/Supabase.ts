@@ -37,7 +37,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       account_preferences: {
@@ -97,7 +97,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       accounts: {
@@ -165,7 +165,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       billing_plan_providers: {
@@ -200,7 +200,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'billing_plans'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       billing_plans: {
@@ -268,7 +268,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'connected_calendars'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       connected_calendars: {
@@ -312,7 +312,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       contact: {
@@ -344,7 +344,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       contact_invite: {
@@ -379,7 +379,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       coupons: {
@@ -435,7 +435,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       emails: {
@@ -485,7 +485,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       gate_definition: {
@@ -514,7 +514,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       gate_usage: {
@@ -555,6 +555,45 @@ export type Database = {
           mww_id?: string
         }
         Relationships: []
+      }
+      group_availabilities: {
+        Row: {
+          availability_id: string
+          created_at: string
+          group_id: string
+          id: string
+          member_id: string
+        }
+        Insert: {
+          availability_id: string
+          created_at?: string
+          group_id: string
+          id?: string
+          member_id?: string
+        }
+        Update: {
+          availability_id?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'group_availabilities_availability_id_fkey'
+            columns: ['availability_id']
+            isOneToOne: false
+            referencedRelation: 'availabilities'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'group_availabilities_member_id_group_id_fkey'
+            columns: ['member_id', 'group_id']
+            isOneToOne: false
+            referencedRelation: 'group_members'
+            referencedColumns: ['member_id', 'group_id']
+          }
+        ]
       }
       group_invites: {
         Row: {
@@ -598,7 +637,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       group_meeting_request: {
@@ -636,7 +675,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       group_members: {
@@ -675,7 +714,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       groups: {
@@ -708,45 +747,6 @@ export type Database = {
         }
         Relationships: []
       }
-      group_availabilities: {
-        Row: {
-          availability_id: string
-          created_at: string
-          group_id: string
-          id: string
-          member_id: string
-        }
-        Insert: {
-          availability_id: string
-          created_at?: string
-          group_id: string
-          id?: string
-          member_id: string
-        }
-        Update: {
-          availability_id?: string
-          created_at?: string
-          group_id?: string
-          id?: string
-          member_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'group_availabilities_availability_id_fkey'
-            columns: ['availability_id']
-            isOneToOne: false
-            referencedRelation: 'availabilities'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'group_availabilities_group_id_member_id_fkey'
-            columns: ['group_id', 'member_id']
-            isOneToOne: false
-            referencedRelation: 'group_members'
-            referencedColumns: ['group_id', 'member_id']
-          }
-        ]
-      }
       groups_to_meetings: {
         Row: {
           group_id: string
@@ -774,7 +774,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'group_meeting_request'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meeting_sessions: {
@@ -848,7 +848,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'transactions'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meeting_type: {
@@ -913,7 +913,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       meeting_type_availabilities: {
@@ -949,7 +949,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'meeting_type'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meeting_type_calendars: {
@@ -985,7 +985,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'meeting_type'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meeting_type_plan: {
@@ -1038,7 +1038,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'meeting_type'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meetings: {
@@ -1148,7 +1148,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       payment_preferences: {
@@ -1183,7 +1183,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       quick_poll_calendars: {
@@ -1224,7 +1224,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'quick_poll_participants'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       quick_poll_participants: {
@@ -1287,7 +1287,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'quick_polls'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       quick_polls: {
@@ -1361,7 +1361,6 @@ export type Database = {
           guest_email: string | null
           id: string
           override_meeting_info_encrypted: Json | null
-          role: Database['public']['Enums']['ParticipantType']
           series_id: string
           start: string
           status: Database['public']['Enums']['RecurringStatus']
@@ -1374,7 +1373,6 @@ export type Database = {
           guest_email?: string | null
           id: string
           override_meeting_info_encrypted?: Json | null
-          role: Database['public']['Enums']['ParticipantType']
           series_id: string
           start: string
           status: Database['public']['Enums']['RecurringStatus']
@@ -1387,7 +1385,6 @@ export type Database = {
           guest_email?: string | null
           id?: string
           override_meeting_info_encrypted?: Json | null
-          role?: Database['public']['Enums']['ParticipantType']
           series_id?: string
           start?: string
           status?: Database['public']['Enums']['RecurringStatus']
@@ -1395,12 +1392,19 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: 'slot_instance_series_id_fkey'
+            columns: ['series_id']
+            isOneToOne: false
+            referencedRelation: 'slot_series'
+            referencedColumns: ['id']
+          },
+          {
             foreignKeyName: 'temp_slots_account_address_fkey'
             columns: ['account_address']
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       slot_series: {
@@ -1408,37 +1412,46 @@ export type Database = {
           account_address: string | null
           created_at: string
           default_meeting_info_encrypted: Json
+          effective_end: string | null
+          effective_start: string
           guest_email: string | null
+          ical_uid: string
           id: string
-          original_end: string
-          original_start: string
-          recurrence: Database['public']['Enums']['MeetingRepeat']
-          rrule: string[] | null
-          slot_id: string
+          meeting_id: string
+          role: Database['public']['Enums']['ParticipantType']
+          rrule: string[]
+          template_end: string
+          template_start: string
         }
         Insert: {
           account_address?: string | null
           created_at?: string
           default_meeting_info_encrypted: Json
+          effective_end?: string | null
+          effective_start: string
           guest_email?: string | null
+          ical_uid: string
           id?: string
-          original_end: string
-          original_start: string
-          recurrence: Database['public']['Enums']['MeetingRepeat']
-          rrule?: string[] | null
-          slot_id: string
+          meeting_id: string
+          role: Database['public']['Enums']['ParticipantType']
+          rrule: string[]
+          template_end: string
+          template_start: string
         }
         Update: {
           account_address?: string | null
           created_at?: string
           default_meeting_info_encrypted?: Json
+          effective_end?: string | null
+          effective_start?: string
           guest_email?: string | null
+          ical_uid?: string
           id?: string
-          original_end?: string
-          original_start?: string
-          recurrence?: Database['public']['Enums']['MeetingRepeat']
-          rrule?: string[] | null
-          slot_id?: string
+          meeting_id?: string
+          role?: Database['public']['Enums']['ParticipantType']
+          rrule?: string[]
+          template_end?: string
+          template_start?: string
         }
         Relationships: [
           {
@@ -1447,6 +1460,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
+          },
+          {
+            foreignKeyName: 'slot_series_meeting_id_fkey'
+            columns: ['meeting_id']
+            isOneToOne: false
+            referencedRelation: 'meetings'
+            referencedColumns: ['id']
           }
         ]
       }
@@ -1494,7 +1514,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       stripe_subscription_transactions: {
@@ -1530,7 +1550,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'transactions'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       stripe_subscriptions: {
@@ -1575,7 +1595,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'billing_plans'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       subscriptions: {
@@ -1603,7 +1623,7 @@ export type Database = {
           owner_account: string
           plan_id?: number | null
           registered_at: string
-          status: Database['public']['Enums']['SubscriptionStatus']
+          status?: Database['public']['Enums']['SubscriptionStatus']
           transaction_id?: string | null
           updated_at?: string | null
         }
@@ -1642,7 +1662,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'transactions'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       telegram_connections: {
@@ -1671,7 +1691,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       transactions: {
@@ -1751,7 +1771,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'meeting_type'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       verifications: {
@@ -1786,7 +1806,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'accounts'
             referencedColumns: ['address']
-          }
+          },
         ]
       }
       video_meeting: {
@@ -1874,6 +1894,22 @@ export type Database = {
           id: string
           invite_pending: boolean
           role: string
+        }[]
+      }
+      get_latest_instances_per_series: {
+        Args: { series_ids: string[] }
+        Returns: {
+          account_address: string
+          created_at: string
+          end: string
+          guest_email: string
+          id: string
+          override_meeting_info_encrypted: string
+          role: string
+          series_id: string
+          start: string
+          status: string
+          version: number
         }[]
       }
       get_meeting_id_by_slot_ids: {
@@ -1980,6 +2016,21 @@ export type Database = {
           start: string
         }[]
       }
+      get_slot_instance_by_id: {
+        Args: { instance_id: string }
+        Returns: {
+          account_address: string
+          end: string
+          id: string
+          meeting_info_encrypted: Json
+          role: string
+          series_id: string
+          slot_id: string
+          start: string
+          status: string
+          version: number
+        }[]
+      }
       get_slot_instances_with_meetings: {
         Args: {
           p_account_address: string
@@ -2016,13 +2067,14 @@ export type Database = {
           user_address: string
         }
         Returns: {
+          avatar_url: string
+          description: string
           id: string
+          member_availabilities: Json
           members: Json
           name: string
           role: string
           slug: string
-          avatar_url: string | null
-          description: string | null
         }[]
       }
       search_accounts: {
@@ -2073,6 +2125,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_slot_instances_times: {
+        Args: {
+          p_end_offset: unknown
+          p_series_id: string
+          p_start_offset: unknown
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       AcceptedToken:
@@ -2119,7 +2179,13 @@ export type Database = {
       RecurringStatus: 'confirmed' | 'cancelled' | 'modified'
       SessionType: 'paid' | 'free'
       SubscriptionStatus: 'active' | 'cancelled' | 'expired'
-      TimeSlotSource: 'mww' | 'Google' | 'iCloud' | 'Office 365' | 'Webdav'
+      TimeSlotSource:
+        | 'mww'
+        | 'Google'
+        | 'iCloud'
+        | 'Office 365'
+        | 'Webdav'
+        | 'Webcal'
       TokenType: 'erc20' | 'erc721' | 'stablecoin' | 'nft' | 'native'
       VerificationChannel: 'transaction-pin' | 'reset-email'
       VideoMeeting: 'None' | 'GoogleMeet'
@@ -2143,7 +2209,7 @@ export type Tables<
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
-    : never = never
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2154,14 +2220,14 @@ export type Tables<
     ? R
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
-      DefaultSchema['Views'])
-  ? (DefaultSchema['Tables'] &
-      DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-    ? R
+        DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] &
+        DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
-  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
@@ -2171,7 +2237,7 @@ export type TablesInsert<
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2181,12 +2247,12 @@ export type TablesInsert<
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-  ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I
-    }
-    ? I
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
     : never
-  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
@@ -2196,7 +2262,7 @@ export type TablesUpdate<
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2206,12 +2272,12 @@ export type TablesUpdate<
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-  ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U
-    }
-    ? U
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
     : never
-  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
@@ -2221,14 +2287,14 @@ export type Enums<
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
-    : never = never
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-  ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
@@ -2238,14 +2304,14 @@ export type CompositeTypes<
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
-    : never = never
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-  ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
@@ -2297,7 +2363,14 @@ export const Constants = {
       RecurringStatus: ['confirmed', 'cancelled', 'modified'],
       SessionType: ['paid', 'free'],
       SubscriptionStatus: ['active', 'cancelled', 'expired'],
-      TimeSlotSource: ['mww', 'Google', 'iCloud', 'Office 365', 'Webdav'],
+      TimeSlotSource: [
+        'mww',
+        'Google',
+        'iCloud',
+        'Office 365',
+        'Webdav',
+        'Webcal',
+      ],
       TokenType: ['erc20', 'erc721', 'stablecoin', 'nft', 'native'],
       VerificationChannel: ['transaction-pin', 'reset-email'],
       VideoMeeting: ['None', 'GoogleMeet'],

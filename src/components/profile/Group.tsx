@@ -2,7 +2,6 @@ import {
   Badge,
   Box,
   Button,
-  Checkbox,
   Flex,
   Heading,
   HStack,
@@ -13,8 +12,8 @@ import {
   Tabs,
   Text,
   useDisclosure,
+  VStack,
 } from '@chakra-ui/react'
-import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
@@ -28,11 +27,10 @@ import { Account } from '@/types/Account'
 import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
 import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
-import { getGroupsFullWithMetadata } from '@/utils/api_helper'
 import {
-  getHideGroupAvailabilityLabels,
-  setHideGroupAvailabilityLabels,
-} from '@/utils/storage'
+  getActiveProSubscription,
+  isTrialEligible,
+} from '@/utils/subscription_manager'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
 import Groups, { GroupRef } from '../group/Groups'
@@ -48,26 +46,15 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const groupRef = useRef<GroupRef>(null)
   const groupInviteRef = useRef<GroupInvitesRef>(null)
 
-  // Fetch metadata to get upgradeRequired status
-  const { data: groupsMetadata } = useQuery({
-    queryKey: ['groupsMetadata', currentAccount?.address],
-    queryFn: () => getGroupsFullWithMetadata(1, 0, '', true),
-    enabled: !!currentAccount?.address,
-    staleTime: 30000,
-  })
-  const canCreateGroup = !groupsMetadata?.upgradeRequired
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
 
-  // Preference to hide availability block labels in group cards
-  const [hideAvailabilityLabels, setHideAvailabilityLabels] = useState(() =>
-    getHideGroupAvailabilityLabels(currentAccount?.address || '')
-  )
-
-  const handleToggleHideLabels = (checked: boolean) => {
-    setHideAvailabilityLabels(checked)
-    setHideGroupAvailabilityLabels(currentAccount?.address || '', checked)
-  }
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+  const canCreateGroup = hasProAccess
 
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
+  const [isGroupsEmpty, setIsGroupsEmpty] = useState<boolean | null>(null)
   const router = useRouter()
   const { join, intent, groupId, email, type } = useRouter().query
   const {
@@ -117,6 +104,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     const group = await getGroupExternal(group_id)
     setInviteGroupData(group)
     setInviteDataIsLoading(false)
+  }
+
+  const handleUpgradeClick = () => {
+    router.push('/dashboard/settings/subscriptions')
   }
 
   useEffect(() => {
@@ -182,24 +173,31 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             value={debouncedValue}
             placeholder="Search for group"
           />
-          <Button
-            onClick={() => router.push('/dashboard/create-group')}
-            flexShrink={0}
-            colorScheme="primary"
+          <VStack
+            align="stretch"
+            w="100%"
             display={{ base: 'flex', md: 'none' }}
-            mt={{ base: 4, md: 0 }}
+            mt={4}
             mb={4}
-            leftIcon={<FaPlus />}
-            w={'100%'}
-            isDisabled={!canCreateGroup}
-            title={
-              !canCreateGroup
-                ? 'Upgrade to Pro to create more groups'
-                : undefined
-            }
+            spacing={2}
+            minW={0}
           >
-            Create new group
-          </Button>
+            <Button
+              onClick={() => router.push('/dashboard/create-group')}
+              flexShrink={0}
+              colorScheme="primary"
+              leftIcon={<FaPlus />}
+              w={'100%'}
+              isDisabled={!canCreateGroup}
+              title={
+                !canCreateGroup
+                  ? 'Upgrade to Pro to create more groups'
+                  : undefined
+              }
+            >
+              Create new group
+            </Button>
+          </VStack>
           <TabList
             w={{ base: '100%', md: 'auto' }}
             bg="bg-surface-secondary"
@@ -247,56 +245,60 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               )}
             </Tab>
           </TabList>
-          <Button
-            onClick={() => router.push('/dashboard/create-group')}
-            flexShrink={0}
-            colorScheme="primary"
+          <VStack
+            align="flex-end"
             display={{ base: 'none', md: 'flex' }}
-            leftIcon={<FaPlus />}
-            isDisabled={!canCreateGroup}
-            title={
-              !canCreateGroup
-                ? 'Upgrade to Pro to create more groups'
-                : undefined
-            }
+            spacing={2}
+            w="fit-content"
           >
-            Create new group
-          </Button>
+            <Button
+              onClick={() => router.push('/dashboard/create-group')}
+              flexShrink={0}
+              colorScheme="primary"
+              leftIcon={<FaPlus />}
+              isDisabled={!canCreateGroup}
+              title={
+                !canCreateGroup
+                  ? 'Upgrade to Pro to create more groups'
+                  : undefined
+              }
+            >
+              Create new group
+            </Button>
+          </VStack>
         </HStack>
 
-        {/* Hide availability labels checkbox */}
-        <HStack mb={4}>
-          <Checkbox
-            isChecked={hideAvailabilityLabels}
-            onChange={e => handleToggleHideLabels(e.target.checked)}
-            size="md"
-            sx={{
-              '.chakra-checkbox__control': {
-                bg: 'transparent',
-                borderColor: 'border-subtle',
-                _checked: {
-                  bg: 'primary.200',
-                  borderColor: 'primary.200',
-                  color: 'neutral.900',
-                },
-              },
-              '.chakra-checkbox__label': {
-                color: 'text-primary',
-                fontSize: 'sm',
-              },
-            }}
-          >
-            Hide the availability block labels for groups
-          </Checkbox>
-        </HStack>
+        {/* Limit text when free user cannot create groups */}
+        {!canCreateGroup && currentAccount && isGroupsEmpty === false && (
+          <HStack mb={4}>
+            <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
+              Upgrade to create and schedule with groups.{' '}
+              <Button
+                variant="link"
+                colorScheme="primary"
+                px={0}
+                onClick={() => router.push('/dashboard/settings/subscriptions')}
+                textDecoration="underline"
+                fontSize="14px"
+                height="auto"
+                minW="auto"
+              >
+                {trialEligible ? 'Try PRO for free' : 'Go PRO'}
+              </Button>
+            </Text>
+          </HStack>
+        )}
 
         <TabPanels p={0}>
           <TabPanel p={0}>
             <Groups
               currentAccount={currentAccount}
               search={debouncedValue}
-              hideAvailabilityLabels={hideAvailabilityLabels}
               ref={groupRef}
+              onEmptyStateChange={setIsGroupsEmpty}
+              canCreateGroup={canCreateGroup}
+              trialEligible={trialEligible}
+              onUpgradeClick={handleUpgradeClick}
             />
           </TabPanel>
           <TabPanel p={0}>

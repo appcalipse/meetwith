@@ -1,7 +1,0 @@
-###
-GET http://localhost:3000/api/auth/tes
-X-Server-Secret: q*5w#ZG&Jr3WRY
-
-###
-POST http://localhost:3000/api/server/webhook/discord-reminder
-X-Server-Secret: q*5w#ZG&Jr3WRY

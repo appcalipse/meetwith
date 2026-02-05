@@ -36,6 +36,7 @@ import { sendSubscriptionConfirmationEmailForAccount } from '@/utils/email_helpe
 import { EmailQueue } from '@/utils/workers/email.queue'
 
 const emailQueue = new EmailQueue()
+
 import {
   BillingPlanNotFoundError,
   MissingSubscriptionMetadataError,
@@ -55,13 +56,14 @@ export const handleCryptoSubscriptionPayment = async (
     subscription_type,
     account_address,
     subscription_channel,
+    handle,
   } = subscriptionData
 
   // Validate required subscription metadata
   if (!billing_plan_id || !account_address) {
     const error = new MissingSubscriptionMetadataError()
     Sentry.captureException(error, {
-      extra: { subscriptionData, payloadType: payload.type },
+      extra: { payloadType: payload.type, subscriptionData },
     })
     throw error
   }
@@ -85,13 +87,13 @@ export const handleCryptoSubscriptionPayment = async (
   if (isOnramp) {
     const onrampData = payload.data as OnrampTransactionData
     transactionData = {
-      chainId: onrampData.token.chainId,
-      transactionHash: onrampData.transactionHash,
       amount: onrampData.amount,
+      chainId: onrampData.token.chainId,
       decimals: onrampData.token.decimals,
-      tokenAddress: onrampData.token.address,
       fiatEquivalent: onrampData.currencyAmount,
       providerReferenceId: onrampData.id,
+      tokenAddress: onrampData.token.address,
+      transactionHash: onrampData.transactionHash,
     }
   } else {
     const onchainData = payload.data as OnchainTransactionData
@@ -124,13 +126,13 @@ export const handleCryptoSubscriptionPayment = async (
     )
 
     transactionData = {
-      chainId: onchainData.destinationToken.chainId,
-      transactionHash,
       amount: onchainData.destinationAmount,
+      chainId: onchainData.destinationToken.chainId,
       decimals: onchainData.destinationToken.decimals,
-      tokenAddress: onchainData.destinationToken.address,
       fiatEquivalent: onchainData.destinationToken.priceUsd * parsedAmount,
       providerReferenceId: onchainData.transactionId || onchainData.paymentId,
+      tokenAddress: onchainData.destinationToken.address,
+      transactionHash,
     }
   }
 
@@ -161,13 +163,13 @@ export const handleCryptoSubscriptionPayment = async (
         formatUnits(onchainData.originAmount, onchainData.originToken.decimals)
       )
       fee_breakdown = {
-        network:
-          onchainData.originToken.priceUsd * originAmountParsed -
-          transactionData.fiatEquivalent,
         developer:
           (transactionData.fiatEquivalent *
             (onchainData.developerFeeBps || 0)) /
           100 ** 2,
+        network:
+          onchainData.originToken.priceUsd * originAmountParsed -
+          transactionData.fiatEquivalent,
       }
       total_fee = Object.values(fee_breakdown).reduce(
         (acc, fee) => acc + fee,
@@ -176,67 +178,61 @@ export const handleCryptoSubscriptionPayment = async (
     }
   }
 
-  // Extension Logic
   const existingSubscription = await getActiveSubscriptionPeriod(
     account_address.toLowerCase()
   )
   let calculatedExpiryTime: Date
 
-  if (
-    existingSubscription &&
-    subscription_type === SubscriptionType.EXTENSION
-  ) {
-    // Extension: Add duration to existing farthest expiry
+  if (existingSubscription) {
     const existingExpiry = new Date(existingSubscription.expiry_time)
     if (billingPlan.billing_cycle === 'monthly') {
       calculatedExpiryTime = addMonths(existingExpiry, 1)
     } else {
-      // yearly
       calculatedExpiryTime = addYears(existingExpiry, 1)
     }
   } else {
-    // First-time subscription: Add duration from now
     const now = new Date()
     if (billingPlan.billing_cycle === 'monthly') {
       calculatedExpiryTime = addMonths(now, 1)
     } else {
-      // yearly
       calculatedExpiryTime = addYears(now, 1)
     }
   }
 
+  const subscriptionHandle = handle || existingSubscription?.domain || undefined
+
   // Create transaction payload
   const transactionPayload: TablesInsert<'transactions'> = {
-    method: PaymentType.CRYPTO,
-    transaction_hash: transactionData.transactionHash.toLowerCase(),
     amount: parsedAmount,
-    direction: PaymentDirection.CREDIT,
     chain_id: chainInfo.id,
-    token_address: transactionData.tokenAddress,
-    fiat_equivalent: transactionData.fiatEquivalent,
-    meeting_type_id: null,
-    initiator_address: account_address.toLowerCase(),
-    status: PaymentStatus.COMPLETED,
-    token_type: TokenType.ERC20,
     confirmed_at: new Date().toISOString(),
-    provider_reference_id: transactionData.providerReferenceId,
     currency: Currency.USD,
-    total_fee: total_fee || 0,
+    direction: PaymentDirection.CREDIT,
     fee_breakdown: fee_breakdown
       ? {
-          gas_used: '0',
           fee_in_usd: total_fee,
+          gas_used: '0',
           ...fee_breakdown,
         }
       : {
-          gas_used: '0',
           fee_in_usd: 0,
+          gas_used: '0',
         },
+    fiat_equivalent: transactionData.fiatEquivalent,
+    initiator_address: account_address.toLowerCase(),
+    meeting_type_id: null,
     metadata: {
-      subscription_type,
       billing_plan_id,
       subscription_channel,
+      subscription_type,
     },
+    method: PaymentType.CRYPTO,
+    provider_reference_id: transactionData.providerReferenceId,
+    status: PaymentStatus.COMPLETED,
+    token_address: transactionData.tokenAddress,
+    token_type: TokenType.ERC20,
+    total_fee: total_fee || 0,
+    transaction_hash: transactionData.transactionHash.toLowerCase(),
   }
 
   // Create transaction
@@ -262,15 +258,16 @@ export const handleCryptoSubscriptionPayment = async (
       billing_plan_id,
       'active',
       calculatedExpiryTime.toISOString(),
-      transaction.id
+      transaction.id,
+      subscriptionHandle
     )
   } catch (error) {
     Sentry.captureException(error, {
       extra: {
         account_address,
         billing_plan_id,
-        transaction_id: transaction.id,
         expiry_time: calculatedExpiryTime.toISOString(),
+        transaction_id: transaction.id,
       },
     })
     throw error
@@ -278,10 +275,10 @@ export const handleCryptoSubscriptionPayment = async (
 
   // Send subscription confirmation email
   const emailPlan: BillingEmailPlan = {
+    billing_cycle: billingPlan.billing_cycle,
     id: billingPlan.id,
     name: billingPlan.name,
     price: billingPlan.price,
-    billing_cycle: billingPlan.billing_cycle,
   }
 
   // Send subscription confirmation email (non-blocking, queued)
@@ -306,10 +303,10 @@ export const handleCryptoSubscriptionPayment = async (
   })
 
   return {
-    transaction,
-    subscription_type,
     billing_plan_id,
     expiry_time: calculatedExpiryTime.toISOString(),
+    subscription_type,
+    transaction,
   }
 }
 

@@ -18,7 +18,7 @@ import { MemberType } from './Group'
 import {
   ConferenceMeeting,
   GroupNotificationType,
-  MeetingDecrypted,
+  MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
   NotBefore,
@@ -35,17 +35,18 @@ import {
 export interface MeetingUpdateRequest extends MeetingCreationRequest {
   slotsToRemove: string[]
   guestsToRemove: ParticipantInfo[]
-  version: number
   eventId?: string | null
   calendar_id?: string | null
+  calendar_organizer_address?: string
 }
-export interface MeetingInstanceUpdateRequest extends MeetingCreationRequest {
-  slotsToRemove: string[]
-  guestsToRemove: ParticipantInfo[]
-  version: number
-  eventId?: string | null
-  calendar_id?: string | null
+export interface MeetingSeriesUpdateRequest extends MeetingUpdateRequest {
+  /**
+   * The instance ID (e.g., "slot_20240315") that the user is editing.
+   * Required to calculate time offset from series base for proper propagation.
+   */
+  focus_instance_id: string
 }
+export interface MeetingInstanceUpdateRequest extends MeetingUpdateRequest {}
 
 export interface MeetingCreationRequest {
   type: SchedulingType
@@ -67,6 +68,7 @@ export interface MeetingCreationRequest {
   txHash?: Address | null
   encrypted_metadata?: Encrypted
   rrule: Array<string>
+  version: number
 }
 
 export interface UrlCreationRequest {
@@ -96,7 +98,7 @@ export interface RequestParticipantMapping {
 }
 
 export interface MeetingCancelRequest {
-  meeting: MeetingDecrypted
+  meeting: MeetingInfo
   currentTimezone: string
 }
 export interface GuestMeetingCancelRequest extends MeetingCancelRequest {
@@ -124,16 +126,13 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   content?: string
   meetingProvider: MeetingProvider
   meetingReminders?: Array<MeetingReminders>
-  meetingRepeat?: MeetingRepeat
   meetingPermissions?: Array<MeetingPermissions>
-  eventId?: string | null
-  notification_hash?: string
-  rrule?: Array<string>
-  skipCalendarSync?: boolean
-  skipNotify?: boolean
+  rrule: Array<string>
+  ical_uid?: string
+  calendar_organizer_address?: string
 }
 export interface MeetingInstanceCreationSyncRequest
-  extends Omit<MeetingCreationSyncRequest, 'meetingRepeat'> {
+  extends MeetingCreationSyncRequest {
   original_start_time: Date
 }
 export interface GroupInviteNotifyRequest {
@@ -146,9 +145,12 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   guestsToRemove: ParticipantInfo[]
   reason?: string
   title?: string
-  eventId?: string | null
+  ical_uid?: string
 }
-
+export interface MeetingInstanceCancelSyncRequest
+  extends DeleteInstanceRequest {
+  addressesToRemove: string[]
+}
 export interface DiscordAccountInfoRequest {
   scheduler_discord_id: string
   participantsDiscordIds: string[]
@@ -293,10 +295,25 @@ export interface MeetingCheckoutRequest {
 
 export interface WebcalRequestBody {
   url?: string
-  email?: string
+  title: string
 }
 
 export interface UpdateCalendarEventRequest {
   rsvp_status: AttendeeStatus
   attendee_email: string
+}
+export interface ParseParticipantInfo {
+  account_address?: string
+  guest_email?: string
+  slot_id: string
+}
+
+export interface ParseParticipantsRequest {
+  participants: ParseParticipantInfo[]
+}
+
+export interface DeleteInstanceRequest {
+  ical_uid?: string
+  meeting_id: string
+  start: string
 }

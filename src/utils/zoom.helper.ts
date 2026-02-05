@@ -44,9 +44,9 @@ export const refreshAccessToken = async () => {
   urlencoded.append('grant_type', 'account_credentials')
   urlencoded.append('account_id', process.env.ZOOM_ACCOUNT_ID!)
   const requestOptions = {
-    method: 'POST',
-    headers: myHeaders,
     body: urlencoded,
+    headers: myHeaders,
+    method: 'POST',
   }
 
   const zoomResponse = await fetch(ZOOM_AUTH_URL, requestOptions)

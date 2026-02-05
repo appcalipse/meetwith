@@ -85,17 +85,17 @@ export default async function simpleDiscordMeet(
     const participants = accounts.map(_account => {
       return {
         account_address: _account.address,
+        meeting_id: '',
         name: _account.preferences?.name,
-        type:
-          scheduler.address === _account.address
-            ? ParticipantType.Scheduler
-            : ParticipantType.Invitee,
+        slot_id: '',
         status:
           scheduler.address === _account.address
             ? ParticipationStatus.Accepted
             : ParticipationStatus.Pending,
-        slot_id: '',
-        meeting_id: '',
+        type:
+          scheduler.address === _account.address
+            ? ParticipantType.Scheduler
+            : ParticipantType.Invitee,
       }
     })
 

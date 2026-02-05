@@ -1,7 +1,7 @@
 import { Icon } from '@chakra-ui/react'
 import {
-  chakraComponents,
   ChakraStylesConfig,
+  chakraComponents,
   GroupBase,
   Props,
 } from 'chakra-react-select'
@@ -13,12 +13,23 @@ export const getCustomSelectComponents = <
 >(): Props<T, IsMulti>['components'] => ({
   ClearIndicator: props => (
     <chakraComponents.ClearIndicator className="noBg" {...props}>
-      <Icon as={FaChevronDown} w={4} h={4} />
+      <Icon as={FaChevronDown} h={4} w={4} />
     </chakraComponents.ClearIndicator>
   ),
   DropdownIndicator: props => (
     <chakraComponents.DropdownIndicator className="noBg" {...props}>
-      <Icon as={FaChevronDown} w={4} h={4} />
+      <Icon as={FaChevronDown} h={4} w={4} />
+    </chakraComponents.DropdownIndicator>
+  ),
+})
+export const getnoClearCustomSelectComponent = <
+  T = unknown,
+  IsMulti extends boolean = false
+>(): Props<T, IsMulti>['components'] => ({
+  ClearIndicator: () => null,
+  DropdownIndicator: props => (
+    <chakraComponents.DropdownIndicator className="noBg" {...props}>
+      <Icon as={FaChevronDown} h={4} w={4} />
     </chakraComponents.DropdownIndicator>
   ),
 })
@@ -29,25 +40,25 @@ export const noClearCustomSelectComponent: Props['components'] = {
   ClearIndicator: () => null,
   DropdownIndicator: props => (
     <chakraComponents.DropdownIndicator className="noBg" {...props}>
-      <Icon as={FaChevronDown} w={4} h={4} />
+      <Icon as={FaChevronDown} h={4} w={4} />
     </chakraComponents.DropdownIndicator>
   ),
 }
 export const rsvpSelectComponent: Props['components'] = {
   ClearIndicator: () => null,
-  ValueContainer: props => (
-    <chakraComponents.ValueContainer
-      {...props}
-      className="rsvp-value-container"
-    />
-  ),
   DropdownIndicator: props => (
     <chakraComponents.DropdownIndicator
       className="noBg rsvp-dropdown"
       {...props}
     >
-      <Icon as={FaChevronDown} w={3} h={3} />
+      <Icon as={FaChevronDown} h={3} w={3} />
     </chakraComponents.DropdownIndicator>
+  ),
+  ValueContainer: props => (
+    <chakraComponents.ValueContainer
+      {...props}
+      className="rsvp-value-container"
+    />
   ),
 }
 
@@ -88,14 +99,14 @@ export const fullWidthStyle:
   | undefined = {
   container: provided => ({
     ...provided,
+    bg: 'select-bg',
     borderColor: 'inherit',
     borderRadius: 'md',
-    maxW: '100%',
     display: 'block',
+    maxW: '100%',
     width: '100% !important',
-    bg: 'select-bg',
   }),
-  placeholder: provided => ({
+  control: provided => ({
     ...provided,
     textAlign: 'left',
   }),
@@ -103,7 +114,7 @@ export const fullWidthStyle:
     ...provided,
     textAlign: 'left',
   }),
-  control: provided => ({
+  placeholder: provided => ({
     ...provided,
     textAlign: 'left',
   }),

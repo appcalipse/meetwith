@@ -2,11 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { NotificationChannel } from '@/types/AccountNotifications'
-import {
-  BillingEmailPeriod,
-  BillingEmailPlan,
-  BillingMode,
-} from '@/types/Billing'
+import { BillingEmailPeriod, BillingEmailPlan } from '@/types/Billing'
 import { appUrl } from '@/utils/constants'
 import {
   expireStaleSubscriptionPeriods,
@@ -56,15 +52,15 @@ export default async function expireSubscriptions(
             )
 
             const emailPeriod: BillingEmailPeriod = {
-              registered_at: period.registered_at,
               expiry_time: period.expiry_time,
+              registered_at: period.registered_at,
             }
 
             const emailPlan: BillingEmailPlan = {
+              billing_cycle: billingPlan.billing_cycle,
               id: billingPlan.id,
               name: billingPlan.name,
               price: billingPlan.price,
-              billing_cycle: billingPlan.billing_cycle,
             }
 
             // Send email
@@ -76,14 +72,11 @@ export default async function expireSubscriptions(
             emailCount++
 
             // Get notification subscriptions
-            const notifications = await getAccountNotificationSubscriptions(
-              accountAddress
-            )
+            const notifications =
+              await getAccountNotificationSubscriptions(accountAddress)
 
             // Prepare renewal URL
-            const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing?mode=${
-              BillingMode.EXTEND
-            }&plan=${encodeURIComponent(billingPlan.id)}`
+            const renewUrl = `${appUrl}/dashboard/settings/subscriptions/billing`
 
             const message = `Your ${billingPlan.name} subscription has expired. You can renew your subscription at any time to continue enjoying Pro features.\n\nRenew [here](${renewUrl})`
 
@@ -139,19 +132,19 @@ export default async function expireSubscriptions(
       }
 
       return res.status(200).json({
-        success: true,
-        expiredCount: result.expiredCount,
-        emailCount,
         discordCount,
+        emailCount,
+        expiredCount: result.expiredCount,
+        message: `Successfully expired ${result.expiredCount} subscription period(s) and sent ${emailCount} email(s), ${discordCount} Discord message(s), and ${telegramCount} Telegram message(s)`,
+        success: true,
         telegramCount,
         timestamp: result.timestamp,
-        message: `Successfully expired ${result.expiredCount} subscription period(s) and sent ${emailCount} email(s), ${discordCount} Discord message(s), and ${telegramCount} Telegram message(s)`,
       })
     } catch (error) {
       Sentry.captureException(error)
       return res.status(500).json({
-        success: false,
         error: (error as Error).message,
+        success: false,
       })
     }
   }

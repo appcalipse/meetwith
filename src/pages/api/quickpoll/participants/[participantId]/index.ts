@@ -4,7 +4,12 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { getQuickPollParticipantById } from '@/utils/database'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { query } = req
+  const { method, query } = req
+
+  if (method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   const participantId = query.participantId as string
 
   if (!participantId) {

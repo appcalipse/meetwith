@@ -13,8 +13,8 @@ interface INavigationContext {
   setInviteModalOpen: React.Dispatch<React.SetStateAction<boolean>>
 }
 const DEFAULT_CONTEXT = {
-  handlePageSwitch: () => {},
   currentPage: Page.SCHEDULE_TIME,
+  handlePageSwitch: () => {},
   inviteModalOpen: false,
   setInviteModalOpen: () => {},
 }
@@ -48,8 +48,8 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
   const value = {
-    handlePageSwitch: setCurrentPage,
     currentPage,
+    handlePageSwitch: setCurrentPage,
     inviteModalOpen,
     setInviteModalOpen,
   }

@@ -51,19 +51,23 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       try {
-        const updatedEvent = await CalendarBackendHelper.updateCalendarEvent(
+        unifiedEvent.start = startDate
+        unifiedEvent.end = endDate
+        await CalendarBackendHelper.updateCalendarEvent(
           account_address,
           unifiedEvent
         )
-        return res.status(200).json(updatedEvent)
+        return res.status(200).json({
+          success: true,
+        })
       } catch (error: unknown) {
         Sentry.captureException(error, {
           extra: {
             account_address,
-            eventId: unifiedEvent.id,
-            sourceEventId: unifiedEvent.sourceEventId,
-            source: unifiedEvent.source,
             calendarId: unifiedEvent.calendarId,
+            eventId: unifiedEvent.id,
+            source: unifiedEvent.source,
+            sourceEventId: unifiedEvent.sourceEventId,
           },
         })
 

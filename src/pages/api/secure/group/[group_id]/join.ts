@@ -26,9 +26,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (type === InviteType.PUBLIC) {
         await publicGroupJoin(group_id, account_address)
       } else {
-        const notifications = await getAccountNotificationSubscriptions(
-          account_address
-        )
+        const notifications =
+          await getAccountNotificationSubscriptions(account_address)
         const userEmail = notifications?.notification_types.find(
           n => n.channel === NotificationChannel.EMAIL
         )?.destination

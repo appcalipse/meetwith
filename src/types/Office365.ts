@@ -87,7 +87,14 @@ export interface PatternedRecurrence {
   pattern: RecurrencePattern
   range: RecurrenceRange
 }
-
+export type DaysOfWeek =
+  | 'sunday'
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
 export interface RecurrencePattern {
   type:
     | 'daily'
@@ -99,28 +106,14 @@ export interface RecurrencePattern {
   interval: number
   month?: number
   dayOfMonth?: number
-  daysOfWeek?: Array<
-    | 'sunday'
-    | 'monday'
-    | 'tuesday'
-    | 'wednesday'
-    | 'thursday'
-    | 'friday'
-    | 'saturday'
-  >
-  firstDayOfWeek?:
-    | 'sunday'
-    | 'monday'
-    | 'tuesday'
-    | 'wednesday'
-    | 'thursday'
-    | 'friday'
-    | 'saturday'
+  daysOfWeek?: Array<DaysOfWeek>
+  firstDayOfWeek?: DaysOfWeek
   index?: 'first' | 'second' | 'third' | 'fourth' | 'last'
 }
+export type RecurrenceRangeType = 'endDate' | 'noEnd' | 'numbered'
 
 export interface RecurrenceRange {
-  type: 'endDate' | 'noEnd' | 'numbered'
+  type: RecurrenceRangeType
   startDate: string
   endDate?: string
   recurrenceTimeZone?: string

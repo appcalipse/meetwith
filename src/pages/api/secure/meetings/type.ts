@@ -16,7 +16,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
-  countMeetingTypes,
+  countFreeMeetingTypes,
   createMeetingType,
   deleteMeetingType,
   getMeetingTypes,
@@ -35,37 +35,18 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         offset ? Number(offset) : undefined
       )
 
-      // Check subscription status for filtering
+      // Check subscription status
       const isPro = await isProAccountAsync(account_id)
 
-      if (!isPro) {
-        // Free tier: return only first 1 FREE meeting type, hide all PAID
-        const freeMeetingTypes = allMeetingTypes.filter(
-          mt => mt.type === SessionType.FREE
-        )
-        const paidMeetingTypes = allMeetingTypes.filter(
-          mt => mt.type === SessionType.PAID
-        )
+      const freeMeetingTypes = allMeetingTypes.filter(
+        mt => mt.type === SessionType.FREE
+      )
 
-        const limitedMeetingTypes = freeMeetingTypes.slice(0, 1)
-
-        return res.status(200).json({
-          meetingTypes: limitedMeetingTypes,
-          total: allMeetingTypes.length,
-          hidden: allMeetingTypes.length - limitedMeetingTypes.length,
-          paidHidden: paidMeetingTypes.length,
-          upgradeRequired:
-            allMeetingTypes.length >= 1 || paidMeetingTypes.length >= 0,
-        })
-      }
-
-      // Pro: return all meeting types
       return res.status(200).json({
+        isPro,
         meetingTypes: allMeetingTypes,
         total: allMeetingTypes.length,
-        hidden: 0,
-        paidHidden: 0,
-        upgradeRequired: false,
+        upgradeRequired: !isPro && freeMeetingTypes.length >= 1,
       })
     }
     if (req.method === 'POST') {
@@ -81,9 +62,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           throw new PaidMeetingTypeNotAllowedError()
         }
 
-        // 2. Maximum 1 meeting type
-        const meetingTypeCount = await countMeetingTypes(account_id)
-        if (meetingTypeCount >= 1) {
+        const freeMeetingTypeCount = await countFreeMeetingTypes(account_id)
+        if (freeMeetingTypeCount >= 1) {
           throw new MeetingTypeLimitExceededError()
         }
       }

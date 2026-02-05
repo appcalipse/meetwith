@@ -3,7 +3,8 @@ import { PublicScheduleContext } from '@components/public-meeting/index'
 import ProgressHeaderItem from '@components/public-meeting/ProgressHeaderItem'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import React, { Fragment, useContext } from 'react'
-const items = [
+
+const _items = [
   {
     label: 'Pick a slot ',
     activeSteps: [

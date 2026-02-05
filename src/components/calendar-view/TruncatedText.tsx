@@ -50,15 +50,42 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
 
   return (
     <Text
-      ref={textRef}
+      className="rich-text-wrapper"
       maxH={maxHeight}
       overflow="hidden"
+      ref={textRef}
       {...props}
       dangerouslySetInnerHTML={{
         __html: sanitizeHtml(truncatedContent, {
-          allowedAttributes: false,
-          allowVulnerableTags: false,
-        }),
+          allowedTags: [
+            'a',
+            'p',
+            'br',
+            'strong',
+            'em',
+            'u',
+            'ul',
+            'ol',
+            'li',
+            'span',
+            'div',
+          ],
+          allowedAttributes: { a: ['href', 'target', 'rel'] },
+          transformTags: {
+            a: (tagName, attribs) => ({
+              tagName,
+              attribs: {
+                ...attribs,
+                target: '_blank',
+                rel: 'noopener noreferrer',
+              },
+            }),
+          },
+          textFilter: text => text.trimStart(),
+        })
+          .replace(/^(<br\s*\/?>|\s)+/i, '') // Remove leading breaks/whitespace
+          .replace(/(<br\s*\/?>|\s)+$/i, '') // Remove trailing breaks/whitespace
+          .replace(/(<br\s*\/?>){3,}/gi, '<br><br>'), // Collapse excessive line breaks
       }}
     />
   )

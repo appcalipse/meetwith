@@ -43,6 +43,33 @@ import { GoogleEventMapper } from './google.mapper'
 import { Office365EventMapper } from './office.mapper'
 
 export const CalendarBackendHelper = {
+  deleteEventFromCalendar: async (
+    account_address: string,
+    calendarId: string,
+    eventId: string
+  ): Promise<void> => {
+    const calendars = await getConnectedCalendars(account_address)
+    const targetCalendar = calendars.find(
+      cal =>
+        cal.calendars?.some(c => c.calendarId === calendarId && c.enabled) &&
+        cal.calendars?.some(c => c.calendarId === calendarId)
+    )
+
+    if (!targetCalendar) {
+      throw new Error(
+        `Calendar not found or not enabled for calendarId: ${calendarId}`
+      )
+    }
+
+    const integration = getConnectedCalendarIntegration(
+      targetCalendar.account_address,
+      targetCalendar.email,
+      targetCalendar.provider,
+      targetCalendar.payload
+    )
+
+    await integration.deleteExternalEvent(calendarId, eventId)
+  },
   getBusySlotsForAccount: async (
     account_address: string,
     startDate: Date,
@@ -63,10 +90,10 @@ export const CalendarBackendHelper = {
 
       busySlots.push(
         ...meetings.map(it => ({
-          start: new Date(it.start),
+          account_address,
           end: new Date(it.end),
           source: TimeSlotSource.MWW,
-          account_address,
+          start: new Date(it.start),
         }))
       )
     }
@@ -90,14 +117,14 @@ export const CalendarBackendHelper = {
             )
             busySlots.push(
               ...externalSlots.map(it => ({
-                start: new Date(it.start),
-                end: new Date(it.end),
-                source: calendar.provider,
                 account_address,
-                eventTitle: it.title,
-                eventId: it.eventId,
-                eventWebLink: it.webLink,
+                end: new Date(it.end),
                 eventEmail: it.email,
+                eventId: it.eventId,
+                eventTitle: it.title,
+                eventWebLink: it.webLink,
+                source: calendar.provider,
+                start: new Date(it.start),
               }))
             )
           } catch (e: unknown) {
@@ -109,6 +136,28 @@ export const CalendarBackendHelper = {
 
     await Promise.all([getMWWEvents(), getIntegratedCalendarEvents()])
     return busySlots
+  },
+
+  getBusySlotsForMultipleAccounts: async (
+    account_addresses: string[],
+    startDate: Date,
+    endDate: Date,
+    limit?: number,
+    offset?: number
+  ): Promise<TimeSlot[]> => {
+    const busySlots = await Promise.all(
+      account_addresses.map(address =>
+        CalendarBackendHelper.getBusySlotsForAccount(
+          address,
+          startDate,
+          endDate,
+          limit,
+          offset
+        )
+      )
+    )
+
+    return busySlots.flat()
   },
 
   getBusySlotsForQuickPollParticipants: async (
@@ -163,10 +212,10 @@ export const CalendarBackendHelper = {
                 )
                 guestBusySlots.push(
                   ...externalSlots.map(it => ({
-                    start: new Date(it.start),
+                    account_address: `quickpoll_${participant.participant_id}`,
                     end: new Date(it.end),
                     source: calendar.provider,
-                    account_address: `quickpoll_${participant.participant_id}`,
+                    start: new Date(it.start),
                   }))
                 )
               } catch (e: unknown) {
@@ -189,37 +238,37 @@ export const CalendarBackendHelper = {
 
     return busySlots
   },
-
-  getBusySlotsForMultipleAccounts: async (
-    account_addresses: string[],
+  getCalendarEventsForAccount: async (
+    account_address: string,
     startDate: Date,
     endDate: Date,
-    limit?: number,
-    offset?: number
-  ): Promise<TimeSlot[]> => {
-    const busySlots: TimeSlot[] = []
+    onlyWithMeetingLinks?: boolean
+  ): Promise<UnifiedEvent[]> => {
+    const calendars = await getConnectedCalendars(account_address)
+    const events = await Promise.all(
+      calendars.map(async calendar => {
+        const integration = getConnectedCalendarIntegration(
+          calendar.account_address,
+          calendar.email,
+          calendar.provider,
+          calendar.payload
+        )
 
-    const addSlotsForAccount = async (account: string) => {
-      busySlots.push(
-        ...(await CalendarBackendHelper.getBusySlotsForAccount(
-          account,
-          startDate,
-          endDate,
-          limit,
-          offset
-        ))
-      )
-    }
-
-    const promises: Promise<void>[] = []
-
-    for (const address of account_addresses) {
-      promises.push(addSlotsForAccount(address))
-    }
-
-    await Promise.all(promises)
-
-    return busySlots
+        const externalSlots = await integration.getEvents(
+          calendar
+            .calendars!.filter(c => (onlyWithMeetingLinks ? c.enabled : true))
+            .map(c => ({
+              calendarId: c.calendarId,
+              name: c.name,
+            })),
+          startDate.toISOString(),
+          endDate.toISOString(),
+          onlyWithMeetingLinks
+        )
+        return externalSlots
+      })
+    )
+    return events.flat()
   },
 
   getMergedBusySlotsForMultipleAccounts: async (
@@ -272,30 +321,6 @@ export const CalendarBackendHelper = {
     }
   },
 
-  mergeSlotsUnion: (slots: TimeSlot[]): Interval[] => {
-    slots.sort((a, b) => compareAsc(a.start, b.start))
-
-    const merged: Interval[] = []
-    let i = 0
-
-    if (slots.length === 0) {
-      return []
-    }
-
-    merged[i] = { start: slots[i].start, end: slots[i].end }
-    for (const slot of slots) {
-      if (areIntervalsOverlapping(merged[i], slot, { inclusive: true })) {
-        merged[i].start = min([merged[i].start, slot.start])
-        merged[i].end = max([merged[i].end, slot.end])
-      } else {
-        i++
-        merged[i] = { start: slot.start, end: slot.end }
-      }
-    }
-
-    return merged
-  },
-
   mergeSlotsIntersection: (slots: TimeSlot[]): Interval[] => {
     slots.sort((a, b) => compareAsc(a.start, b.start))
     const slotsByAccount = slots.reduce(
@@ -330,8 +355,8 @@ export const CalendarBackendHelper = {
         for (const slot2 of slots2) {
           if (areIntervalsOverlapping(slot1, slot2, { inclusive: true })) {
             const toPush = {
-              start: max([slot1.start, slot2.start]),
               end: min([slot1.end, slot2.end]),
+              start: max([slot1.start, slot2.start]),
             }
             if (differenceInSeconds(toPush.end, toPush.start) > 0) {
               _overlaps.push(toPush)
@@ -344,8 +369,8 @@ export const CalendarBackendHelper = {
 
     let overlaps = (slotsByAccountArray[0] as TimeSlot[]).map(slot => {
       return {
-        start: slot.start,
         end: slot.end,
+        start: slot.start,
       }
     })
     for (let i = 1; i < slotsByAccountArray.length; i++) {
@@ -361,32 +386,29 @@ export const CalendarBackendHelper = {
 
     return overlaps
   },
-  getCalendarEventsForAccount: async (
-    account_address: string,
-    startDate: Date,
-    endDate: Date,
-    onlyWithMeetingLinks?: boolean
-  ): Promise<UnifiedEvent[]> => {
-    const calendars = await getConnectedCalendars(account_address)
-    const events = await Promise.all(
-      calendars.map(async calendar => {
-        const integration = getConnectedCalendarIntegration(
-          calendar.account_address,
-          calendar.email,
-          calendar.provider,
-          calendar.payload
-        )
 
-        const externalSlots = await integration.getEvents(
-          calendar.calendars!.filter(c => c.enabled).map(c => c.calendarId),
-          startDate.toISOString(),
-          endDate.toISOString(),
-          onlyWithMeetingLinks
-        )
-        return externalSlots
-      })
-    )
-    return events.flat()
+  mergeSlotsUnion: (slots: TimeSlot[]): Interval[] => {
+    slots.sort((a, b) => compareAsc(a.start, b.start))
+
+    const merged: Interval[] = []
+    let i = 0
+
+    if (slots.length === 0) {
+      return []
+    }
+
+    merged[i] = { end: slots[i].end, start: slots[i].start }
+    for (const slot of slots) {
+      if (areIntervalsOverlapping(merged[i], slot, { inclusive: true })) {
+        merged[i].start = min([merged[i].start, slot.start])
+        merged[i].end = max([merged[i].end, slot.end])
+      } else {
+        i++
+        merged[i] = { end: slot.end, start: slot.start }
+      }
+    }
+
+    return merged
   },
   updateCalendarEvent: async (
     account_address: string,
@@ -476,16 +498,16 @@ export const CalendarBackendHelper = {
             unifiedEvent.sourceEventId,
             unifiedEvent.calendarId,
             {
-              summary: unifiedEvent.title,
-              description: unifiedEvent.description || '',
-              dtstart: unifiedEvent.start,
-              dtend: unifiedEvent.end,
-              location: unifiedEvent.meeting_url || '',
               attendees: (unifiedEvent.attendees || []).map(att => ({
                 email: att.email,
                 name: att.name || '',
                 status: mapAttendeeStatusToParticipation(att.status),
               })),
+              description: unifiedEvent.description || '',
+              dtend: unifiedEvent.end,
+              dtstart: unifiedEvent.start,
+              location: unifiedEvent.meeting_url || '',
+              summary: unifiedEvent.title,
             }
           )
           break
@@ -495,10 +517,10 @@ export const CalendarBackendHelper = {
       Sentry.captureException(error, {
         extra: {
           account_address,
-          eventId: unifiedEvent.id,
-          sourceEventId: unifiedEvent.sourceEventId,
-          source: unifiedEvent.source,
           calendarId: unifiedEvent.calendarId,
+          eventId: unifiedEvent.id,
+          source: unifiedEvent.source,
+          sourceEventId: unifiedEvent.sourceEventId,
         },
       })
       throw new Error(
@@ -508,7 +530,7 @@ export const CalendarBackendHelper = {
       )
     }
   },
-  updateCalendaRsvpStatus: async (
+  updateCalendarRsvpStatus: async (
     account_address: string,
     calendarId: string,
     eventId: string,
@@ -565,22 +587,6 @@ export const generateIcsServer = async (
   const end = DateTime.fromJSDate(new Date(meeting.end))
   const created_at = DateTime.fromJSDate(new Date(meeting.created_at!))
   const event: EventAttributes = {
-    uid: meeting.meeting_id.replaceAll('-', ''),
-    start: [start.year, start.month, start.day, start.hour, start.minute],
-    productId: '-//Meetwith//EN',
-    end: [end.year, end.month, end.day, end.hour, end.minute],
-    title: CalendarServiceHelper.getMeetingTitle(
-      ownerAddress,
-      meeting.participants,
-      meeting.title
-    ),
-    description: CalendarServiceHelper.getMeetingSummary(
-      meeting.content,
-      meeting.meeting_url,
-      changeUrl
-    ),
-    url,
-    location: meeting.meeting_url,
     created: [
       created_at.year,
       created_at.month,
@@ -588,12 +594,28 @@ export const generateIcsServer = async (
       created_at.hour,
       created_at.minute,
     ],
+    description: CalendarServiceHelper.getMeetingSummary(
+      meeting.content,
+      meeting.meeting_url,
+      changeUrl
+    ),
+    end: [end.year, end.month, end.day, end.hour, end.minute],
+    location: meeting.meeting_url,
     organizer: {
-      name: destination?.accountAddress,
       email: destination?.email,
+      name: destination?.accountAddress,
     },
+    productId: '-//Meetwith//EN',
+    start: [start.year, start.month, start.day, start.hour, start.minute],
     status:
       meetingStatus === MeetingChangeType.DELETE ? 'CANCELLED' : 'CONFIRMED',
+    title: CalendarServiceHelper.getMeetingTitle(
+      ownerAddress,
+      meeting.participants,
+      meeting.title
+    ),
+    uid: meeting.ical_uid || meeting.meeting_id.replaceAll('-', ''),
+    url,
   }
   if (!isPrivate) {
     event.method = 'REQUEST'
@@ -603,24 +625,11 @@ export const generateIcsServer = async (
   if (meeting.meetingReminders) {
     event.alarms = meeting.meetingReminders.map(createAlarm)
   }
-  if (
-    meeting.meetingRepeat &&
-    meeting?.meetingRepeat !== MeetingRepeat.NO_REPEAT
-  ) {
-    let RRULE = `FREQ=${meeting.meetingRepeat?.toUpperCase()};INTERVAL=1`
-    const dayOfWeek = format(meeting.start, 'eeeeee').toUpperCase()
-    const weekOfMonth = getWeekOfMonth(meeting.start)
 
-    switch (meeting.meetingRepeat) {
-      case MeetingRepeat.WEEKLY:
-        RRULE += `;BYDAY=${dayOfWeek}`
-        break
-      case MeetingRepeat.MONTHLY:
-        RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
-        break
-    }
-    event.recurrenceRule = RRULE
+  if (meeting.rrule.length > 0) {
+    event.recurrenceRule = meeting.rrule[0]
   }
+
   event.attendees = []
   if (useParticipants) {
     const attendees = await Promise.all(
@@ -633,11 +642,11 @@ export const generateIcsServer = async (
               (await getCalendarPrimaryEmail(participant.account_address!))
         if (!email && !isValidEmail(email)) return null
         const attendee: Attendee = {
-          name: participant.name || participant.account_address,
           email,
-          rsvp: participant.status === ParticipationStatus.Accepted,
+          name: participant.name || participant.account_address,
           partstat: participantStatusToICSStatus(participant.status),
           role: 'REQ-PARTICIPANT',
+          rsvp: participant.status === ParticipationStatus.Accepted,
         }
 
         if (participant.account_address) {

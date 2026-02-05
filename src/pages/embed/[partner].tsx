@@ -20,11 +20,11 @@ const PartnerLogin: NextPage<PartnerLoginProps> = ({ currentAccount }) => {
 
   return (
     <Container
-      maxW="6xl"
-      flex={1}
-      justifyContent="center"
       alignItems="center"
       display="flex"
+      flex={1}
+      justifyContent="center"
+      maxW="6xl"
     >
       <Box textAlign="center">
         <Text mb={8}>Please connect to use Meetwith</Text>
@@ -59,7 +59,7 @@ PartnerLogin.getInitialProps = async ctx => {
     const account = await getAccount(accountAddress! as string)
 
     return { currentAccount: account, partner }
-  } catch (e) {
+  } catch (_e) {
     return { currentAccount: null, partner }
   }
 }

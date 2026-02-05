@@ -53,9 +53,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         )
 
       const participantActing = {
-        name: schedulerParticipant?.name || 'Guest',
-        guest_email: schedulerParticipant?.guest_email || '',
         account_address: schedulerParticipant?.account_address || '',
+        guest_email: schedulerParticipant?.guest_email || '',
+        name: schedulerParticipant?.name || 'Guest',
       }
 
       const meetingResult = await updateMeeting(

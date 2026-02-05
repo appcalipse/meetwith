@@ -37,7 +37,6 @@ const AllPolls = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
 
-  // Fetch metadata to get upgradeRequired status
   const { data: pollsMetadata } = useQuery({
     queryKey: ['quickpolls-metadata'],
     queryFn: () =>
@@ -45,6 +44,7 @@ const AllPolls = () => {
     staleTime: 30000,
   })
   const canCreateQuickPoll = !pollsMetadata?.upgradeRequired
+  const canSchedulePolls = pollsMetadata?.canSchedule ?? true
 
   const {
     ongoingPollsCount,
@@ -97,32 +97,34 @@ const AllPolls = () => {
             </Text>
           </VStack>
 
-          <Button
-            leftIcon={<HiMiniPlusCircle size={20} color="#323F4B" />}
-            bg="primary.200"
-            color="neutral.900"
-            px={5}
-            py={2.5}
-            fontSize="15px"
-            fontWeight="600"
-            borderRadius="8px"
-            w={{ base: '100%', md: 'auto' }}
-            _hover={{
-              bg: 'primary.300',
-            }}
-            _active={{
-              bg: 'primary.400',
-            }}
-            onClick={() => push('/dashboard/create-poll')}
-            isDisabled={!canCreateQuickPoll}
-            title={
-              !canCreateQuickPoll
-                ? 'Upgrade to Pro to create more active polls'
-                : undefined
-            }
-          >
-            Run new poll
-          </Button>
+          <VStack align={{ base: 'stretch', md: 'flex-end' }} spacing={2}>
+            <Button
+              leftIcon={<HiMiniPlusCircle size={20} color="#323F4B" />}
+              bg="primary.200"
+              color="neutral.900"
+              px={5}
+              py={2.5}
+              fontSize="15px"
+              fontWeight="600"
+              borderRadius="8px"
+              w={{ base: '100%', md: 'auto' }}
+              _hover={{
+                bg: 'primary.300',
+              }}
+              _active={{
+                bg: 'primary.400',
+              }}
+              onClick={() => push('/dashboard/create-poll')}
+              isDisabled={!canCreateQuickPoll}
+              title={
+                !canCreateQuickPoll
+                  ? 'Upgrade to Pro to create more active polls'
+                  : undefined
+              }
+            >
+              Run new poll
+            </Button>
+          </VStack>
         </Flex>
 
         {/* Tabs with Search Section */}
@@ -207,7 +209,11 @@ const AllPolls = () => {
           {/* Poll Cards */}
           <TabPanels mt={6}>
             <TabPanel p={0}>
-              <OngoingPolls searchQuery={debouncedSearchQuery} />
+              <OngoingPolls
+                searchQuery={debouncedSearchQuery}
+                upgradeRequired={pollsMetadata?.upgradeRequired}
+                canSchedule={canSchedulePolls}
+              />
             </TabPanel>
             <TabPanel p={0}>
               <PastPolls searchQuery={debouncedSearchQuery} />

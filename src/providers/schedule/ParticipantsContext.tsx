@@ -18,7 +18,7 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
-import { getContactsLean, getGroupsFull } from '@/utils/api_helper'
+import { getContactsLean } from '@/utils/api_helper'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { handleApiError } from '@/utils/error_helper'
 import { getMergedParticipants } from '@/utils/schedule.helper'
@@ -34,11 +34,13 @@ export interface IParticipantsContext {
   >
   meetingMembers: Array<Account>
   meetingOwners: Array<ParticipantInfo>
-  groups: Array<GetGroupsFullResponse>
+  group: GetGroupsFullResponse | undefined
   isGroupPrefetching: boolean
   isContactsPrefetching: boolean
   contacts: Array<LeanContact>
-  setGroups: React.Dispatch<React.SetStateAction<Array<GetGroupsFullResponse>>>
+  setGroup: React.Dispatch<
+    React.SetStateAction<GetGroupsFullResponse | undefined>
+  >
   setParticipants: React.Dispatch<
     React.SetStateAction<Array<ParticipantInfo | IGroupParticipant>>
   >
@@ -93,12 +95,11 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   >([
     {
       account_address: currentAccount?.address,
-      name: currentAccount?.preferences?.name,
-      type: ParticipantType.Scheduler,
-      status: ParticipationStatus.Accepted,
-      slot_id: '',
       meeting_id: '',
-      isHidden: true,
+      name: currentAccount?.preferences?.name,
+      slot_id: '',
+      status: ParticipationStatus.Accepted,
+      type: ParticipantType.Scheduler,
     },
   ])
 
@@ -120,7 +121,9 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   >({})
   const [meetingMembers, setMeetingMembers] = useState<Array<Account>>([])
   const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
-  const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
+  const [group, setGroup] = useState<GetGroupsFullResponse | undefined>(
+    undefined
+  )
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
   const [contacts, setContacts] = useState<Array<LeanContact>>([])
   const [isContactsPrefetching, setIsContactsPrefetching] = useState(false)
@@ -167,22 +170,7 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
       return newGroupMembersAvailabilities
     })
   }
-  const fetchGroups = async () => {
-    setIsGroupPrefetching(true)
-    try {
-      const fetchedGroups = await getGroupsFull(
-        undefined,
-        undefined,
-        undefined,
-        false
-      )
-      setGroups(fetchedGroups)
-    } catch (error) {
-      handleApiError('Error fetching groups.', error)
-    } finally {
-      setIsGroupPrefetching(false)
-    }
-  }
+
   const fetchContacts = async () => {
     setIsContactsPrefetching(true)
     try {
@@ -195,7 +183,7 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     }
   }
   const handlePrefetchContacts = async () => {
-    await Promise.all([fetchContacts(), fetchGroups()])
+    await Promise.all([fetchContacts()])
   }
   useEffect(() => {
     if (!skipFetching) {
@@ -213,12 +201,17 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   }, [groupAvailability])
 
   const allAvailaibility = useMemo(
-    () => getMergedParticipants(participants, groups, groupAvailability),
-    [participants, groups, groupAvailability, currentAccount?.address]
+    () =>
+      getMergedParticipants(participants, groupAvailability, group).filter(
+        p => {
+          return !p.isHidden
+        }
+      ),
+    [participants, groupAvailability, currentAccount?.address, group]
   )
   const allParticipants = useMemo(
-    () => getMergedParticipants(participants, groups, groupAvailability),
-    [participants, groups, groupAvailability, currentAccount?.address]
+    () => getMergedParticipants(participants, groupAvailability, group),
+    [participants, groupAvailability, currentAccount?.address, group]
   )
   const toggleAvailability = (accountAddress: string) => {
     const addr = accountAddress.toLowerCase()
@@ -296,32 +289,32 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     }
   }
   const value = {
-    participants,
-    standAloneParticipants,
-    groupParticipants,
+    addGroup,
+    allAvailaibility,
+    allParticipants,
+    contacts,
     groupAvailability,
     groupMembersAvailabilities,
+    groupParticipants,
+    group,
+    isContactsPrefetching,
+    isGroupPrefetching,
     meetingMembers,
     meetingOwners,
-    groups,
-    setGroups,
-    isGroupPrefetching,
-    setParticipants,
-    setGroupParticipants,
+    participants,
+    removeGroup,
+    removeParticipant,
     setGroupAvailability,
     setGroupMembersAvailabilities,
+    setGroupParticipants,
+    setGroup,
+    setIsGroupPrefetching,
     setMeetingMembers,
     setMeetingOwners,
-    setIsGroupPrefetching,
-    addGroup,
-    removeGroup,
-    contacts,
-    isContactsPrefetching,
+    setParticipants,
     setStandAloneParticipants,
-    removeParticipant,
+    standAloneParticipants,
     toggleAvailability,
-    allParticipants,
-    allAvailaibility,
   }
 
   return (

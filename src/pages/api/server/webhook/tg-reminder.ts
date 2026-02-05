@@ -41,8 +41,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
                   seconds: 60,
                 })
                 const startInterval: Interval = {
-                  start: reminderTime,
                   end: reminderTimeEnd,
+                  start: reminderTime,
                 }
                 if (!isWithinInterval(currentTime, startInterval)) continue
                 const message = `You have a meeting (${

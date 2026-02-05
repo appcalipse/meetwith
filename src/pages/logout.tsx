@@ -25,8 +25,8 @@ export default function LogoutPage() {
 
   return (
     <>
-      <Container maxW="7xl" mt={8} flex={1}>
-        <VStack alignItems="center" py={10} px={6}>
+      <Container flex={1} maxW="7xl" mt={8}>
+        <VStack alignItems="center" px={6} py={10}>
           <Loading label="Logging out..." />
         </VStack>
       </Container>

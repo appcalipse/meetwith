@@ -10,13 +10,12 @@ import {
 } from '@chakra-ui/react'
 import type { FC } from 'react'
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa6'
-
+import { DashboardEvent } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
-
 import UpComingEvent from './UpcomingEvent'
 
 interface MobileUpcomingEventsProps {
-  data?: Array<MeetingDecrypted>
+  data?: Array<DashboardEvent>
 }
 
 const MobileUpcomingEvents: FC<MobileUpcomingEventsProps> = ({ data }) => {
@@ -59,7 +58,7 @@ const MobileUpcomingEvents: FC<MobileUpcomingEventsProps> = ({ data }) => {
                     variant="outline"
                     colorScheme="primary"
                     mt={2}
-                    mx="auto"
+                    w="100%"
                   >
                     View All Meetings
                   </Button>

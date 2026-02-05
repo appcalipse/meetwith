@@ -86,7 +86,9 @@ export const useLogin = () => {
           shouldRedirect &&
             (await router.push(
               redirectPath
-                ? `${redirectPath}&authstate=${state}`
+                ? `${redirectPath}${
+                    redirectPath.includes('?') ? '&' : '?'
+                  }state=${state}`
                 : `/dashboard/settings/details?state=${state}`
             ))
           return
@@ -119,15 +121,15 @@ export const useLogin = () => {
       }
       Sentry.captureException(error)
       toast({
-        title: 'Error',
         description: error instanceof Error ? error.message : String(error),
-        status: 'error',
         duration: 7000,
-        position: 'top',
         isClosable: true,
+        position: 'top',
+        status: 'error',
+        title: 'Error',
       })
     }
   }
 
-  return { handleLogin, currentAccount, logged, loginIn, login, setLoginIn }
+  return { currentAccount, handleLogin, logged, login, loginIn, setLoginIn }
 }

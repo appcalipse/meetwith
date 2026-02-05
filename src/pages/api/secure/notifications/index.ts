@@ -22,9 +22,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       req.body as AccountNotifications
 
     try {
-      const currentSubscriptions = await getAccountNotificationSubscriptions(
-        account_address
-      )
+      const currentSubscriptions =
+        await getAccountNotificationSubscriptions(account_address)
 
       const newEmailNotification = newSubscriptions.notification_types.find(
         type => type.channel === NotificationChannel.EMAIL
@@ -78,9 +77,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   } else if (req.method === 'GET') {
     const account_address = req.session.account!.address
-    const subscriptions = await getAccountNotificationSubscriptions(
-      account_address
-    )
+    const subscriptions =
+      await getAccountNotificationSubscriptions(account_address)
     return res.status(200).json(subscriptions)
   }
 

@@ -23,7 +23,10 @@ import {
   getPollParticipantById,
   updateGuestParticipantDetails,
 } from '@/utils/api_helper'
-import { saveGuestPollDetails } from '@/utils/storage'
+import {
+  saveGuestPollDetails,
+  saveQuickPollSignInContext,
+} from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
 
@@ -47,6 +50,8 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     clearGuestAvailabilitySlots,
     currentParticipantId,
     setIsEditingAvailability,
+    setCurrentParticipantId,
+    setCurrentGuestEmail,
   } = useQuickPollAvailability()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -143,12 +148,14 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
           email: email.trim().toLowerCase(),
           name: fullName.trim(),
         })
+        setCurrentParticipantId(participantId)
+        setCurrentGuestEmail(email.trim().toLowerCase())
       }
 
       setIsEditingAvailability(false)
 
       onSuccess(isProfileUpdateOnly)
-    } catch (error) {
+    } catch (_error) {
       showErrorToast(
         'Failed to save details',
         'There was an error saving your details. Please try again.'
@@ -158,12 +165,22 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     }
   }
 
+  const openAuthForPoll = () => {
+    saveQuickPollSignInContext({
+      pollSlug: pollData.poll.slug,
+      pollId: pollData.poll.id,
+      pollTitle: pollData.poll.title,
+      returnUrl: window.location.href,
+    })
+    openConnection(`/poll/${pollData.poll.slug}`)
+  }
+
   const handleSignIn = () => {
-    openConnection()
+    openAuthForPoll()
   }
 
   const handleSignUp = () => {
-    openConnection()
+    openAuthForPoll()
   }
 
   const handleBack = () => {

@@ -24,7 +24,7 @@ interface TokenGateValidationProps {
 }
 
 const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
-  const [chosenGate, setChosenGate] = useState<GateCondition | null>(null)
+  const [_chosenGate, setChosenGate] = useState<GateCondition | null>(null)
   const { currentAccount } = useLogin()
   const [firstToken, setFirstToken] = useState<
     (GateCondition['elements'][number] & { image?: string }) | undefined
@@ -87,8 +87,8 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
   const bgColor = !props.userAccount
     ? '#FFC700'
     : props.isGateValid
-    ? 'neutral.900'
-    : '#F3B5B4'
+      ? 'neutral.900'
+      : '#F3B5B4'
   return loading ? (
     <Box
       mt={10}

@@ -17,8 +17,7 @@ import { MdKeyboard, MdMouse } from 'react-icons/md'
 
 import TimezoneSelector from '@/components/TimezoneSelector'
 import { useAllMeetingTypes } from '@/hooks/useAllMeetingTypes'
-import { TimeRange } from '@/types/Account'
-import { Account } from '@/types/Account'
+import { Account, TimeRange } from '@/types/Account'
 import {
   handleCopyToDays,
   sortAvailabilitiesByWeekday,

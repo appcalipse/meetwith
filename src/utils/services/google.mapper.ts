@@ -14,7 +14,10 @@ import {
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 
 import { getBaseEventId } from '../calendar_sync_helpers'
-import { isJson } from '../generic_utils'
+import { MeetingPermissions } from '../constants/schedule'
+import { extractUrlFromText, isJson } from '../generic_utils'
+import { isValidUrl } from '../validations'
+import { CalendarServiceHelper } from './calendar.helper'
 
 interface DateTimeTimeZone {
   dateTime: string
@@ -28,61 +31,75 @@ export class GoogleEventMapper {
   static toUnified(
     googleEvent: calendar_v3.Schema$Event,
     calendarId: string,
-    accountEmail: string
+    calendarName: string,
+    accountEmail: string,
+    isReadOnlyCalendar: boolean = false
   ): UnifiedEvent {
+    const permissions: MeetingPermissions[] = []
+    const isOrganizer = googleEvent.organizer?.self
+    if (googleEvent.guestsCanModify || isOrganizer) {
+      permissions.push(MeetingPermissions.EDIT_MEETING)
+    }
+    if (googleEvent.guestsCanInviteOthers || isOrganizer) {
+      permissions.push(MeetingPermissions.INVITE_GUESTS)
+    }
+    if (googleEvent.guestsCanSeeOtherGuests || isOrganizer) {
+      permissions.push(MeetingPermissions.SEE_GUEST_LIST)
+    }
+
     return {
-      id: this.generateInternalId(googleEvent),
-      title: googleEvent.summary || '(No title)',
-      description: googleEvent.description,
-      start: this.parseDateTime(googleEvent.start!, true),
-      end: this.parseDateTime(googleEvent.end!),
-      isAllDay: !googleEvent.start?.dateTime, // If no dateTime, it's all-day
-
-      source: TimeSlotSource.GOOGLE,
-      sourceEventId: googleEvent.id!,
-      calendarId,
       accountEmail,
-
-      meeting_url:
-        googleEvent.location ||
-        googleEvent.hangoutLink ||
-        googleEvent.conferenceData?.entryPoints?.find(ep => ep.uri)?.uri ||
-        '',
-      webLink: googleEvent.htmlLink,
       attendees: this.mapAttendees(googleEvent.attendees || []),
-      recurrence: this.mapRecurrence(googleEvent.recurrence),
-      status: this.mapEventStatus(googleEvent),
+      calendarId,
+      calendarName,
+      description: CalendarServiceHelper.parseDescriptionToRichText(
+        googleEvent.description?.trim()
+      ),
+      end: this.parseDateTime(googleEvent.end!),
+      etag: googleEvent.etag,
+      id: this.generateInternalId(googleEvent),
+      isAllDay: !googleEvent.start?.dateTime, // If no dateTime, it's all-day
+      isReadOnlyCalendar,
 
       lastModified: googleEvent.updated
         ? new Date(googleEvent.updated)
         : new Date(),
-      etag: googleEvent.etag,
 
+      meeting_url: this.getCalendarMeetingUrl(googleEvent) || '',
+      permissions,
       providerData: {
         google: {
-          colorId: googleEvent.colorId,
-          visibility: googleEvent.visibility,
-          transparency: googleEvent.transparency,
-          iCalUID: googleEvent.iCalUID,
-          sequence: googleEvent.sequence,
-          conferenceData: googleEvent.conferenceData,
-          gadget: googleEvent.gadget,
           anyoneCanAddSelf: googleEvent.anyoneCanAddSelf,
+          attachments: googleEvent.attachments,
+          colorId: googleEvent.colorId,
+          conferenceData: googleEvent.conferenceData,
+          eventType: googleEvent.eventType,
+          extendedProperties: googleEvent.extendedProperties,
+          gadget: googleEvent.gadget,
           guestsCanInviteOthers: googleEvent.guestsCanInviteOthers,
           guestsCanModify: googleEvent.guestsCanModify,
           guestsCanSeeOtherGuests: googleEvent.guestsCanSeeOtherGuests,
-          privateCopy: googleEvent.privateCopy,
-          locked: googleEvent.locked,
           hangoutLink: googleEvent.hangoutLink,
-          eventType: googleEvent.eventType,
-          attachments: googleEvent.attachments,
-          reminders: googleEvent.reminders,
-          source: googleEvent.source,
-          extendedProperties: googleEvent.extendedProperties,
+          iCalUID: googleEvent.iCalUID,
+          locked: googleEvent.locked,
           originalStartTime: googleEvent.originalStartTime,
+          privateCopy: googleEvent.privateCopy,
           recurringEventId: googleEvent.recurringEventId,
+          reminders: googleEvent.reminders,
+          sequence: googleEvent.sequence,
+          source: googleEvent.source,
+          transparency: googleEvent.transparency,
+          visibility: googleEvent.visibility,
         },
       },
+      recurrence: this.mapRecurrence(googleEvent.recurrence),
+
+      source: TimeSlotSource.GOOGLE,
+      sourceEventId: googleEvent.id!,
+      start: this.parseDateTime(googleEvent.start!, true),
+      status: this.mapEventStatus(googleEvent),
+      title: googleEvent.summary || '(No title)',
+      webLink: googleEvent.htmlLink,
     }
   }
 
@@ -93,40 +110,75 @@ export class GoogleEventMapper {
     const googleData = unifiedEvent.providerData?.google || {}
 
     const googleEvent: calendar_v3.Schema$Event = {
-      id: unifiedEvent.sourceEventId,
-      summary: unifiedEvent.title,
-      description: unifiedEvent.description,
-      start: this.createDateTime(unifiedEvent.start, unifiedEvent.isAllDay),
-      end: this.createDateTime(unifiedEvent.end, unifiedEvent.isAllDay),
-
-      location: unifiedEvent.meeting_url,
+      anyoneCanAddSelf: googleData.anyoneCanAddSelf,
+      attachments: googleData.attachments ?? undefined,
       attendees: this.createGoogleAttendees(unifiedEvent.attendees || []),
-      recurrence: unifiedEvent.recurrence?.providerRecurrence?.google?.rrule,
-      status: this.mapUnifiedStatusToGoogle(unifiedEvent.status),
 
       colorId: googleData.colorId,
-      visibility: googleData.visibility,
-      transparency: googleData.transparency,
-      sequence: googleData.sequence,
       conferenceData: googleData.conferenceData ?? undefined,
+      description: CalendarServiceHelper.convertHtmlToPlainText(
+        unifiedEvent.description?.trim() || ''
+      ),
+      end: this.createDateTime(unifiedEvent.end, unifiedEvent.isAllDay),
+      eventType: googleData.eventType,
+      extendedProperties: googleData.extendedProperties,
       gadget: googleData.gadget,
-      anyoneCanAddSelf: googleData.anyoneCanAddSelf,
       guestsCanInviteOthers: googleData.guestsCanInviteOthers,
       guestsCanModify: googleData.guestsCanModify,
       guestsCanSeeOtherGuests: googleData.guestsCanSeeOtherGuests,
-      privateCopy: googleData.privateCopy,
+      id: unifiedEvent.sourceEventId,
+
+      location: unifiedEvent.meeting_url,
       locked: googleData.locked,
-      eventType: googleData.eventType,
-      attachments: googleData.attachments ?? undefined,
+      privateCopy: googleData.privateCopy,
+      recurrence: unifiedEvent.recurrence?.providerRecurrence?.google?.rrule,
       reminders: googleData.reminders,
+      sequence: googleData.sequence,
       source: googleData.source,
-      extendedProperties: googleData.extendedProperties,
+      start: this.createDateTime(unifiedEvent.start, unifiedEvent.isAllDay),
+      status: this.mapUnifiedStatusToGoogle(unifiedEvent.status),
+      summary: unifiedEvent.title,
+      transparency: googleData.transparency,
+      visibility: googleData.visibility,
     }
 
     return googleEvent
   }
 
   // Helper Methods
+  private static getCalendarMeetingUrl(googleEvent: calendar_v3.Schema$Event) {
+    const entryPointUrl = googleEvent.conferenceData?.entryPoints?.find(
+      ep => ep.uri && isValidUrl(ep.uri)
+    )?.uri
+    if (entryPointUrl && isValidUrl(entryPointUrl)) {
+      return entryPointUrl
+    }
+    const hangoutUrl = googleEvent.hangoutLink
+    if (hangoutUrl && isValidUrl(hangoutUrl)) {
+      return hangoutUrl
+    }
+    if (googleEvent.location) {
+      if (isValidUrl(googleEvent.location)) {
+        return googleEvent.location
+      }
+
+      // case 1: Try to extract URL from location text (e.g., "Meeting at https://zoom.us/j/123456")
+      const extractedUrlLocation = extractUrlFromText(googleEvent.location)
+      if (extractedUrlLocation) {
+        return extractedUrlLocation
+      }
+    }
+    if (googleEvent.description) {
+      // case 2: Try to extract URL from description text (e.g., "Meeting at https://zoom.us/j/123456")
+      const extractedUrlDescription = extractUrlFromText(
+        googleEvent.description
+      )
+      if (extractedUrlDescription) {
+        return extractedUrlDescription
+      }
+    }
+    return undefined
+  }
 
   private static generateInternalId(
     googleEvent: calendar_v3.Schema$Event
@@ -142,6 +194,7 @@ export class GoogleEventMapper {
 
     return parsed.setZone(dto.timeZone, { keepLocalTime: false })
   }
+
   private static parseDateTime(
     dateTime: calendar_v3.Schema$EventDateTime,
     isStart?: boolean
@@ -169,20 +222,20 @@ export class GoogleEventMapper {
   ): UnifiedAttendee[] {
     return googleAttendees.map(attendee => ({
       email: attendee.email!,
-      name: attendee.displayName,
-      status: this.mapAttendeeStatus(attendee.responseStatus),
       isOrganizer: attendee.organizer || false,
+      name: attendee.displayName,
       providerData: {
         google: {
-          resource: attendee.resource,
-          optional: attendee.optional,
-          responseStatus: attendee.responseStatus,
-          comment: attendee.comment,
           additionalGuests: attendee.additionalGuests,
+          comment: attendee.comment,
           id: attendee.id,
+          optional: attendee.optional,
+          resource: attendee.resource,
+          responseStatus: attendee.responseStatus,
           self: attendee.self,
         },
       },
+      status: this.mapAttendeeStatus(attendee.responseStatus),
     }))
   }
 
@@ -229,24 +282,24 @@ export class GoogleEventMapper {
     const ruleset = new RRuleSet()
     ruleset.rrule(rrule)
     return {
-      frequency: rrule.options.freq,
-      interval: rrule.options.interval || 1,
-      daysOfWeek: rrule.options.byweekday,
       dayOfMonth: Array.isArray(rrule.options.bymonthday)
         ? rrule.options.bymonthday[0]
         : rrule.options.bymonthday,
-      weekOfMonth: Array.isArray(rrule.options.bysetpos)
-        ? rrule.options.bysetpos[0]
-        : rrule.options.bysetpos,
+      daysOfWeek: rrule.options.byweekday,
       endDate: rrule.options.until,
-      occurrenceCount: rrule.options.count,
       excludeDates: ruleset.exdates(),
+      frequency: rrule.options.freq,
+      interval: rrule.options.interval || 1,
+      occurrenceCount: rrule.options.count,
 
       providerRecurrence: {
         google: {
           rrule: recurrence,
         },
       },
+      weekOfMonth: Array.isArray(rrule.options.bysetpos)
+        ? rrule.options.bysetpos[0]
+        : rrule.options.bysetpos,
     }
   }
 
@@ -281,13 +334,13 @@ export class GoogleEventMapper {
     if (!byday) return undefined
 
     const dayMap: Record<string, DayOfWeek> = {
-      SU: DayOfWeek.SUNDAY,
+      FR: DayOfWeek.FRIDAY,
       MO: DayOfWeek.MONDAY,
+      SA: DayOfWeek.SATURDAY,
+      SU: DayOfWeek.SUNDAY,
+      TH: DayOfWeek.THURSDAY,
       TU: DayOfWeek.TUESDAY,
       WE: DayOfWeek.WEDNESDAY,
-      TH: DayOfWeek.THURSDAY,
-      FR: DayOfWeek.FRIDAY,
-      SA: DayOfWeek.SATURDAY,
     }
 
     // Handle patterns like "MO,WE,FR" or "1MO" (first Monday)
@@ -373,15 +426,15 @@ export class GoogleEventMapper {
     attendees: UnifiedAttendee[]
   ): calendar_v3.Schema$EventAttendee[] {
     return attendees.map(attendee => ({
-      email: attendee.email,
-      displayName: attendee.name,
-      organizer: attendee.isOrganizer,
-      responseStatus: this.mapUnifiedAttendeeStatusToGoogle(attendee.status),
-      resource: attendee.providerData?.google?.resource,
-      optional: attendee.providerData?.google?.optional,
-      comment: attendee.providerData?.google?.comment,
       additionalGuests: attendee.providerData?.google?.additionalGuests,
+      comment: attendee.providerData?.google?.comment,
+      displayName: attendee.name,
+      email: attendee.email,
       id: attendee.providerData?.google?.id,
+      optional: attendee.providerData?.google?.optional,
+      organizer: attendee.isOrganizer,
+      resource: attendee.providerData?.google?.resource,
+      responseStatus: this.mapUnifiedAttendeeStatusToGoogle(attendee.status),
     }))
   }
 
@@ -421,17 +474,17 @@ export class GoogleEventMapper {
     if (!recurrence) return undefined
 
     const rrule = new RRule({
-      freq: recurrence.frequency,
-      interval: recurrence.interval || 1,
-      byweekday: recurrence.daysOfWeek,
       bymonthday: recurrence.dayOfMonth ? [recurrence.dayOfMonth] : undefined,
       bysetpos: recurrence.weekOfMonth ? [recurrence.weekOfMonth] : undefined,
-      until: recurrence.endDate || undefined,
+      byweekday: recurrence.daysOfWeek,
       count: recurrence.occurrenceCount || undefined,
+      freq: recurrence.frequency,
+      interval: recurrence.interval || 1,
+      until: recurrence.endDate || undefined,
     })
 
     const ruleset = rrule.toString()
-    return isJson(ruleset) ? JSON.parse(ruleset) : ruleset
+    return isJson(ruleset) ? JSON.parse(ruleset) : [ruleset]
   }
 
   private static mapDayToGoogle(day: DayOfWeek): string {

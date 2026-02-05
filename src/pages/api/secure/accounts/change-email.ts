@@ -65,9 +65,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .json({ error: 'Token has already been used or is invalid' })
     }
 
-    const currentNotifications = await getAccountNotificationSubscriptions(
-      account_address
-    )
+    const currentNotifications =
+      await getAccountNotificationSubscriptions(account_address)
 
     const emailChannel = currentNotifications.notification_types.find(
       n => n.channel === 'email'
@@ -114,9 +113,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     return res.status(200).json({
-      success: true,
-      message: 'Email updated successfully',
       account: { address: account_address, email: newEmail },
+      message: 'Email updated successfully',
+      success: true,
     })
   } catch (error) {
     Sentry.captureException(error)

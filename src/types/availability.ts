@@ -1,17 +1,12 @@
 import { UseMutationResult } from '@tanstack/react-query'
-
-import { TimeRange } from './Account'
-import { MeetingType } from './Account'
+import { DayAvailability, MeetingType, TimeRange } from './Account'
 
 export interface AvailabilityBlock {
   id: string
   title: string
   timezone: string
   isDefault: boolean
-  weekly_availability: Array<{
-    weekday: number
-    ranges: TimeRange[]
-  }>
+  weekly_availability: Array<DayAvailability>
   meetingTypes?: MeetingType[]
 }
 
@@ -25,7 +20,7 @@ export interface UseAvailabilityBlocksResult {
     {
       title: string
       timezone: string
-      weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+      weekly_availability: Array<DayAvailability>
       is_default?: boolean
     }
   >
@@ -36,7 +31,7 @@ export interface UseAvailabilityBlocksResult {
       id: string
       title: string
       timezone: string
-      weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+      weekly_availability: Array<DayAvailability>
       is_default?: boolean
     }
   >
@@ -49,7 +44,7 @@ export interface UseAvailabilityBlocksResult {
       modifiedData: {
         title: string
         timezone: string
-        weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+        weekly_availability: Array<DayAvailability>
         is_default: boolean
       }
     }

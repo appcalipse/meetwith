@@ -13,10 +13,11 @@ import {
   Text,
   Tooltip,
   useColorModeValue,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
 import { DateTime } from 'luxon'
-import { FC, useMemo, useRef } from 'react'
+import { FC, useEffect, useMemo, useRef, useState } from 'react'
 import { FaRegCopy, FaTrash } from 'react-icons/fa6'
 import { Frequency } from 'rrule'
 import sanitizeHtml from 'sanitize-html'
@@ -28,21 +29,24 @@ import {
   isAccepted,
   isDeclined,
   isPendingAction,
+  UnifiedAttendee,
   UnifiedEvent,
 } from '@/types/Calendar'
+import { TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import { updateCalendarRsvpStatus } from '@/utils/api_helper'
 import { dateToLocalizedRange } from '@/utils/calendar_manager'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { queryClient } from '@/utils/react_query'
-
+import { useToastHelpers } from '@/utils/toasts'
+import { rsvpQueue } from '@/utils/workers/rsvp.queue'
+import { DeleteEventDialog } from '../schedule/delete-event-dialog'
 import { defineLabel } from './MeetingCard'
 
 interface CalendarEventCardProps {
   event: UnifiedEvent
   timezone: string
-  timeWindow: { start: DateTime; end: DateTime }
-  currentAccountAddress?: string
+  removeEventFromCache: (eventId: string) => void
   updateAttendeeStatus: (
     eventId: string,
     accountEmail: string,
@@ -63,39 +67,48 @@ const getRecurrenceLabel = (freq?: Frequency) => {
       return null
   }
 }
+const getActors = (event: UnifiedEvent) =>
+  event.attendees?.find(attendee => attendee.email === event.accountEmail)
 
 const CalendarEventCard: FC<CalendarEventCardProps> = ({
   event,
   timezone,
   updateAttendeeStatus,
-  currentAccountAddress,
-  timeWindow,
+  removeEventFromCache,
 }) => {
-  const borderColor = useColorModeValue('gray.200', 'neutral.700')
-  const textColor = useColorModeValue('gray.600', 'gray.400')
-  const labelBgColor = useColorModeValue('blue.50', 'blue.900')
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const label = defineLabel(event.start as Date, event.end as Date, timezone)
   const { copyFeedbackOpen, handleCopy } = useClipboard()
   const rsvpAbortControllerRef = useRef<AbortController | null>(null)
-
-  const getUserStatus = () => {
-    const userAttendee = event.attendees?.find(
-      a => a.email === event.accountEmail
-    )
-    return userAttendee?.status
-  }
+  const { showErrorToast } = useToastHelpers()
   const bgColor = useColorModeValue('white', 'neutral.900')
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
   const isRecurring =
     event?.recurrence && Object.values(event?.recurrence).length > 0
   const recurrenceLabel = getRecurrenceLabel(event?.recurrence?.frequency)
-  const handleDelete = () => {}
+  const isRsvpAllowed = useMemo(() => {
+    if (event.source === TimeSlotSource.OFFICE) {
+      return event.providerData?.office365?.responseRequested !== false
+    }
+    return true
+  }, [event])
   const participants = useMemo(() => {
     const result: string[] = []
-    for (const attendee of event.attendees || [
-      { email: event.accountEmail, name: 'You', isOrganizer: true },
-    ]) {
+    const attendees: UnifiedAttendee[] =
+      event?.attendees && event?.attendees.length > 0
+        ? event.attendees
+        : [
+            {
+              email: event.accountEmail,
+              name: 'You',
+              isOrganizer: true,
+              providerData: {},
+              status: AttendeeStatus.ACCEPTED,
+            },
+          ]
+
+    for (const attendee of attendees) {
       let display = ''
       if (attendee.email === event.accountEmail) {
         display = 'You'
@@ -107,99 +120,148 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
       if (attendee.isOrganizer) {
         display = `${display} (Organizer)`
       }
+      result.push(display)
     }
     return result.join(', ')
   }, [event])
-  const actor = useMemo(() => {
-    return event.attendees?.find(
-      attendee => attendee.email === event.accountEmail
-    )
+
+  const [actor, setActor] = useState(getActors(event))
+  useEffect(() => {
+    setActor(getActors(event))
   }, [event])
   const handleRSVP = async (status: AttendeeStatus) => {
+    const previousStatus = actor?.status
+
+    if (rsvpAbortControllerRef.current) {
+      rsvpAbortControllerRef.current.abort()
+    }
+    const abortController = new AbortController()
+    rsvpAbortControllerRef.current = abortController
+
+    setActor(prev => {
+      if (prev) {
+        return { ...prev, status }
+      }
+      return prev
+    })
+
     try {
-      const abortController = new AbortController()
-      rsvpAbortControllerRef.current = abortController
-      updateAttendeeStatus(event.id, event.accountEmail, status)
-      await updateCalendarRsvpStatus(
+      await rsvpQueue.enqueue(
         event.calendarId,
         event.sourceEventId,
         status,
         event.accountEmail,
         abortController.signal
       )
-    } catch (e) {
+
+      updateAttendeeStatus(event.sourceEventId, event.accountEmail, status)
+    } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        (error.message === 'Aborted' || error.message === 'Superseded')
+      ) {
+        // Intentionally cancelled, local state already updated by new request
+        return
+      }
+
+      setActor(prev => {
+        if (prev && previousStatus) {
+          return { ...prev, status: previousStatus }
+        }
+        return prev
+      })
+      showErrorToast(
+        'RSVP Update Failed',
+        'There was an error updating your RSVP status. Please try again.'
+      )
     } finally {
       rsvpAbortControllerRef.current = null
     }
   }
   return (
     <Box
+      bgColor={bgColor}
+      borderRadius="lg"
+      mt={3}
+      position="relative"
+      pt={{
+        base: 4,
+      }}
       shadow="sm"
       width="100%"
-      borderRadius="lg"
-      position="relative"
-      bgColor={bgColor}
-      mt={3}
-      pt={{
-        base: label ? 3 : 0,
-        md: label ? 1.5 : 0,
-      }}
     >
       <HStack position="absolute" right={0} top={0}>
         {label && (
           <Badge
-            borderRadius={0}
+            alignSelf="flex-end"
             borderBottomRightRadius={4}
+            borderRadius={0}
+            colorScheme={label.color}
             px={2}
             py={1}
-            colorScheme={label.color}
-            alignSelf="flex-end"
           >
             {label.text}
           </Badge>
         )}
         {isRecurring && recurrenceLabel && (
           <Badge
-            borderRadius={0}
+            alignSelf="flex-end"
             borderBottomRightRadius={4}
+            borderRadius={0}
+            colorScheme={'gray'}
             px={2}
             py={1}
-            colorScheme={'gray'}
-            alignSelf="flex-end"
           >
             Recurrence: {recurrenceLabel}
           </Badge>
         )}{' '}
         <Badge
-          fontSize="xs"
-          borderRadius={0}
           borderBottomRightRadius={4}
+          borderRadius={0}
+          colorScheme={'primary'}
+          fontSize="xs"
           px={2}
           py={1}
-          colorScheme={'primary'}
         >
           {event.source}
         </Badge>
+        {event.calendarName && (
+          <Badge
+            borderBottomRightRadius={4}
+            borderRadius={0}
+            colorScheme={'primary'}
+            fontSize="xs"
+            px={2}
+            py={1}
+            textTransform="none"
+          >
+            {event.calendarName}{' '}
+            {event.calendarName.toLowerCase() !==
+            event.accountEmail.toLowerCase()
+              ? ` - ${event.accountEmail}`
+              : ''}
+          </Badge>
+        )}
       </HStack>
-      <Box p={6} pt={isRecurring ? 8 : 6} maxWidth="100%">
-        <VStack alignItems="start" position="relative" gap={6}>
+      <Box maxWidth="100%" p={6} pt={isRecurring ? 8 : 6}>
+        <VStack alignItems="start" gap={6} position="relative">
           <Flex
             alignItems="start"
-            w="100%"
             flexDirection={{
               base: 'column-reverse',
               md: 'row',
             }}
-            gap={4}
             flexWrap="wrap"
+            gap={4}
+            w="100%"
           >
-            <VStack flex={1} alignItems="start">
-              <Flex flex={1} alignItems="center" gap={3}>
+            <VStack alignItems="start" flex={1}>
+              <Flex alignItems="center" flex={1} gap={3}>
                 <Heading fontSize="24px">
                   <strong>{event?.title || 'No Title'}</strong>
                 </Heading>
               </Flex>
-              <Text fontSize="16px" alignItems="start">
+              <Text alignItems="start" fontSize="16px">
                 <strong>
                   {dateToLocalizedRange(
                     event.start as Date,
@@ -218,28 +280,31 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
               }}
             >
               <Link
-                href={addUTMParams(event?.meeting_url || '')}
-                isExternal
-                onClick={() => logEvent('Joined a meeting')}
-                whiteSpace="nowrap"
-                overflow="hidden"
-                textOverflow="ellipsis"
-                maxWidth="100%"
-                textDecoration="none"
-                flex={1}
                 _hover={{
                   textDecoration: 'none',
                 }}
+                flex={1}
+                href={addUTMParams(event?.meeting_url || '')}
+                isExternal
+                maxWidth="100%"
+                onClick={() => logEvent('Joined a meeting')}
+                overflow="hidden"
+                textDecoration="none"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
               >
                 <Button colorScheme="primary">Join meeting</Button>
               </Link>
-              <Tooltip label="Delete meeting" placement="top" display="none">
+              <Tooltip
+                label="Delete meeting"
+                placement="top"
+                display={event.isReadOnlyCalendar ? 'none' : undefined}
+              >
                 <IconButton
-                  color={iconColor}
                   aria-label="delete"
+                  color={iconColor}
                   icon={<FaTrash size={16} />}
-                  onClick={handleDelete}
-                  display="none"
+                  onClick={onOpen}
                 />
               </Tooltip>
             </HStack>
@@ -248,46 +313,46 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
           <Divider />
           <VStack alignItems="start" maxWidth="100%">
             <HStack alignItems="flex-start" maxWidth="100%">
-              <Text display="inline" width="100%" whiteSpace="balance">
+              <Text display="inline" whiteSpace="balance" width="100%">
                 <strong>Participants: </strong>
                 {participants || 'No participants'}
               </Text>
             </HStack>
             <HStack
               alignItems="flex-start"
-              maxWidth="100%"
               flexWrap="wrap"
               gap={2}
+              maxWidth="100%"
               width="100%"
             >
-              <Text whiteSpace="nowrap" fontWeight={700}>
+              <Text fontWeight={700} whiteSpace="nowrap">
                 Meeting link:
               </Text>
               <Flex flex={1} overflow="hidden">
                 <Link
-                  whiteSpace="nowrap"
-                  textOverflow="ellipsis"
-                  overflow="hidden"
                   href={addUTMParams(event.meeting_url || '')}
                   isExternal
                   onClick={() => logEvent('Clicked to start meeting')}
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
                 >
                   {event.meeting_url}
                 </Link>
                 <Tooltip
+                  isOpen={copyFeedbackOpen}
                   label="Link copied"
                   placement="top"
-                  isOpen={copyFeedbackOpen}
                 >
                   <Button
-                    w={4}
                     colorScheme="primary"
-                    variant="link"
+                    leftIcon={
+                      <FaRegCopy cursor="pointer" display="block" size={16} />
+                    }
                     onClick={() => handleCopy(event.meeting_url || '')}
-                    leftIcon={<FaRegCopy />}
+                    variant="link"
+                    w={4}
                   />
-
-                  {/* <FaRegCopy size={16} display="block" cursor="pointer" /> */}
                 </Tooltip>
               </Flex>
             </HStack>
@@ -297,88 +362,135 @@ const CalendarEventCard: FC<CalendarEventCardProps> = ({
                   <strong>Description:</strong>
                 </Text>
                 <Text
+                  className="rich-text-wrapper"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeHtml(event.description, {
+                      allowedTags: [
+                        'a',
+                        'p',
+                        'br',
+                        'strong',
+                        'em',
+                        'u',
+                        'ul',
+                        'ol',
+                        'li',
+                        'span',
+                        'div',
+                      ],
+                      allowedAttributes: { a: ['href', 'target', 'rel'] },
+                      transformTags: {
+                        a: (tagName, attribs) => ({
+                          tagName,
+                          attribs: {
+                            ...attribs,
+                            target: '_blank',
+                            rel: 'noopener noreferrer',
+                          },
+                        }),
+                      },
+                      textFilter: text => text.trimStart(),
+                    })
+                      .replace(/^(<br\s*\/?>|\s)+/i, '') // Remove leading breaks/whitespace
+                      .replace(/(<br\s*\/?>|\s)+$/i, '') // Remove trailing breaks/whitespace
+                      .replace(/(<br\s*\/?>){3,}/gi, '<br><br>'), // Collapse excessive line breaks
+                  }}
+                  suppressHydrationWarning
+                  whiteSpace="pre-wrap"
                   width="100%"
                   wordBreak="break-word"
-                  whiteSpace="pre-wrap"
-                  suppressHydrationWarning
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizeHtml(event.description.trim(), {
-                      allowedAttributes: false,
-                      allowVulnerableTags: false,
-                    }),
-                  }}
                 />
               </HStack>
             )}
           </VStack>
-          <HStack alignItems="center" gap={3.5} display="none">
-            <Text fontWeight={700}>RSVP:</Text>
-            <HStack alignItems="center" gap={2}>
-              <Tag
-                bg={isAccepted(actor?.status) ? 'green.500' : 'transparent'}
-                borderWidth={1}
-                borderColor={'green.500'}
-                rounded="full"
-                px={3}
-                fontSize={{
-                  lg: '16px',
-                  md: '14px',
-                  base: '12px',
-                }}
-                onClick={() => handleRSVP(AttendeeStatus.ACCEPTED)}
-              >
-                <TagLabel
-                  color={isAccepted(actor?.status) ? 'white' : 'green.500'}
+          {actor && (
+            <HStack
+              alignItems="center"
+              gap={4}
+              display={
+                event.isReadOnlyCalendar || !isRsvpAllowed ? 'none' : 'flex'
+              }
+              w="100%"
+            >
+              <Text fontWeight={700}>RSVP:</Text>
+              <HStack alignItems="center" gap={2} w="fit-content">
+                <Tag
+                  bg={isAccepted(actor?.status) ? 'green.500' : 'transparent'}
+                  borderColor={'green.500'}
+                  borderWidth={1}
+                  cursor="pointer"
+                  fontSize={{
+                    lg: '16px',
+                    md: '14px',
+                    base: '12px',
+                  }}
+                  onClick={() => handleRSVP(AttendeeStatus.ACCEPTED)}
+                  px={3}
+                  rounded="full"
                 >
-                  Yes
-                </TagLabel>
-              </Tag>
-              <Tag
-                bg={isDeclined(actor?.status) ? 'red.250' : 'transparent'}
-                borderWidth={1}
-                borderColor={'red.250'}
-                rounded="full"
-                px={3}
-                fontSize={{
-                  lg: '16px',
-                  md: '14px',
-                  base: '12px',
-                }}
-                onClick={() => handleRSVP(AttendeeStatus.DECLINED)}
-              >
-                <TagLabel
-                  color={isDeclined(actor?.status) ? 'white' : 'red.250'}
+                  <TagLabel
+                    color={isAccepted(actor?.status) ? 'white' : 'green.500'}
+                  >
+                    Yes
+                  </TagLabel>
+                </Tag>
+                <Tag
+                  bg={isDeclined(actor?.status) ? 'red.250' : 'transparent'}
+                  borderColor={'red.250'}
+                  borderWidth={1}
+                  cursor="pointer"
+                  fontSize={{
+                    lg: '16px',
+                    md: '14px',
+                    base: '12px',
+                  }}
+                  onClick={() => handleRSVP(AttendeeStatus.DECLINED)}
+                  px={3}
+                  rounded="full"
                 >
-                  No
-                </TagLabel>
-              </Tag>
-              <Tag
-                bg={
-                  isPendingAction(actor?.status) ? 'primary.300' : 'transparent'
-                }
-                borderWidth={1}
-                borderColor={'primary.300'}
-                rounded="full"
-                px={3}
-                fontSize={{
-                  lg: '16px',
-                  md: '14px',
-                  base: '12px',
-                }}
-                onClick={() => handleRSVP(AttendeeStatus.NEEDS_ACTION)}
-              >
-                <TagLabel
-                  color={
-                    isPendingAction(actor?.status) ? 'white' : 'primary.300'
+                  <TagLabel
+                    color={isDeclined(actor?.status) ? 'white' : 'red.250'}
+                  >
+                    No
+                  </TagLabel>
+                </Tag>
+                <Tag
+                  bg={
+                    isPendingAction(actor?.status)
+                      ? 'primary.300'
+                      : 'transparent'
                   }
+                  borderColor={'primary.300'}
+                  borderWidth={1}
+                  cursor="pointer"
+                  fontSize={{
+                    lg: '16px',
+                    md: '14px',
+                    base: '12px',
+                  }}
+                  onClick={() => handleRSVP(AttendeeStatus.NEEDS_ACTION)}
+                  px={3}
+                  rounded="full"
                 >
-                  Maybe
-                </TagLabel>
-              </Tag>
+                  <TagLabel
+                    color={
+                      isPendingAction(actor?.status) ? 'white' : 'primary.300'
+                    }
+                  >
+                    Maybe
+                  </TagLabel>
+                </Tag>
+              </HStack>
             </HStack>
-          </HStack>
+          )}
         </VStack>
       </Box>
+      <DeleteEventDialog
+        afterCancel={() => removeEventFromCache(event.sourceEventId)}
+        event={event}
+        isOpen={isOpen}
+        onClose={onClose}
+      />
     </Box>
   )
 }

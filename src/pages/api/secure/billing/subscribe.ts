@@ -29,7 +29,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const accountAddress = req.session.account.address.toLowerCase()
 
       // Validate request body
-      const { billing_plan_id } = req.body as SubscribeRequest
+      const { billing_plan_id, handle } = req.body as SubscribeRequest
 
       if (!billing_plan_id) {
         return res.status(400).json({ error: 'billing_plan_id is required' })
@@ -53,8 +53,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       // Query Stripe API for price ID
       const stripe = new StripeService()
       const prices = await stripe.prices.list({
-        product: stripeProductId,
         active: true,
+        product: stripeProductId,
       })
 
       if (!prices.data || prices.data.length === 0) {
@@ -68,9 +68,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       // Get or create Stripe customer
       let customerId: string | undefined
-      const existingStripeSubscription = await getStripeSubscriptionByAccount(
-        accountAddress
-      )
+      const existingStripeSubscription =
+        await getStripeSubscriptionByAccount(accountAddress)
 
       if (existingStripeSubscription?.stripe_customer_id) {
         // Customer already exists, use existing customer ID
@@ -119,7 +118,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const cancelUrl = `${appUrl}/dashboard/settings/subscriptions?checkout=cancel`
 
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
-        mode: 'subscription',
+        cancel_url: cancelUrl,
         customer: customerId,
         line_items: [
           {
@@ -127,25 +126,26 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             quantity: 1,
           },
         ],
+        mode: 'subscription',
         subscription_data: {
           metadata: {
             account_address: accountAddress,
             billing_plan_id: billing_plan_id,
             calculated_expiry_time: calculatedExpiryTime.toISOString(),
             is_trial: isTrialEligible.toString(),
+            ...(handle && { handle }),
           },
           ...(isTrialEligible ? { trial_period_days: 14 } : {}),
         },
         success_url: successUrl,
-        cancel_url: cancelUrl,
       }
 
       const session = await stripe.checkout.sessions.create(sessionParams)
 
       const response: SubscribeResponse = {
-        success: true,
         checkout_url: session.url || undefined,
         message: 'Checkout session created successfully',
+        success: true,
       }
 
       return res.status(200).json(response)

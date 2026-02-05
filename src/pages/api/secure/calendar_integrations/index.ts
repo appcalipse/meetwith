@@ -12,6 +12,7 @@ import {
   getConnectedCalendars,
   isProAccountAsync,
   removeConnectedCalendar,
+  syncConnectedCalendars,
 } from '@/utils/database'
 import { CalendarSyncLimitExceededError } from '@/utils/errors'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
@@ -34,33 +35,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const totalCount = await countCalendarIntegrations(accountAddress)
 
-    // Force all connected calendars to renew its Tokens in background
-    // if needed for displaying calendars...
-    ;(async () => {
-      for (const calendar of calendars) {
-        try {
-          const integration = getConnectedCalendarIntegration(
-            accountAddress,
-            calendar.email,
-            calendar.provider,
-            calendar.payload
-          )
-          await integration.refreshConnection()
-        } catch (e) {
-          console.error(e)
-          // await removeConnectedCalendar(
-          //   req.session.account!.address,
-          //   calendar.email,
-          //   calendar.provider
-          // )
-        }
-      }
-    })()
-
     try {
-      // Calculate metadata for free tier
-      const hidden = !isPro ? Math.max(0, totalCount - 1) : 0
-      const upgradeRequired = !isPro && totalCount >= 1
+      // Force all connected calendars to renew its Tokens in background
+      // if needed for displaying calendars...
+      void syncConnectedCalendars(accountAddress)
+      const upgradeRequired = !isPro && totalCount >= 2
 
       const response = calendars.map(it => {
         let grantedPermissions = 0
@@ -94,19 +73,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           }
         }
         return {
-          id: it.id,
-          provider: it.provider,
-          email: it.email,
           calendars: it.calendars,
+          email: it.email,
           expectedPermissions,
           grantedPermissions,
+          id: it.id,
+          provider: it.provider,
         }
       })
 
       return res.status(200).json({
         calendars: response,
+        isPro,
         total: totalCount,
-        hidden,
         upgradeRequired,
       })
     } catch (e) {
@@ -134,8 +113,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           (cal: { sync: boolean }) => cal.sync === true
         ).length
 
-        // Free tier restriction: Maximum 1 calendar sync total
-        if (existingSyncCount + newSyncCount > 1) {
+        // Free tier restriction: Maximum 2 calendar syncs total
+        if (existingSyncCount + newSyncCount > 2) {
           throw new CalendarSyncLimitExceededError()
         }
       }

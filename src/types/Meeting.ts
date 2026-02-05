@@ -60,9 +60,14 @@ export interface SlotInstance extends DBSlot {
   status: RecurringStatus
   slot_id: string
 }
-export interface SlotSeries extends DBSlot {
+export interface SlotSeries extends Omit<DBSlot, 'start' | 'end' | 'version'> {
   rrule: string[]
-  slot_id: string
+  template_end: string | Date
+  template_start: string | Date
+  effective_end: string | Date | null
+  effective_start: string | Date
+  ical_uid: string
+  meeting_id: string
 }
 export interface AccountSlot extends DBSlot {
   priority: 1
@@ -81,9 +86,7 @@ export interface ExtendedEventDBSlot extends DBSlot {
 export interface ExtendedSlotInstance extends SlotInstance {
   meeting_id: string
 }
-export interface ExtendedSlotSeries extends SlotInstance {
-  meeting_id: string
-}
+export interface ExtendedSlotSeries extends SlotSeries {}
 export const isSlotInstance = (
   slot: DBSlot | SlotInstance | SlotSeries
 ): slot is SlotInstance => {
@@ -92,14 +95,14 @@ export const isSlotInstance = (
 export const isSlotSeries = (
   slot: DBSlot | SlotInstance | SlotSeries
 ): slot is SlotSeries => {
-  return (slot as SlotSeries).slot_id !== undefined
+  return (slot as SlotSeries).rrule !== undefined
 }
 export const isDBSlot = (
   slot: DBSlot | SlotInstance | SlotSeries
 ): slot is DBSlot => {
   return (
     (slot as SlotInstance).series_id === undefined &&
-    (slot as SlotSeries).slot_id === undefined
+    (slot as SlotSeries).rrule === undefined
   )
 }
 
@@ -177,6 +180,7 @@ export interface MeetingInfo {
   provider?: MeetingProvider
   recurrence?: MeetingRepeat
   permissions?: Array<MeetingPermissions>
+  rrule: string[]
 }
 
 export interface MeetingDecrypted<T = Date> extends MeetingInfo {
@@ -186,6 +190,7 @@ export interface MeetingDecrypted<T = Date> extends MeetingInfo {
   version: DBSlot['version']
   meeting_info_encrypted: Encrypted
   user_type?: 'account' | 'guest'
+  series_id?: string | null
 }
 
 export interface ExistingMeetingData {

@@ -26,7 +26,7 @@ export class CurrencyService {
         return { success: false }
       }
       const data: T = await response.json()
-      return { success: true, data }
+      return { data, success: true }
     } catch {
       return { success: false }
     }
@@ -47,8 +47,8 @@ export class CurrencyService {
     }
 
     return {
-      success: true,
       exchangeRate: data.data['mid'],
+      success: true,
     }
   }
 
@@ -67,8 +67,8 @@ export class CurrencyService {
     }
 
     return {
-      success: true,
       exchangeRate: data['conversion_rate'],
+      success: true,
     }
   }
 
@@ -85,8 +85,8 @@ export class CurrencyService {
     }
 
     return {
-      success: true,
       exchangeRate: data['rates'][currency.toUpperCase()],
+      success: true,
     }
   }
 
@@ -103,8 +103,8 @@ export class CurrencyService {
     }
 
     return {
-      success: true,
       exchangeRate: data['usd'][currency.toLowerCase()],
+      success: true,
     }
   }
 
@@ -114,23 +114,20 @@ export class CurrencyService {
       return paikama.exchangeRate
     }
 
-    const fallBack1 = await this.getExchangeRateWithExchangeRateFallBack1(
-      currency
-    )
+    const fallBack1 =
+      await this.getExchangeRateWithExchangeRateFallBack1(currency)
     if (fallBack1.success && fallBack1.exchangeRate) {
       return fallBack1.exchangeRate
     }
 
-    const fallBack2 = await this.getExchangeRateWithExchangeRateFallBack2(
-      currency
-    )
+    const fallBack2 =
+      await this.getExchangeRateWithExchangeRateFallBack2(currency)
     if (fallBack2.success && fallBack2.exchangeRate) {
       return fallBack2.exchangeRate
     }
 
-    const fallBack3 = await this.getExchangeRateWithExchangeRateFallBack3(
-      currency
-    )
+    const fallBack3 =
+      await this.getExchangeRateWithExchangeRateFallBack3(currency)
     if (fallBack3.success && fallBack3.exchangeRate) {
       return fallBack3.exchangeRate
     }
@@ -143,8 +140,8 @@ export class CurrencyService {
       QueryKeys.exchangeRate(currency),
       () => this.getExchangeRate(currency),
       {
-        staleTime: 1000 * 60 * 60 * 24,
         cacheTime: 1000 * 60 * 60 * 24,
+        staleTime: 1000 * 60 * 60 * 24,
       }
     )
   }

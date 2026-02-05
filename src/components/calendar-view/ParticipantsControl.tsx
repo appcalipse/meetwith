@@ -94,7 +94,7 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
     setGroupParticipants,
     setGroupAvailability,
     setParticipants,
-    groups,
+    group,
     groupParticipants,
     participants,
   } = useParticipants()
@@ -155,8 +155,8 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
     const seenIdentifiers = new Set<string>()
     const meetingParticipants = getMergedParticipants(
       participants,
-      groups,
-      groupParticipants
+      groupParticipants,
+      group
     )
     return meetingParticipants.reduce<Array<ParticipantInfo>>(
       (accumulator, participant) => {
@@ -186,7 +186,7 @@ const ParticipantsControl: React.FC<ParticipantsControlProps> = ({
       },
       []
     )
-  }, [participants, groupParticipants, groups])
+  }, [participants, groupParticipants, group])
   const handleChipInputChange = React.useCallback(
     (updatedItems: ParticipantInfo[]) => {
       if (!canEditMeetingParticipants) return

@@ -7,6 +7,7 @@ import { DBSlot, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 
 import { MeetingPermissions } from './constants/schedule'
+import { isValidUrl } from './validations'
 
 export const zeroAddress = '0x0000000000000000000000000000000000000000' as const
 
@@ -147,7 +148,7 @@ export const shouldEnforceColorOnPath = (pathname: string): boolean => {
 export const isJson = (str: string) => {
   try {
     JSON.parse(str)
-  } catch (e) {
+  } catch (_e) {
     return false
   }
   return true
@@ -170,14 +171,14 @@ export const renderProviderName = (provider: MeetingProvider) => {
 
 export const convertMinutes = (minutes: number) => {
   if (minutes < 60) {
-    return { amount: minutes, type: 'minutes', isEmpty: false }
+    return { amount: minutes, isEmpty: false, type: 'minutes' }
   } else if (minutes < 60 * 24) {
-    return { amount: Math.floor(minutes / 60), type: 'hours', isEmpty: false }
+    return { amount: Math.floor(minutes / 60), isEmpty: false, type: 'hours' }
   } else {
     return {
       amount: Math.floor(minutes / (60 * 24)),
-      type: 'days',
       isEmpty: false,
+      type: 'days',
     }
   }
 }
@@ -213,9 +214,9 @@ export const formatCurrency = (
   minimumFractionDigits = 0
 ) => {
   return new Intl.NumberFormat('en-US', {
-    style: 'currency',
     currency,
     minimumFractionDigits,
+    style: 'currency',
   }).format(amount)
 }
 
@@ -319,4 +320,45 @@ export const clearValidationError = <T extends Record<string, unknown>>(
       return prev
     })
   }
+}
+
+/**
+ * Extracts a URL from text that may contain meeting links
+ * e.g., "Meeting at https://zoom.us/j/123456" -> "https://zoom.us/j/123456"
+ */
+export const extractUrlFromText = (text?: string | null): string | null => {
+  if (!text) return null
+
+  // Whitelist of allowed meeting domains
+  const allowedDomains = [
+    'zoom.us',
+    'meet.google.com',
+    'teams.microsoft.com',
+    'jitsi.meet',
+    'huddle01.app',
+  ]
+
+  // URL regex pattern to match http/https URLs
+  const urlPattern = /(https?:\/\/[^\s<>"]+)/gi
+  const matches = text.match(urlPattern)
+
+  if (!matches || matches.length === 0) return null
+
+  // Return the first valid URL from allowed domains
+  for (const match of matches) {
+    // Clean up potential trailing punctuation
+    const cleanUrl = match.replace(/[.,;!?]+$/, '')
+
+    if (isValidUrl(cleanUrl)) {
+      // Check if URL is from an allowed domain
+      const isAllowedDomain = allowedDomains.some(domain =>
+        cleanUrl.includes(domain)
+      )
+      if (isAllowedDomain) {
+        return cleanUrl
+      }
+    }
+  }
+
+  return null
 }

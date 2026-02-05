@@ -1,6 +1,7 @@
 import { Box, HStack, Text, useColorModeValue } from '@chakra-ui/react'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import React, { FC } from 'react'
+
 interface IProps {
   label: string
   activeSteps: PublicSchedulingSteps[]

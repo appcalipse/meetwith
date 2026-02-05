@@ -53,11 +53,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(404).json({ error: error.message })
     }
     return res.status(500).json({
-      error: error instanceof Error ? error.message : String(error),
       details:
         typeof error === 'object' && error !== null && 'details' in error
           ? error.details
           : undefined,
+      error: error instanceof Error ? error.message : String(error),
     })
   }
   return res.status(405).send('Method not allowed')

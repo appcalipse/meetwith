@@ -24,7 +24,6 @@ import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
-
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { TimeRange } from '@/types/Account'
@@ -35,7 +34,6 @@ import { DiscordUserInfo } from '@/types/Discord'
 import { TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import {
-  createAvailabilityBlock,
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
   internalFetch,
@@ -50,8 +48,9 @@ import { generateDefaultAvailabilities } from '@/utils/calendar_manager'
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import { getQuickPollSignInContext } from '@/utils/storage'
+import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
-
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
 import TimezoneSelector from '../TimezoneSelector'
 import { OnboardingAvailabilityStep } from './OnboardingAvailabilityStep'
@@ -61,7 +60,7 @@ const OnboardingModal = () => {
 
   // Callback Control
   const queryParams = useSearchParams()
-  const state = queryParams.get('state')
+  const state = queryParams.get('calState') ?? queryParams.get('state')
   const stateObject =
     typeof state === 'string'
       ? JSON.parse(Buffer.from(state as string, 'base64').toString())
@@ -467,7 +466,7 @@ const OnboardingModal = () => {
             },
             stateObject.jti
           )
-      } catch (e) {
+      } catch (_e) {
         toast({
           title: 'Error setting email',
           description:
@@ -480,6 +479,13 @@ const OnboardingModal = () => {
       }
       logEvent('Updated account details')
       login(updatedAccount)
+
+      const pollContext = getQuickPollSignInContext()
+      if (pollContext) {
+        setLoadingSave(false)
+        closeOnboarding()
+        return
+      }
 
       await router.push(
         !!stateObject.redirect
@@ -495,7 +501,16 @@ const OnboardingModal = () => {
 
   const activeStepColor = useColorModeValue('neutral.400', 'neutral.50')
   const stepColor = useColorModeValue('neutral.50', 'neutral.400')
-  const handleClose = () => closeOnboarding(stateObject.redirect)
+
+  const handleClose = () => {
+    const pollContext = getQuickPollSignInContext()
+    if (pollContext) {
+      closeOnboarding()
+    } else {
+      closeOnboarding(stateObject.redirect)
+    }
+  }
+
   return (
     <>
       <Modal
@@ -506,8 +521,16 @@ const OnboardingModal = () => {
         size="xl"
         isCentered
       >
-        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-        <ModalContent padding={{ base: 4, sm: 10, md: 20 }} maxW="45rem">
+        <ModalOverlay
+          bg="blackAlpha.600"
+          backdropFilter="blur(10px)"
+          zIndex={1600}
+        />
+        <ModalContent
+          padding={{ base: 4, sm: 10, md: 20 }}
+          maxW="45rem"
+          containerProps={{ zIndex: 1600 }}
+        >
           <Flex justifyContent="flex-end" mb={4}>
             <Button
               variant="ghost"

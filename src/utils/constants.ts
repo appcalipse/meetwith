@@ -23,7 +23,7 @@ const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 const discordRedirectUrl = `${baseURL}/dashboard/settings/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwith.xyz'
-const MODIFIED_BY_APP_TIMEOUT = 8 // in seconds
+const MODIFIED_BY_APP_TIMEOUT = 20 // in seconds
 const WEBHOOK_URL = `${apiUrl}/server/webhook/calendar/sync`
 
 const EMAIL_CHANGE_TOKEN_EXPIRY = '5m'
@@ -101,15 +101,15 @@ export const isSupportedCurrency = (
 
 export const getCurrencyDisplayName = (currency: string): string => {
   const currencyNames: Record<CommonCurrency, string> = {
-    USD: 'US Dollar',
+    AUD: 'Australian Dollar',
+    CAD: 'Canadian Dollar',
+    CHF: 'Swiss Franc',
     EUR: 'Euro',
     GBP: 'British Pound',
-    NGN: 'Nigerian Naira',
     INR: 'Indian Rupee',
-    CAD: 'Canadian Dollar',
-    AUD: 'Australian Dollar',
     JPY: 'Japanese Yen',
-    CHF: 'Swiss Franc',
+    NGN: 'Nigerian Naira',
+    USD: 'US Dollar',
   }
 
   return currencyNames[currency as CommonCurrency] || currency
@@ -156,3 +156,6 @@ export {
   WEBHOOK_URL,
   YEAR_DURATION_IN_SECONDS,
 }
+
+export const QUICKPOLL_SIGNIN_CONTEXT_KEY = 'quickpoll_signin_context'
+export const CONTEXT_EXPIRY_MS = 30 * 60 * 1000 // 30 minutes

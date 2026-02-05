@@ -11,16 +11,20 @@ import {
 } from '@/types/Calendar'
 import { TimeSlotSource } from '@/types/Meeting'
 import {
-  Attendee as O365Attendee,
   DateTimeTimeZone,
   ItemBody,
-  Location as O365Location,
   MicrosoftGraphEvent,
+  Attendee as O365Attendee,
+  Location as O365Location,
   PatternedRecurrence,
   RecurrencePattern,
   RecurrenceRange,
   ResponseStatus,
 } from '@/types/Office365'
+import { MeetingPermissions } from '../constants/schedule'
+import { extractUrlFromText } from '../generic_utils'
+import { isValidUrl } from '../validations'
+import { CalendarServiceHelper } from './calendar.helper'
 
 export class Office365EventMapper {
   /**
@@ -29,51 +33,69 @@ export class Office365EventMapper {
   static async toUnified(
     o365Event: MicrosoftGraphEvent,
     calendarId: string,
-    accountEmail: string
+    calendarName: string,
+    accountEmail: string,
+    isReadOnlyCalendar: boolean = false
   ): Promise<UnifiedEvent> {
+    const permissions: MeetingPermissions[] = []
+    const isOrganizer =
+      o365Event.organizer?.emailAddress?.address?.toLowerCase() ===
+      accountEmail.toLowerCase()
+
+    if (!o365Event.hideAttendees || isOrganizer) {
+      permissions.push(MeetingPermissions.SEE_GUEST_LIST)
+    }
+    if (o365Event.allowNewTimeProposals || isOrganizer) {
+      permissions.push(MeetingPermissions.EDIT_MEETING)
+    }
+    if (isOrganizer) {
+      permissions.push(MeetingPermissions.INVITE_GUESTS)
+    }
     return {
-      id: await this.generateInternalId(o365Event),
-      title: o365Event.subject || '(No title)',
-      description: this.extractDescription(o365Event.body),
-      start: this.parseDateTime(o365Event.start!),
-      end: this.parseDateTime(o365Event.end!),
-      isAllDay: o365Event.isAllDay || false,
-
-      source: TimeSlotSource.OFFICE,
-      sourceEventId: o365Event.id!,
-      calendarId,
       accountEmail,
-
-      meeting_url: this.mapLocation(o365Event) || undefined,
-      webLink: o365Event.webLink,
       attendees: this.mapAttendees(o365Event.attendees || []),
-      recurrence: this.mapRecurrence(o365Event.recurrence),
-      status: this.mapEventStatus(o365Event),
+      calendarId,
+      calendarName,
+      description: this.extractDescription(o365Event.body),
+      end: this.parseDateTime(o365Event.end!),
+      etag: o365Event.changeKey,
+      id: await this.generateInternalId(o365Event),
+      isAllDay: o365Event.isAllDay || false,
+      isReadOnlyCalendar,
 
       lastModified: o365Event.lastModifiedDateTime
         ? new Date(o365Event.lastModifiedDateTime)
         : new Date(),
-      etag: o365Event.changeKey,
 
+      meeting_url: this.mapLocation(o365Event) || undefined,
+      permissions,
       providerData: {
         office365: {
-          importance: o365Event.importance,
-          sensitivity: o365Event.sensitivity,
-          showAs: o365Event.showAs,
-          isOnlineMeeting: o365Event.isOnlineMeeting,
-          onlineMeetingProvider: o365Event.onlineMeetingProvider,
-          onlineMeetingUrl: o365Event.onlineMeetingUrl,
-          iCalUId: o365Event.iCalUId,
-          categories: o365Event.categories,
-          reminderMinutesBeforeStart: o365Event.reminderMinutesBeforeStart,
-          isReminderOn: o365Event.isReminderOn,
           allowNewTimeProposals: o365Event.allowNewTimeProposals,
-          responseRequested: o365Event.responseRequested,
+          categories: o365Event.categories,
           hideAttendees: o365Event.hideAttendees,
+          iCalUId: o365Event.iCalUId,
+          importance: o365Event.importance,
+          isOnlineMeeting: o365Event.isOnlineMeeting,
+          isReminderOn: o365Event.isReminderOn,
           locations: o365Event.locations,
           onlineMeeting: o365Event.onlineMeeting,
+          onlineMeetingProvider: o365Event.onlineMeetingProvider,
+          onlineMeetingUrl: o365Event.onlineMeetingUrl,
+          reminderMinutesBeforeStart: o365Event.reminderMinutesBeforeStart,
+          responseRequested: o365Event.responseRequested,
+          sensitivity: o365Event.sensitivity,
+          showAs: o365Event.showAs,
         },
       },
+      recurrence: this.mapRecurrence(o365Event.recurrence),
+
+      source: TimeSlotSource.OFFICE,
+      sourceEventId: o365Event.id!,
+      start: this.parseDateTime(o365Event.start!),
+      status: this.mapEventStatus(o365Event),
+      title: o365Event.subject || '(No title)',
+      webLink: o365Event.webLink,
     }
   }
 
@@ -84,29 +106,29 @@ export class Office365EventMapper {
     const o365Data = unifiedEvent.providerData?.office365 || {}
 
     return {
-      id: unifiedEvent.sourceEventId,
-      subject: unifiedEvent.title,
-      body: this.createItemBody(unifiedEvent.description || ''),
-      start: this.createDateTime(unifiedEvent.start),
-      end: this.createDateTime(unifiedEvent.end),
-      isAllDay: unifiedEvent.isAllDay,
-
-      location: this.createO365Location(unifiedEvent.meeting_url || ''),
+      allowNewTimeProposals: o365Data.allowNewTimeProposals,
       attendees: this.createO365Attendees(unifiedEvent.attendees || []),
-      recurrence: unifiedEvent.recurrence?.providerRecurrence?.office365,
+      body: this.createItemBody(unifiedEvent.description || ''),
+      categories: o365Data.categories,
+      end: this.createDateTime(unifiedEvent.end),
+      hideAttendees: o365Data.hideAttendees,
+      id: unifiedEvent.sourceEventId,
 
       // Office365-specific fields
       importance: o365Data.importance,
+      isAllDay: unifiedEvent.isAllDay,
+      isOnlineMeeting: o365Data.isOnlineMeeting,
+      isReminderOn: o365Data.isReminderOn,
+
+      location: this.createO365Location(unifiedEvent.meeting_url || ''),
+      onlineMeetingProvider: o365Data.onlineMeetingProvider,
+      recurrence: unifiedEvent.recurrence?.providerRecurrence?.office365,
+      reminderMinutesBeforeStart: o365Data.reminderMinutesBeforeStart,
+      responseRequested: o365Data.responseRequested,
       sensitivity: o365Data.sensitivity,
       showAs: o365Data.showAs,
-      isOnlineMeeting: o365Data.isOnlineMeeting,
-      onlineMeetingProvider: o365Data.onlineMeetingProvider,
-      categories: o365Data.categories,
-      reminderMinutesBeforeStart: o365Data.reminderMinutesBeforeStart,
-      isReminderOn: o365Data.isReminderOn,
-      allowNewTimeProposals: o365Data.allowNewTimeProposals,
-      responseRequested: o365Data.responseRequested,
-      hideAttendees: o365Data.hideAttendees,
+      start: this.createDateTime(unifiedEvent.start),
+      subject: unifiedEvent.title,
     }
   }
 
@@ -127,12 +149,7 @@ export class Office365EventMapper {
   private static extractDescription(body?: ItemBody): string | undefined {
     if (!body?.content) return undefined
 
-    // If HTML, you might want to strip HTML tags or convert to plain text
-    if (body.contentType === 'html') {
-      return body.content.replace(/<[^>]*>/g, '') // Simple HTML strip
-    }
-
-    return body.content
+    return CalendarServiceHelper.parseDescriptionToRichText(body.content.trim())
   }
 
   private static parseDateTime(dateTime: DateTimeTimeZone): Date {
@@ -144,21 +161,24 @@ export class Office365EventMapper {
   private static mapLocation(
     o365Event: MicrosoftGraphEvent
   ): string | undefined {
-    return (
-      o365Event?.onlineMeeting?.joinUrl ||
-      o365Event?.onlineMeetingUrl ||
-      o365Event?.location?.displayName ||
-      o365Event?.locations?.find(
-        loc =>
-          loc.displayName &&
-          (loc.displayName.includes('http://') ||
-            loc.displayName.includes('https://') ||
-            loc.displayName.includes('zoom.us') ||
-            loc.displayName.includes('teams.microsoft.com') ||
-            loc.displayName.includes('meet.google.com'))
-      )?.displayName ||
-      undefined
+    const loc = o365Event?.locations?.find(
+      loc => loc.displayName && isValidUrl(loc.displayName)
     )
+    if (isValidUrl(o365Event?.onlineMeeting?.joinUrl)) {
+      return o365Event?.onlineMeeting?.joinUrl
+    } else if (isValidUrl(o365Event?.onlineMeetingUrl)) {
+      return o365Event?.onlineMeetingUrl
+    } else if (isValidUrl(o365Event?.location?.displayName)) {
+      return o365Event?.location?.displayName
+    } else if (loc) {
+      return loc.displayName
+    } else {
+      const bodyUrl = extractUrlFromText(o365Event.body?.content)
+      if (bodyUrl && isValidUrl(bodyUrl)) {
+        return bodyUrl
+      }
+    }
+    return undefined
   }
 
   private static mapAttendees(
@@ -166,17 +186,17 @@ export class Office365EventMapper {
   ): UnifiedAttendee[] {
     return o365Attendees.map(attendee => ({
       email: attendee.emailAddress.address,
-      name: attendee.emailAddress.name,
-      status: this.mapAttendeeStatus(attendee.status),
       isOrganizer: attendee.type === 'required', // This is a simplification
+      name: attendee.emailAddress.name,
       providerData: {
         office365: {
-          type: attendee.type,
-          responseTime: attendee.status?.time,
           emailAddress: attendee.emailAddress,
+          responseTime: attendee.status?.time,
           status: attendee.status,
+          type: attendee.type,
         },
       },
+      status: this.mapAttendeeStatus(attendee.status),
     }))
   }
 
@@ -215,14 +235,13 @@ export class Office365EventMapper {
     if (!recurrence) return undefined
 
     return {
-      frequency: this.mapRecurrenceFrequency(recurrence.pattern.type),
-      interval: recurrence.pattern.interval,
-      daysOfWeek: this.mapDaysOfWeek(recurrence.pattern.daysOfWeek),
       dayOfMonth: recurrence.pattern.dayOfMonth,
-      weekOfMonth: this.mapWeekOfMonth(recurrence.pattern.index),
+      daysOfWeek: this.mapDaysOfWeek(recurrence.pattern.daysOfWeek),
       endDate: recurrence.range.endDate
         ? new Date(recurrence.range.endDate)
         : undefined,
+      frequency: this.mapRecurrenceFrequency(recurrence.pattern.type),
+      interval: recurrence.pattern.interval,
       occurrenceCount: recurrence.range.numberOfOccurrences,
 
       providerRecurrence: {
@@ -231,6 +250,7 @@ export class Office365EventMapper {
           range: recurrence.range,
         },
       },
+      weekOfMonth: this.mapWeekOfMonth(recurrence.pattern.index),
     }
   }
 
@@ -257,13 +277,13 @@ export class Office365EventMapper {
     if (!days) return undefined
 
     const dayMap: Record<string, DayOfWeek> = {
-      sunday: DayOfWeek.SUNDAY,
+      friday: DayOfWeek.FRIDAY,
       monday: DayOfWeek.MONDAY,
+      saturday: DayOfWeek.SATURDAY,
+      sunday: DayOfWeek.SUNDAY,
+      thursday: DayOfWeek.THURSDAY,
       tuesday: DayOfWeek.TUESDAY,
       wednesday: DayOfWeek.WEDNESDAY,
-      thursday: DayOfWeek.THURSDAY,
-      friday: DayOfWeek.FRIDAY,
-      saturday: DayOfWeek.SATURDAY,
     }
 
     return days.map(day => dayMap[day]).filter(Boolean)
@@ -274,10 +294,10 @@ export class Office365EventMapper {
   ): number | undefined {
     const indexMap: Record<string, number> = {
       first: 1,
-      second: 2,
-      third: 3,
       fourth: 4,
       last: -1,
+      second: 2,
+      third: 3,
     }
 
     return index ? indexMap[index] : undefined
@@ -289,8 +309,8 @@ export class Office365EventMapper {
     if (!description) return undefined
 
     return {
-      contentType: 'text',
       content: description,
+      contentType: 'text',
     }
   }
 
@@ -319,8 +339,8 @@ export class Office365EventMapper {
         address: attendee.email,
         name: attendee.name || '',
       },
-      type: attendee.isOrganizer ? 'required' : 'optional',
       status: this.createResponseStatus(attendee.status),
+      type: attendee.isOrganizer ? 'required' : 'optional',
     }))
   }
 
@@ -345,8 +365,8 @@ export class Office365EventMapper {
     if (!recurrence) return undefined
 
     const pattern: RecurrencePattern = {
-      type: this.mapUnifiedFrequencyToO365(recurrence.frequency),
       interval: recurrence.interval,
+      type: this.mapUnifiedFrequencyToO365(recurrence.frequency),
     }
 
     // Add day-specific rules
@@ -363,12 +383,12 @@ export class Office365EventMapper {
     }
 
     const range: RecurrenceRange = {
+      startDate: new Date().toISOString().split('T')[0], // You'll want to get actual start date
       type: recurrence.endDate
         ? 'endDate'
         : recurrence.occurrenceCount
-        ? 'numbered'
-        : 'noEnd',
-      startDate: new Date().toISOString().split('T')[0], // You'll want to get actual start date
+          ? 'numbered'
+          : 'noEnd',
     }
 
     if (recurrence.endDate) {

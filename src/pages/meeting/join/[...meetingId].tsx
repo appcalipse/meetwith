@@ -51,11 +51,11 @@ const JoinMeetingPage: NextPage = () => {
     return (
       <Container>
         <Flex
-          width="100%"
-          height="100%"
           alignItems="center"
+          height="100%"
           justifyContent="center"
           p={16}
+          width="100%"
         >
           <Loading label="" />
           Please wait while we load the meeting data...
@@ -68,32 +68,32 @@ const JoinMeetingPage: NextPage = () => {
     return (
       <Container>
         <Flex
-          width="100%"
-          height="100%"
           alignItems="center"
+          height="100%"
           justifyContent="center"
           p={16}
+          width="100%"
         >
           <VStack>
             <Heading
-              display="inline-block"
               as="h2"
-              size="2xl"
-              bgGradient="linear(to-r, primary.400, primary.600)"
               backgroundClip="text"
+              bgGradient="linear(to-r, primary.400, primary.600)"
+              display="inline-block"
+              size="2xl"
             >
               Ops
             </Heading>
             <Spacer />
-            <Image src="/assets/404.svg" alt="404" width="300px" />
+            <Image alt="404" src="/assets/404.svg" width="300px" />
             <Spacer />
             <Text pt={4}>
               Ooops, the meeting you are looking for was not found.
             </Text>
             <Spacer />
             <Button
-              onClick={() => router.push('/')}
               colorScheme="primary"
+              onClick={() => router.push('/')}
               variant="solid"
             >
               Go to Home
@@ -111,23 +111,23 @@ const JoinMeetingPage: NextPage = () => {
       return (
         <Container>
           <Flex
-            width="100%"
-            height="100%"
             alignItems="center"
+            height="100%"
             justifyContent="center"
             p={16}
+            width="100%"
           >
             <VStack>
               <Text pb={8}>You need to login to join this meeting</Text>
               <Button
                 colorScheme="primary"
-                size="lg"
-                onClick={() => openConnection()}
                 isLoading={loginIn}
                 leftIcon={<BiWallet />}
+                onClick={() => openConnection()}
+                size="lg"
               >
                 Sign in
-                <Box display={{ base: 'none', md: 'flex' }} as="span">
+                <Box as="span" display={{ base: 'none', md: 'flex' }}>
                   &#160;with wallet
                 </Box>
               </Button>
@@ -144,11 +144,11 @@ const JoinMeetingPage: NextPage = () => {
   return (
     <Container>
       <Flex
-        width="100%"
-        height="100%"
         alignItems="center"
+        height="100%"
         justifyContent="center"
         p={16}
+        width="100%"
       >
         <VStack>
           <Loading label="" />

@@ -15,10 +15,10 @@ export function rotateSize(width: number, height: number, rotation: number) {
   const rotRad = getRadianAngle(rotation)
 
   return {
-    width:
-      Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
     height:
       Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
+    width:
+      Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
   }
 }
 
@@ -184,8 +184,8 @@ export function readFile(file: Blob) {
           typeof reader.result == 'string'
             ? reader.result
             : reader.result
-            ? await arrayBufferToDataUrl(reader.result)
-            : undefined
+              ? await arrayBufferToDataUrl(reader.result)
+              : undefined
         ),
       false
     )

@@ -35,17 +35,12 @@ export default async function handler(
           headerRecord[key] = value[0] // Take first value if array
         }
       }
-      console.log(
-        process.env.THIRDWEB_WEBHOOK_SECRET,
-        JSON.stringify(req.body),
-        headerRecord
-      )
       const payload: WebhookPayload = await Bridge.Webhook.parse(
         JSON.stringify(req.body),
         headerRecord,
         process.env.THIRDWEB_WEBHOOK_SECRET!
       )
-      console.log(payload)
+      console.debug(payload)
       if (
         ['pay.onramp-transaction', 'pay.onchain-transaction'].includes(
           payload.type
@@ -94,8 +89,8 @@ export default async function handler(
             } catch (error) {
               captureException(error, {
                 extra: {
-                  subscriptionData: purchaseData,
                   payloadType: payload.type,
+                  subscriptionData: purchaseData,
                 },
               })
               console.error(
@@ -161,6 +156,8 @@ export default async function handler(
           let metadata
           if (payload.type === 'pay.onchain-transaction') {
             fee_breakdown = {
+              developer:
+                (fiat_equivalent * payload?.data?.developerFeeBps) / 100 ** 2,
               network:
                 payload.data.originToken?.priceUsd *
                   parseFloat(
@@ -170,8 +167,6 @@ export default async function handler(
                     )
                   ) -
                 fiat_equivalent,
-              developer:
-                (fiat_equivalent * payload?.data?.developerFeeBps) / 100 ** 2,
             }
             total_fee = Object.values(fee_breakdown).reduce(
               (acc, fee) => acc + fee,
@@ -187,30 +182,28 @@ export default async function handler(
             }
           }
           const transactionRequest: ConfirmCryptoTransactionRequest = {
-            transaction_hash: transactionHash as Address,
             amount: parsedAmount,
             chain: supportedChain?.chain,
+            fee_breakdown,
             fiat_equivalent,
+            guest_address,
+            guest_email,
+            guest_name,
             meeting_type_id: meeting_type_id ?? null,
+            metadata,
             payment_method: PaymentType.CRYPTO,
+            provider_reference_id,
             token_address,
             token_type: TokenType.ERC20,
-            guest_email,
-            guest_address,
-            guest_name,
-            provider_reference_id,
-            fee_breakdown,
             total_fee,
-            metadata,
+            transaction_hash: transactionHash as Address,
           }
           // Log so we can track in case of misses
-          // eslint-disable-next-line no-restricted-syntax
-          console.log(transactionRequest)
+
           const transaction = await createCryptoTransaction(
             transactionRequest,
             guest_address
           )
-          console.log(transaction)
 
           await pubSubManager.publishMessage(
             message_channel,

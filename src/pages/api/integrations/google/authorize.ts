@@ -8,6 +8,7 @@ import {
   CREDENTIALS_PATH,
   saveCredentials,
 } from '@/utils/services/master.google.service'
+
 const SCOPES = ['https://www.googleapis.com/auth/meetings.space.created']
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -24,8 +25,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       })
       if (!code) {
         const authUrl = client.generateAuthUrl({
-          redirect_uri: redirect_uri.toString(),
           access_type: 'offline',
+          redirect_uri: redirect_uri.toString(),
           scope: SCOPES.join(' '),
         })
         return res.redirect(authUrl)

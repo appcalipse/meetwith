@@ -25,45 +25,62 @@ import WalletAndPayment from '@/components/profile/WalletAndPayment'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
 import { EditMode, SettingsSection } from '@/types/Dashboard'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
-import Block from './components/Block'
 import ConnectCalendar from './ConnectCalendar'
 import ConnectedAccounts from './ConnectedAccounts'
+import Block from './components/Block'
 
 interface SettingsNavItem {
   name: string
   section: SettingsSection
+  isDisabled?: boolean
+}
+
+const getAllSettingsNavItems = (hasProAccess: boolean): SettingsNavItem[] => {
+  return [
+    { name: 'Account details', section: SettingsSection.DETAILS },
+    {
+      name: 'Connected calendars',
+      section: SettingsSection.CONNECTED_CALENDARS,
+    },
+    {
+      name: 'Connected accounts',
+      section: SettingsSection.CONNECTED_ACCOUNTS,
+    },
+    { name: 'Notifications', section: SettingsSection.NOTIFICATIONS },
+    {
+      name: 'Account plans & Billing',
+      section: SettingsSection.SUBSCRIPTIONS,
+    },
+    {
+      name: 'Wallet & Payments',
+      section: SettingsSection.WALLET_PAYMENT,
+      isDisabled: !hasProAccess,
+    },
+  ]
 }
 
 const Settings: React.FC<{
   currentAccount: Account
 }> = ({ currentAccount }) => {
   const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
-  const settingsNavItems: SettingsNavItem[] = useMemo(() => {
-    const tabs = [
-      { name: 'Account details', section: SettingsSection.DETAILS },
-      {
-        name: 'Connected calendars',
-        section: SettingsSection.CONNECTED_CALENDARS,
-      },
-      {
-        name: 'Connected accounts',
-        section: SettingsSection.CONNECTED_ACCOUNTS,
-      },
-      { name: 'Notifications', section: SettingsSection.NOTIFICATIONS },
-      {
-        name: 'Account plans & Billing',
-        section: SettingsSection.SUBSCRIPTIONS,
-      },
-      {
-        name: 'Wallet & Payments',
-        section: SettingsSection.WALLET_PAYMENT,
-      },
-    ]
-    return tabs
-  }, [])
+  const hasProAccess = useMemo(
+    () => Boolean(getActiveProSubscription(currentAccount)),
+    [currentAccount]
+  )
+
+  const allSettingsNavItems = useMemo(
+    () => getAllSettingsNavItems(hasProAccess),
+    [hasProAccess]
+  )
+
+  const settingsNavItems: SettingsNavItem[] = useMemo(
+    () => allSettingsNavItems.filter(item => !item.isDisabled),
+    [allSettingsNavItems]
+  )
   const [activeSection, setActiveSection] = useState<
     SettingsSection | undefined
   >(undefined)
@@ -129,18 +146,10 @@ const Settings: React.FC<{
       [SettingsSection.WALLET_PAYMENT]: '/dashboard/settings/wallet-payment',
     }
 
-    const { section: _omit, ...restQuery } = router.query ?? {}
-
-    const query: Record<string, string> = {}
-    Object.entries(restQuery).forEach(([k, v]) => {
-      if (typeof v === 'string') query[k] = v
-      else if (Array.isArray(v) && v.length) query[k] = v.join(',')
-    })
-
     router.replace(
       {
         pathname: sectionPath[section],
-        query,
+        query: {},
       },
       undefined,
       { shallow: true }
@@ -230,7 +239,7 @@ const Settings: React.FC<{
         setActiveSection(SettingsSection.DETAILS)
         break
     }
-  }, [router.asPath, router.isReady])
+  }, [router.asPath, router.isReady, allSettingsNavItems])
   useEffect(() => {
     if (router.query.code) {
       handleSectionNavigation(SettingsSection.CONNECTED_ACCOUNTS)

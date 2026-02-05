@@ -244,6 +244,15 @@ export class SubscriptionNotCustom extends Error {
   }
 }
 
+export class SubscriptionDomainUpdateNotAllowed extends Error {
+  constructor() {
+    super(
+      'Domain can only be updated for billing subscriptions or custom subscriptions. Legacy blockchain subscriptions require on-chain transactions.'
+    )
+    this.name = 'SubscriptionDomainUpdateNotAllowed'
+  }
+}
+
 export class MissingSubscriptionMetadataError extends Error {
   constructor() {
     super(
@@ -582,7 +591,7 @@ export class PaidMeetingTypeNotAllowedError extends Error {
 export class SchedulingGroupLimitExceededError extends Error {
   constructor() {
     super(
-      `Free tier allows only 5 scheduling groups. Upgrade to Pro for unlimited scheduling groups.`
+      `Free tier allows joining up to 5 groups. Upgrade to Pro to join unlimited groups and create your own.`
     )
     this.name = 'SchedulingGroupLimitExceededError'
   }
@@ -591,7 +600,7 @@ export class SchedulingGroupLimitExceededError extends Error {
 export class CalendarIntegrationLimitExceededError extends Error {
   constructor() {
     super(
-      `Free tier allows only 1 calendar integration. Upgrade to Pro for unlimited calendar integrations.`
+      `Free tier allows only 2 calendar integrations. Upgrade to Pro for unlimited calendar integrations.`
     )
     this.name = 'CalendarIntegrationLimitExceededError'
   }
@@ -600,16 +609,25 @@ export class CalendarIntegrationLimitExceededError extends Error {
 export class QuickPollLimitExceededError extends Error {
   constructor() {
     super(
-      `Free tier allows only 2 active polls. Upgrade to Pro for unlimited active polls.`
+      `Free tier allows only 1 active poll per month. Upgrade to Pro for unlimited active polls.`
     )
     this.name = 'QuickPollLimitExceededError'
+  }
+}
+
+export class QuickPollSchedulingLimitExceededError extends Error {
+  constructor() {
+    super(
+      `Free tier allows only 1 poll scheduling per month. Upgrade to Pro for unlimited poll scheduling.`
+    )
+    this.name = 'QuickPollSchedulingLimitExceededError'
   }
 }
 
 export class CalendarSyncLimitExceededError extends Error {
   constructor() {
     super(
-      `Free tier allows only 1 calendar sync. Upgrade to Pro for unlimited calendar syncs.`
+      `Free tier allows only 2 calendar syncs. Upgrade to Pro for unlimited calendar syncs.`
     )
     this.name = 'CalendarSyncLimitExceededError'
   }
@@ -790,6 +808,13 @@ export class QuickPollPermissionDeniedError extends Error {
   constructor(message = 'You do not have permission to perform this action') {
     super(message)
     this.name = 'QuickPollPermissionDeniedError'
+  }
+}
+
+export class QuickPollPrivatePollAccessDeniedError extends Error {
+  constructor() {
+    super('This is a private poll. You need to be invited to join.')
+    this.name = 'QuickPollPrivatePollAccessDeniedError'
   }
 }
 

@@ -1,6 +1,6 @@
 import { DateTime, Interval } from 'luxon'
 import { Frequency } from 'rrule'
-
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
   WebDAVAttendeeExtensions,
   WebDAVEventExtensions,
@@ -9,7 +9,6 @@ import {
   GoogleAttendeeExtensions,
   GoogleEventExtensions,
 } from '@/utils/services/google.mapper'
-
 import {
   ExtendedDBSlot,
   ExtendedSlotInstance,
@@ -45,6 +44,8 @@ export interface UnifiedEvent<T = Date> {
   source: TimeSlotSource
   sourceEventId: string
   calendarId: string
+  calendarName: string
+  isReadOnlyCalendar: boolean
   accountEmail: string
 
   meeting_url?: Optional<string>
@@ -52,6 +53,8 @@ export interface UnifiedEvent<T = Date> {
   attendees?: UnifiedAttendee[]
   recurrence?: UnifiedRecurrence | null
   status?: EventStatus
+
+  permissions: MeetingPermissions[]
 
   providerData?: {
     google?: Nullable<GoogleEventExtensions>
@@ -149,6 +152,19 @@ export interface CalendarEvents {
   mwwEvents: Array<ExtendedDBSlot | ExtendedSlotInstance | ExtendedSlotSeries>
   calendarEvents: Array<UnifiedEvent>
 }
+export type DashBoardMwwEvents = (ExtendedDBSlot | ExtendedSlotInstance) & {
+  decrypted: MeetingDecrypted
+}
+export type DashboardEvent = DashBoardMwwEvents | UnifiedEvent
+export const isDashboardMwwEvent = (
+  event: DashboardEvent
+): event is DashBoardMwwEvents => {
+  return 'decrypted' in event
+}
+export interface ExtendedCalendarEvents {
+  mwwEvents: Array<DashBoardMwwEvents>
+  calendarEvents: Array<UnifiedEvent>
+}
 export type WithInterval<T> = T & {
   interval: Interval
 }
@@ -218,5 +234,21 @@ export const mapParticipationStatusToAttendeeStatus = (
     case ParticipationStatus.Pending:
     default:
       return AttendeeStatus.NEEDS_ACTION
+  }
+}
+export const mapAttendeeStatusToParticipationStatus = (
+  status: AttendeeStatus
+): ParticipationStatus => {
+  switch (status) {
+    case AttendeeStatus.ACCEPTED:
+    case AttendeeStatus.COMPLETED:
+      return ParticipationStatus.Accepted
+    case AttendeeStatus.DECLINED:
+      return ParticipationStatus.Rejected
+    case AttendeeStatus.TENTATIVE:
+    case AttendeeStatus.NEEDS_ACTION:
+    case AttendeeStatus.DELEGATED:
+    default:
+      return ParticipationStatus.Pending
   }
 }

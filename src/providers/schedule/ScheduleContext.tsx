@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import type React from 'react'
-import { type ReactNode, createContext, useContext, useState } from 'react'
+import { createContext, type ReactNode, useContext, useState } from 'react'
 
 import { MeetingReminders } from '@/types/common'
 import {
@@ -8,12 +8,17 @@ import {
   MeetingProvider,
   MeetingRepeat,
 } from '@/types/Meeting'
+import { UpdateMode } from '@/utils/constants/meeting'
 import { MeetingPermissions } from '@/utils/constants/schedule'
+
+export type DurationMode = 'preset' | 'custom' | 'timeRange'
 
 interface IScheduleStateContext {
   title: string
   content: string
   duration: number
+  durationMode: DurationMode
+  timeRange: { startTime: string; endTime: string } | null
   pickedTime: Date | null
   currentSelectedDate: DateTime
   timezone: string
@@ -24,12 +29,17 @@ interface IScheduleStateContext {
     label?: string
   }>
   meetingRepeat: { value: MeetingRepeat; label?: string }
+  editMode: UpdateMode
   isScheduling: boolean
   selectedPermissions: Array<MeetingPermissions> | undefined
   decryptedMeeting: MeetingDecrypted | undefined
   setTitle: React.Dispatch<React.SetStateAction<string>>
   setContent: React.Dispatch<React.SetStateAction<string>>
   setDuration: React.Dispatch<React.SetStateAction<number>>
+  setDurationMode: React.Dispatch<React.SetStateAction<DurationMode>>
+  setTimeRange: React.Dispatch<
+    React.SetStateAction<{ startTime: string; endTime: string } | null>
+  >
   setPickedTime: React.Dispatch<React.SetStateAction<Date | null>>
   setCurrentSelectedDate: React.Dispatch<React.SetStateAction<DateTime>>
   setTimezone: React.Dispatch<React.SetStateAction<string>>
@@ -48,6 +58,7 @@ interface IScheduleStateContext {
   setDecryptedMeeting: React.Dispatch<
     React.SetStateAction<MeetingDecrypted | undefined>
   >
+  setEditMode: React.Dispatch<React.SetStateAction<UpdateMode>>
 }
 
 const ScheduleStateContext = createContext<IScheduleStateContext | undefined>(
@@ -74,10 +85,16 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [duration, setDuration] = useState(30)
+  const [durationMode, setDurationMode] = useState<DurationMode>('preset')
+  const [timeRange, setTimeRange] = useState<{
+    startTime: string
+    endTime: string
+  } | null>(null)
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [currentSelectedDate, setCurrentSelectedDate] = useState<DateTime>(
     DateTime.now()
   )
+  const [editMode, setEditMode] = useState<UpdateMode>(UpdateMode.SINGLE_EVENT)
   const [timezone, setTimezone] = useState<string>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
@@ -92,16 +109,16 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
     Array<{ value: MeetingReminders; label?: string }>
   >([
     {
-      value: MeetingReminders['1_HOUR_BEFORE'],
       label: '1 hour before',
+      value: MeetingReminders['1_HOUR_BEFORE'],
     },
   ])
   const [meetingRepeat, setMeetingRepeat] = useState<{
     value: MeetingRepeat
     label?: string
   }>({
-    value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
+    value: MeetingRepeat['NO_REPEAT'],
   })
   const [selectedPermissions, setSelectedPermissions] = useState<
     Array<MeetingPermissions> | undefined
@@ -113,32 +130,38 @@ export const ScheduleStateProvider: React.FC<ScheduleStateProviderProps> = ({
   const [isScheduling, setIsScheduling] = useState(false)
 
   const value: IScheduleStateContext = {
-    title,
     content,
-    duration,
-    pickedTime,
     currentSelectedDate,
-    timezone,
-    meetingProvider,
-    meetingUrl,
-    meetingNotification,
-    meetingRepeat,
-    isScheduling,
-    selectedPermissions,
-    setTitle,
-    setContent,
-    setDuration,
-    setPickedTime,
-    setCurrentSelectedDate,
-    setTimezone,
-    setMeetingProvider,
-    setMeetingUrl,
-    setMeetingNotification,
-    setMeetingRepeat,
-    setSelectedPermissions,
-    setIsScheduling,
     decryptedMeeting,
+    duration,
+    durationMode,
+    timeRange,
+    editMode,
+    isScheduling,
+    meetingNotification,
+    meetingProvider,
+    meetingRepeat,
+    meetingUrl,
+    pickedTime,
+    selectedPermissions,
+    setContent,
+    setCurrentSelectedDate,
     setDecryptedMeeting,
+    setDuration,
+    setDurationMode,
+    setTimeRange,
+    setEditMode,
+    setIsScheduling,
+    setMeetingNotification,
+    setMeetingProvider,
+    setMeetingRepeat,
+    setMeetingUrl,
+    setPickedTime,
+    setSelectedPermissions,
+    setTimezone,
+    setTitle,
+    timezone,
+    title,
   }
 
   return (

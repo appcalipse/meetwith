@@ -3,6 +3,7 @@ import { Interval } from 'luxon'
 import { type FC, memo } from 'react'
 
 import { TimeSlot } from '@/types/Meeting'
+import { ActiveAvailabilityBlock } from '@/types/schedule'
 
 import { State } from './SchedulePickTime'
 import ScheduleTimeSlot from './ScheduleTimeSlot'
@@ -12,7 +13,7 @@ interface ScheduleDateSectionProps {
   duration: number
   handleTimeSelection: (time: Date) => void
   timezone: string
-  defaultBlockId?: string | null
+  activeAvailabilityBlocks?: ActiveAvailabilityBlock[]
   currentAccountAddress?: string
   displayNameToAddress: Map<string, string>
   slots: Array<{
@@ -35,7 +36,7 @@ const ScheduleDateSection: FC<ScheduleDateSectionProps> = ({
   pickedTime,
   slots,
   timezone,
-  defaultBlockId,
+  activeAvailabilityBlocks,
   currentAccountAddress,
 }) => {
   return (
@@ -70,7 +71,7 @@ const ScheduleDateSection: FC<ScheduleDateSectionProps> = ({
                 timezone={timezone}
                 currentAccountAddress={currentAccountAddress}
                 displayNameToAddress={displayNameToAddress}
-                defaultBlockId={defaultBlockId}
+                activeAvailabilityBlocks={activeAvailabilityBlocks}
               />
             )
           })}

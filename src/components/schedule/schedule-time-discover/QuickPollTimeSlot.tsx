@@ -94,7 +94,7 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
   const getButtonProps = () => {
     const isInteractive = !isQuickPoll || isEditingAvailability
 
-    if (isQuickPoll && isSelected) {
+    if (isQuickPoll && isEditingAvailability && isSelected) {
       return {
         bg: 'primary.400',
         color: 'white',
@@ -114,12 +114,7 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
       }
     }
 
-    if (
-      isQuickPoll &&
-      isEditingAvailability &&
-      !isSelected &&
-      userStates.length === 0
-    ) {
+    if (isQuickPoll && isEditingAvailability && !isSelected) {
       return {
         bg: 'white',
         color: 'text-primary',

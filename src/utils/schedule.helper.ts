@@ -18,14 +18,18 @@ import { mergeLuxonIntervals } from './quickpoll_helper'
 
 export const getMergedParticipants = (
   participants: Array<Participant>,
-  groups: Array<GetGroupsFullResponse>,
   groupParticipants: Record<string, Array<string> | undefined>,
+  activeGroup?: GetGroupsFullResponse,
   accountAddress?: string
 ) => {
   const seenAddresses = new Set<string>()
   const allParticipants: Array<ParticipantInfo> = []
 
-  const groupsMap = new Map(groups.map(g => [g.id, g]))
+  const groupsMap = new Map(
+    [activeGroup]
+      .filter((g): g is GetGroupsFullResponse => Boolean(g))
+      .map(g => [g.id, g])
+  )
 
   for (const participant of participants) {
     if (isGroupParticipant(participant)) {
@@ -45,10 +49,10 @@ export const getMergedParticipants = (
           seenAddresses.add(memberAddress)
           allParticipants.push({
             account_address: groupMember.address,
-            name: groupMember.displayName,
-            type: ParticipantType.Invitee,
-            status: ParticipationStatus.Pending,
             meeting_id: '',
+            name: groupMember.displayName,
+            status: ParticipationStatus.Pending,
+            type: ParticipantType.Invitee,
           })
         }
       }
@@ -60,9 +64,14 @@ export const getMergedParticipants = (
     }
   }
 
-  return accountAddress
-    ? allParticipants.filter(val => val.account_address !== accountAddress)
-    : allParticipants
+  if (accountAddress) {
+    const addr = accountAddress.toLowerCase()
+    return allParticipants.filter(
+      p => (p.account_address || '').toLowerCase() !== addr
+    )
+  }
+
+  return allParticipants
 }
 
 export const parseAccounts = async (
@@ -81,25 +90,25 @@ export const parseAccounts = async (
       if (address) {
         valid.push({
           account_address: address,
-          type: ParticipantType.Invitee,
-          slot_id: '',
           meeting_id: '',
+          slot_id: '',
           status: ParticipationStatus.Pending,
+          type: ParticipantType.Invitee,
         })
       } else if (participant.name) {
         let account: Account | null = null
         try {
           account = await getAccount(participant.name)
-        } catch (e) {}
+        } catch (_e) {}
 
         if (account) {
           valid.push({
             account_address: account.address,
-            type: ParticipantType.Invitee,
-            slot_id: '',
             meeting_id: '',
-            status: ParticipationStatus.Pending,
             name: participant.name,
+            slot_id: '',
+            status: ParticipationStatus.Pending,
+            type: ParticipantType.Invitee,
           })
         } else {
           invalid.push(participant.name!)
@@ -107,7 +116,7 @@ export const parseAccounts = async (
       }
     }
   }
-  return { valid, invalid }
+  return { invalid, valid }
 }
 
 /**

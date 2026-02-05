@@ -27,23 +27,22 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const {
     groupParticipants,
-    groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
     addGroup,
     removeGroup,
     participants,
-    groups: allGroups,
+    group,
   } = useParticipants()
   const allGroupParticipants = groupParticipants[props.groupId] || []
 
   const participantAddressesSet = useMemo(() => {
     return new Set(
-      getMergedParticipants(participants, allGroups, groupParticipants)
+      getMergedParticipants(participants, groupParticipants, group)
         .map(user => user.account_address)
         .filter(Boolean)
     )
-  }, [participants, allGroups, groupParticipants])
+  }, [participants, group, groupParticipants])
 
   const isMemberAlreadyAdded = useCallback(() => {
     return participantAddressesSet.has(props.address)

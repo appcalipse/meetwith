@@ -386,7 +386,9 @@ const PublicPage: FC<IProps> = props => {
   const [paymentStep, setPaymentStep] = useState<PaymentStep | undefined>(
     undefined
   )
-  const [tx, setTx] = useState<Address | undefined>(undefined)
+  const [tx, setTx] = useState<Address | undefined>(
+    query.tx as Address | undefined
+  )
   const [key, setKey] = useState<string | undefined>(v4())
   const [isCancelled, setIsCancelled] = useState<boolean>(false)
   const [currentStep, setCurrentStep] = useState<PublicSchedulingSteps>(
@@ -419,7 +421,12 @@ const PublicPage: FC<IProps> = props => {
       value: MeetingReminders
       label?: string
     }>
-  >([])
+  >([
+    {
+      value: MeetingReminders['1_HOUR_BEFORE'],
+      label: '1 hour before',
+    },
+  ])
 
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
@@ -581,7 +588,7 @@ const PublicPage: FC<IProps> = props => {
           setMeetingSlotId(slot?.id)
         }
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Unable to load meeting details',
         status: 'error',
@@ -787,6 +794,9 @@ const PublicPage: FC<IProps> = props => {
     }
     void getSlotInfo()
     setPageGettingReady(false)
+    if (query.tx) {
+      setTx(query.tx as Address)
+    }
   }, [query])
   useEffect(() => {
     void fetchNotificationSubscriptions()
@@ -1142,7 +1152,6 @@ const PublicPage: FC<IProps> = props => {
             emailToSendReminders,
             title,
             meetingReminders,
-            meetingRepeat,
             undefined,
             txHash
           )

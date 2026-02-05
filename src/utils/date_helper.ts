@@ -40,18 +40,18 @@ export const timezones = timezonesKeys
       offset = timeInfo.dstOffset
     }
     return {
+      countries: countries.map(c => ({
+        id: c.id,
+        name: c.name,
+      })),
       name: `${key.replace(/^Etc\/GMT([+-]\d+)?$/, (match, gmtOffset) => {
         if (!gmtOffset) return 'GMT'
         const sign = gmtOffset[0] === '+' ? '-' : '+'
         const number = gmtOffset.slice(1)
         return `GMT${sign}${number}`
       })} (UTC${show})`,
-      tzCode: key,
       offset,
-      countries: countries.map(c => ({
-        id: c.id,
-        name: c.name,
-      })),
+      tzCode: key,
     }
   })
   .sort((a, b) => a.offset - b.offset)
@@ -109,8 +109,8 @@ export const convertTimeRangesToDate = (
     startDate = zonedTimeToUtc(startDate, timezone)
     endDate = zonedTimeToUtc(endDate, timezone)
     return {
-      start: startDate,
       end: endDate,
+      start: startDate,
     }
   })
 }
@@ -162,7 +162,7 @@ export const addRecurrence = (
     }
   } while (newStart < now)
   const newEnd = newStart.plus({ minutes: diffMinutes }).toJSDate()
-  return { start: newStart.toJSDate(), end: newEnd }
+  return { end: newEnd, start: newStart.toJSDate() }
 }
 
 export const parseMonthAvailabilitiesToDate = (
@@ -195,17 +195,17 @@ export const parseMonthAvailabilitiesToDate = (
           .set({ weekday: luxonWeekday }) // Luxon uses 1-7, Sunday = 7
           .set({
             hour: startHours,
+            millisecond: 0,
             minute: startMinutes,
             second: 0,
-            millisecond: 0,
           })
 
         // Create end time in owner timezone for this specific day
         const endTime = currentWeek.set({ weekday: luxonWeekday }).set({
           hour: endHours,
+          millisecond: 0,
           minute: endMinutes,
           second: 0,
-          millisecond: 0,
         })
 
         slots.push(Interval.fromDateTimes(startTime, endTime))
@@ -236,14 +236,14 @@ export const getMeetingBoundaries = (
     )
 
     return {
-      isTopElement: currentSlotInSequence % slotsInMeeting === 0,
       isBottomElement: (currentSlotInSequence + 1) % slotsInMeeting === 0,
+      isTopElement: currentSlotInSequence % slotsInMeeting === 0,
     }
   }
 
   return {
-    isTopElement: isBeginningOfHour(slot.start),
     isBottomElement: isBeginningOfHour(slot.end),
+    isTopElement: isBeginningOfHour(slot.start),
   }
 }
 
@@ -324,8 +324,8 @@ export const getFormattedDateAndDuration = (
 // Format a date range for QuickPoll display (e.g., "24th April - 24th June, 2025")
 
 export const formatPollDateRange = (startDate: string, endDate: string) => {
-  const start = DateTime.fromISO(startDate)
-  const end = DateTime.fromISO(endDate)
+  const start = DateTime.fromISO(startDate, { zone: 'utc' })
+  const end = DateTime.fromISO(endDate, { zone: 'utc' })
 
   const getOrdinalSuffix = (day: number) => {
     const j = day % 10
@@ -393,15 +393,14 @@ export const createLocalDateTime = (date: Date, time: Date): string => {
   return localDateTime.toISOString()
 }
 
-// Helper function to create a date at start of day in local timezone
+// Helper to create an ISO string for a calendar date (midnight UTC) so display is consistent across timezones
 export const createLocalDate = (date: Date): string => {
   const year = date.getFullYear()
   const month = date.getMonth()
   const day = date.getDate()
 
-  const localDate = new Date(year, month, day, 0, 0, 0)
-
-  return localDate.toISOString()
+  const utcMidnight = new Date(Date.UTC(year, month, day, 0, 0, 0))
+  return utcMidnight.toISOString()
 }
 
 export const checkHasSameScheduleTime = (date: Date, date2: Date): boolean => {

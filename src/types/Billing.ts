@@ -35,6 +35,15 @@ export enum BillingMode {
   SUBSCRIBE = 'subscribe',
 }
 
+// Handle validation status for custom booking links
+export enum HandleStatus {
+  IDLE = 'idle',
+  CHECKING = 'checking',
+  AVAILABLE = 'available',
+  TAKEN = 'taken',
+  INVALID = 'invalid',
+}
+
 // =====================================================
 // Core Billing Types
 // =====================================================
@@ -112,6 +121,7 @@ export interface BillingPlanWithProvider extends BillingPlan {
 export interface SubscribeRequest {
   billing_plan_id: BillingCycle // 'monthly' or 'yearly'
   payment_method?: 'stripe' | 'crypto' // Optional, defaults to 'stripe'
+  handle?: string // Custom booking link handle
 }
 
 // Response after initiating subscription
@@ -127,6 +137,7 @@ export interface SubscribeRequestCrypto {
   billing_plan_id: BillingCycle // 'monthly' or 'yearly'
   subscription_type?: SubscriptionType // Optional, defaults to 'initial'
   is_trial?: boolean // Optional flag to start a crypto trial
+  handle?: string // Custom booking link handle
 }
 
 export interface TrialEligibilityResponse {

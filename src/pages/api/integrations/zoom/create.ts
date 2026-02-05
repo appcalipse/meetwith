@@ -25,9 +25,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         (address): address is string => address !== undefined
       )
 
-      const emails = await getAccountsNotificationSubscriptionEmails(
-        validAddresses
-      )
+      const emails =
+        await getAccountsNotificationSubscriptionEmails(validAddresses)
 
       const meeting_invitees = meeting.participants_mapping
         .filter(val => val.guest_email)
@@ -68,25 +67,34 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         agenda: meeting.content || meeting.title,
         created_at: new Date(),
         duration,
+        dynamic_host_key: code.toString().substring(0, 6),
         pre_schedule: false,
         settings: {
           allow_multiple_devices: true,
           approval_type: 0,
+          auto_start_ai_companion_questions: false,
+          auto_start_meeting_summary: false,
           calendar_type: 1,
           close_registration: false,
           cn_meeting: false,
+          device_testing: false,
           email_notification: true,
           encryption_type: 'enhanced_encryption',
           enforce_login: true,
           focus_mode: true,
+          host_save_video_order: true,
           host_video: true,
           in_meeting: false,
+          internal_meeting: false,
           jbh_time: 0,
           join_before_host: true,
           meeting_authentication: false,
+          meeting_invitees,
           mute_upon_entry: false,
+          participant_focused_meeting: false,
           participant_video: false,
           private_meeting: false,
+          push_change_to_calendar: false,
           registrants_confirmation_email: true,
           registrants_email_notification: true,
           registration_type: 1,
@@ -94,20 +102,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           use_pmi: false,
           waiting_room: false,
           watermark: false,
-          host_save_video_order: true,
-          internal_meeting: false,
-          meeting_invitees,
-          participant_focused_meeting: false,
-          push_change_to_calendar: false,
-          auto_start_meeting_summary: false,
-          auto_start_ai_companion_questions: false,
-          device_testing: false,
         },
         start_time: meeting.start,
         timezone: acccount?.preferences?.timezone || 'UTC',
         topic: meeting.title,
         type: 2,
-        dynamic_host_key: code.toString().substring(0, 6),
       }
       if (
         meeting.meetingRepeat &&
@@ -129,8 +128,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             break
         }
         payload['recurrence'] = {
-          type,
           repeat_interval: 1,
+          type,
         }
         if (type === 2) {
           const meetingDate = new Date(meeting.start)
@@ -151,9 +150,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       myHeaders.append('Accept', 'application/json')
       myHeaders.append('Authorization', `Bearer ${await getAccessToken()}`)
       const requestOptions = {
-        method: 'POST',
-        headers: myHeaders,
         body: raw,
+        headers: myHeaders,
+        method: 'POST',
       }
 
       const zoomResponse = await fetch(

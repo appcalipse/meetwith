@@ -44,7 +44,6 @@ import {
 import { getGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 
-import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import CustomError from '../CustomError'
 import CustomLoading from '../CustomLoading'
 import { Grid4 } from '../icons/Grid4'
@@ -72,18 +71,14 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 > = ({ pollId, pollData, onNavigateToGuestDetails }) => {
   const {
     isInviteParticipantsOpen,
-    showCalendarModal,
     showGuestIdModal,
-    showCalendarImportFlow,
     currentParticipantId,
     currentGuestEmail,
     isEditingAvailability,
     isSavingAvailability,
     isRefreshingAvailabilities,
     setIsInviteParticipantsOpen,
-    setShowCalendarModal,
     setShowGuestIdModal,
-    setShowCalendarImportFlow,
     setCurrentParticipantId,
     setCurrentGuestEmail,
     setIsEditingAvailability,
@@ -91,15 +86,11 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     setIsRefreshingAvailabilities,
   } = useQuickPollAvailability()
   const {
-    addGroup,
     groupAvailability,
     groupParticipants,
-    groups,
-    meetingOwners,
     participants,
     setGroupAvailability,
     setGroupParticipants,
-    setMeetingOwners,
     setParticipants,
   } = useParticipants()
   const inviteKey = useMemo(
@@ -114,8 +105,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const currentAccount = useAccountContext()
   const { timezone, currentSelectedDate } = useScheduleState()
-  const { getAvailabilitySlots, clearSlots, selectedSlots } =
-    useAvailabilityTracker()
+  const { clearSlots, selectedSlots } = useAvailabilityTracker()
   const queryClient = useQueryClient()
 
   const {
@@ -125,7 +115,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   } = useQuery({
     queryKey: ['quickpoll-schedule', pollId],
     queryFn: () => getQuickPollById(pollId!),
-    enabled: !!pollId && !pollData,
+    enabled: !!pollId,
     onError: (err: unknown) => {
       showErrorToast(
         'Failed to load poll',
@@ -135,7 +125,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   })
 
   const currentPollData =
-    pollData || (fetchedPollData as QuickPollBySlugResponse)
+    (fetchedPollData as QuickPollBySlugResponse) || pollData
 
   const isDesktop = useBreakpointValue({ base: false, md: true }) ?? false
 
@@ -358,7 +348,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             'Availability saved',
             'Your availability has been saved successfully.'
           )
-        } catch (error) {
+        } catch (_error) {
           showErrorToast(
             'Failed to save availability',
             'There was an error saving your availability. Please try again.'
@@ -389,7 +379,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
               currentPollData.poll.slug,
               currentAccount.address
             )) as QuickPollParticipant
-          } catch (error) {
+          } catch (_error) {
             showErrorToast(
               'Participant not found',
               'You are not a participant in this poll.'
@@ -473,7 +463,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             'Your availability has been saved successfully.'
           )
         }
-      } catch (error) {
+      } catch (_error) {
         showErrorToast(
           'Failed to save availability',
           'There was an error saving your availability. Please try again.'
@@ -496,19 +486,14 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         setCurrentGuestEmail(email)
         setShowGuestIdModal(false)
 
-        if (showCalendarImportFlow) {
-          setShowCalendarImportFlow(false)
-          setShowCalendarModal(true)
-        } else {
-          setIsEditingAvailability(true)
-        }
+        setIsEditingAvailability(true)
       } else {
         showErrorToast(
           'Participant not found',
           'No participant found with this email address.'
         )
       }
-    } catch (error) {
+    } catch (_error) {
       showErrorToast(
         'Identification failed',
         'There was an error identifying you. Please try again.'
@@ -530,25 +515,8 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     })
   }
 
-  const handleCalendarImport = () => {
-    if (
-      !currentAccount &&
-      currentPollData?.poll.visibility === PollVisibility.PRIVATE
-    ) {
-      if (!currentParticipantId || !currentGuestEmail) {
-        setShowCalendarImportFlow(true)
-        setShowGuestIdModal(true)
-      } else {
-        setShowCalendarModal(true)
-      }
-    } else {
-      setShowCalendarModal(true)
-    }
-  }
-
   const handleCloseGuestIdModal = () => {
     setShowGuestIdModal(false)
-    setShowCalendarImportFlow(false)
   }
 
   const handleAvailabilityAction = () => {
@@ -680,7 +648,6 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           onSaveAvailability={handleAvailabilityAction}
           onCancelEditing={handleCancelEditing}
           onSharePoll={handleSharePoll}
-          onImportCalendar={handleCalendarImport}
           isEditingAvailability={isEditingAvailability}
           isSavingAvailability={isSavingAvailability}
           isRefreshingAvailabilities={isRefreshingAvailabilities}
@@ -736,24 +703,12 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             onSaveAvailability={handleAvailabilityAction}
             onCancelEditing={handleCancelEditing}
             onSharePoll={handleSharePoll}
-            onImportCalendar={handleCalendarImport}
             isEditingAvailability={isEditingAvailability}
             isSavingAvailability={isSavingAvailability}
             isRefreshingAvailabilities={isRefreshingAvailabilities}
           />
         </HStack>
       )}
-
-      {/* Calendar Import Modal */}
-      <ConnectCalendarModal
-        isOpen={showCalendarModal}
-        onClose={() => setShowCalendarModal(false)}
-        isQuickPoll={true}
-        participantId={currentParticipantId}
-        pollData={currentPollData}
-        refetch={refreshAvailabilities}
-        pollSlug={currentPollData?.poll.slug}
-      />
 
       {currentPollData?.poll.visibility === PollVisibility.PRIVATE && (
         <GuestIdentificationModal

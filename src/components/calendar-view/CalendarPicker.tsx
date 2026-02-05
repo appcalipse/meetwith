@@ -1,14 +1,22 @@
-import { Grid, GridItem, Heading, Text, VStack } from '@chakra-ui/layout'
+import { IconButton } from '@chakra-ui/button'
+import {
+  Grid,
+  GridItem,
+  Heading,
+  HStack,
+  Text,
+  VStack,
+} from '@chakra-ui/layout'
 import * as React from 'react'
-
+import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 import { useCalendarContext } from '@/providers/calendar/CalendarContext'
 
 const CalendarPicker: React.FC = () => {
-  const { currrentDate, setCurrentDate } = useCalendarContext()
+  const { currentDate, setCurrentDate } = useCalendarContext()
   const getMonthDays = () => {
-    const startofMonth = currrentDate.startOf('month')
+    const startofMonth = currentDate.startOf('month')
     const startofThatWeek = startofMonth.startOf('week')
-    const endOfMonth = currrentDate.endOf('month')
+    const endOfMonth = currentDate.endOf('month')
     const endOfThatWeek = endOfMonth.endOf('week')
     const days = []
     let currDate = startofThatWeek
@@ -22,9 +30,27 @@ const CalendarPicker: React.FC = () => {
   const header = monthDays.slice(0, 7)
   return (
     <VStack w="100%" alignItems="start" justifyContent="flex-start" gap={4}>
-      <Heading size="ms" fontSize="20px">
-        {currrentDate.toFormat('MMMM')}
-      </Heading>
+      <HStack>
+        <Heading size="ms" fontSize="20px">
+          {currentDate.toFormat('MMMM, yyyy')}
+        </Heading>
+        <IconButton
+          aria-label="previous month"
+          icon={<FaChevronUp size={16} />}
+          size="sm"
+          onClick={() =>
+            setCurrentDate(currentDate.startOf('month').minus({ months: 1 }))
+          }
+        />
+        <IconButton
+          aria-label="next month"
+          icon={<FaChevronDown size={16} />}
+          size="sm"
+          onClick={() =>
+            setCurrentDate(currentDate.startOf('month').plus({ months: 1 }))
+          }
+        />
+      </HStack>
       <Grid
         templateColumns="repeat(7, 1fr)"
         w="100%"
@@ -44,24 +70,24 @@ const CalendarPicker: React.FC = () => {
         {monthDays.map(day => (
           <GridItem
             key={day.toMillis()}
-            color={day.month === currrentDate.month ? 'inherit' : 'neutral.500'}
+            color={day.month === currentDate.month ? 'inherit' : 'neutral.500'}
             py={1.5}
             fontSize={14}
             bg={
-              day.hasSame(currrentDate, 'week')
+              day.hasSame(currentDate, 'week')
                 ? 'bg-calendar-row'
                 : 'transparent'
             }
             onClick={() => setCurrentDate(day)}
             roundedLeft={
-              day.hasSame(currrentDate, 'week') &&
-              day.hasSame(currrentDate.startOf('week'), 'day')
+              day.hasSame(currentDate, 'week') &&
+              day.hasSame(currentDate.startOf('week'), 'day')
                 ? 'md'
                 : undefined
             }
             roundedRight={
-              day.hasSame(currrentDate, 'week') &&
-              day.hasSame(currrentDate.endOf('week'), 'day')
+              day.hasSame(currentDate, 'week') &&
+              day.hasSame(currentDate.endOf('week'), 'day')
                 ? 'md'
                 : undefined
             }
@@ -70,9 +96,9 @@ const CalendarPicker: React.FC = () => {
           >
             <Text
               bg={
-                day.hasSame(currrentDate, 'day') ? 'primary.500' : 'transparent'
+                day.hasSame(currentDate, 'day') ? 'primary.500' : 'transparent'
               }
-              color={day.hasSame(currrentDate, 'day') ? 'white' : 'inherit'}
+              color={day.hasSame(currentDate, 'day') ? 'white' : 'inherit'}
               w="fit-content"
               mx="auto"
               px={2}

@@ -1,13 +1,15 @@
 import { calendar_v3 } from 'googleapis'
 import { Attendee } from 'ics'
 
-import { UnifiedEvent } from '@/types/Calendar'
+import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MicrosoftGraphEvent } from '@/types/Office365'
 import {
+  DeleteInstanceRequest,
+  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -82,7 +84,9 @@ export interface BaseCalendarService {
   deleteEvent(meeting_id: string, calendarId: string): Promise<void>
 
   getEvents(
-    calendarIds: string[],
+    calendars: Array<
+      Pick<CalendarSyncInfo, 'name' | 'calendarId' | 'isReadOnly'>
+    >,
     dateFrom: string,
     dateTo: string,
     onlyWithMeetingLinks?: boolean
@@ -101,12 +105,19 @@ export interface BaseCalendarService {
     calendarId: string
   ): Promise<void>
 
+  deleteEventInstance(
+    calendarId: string,
+    meetingDetails: DeleteInstanceRequest
+  ): Promise<void>
+
   updateEventRsvpForExternalEvent(
     calendarId: string,
     eventId: string,
     attendeeEmail: string,
-    responseStatus: string
+    responseStatus: AttendeeStatus
   ): Promise<void>
+
+  deleteExternalEvent(calendarId: string, eventId: string): Promise<void>
 }
 export interface IOffcie365CalendarService extends BaseCalendarService {
   /**

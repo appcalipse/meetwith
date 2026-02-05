@@ -18,6 +18,7 @@ import {
   TransactionIsRequired,
 } from '@/utils/errors'
 import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
+
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     try {

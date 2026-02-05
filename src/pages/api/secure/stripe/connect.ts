@@ -29,12 +29,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       if (!accountId) {
         const account = await stripe.accounts.create({
-          type: 'express',
-          country: countryCode,
           capabilities: {
             card_payments: { requested: true },
             transfers: { requested: true },
           },
+          country: countryCode,
+          type: 'express',
         })
         accountId = account.id
         await updatePaymentAccount(provider.id, account_address, {

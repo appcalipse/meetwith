@@ -2,8 +2,11 @@ import { DateTime, Interval } from 'luxon'
 import slugify from 'slugify'
 
 import { Account } from '@/types/Account'
-import { AvailabilitySlot, QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
+  AvailabilitySlot,
+  MonthOption,
+  PollDateRange,
+  QuickPollBySlugResponse,
   QuickPollParticipant,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
@@ -26,6 +29,8 @@ const convertQuickPollParticipant = (
       ...existingAccount,
       preferences: {
         ...existingAccount.preferences,
+        availabilities: existingAccount.preferences?.availabilities || [],
+        meetingProviders: existingAccount.preferences?.meetingProviders || [],
         name:
           participant.guest_name ||
           existingAccount.preferences?.name ||
@@ -35,8 +40,6 @@ const convertQuickPollParticipant = (
           participant.timezone ||
           existingAccount.preferences?.timezone ||
           'UTC',
-        availabilities: existingAccount.preferences?.availabilities || [],
-        meetingProviders: existingAccount.preferences?.meetingProviders || [],
       },
     }
   }
@@ -44,10 +47,10 @@ const convertQuickPollParticipant = (
   const mockAccount: Partial<Account> = {
     address: participant.account_address || participant.guest_email!,
     preferences: {
-      name: participant.guest_name || participant.guest_email,
-      timezone: participant.timezone || 'UTC',
       availabilities: [],
       meetingProviders: [],
+      name: participant.guest_name || participant.guest_email,
+      timezone: participant.timezone || 'UTC',
     },
   }
 
@@ -92,6 +95,125 @@ export const mergeTimeRanges = (
   return merged
 }
 
+export const parsePollMeetingDateRange = (
+  startsAt: string,
+  endsAt: string,
+  timezone: string
+): PollDateRange | null => {
+  const start = DateTime.fromISO(startsAt, { zone: 'utc' })
+    .setZone(timezone)
+    .startOf('day')
+  const end = DateTime.fromISO(endsAt, { zone: 'utc' })
+    .setZone(timezone)
+    .endOf('day')
+  if (!start.isValid || !end.isValid) return null
+  return { pollStart: start, pollEnd: end }
+}
+
+export const getMonthOptionsForPollRange = (
+  pollStart: DateTime,
+  pollEnd: DateTime
+): MonthOption[] => {
+  const options: MonthOption[] = []
+  let cursor = pollStart.startOf('month')
+  while (cursor <= pollEnd) {
+    options.push({
+      value: String(cursor.month),
+      label: cursor.toFormat('MMMM yyyy'),
+    })
+    cursor = cursor.plus({ months: 1 })
+  }
+  return options
+}
+
+export const getDefaultMonthOptions = (
+  timezone: string,
+  count = 12
+): MonthOption[] => {
+  const options: MonthOption[] = []
+  let cursor = DateTime.now().setZone(timezone)
+  for (let i = 0; i < count; i++) {
+    options.push({
+      value: String(cursor.month),
+      label: cursor.toFormat('MMMM yyyy'),
+    })
+    cursor = cursor.plus({ months: 1 })
+  }
+  return options
+}
+
+export const isDayInPollRange = (
+  day: DateTime,
+  pollStart: DateTime,
+  pollEnd: DateTime,
+  timezone: string
+): boolean => {
+  const dayStart = day.setZone(timezone).startOf('day')
+  return dayStart >= pollStart && dayStart <= pollEnd.startOf('day')
+}
+
+export const clampDateTimeToPollRange = (
+  dateTime: DateTime,
+  pollStart: DateTime,
+  pollEnd: DateTime
+): DateTime => {
+  const dayStart = dateTime.startOf('day')
+  if (dayStart < pollStart) return pollStart
+  if (dayStart > pollEnd.startOf('day')) return pollEnd.startOf('day')
+  return dateTime
+}
+
+export const clampSlotTimeToPollRange = (
+  slotStart: DateTime,
+  pollStart: DateTime,
+  pollEnd: DateTime
+): DateTime => {
+  if (slotStart < pollStart) return pollStart
+  if (slotStart > pollEnd) return pollEnd
+  return slotStart
+}
+
+export const filterSlotsToPollRange = <
+  T extends { start: DateTime; end: DateTime }
+>(
+  slots: T[],
+  pollStart: DateTime,
+  pollEnd: DateTime
+): T[] => {
+  return slots.filter(slot => slot.start >= pollStart && slot.end <= pollEnd)
+}
+
+export const clampMonthRangeToPollRange = (
+  monthStart: DateTime,
+  monthEnd: DateTime,
+  pollStart: DateTime,
+  pollEnd: DateTime
+): { monthStart: DateTime; monthEnd: DateTime } => {
+  let start = monthStart
+  let end = monthEnd
+  if (monthStart < pollStart) start = pollStart
+  if (monthEnd > pollEnd) end = pollEnd
+  return { monthStart: start, monthEnd: end }
+}
+
+export const isPollRangeNextDisabled = (
+  currentSelectedDate: DateTime,
+  timezone: string,
+  slotLength: number,
+  pollEnd: DateTime | null
+): boolean => {
+  if (!pollEnd) return false
+  const startOfView = currentSelectedDate.setZone(timezone).startOf('day')
+  const lastDayInView = startOfView.plus({ days: slotLength - 1 })
+  const endOfMonth = startOfView.endOf('month').startOf('day')
+  const lastVisibleDay =
+    lastDayInView <= endOfMonth ? lastDayInView : endOfMonth
+  const pollEndStart = pollEnd.startOf('day')
+  const effectiveLast =
+    lastVisibleDay > pollEndStart ? pollEndStart : lastVisibleDay
+  return effectiveLast >= pollEndStart
+}
+
 export const convertSelectedSlotsToAvailabilitySlots = (
   selectedSlots: Array<{ start: DateTime; end: DateTime; date: string }>
 ): Array<{
@@ -111,12 +233,12 @@ export const convertSelectedSlotsToAvailabilitySlots = (
     const endTime = slot.end.toFormat('HH:mm')
 
     if (!slotsByDate.has(date)) {
-      slotsByDate.set(date, { weekday, ranges: [] })
+      slotsByDate.set(date, { ranges: [], weekday })
     }
 
     slotsByDate.get(date)!.ranges.push({
-      start: startTime,
       end: endTime,
+      start: startTime,
     })
   }
 
@@ -127,9 +249,9 @@ export const convertSelectedSlotsToAvailabilitySlots = (
   }> = []
   slotsByDate.forEach((value, date) => {
     availabilitySlots.push({
-      weekday: value.weekday,
-      ranges: value.ranges,
       date,
+      ranges: value.ranges,
+      weekday: value.weekday,
     })
   })
 
@@ -517,13 +639,13 @@ export const computeAvailabilityWithOverrides = (
 
       let slot = slotMap.get(key)
       if (!slot) {
-        slot = { weekday, date, ranges: [] }
+        slot = { date, ranges: [], weekday }
         slotMap.set(key, slot)
       }
 
       const timeRange = {
-        start: interval.start.toFormat('HH:mm'),
         end: interval.end.toFormat('HH:mm'),
+        start: interval.start.toFormat('HH:mm'),
       }
 
       if (type === 'ranges') {
@@ -556,9 +678,9 @@ export const computeAvailabilityWithOverrides = (
   const result: AvailabilitySlot[] = []
   for (const slot of slotMap.values()) {
     const finalSlot: AvailabilitySlot = {
-      weekday: slot.weekday,
       date: slot.date,
       ranges: mergeTimeRanges(slot.ranges),
+      weekday: slot.weekday,
     }
 
     if (slot.overrides) {
@@ -795,7 +917,7 @@ export const getMonthRange = (
     .setZone(timezone)
     .endOf('month')
     .toJSDate()
-  return { monthStart, monthEnd }
+  return { monthEnd, monthStart }
 }
 
 /**
@@ -841,7 +963,7 @@ export const computeAvailabilitySlotsWithOverrides = (
       monthEnd,
       timezone
     )
-  } catch (error) {
+  } catch (_error) {
     // Fallback
     return convertSelectedSlotsToAvailabilitySlots(selectedSlots)
   }
@@ -899,9 +1021,9 @@ export const convertAvailabilityToSelectedSlots = (
         renderedSlot.end
       ) {
         selectedTimeSlots.push({
-          start: renderedSlot.start,
-          end: renderedSlot.end,
           date: renderedSlot.start.toFormat('yyyy-MM-dd'),
+          end: renderedSlot.end,
+          start: renderedSlot.start,
         })
       }
     })
@@ -924,9 +1046,9 @@ export const mergeLuxonIntervals = (intervals: Interval[]): Interval[] => {
     }
 
     accumulator.push({
-      start: interval.start,
       end: interval.end,
       interval,
+      start: interval.start,
     })
 
     return accumulator
@@ -962,7 +1084,7 @@ export const mergeLuxonIntervals = (intervals: Interval[]): Interval[] => {
   deduplicated.sort((a, b) => a.start.toMillis() - b.start.toMillis())
 
   const merged: Array<{ start: DateTime; end: DateTime }> = [
-    { start: deduplicated[0].start, end: deduplicated[0].end },
+    { end: deduplicated[0].end, start: deduplicated[0].start },
   ]
 
   for (let i = 1; i < deduplicated.length; i++) {
@@ -974,7 +1096,7 @@ export const mergeLuxonIntervals = (intervals: Interval[]): Interval[] => {
         last.end = current.end
       }
     } else {
-      merged.push({ start: current.start, end: current.end })
+      merged.push({ end: current.end, start: current.start })
     }
   }
 
@@ -999,9 +1121,9 @@ export const mergeAvailabilitySlots = (
     if (!slot) return undefined
 
     const normalized: AvailabilitySlot = {
-      weekday: slot.weekday,
       date: slot.date,
       ranges: mergeTimeRanges(slot.ranges || []),
+      weekday: slot.weekday,
     }
 
     if (slot.overrides) {

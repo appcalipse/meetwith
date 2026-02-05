@@ -47,9 +47,17 @@ export const isProAccount = (
 export const getActiveProSubscription = (
   account?: Pick<Account, 'subscriptions'> | null
 ): Subscription | undefined => {
-  return account?.subscriptions?.find(
-    sub => new Date(sub.expiry_time) > new Date()
-  )
+  if (!account?.subscriptions) return undefined
+
+  const now = new Date()
+  const activeSubs = account.subscriptions
+    .filter(sub => new Date(sub.expiry_time) > now)
+    .sort(
+      (a, b) =>
+        new Date(b.expiry_time).getTime() - new Date(a.expiry_time).getTime()
+    )
+
+  return activeSubs[0]
 }
 
 // Get the most recent active billing subscription from account subscriptions
@@ -67,6 +75,16 @@ export const getActiveBillingSubscription = (
     )
 
   return billingSubs.length > 0 ? billingSubs[0] : null
+}
+
+export const isTrialEligible = (
+  account?: Pick<Account, 'subscriptions'> | null
+): boolean => {
+  if (!account?.subscriptions || account.subscriptions.length === 0) {
+    return true
+  }
+
+  return false
 }
 
 // checks both domain and billing subscriptions
@@ -128,10 +146,10 @@ export const checkAllowance = async (
     }
 
     const contract = getContract({
-      client: thirdWebClient,
-      chain: chainInfo!.thirdwebChain,
-      address: tokenInfo.contractAddress,
       abi: erc20Abi,
+      address: tokenInfo.contractAddress,
+      chain: chainInfo!.thirdwebChain,
+      client: thirdWebClient,
     })
 
     const decimals = await readContract({
@@ -172,7 +190,7 @@ export const approveTokenSpending = async (
 
   try {
     await validateChainToActOn(chain, wallet)
-  } catch (e) {
+  } catch (_e) {
     throw Error('Please connect to the correct network')
   }
 
@@ -184,10 +202,10 @@ export const approveTokenSpending = async (
   }
 
   const contract = getContract({
-    client: thirdWebClient,
-    chain: chainInfo!.thirdwebChain,
-    address: tokenInfo.contractAddress,
     abi: erc20Abi,
+    address: tokenInfo.contractAddress,
+    chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
 
   const tokenTransaction = await prepareContractCall({
@@ -202,8 +220,8 @@ export const approveTokenSpending = async (
   })
 
   await waitForReceipt({
-    client: thirdWebClient,
     chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
     transactionHash: tokenHash,
   })
 }
@@ -217,10 +235,10 @@ export const getNativePriceForDuration = async (
   const planInfo = getPlanInfo(plan)
   if (planInfo) {
     const contract = getContract({
-      client: thirdWebClient,
-      chain: chainInfo!.thirdwebChain,
-      address: chainInfo!.registarContractAddress,
       abi: Abi.parse(MWWRegister),
+      address: chainInfo!.registarContractAddress,
+      chain: chainInfo!.thirdwebChain,
+      client: thirdWebClient,
     })
 
     const result = await readContract({
@@ -261,15 +279,15 @@ export const subscribeToPlan = async (
 
   try {
     await validateChainToActOn(chain, wallet)
-  } catch (e) {
+  } catch (_e) {
     throw Error('Please connect to the correct network')
   }
 
   const contract = getContract({
-    client: thirdWebClient,
-    chain: chainInfo!.thirdwebChain,
-    address: chainInfo!.registarContractAddress,
     abi: Abi.parse(MWWRegister),
+    address: chainInfo!.registarContractAddress,
+    chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
 
   try {
@@ -292,10 +310,10 @@ export const subscribeToPlan = async (
 
       if (neededApproval > 0) {
         const tokenContract = getContract({
-          client: thirdWebClient,
-          chain: chainInfo!.thirdwebChain,
-          address: tokenInfo.contractAddress,
           abi: erc20Abi,
+          address: tokenInfo.contractAddress,
+          chain: chainInfo!.thirdwebChain,
+          client: thirdWebClient,
         })
 
         const tokenTransaction = await prepareContractCall({
@@ -313,8 +331,8 @@ export const subscribeToPlan = async (
         })
 
         await waitForReceipt({
-          client: thirdWebClient,
           chain: chainInfo!.thirdwebChain,
+          client: thirdWebClient,
           transactionHash: tokenHash,
         })
       }
@@ -339,8 +357,8 @@ export const subscribeToPlan = async (
       })
 
       return await waitForReceipt({
-        client: thirdWebClient,
         chain: chainInfo!.thirdwebChain,
+        client: thirdWebClient,
         transactionHash,
       })
     } else {
@@ -380,8 +398,8 @@ export const subscribeToPlan = async (
       })
 
       return await waitForReceipt({
-        client: thirdWebClient,
         chain: chainInfo!.thirdwebChain,
+        client: thirdWebClient,
         transactionHash,
       })
     }
@@ -402,15 +420,15 @@ export const convertBlockchainSubscriptionToSubscription = (
   }
 
   const subscriptionInfo: Subscription = {
-    plan_id: Number(sub.planId),
     chain: sub.chain,
-    owner_account: sub.owner.toLowerCase(),
+    config_ipfs_hash: sub.configIpfsHash,
+    domain: sub.domain,
     expiry_time:
       new Date(expiryTime * 1000).getFullYear() < 2200
         ? new Date(expiryTime * 1000)
         : new Date(2200, 1, 1), // bad initial domain injections
-    domain: sub.domain,
-    config_ipfs_hash: sub.configIpfsHash,
+    owner_account: sub.owner.toLowerCase(),
+    plan_id: Number(sub.planId),
     registered_at: new Date(Number(sub.registeredAt) * 1000),
   }
 
@@ -457,10 +475,10 @@ export const changeDomainOnChain = async (
   }
 
   const contract = getContract({
-    client: thirdWebClient,
-    chain: chainInfo!.thirdwebChain,
-    address: chainInfo!.domainContractAddess,
     abi: Abi.parse(MWWDomain),
+    address: chainInfo!.domainContractAddess,
+    chain: chainInfo!.thirdwebChain,
+    client: thirdWebClient,
   })
 
   try {
@@ -476,8 +494,8 @@ export const changeDomainOnChain = async (
     })
 
     return await waitForReceipt({
-      client: thirdWebClient,
       chain: chainInfo!.thirdwebChain,
+      client: thirdWebClient,
       transactionHash,
     })
   } catch (error: unknown) {

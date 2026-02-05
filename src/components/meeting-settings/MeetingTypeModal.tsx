@@ -52,7 +52,7 @@ import {
   noClearCustomSelectComponent,
   Option,
 } from '@utils/constants/select'
-import { MeetingSlugAlreadyExists } from '@utils/errors'
+import { ApiFetchError, MeetingSlugAlreadyExists } from '@utils/errors'
 import {
   convertMinutes,
   getSlugFromText,
@@ -61,15 +61,15 @@ import {
 import {
   createMeetingSchema,
   ErrorAction,
-  errorReducer,
   ErrorState,
+  errorReducer,
   fieldKey,
   PlanKeys,
   SchemaKeys,
   validateField,
 } from '@utils/schemas'
 import { Select as ChakraSelect } from 'chakra-react-select'
-import React, { FC, Reducer, useMemo, useState } from 'react'
+import React, { FC, Reducer, useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 
 import useAccountContext from '@/hooks/useAccountContext'
@@ -95,6 +95,7 @@ interface IProps {
   isAvailabilityLoading: boolean
   stripeStatus?: PaymentAccountStatus | null
   isStripeLoading?: boolean
+  isPro?: boolean
 }
 
 const MeetingTypeModal: FC<IProps> = props => {
@@ -102,11 +103,29 @@ const MeetingTypeModal: FC<IProps> = props => {
     Reducer<ErrorState<SchemaKeys, 'plan', PlanKeys>, ErrorAction<fieldKey>>
   >(errorReducer, {})
   const currentAccount = useAccountContext()
-  const [sessionType, setSessionType] = React.useState<Option<SessionType>>(
-    SessionTypeOptions.find(
-      option => option.value === props.initialValues?.type
-    ) || SessionTypeOptions[0]
+
+  const sessionTypeOptions = React.useMemo(
+    () =>
+      props.isPro === false
+        ? SessionTypeOptions.filter(option => option.value === SessionType.FREE)
+        : SessionTypeOptions,
+    [props.isPro]
   )
+
+  const [sessionType, setSessionType] = React.useState<Option<SessionType>>(
+    sessionTypeOptions.find(
+      option => option.value === props.initialValues?.type
+    ) || sessionTypeOptions[0]
+  )
+
+  useEffect(() => {
+    if (props.isPro === false) {
+      const freeOption =
+        sessionTypeOptions.find(o => o.value === SessionType.FREE) ||
+        sessionTypeOptions[0]
+      setSessionType(freeOption)
+    }
+  }, [props.isPro, sessionTypeOptions])
   const [planType, setPlanType] = React.useState<Option<PlanType>>(
     PlanTypeOptions.find(
       option => option.value === props.initialValues?.plan?.type
@@ -151,8 +170,8 @@ const MeetingTypeModal: FC<IProps> = props => {
       (props?.initialValues?.plan?.payment_methods?.length || 0) > 0
       ? props?.initialValues?.plan?.payment_methods
       : props.stripeStatus === PaymentAccountStatus.CONNECTED
-      ? [PaymentType.FIAT, PaymentType.CRYPTO]
-      : [PaymentType.CRYPTO]
+        ? [PaymentType.FIAT, PaymentType.CRYPTO]
+        : [PaymentType.CRYPTO]
   )
 
   const handlePaymentPlatformChange = (value: PaymentType) => {
@@ -350,8 +369,8 @@ const MeetingTypeModal: FC<IProps> = props => {
         (minAdvanceTime.type === 'minutes'
           ? 1
           : minAdvanceTime.type === 'hours'
-          ? 60
-          : 60 * 24),
+            ? 60
+            : 60 * 24),
       calendars: calendars.map(c => c.value),
       availability_ids: availabilityBlock.map(val => val.value),
       description,
@@ -424,6 +443,17 @@ const MeetingTypeModal: FC<IProps> = props => {
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof ApiFetchError && e.status === 403) {
+        toast({
+          title: 'Upgrade required',
+          description:
+            e.message ||
+            'Free plan only supports free session types. Upgrade to create paid sessions.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       }
     }
     setIsLoading(false)
@@ -458,8 +488,8 @@ const MeetingTypeModal: FC<IProps> = props => {
           (minAdvanceTime.type === 'minutes'
             ? 1
             : minAdvanceTime.type === 'hours'
-            ? 60
-            : 60 * 24)
+              ? 60
+              : 60 * 24)
         break
       case 'fixed_link':
         value = fixedLink
@@ -588,16 +618,16 @@ const MeetingTypeModal: FC<IProps> = props => {
               justifyContent={'space-between'}
               alignItems="flex-start"
               isInvalid={!!errors.type}
-              isDisabled
+              isDisabled={props.isPro === false}
             >
               <FormLabel fontSize={'16px'}>Session Type</FormLabel>
               <ChakraSelect
-                isDisabled={!!props.initialValues?.id}
+                isDisabled={props.isPro === false}
                 value={sessionType}
                 colorScheme="primary"
                 onChange={handleSessionChange}
                 className="noLeftBorder timezone-select"
-                options={SessionTypeOptions}
+                options={sessionTypeOptions}
                 components={noClearCustomSelectComponent}
                 chakraStyles={{
                   ...fullWidthStyle,
@@ -937,8 +967,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.meeting_platforms
                           ? 'red.500'
                           : selectedProviders.includes(provider)
-                          ? 'border-default-primary'
-                          : 'border-inverted-subtle'
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
                       }
                       colorScheme="primary"
                       value={provider}
@@ -959,8 +989,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                           !!errors.meeting_platforms
                             ? 'red.500'
                             : selectedProviders.includes(provider)
-                            ? 'border-default-primary'
-                            : 'border-inverted-subtle'
+                              ? 'border-default-primary'
+                              : 'border-inverted-subtle'
                         }
                         cursor="pointer"
                       >
@@ -984,8 +1014,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                       !!errors.meeting_platforms
                         ? 'red.500'
                         : selectedProviders.includes(MeetingProvider.CUSTOM)
-                        ? 'border-default-primary'
-                        : 'border-inverted-subtle'
+                          ? 'border-default-primary'
+                          : 'border-inverted-subtle'
                     }
                     colorScheme="primary"
                     p={4}
@@ -1005,8 +1035,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.meeting_platforms
                           ? 'red.500'
                           : selectedProviders.includes(MeetingProvider.CUSTOM)
-                          ? 'border-default-primary'
-                          : 'border-inverted-subtle'
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
                       }
                       cursor="pointer"
                     >
@@ -1032,8 +1062,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                       !!errors.custom_link
                         ? 'red.300'
                         : fixedLink
-                        ? 'border-default-primary'
-                        : 'border-inverted-subtle'
+                          ? 'border-default-primary'
+                          : 'border-inverted-subtle'
                     }
                     w="100%"
                     borderRadius={8}
@@ -1323,8 +1353,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.plan?.payment_methods
                           ? 'red.500'
                           : paymentPlatforms.includes(PaymentType.CRYPTO)
-                          ? 'border-default-primary'
-                          : 'border-inverted-subtle'
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
                       }
                       colorScheme="primary"
                       isChecked={paymentPlatforms.includes(PaymentType.CRYPTO)}
@@ -1340,8 +1370,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                           !!errors.plan?.payment_methods
                             ? 'red.500'
                             : paymentPlatforms.includes(PaymentType.CRYPTO)
-                            ? 'border-default-primary'
-                            : 'border-inverted-subtle'
+                              ? 'border-default-primary'
+                              : 'border-inverted-subtle'
                         }
                         cursor="pointer"
                         textTransform="capitalize"
@@ -1362,8 +1392,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                         !!errors.plan?.payment_methods
                           ? 'red.500'
                           : paymentPlatforms.includes(PaymentType.FIAT)
-                          ? 'border-default-primary'
-                          : 'border-inverted-subtle'
+                            ? 'border-default-primary'
+                            : 'border-inverted-subtle'
                       }
                       colorScheme="primary"
                       isChecked={paymentPlatforms.includes(PaymentType.FIAT)}
@@ -1379,8 +1409,8 @@ const MeetingTypeModal: FC<IProps> = props => {
                           !!errors.plan?.payment_methods
                             ? 'red.500'
                             : paymentPlatforms.includes(PaymentType.FIAT)
-                            ? 'border-default-primary'
-                            : 'border-inverted-subtle'
+                              ? 'border-default-primary'
+                              : 'border-inverted-subtle'
                         }
                         cursor="pointer"
                         textTransform="capitalize"

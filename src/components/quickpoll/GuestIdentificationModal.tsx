@@ -55,7 +55,7 @@ const GuestIdentificationModal: React.FC<GuestIdentificationModalProps> = ({
       setEmail('')
       setIsLoading(false)
       onClose()
-    } catch (error) {
+    } catch (_error) {
       setIsLoading(false)
     }
   }

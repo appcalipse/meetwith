@@ -50,7 +50,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
 
   return (
     <VStack
-      py={isMobile ? 10 : 7}
+      py={{ base: 10, md: 7 }}
       px={5}
       borderWidth={1}
       borderColor={'input-border'}
@@ -58,10 +58,11 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       gap={5}
       minH={'80vh'}
       overflowY={'auto'}
-      w={isMobile ? '100%' : 'fit-content'}
-      mx={isMobile ? 'auto' : 0}
+      w={{ base: '100%', md: 'fit-content' }}
+      mx={{ base: 'auto', md: 0 }}
       bg="bg-surface-secondary"
-      minW={isMobile ? 'none' : '315px'}
+      minW={{ base: 'none', md: '315px' }}
+      maxW={'400px'}
       display={{
         base: isMobile ? 'flex' : 'none',
         lg: 'flex',
