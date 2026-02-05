@@ -33,7 +33,8 @@ const UpComingEvent: React.FC<UpComingEventProps> = ({ meeting }) => {
   const recurrence = isDashboardMwwEvent(meeting)
     ? meeting.recurrence
       ? meeting.recurrence
-      : meeting.decrypted.recurrence
+      : // biome-ignore lint/suspicious/noExplicitAny: temporary fix for typing
+        (meeting as any).decrypted.recurrence
     : meeting.recurrence?.frequency ||
       meeting.providerData?.google?.recurringEventId
 
