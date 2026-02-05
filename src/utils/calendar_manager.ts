@@ -3432,6 +3432,7 @@ export {
   generateOffice365CalendarUrl,
   getAccountCalendarUrl,
   getAccountDomainUrl,
+  getActor,
   getMeetingRepeatFromRule,
   googleUrlParsedDate,
   handleParticipants,
@@ -3451,5 +3452,4 @@ export {
   updateMeetingConferenceGuest,
   updateMeetingInstance,
   updateMeetingSeries,
-  getActor,
 }
