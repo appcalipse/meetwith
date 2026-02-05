@@ -130,6 +130,25 @@ const withAuthRedirect =
         )
       }
 
+      // Similar check for authenticated users
+      if (
+        logged &&
+        redirectType === AuthRedirect.REDIRECT_IF_AUTHED &&
+        !isOnTargetRoute
+      ) {
+        router.push(route)
+        return (
+          <Flex
+            width="100%"
+            height="100%"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Loading />
+          </Flex>
+        )
+      }
+
       if (checkAuthOnClient && !currentAccount) {
         return (
           <Flex

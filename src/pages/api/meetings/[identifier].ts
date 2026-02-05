@@ -1,11 +1,16 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { getSlotsForAccount, getSlotsForDashboard } from '@/utils/database'
+import {
+  getSlotsForAccount,
+  getSlotsForDashboard,
+  updateRecurringSlots,
+} from '@/utils/database'
 import { AccountNotFoundError } from '@/utils/errors'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     try {
+      await updateRecurringSlots(req.query.identifier as string)
       let meetings
       if (req.query.upcoming === 'true') {
         meetings = await getSlotsForDashboard(
