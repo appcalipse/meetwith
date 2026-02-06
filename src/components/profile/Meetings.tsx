@@ -36,7 +36,6 @@ const NavigationTab = () => (
         bg: 'tab-button-bg',
       }}
       flex={{ base: 1, md: 'auto' }}
-      display={isProduction ? 'none' : 'flex'}
     >
       <MdOutlineCalendarMonth size={24} />
       My Calendar
