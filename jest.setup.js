@@ -184,14 +184,22 @@ jest.mock('uuid', () => ({
   validate: jest.fn(() => true),
 }))
 
-// Mock WalletConnect
-jest.mock('@walletconnect/web3-provider', () => ({
-  default: jest.fn(),
-}))
+// Mock WalletConnect (optional modules)
+jest.mock(
+  '@walletconnect/web3-provider',
+  () => ({
+    default: jest.fn(),
+  }),
+  { virtual: true }
+)
 
-jest.mock('@walletconnect/sign-client', () => ({
-  default: jest.fn(),
-}))
+jest.mock(
+  '@walletconnect/sign-client',
+  () => ({
+    default: jest.fn(),
+  }),
+  { virtual: true }
+)
 
 // Mock viem
 jest.mock('viem', () => ({
