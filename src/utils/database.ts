@@ -1303,12 +1303,16 @@ const getSlotsForAccountWithConference = async (
   const conferenceDataMap = await getMultipleConferenceIdsDataBySlotId(
     slots?.map(slot => slot.id).filter(id => id) as string[]
   )
-  for (const slot of slots) {
-    if (!slot.id) continue
+  const slotsWithMeetings = (slots || []).map(slot => {
+    if (!slot.id) return slot
     const conferenceMeeting = conferenceDataMap.get(slot.id)
-    slot.meeting_id = conferenceMeeting?.id
-  }
-  return [...(slots || []), ...(slotInstances || []), ...(slotSeries || [])]
+    return { ...slot, meeting_id: conferenceMeeting?.id }
+  })
+  return [
+    ...(slotsWithMeetings || []),
+    ...(slotInstances || []),
+    ...(slotSeries || []),
+  ]
 }
 
 const getSlotsForAccountMinimal = async (
@@ -1777,27 +1781,19 @@ const getMultipleConferenceIdsDataBySlotId = async (
   if (slotIds.length === 0) {
     return new Map()
   }
-  const { data, error } = await db.supabase.rpc<ConferenceMeeting>(
-    'get_meeting_id_by_slot_ids',
-    {
-      slot_ids: slotIds, // This should be a proper JavaScript array
-    }
-  )
+  const { data, error } = await db.supabase.rpc<{
+    id: string
+    slot_id: string
+  }>('get_meeting_id_by_slot_ids', {
+    slot_ids: slotIds, // This should be a proper JavaScript array
+  })
   if (error) {
     throw new Error(error.message)
   }
 
-  const slotToMeetingMap = new Map<string, Pick<ConferenceMeeting, 'id'>>()
-
-  data?.forEach(meeting => {
-    if (meeting.slots && Array.isArray(meeting.slots)) {
-      meeting.slots.forEach(slotId => {
-        if (slotIds.includes(slotId)) {
-          slotToMeetingMap.set(slotId, meeting)
-        }
-      })
-    }
-  })
+  const slotToMeetingMap = new Map<string, Pick<ConferenceMeeting, 'id'>>(
+    data.map(({ id, slot_id }) => [slot_id, { id }])
+  )
 
   return slotToMeetingMap
 }
