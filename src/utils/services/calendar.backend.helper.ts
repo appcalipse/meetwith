@@ -3,26 +3,18 @@ import {
   areIntervalsOverlapping,
   compareAsc,
   differenceInSeconds,
-  getWeekOfMonth,
   Interval,
   max,
   min,
 } from 'date-fns'
-import format from 'date-fns/format'
 import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
 import { DateTime } from 'luxon'
 
 import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
-import {
-  MeetingChangeType,
-  MeetingProvider,
-  MeetingRepeat,
-  TimeSlot,
-  TimeSlotSource,
-} from '@/types/Meeting'
-import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
+import { MeetingChangeType, TimeSlot, TimeSlotSource } from '@/types/Meeting'
+import { ParticipationStatus } from '@/types/ParticipantInfo'
 import { QuickPollBusyParticipant } from '@/types/QuickPoll'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 import {
@@ -253,19 +245,23 @@ export const CalendarBackendHelper = {
           calendar.provider,
           calendar.payload
         )
-
-        const externalSlots = await integration.getEvents(
-          calendar
-            .calendars!.filter(c => (onlyWithMeetingLinks ? c.enabled : true))
-            .map(c => ({
-              calendarId: c.calendarId,
-              name: c.name,
-            })),
-          startDate.toISOString(),
-          endDate.toISOString(),
-          onlyWithMeetingLinks
-        )
-        return externalSlots
+        try {
+          const externalSlots = await integration.getEvents(
+            calendar
+              .calendars!.filter(c => (onlyWithMeetingLinks ? c.enabled : true))
+              .map(c => ({
+                calendarId: c.calendarId,
+                name: c.name,
+              })),
+            startDate.toISOString(),
+            endDate.toISOString(),
+            onlyWithMeetingLinks
+          )
+          return externalSlots
+        } catch (error) {
+          console.error(`Error fetching events for ${calendar.email}:`, error)
+          return []
+        }
       })
     )
     return events.flat()
