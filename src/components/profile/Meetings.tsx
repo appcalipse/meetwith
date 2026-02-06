@@ -16,7 +16,6 @@ import { LuCalendarCheck2 } from 'react-icons/lu'
 import { MdOutlineCalendarMonth } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
-import { isProduction } from '@/utils/constants'
 
 import CalendarView from '../calendar-view'
 import MeetingBase from '../meeting/Base'
@@ -101,8 +100,9 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
           </Button>
         </Flex>
         <TabPanels>
-          <TabPanel p={0}>{!isProduction && <CalendarView />}</TabPanel>
-
+          <TabPanel p={0}>
+            <CalendarView />
+          </TabPanel>
           <TabPanel p={0}>
             <MeetingBase currentAccount={currentAccount} />
           </TabPanel>
