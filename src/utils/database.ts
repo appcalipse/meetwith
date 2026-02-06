@@ -1303,12 +1303,16 @@ const getSlotsForAccountWithConference = async (
   const conferenceDataMap = await getMultipleConferenceIdsDataBySlotId(
     slots?.map(slot => slot.id).filter(id => id) as string[]
   )
-  for (const slot of slots) {
-    if (!slot.id) continue
+  const slotsWithMeetings = (slots || []).map(slot => {
+    if (!slot.id) return slot
     const conferenceMeeting = conferenceDataMap.get(slot.id)
-    slot.meeting_id = conferenceMeeting?.id
-  }
-  return [...(slots || []), ...(slotInstances || []), ...(slotSeries || [])]
+    return { ...slot, meeting_id: conferenceMeeting?.id }
+  })
+  return [
+    ...(slotsWithMeetings || []),
+    ...(slotInstances || []),
+    ...(slotSeries || []),
+  ]
 }
 
 const getSlotsForAccountMinimal = async (
