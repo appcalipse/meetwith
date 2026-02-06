@@ -1781,27 +1781,19 @@ const getMultipleConferenceIdsDataBySlotId = async (
   if (slotIds.length === 0) {
     return new Map()
   }
-  const { data, error } = await db.supabase.rpc<ConferenceMeeting>(
-    'get_meeting_id_by_slot_ids',
-    {
-      slot_ids: slotIds, // This should be a proper JavaScript array
-    }
-  )
+  const { data, error } = await db.supabase.rpc<{
+    id: string
+    slot_id: string
+  }>('get_meeting_id_by_slot_ids', {
+    slot_ids: slotIds, // This should be a proper JavaScript array
+  })
   if (error) {
     throw new Error(error.message)
   }
 
-  const slotToMeetingMap = new Map<string, Pick<ConferenceMeeting, 'id'>>()
-
-  data?.forEach(meeting => {
-    if (meeting.slots && Array.isArray(meeting.slots)) {
-      meeting.slots.forEach(slotId => {
-        if (slotIds.includes(slotId)) {
-          slotToMeetingMap.set(slotId, meeting)
-        }
-      })
-    }
-  })
+  const slotToMeetingMap = new Map<string, Pick<ConferenceMeeting, 'id'>>(
+    data.map(({ id, slot_id }) => [slot_id, { id }])
+  )
 
   return slotToMeetingMap
 }
