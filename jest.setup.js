@@ -183,3 +183,27 @@ jest.mock('uuid', () => ({
   v4: jest.fn(() => '00000000-0000-0000-0000-000000000000'),
   validate: jest.fn(() => true),
 }))
+
+// Mock WalletConnect
+jest.mock('@walletconnect/web3-provider', () => ({
+  default: jest.fn(),
+}))
+
+jest.mock('@walletconnect/sign-client', () => ({
+  default: jest.fn(),
+}))
+
+// Mock viem
+jest.mock('viem', () => ({
+  createPublicClient: jest.fn(),
+  createWalletClient: jest.fn(),
+  http: jest.fn(),
+  parseEther: jest.fn(),
+  formatEther: jest.fn(),
+  encodeFunctionData: jest.fn(),
+  decodeFunctionData: jest.fn(),
+}))
+
+// Set environment to localhost for constants
+process.env.NEXT_PUBLIC_VERCEL_URL = 'localhost'
+process.env.VERCEL_URL = 'localhost'

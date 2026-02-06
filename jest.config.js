@@ -7,7 +7,7 @@ const createJestConfig = nextJest({
   dir: './',
 })
 
-const esModules = ['@wagmi', 'html-tags'].join('|')
+const esModules = ['@wagmi', 'html-tags', '@walletconnect', 'viem', '@tanstack'].join('|')
 
 // Add any custom config to be passed to Jest
 
