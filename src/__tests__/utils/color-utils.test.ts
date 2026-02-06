@@ -7,7 +7,7 @@ import {
   getAdvancedContrastingText,
   generateColorScheme,
   getDesignSystemTextColor,
-} from '../color-utils'
+} from '@/utils/color-utils'
 
 describe('color-utils', () => {
   describe('generateBorderColor', () => {

@@ -1,4 +1,4 @@
-import { diff, intersec } from '../collections'
+import { diff, intersec } from '@/utils/collections'
 
 describe('collections', () => {
   describe('diff', () => {
