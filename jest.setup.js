@@ -178,15 +178,6 @@ jest.mock('@tanstack/react-query', () => ({
   QueryClientProvider: ({ children }) => children,
 }))
 
-// Mock swr (should not be used in tests, but mock it to prevent bundling issues)
-try {
-  jest.mock('swr', () => {
-    return jest.fn(() => ({ data: null, error: null, isValidating: false, mutate: jest.fn() }))
-  })
-} catch (e) {
-  // swr not installed, skip mock
-}
-
 // Mock uuid
 jest.mock('uuid', () => ({
   v4: jest.fn(() => '00000000-0000-0000-0000-000000000000'),
