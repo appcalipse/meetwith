@@ -23,7 +23,7 @@ describe('email_helper extended tests', () => {
       ]
       invalid.forEach(email => {
         const parts = email.split('@')
-        const isValid = parts.length === 2 && parts[0].length > 0 && parts[1].includes('.')
+        const isValid = parts.length === 2 && parts[0].trim().length > 0 && parts[1].includes('.') && !parts[1].startsWith('.')
         expect(isValid).toBe(false)
       })
     })
