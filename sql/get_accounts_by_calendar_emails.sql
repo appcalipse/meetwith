@@ -21,6 +21,12 @@ BEGIN
         WHERE
             -- Check if the calendar email is contained in the input array
             cca.email = ANY(p_emails)
+            -- Check if at least one calendar in the calendars JSON array has sync = true
+            AND EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements(cca.calendars) AS cal
+                WHERE (cal->>'sync')::boolean = true
+            )
         ORDER BY a.created_at
         LIMIT p_limit
         OFFSET p_offset

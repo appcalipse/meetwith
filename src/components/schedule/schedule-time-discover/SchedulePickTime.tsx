@@ -94,12 +94,12 @@ const GUIDES = [
     description: 'Everyone is available',
   },
   {
-    color: getBgColor(State.SOME_AVAILABLE),
-    description: 'Some are available',
-  },
-  {
     color: getBgColor(State.MOST_AVAILABLE),
     description: 'Most are available',
+  },
+  {
+    color: getBgColor(State.SOME_AVAILABLE),
+    description: 'Some are available',
   },
   {
     color: getBgColor(State.NONE_AVAILABLE),
