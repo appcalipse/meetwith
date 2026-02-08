@@ -1086,7 +1086,7 @@ const handleUpdateSingleRecurringInstance = async (
         if (series) {
           return {
             instances: {
-              account_address: slot.account_address,
+              account_address: slot.account_address ?? null,
               end: new Date(endTime).toISOString(),
               id: series.id + '_' + timeStamp,
               override_meeting_info_encrypted: slot.meeting_info_encrypted,
