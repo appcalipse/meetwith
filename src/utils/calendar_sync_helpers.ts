@@ -1094,6 +1094,7 @@ const handleUpdateSingleRecurringInstance = async (
               start: new Date(startTime).toISOString(),
               status: RecurringStatus.MODIFIED,
               version: (slots[0].version || 0) + 1,
+              guest_email: slot.guest_email ?? null,
             },
           }
         } else {
@@ -1120,7 +1121,7 @@ const handleUpdateSingleRecurringInstance = async (
         if (serie) {
           return {
             instances: {
-              account_address: serie.account_address,
+              account_address: serie.account_address ?? null,
               end: new Date(endTime).toISOString(),
               id: slotId + '_' + timeStamp,
               override_meeting_info_encrypted: null,
@@ -1128,7 +1129,7 @@ const handleUpdateSingleRecurringInstance = async (
               start: new Date(startTime).toISOString(),
               status: RecurringStatus.CANCELLED,
               version: version + 1,
-              guest_email: serie.guest_email,
+              guest_email: serie.guest_email ?? null,
             },
           }
         } else {
@@ -1343,9 +1344,9 @@ const handleCancelOrDeleteForRecurringInstance = async (
       async (slot): Promise<TablesUpdate<'slot_instance'>> => {
         const series_id = await getSlotSeriesId(slot.id!)
         return {
-          account_address: slot.account_address,
+          account_address: slot.account_address ?? null,
           end: new Date(endTime).toISOString(),
-          guest_email: slot.guest_email,
+          guest_email: slot.guest_email ?? null,
           id: slot.id + '_' + timeStamp,
           override_meeting_info_encrypted: slot.meeting_info_encrypted,
           series_id,
@@ -1362,9 +1363,9 @@ const handleCancelOrDeleteForRecurringInstance = async (
         const serie = series.find(s => s.id === slotId)
         if (serie) {
           return {
-            account_address: serie.account_address,
+            account_address: serie.account_address ?? null,
             end: new Date(endTime).toISOString(),
-            guest_email: serie.guest_email,
+            guest_email: serie.guest_email ?? null,
             id: slotId + '_' + timeStamp,
             override_meeting_info_encrypted: null,
             series_id: serie?.id,
