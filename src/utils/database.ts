@@ -4436,10 +4436,10 @@ const updateMeeting = async (
       const seriesId = seriesInstance?.id
       if (seriesId) {
         slotInstanceToInsert.push({
-          account_address: slot.account_address,
+          account_address: slot.account_address ?? null,
           created_at: slot.created_at,
           end: slot.end,
-          guest_email: slot.guest_email,
+          guest_email: slot.guest_email ?? null,
           id: slot.id,
           override_meeting_info_encrypted: slot.meeting_info_encrypted,
           series_id: seriesId,
@@ -4596,10 +4596,10 @@ const updateMeetingInstance = async (
     const seriesId = seriesInstance?.id
     if (seriesId) {
       slotInstances.push({
-        account_address: slot.account_address,
+        account_address: slot.account_address ?? null,
         created_at: slot.created_at,
         end: slot.end,
-        guest_email: slot.guest_email,
+        guest_email: slot.guest_email ?? null,
         id: slot.id,
         override_meeting_info_encrypted: slot.meeting_info_encrypted,
         series_id: seriesId,
@@ -4610,10 +4610,10 @@ const updateMeetingInstance = async (
     } else {
       // meeting never had a series so we create a slot for this new participant
       slots.push({
-        account_address: slot.account_address,
+        account_address: slot.account_address ?? null,
         created_at: slot.created_at,
         end: slot.end,
-        guest_email: slot.guest_email,
+        guest_email: slot.guest_email ?? null,
         id: slot.id.split('_')[0],
         meeting_info_encrypted: slot.meeting_info_encrypted,
         role: slot.role || ParticipantType.Invitee,
@@ -4627,8 +4627,18 @@ const updateMeetingInstance = async (
     .from('slot_instance')
     .upsert(slotInstances, { onConflict: 'id' })
   if (slots.length > 0) {
-    await db.supabase.from('slots').upsert(
-      slots.map(slot => ({ ...slot, id: slot.id.split('_')[0] })),
+    await db.supabase.from<Tables<'slots'>>('slots').upsert(
+      slots.map(slot => ({
+        id: slot.id.split('_')[0],
+        account_address: slot.account_address ?? null,
+        end: slot.end,
+        guest_email: slot.guest_email ?? null,
+        meeting_info_encrypted: slot.meeting_info_encrypted,
+        recurrence: slot.recurrence,
+        role: slot.role ?? null,
+        start: slot.start,
+        version: slot.version,
+      })),
       { onConflict: 'id' }
     )
   }
