@@ -4409,8 +4409,18 @@ const updateMeeting = async (
   // to the point that our checks will not be able to stop conflicts
   const slotInstances = slots.filter(slot => slot.id && slot.id.includes('_'))
   const slotsFiltered = slots.filter(slot => slot.id && !slot.id.includes('_'))
-  const query = await db.supabase.from('slots').upsert(
-    slotsFiltered.map(slot => ({ ...slot, id: slot.id })),
+  const query = await db.supabase.from<Tables<'slots'>>('slots').upsert(
+    slotsFiltered.map(slot => ({
+      id: slot.id,
+      account_address: slot.account_address ?? null,
+      end: slot.end,
+      guest_email: slot.guest_email ?? null,
+      meeting_info_encrypted: slot.meeting_info_encrypted,
+      recurrence: slot.recurrence,
+      role: slot.role ?? null,
+      start: slot.start,
+      version: slot.version,
+    })),
     { onConflict: 'id' }
   )
 
