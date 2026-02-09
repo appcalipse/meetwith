@@ -2165,6 +2165,13 @@ const deleteMeetingFromDB = async (
   title?: string,
   ical_uid?: string
 ) => {
+  if (guestsToRemove.length > 0) {
+    slotIds = slotIds.concat(
+      guestsToRemove
+        .map(guest => guest.slot_id)
+        .filter((id): id is string => !!id)
+    )
+  }
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
   const instanceIds = slotIds.filter(id => id.includes('_'))
