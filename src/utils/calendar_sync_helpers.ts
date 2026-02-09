@@ -229,7 +229,7 @@ const handleUpdateParseMeetingInfo = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
@@ -339,7 +339,7 @@ const handleUpdateRSVPParseMeetingInfo = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     decryptedMeeting?.provider || MeetingProvider.GOOGLE_MEET,
@@ -470,7 +470,7 @@ const handleDeleteMeetingParseInfo = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     decryptedMeeting?.provider || MeetingProvider.GOOGLE_MEET,
