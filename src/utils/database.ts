@@ -6790,6 +6790,10 @@ const getTransactionsById = async (id: string) => {
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     throw new Error(error.message)
   }
   return data
@@ -6802,6 +6806,10 @@ const getTransactionsStatusById = async (id: string) => {
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     throw new Error(error.message)
   }
   return data?.status
@@ -8016,7 +8024,6 @@ const verifyUserPin = async (
   pin: string
 ): Promise<boolean> => {
   try {
-    // Get raw data including pin_hash for verification
     const { data, error } = await db.supabase
       .from('payment_preferences')
       .select('pin_hash')
@@ -8024,8 +8031,12 @@ const verifyUserPin = async (
       .maybeSingle()
 
     if (error) {
-      console.error('Error fetching PIN for verification:', error)
-      return false
+      if (error.code === 'PGRST116') {
+        // No rows returned - no pin set
+        return false
+      }
+      Sentry.captureException(error)
+      throw new Error('Could not verify pin')
     }
 
     if (!data?.pin_hash) {
@@ -8203,6 +8214,10 @@ const checkPollSlugExists = async (slug: string): Promise<boolean> => {
       .maybeSingle()
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned
+        return false
+      }
       throw error
     }
 
@@ -8592,7 +8607,12 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
       .eq('id', pollId)
       .maybeSingle()
 
-    if (pollError) throw pollError
+    if (pollError) {
+      if (pollError.code === 'PGRST116') {
+        throw new QuickPollNotFoundError(pollId)
+      }
+      throw pollError
+    }
     if (!poll) {
       throw new QuickPollNotFoundError(pollId)
     }
@@ -8682,7 +8702,12 @@ const getQuickPollBySlug = async (slug: string, requestingAddress?: string) => {
       .eq('slug', slug)
       .maybeSingle()
 
-    if (pollError) throw pollError
+    if (pollError) {
+      if (pollError.code === 'PGRST116') {
+        throw new QuickPollSlugNotFoundError(slug)
+      }
+      throw pollError
+    }
     if (!poll) {
       throw new QuickPollSlugNotFoundError(slug)
     }
@@ -9585,7 +9610,12 @@ const getQuickPollParticipantById = async (participantId: string) => {
       .eq('id', participantId)
       .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
     }
@@ -9615,7 +9645,7 @@ const getQuickPollParticipantByIdentifier = async (
 
     if (error) {
       if (error.code === 'PGRST116') {
-        throw new QuickPollParticipantNotFoundError(identifier)
+        return null
       }
       throw error
     }
@@ -9730,6 +9760,10 @@ const getPaymentAccountByProviderId = async (
     .eq('provider', provider)
     .maybeSingle()
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     throw new Error('Could not fetch payment account')
   }
   return payment_account
@@ -9816,6 +9850,10 @@ const getBillingPlanById = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new BillingPlanFetchError(planId, error.message)
   }
@@ -9868,6 +9906,10 @@ const getBillingPlanProvider = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new BillingPlanProviderFetchError(planId, provider, error.message)
   }
@@ -9888,6 +9930,10 @@ const getBillingPlanIdFromStripeProduct = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new BillingPlanFromStripeProductError(stripeProductId, error.message)
   }
@@ -9942,6 +9988,10 @@ const getStripeSubscriptionByAccount = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new StripeSubscriptionFetchError(accountAddress, error.message)
   }
@@ -9960,6 +10010,10 @@ const getStripeSubscriptionById = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new StripeSubscriptionFetchError(stripeSubscriptionId, error.message)
   }
@@ -10014,7 +10068,9 @@ const linkTransactionToStripeSubscription = async (
     .maybeSingle()
 
   if (checkError) {
-    Sentry.captureException(checkError)
+    if (checkError.code !== 'PGRST116') {
+      Sentry.captureException(checkError)
+    }
   }
 
   if (existingLink) {
@@ -10055,7 +10111,9 @@ const findTransactionByProviderReference = async (
     .maybeSingle()
 
   if (error) {
-    Sentry.captureException(error)
+    if (error.code !== 'PGRST116') {
+      Sentry.captureException(error)
+    }
     return null
   }
 
@@ -10151,6 +10209,10 @@ const getActiveSubscriptionPeriod = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new SubscriptionPeriodFetchError(accountAddress, error.message)
   }
@@ -10447,6 +10509,10 @@ const findSubscriptionPeriodByPlanAndExpiry = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new SubscriptionPeriodFindError(error.message)
   }
@@ -10470,6 +10536,10 @@ const findRecentSubscriptionPeriodByPlan = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new SubscriptionPeriodFindError(error.message)
   }
@@ -10493,7 +10563,11 @@ const findExistingSubscriptionPeriod = async (
       .eq('transaction_id', transactionId)
       .maybeSingle()
 
-    if (!txError && byTransaction) {
+    if (txError && txError.code !== 'PGRST116') {
+      Sentry.captureException(txError)
+    }
+
+    if (byTransaction) {
       return byTransaction
     }
   }
@@ -10516,6 +10590,10 @@ const findExistingSubscriptionPeriod = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new SubscriptionPeriodFindError(error.message)
   }
