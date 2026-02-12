@@ -219,13 +219,9 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
     })
     try {
       if (!isCalendarEvent(slot)) {
-        await rsvpMeeting(
-          slot.id,
-          currentAccount.address,
-          status,
-          abortController.signal
-        )
-        // Success: update global cache
+        // Optimistic cache update before API call so that
+        // decryptedMeeting (derived from selectedSlot) stays fresh
+        // when the user clicks "Update Meeting".
         queryClient.setQueryData<CalendarEventsData>(
           createEventsQueryKey(currentDate),
           old => {
@@ -241,10 +237,17 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
                       ? { ...p, status }
                       : p
                   ),
+                  version: event.version + 1,
                 }
               }),
             }
           }
+        )
+        await rsvpMeeting(
+          slot.id,
+          currentAccount.address,
+          status,
+          abortController.signal
         )
       } else {
         const attendeeStatus = mapParticipationStatusToAttendeeStatus(status)
@@ -300,6 +303,32 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
             : prev
         }
       })
+      // Revert optimistic cache update
+      if (!isCalendarEvent(slot)) {
+        queryClient.setQueryData<CalendarEventsData>(
+          createEventsQueryKey(currentDate),
+          old => {
+            if (!old?.mwwEvents) return old
+            return {
+              ...old,
+              mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
+                if (event.id !== slot.id) return event
+                return {
+                  ...event,
+                  participants: event.participants.map(p =>
+                    p.account_address === currentAccount?.address
+                      ? {
+                          ...p,
+                          status: previousStatus as ParticipationStatus,
+                        }
+                      : p
+                  ),
+                }
+              }),
+            }
+          }
+        )
+      }
     }
   }
   const _onChange = (newValue: RSVPOption) => {

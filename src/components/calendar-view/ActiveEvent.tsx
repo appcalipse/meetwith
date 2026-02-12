@@ -12,6 +12,7 @@ import * as React from 'react'
 import useAccountContext from '@/hooks/useAccountContext'
 import {
   CalendarEventsData,
+  createEventsQueryKey,
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
 import { ActionsContext } from '@/providers/schedule/ActionsContext'
@@ -125,6 +126,36 @@ const ActiveEvent: React.FC = () => {
       end: selectedSlot.end.toJSDate(),
     }
   }, [selectedSlot])
+
+  /**
+   * Reads the freshest participant list for the current MWW event from
+   * the React Query cache.  This is necessary because `decryptedMeeting`
+   * is derived from `selectedSlot`, which is a snapshot captured when
+   * the user clicked "Edit".  Any RSVP changes made after that (in
+   * EventDetailsPopOver or ActiveMeetwithEvent's own dropdown) update
+   * the cache but NOT `selectedSlot`, so `decryptedMeeting.participants`
+   * can become stale.
+   */
+  const getFreshDecryptedMeeting = React.useCallback(():
+    | MeetingDecrypted
+    | undefined => {
+    if (!decryptedMeeting || !selectedSlot || isCalendarEvent(selectedSlot)) {
+      return decryptedMeeting
+    }
+    const cachedData = queryClient.getQueryData<CalendarEventsData>(
+      createEventsQueryKey(currentDate)
+    )
+    const freshEvent = cachedData?.mwwEvents?.find(
+      e => e.id === selectedSlot.id
+    )
+    if (freshEvent) {
+      return {
+        ...decryptedMeeting,
+        participants: freshEvent.participants,
+      }
+    }
+    return decryptedMeeting
+  }, [decryptedMeeting, selectedSlot, currentDate])
   const {
     setGroupParticipants,
     setGroupAvailability,
@@ -448,7 +479,8 @@ const ActiveEvent: React.FC = () => {
 
       setIsScheduling(true)
       if (!isCalendarEvent(selectedSlot)) {
-        if (!decryptedMeeting) {
+        const freshMeeting = getFreshDecryptedMeeting()
+        if (!freshMeeting) {
           setIsScheduling(false)
           return
         }
@@ -526,7 +558,7 @@ const ActiveEvent: React.FC = () => {
               currentAccount!.address,
               start,
               end,
-              decryptedMeeting!,
+              freshMeeting,
               getSignature(currentAccount!.address) || '',
               _participants.valid,
               content,
@@ -559,7 +591,7 @@ const ActiveEvent: React.FC = () => {
             NO_MEETING_TYPE,
             start,
             end,
-            decryptedMeeting,
+            freshMeeting,
             getSignature(currentAccount.address) || '',
             _participants.valid,
             content,
@@ -742,7 +774,7 @@ const ActiveEvent: React.FC = () => {
     isScheduling,
     selectedSlot,
     currentAccount,
-    decryptedMeeting,
+    getFreshDecryptedMeeting,
     pickedTime,
     duration,
     duration,

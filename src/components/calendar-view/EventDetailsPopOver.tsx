@@ -28,7 +28,6 @@ import {
   createEventsQueryKey,
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
-import { Account } from '@/types/Account'
 import {
   AttendeeStatus,
   isAccepted,
@@ -41,10 +40,8 @@ import {
   WithInterval,
 } from '@/types/Calendar'
 import { MeetingDecrypted, TimeSlotSource } from '@/types/Meeting'
-import { Attendee } from '@/types/Office365'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
-import { updateCalendarRsvpStatus } from '@/utils/api_helper'
 import {
   dateToLocalizedRange,
   getActor,
@@ -159,13 +156,9 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
     })
     try {
       if (!isCalendarEvent(slot)) {
-        await rsvpMeeting(
-          slot.id,
-          currentAccount.address,
-          status,
-          abortController.signal
-        )
-        // Success: update global cache
+        // Optimistic cache update before API call so that eventIndex
+        // (and therefore the event prop in Event.tsx) is fresh when the
+        // user clicks "Edit" to open ActiveMeetwithEvent.
         queryClient.setQueryData<CalendarEventsData>(
           createEventsQueryKey(currentDate),
           old => {
@@ -181,10 +174,17 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                       ? { ...p, status }
                       : p
                   ),
+                  version: event.version + 1,
                 }
               }),
             }
           }
+        )
+        await rsvpMeeting(
+          slot.id,
+          currentAccount.address,
+          status,
+          abortController.signal
         )
       } else {
         const attendeeStatus = mapParticipationStatusToAttendeeStatus(status)
@@ -240,6 +240,32 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
             : prev
         }
       })
+      // Revert optimistic cache update
+      if (!isCalendarEvent(slot)) {
+        queryClient.setQueryData<CalendarEventsData>(
+          createEventsQueryKey(currentDate),
+          old => {
+            if (!old?.mwwEvents) return old
+            return {
+              ...old,
+              mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
+                if (event.id !== slot.id) return event
+                return {
+                  ...event,
+                  participants: event.participants.map(p =>
+                    p.account_address === currentAccount?.address
+                      ? {
+                          ...p,
+                          status: previousStatus as ParticipationStatus,
+                        }
+                      : p
+                  ),
+                }
+              }),
+            }
+          }
+        )
+      }
     }
   }
   const isRsvpAllowed = React.useMemo(() => {
