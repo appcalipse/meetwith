@@ -1,3 +1,14 @@
+import {
+  Box,
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  Portal,
+  useDisclosure,
+  useToast,
+} from '@chakra-ui/react'
+import { addMinutes } from 'date-fns'
+import * as React from 'react'
 import useAccountContext from '@/hooks/useAccountContext'
 import {
   CalendarEventsData,
@@ -52,19 +63,8 @@ import { canAccountAccessPermission } from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
-import {
-  Box,
-  Drawer,
-  DrawerBody,
-  DrawerContent,
-  Portal,
-  useDisclosure,
-  useToast,
-} from '@chakra-ui/react'
-import { addMinutes } from 'date-fns'
-import * as React from 'react'
-import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import ConfirmEditModeModal from '../schedule/ConfirmEditMode'
+import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import { DeleteEventDialog } from '../schedule/delete-event-dialog'
 import InviteParticipants from '../schedule/participants/InviteParticipants'
 import ScheduleTimeDiscover from '../schedule/ScheduleTimeDiscover'
@@ -151,7 +151,6 @@ const ActiveEvent: React.FC = () => {
     if (freshEvent) {
       return {
         ...decryptedMeeting,
-        version: freshEvent.version,
         participants: freshEvent.participants,
       }
     }

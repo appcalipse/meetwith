@@ -237,7 +237,6 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
                       ? { ...p, status }
                       : p
                   ),
-                  version: event.version + 1,
                 }
               }),
             }

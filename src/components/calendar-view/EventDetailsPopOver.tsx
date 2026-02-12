@@ -174,7 +174,6 @@ const EventDetailsPopOver: React.FC<EventDetailsPopOverProps> = ({
                       ? { ...p, status }
                       : p
                   ),
-                  version: event.version + 1,
                 }
               }),
             }
