@@ -107,6 +107,7 @@ const InviteParticipants: FC<IProps> = ({
     groupMembersAvailabilities,
     setGroupMembersAvailabilities,
   } = useParticipants()
+
   const [standAloneParticipants, setStandAloneParticipants] = useState<
     Array<ParticipantInfo>
   >([])
@@ -167,7 +168,7 @@ const InviteParticipants: FC<IProps> = ({
       undefined
     )
     const fromContext = merged.filter(
-      (p): p is ParticipantInfo => !!p.account_address
+      (p): p is ParticipantInfo => !!(p.account_address || p.guest_email)
     )
     return [...fromContext, ...standAloneParticipants]
   }, [
@@ -263,36 +264,49 @@ const InviteParticipants: FC<IProps> = ({
         .map(p => p.account_address)
         .filter((a): a is string => !!a)
 
-      setParticipants(prevUsers => {
-        // Preserve both group participants AND contact participants
-        const groupAndContactParticipants = prevUsers?.filter(user => {
-          if (isGroupParticipant(user) || user.isHidden) return true
-          // Check if this participant is from contacts
-          if (user.account_address) {
-            return Object.values(groupParticipants ?? {}).some(
-              addresses =>
-                addresses && addresses.includes(user.account_address!)
+      setStandAloneParticipants(prevStandalone => {
+        // Get IDs of previously standalone participants
+        const prevStandaloneIds = new Set(
+          prevStandalone
+            .map(
+              p =>
+                p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
             )
-          }
-          return false
+            .filter((id): id is string => !!id)
+        )
+
+        // Update participants by removing old standalone and adding new ones
+        setParticipants(prev => {
+          // Remove participants that were in prevStandalone but not in _participants
+          const filtered = prev.filter(p => {
+            if (isGroupParticipant(p)) return true
+            const id =
+              p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+            return !id || !prevStandaloneIds.has(id)
+          })
+
+          const existingIds = new Set(
+            filtered
+              .filter((p): p is ParticipantInfo => !isGroupParticipant(p))
+              .map(
+                p =>
+                  p.account_address?.toLowerCase() ||
+                  p.guest_email?.toLowerCase()
+              )
+              .filter((id): id is string => !!id)
+          )
+
+          const toAdd = _participants.filter(p => {
+            const id =
+              p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+            return id && !existingIds.has(id)
+          })
+          return [...filtered, ...toAdd]
         })
-        return [...groupAndContactParticipants, ..._participants]
+
+        return _participants
       })
-      setStandAloneParticipants(prevUsers => {
-        // Preserve both group participants AND contact participants
-        const groupAndContactParticipants = prevUsers?.filter(user => {
-          if (isGroupParticipant(user) || user.isHidden) return true
-          // Check if this participant is from contacts
-          if (user.account_address) {
-            return Object.values(groupParticipants ?? {}).some(
-              addresses =>
-                addresses && addresses.includes(user.account_address!)
-            )
-          }
-          return false
-        })
-        return [...groupAndContactParticipants, ..._participants]
-      })
+
       React.startTransition(() => {
         if (addressesToAdd.length > 0) {
           setGroupAvailability(prev => ({
