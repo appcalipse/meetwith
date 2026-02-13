@@ -18,6 +18,7 @@ const AllMeetingParticipants = () => {
     setGroupAvailability,
     setGroupParticipants,
   } = useParticipants()
+
   const allParticipants = getMergedParticipants(
     participants,
     groupParticipants,

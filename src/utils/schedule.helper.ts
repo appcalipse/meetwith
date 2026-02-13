@@ -22,7 +22,7 @@ export const getMergedParticipants = (
   activeGroup?: GetGroupsFullResponse,
   accountAddress?: string
 ) => {
-  const seenAddresses = new Set<string>()
+  const seenIdentifiers = new Set<string>()
   const allParticipants: Array<ParticipantInfo> = []
 
   const groupsMap = new Map(
@@ -42,11 +42,11 @@ export const getMergedParticipants = (
       const membersMap = new Map(group.members?.map(m => [m.address, m]) || [])
 
       for (const memberAddress of groupMembers) {
-        if (seenAddresses.has(memberAddress)) continue
+        if (seenIdentifiers.has(memberAddress.toLowerCase())) continue
 
         const groupMember = membersMap.get(memberAddress)
         if (groupMember?.address) {
-          seenAddresses.add(memberAddress)
+          seenIdentifiers.add(memberAddress.toLowerCase())
           allParticipants.push({
             account_address: groupMember.address,
             meeting_id: '',
@@ -57,8 +57,14 @@ export const getMergedParticipants = (
         }
       }
     } else {
-      if (!seenAddresses.has(participant.account_address || '')) {
-        seenAddresses.add(participant.account_address || '')
+      const identifier = (
+        participant.account_address ||
+        participant.guest_email ||
+        ''
+      ).toLowerCase()
+
+      if (identifier && !seenIdentifiers.has(identifier)) {
+        seenIdentifiers.add(identifier)
         allParticipants.push(participant)
       }
     }
