@@ -426,6 +426,13 @@ const ScheduleMain: FC<IInitialProps> = ({
               }
             })
           )
+        } else {
+          setParticipants(
+            participants.map(p => {
+              delete p.isHidden
+              return p
+            })
+          )
         }
       }
       setMeetingUrl(decryptedMeeting.meeting_url)
