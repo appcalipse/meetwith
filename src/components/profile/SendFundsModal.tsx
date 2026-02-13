@@ -60,8 +60,8 @@ import {
 import {
   PaymentType,
   supportedPaymentChains,
+  TokenType,
 } from '@/utils/constants/meeting-types'
-import { TokenType } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
 import { estimateGasFee, GasEstimationParams } from '@/utils/gasEstimation'
 import { formatCurrency, parseUnits, zeroAddress } from '@/utils/generic_utils'
@@ -129,10 +129,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
             token.walletSupported && token.contractAddress !== zeroAddress
         )
     )
-    .reduce((acc, chain) => {
-      acc[getNetworkDisplayName(chain.chain)] = chain.chain
-      return acc
-    }, {} as Record<string, SupportedChain>)
+    .reduce(
+      (acc, chain) => {
+        acc[getNetworkDisplayName(chain.chain)] = chain.chain
+        return acc
+      },
+      {} as Record<string, SupportedChain>
+    )
 
   const [sendNetwork, setSendNetwork] =
     useState<SupportedChain>(selectedNetwork)

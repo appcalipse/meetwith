@@ -23,13 +23,16 @@ import {
   getPollParticipantById,
   updateGuestParticipantDetails,
 } from '@/utils/api_helper'
-import { getGuestPollDetails, saveGuestPollDetails } from '@/utils/storage'
+import {
+  saveGuestPollDetails,
+  saveQuickPollSignInContext,
+} from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
 
 interface GuestDetailsFormProps {
   pollData: QuickPollBySlugResponse
-  onSuccess: () => void
+  onSuccess: (isProfileUpdateOnly?: boolean) => void
   pollTitle?: string
   onNavigateBack?: () => void
 }
@@ -47,6 +50,8 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     clearGuestAvailabilitySlots,
     currentParticipantId,
     setIsEditingAvailability,
+    setCurrentParticipantId,
+    setCurrentGuestEmail,
   } = useQuickPollAvailability()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -98,18 +103,29 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
 
     try {
       let participantId = currentParticipantId
+      let isProfileUpdateOnly = false
 
-      if (currentParticipantId && calendarConnected) {
+      // Determine if calendar was just connected in this session
+      const isCalendarJustConnected =
+        calendarConnected === 'true' ||
+        (Array.isArray(calendarConnected) && calendarConnected.includes('true'))
+      if (
+        currentParticipantId &&
+        guestAvailabilitySlots.length === 0 &&
+        !isCalendarJustConnected
+      ) {
         await updateGuestParticipantDetails(
           currentParticipantId,
           fullName.trim(),
           email.trim().toLowerCase()
         )
+        isProfileUpdateOnly = true
         showSuccessToast(
-          'Details saved!',
-          'Your calendar is connected and your details have been saved.'
+          'Profile updated!',
+          'Your name and email have been updated successfully.'
         )
       } else {
+        // Save availability
         const response = await addOrUpdateGuestParticipantWithAvailability(
           pollData.poll.slug,
           email.trim().toLowerCase(),
@@ -132,12 +148,14 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
           email: email.trim().toLowerCase(),
           name: fullName.trim(),
         })
+        setCurrentParticipantId(participantId)
+        setCurrentGuestEmail(email.trim().toLowerCase())
       }
 
       setIsEditingAvailability(false)
 
-      onSuccess()
-    } catch (error) {
+      onSuccess(isProfileUpdateOnly)
+    } catch (_error) {
       showErrorToast(
         'Failed to save details',
         'There was an error saving your details. Please try again.'
@@ -147,12 +165,22 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     }
   }
 
+  const openAuthForPoll = () => {
+    saveQuickPollSignInContext({
+      pollSlug: pollData.poll.slug,
+      pollId: pollData.poll.id,
+      pollTitle: pollData.poll.title,
+      returnUrl: window.location.href,
+    })
+    openConnection(`/poll/${pollData.poll.slug}`)
+  }
+
   const handleSignIn = () => {
-    openConnection()
+    openAuthForPoll()
   }
 
   const handleSignUp = () => {
-    openConnection()
+    openAuthForPoll()
   }
 
   const handleBack = () => {

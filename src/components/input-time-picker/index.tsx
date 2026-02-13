@@ -26,6 +26,7 @@ export interface InputTimePickerProps {
   inputProps?: InputProps
   iconColor?: string
   iconSize?: number
+  disabled?: boolean
 }
 
 const generateTimes = (currentDate: Date) => {
@@ -50,13 +51,14 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
   currentDate,
   value,
   inputProps,
+  disabled,
   ...props
 }) => {
   const [isEditing, setIsEditing] = useBoolean()
   const iconColor = useColorModeValue('gray.500', props.iconColor || 'gray.200')
-  const times = generateTimes(
-    typeof currentDate === 'number' ? new Date(currentDate) : currentDate
-  ).filter(time => !isBefore(time, new Date()))
+  const times = generateTimes(new Date(currentDate)).filter(
+    time => !isBefore(time, new Date())
+  )
 
   return (
     <Popover
@@ -94,6 +96,7 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
             placeholder="Time"
             type="text"
             value={value}
+            isDisabled={disabled}
             readOnly
             {...inputProps}
           />

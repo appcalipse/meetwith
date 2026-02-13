@@ -86,12 +86,12 @@ const Home: NextPage = () => {
         proposal: proposal.params,
         supportedNamespaces: {
           eip155: {
-            chains: supportedChains.map(chain => `eip155:${chain.id}`),
-            methods: ['eth_sendTransaction', 'personal_sign'],
-            events: ['accountsChanged', 'chainChanged'],
             accounts: supportedChains.map(
               chain => `eip155:${chain.id}:${currentAccount.address}`
             ),
+            chains: supportedChains.map(chain => `eip155:${chain.id}`),
+            events: ['accountsChanged', 'chainChanged'],
+            methods: ['eth_sendTransaction', 'personal_sign'],
           },
         },
       })
@@ -136,11 +136,11 @@ const Home: NextPage = () => {
       if (!wallet) {
         openConnection(undefined, false)
         toast({
-          title: 'Wallet Not Connected',
           description: 'Please connect your wallet to proceed.',
-          status: 'error',
           duration: 5000,
           isClosable: true,
+          status: 'error',
+          title: 'Wallet Not Connected',
         })
         return
       }
@@ -171,11 +171,11 @@ const Home: NextPage = () => {
         const signature = await account?.signMessage({
           message,
         })
-        const response = { id, result: signature, jsonrpc: '2.0' }
+        const response = { id, jsonrpc: '2.0', result: signature }
 
         await walletKit.respondSessionRequest({
-          topic,
           response,
+          topic,
         })
       } else if (method === 'eth_sendTransaction') {
         const { chainId } = params
@@ -184,22 +184,22 @@ const Home: NextPage = () => {
         const tx = await sendTransaction({
           account,
           transaction: {
+            chain: chain,
+            client: thirdWebClient,
             data,
-            to,
             gas: requestParams.gas,
             gasPrice: requestParams.gasPrice,
             maxFeePerGas: requestParams.maxFeePerGas,
             maxPriorityFeePerGas: requestParams.maxPriorityFeePerGas,
-            client: thirdWebClient,
-            chain: chain,
-            value: value || '0',
             nonce: requestParams.nonce,
+            to,
+            value: value || '0',
           },
         })
-        const response = { id, result: tx.transactionHash, jsonrpc: '2.0' }
+        const response = { id, jsonrpc: '2.0', result: tx.transactionHash }
         await walletKit.respondSessionRequest({
-          topic,
           response,
+          topic,
         })
       } else if (
         method === 'eth_signTypedData' ||
@@ -209,33 +209,33 @@ const Home: NextPage = () => {
         const typedSignature = await account?.signTypedData(
           JSON.parse(typedData)
         )
-        const response = { id, result: typedSignature, jsonrpc: '2.0' }
+        const response = { id, jsonrpc: '2.0', result: typedSignature }
         await walletKit.respondSessionRequest({
-          topic,
           response,
+          topic,
         })
       } else if (method === 'wallet_switchEthereumChain') {
         const chainId = parseInt(request.params[0].chainId, 16)
         await wallet?.switchChain(defineChain(chainId))
-        const response = { id, result: null, jsonrpc: '2.0' }
+        const response = { id, jsonrpc: '2.0', result: null }
         await walletKit.respondSessionRequest({
-          topic,
           response,
+          topic,
         })
       }
     } catch (e) {
       console.error('Error handling session request:', e)
       try {
         await walletKit.respondSessionRequest({
-          topic,
           response: {
-            id,
             error: {
               code: -32000,
               message: e instanceof Error ? e.message : 'Transaction failed',
             },
+            id,
             jsonrpc: '2.0',
           },
+          topic,
         })
       } catch (rejectError) {
         console.error('Error responding to session request:', rejectError)
@@ -289,9 +289,9 @@ const Home: NextPage = () => {
             ? value.toString()
             : `0x${BigInt(value || '0').toString(16)}`
           setTransferDetails({
+            symbol: 'ETH',
             to,
             value: value ? formatEther(BigInt(cleanValue), 'wei') : '0',
-            symbol: 'ETH',
           })
         } else {
           try {
@@ -319,7 +319,7 @@ const Home: NextPage = () => {
                   functionName = 'transferFrom'
                 } catch {
                   setTransactionType('contract_call')
-                  setContractDetails({ to, data })
+                  setContractDetails({ data, to })
                   setLoading(false)
                   return
                 }
@@ -332,10 +332,10 @@ const Home: NextPage = () => {
             )
 
             const tokenContract = getContract({
-              client: thirdWebClient,
-              chain,
-              address: to,
               abi: erc20Abi,
+              address: to,
+              chain,
+              client: thirdWebClient,
             })
 
             const [decimals, symbol, name] = await Promise.all([
@@ -346,17 +346,17 @@ const Home: NextPage = () => {
 
             setTransactionType('token_transaction')
             setTokenDetails({
-              functionName,
-              decoded,
-              decimals,
-              symbol,
-              name,
               contractAddress: to,
+              decimals,
+              decoded,
+              functionName,
+              name,
+              symbol,
             })
-          } catch (error) {
+          } catch (_error) {
             // Fallback to raw contract call
             setTransactionType('contract_call')
-            setContractDetails({ to, data })
+            setContractDetails({ data, to })
           }
         }
       }
@@ -453,33 +453,33 @@ const Home: NextPage = () => {
   }
   return (
     <Container
-      maxW="7xl"
-      mt={8}
-      flex={1}
-      my={{ base: 12, md: 24 }}
-      justifyContent={'center'}
       alignContent="center"
+      flex={1}
+      justifyContent={'center'}
+      maxW="7xl"
       minH="70vh"
+      mt={8}
+      my={{ base: 12, md: 24 }}
     >
       {proposal && (
         <Modal
-          isOpen
-          onClose={() => window.close()}
           closeOnOverlayClick={false}
           isCentered
+          isOpen
+          onClose={() => window.close()}
           size="xl"
         >
           <ModalOverlay />
           <ModalContent>
             <ModalHeader
-              p={'0'}
+              alignItems="center"
               display="flex"
               justifyContent="space-between"
-              alignItems="center"
+              p={'0'}
             >
               <ModalCloseButton />
             </ModalHeader>
-            <ModalBody p={'10'} mt={'6'}>
+            <ModalBody mt={'6'} p={'10'}>
               <VStack alignItems="flex-start">
                 <Heading fontSize="2xl">Wallet Connection Request</Heading>
                 <Text>
@@ -490,12 +490,12 @@ const Home: NextPage = () => {
                 <Text>Please confirm the connection to your wallet.</Text>
                 <Text>Origin: {proposal?.verifyContext?.verified?.origin}</Text>
 
-                <HStack w={'fit-content'} mt={'6'} gap={'4'}>
+                <HStack gap={'4'} mt={'6'} w={'fit-content'}>
                   <Button
                     colorScheme="primary"
-                    onClick={handleConnect}
-                    isLoading={isConnecting}
                     isDisabled={isConnecting}
+                    isLoading={isConnecting}
+                    onClick={handleConnect}
                   >
                     Continue
                   </Button>
@@ -507,23 +507,23 @@ const Home: NextPage = () => {
       )}
       {event && (
         <Modal
-          isOpen
-          onClose={() => window.close()}
           closeOnOverlayClick={false}
           isCentered
+          isOpen
+          onClose={() => window.close()}
           size="xl"
         >
           <ModalOverlay />
           <ModalContent>
             <ModalHeader
-              p={'0'}
+              alignItems="center"
               display="flex"
               justifyContent="space-between"
-              alignItems="center"
+              p={'0'}
             >
               <ModalCloseButton />
             </ModalHeader>
-            <ModalBody p={'10'} mt={'6'}>
+            <ModalBody mt={'6'} p={'10'}>
               <VStack alignItems="flex-start">
                 <Heading fontSize="2xl">Sign Transaction</Heading>
                 <Text>
@@ -535,12 +535,12 @@ const Home: NextPage = () => {
 
                 <Text>Origin: {event?.verifyContext?.verified?.origin}</Text>
                 <RenderDetails />
-                <HStack w={'fit-content'} mt={'6'} gap={'4'}>
+                <HStack gap={'4'} mt={'6'} w={'fit-content'}>
                   <Button
                     colorScheme="primary"
-                    onClick={executeTransaction}
-                    isLoading={isExecuting}
                     isDisabled={isExecuting}
+                    isLoading={isExecuting}
+                    onClick={executeTransaction}
                   >
                     Continue
                   </Button>

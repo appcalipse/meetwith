@@ -1,7 +1,7 @@
 import { Badge, Center, InputProps, Link } from '@chakra-ui/react'
 import { FaTimes } from 'react-icons/fa'
 
-const styles = {
+export const chipStyles = {
   badge: {
     paddingLeft: '8px',
     paddingRight: '8px',
@@ -23,7 +23,7 @@ const styles = {
 export interface BadgeChipProps {
   onRemove?: () => void
   allowRemove?: boolean
-  children: any
+  children: React.ReactNode
   size?: InputProps['size']
 }
 
@@ -35,7 +35,7 @@ export const BadgeChip: React.FC<BadgeChipProps> = ({
 }) => {
   const closeButton = (
     <Link
-      sx={styles.close}
+      sx={chipStyles.close}
       size={size}
       variant={'unstyled'}
       aria-label={`Remove Entry`}
@@ -45,7 +45,7 @@ export const BadgeChip: React.FC<BadgeChipProps> = ({
     </Link>
   )
   return (
-    <Badge sx={styles.badge}>
+    <Badge sx={chipStyles.badge}>
       <Center>
         {children}
         {allowRemove && closeButton}

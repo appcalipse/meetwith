@@ -1,5 +1,5 @@
 import { Text, VStack } from '@chakra-ui/layout'
-import React, { useCallback } from 'react'
+import { useCallback } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
@@ -11,7 +11,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 
 const AllMeetingParticipants = () => {
   const {
-    groups,
+    group,
     participants,
     setParticipants,
     groupParticipants,
@@ -20,9 +20,11 @@ const AllMeetingParticipants = () => {
   } = useParticipants()
   const allParticipants = getMergedParticipants(
     participants,
-    groups,
-    groupParticipants
-  )
+    groupParticipants,
+    group
+  ).filter(p => {
+    return !p.isHidden
+  })
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
       const participantsDiff = allParticipants.find(
@@ -97,6 +99,7 @@ const AllMeetingParticipants = () => {
         placeholder="Enter email, wallet address or ENS of user"
         onChange={onParticipantsChange}
         renderItem={renderParticipantItem}
+        isReadOnly
         addDisabled
       />
     </VStack>

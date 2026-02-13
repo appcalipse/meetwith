@@ -51,7 +51,9 @@ export const useLogin = () => {
       if (forceRedirect) {
         // redirect new accounts to onboarding
         if (account.signedUp) {
-          const stateObj: any = { signedUp: true }
+          const stateObj: Record<string, string | boolean | undefined> = {
+            signedUp: true,
+          }
           stateObj.jti = account?.jti
           if (wallet.id === 'inApp') {
             // needed due bug in the SDK that returns the last email even if a new EOA signs in
@@ -84,8 +86,10 @@ export const useLogin = () => {
           shouldRedirect &&
             (await router.push(
               redirectPath
-                ? `${redirectPath}&authstate=${state}`
-                : `/dashboard/details?state=${state}`
+                ? `${redirectPath}${
+                    redirectPath.includes('?') ? '&' : '?'
+                  }state=${state}`
+                : `/dashboard/settings/details?state=${state}`
             ))
           return
         }
@@ -110,23 +114,22 @@ export const useLogin = () => {
           return
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof InvalidSessionError) {
         await router.push(`/logout?redirect=${asPath}`)
         return
       }
       Sentry.captureException(error)
       toast({
-        title: 'Error',
-        description: error.message || error,
-        status: 'error',
+        description: error instanceof Error ? error.message : String(error),
         duration: 7000,
-        position: 'top',
         isClosable: true,
+        position: 'top',
+        status: 'error',
+        title: 'Error',
       })
-      logEvent('Failed to sign in', error)
     }
   }
 
-  return { handleLogin, currentAccount, logged, loginIn, login, setLoginIn }
+  return { currentAccount, handleLogin, logged, login, loginIn, setLoginIn }
 }

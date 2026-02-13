@@ -15,6 +15,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { FiSearch } from 'react-icons/fi'
@@ -22,6 +23,9 @@ import { HiMiniPlusCircle } from 'react-icons/hi2'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
+import { PollStatus } from '@/types/QuickPoll'
+import { getQuickPolls } from '@/utils/api_helper'
+import { QUICKPOLL_MIN_LIMIT } from '@/utils/constants'
 
 import CountSkeleton from './CountSkeleton'
 import OngoingPolls from './OngoingPolls'
@@ -32,6 +36,15 @@ const AllPolls = () => {
   const [activeTab, setActiveTab] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
+
+  const { data: pollsMetadata } = useQuery({
+    queryKey: ['quickpolls-metadata'],
+    queryFn: () =>
+      getQuickPolls(QUICKPOLL_MIN_LIMIT, 0, undefined, PollStatus.ONGOING),
+    staleTime: 30000,
+  })
+  const canCreateQuickPoll = !pollsMetadata?.upgradeRequired
+  const canSchedulePolls = pollsMetadata?.canSchedule ?? true
 
   const {
     ongoingPollsCount,
@@ -84,26 +97,34 @@ const AllPolls = () => {
             </Text>
           </VStack>
 
-          <Button
-            leftIcon={<HiMiniPlusCircle size={20} color="#323F4B" />}
-            bg="primary.200"
-            color="neutral.900"
-            px={5}
-            py={2.5}
-            fontSize="15px"
-            fontWeight="600"
-            borderRadius="8px"
-            w={{ base: '100%', md: 'auto' }}
-            _hover={{
-              bg: 'primary.300',
-            }}
-            _active={{
-              bg: 'primary.400',
-            }}
-            onClick={() => push('/dashboard/create-poll')}
-          >
-            Run new poll
-          </Button>
+          <VStack align={{ base: 'stretch', md: 'flex-end' }} spacing={2}>
+            <Button
+              leftIcon={<HiMiniPlusCircle size={20} color="#323F4B" />}
+              bg="primary.200"
+              color="neutral.900"
+              px={5}
+              py={2.5}
+              fontSize="15px"
+              fontWeight="600"
+              borderRadius="8px"
+              w={{ base: '100%', md: 'auto' }}
+              _hover={{
+                bg: 'primary.300',
+              }}
+              _active={{
+                bg: 'primary.400',
+              }}
+              onClick={() => push('/dashboard/create-poll')}
+              isDisabled={!canCreateQuickPoll}
+              title={
+                !canCreateQuickPoll
+                  ? 'Upgrade to Pro to create more active polls'
+                  : undefined
+              }
+            >
+              Run new poll
+            </Button>
+          </VStack>
         </Flex>
 
         {/* Tabs with Search Section */}
@@ -188,7 +209,11 @@ const AllPolls = () => {
           {/* Poll Cards */}
           <TabPanels mt={6}>
             <TabPanel p={0}>
-              <OngoingPolls searchQuery={debouncedSearchQuery} />
+              <OngoingPolls
+                searchQuery={debouncedSearchQuery}
+                upgradeRequired={pollsMetadata?.upgradeRequired}
+                canSchedule={canSchedulePolls}
+              />
             </TabPanel>
             <TabPanel p={0}>
               <PastPolls searchQuery={debouncedSearchQuery} />

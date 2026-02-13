@@ -2,7 +2,9 @@ import { Account } from '@meta/Account'
 import { getAccount } from '@utils/api_helper'
 import { getAddressFromDomain } from '@utils/rpc_helper_front'
 import { isValidEmail, isValidEVMAddress } from '@utils/validations'
+import { Interval } from 'luxon'
 
+import { AvailabilityBlock } from '@/types/availability'
 import { GetGroupsFullResponse } from '@/types/Group'
 import {
   ParticipantInfo,
@@ -11,48 +13,65 @@ import {
 } from '@/types/ParticipantInfo'
 import { isGroupParticipant, Participant } from '@/types/schedule'
 
+import { parseMonthAvailabilitiesToDate } from './date_helper'
+import { mergeLuxonIntervals } from './quickpoll_helper'
+
 export const getMergedParticipants = (
   participants: Array<Participant>,
-  groups: Array<GetGroupsFullResponse>,
   groupParticipants: Record<string, Array<string> | undefined>,
+  activeGroup?: GetGroupsFullResponse,
   accountAddress?: string
 ) => {
+  const seenAddresses = new Set<string>()
   const allParticipants: Array<ParticipantInfo> = []
+
+  const groupsMap = new Map(
+    [activeGroup]
+      .filter((g): g is GetGroupsFullResponse => Boolean(g))
+      .map(g => [g.id, g])
+  )
+
   for (const participant of participants) {
     if (isGroupParticipant(participant)) {
-      const group = groups.find(g => g.id === participant.id)
-      if (group) {
-        const groupMembers = groupParticipants?.[participant.id] || []
-        const membersSanitized = groupMembers
-          .map(member => {
-            const groupMember = group.members.find(m => m.address === member)
-            if (
-              groupMember &&
-              groupMember.address &&
-              allParticipants.every(
-                val => val.account_address !== groupMember.address
-              )
-            ) {
-              return {
-                account_address: groupMember.address,
-                name: groupMember.displayName,
-                type: ParticipantType.Invitee,
-                status: ParticipationStatus.Pending,
-                meeting_id: '',
-              }
-            }
-            return undefined
+      const group = groupsMap.get(participant.id)
+      if (!group) continue
+
+      const groupMembers = groupParticipants?.[participant.id]
+      if (!groupMembers) continue
+
+      const membersMap = new Map(group.members?.map(m => [m.address, m]) || [])
+
+      for (const memberAddress of groupMembers) {
+        if (seenAddresses.has(memberAddress)) continue
+
+        const groupMember = membersMap.get(memberAddress)
+        if (groupMember?.address) {
+          seenAddresses.add(memberAddress)
+          allParticipants.push({
+            account_address: groupMember.address,
+            meeting_id: '',
+            name: groupMember.displayName,
+            status: ParticipationStatus.Pending,
+            type: ParticipantType.Invitee,
           })
-          .filter(val => val !== undefined)
-        allParticipants.push(...membersSanitized)
+        }
       }
     } else {
-      allParticipants.push(participant)
+      if (!seenAddresses.has(participant.account_address || '')) {
+        seenAddresses.add(participant.account_address || '')
+        allParticipants.push(participant)
+      }
     }
   }
-  return accountAddress
-    ? allParticipants.filter(val => val.account_address !== accountAddress)
-    : allParticipants
+
+  if (accountAddress) {
+    const addr = accountAddress.toLowerCase()
+    return allParticipants.filter(
+      p => (p.account_address || '').toLowerCase() !== addr
+    )
+  }
+
+  return allParticipants
 }
 
 export const parseAccounts = async (
@@ -71,25 +90,25 @@ export const parseAccounts = async (
       if (address) {
         valid.push({
           account_address: address,
-          type: ParticipantType.Invitee,
-          slot_id: '',
           meeting_id: '',
+          slot_id: '',
           status: ParticipationStatus.Pending,
+          type: ParticipantType.Invitee,
         })
       } else if (participant.name) {
         let account: Account | null = null
         try {
           account = await getAccount(participant.name)
-        } catch (e) {}
+        } catch (_e) {}
 
         if (account) {
           valid.push({
             account_address: account.address,
-            type: ParticipantType.Invitee,
-            slot_id: '',
             meeting_id: '',
-            status: ParticipationStatus.Pending,
             name: participant.name,
+            slot_id: '',
+            status: ParticipationStatus.Pending,
+            type: ParticipantType.Invitee,
           })
         } else {
           invalid.push(participant.name!)
@@ -97,5 +116,40 @@ export const parseAccounts = async (
       }
     }
   }
-  return { valid, invalid }
+  return { invalid, valid }
+}
+
+/**
+ * Merges multiple availability blocks into a single array of intervals.
+ * Used when a group member has multiple availability blocks configured for a group.
+ * Each block may have a different timezone, which is handled during parsing.
+ */
+export const mergeAvailabilityBlocks = (
+  blocks: AvailabilityBlock[],
+  monthStart: Date,
+  monthEnd: Date
+): Interval[] => {
+  if (!blocks || blocks.length === 0) {
+    return []
+  }
+
+  const allIntervals: Interval[] = []
+
+  for (const block of blocks) {
+    if (!block.weekly_availability || block.weekly_availability.length === 0) {
+      continue
+    }
+
+    const blockIntervals = parseMonthAvailabilitiesToDate(
+      block.weekly_availability,
+      monthStart,
+      monthEnd,
+      block.timezone || 'UTC'
+    )
+
+    allIntervals.push(...blockIntervals)
+  }
+
+  // Merge overlapping intervals to avoid duplicates
+  return mergeLuxonIntervals(allIntervals)
 }

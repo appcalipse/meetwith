@@ -6,10 +6,12 @@ import {
   Transaction,
 } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
+import { DateTime } from 'luxon'
 import { DAVCalendar } from 'tsdav'
 
 import {
   Account,
+  GetMeetingTypesResponseWithMetadata,
   MeetingType,
   PaidMeetingTypes,
   PaymentPreferences,
@@ -19,12 +21,31 @@ import {
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
+  CancelSubscriptionResponse,
+  GetPlansResponse,
+  GetSubscriptionHistoryResponse,
+  GetSubscriptionResponse,
+  SubscribeRequest,
+  SubscribeRequestCrypto,
+  SubscribeResponse,
+  SubscribeResponseCrypto,
+  TrialEligibilityResponse,
+} from '@/types/Billing'
+import {
+  AttendeeStatus,
+  CalendarEvents,
+  DashBoardMwwEvents,
+  ExtendedCalendarEvents,
+  UnifiedEvent,
+} from '@/types/Calendar'
+import {
   CalendarSyncInfo,
   ConnectedCalendar,
   ConnectedCalendarCore,
   ConnectResponse,
+  GetCalendarIntegrationsResponse,
+  WebCalResponse,
 } from '@/types/CalendarConnections'
-import { ConditionRelation, SuccessResponse } from '@/types/common'
 import {
   Contact,
   ContactInvite,
@@ -32,11 +53,13 @@ import {
   InviteGroupMember,
   LeanContact,
 } from '@/types/Contacts'
+import { ConditionRelation, SuccessResponse } from '@/types/common'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount, DiscordUserInfo } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsFullResponse,
+  GetGroupsFullResponseWithMetadata,
   GetGroupsResponse,
   Group,
   GroupInvitePayload,
@@ -44,13 +67,17 @@ import {
 } from '@/types/Group'
 import { UserLocale } from '@/types/Locale'
 import {
+  AccountSlot,
   ConferenceMeeting,
   DBSlot,
   ExtendedDBSlot,
   GroupMeetingRequest,
   GuestMeetingCancel,
+  GuestSlot,
   MeetingDecrypted,
   MeetingInfo,
+  SlotInstance,
+  SlotSeries,
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -64,6 +91,7 @@ import {
   QuickPollBusyParticipant,
   QuickPollListResponse,
   QuickPollParticipant,
+  QuickPollParticipantStatus,
   QuickPollParticipantType,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
@@ -73,10 +101,15 @@ import {
   CreateAvailabilityBlockRequest,
   CreateMeetingTypeRequest,
   DuplicateAvailabilityBlockRequest,
+  GuestMeetingCancelRequest,
   MeetingCancelRequest,
   MeetingCheckoutRequest,
   MeetingCreationRequest,
+  MeetingInstanceUpdateRequest,
+  MeetingSeriesUpdateRequest,
   MeetingUpdateRequest,
+  ParseParticipantInfo,
+  ParseParticipantsRequest,
   RequestInvoiceRequest,
   UpdateAvailabilityBlockMeetingTypesRequest,
   UpdateAvailabilityBlockRequest,
@@ -84,9 +117,11 @@ import {
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
+import { Tables } from '@/types/Supabase'
 import { TelegramConnection, TelegramUserInfo } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
-
+import { UpdateCalendarEventRequest } from '../types/Requests'
+import { decodeMeeting, meetWithSeriesPreprocessors } from './calendar_manager'
 import {
   apiUrl,
   QUICKPOLL_DEFAULT_LIMIT,
@@ -124,6 +159,7 @@ import {
   NoActiveSubscription,
   OwnInviteError,
   ServiceUnavailableError,
+  SubscriptionDomainUpdateNotAllowed,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   TransactionCouldBeNotFoundError,
@@ -139,10 +175,14 @@ import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
 
-export const internalFetch = async <T>(
+type RequestOption = {
+  signal?: AbortSignal
+}
+type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+export const internalFetch = async <T, J = unknown>(
   path: string,
-  method = 'GET',
-  body?: unknown,
+  method: Method = 'GET',
+  body?: J,
   options: RequestInit = {},
   headers = {},
   isFormData = false,
@@ -153,14 +193,12 @@ export const internalFetch = async <T>(
 
   try {
     const response = await fetch(`${apiUrl}${path}`, {
+      headers: {
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...headers,
+      },
       method,
       mode: 'cors',
-      headers: isFormData
-        ? undefined
-        : {
-            'Content-Type': 'application/json',
-            ...headers,
-          },
       ...options,
       body: isFormData
         ? (body as FormData)
@@ -273,16 +311,22 @@ export const getExistingAccountsSimple = async (
 
 export const getExistingAccounts = async (
   addresses: string[],
-  fullInformation = true
+  fullInformation = true,
+  options?: RequestOption
 ): Promise<Account[]> => {
   try {
     return await queryClient.fetchQuery(
       QueryKeys.existingAccounts(addresses, fullInformation),
       () =>
-        internalFetch(`/accounts/existing`, 'POST', {
-          addresses,
-          fullInformation,
-        }) as Promise<Account[]>
+        internalFetch(
+          `/accounts/existing`,
+          'POST',
+          {
+            addresses,
+            fullInformation,
+          },
+          options
+        ) as Promise<Account[]>
     )
   } catch (e: unknown) {
     throw e
@@ -310,9 +354,7 @@ export const saveAvatar = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
@@ -327,9 +369,7 @@ export const saveBanner = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
@@ -403,6 +443,30 @@ export const scheduleMeeting = async (
     throw e
   }
 }
+export const scheduleMeetingSeries = async (
+  meeting: MeetingCreationRequest
+): Promise<DBSlot> => {
+  try {
+    return (await internalFetch(
+      `/secure/meetings/series`,
+      'POST',
+      meeting
+    )) as DBSlot
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 402) {
+      throw new AllMeetingSlotsUsedError()
+    } else if (e instanceof ApiFetchError && e.status === 400) {
+      throw new TransactionIsRequired()
+    } else if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e instanceof ApiFetchError && e.status === 403) {
+      throw new GateConditionNotValidError()
+    }
+    throw e
+  }
+}
 
 export const scheduleMeetingAsGuest = async (
   meeting: MeetingCreationRequest
@@ -457,17 +521,51 @@ export const updateMeetingAsGuest = async (
   }
 }
 
-export const updateMeeting = async (
+export const apiUpdateMeeting = async (
   slotId: string,
-  meeting: MeetingUpdateRequest
+  meeting: MeetingUpdateRequest,
+  signal?: AbortSignal
 ): Promise<DBSlot> => {
   try {
     const response = await internalFetch<DBSlot>(
       `/secure/meetings/${slotId}`,
       'POST',
-      meeting
+      meeting,
+      { signal }
     )
-    await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
+
+    return response
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status === 404) {
+        throw new MeetingNotFoundError(slotId)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      }
+    }
+    throw e
+  }
+}
+export const apiUpdateMeetingInstance = async (
+  slotId: string,
+  meeting: MeetingInstanceUpdateRequest,
+  signal?: AbortSignal
+): Promise<DBSlot> => {
+  try {
+    const response = await internalFetch<DBSlot>(
+      `/secure/meetings/instances/${slotId}`,
+      'POST',
+      meeting,
+      { signal }
+    )
     return response
   } catch (e: unknown) {
     if (e instanceof ApiFetchError) {
@@ -489,13 +587,117 @@ export const updateMeeting = async (
   }
 }
 
+export const apiUpdateMeetingSeries = async (
+  slotId: string,
+  meeting: MeetingSeriesUpdateRequest,
+  signal?: AbortSignal
+): Promise<DBSlot> => {
+  try {
+    const response = await internalFetch<DBSlot>(
+      `/secure/meetings/${slotId}/series`,
+      'POST',
+      meeting,
+      { signal }
+    )
+
+    return response
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status === 404) {
+        throw new MeetingNotFoundError(slotId)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      }
+    }
+    throw e
+  }
+}
 export const cancelMeeting = async (
   meeting: MeetingDecrypted,
   currentTimezone: string
 ): Promise<{ removed: string[] }> => {
   const body: MeetingCancelRequest = {
-    meeting,
     currentTimezone,
+    meeting,
+  }
+  try {
+    return (await internalFetch(
+      `/secure/meetings/${meeting.id}`,
+      'DELETE',
+      body
+    )) as { removed: string[] }
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    }
+    throw e
+  }
+}
+export const apiCancelMeetingSeries = async (
+  slotId: string,
+  meeting: MeetingInfo,
+  currentTimezone: string
+): Promise<{ removed: string[] }> => {
+  const body: MeetingCancelRequest = {
+    currentTimezone,
+    meeting,
+  }
+  try {
+    return (await internalFetch(
+      `/secure/meetings/${slotId}/series`,
+      'DELETE',
+      body
+    )) as { removed: string[] }
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    }
+    throw e
+  }
+}
+export const cancelMeetingInstance = async (
+  meeting: MeetingDecrypted,
+  currentTimezone: string
+): Promise<{ removed: string[] }> => {
+  const body: MeetingCancelRequest = {
+    currentTimezone,
+    meeting,
+  }
+  try {
+    return (await internalFetch(
+      `/secure/meetings/instances/${meeting.id}`,
+      'DELETE',
+      body
+    )) as { removed: string[] }
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    }
+    throw e
+  }
+}
+
+export const cancelMeetingGuest = async (
+  meeting: MeetingDecrypted,
+  currentTimezone: string
+): Promise<{ removed: string[] }> => {
+  const body: MeetingCancelRequest = {
+    currentTimezone,
+    meeting,
   }
   try {
     return (await internalFetch(
@@ -603,8 +805,8 @@ export const getMeetings = async (
   )) as DBSlot[]
   return response.map(slot => ({
     ...slot,
-    start: new Date(slot.start),
     end: new Date(slot.end),
+    start: new Date(slot.start),
   }))
 }
 
@@ -622,18 +824,18 @@ export const getBusySlots = async (
   }`
   const response = await queryClient.fetchQuery(
     QueryKeys.busySlots({
-      id: accountIdentifier?.toLowerCase(),
-      start,
       end,
+      id: accountIdentifier?.toLowerCase(),
       limit,
       offset,
+      start,
     }),
     () => internalFetch(url) as Promise<Interval[]>
   )
   return response.map(slot => ({
     ...slot,
-    start: new Date(slot.start),
     end: new Date(slot.end),
+    start: new Date(slot.start),
   }))
 }
 
@@ -647,17 +849,17 @@ export const fetchBusySlotsForMultipleAccounts = async (
 ): Promise<Interval[]> => {
   const response = (await internalFetch(`/meetings/busy/team`, 'POST', {
     addresses,
-    start,
     end,
-    relation,
     limit,
     offset,
+    relation,
+    start,
   })) as Interval[]
 
   return response.map(slot => ({
     ...slot,
-    start: new Date(slot.start),
     end: new Date(slot.end),
+    start: new Date(slot.start),
   }))
 }
 export const fetchBusySlotsRawForMultipleAccounts = async (
@@ -665,21 +867,29 @@ export const fetchBusySlotsRawForMultipleAccounts = async (
   start: Date,
   end: Date,
   limit?: number,
-  offset?: number
+  offset?: number,
+  signal?: AbortSignal
 ): Promise<TimeSlot[]> => {
-  const response = (await internalFetch(`/meetings/busy/team`, 'POST', {
-    addresses,
-    start,
-    end,
-    limit,
-    offset,
-    isRaw: true,
-  })) as TimeSlot[]
+  const response = (await internalFetch(
+    `/meetings/busy/team`,
+    'POST',
+    {
+      addresses,
+      end,
+      isRaw: true,
+      limit,
+      offset,
+      start,
+    },
+    {
+      signal,
+    }
+  )) as TimeSlot[]
 
   return response.map(slot => ({
     ...slot,
-    start: new Date(slot.start),
     end: new Date(slot.end),
+    start: new Date(slot.start),
   }))
 }
 
@@ -694,19 +904,19 @@ export const fetchBusySlotsRawForQuickPollParticipants = async (
     `/quickpoll/busy/participants`,
     'POST',
     {
-      participants,
-      start,
       end,
+      isRaw: true,
       limit,
       offset,
-      isRaw: true,
+      participants,
+      start,
     }
   )) as TimeSlot[]
 
   return response.map(slot => ({
     ...slot,
-    start: new Date(slot.start),
     end: new Date(slot.end),
+    start: new Date(slot.start),
   }))
 }
 
@@ -723,9 +933,9 @@ export const getMeetingsForDashboard = async (
   )
   return response?.map(slot => ({
     ...slot,
-    start: new Date(slot.start),
-    end: new Date(slot.end),
     created_at: slot.created_at ? new Date(slot.created_at) : undefined,
+    end: new Date(slot.end),
+    start: new Date(slot.start),
   }))
 }
 export const syncMeeting = async (
@@ -737,7 +947,7 @@ export const syncMeeting = async (
       decryptedMeetingData,
       slotId,
     })
-  } catch (e) {}
+  } catch (_e) {}
 }
 
 export const getGroupsFull = async (
@@ -750,8 +960,28 @@ export const getGroupsFull = async (
   if (search) {
     url += `&search=${search}`
   }
-  const response = await internalFetch<Array<GetGroupsFullResponse>>(url)
-  return response
+  const response = await internalFetch<
+    Array<GetGroupsFullResponse> | GetGroupsFullResponseWithMetadata
+  >(url)
+
+  // Handle new response format (with metadata) or legacy format (array)
+  if (Array.isArray(response)) {
+    return response
+  }
+  return response.groups
+}
+
+export const getGroupsFullWithMetadata = async (
+  limit?: number,
+  offset?: number,
+  search?: string,
+  includeInvites = true
+): Promise<GetGroupsFullResponseWithMetadata> => {
+  let url = `/secure/group/full?limit=${limit}&offset=${offset}&includeInvites=${includeInvites}`
+  if (search) {
+    url += `&search=${search}`
+  }
+  return await internalFetch<GetGroupsFullResponseWithMetadata>(url)
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   const response = (await internalFetch(
@@ -838,21 +1068,69 @@ export const removeGroupMember = async (
   const response = await internalFetch<{ success: true }>(
     `/secure/group/${group_id}/remove`,
     'DELETE',
-    { member_id, invite_pending }
+    { invite_pending, member_id }
   )
   return response?.success
 }
 export const editGroup = async (
   group_id: string,
   name?: string,
-  slug?: string
+  slug?: string,
+  avatar_url?: string,
+  description?: string
 ) => {
   const response = await internalFetch<{ success: true }>(
     `/secure/group/${group_id}`,
     'PUT',
-    { name, slug }
+    { avatar_url, description, name, slug }
   )
   return response?.success
+}
+
+export const uploadGroupAvatar = async (
+  groupId: string,
+  formData: FormData
+): Promise<string> => {
+  const response = await internalFetch<string>(
+    `/secure/group/${groupId}/avatar`,
+    'POST',
+    formData,
+    {},
+    undefined,
+    true
+  )
+  return response
+}
+
+export const getGroupMemberAvailabilities = async (
+  groupId: string,
+  memberAddress: string
+): Promise<AvailabilityBlock[]> => {
+  const response = await internalFetch<AvailabilityBlock[]>(
+    `/secure/group/${groupId}/member/${memberAddress}/availabilities`
+  )
+  return response || []
+}
+
+export const updateGroupMemberAvailabilities = async (
+  groupId: string,
+  memberAddress: string,
+  availabilityIds: string[]
+): Promise<void> => {
+  await internalFetch<{ success: true }>(
+    `/secure/group/${groupId}/member/${memberAddress}/availabilities`,
+    'PUT',
+    { availability_ids: availabilityIds }
+  )
+}
+
+export const getGroupMembersAvailabilities = async (
+  groupId: string
+): Promise<Record<string, AvailabilityBlock[]>> => {
+  const response = await internalFetch<Record<string, AvailabilityBlock[]>>(
+    `/secure/group/${groupId}/members/availabilities`
+  )
+  return response || {}
 }
 export const deleteGroup = async (group_id: string) => {
   const response = await internalFetch<{ success: true }>(
@@ -882,30 +1160,37 @@ export const subscribeToWaitlist = async (
   return !!result?.success
 }
 
-export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
-  const response = await internalFetch<DBSlot>(`/meetings/meeting/${slot_id}`)
+export const getMeeting = async (
+  slot_id: string,
+  signal?: AbortSignal
+): Promise<DBSlot> => {
+  const response = await internalFetch<DBSlot>(
+    `/meetings/meeting/${slot_id}`,
+    'GET',
+    null,
+    { signal }
+  )
   return {
     ...response,
-    start: new Date(response.start),
     end: new Date(response.end),
+    start: new Date(response.start),
   }
 }
 
 export const getConferenceDataBySlotId = async (
   slotId: string
 ): Promise<ConferenceMeeting> => {
-  const response = await queryClient.fetchQuery(
-    QueryKeys.meeting(slotId),
-    () =>
-      internalFetch(`/meetings/guest/${slotId}`) as Promise<ConferenceMeeting>
+  const response = await internalFetch<ConferenceMeeting>(
+    `/meetings/guest/${slotId}`
   )
+
   return {
     ...response,
-    start: new Date(response.start),
-    end: new Date(response.end),
     created_at: response.created_at
       ? new Date(response.created_at)
       : new Date(),
+    end: new Date(response.end),
+    start: new Date(response.start),
   }
 }
 
@@ -927,8 +1212,8 @@ export const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
   )) as DBSlot[]
   return response.map(slot => ({
     ...slot,
-    start: new Date(slot.start),
     end: new Date(slot.end),
+    start: new Date(slot.start),
   }))
 }
 
@@ -940,11 +1225,11 @@ export const getMeetingGuest = async (
   )
   return {
     ...response,
-    start: new Date(response.start),
-    end: new Date(response.end),
     created_at: response.created_at
       ? new Date(response.created_at)
       : new Date(),
+    end: new Date(response.end),
+    start: new Date(response.start),
   }
 }
 
@@ -962,6 +1247,29 @@ export const guestMeetingCancel = async (
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
         throw new MeetingNotFoundError(slot_id)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      } else {
+        throw e
+      }
+    }
+  }
+}
+
+export const conferenceGuestMeetingCancel = async (
+  meeting_id: string,
+  payload: GuestMeetingCancelRequest
+) => {
+  try {
+    return await internalFetch<{ removed: string[] }>(
+      `/meetings/meeting/${meeting_id}/slot`,
+      'DELETE',
+      payload
+    )
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        throw new MeetingNotFoundError(meeting_id)
       } else if (e.status === 401) {
         throw new UnauthorizedError()
       } else {
@@ -1063,9 +1371,9 @@ export const signup = async (
     'POST',
     {
       address,
+      nonce,
       signature,
       timezone,
-      nonce,
     }
   )
 }
@@ -1075,10 +1383,20 @@ export const listConnectedCalendars = async (
 ): Promise<ConnectedCalendarCore[]> => {
   return await queryClient.fetchQuery(
     QueryKeys.connectedCalendars(syncOnly),
-    () =>
-      internalFetch<ConnectedCalendarCore[]>(
+    async () => {
+      const response = await internalFetch<GetCalendarIntegrationsResponse>(
         `/secure/calendar_integrations?syncOnly=${syncOnly}`
       )
+      return response.calendars || []
+    }
+  )
+}
+
+export const getCalendarIntegrationsWithMetadata = async (
+  syncOnly = false
+): Promise<GetCalendarIntegrationsResponse> => {
+  return await internalFetch<GetCalendarIntegrationsResponse>(
+    `/secure/calendar_integrations?syncOnly=${syncOnly}`
   )
 }
 
@@ -1100,9 +1418,9 @@ export const updateConnectedCalendar = async (
 ): Promise<ConnectedCalendar> => {
   await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
   return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
+    calendars,
     email,
     provider,
-    calendars,
   })) as ConnectedCalendar
 }
 
@@ -1116,6 +1434,97 @@ export const getSubscriptionByDomain = async (
   return (await internalFetch(`/subscriptions/check/${domain}`)) as Subscription
 }
 
+export const hasActiveBillingSubscription = async (
+  accountAddress: string
+): Promise<boolean> => {
+  try {
+    const response = await internalFetch<{ hasActive: boolean }>(
+      `/secure/billing/subscription/active`
+    )
+    return response.hasActive
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return false
+    }
+    throw e
+  }
+}
+
+export const getActiveSubscription = async (
+  accountAddress: string
+): Promise<GetSubscriptionResponse | null> => {
+  try {
+    return (await internalFetch(
+      `/secure/billing/subscription`
+    )) as GetSubscriptionResponse
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
+}
+
+export const getManageSubscriptionUrl = async (): Promise<string> => {
+  const response = await internalFetch<{ url: string }>(
+    `/secure/billing/manage`
+  )
+  return response.url
+}
+
+export const getSubscriptionHistory = async (
+  limit = 10,
+  offset = 0
+): Promise<GetSubscriptionHistoryResponse> => {
+  const response = await internalFetch<GetSubscriptionHistoryResponse>(
+    `/secure/billing/subscription/history?limit=${limit}&offset=${offset}`
+  )
+  return response
+}
+
+export const getBillingPlans = async (): Promise<GetPlansResponse['plans']> => {
+  const response = await internalFetch<GetPlansResponse>(
+    '/secure/billing/plans',
+    'GET'
+  )
+  return response.plans
+}
+
+export const subscribeToBillingPlan = async (
+  request: SubscribeRequest
+): Promise<SubscribeResponse> => {
+  return await internalFetch<SubscribeResponse>(
+    '/secure/billing/subscribe',
+    'POST',
+    request
+  )
+}
+
+export const subscribeToBillingPlanCrypto = async (
+  request: SubscribeRequestCrypto
+): Promise<SubscribeResponseCrypto> => {
+  return await internalFetch<SubscribeResponseCrypto>(
+    '/secure/billing/subscribe-crypto',
+    'POST',
+    request
+  )
+}
+
+export const getTrialEligibility =
+  async (): Promise<TrialEligibilityResponse> =>
+    await internalFetch<TrialEligibilityResponse>(
+      '/secure/billing/trial/eligible',
+      'GET'
+    )
+
+export const cancelCryptoSubscription =
+  async (): Promise<CancelSubscriptionResponse> => {
+    return await internalFetch<CancelSubscriptionResponse>(
+      '/secure/billing/cancel-crypto',
+      'POST'
+    )
+  }
+
 export const validateWebdav = async (
   url: string,
   username: string,
@@ -1128,9 +1537,9 @@ export const validateWebdav = async (
       }
     })[]
   >('/secure/calendar_integrations/webdav', 'PUT', {
+    password,
     url,
     username,
-    password,
   })
 }
 
@@ -1257,20 +1666,24 @@ export const getSuggestedSlots = async (
   addresses: string[],
   startDate: Date,
   endDate: Date,
-  duration: number
+  duration: number,
+  groupId?: string
 ): Promise<Interval[]> => {
   try {
     return (
       await internalFetch<Interval[]>(`/meetings/busy/suggest`, 'POST', {
         addresses,
-        startDate,
-        endDate,
         duration,
+        endDate,
+        startDate,
+        groupId,
       })
-    ).map(slot => ({
-      start: new Date(slot.start),
-      end: new Date(slot.end),
-    })) as Interval[]
+    )
+      .map(slot => ({
+        end: new Date(slot.end),
+        start: new Date(slot.start),
+      }))
+      .sort((a, b) => a.start.getTime() - b.start.getTime()) as Interval[]
   } catch (e) {
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
@@ -1380,8 +1793,8 @@ export const getConferenceMeeting = async (
   )) as ConferenceMeeting
   return {
     ...response,
-    start: new Date(response.start),
     end: new Date(response.end),
+    start: new Date(response.start),
   }
 }
 
@@ -1498,7 +1911,10 @@ export const updateCustomSubscriptionDomain = async (
       if (e.status && e.status === 400) {
         throw new NoActiveSubscription()
       } else if (e.status && e.status === 410) {
-        throw new SubscriptionNotCustom()
+        if (e.message.includes('Subscription is not custom')) {
+          throw new SubscriptionNotCustom()
+        }
+        throw new SubscriptionDomainUpdateNotAllowed()
       }
     }
     throw e
@@ -1546,6 +1962,7 @@ export const sendContactListInvite = async (
         throw new ContactInviteAlreadySent()
       }
     }
+    throw e
   }
 }
 export const addGroupMemberToContact = async (payload: InviteGroupMember) => {
@@ -1567,6 +1984,7 @@ export const addGroupMemberToContact = async (payload: InviteGroupMember) => {
         throw new ContactInviteAlreadySent()
       }
     }
+    throw e
   }
 }
 
@@ -1576,9 +1994,19 @@ export const getContacts = async (limit = 10, offset = 0, query = '') => {
   )
 }
 export const getContactsLean = async (limit = 10, offset = 0, query = '') => {
-  return await internalFetch<Array<LeanContact>>(
-    `/secure/contact?type=lean&limit=${limit}&offset=${offset}&q=${query}`
+  return await queryClient.fetchQuery(
+    QueryKeys.groupFull(limit, offset, query),
+    () =>
+      internalFetch<Array<LeanContact>>(
+        `/secure/contact?type=lean&limit=${limit}&offset=${offset}&q=${query}`
+      )
   )
+}
+
+export const getContactsMetadata = async () => {
+  return await internalFetch<{
+    upgradeRequired: boolean
+  }>(`/secure/contact?metadata=true`)
 }
 
 export const getContactInviteRequests = async (
@@ -1685,10 +2113,10 @@ export const createAvailabilityBlock = async ({
     `/secure/availabilities`,
     'POST',
     {
-      title,
-      timezone,
-      weekly_availability,
       is_default,
+      timezone,
+      title,
+      weekly_availability,
     }
   )
 }
@@ -1710,10 +2138,10 @@ export const updateAvailabilityBlock = async ({
     `/secure/availabilities/${id}`,
     'PUT',
     {
-      title,
-      timezone,
-      weekly_availability,
       is_default,
+      timezone,
+      title,
+      weekly_availability,
     }
   )
 }
@@ -1737,7 +2165,22 @@ export const getMeetingTypes = async (
   limit = 10,
   offset = 0
 ): Promise<MeetingType[]> => {
-  return await internalFetch<MeetingType[]>(
+  const response = await internalFetch<
+    MeetingType[] | GetMeetingTypesResponseWithMetadata
+  >(`/secure/meetings/type?limit=${limit}&offset=${offset}`)
+
+  // Handle new response format (with metadata) or legacy format (array)
+  if (Array.isArray(response)) {
+    return response
+  }
+  return response.meetingTypes
+}
+
+export const getMeetingTypesWithMetadata = async (
+  limit = 10,
+  offset = 0
+): Promise<GetMeetingTypesResponseWithMetadata> => {
+  return await internalFetch<GetMeetingTypesResponseWithMetadata>(
     `/secure/meetings/type?limit=${limit}&offset=${offset}`
   )
 }
@@ -1828,12 +2271,12 @@ export const getWalletTransactions = async (
   search_query?: string
 ) => {
   return await internalFetch(`/secure/transactions/wallet`, 'POST', {
-    wallet_address,
-    token_address,
     chain_id,
     limit,
     offset,
     search_query,
+    token_address,
+    wallet_address,
   })
 }
 
@@ -2031,6 +2474,7 @@ export interface BulkAddParticipantsRequest {
     guest_name?: string
     guest_email: string
     participant_type: QuickPollParticipantType
+    status?: QuickPollParticipantStatus
   }>
 }
 
@@ -2043,6 +2487,15 @@ export const addQuickPollParticipants = async (
     'POST',
     { participants }
   )
+}
+
+export const addQuickPollParticipantsBySlugAsGuest = async (
+  slug: string,
+  participants: BulkAddParticipantsRequest['participants']
+) => {
+  return await internalFetch(`/quickpoll/${slug}/participants/bulk`, 'POST', {
+    participants,
+  })
 }
 
 export const getQuickPollBySlug = async (slug: string) => {
@@ -2079,8 +2532,8 @@ export const updateGuestParticipantDetails = async (
     `/quickpoll/participants/${participantId}/details`,
     'PATCH',
     {
-      guest_name: guestName,
       guest_email: guestEmail,
+      guest_name: guestName,
     }
   )
 }
@@ -2096,9 +2549,9 @@ export const addOrUpdateGuestParticipantWithAvailability = async (
     `/quickpoll/${pollSlug}/guest-participant`,
     'POST',
     {
+      available_slots: availableSlots,
       guest_email: guestEmail,
       guest_name: guestName,
-      available_slots: availableSlots,
       timezone,
     }
   )
@@ -2121,9 +2574,18 @@ export const savePollParticipantCalendar = async (
     'POST',
     {
       email,
-      provider,
       payload,
+      provider,
     }
+  )
+}
+
+export const getPollParticipantCalendars = async (
+  participantId: string
+): Promise<ConnectedCalendar[]> => {
+  return await internalFetch(
+    `/quickpoll/participants/${participantId}/calendar`,
+    'GET'
   )
 }
 
@@ -2235,4 +2697,244 @@ export const getStripeSupportedCountries = async () => {
       value: country.id,
     }))
   )
+}
+export const getAccountPrimaryCalendarEmail = async (targetAccount: string) => {
+  try {
+    return await internalFetch<{ email: string }>(
+      `/accounts/calendar/primary?targetAccount=${targetAccount}`
+    ).then(account => account.email)
+  } catch (_e) {
+    return undefined
+  }
+}
+
+export const getSlotByMeetingId = async (meetingId: string) => {
+  try {
+    const slot = await internalFetch<AccountSlot | GuestSlot>(
+      `/meetings/meeting/${meetingId}/slot`
+    )
+    return slot
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
+}
+
+export const decodeMeetingGuest = async (
+  payload: GuestSlot
+): Promise<MeetingDecrypted | null> => {
+  try {
+    return await internalFetch<MeetingDecrypted>(
+      '/meetings/meeting/decrypt',
+      'POST',
+      payload
+    ).then(res => ({
+      ...res,
+      created_at: new Date(res.created_at),
+      end: new Date(res.end),
+      start: new Date(res.start),
+    }))
+  } catch (_e) {
+    return null
+  }
+}
+
+export const getGuestSlotById = async (slotId: string) => {
+  const response = await internalFetch<GuestSlot | null>(
+    `/meetings/guest/${slotId}/slot`
+  )
+  if (!response) return null
+  return {
+    ...response,
+    end: new Date(response.end),
+    start: new Date(response.start),
+  }
+}
+
+export const getEvents = async (
+  referenceDate: DateTime
+): Promise<CalendarEvents> => {
+  return await internalFetch<CalendarEvents>(
+    `/secure/calendar_events?startDate=${encodeURIComponent(
+      referenceDate.startOf('month').startOf('week').toISO() || ''
+    )}&endDate=${encodeURIComponent(
+      referenceDate.endOf('month').endOf('week').toISO() || ''
+    )}`
+  )
+}
+export const getCalendarEvents = async (
+  startDate: DateTime,
+  endDate: DateTime,
+  currentAccount: Account,
+  onlyMeetings = true
+): Promise<ExtendedCalendarEvents> => {
+  const events = await internalFetch<CalendarEvents>(
+    `/secure/calendar_events?startDate=${encodeURIComponent(
+      startDate.toISO() || ''
+    )}&endDate=${encodeURIComponent(
+      endDate.toISO() || ''
+    )}&onlyMeetings=${onlyMeetings}`
+  )
+  const preProcessedMeetWithEvents = meetWithSeriesPreprocessors(
+    events.mwwEvents,
+    startDate,
+    endDate
+  )
+  const decryptedMwwEvents = await Promise.all(
+    preProcessedMeetWithEvents.map(async slot => {
+      try {
+        const decrypted = await decodeMeeting(slot, currentAccount)
+        return { ...slot, decrypted }
+      } catch (_e) {
+        return { ...slot, decrypted: null }
+      }
+    })
+  )
+  return {
+    calendarEvents: events.calendarEvents.map(event => ({
+      ...event,
+      end: new Date(event.end),
+      start: new Date(event.start),
+    })),
+    mwwEvents: decryptedMwwEvents.filter(
+      (event): event is DashBoardMwwEvents => event.decrypted !== null
+    ),
+  }
+}
+
+export const getSlotInstanceById = async (
+  slotId: string,
+  signal?: AbortSignal
+): Promise<SlotInstance | null> => {
+  try {
+    return await internalFetch<SlotInstance>(
+      `/meetings/slot/instance/${slotId}`,
+      'GET',
+      undefined,
+      { signal }
+    ).then(slot => ({
+      ...slot,
+      end: new Date(slot.end),
+      start: new Date(slot.start),
+    }))
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
+}
+
+export const getSlotSeries = async (seriesId: string, signal?: AbortSignal) => {
+  try {
+    return await internalFetch<Tables<'slot_series'>>(
+      `/meetings/meeting/${seriesId}/series`,
+      'GET',
+      undefined,
+      { signal }
+    )
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
+}
+
+export const addOrUpdateWebcal = async (
+  formdata: FormData
+): Promise<WebCalResponse> => {
+  return await internalFetch<WebCalResponse>(
+    `/secure/calendar_integrations/webcal`,
+    'POST',
+    formdata,
+    undefined,
+    undefined,
+    true
+  )
+}
+export const addOrUpdateQuickPollWebcal = async (
+  participantId: string,
+  formdata: FormData
+): Promise<WebCalResponse> => {
+  return await internalFetch<WebCalResponse>(
+    `/quickpoll/participants/${participantId}/webcal`,
+    'POST',
+    formdata,
+    undefined,
+    undefined,
+    true
+  )
+}
+
+export const updateCalendarRsvpStatus = async (
+  calendarId: string,
+  eventId: string,
+  rsvpStatus: AttendeeStatus,
+  attendeeEmail: string,
+  abortSignal?: AbortSignal
+) => {
+  return await internalFetch(
+    `/secure/calendar/${calendarId}/${eventId}/rsvp`,
+    'PATCH',
+    {
+      attendee_email: attendeeEmail,
+      rsvp_status: rsvpStatus,
+    } as UpdateCalendarEventRequest,
+    {
+      signal: abortSignal,
+    }
+  )
+}
+
+export const updateCalendarEvent = async (
+  event: UnifiedEvent
+): Promise<UnifiedEvent> => {
+  return await internalFetch<UnifiedEvent, UnifiedEvent>(
+    `/secure/calendar/event`,
+    'PATCH',
+    event
+  )
+}
+
+export const deleteCalendarEvent = async (
+  calendarId: string,
+  eventId: string
+) => {
+  return await internalFetch(
+    `/secure/calendar/${calendarId}/${eventId}`,
+    'DELETE',
+    undefined
+  )
+}
+
+export const parsedDecryptedParticipants = async (
+  instance_id: string,
+  participants: ParseParticipantInfo[]
+) => {
+  return internalFetch<ParseParticipantInfo[], ParseParticipantsRequest>(
+    `/secure/meetings/instances/${instance_id}/participants`,
+    'POST',
+    { participants }
+  )
+}
+
+export const joinQuickPollAsParticipant = async (
+  pollId: string,
+  notificationEmail?: string,
+  displayName?: string
+): Promise<{ participant: QuickPollParticipant; alreadyInPoll: boolean }> => {
+  const data = await internalFetch<{
+    participant: QuickPollParticipant
+    already_in_poll: boolean
+  }>(`/secure/quickpoll/${pollId}/join`, 'POST', {
+    notification_email: notificationEmail,
+    display_name: displayName,
+  })
+  return {
+    participant: data.participant,
+    alreadyInPoll: data.already_in_poll,
+  }
 }

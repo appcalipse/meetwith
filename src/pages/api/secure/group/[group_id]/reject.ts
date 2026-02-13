@@ -20,9 +20,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         group_id: string
         email_address?: string
       }
-      const notifications = await getAccountNotificationSubscriptions(
-        account_address
-      )
+      const notifications =
+        await getAccountNotificationSubscriptions(account_address)
       const userEmail = notifications?.notification_types.find(
         n => n.channel === NotificationChannel.EMAIL
       )?.destination

@@ -138,6 +138,7 @@ const CheckoutWidgetModal = ({
     guest_email: email,
     guest_name: name,
     guest_address: currentAccount?.address,
+    environment: process.env.NEXT_PUBLIC_ENV_CONFIG || '',
   }
   return (
     <Modal

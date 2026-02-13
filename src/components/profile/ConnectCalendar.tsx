@@ -10,6 +10,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
@@ -21,17 +22,19 @@ import {
   ConnectedCalendarCore,
   ConnectedCalendarIcons,
 } from '@/types/CalendarConnections'
+import { SettingsSection } from '@/types/Dashboard'
 import {
   deleteConnectedCalendar,
-  listConnectedCalendars,
+  getCalendarIntegrationsWithMetadata,
 } from '@/utils/api_helper'
-import { isProAccount } from '@/utils/subscription_manager'
+import { isTrialEligible } from '@/utils/subscription_manager'
 
+// biome-ignore lint/correctness/noUnusedVariables: No unused vars
 const GoProCTA = () => (
   <VStack>
     <Text py="6">
       <Link
-        href="/dashboard/details#subscriptions"
+        href={`/dashboard/settings/${SettingsSection.SUBSCRIPTIONS}`}
         colorScheme="primary"
         fontWeight="bold"
       >
@@ -107,29 +110,37 @@ const ConnectedCalendars: React.FC<{
 const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [calendarConnections, setCalendarConnections] = useState<
     ConnectedCalendarCore[]
   >([])
+  const [canCreateCalendar, setCanCreateCalendar] = useState(true)
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
+
   const loadCalendars = async () => {
     setLoading(true)
-    return listConnectedCalendars()
-      .then(data => {
-        // for old version without the calendars property
-        const calendars = data?.map((calendar: ConnectedCalendarCore) => ({
+    try {
+      const response = await getCalendarIntegrationsWithMetadata()
+      const calendars = response.calendars || []
+      // for old version without the calendars property
+      const formattedCalendars = calendars.map(
+        (calendar: ConnectedCalendarCore) => ({
           ...calendar,
           calendars: calendar.calendars,
-        }))
-        setCalendarConnections(calendars)
-        setLoading(false)
-      })
-      .catch(error => {
-        console.error(error)
-        setLoading(false)
-      })
+        })
+      )
+      setCalendarConnections(formattedCalendars)
+      setCanCreateCalendar(!response.upgradeRequired)
+      setLoading(false)
+    } catch (error) {
+      console.error(error)
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -168,15 +179,40 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         </Text>
       </VStack>
 
-      <Button
-        onClick={onOpen}
-        colorScheme="primary"
-        mb={7}
-        alignSelf="flex-start"
-        leftIcon={<FaPlus />}
-      >
-        Add calendar connection
-      </Button>
+      <VStack align="flex-start" spacing={2} mb={7}>
+        <Button
+          onClick={onOpen}
+          colorScheme="primary"
+          alignSelf="flex-start"
+          leftIcon={<FaPlus />}
+          isDisabled={!canCreateCalendar}
+          title={
+            !canCreateCalendar
+              ? 'Upgrade to Pro to connect more calendars'
+              : undefined
+          }
+        >
+          Add calendar connection
+        </Button>
+        {!canCreateCalendar && currentAccount && (
+          <Text fontSize="14px" color="neutral.400">
+            Unlock unlimited calendar connections with PRO.{' '}
+            <Button
+              variant="link"
+              colorScheme="primary"
+              px={0}
+              onClick={() => router.push('/dashboard/settings/subscriptions')}
+              textDecoration="underline"
+              fontSize="14px"
+              height="auto"
+              minW="auto"
+            >
+              {trialEligible ? 'Try for free' : 'Go PRO'}
+            </Button>
+            .
+          </Text>
+        )}
+      </VStack>
 
       <ConnectedCalendars
         activeCalendarConnections={activeCalendarConnections}

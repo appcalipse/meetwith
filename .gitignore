@@ -51,4 +51,7 @@ package-lock.json
 # Zoom
 zoom-token.json
 .qodo
+.nvmrc
+.github/rules/
+.env.sentry-build-plugin
 test.http

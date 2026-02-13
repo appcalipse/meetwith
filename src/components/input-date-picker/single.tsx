@@ -68,49 +68,49 @@ export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
 
   return (
     <Popover
-      placement="bottom-start"
-      variant="responsive"
-      isOpen={popoverOpen}
-      onClose={() => setPopoverOpen(false)}
       initialFocusRef={initialFocusRef}
       isLazy
+      isOpen={popoverOpen}
+      onClose={() => setPopoverOpen(false)}
+      placement="bottom-start"
+      variant="responsive"
     >
       <PopoverTrigger>
         <InputGroup>
           <InputLeftElement
-            pointerEvents="none"
-            insetY={0}
-            height="100%"
             alignItems="center"
-            left={1}
             children={
               <Icon
-                fontSize={props.iconSize || '16'}
-                color={iconColor}
                 _groupHover={{
                   color: iconColor,
                 }}
                 as={FaCalendarDay}
+                color={iconColor}
+                fontSize={props.iconSize || '16'}
               />
             }
+            height="100%"
+            insetY={0}
+            left={1}
+            pointerEvents="none"
           />
           <Input
+            autoComplete="off"
             cursor="pointer"
             id={id}
-            autoComplete="off"
             isDisabled={disabled}
-            ref={initialFocusRef}
-            onClick={() => setPopoverOpen(!popoverOpen)}
             name={name}
-            value={format(date, 'P')}
             onChange={e => e.target.value}
+            onClick={() => setPopoverOpen(!popoverOpen)}
+            ref={initialFocusRef}
+            value={format(date, 'P')}
             {...inputProps}
           />
         </InputGroup>
       </PopoverTrigger>
       <PopoverContent ref={ref} width="100%">
         <PopoverBody>
-          <CalendarPanel renderProps={dayzedData} blockPast />
+          <CalendarPanel blockPast renderProps={dayzedData} />
         </PopoverBody>
       </PopoverContent>
     </Popover>

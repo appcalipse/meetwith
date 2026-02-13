@@ -49,9 +49,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const result = await getQuickPollById(pollId, address)
 
       const response: QuickPollResponse = {
-        poll: result.poll,
-        is_participant: result.is_participant,
         can_edit: result.can_edit,
+        is_participant: result.is_participant,
+        poll: result.poll,
       }
 
       return res.status(200).json(response)
@@ -72,7 +72,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         }
       }
 
-      if (updateData.expires_at) {
+      if (
+        updateData.expires_at !== null &&
+        updateData.expires_at !== undefined
+      ) {
         const expiresAt = new Date(updateData.expires_at)
         const now = new Date()
 
@@ -131,8 +134,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Trim string fields
       const cleanUpdateData = {
         ...updateData,
-        title: updateData.title?.trim(),
         description: updateData.description?.trim() || '',
+        title: updateData.title?.trim(),
       }
 
       const poll = await updateQuickPoll(pollId, address, cleanUpdateData)
@@ -149,8 +152,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const cancelledPoll = await cancelQuickPoll(pollId, address)
 
       return res.status(200).json({
-        success: true,
         poll: cancelledPoll,
+        success: true,
       })
     }
   } catch (error) {

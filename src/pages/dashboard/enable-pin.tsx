@@ -38,15 +38,15 @@ const EnablePinPage = () => {
       return await enablePinWithToken(pin, token)
     },
     {
+      onError: (error: unknown) => {
+        handleApiError('Error enabling transaction PIN', error)
+        console.error('Error enabling PIN:', error)
+      },
       onSuccess: () => {
         showSuccessToast('Success', 'Transaction PIN enabled successfully')
         setIsEnableModalOpen(false)
         setIsSuccessModalOpen(true)
         setPinEnableSuccessful(true) // Mark as successful
-      },
-      onError: (error: unknown) => {
-        handleApiError('Error enabling transaction PIN', error)
-        console.error('Error enabling PIN:', error)
       },
     }
   )
@@ -62,11 +62,11 @@ const EnablePinPage = () => {
   if (isLoading) {
     return (
       <Box
-        minH="100vh"
+        alignItems="center"
         bg="bg-surface"
         display="flex"
-        alignItems="center"
         justifyContent="center"
+        minH="100vh"
       >
         <CustomLoading />
       </Box>
@@ -75,29 +75,29 @@ const EnablePinPage = () => {
 
   return (
     <Box
-      minH="100vh"
+      alignItems="center"
       bg="bg-surface"
       display="flex"
-      alignItems="center"
       justifyContent="center"
+      minH="100vh"
     >
       {/* Enable PIN Modal */}
       <TransactionPinModal
+        isLoading={enablePinMutation.isLoading}
         isOpen={isEnableModalOpen}
+        mode="create"
         onClose={() => setIsEnableModalOpen(true)}
         onPinCreated={handlePinEnable}
-        isLoading={enablePinMutation.isLoading}
-        mode="create"
       />
 
       {/* Success Modal */}
       <SuccessModal
+        buttonText="Go back to Dashboard"
         isOpen={isSuccessModalOpen}
+        message="You have successfully set up your transaction PIN for secure transactions"
+        onButtonClick={handleBackToDashboard}
         onClose={() => setIsSuccessModalOpen(true)}
         title="Transaction PIN enabled successfully"
-        message="You have successfully set up your transaction PIN for secure transactions"
-        buttonText="Go back to Dashboard"
-        onButtonClick={handleBackToDashboard}
       />
     </Box>
   )

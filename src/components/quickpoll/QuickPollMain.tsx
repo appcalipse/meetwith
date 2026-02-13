@@ -1,10 +1,10 @@
 import { Box, TabPanel, TabPanels, Tabs, VStack } from '@chakra-ui/react'
-import React, { useState } from 'react'
+import { useRouter } from 'next/router'
+import React, { useEffect, useState } from 'react'
 
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import { queryClient } from '@/utils/react_query'
-import { useToastHelpers } from '@/utils/toasts'
 
 import GuestDetailsForm from './GuestDetailsForm'
 import PollSuccessScreen from './PollSuccessScreen'
@@ -27,17 +27,33 @@ const QuickPollMain: React.FC<QuickPollMainProps> = ({
   pollData,
   initialPage = QuickPollPage.AVAILABILITY,
 }) => {
+  const router = useRouter()
   const [currentPage, setCurrentPage] = useState<QuickPollPage>(initialPage)
+  const [isProfileUpdateOnly, setIsProfileUpdateOnly] = useState(false)
+
+  // Sync with URL changes
+  useEffect(() => {
+    if (router.query.tab === 'guest-details') {
+      setCurrentPage(QuickPollPage.GUEST_DETAILS)
+    } else {
+      setCurrentPage(QuickPollPage.AVAILABILITY)
+    }
+  }, [router.query.tab])
 
   const handlePageSwitch = (page: QuickPollPage) => {
     setCurrentPage(page)
+  }
+
+  const handleGuestDetailsSuccess = (isProfileUpdateOnlyFlag?: boolean) => {
+    setIsProfileUpdateOnly(isProfileUpdateOnlyFlag || false)
+    handlePageSwitch(QuickPollPage.SUCCESS)
   }
 
   return (
     <Tabs index={currentPage} isLazy>
       <TabPanels>
         <TabPanel p={0}>
-          <Box px={8} py={20}>
+          <Box px={{ base: 0, md: 8 }} py={12}>
             <QuickPollAvailabilityDiscover
               pollId={pollId}
               pollData={pollData}
@@ -51,13 +67,14 @@ const QuickPollMain: React.FC<QuickPollMainProps> = ({
           <QuickPollGuestDetailsTab
             pollData={pollData}
             onNavigateBack={() => handlePageSwitch(QuickPollPage.AVAILABILITY)}
-            onSuccess={() => handlePageSwitch(QuickPollPage.SUCCESS)}
+            onSuccess={handleGuestDetailsSuccess}
           />
         </TabPanel>
         <TabPanel p={0}>
           <QuickPollSuccessTab
             onDone={() => handlePageSwitch(QuickPollPage.AVAILABILITY)}
             pollTitle={pollData?.poll?.title}
+            isProfileUpdateOnly={isProfileUpdateOnly}
           />
         </TabPanel>
       </TabPanels>
@@ -68,7 +85,7 @@ const QuickPollMain: React.FC<QuickPollMainProps> = ({
 interface QuickPollGuestDetailsTabProps {
   pollData?: QuickPollBySlugResponse
   onNavigateBack?: () => void
-  onSuccess?: () => void
+  onSuccess?: (isProfileUpdateOnly?: boolean) => void
 }
 
 const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
@@ -76,18 +93,11 @@ const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
   onNavigateBack,
   onSuccess,
 }) => {
-  const { showSuccessToast } = useToastHelpers()
-
-  const handleSuccess = () => {
+  const handleSuccess = (isProfileUpdateOnly?: boolean) => {
     queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
     queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
-
-    showSuccessToast(
-      'Details saved successfully',
-      'Your availability and details have been saved.'
-    )
     if (onSuccess) {
-      onSuccess()
+      onSuccess(isProfileUpdateOnly)
     }
   }
 
@@ -110,15 +120,23 @@ const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
 interface QuickPollSuccessTabProps {
   onDone?: () => void
   pollTitle?: string
+  isProfileUpdateOnly?: boolean
 }
 
 const QuickPollSuccessTab: React.FC<QuickPollSuccessTabProps> = ({
   onDone,
   pollTitle,
+  isProfileUpdateOnly = false,
 }) => {
+  const router = useRouter()
+
   const handleDone = () => {
     queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
     queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
+
+    const basePath = router.asPath.split('?')[0]
+    router.push(basePath, undefined, { shallow: true })
+
     if (onDone) {
       onDone()
     }
@@ -137,6 +155,7 @@ const QuickPollSuccessTab: React.FC<QuickPollSuccessTabProps> = ({
         isOpen={true}
         onClose={handleDone}
         pollTitle={pollTitle}
+        isProfileUpdateOnly={isProfileUpdateOnly}
       />
     </Box>
   )

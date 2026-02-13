@@ -31,6 +31,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (isContact) {
         throw new ContactAlreadyExists()
       }
+
       const member = await getGroupMembersOrInvite(groupId, address, state)
       if (!member) {
         throw new MemberDoesNotExist()

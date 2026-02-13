@@ -1,7 +1,10 @@
-import { DateTime } from 'luxon'
+import { DateTime, Interval } from 'luxon'
 import React, { createContext, ReactNode, useContext, useState } from 'react'
 
-import { mergeTimeRanges } from '@/utils/quickpoll_helper'
+import {
+  doSlotsOverlapOrContain,
+  mergeTimeRanges,
+} from '@/utils/quickpoll_helper'
 
 interface AvailabilitySlot {
   weekday: number
@@ -22,6 +25,7 @@ interface AvailabilityTrackerContextType {
   isSlotSelected: (slot: SelectedTimeSlot) => boolean
   clearSlots: () => void
   getAvailabilitySlots: () => AvailabilitySlot[]
+  loadSlots: (slots: SelectedTimeSlot[]) => void
 }
 
 const AvailabilityTrackerContext = createContext<
@@ -52,19 +56,30 @@ export const AvailabilityTrackerProvider: React.FC<{
   }
 
   const removeSlot = (slot: SelectedTimeSlot) => {
-    setSelectedSlots(prev =>
-      prev.filter(s => !s.start.equals(slot.start) || !s.end.equals(slot.end))
-    )
+    setSelectedSlots(prev => {
+      const slotInterval = Interval.fromDateTimes(slot.start, slot.end)
+      if (!slotInterval.isValid) return prev
+
+      return prev.filter(s => {
+        const sInterval = Interval.fromDateTimes(s.start, s.end)
+        if (!sInterval.isValid) return true
+
+        return !doSlotsOverlapOrContain(slot, s)
+      })
+    })
   }
 
   const isSlotSelected = (slot: SelectedTimeSlot): boolean => {
-    return selectedSlots.some(
-      s => s.start.equals(slot.start) && s.end.equals(slot.end)
-    )
+    // Check if the slot overlaps with any selected slot
+    return selectedSlots.some(s => doSlotsOverlapOrContain(slot, s))
   }
 
   const clearSlots = () => {
     setSelectedSlots([])
+  }
+
+  const loadSlots = (slots: SelectedTimeSlot[]) => {
+    setSelectedSlots(slots)
   }
 
   const getAvailabilitySlots = (): AvailabilitySlot[] => {
@@ -107,6 +122,7 @@ export const AvailabilityTrackerProvider: React.FC<{
     isSlotSelected,
     clearSlots,
     getAvailabilitySlots,
+    loadSlots,
   }
 
   return (

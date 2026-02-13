@@ -4,6 +4,7 @@ import React from 'react'
 import { Account } from '@/types/Account'
 
 import MeetingTypesConfig from './MeetingTypesConfig'
+
 const MeetingSettings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {

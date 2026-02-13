@@ -12,8 +12,7 @@ import {
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useRef, useState } from 'react'
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
 import { FaCircleInfo } from 'react-icons/fa6'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
@@ -24,8 +23,7 @@ import {
   PiArrowCircleUpRight,
   PiPlusCircleLight,
 } from 'react-icons/pi'
-import { TbWallet } from 'react-icons/tb'
-import { TbSettings2 } from 'react-icons/tb'
+import { TbSettings2, TbWallet } from 'react-icons/tb'
 import { useOnClickOutside } from 'usehooks-ts'
 
 import { useCryptoBalance } from '@/hooks/useCryptoBalance'
@@ -36,12 +34,16 @@ import { useWalletTransactions } from '@/hooks/useWalletTransactions'
 import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
 import { getChainId, SupportedChain, supportedChains } from '@/types/chains'
-import { getPaymentPreferences } from '@/utils/api_helper'
-import { sendEnablePinLink } from '@/utils/api_helper'
-import { getNotificationSubscriptions } from '@/utils/api_helper'
+import { SettingsSection } from '@/types/Dashboard'
+import {
+  getNotificationSubscriptions,
+  getPaymentPreferences,
+  sendEnablePinLink,
+} from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { formatCurrency } from '@/utils/generic_utils'
 import { CurrencyService } from '@/utils/services/currency.service'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 import { useToastHelpers } from '@/utils/toasts'
 import { getAccountDisplayName } from '@/utils/user_manager'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
@@ -51,6 +53,7 @@ import { Avatar } from './components/Avatar'
 import CurrencySelector from './components/CurrencySelector'
 import MagicLinkModal from './components/MagicLinkModal'
 import NetworkSelector from './components/NetworkSelector'
+import ProUpgradePrompt from './components/ProUpgradePrompt'
 import WalletActionButton from './components/WalletActionButton'
 import Pagination from './Pagination'
 import ReceiveFundsModal from './ReceiveFundsModal'
@@ -64,6 +67,18 @@ interface WalletProps {
 const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const router = useRouter()
   const { showSuccessToast } = useToastHelpers()
+
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+
+  if (!hasProAccess) {
+    return (
+      <ProUpgradePrompt
+        heading="Wallet feature requires Pro"
+        subheading="Upgrade to Pro to access wallet features including payments, invoicing, and fund management."
+      />
+    )
+  }
 
   // Network dropdown state
   const [isNetworkDropdownOpen, setIsNetworkDropdownOpen] = useState(false)
@@ -222,7 +237,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const handleShowWithdrawWidget = () => onOpen()
 
   const handleSettingsClick = () => {
-    router.push('/dashboard/details#wallet-payment')
+    router.push(`/dashboard/settings/${SettingsSection.WALLET_PAYMENT}`)
   }
 
   const handleCurrencyChange = (value: string) => {
@@ -1394,76 +1409,56 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       </Box>
                     ))
                   : cryptoAssetsWithBalances.length === 0
-                  ? // Show skeleton cards while loading
-                    Array.from({ length: 3 }).map((_, index) => (
-                      <Box
-                        key={`skeleton-${index}`}
-                        bg="bg-surface-tertiary"
-                        borderRadius="12px"
-                        p={4}
-                        width="100%"
-                        position="relative"
-                        overflow="hidden"
-                        _before={{
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: '-100%',
-                          width: '100%',
-                          height: '100%',
-                          background:
-                            'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
-                          animation: 'shimmer 2s ease-in-out infinite',
-                          zIndex: 1,
-                        }}
-                        sx={{
-                          '@keyframes shimmer': {
-                            '0%': {
-                              left: '-100%',
-                              opacity: 0.3,
-                            },
-                            '50%': {
-                              left: '100%',
-                              opacity: 0.8,
-                            },
-                            '100%': {
-                              left: '100%',
-                              opacity: 0.3,
-                            },
-                          },
-                        }}
-                      >
-                        <Flex
-                          justify="space-between"
-                          align="center"
+                    ? // Show skeleton cards while loading
+                      Array.from({ length: 3 }).map((_, index) => (
+                        <Box
+                          key={`skeleton-${index}`}
+                          bg="bg-surface-tertiary"
+                          borderRadius="12px"
+                          p={4}
+                          width="100%"
                           position="relative"
-                          zIndex={2}
-                        >
-                          <HStack spacing={3}>
-                            <Box
-                              w="48px"
-                              h="48px"
-                              borderRadius="full"
-                              bg="bg-surface-tertiary-2"
-                              position="relative"
-                              overflow="hidden"
-                              _before={{
-                                content: '""',
-                                position: 'absolute',
-                                top: 0,
+                          overflow="hidden"
+                          _before={{
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: '-100%',
+                            width: '100%',
+                            height: '100%',
+                            background:
+                              'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
+                            animation: 'shimmer 2s ease-in-out infinite',
+                            zIndex: 1,
+                          }}
+                          sx={{
+                            '@keyframes shimmer': {
+                              '0%': {
                                 left: '-100%',
-                                width: '100%',
-                                height: '100%',
-                                background:
-                                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
-                                animation: 'shimmer 1.5s infinite',
-                              }}
-                            />
-                            <VStack align="start" spacing={0}>
+                                opacity: 0.3,
+                              },
+                              '50%': {
+                                left: '100%',
+                                opacity: 0.8,
+                              },
+                              '100%': {
+                                left: '100%',
+                                opacity: 0.3,
+                              },
+                            },
+                          }}
+                        >
+                          <Flex
+                            justify="space-between"
+                            align="center"
+                            position="relative"
+                            zIndex={2}
+                          >
+                            <HStack spacing={3}>
                               <Box
-                                w="120px"
-                                h="20px"
-                                borderRadius="4px"
+                                w="48px"
+                                h="48px"
+                                borderRadius="full"
                                 bg="bg-surface-tertiary-2"
                                 position="relative"
                                 overflow="hidden"
@@ -1479,173 +1474,9 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   animation: 'shimmer 1.5s infinite',
                                 }}
                               />
-                              <HStack spacing={3}>
+                              <VStack align="start" spacing={0}>
                                 <Box
-                                  w="60px"
-                                  h="16px"
-                                  borderRadius="4px"
-                                  bg="bg-surface-tertiary-2"
-                                  position="relative"
-                                  overflow="hidden"
-                                  _before={{
-                                    content: '""',
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: '-100%',
-                                    width: '100%',
-                                    height: '100%',
-                                    background:
-                                      'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
-                                    animation: 'shimmer 1.5s infinite',
-                                  }}
-                                />
-                                <Box
-                                  w="40px"
-                                  h="16px"
-                                  borderRadius="4px"
-                                  bg="bg-surface-tertiary-2"
-                                  position="relative"
-                                  overflow="hidden"
-                                  _before={{
-                                    content: '""',
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: '-100%',
-                                    width: '100%',
-                                    height: '100%',
-                                    background:
-                                      'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
-                                    animation: 'shimmer 1.5s infinite',
-                                  }}
-                                />
-                              </HStack>
-                            </VStack>
-                          </HStack>
-                          <VStack align="end" spacing={0}>
-                            <Box
-                              w="80px"
-                              h="20px"
-                              borderRadius="4px"
-                              bg="bg-surface-tertiary-2"
-                              position="relative"
-                              overflow="hidden"
-                              _before={{
-                                content: '""',
-                                position: 'absolute',
-                                top: 0,
-                                left: '-100%',
-                                width: '100%',
-                                height: '100%',
-                                background:
-                                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
-                                animation: 'shimmer 1.5s infinite',
-                              }}
-                            />
-                            <Box
-                              w="60px"
-                              h="16px"
-                              borderRadius="4px"
-                              bg="bg-surface-tertiary-2"
-                              position="relative"
-                              overflow="hidden"
-                              _before={{
-                                content: '""',
-                                position: 'absolute',
-                                top: 0,
-                                left: '-100%',
-                                width: '100%',
-                                height: '100%',
-                                background:
-                                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
-                                animation: 'shimmer 1.5s infinite',
-                              }}
-                            />
-                          </VStack>
-                        </Flex>
-                      </Box>
-                    ))
-                  : cryptoAssetsWithBalances.map((asset, index) => (
-                      <Box
-                        key={index}
-                        bg="bg-surface-tertiary-3"
-                        borderRadius="12px"
-                        px={{ base: 2, md: 4 }}
-                        py={4}
-                        width="100%"
-                        cursor="pointer"
-                        _hover={{ bg: 'bg-surface-tertiary-2' }}
-                        transition="all 0.2s"
-                        onClick={() => {
-                          setSelectedCrypto(asset)
-                          setShowCryptoDetails(true)
-                        }}
-                      >
-                        <Flex justify="space-between" align="center">
-                          <HStack spacing={3}>
-                            <Box position="relative">
-                              <Image
-                                src={asset.icon}
-                                alt={asset.symbol}
-                                w="48px"
-                                h="48px"
-                                borderRadius="full"
-                              />
-                              {/* Network overlay icon */}
-                              <Box
-                                position="absolute"
-                                bottom="-4px"
-                                right="-5px"
-                                w="24px"
-                                h="24px"
-                                borderRadius="full"
-                                bg="bg-surface"
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
-                                border="1px solid"
-                                borderColor="border-wallet-subtle"
-                                zIndex={10}
-                                backgroundSize="cover"
-                                overflow="hidden"
-                              >
-                                <Image
-                                  src={
-                                    asset.networkName === 'Celo'
-                                      ? '/assets/chains/Celo.svg'
-                                      : '/assets/chains/Arbitrum.svg'
-                                  }
-                                  alt={asset.networkName}
-                                  w="100%"
-                                  h="100%"
-                                  backgroundSize="cover"
-                                  borderRadius="full"
-                                />
-                              </Box>
-                            </Box>
-                            <VStack align="start" spacing={0}>
-                              <Text
-                                color="text-primary"
-                                fontSize={{ base: '16px', md: '20px' }}
-                                fontWeight="700"
-                              >
-                                {asset.name}
-                              </Text>
-                              <HStack spacing={3}>
-                                <Text
-                                  fontSize={{ base: '12px', md: '16px' }}
-                                  fontWeight="500"
-                                  color="text-primary"
-                                >
-                                  {asset.price}
-                                </Text>
-                              </HStack>
-                            </VStack>
-                          </HStack>
-                          <VStack align="end" spacing={0}>
-                            {asset.isLoading ? (
-                              <>
-                                <Box
-                                  w="80px"
+                                  w="120px"
                                   h="20px"
                                   borderRadius="4px"
                                   bg="bg-surface-tertiary-2"
@@ -1663,56 +1494,240 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                     animation: 'shimmer 1.5s infinite',
                                   }}
                                 />
-                                <Box
-                                  w="60px"
-                                  h="16px"
-                                  borderRadius="4px"
-                                  bg="bg-surface-tertiary-2"
-                                  position="relative"
-                                  overflow="hidden"
-                                  _before={{
-                                    content: '""',
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: '-100%',
-                                    width: '100%',
-                                    height: '100%',
-                                    background:
-                                      'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
-                                    animation: 'shimmer 1.5s infinite',
-                                  }}
+                                <HStack spacing={3}>
+                                  <Box
+                                    w="60px"
+                                    h="16px"
+                                    borderRadius="4px"
+                                    bg="bg-surface-tertiary-2"
+                                    position="relative"
+                                    overflow="hidden"
+                                    _before={{
+                                      content: '""',
+                                      position: 'absolute',
+                                      top: 0,
+                                      left: '-100%',
+                                      width: '100%',
+                                      height: '100%',
+                                      background:
+                                        'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                      animation: 'shimmer 1.5s infinite',
+                                    }}
+                                  />
+                                  <Box
+                                    w="40px"
+                                    h="16px"
+                                    borderRadius="4px"
+                                    bg="bg-surface-tertiary-2"
+                                    position="relative"
+                                    overflow="hidden"
+                                    _before={{
+                                      content: '""',
+                                      position: 'absolute',
+                                      top: 0,
+                                      left: '-100%',
+                                      width: '100%',
+                                      height: '100%',
+                                      background:
+                                        'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                      animation: 'shimmer 1.5s infinite',
+                                    }}
+                                  />
+                                </HStack>
+                              </VStack>
+                            </HStack>
+                            <VStack align="end" spacing={0}>
+                              <Box
+                                w="80px"
+                                h="20px"
+                                borderRadius="4px"
+                                bg="bg-surface-tertiary-2"
+                                position="relative"
+                                overflow="hidden"
+                                _before={{
+                                  content: '""',
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: '-100%',
+                                  width: '100%',
+                                  height: '100%',
+                                  background:
+                                    'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                  animation: 'shimmer 1.5s infinite',
+                                }}
+                              />
+                              <Box
+                                w="60px"
+                                h="16px"
+                                borderRadius="4px"
+                                bg="bg-surface-tertiary-2"
+                                position="relative"
+                                overflow="hidden"
+                                _before={{
+                                  content: '""',
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: '-100%',
+                                  width: '100%',
+                                  height: '100%',
+                                  background:
+                                    'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                  animation: 'shimmer 1.5s infinite',
+                                }}
+                              />
+                            </VStack>
+                          </Flex>
+                        </Box>
+                      ))
+                    : cryptoAssetsWithBalances.map((asset, index) => (
+                        <Box
+                          key={index}
+                          bg="bg-surface-tertiary-3"
+                          borderRadius="12px"
+                          px={{ base: 2, md: 4 }}
+                          py={4}
+                          width="100%"
+                          cursor="pointer"
+                          _hover={{ bg: 'bg-surface-tertiary-2' }}
+                          transition="all 0.2s"
+                          onClick={() => {
+                            setSelectedCrypto(asset)
+                            setShowCryptoDetails(true)
+                          }}
+                        >
+                          <Flex justify="space-between" align="center">
+                            <HStack spacing={3}>
+                              <Box position="relative">
+                                <Image
+                                  src={asset.icon}
+                                  alt={asset.symbol}
+                                  w="48px"
+                                  h="48px"
+                                  borderRadius="full"
                                 />
-                              </>
-                            ) : (
-                              <>
+                                {/* Network overlay icon */}
+                                <Box
+                                  position="absolute"
+                                  bottom="-4px"
+                                  right="-5px"
+                                  w="24px"
+                                  h="24px"
+                                  borderRadius="full"
+                                  bg="bg-surface"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  border="1px solid"
+                                  borderColor="border-wallet-subtle"
+                                  zIndex={10}
+                                  backgroundSize="cover"
+                                  overflow="hidden"
+                                >
+                                  <Image
+                                    src={
+                                      asset.networkName === 'Celo'
+                                        ? '/assets/chains/Celo.svg'
+                                        : '/assets/chains/Arbitrum.svg'
+                                    }
+                                    alt={asset.networkName}
+                                    w="100%"
+                                    h="100%"
+                                    backgroundSize="cover"
+                                    borderRadius="full"
+                                  />
+                                </Box>
+                              </Box>
+                              <VStack align="start" spacing={0}>
                                 <Text
                                   color="text-primary"
                                   fontSize={{ base: '16px', md: '20px' }}
                                   fontWeight="700"
-                                  textAlign="right"
                                 >
-                                  {asset.balance}
+                                  {asset.name}
                                 </Text>
-                                <Text
-                                  fontSize={{ base: '12px', md: '16px' }}
-                                  fontWeight="500"
-                                  color="text-primary"
-                                  textAlign="right"
-                                >
-                                  {asset.usdValue
-                                    ? formatCurrencyDisplay(
-                                        parseFloat(
-                                          asset.usdValue.replace('$', '')
+                                <HStack spacing={3}>
+                                  <Text
+                                    fontSize={{ base: '12px', md: '16px' }}
+                                    fontWeight="500"
+                                    color="text-primary"
+                                  >
+                                    {asset.price}
+                                  </Text>
+                                </HStack>
+                              </VStack>
+                            </HStack>
+                            <VStack align="end" spacing={0}>
+                              {asset.isLoading ? (
+                                <>
+                                  <Box
+                                    w="80px"
+                                    h="20px"
+                                    borderRadius="4px"
+                                    bg="bg-surface-tertiary-2"
+                                    position="relative"
+                                    overflow="hidden"
+                                    _before={{
+                                      content: '""',
+                                      position: 'absolute',
+                                      top: 0,
+                                      left: '-100%',
+                                      width: '100%',
+                                      height: '100%',
+                                      background:
+                                        'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                      animation: 'shimmer 1.5s infinite',
+                                    }}
+                                  />
+                                  <Box
+                                    w="60px"
+                                    h="16px"
+                                    borderRadius="4px"
+                                    bg="bg-surface-tertiary-2"
+                                    position="relative"
+                                    overflow="hidden"
+                                    _before={{
+                                      content: '""',
+                                      position: 'absolute',
+                                      top: 0,
+                                      left: '-100%',
+                                      width: '100%',
+                                      height: '100%',
+                                      background:
+                                        'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                      animation: 'shimmer 1.5s infinite',
+                                    }}
+                                  />
+                                </>
+                              ) : (
+                                <>
+                                  <Text
+                                    color="text-primary"
+                                    fontSize={{ base: '16px', md: '20px' }}
+                                    fontWeight="700"
+                                    textAlign="right"
+                                  >
+                                    {asset.balance}
+                                  </Text>
+                                  <Text
+                                    fontSize={{ base: '12px', md: '16px' }}
+                                    fontWeight="500"
+                                    color="text-primary"
+                                    textAlign="right"
+                                  >
+                                    {asset.usdValue
+                                      ? formatCurrencyDisplay(
+                                          parseFloat(
+                                            asset.usdValue.replace('$', '')
+                                          )
                                         )
-                                      )
-                                    : 'N/A'}
-                                </Text>
-                              </>
-                            )}
-                          </VStack>
-                        </Flex>
-                      </Box>
-                    ))}
+                                      : 'N/A'}
+                                  </Text>
+                                </>
+                              )}
+                            </VStack>
+                          </Flex>
+                        </Box>
+                      ))}
               </VStack>
             </Box>
           )}

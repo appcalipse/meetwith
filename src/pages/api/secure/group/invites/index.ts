@@ -18,9 +18,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(401).send('Unauthorized')
     }
     try {
-      const userEmail = await getAccountNotificationSubscriptionEmail(
-        account_address
-      )
+      const userEmail =
+        await getAccountNotificationSubscriptionEmail(account_address)
       const groups = await getGroupInvites({
         address: account_address,
         email: userEmail,

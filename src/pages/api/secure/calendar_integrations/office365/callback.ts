@@ -6,10 +6,14 @@ import {
   NotificationChannel,
 } from '@/types/AccountNotifications'
 import { TimeSlotSource } from '@/types/Meeting'
+import { CalendarInfo } from '@/types/Office365'
 import { apiUrl, OnboardingSubject } from '@/utils/constants'
 import {
   addOrUpdateConnectedCalendar,
+  connectedCalendarExists,
+  countCalendarIntegrations,
   getAccountNotificationSubscriptions,
+  isProAccountAsync,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
 
@@ -33,11 +37,17 @@ async function handler(
 
   try {
     if (typeof code !== 'string') {
-      return res.status(400).json({ message: 'No code returned' })
+      res.redirect(
+        `/dashboard/settings/connected-calendars?calendarResult=error&error=NO_CODE`
+      )
+      return
     }
 
     if (!req.session.account) {
-      return res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
+      res.redirect(
+        `/dashboard/settings/connected-calendars?calendarResult=error&error=NOT_LOGGED_IN`
+      )
+      return
     }
 
     const toUrlEncoded = (payload: Record<string, string>) =>
@@ -47,21 +57,21 @@ async function handler(
 
     const body = toUrlEncoded({
       client_id: credentials.client_id,
-      grant_type: 'authorization_code',
-      code,
-      scope: scopes.join(' '),
-      redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
       client_secret: credentials.client_secret,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
+      scope: scopes.join(' '),
     })
 
     const response = await fetch(
       'https://login.microsoftonline.com/common/oauth2/v2.0/token',
       {
-        method: 'POST',
+        body,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         },
-        body,
+        method: 'POST',
       }
     )
 
@@ -69,9 +79,9 @@ async function handler(
 
     if (!response.ok) {
       res.redirect(
-        `/dashboard/details?calendarResult=error&error=
-          ${JSON.stringify(responseBody)}
-      #connected-calendars`
+        `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
+          JSON.stringify(responseBody)
+        )}`
       )
       return
     }
@@ -100,17 +110,44 @@ async function handler(
     ) // set expiry date in seconds
     delete responseBody.expires_in
 
+    // Check subscription status for feature limits
+    const accountAddress = req.session.account.address
+    const isPro = await isProAccountAsync(accountAddress)
+
+    if (!isPro) {
+      // Check if this is a new integration (not updating existing)
+      const existingIntegration = await connectedCalendarExists(
+        accountAddress,
+        responseBody.email,
+        TimeSlotSource.OFFICE
+      )
+
+      // If it's a new integration, check the limit
+      if (!existingIntegration) {
+        const integrationCount = await countCalendarIntegrations(accountAddress)
+        if (integrationCount >= 2) {
+          res.redirect(
+            `/dashboard/settings/connected-calendars?calendarResult=error&error=${encodeURIComponent(
+              'Free tier allows only 2 calendar integrations. Upgrade to Pro for unlimited calendar integrations.'
+            )}`
+          )
+          return
+        }
+      }
+    }
+
     await addOrUpdateConnectedCalendar(
-      req.session.account.address,
+      accountAddress,
       responseBody.email,
       TimeSlotSource.OFFICE,
-      calendars.value.map((c: any) => {
+      calendars.value.map((c: CalendarInfo) => {
         return {
           calendarId: c.id,
+          color: c.hexColor,
+          enabled: c.isDefaultCalendar,
+          isReadOnly: !c.canEdit,
           name: c.name,
           sync: true,
-          enabled: c.isDefaultCalendar,
-          color: c.hexColor,
         }
       }),
       responseBody
@@ -148,9 +185,9 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/details?calendarResult=success${
+      `/dashboard/settings/connected-calendars?calendarResult=success${
         newState64 ? `&state=${newState64}` : ''
-      }#connected-calendars`
+      }`
     )
   } catch (e) {
     console.error(e)
@@ -175,9 +212,9 @@ async function handler(
       return
     }
     res.redirect(
-      `/dashboard/details?calendarResult=success${
+      `/dashboard/settings/connected-calendars?calendarResult=success${
         newState64 ? `&state=${newState64}` : ''
-      }#connected-calendars`
+      }`
     )
   }
 }

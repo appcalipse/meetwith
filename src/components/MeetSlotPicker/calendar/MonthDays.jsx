@@ -36,8 +36,8 @@ export const MonthDay = styled.li`
     return props.isToday
       ? todayColor
       : props.isWeekend
-      ? isWeekendColor
-      : isNotValidColor
+        ? isWeekendColor
+        : isNotValidColor
   }};
   opacity: ${props => (props.isValid ? 1 : 0.5)};
 

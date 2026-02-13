@@ -15,8 +15,20 @@ export interface MeetingDialogState {
     removedSlots?: string[]
   ) => void
 }
-
-export const useMeetingDialog = () => {
+type MeetingDialogReturnType = [
+  React.FC,
+  (
+    meeting: DBSlot,
+    decryptedMeeting: MeetingDecrypted<Date>,
+    timezone: string,
+    afterClose?: (
+      changeType: MeetingChangeType,
+      meeting?: DBSlot,
+      removedSlots?: string[]
+    ) => void
+  ) => void,
+]
+export const useMeetingDialog = (): MeetingDialogReturnType => {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [data, setData] = useState<MeetingDialogState>({
     meeting: undefined,
@@ -25,8 +37,8 @@ export const useMeetingDialog = () => {
   })
 
   const openMeetingDialog = (
-    meeting: any,
-    decryptedMeeting: any,
+    meeting: DBSlot,
+    decryptedMeeting: MeetingDecrypted<Date>,
     timezone: string,
     afterClose?: (
       changeType: MeetingChangeType,
@@ -70,5 +82,5 @@ export const useMeetingDialog = () => {
     )
   }
 
-  return [MeetingDialog as any, openMeetingDialog]
+  return [MeetingDialog, openMeetingDialog]
 }

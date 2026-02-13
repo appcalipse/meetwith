@@ -3,11 +3,13 @@ import React, {
   ReactNode,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { Account } from '@/types/Account'
+import { AvailabilityBlock } from '@/types/availability'
 import { LeanContact } from '@/types/Contacts'
 import { GetGroupsFullResponse } from '@/types/Group'
 import {
@@ -16,21 +18,29 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
-import { getContactsLean, getGroupsFull } from '@/utils/api_helper'
+import { getContactsLean } from '@/utils/api_helper'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { handleApiError } from '@/utils/error_helper'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 
-interface IParticipantsContext {
+export interface IParticipantsContext {
   participants: Array<ParticipantInfo | IGroupParticipant>
   standAloneParticipants: Array<ParticipantInfo>
   groupParticipants: Record<string, Array<string> | undefined>
   groupAvailability: Record<string, Array<string> | undefined>
+  groupMembersAvailabilities: Record<
+    string,
+    Record<string, AvailabilityBlock[]>
+  >
   meetingMembers: Array<Account>
   meetingOwners: Array<ParticipantInfo>
-  groups: Array<GetGroupsFullResponse>
+  group: GetGroupsFullResponse | undefined
   isGroupPrefetching: boolean
   isContactsPrefetching: boolean
   contacts: Array<LeanContact>
-  setGroups: React.Dispatch<React.SetStateAction<Array<GetGroupsFullResponse>>>
+  setGroup: React.Dispatch<
+    React.SetStateAction<GetGroupsFullResponse | undefined>
+  >
   setParticipants: React.Dispatch<
     React.SetStateAction<Array<ParticipantInfo | IGroupParticipant>>
   >
@@ -43,16 +53,24 @@ interface IParticipantsContext {
   setGroupAvailability: React.Dispatch<
     React.SetStateAction<Record<string, Array<string> | undefined>>
   >
+  setGroupMembersAvailabilities: React.Dispatch<
+    React.SetStateAction<Record<string, Record<string, AvailabilityBlock[]>>>
+  >
   setMeetingMembers: React.Dispatch<React.SetStateAction<Array<Account>>>
   setMeetingOwners: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
   setIsGroupPrefetching: React.Dispatch<React.SetStateAction<boolean>>
   addGroup: (group: IGroupParticipant) => void
   removeGroup: (groupId: string) => void
+
+  removeParticipant: (participant: ParticipantInfo) => void
+  toggleAvailability: (accountAddress: string) => void
+  allAvailaibility: Array<ParticipantInfo>
+  allParticipants: Array<ParticipantInfo>
 }
 
-const ParticipantsContext = createContext<IParticipantsContext | undefined>(
-  undefined
-)
+export const ParticipantsContext = createContext<
+  IParticipantsContext | undefined
+>(undefined)
 
 export const useParticipants = () => {
   const context = useContext(ParticipantsContext)
@@ -77,12 +95,11 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   >([
     {
       account_address: currentAccount?.address,
-      name: currentAccount?.preferences?.name,
-      type: ParticipantType.Scheduler,
-      status: ParticipationStatus.Accepted,
-      slot_id: '',
       meeting_id: '',
-      isHidden: true,
+      name: currentAccount?.preferences?.name,
+      slot_id: '',
+      status: ParticipationStatus.Accepted,
+      type: ParticipantType.Scheduler,
     },
   ])
 
@@ -91,13 +108,22 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   >([])
   const [groupParticipants, setGroupParticipants] = useState<
     Record<string, Array<string> | undefined>
-  >({})
+  >({
+    [NO_GROUP_KEY]: [currentAccount?.address || ''],
+  })
   const [groupAvailability, setGroupAvailability] = useState<
     Record<string, Array<string> | undefined>
+  >({
+    [NO_GROUP_KEY]: [currentAccount?.address || ''],
+  })
+  const [groupMembersAvailabilities, setGroupMembersAvailabilities] = useState<
+    Record<string, Record<string, AvailabilityBlock[]>>
   >({})
   const [meetingMembers, setMeetingMembers] = useState<Array<Account>>([])
   const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
-  const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
+  const [group, setGroup] = useState<GetGroupsFullResponse | undefined>(
+    undefined
+  )
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
   const [contacts, setContacts] = useState<Array<LeanContact>>([])
   const [isContactsPrefetching, setIsContactsPrefetching] = useState(false)
@@ -137,23 +163,14 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
       delete newGroupParticipants[groupId]
       return newGroupParticipants
     })
+
+    setGroupMembersAvailabilities(prev => {
+      const newGroupMembersAvailabilities = { ...prev }
+      delete newGroupMembersAvailabilities[groupId]
+      return newGroupMembersAvailabilities
+    })
   }
-  const fetchGroups = async () => {
-    setIsGroupPrefetching(true)
-    try {
-      const fetchedGroups = await getGroupsFull(
-        undefined,
-        undefined,
-        undefined,
-        false
-      )
-      setGroups(fetchedGroups)
-    } catch (error) {
-      handleApiError('Error fetching groups.', error)
-    } finally {
-      setIsGroupPrefetching(false)
-    }
-  }
+
   const fetchContacts = async () => {
     setIsContactsPrefetching(true)
     try {
@@ -166,34 +183,138 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
     }
   }
   const handlePrefetchContacts = async () => {
-    await Promise.all([fetchContacts(), fetchGroups()])
+    await Promise.all([fetchContacts()])
   }
   useEffect(() => {
     if (!skipFetching) {
       void handlePrefetchContacts()
     }
   }, [skipFetching])
+  const addressToGroupMap = useMemo(() => {
+    const map = new Map<string, string>()
+    Object.entries(groupAvailability || {}).forEach(([groupKey, addresses]) => {
+      addresses?.forEach(address => {
+        if (address) map.set(address.toLowerCase(), groupKey)
+      })
+    })
+    return map
+  }, [groupAvailability])
+
+  const allAvailaibility = useMemo(
+    () =>
+      getMergedParticipants(participants, groupAvailability, group).filter(
+        p => {
+          return !p.isHidden
+        }
+      ),
+    [participants, groupAvailability, currentAccount?.address, group]
+  )
+  const allParticipants = useMemo(
+    () => getMergedParticipants(participants, groupAvailability, group),
+    [participants, groupAvailability, currentAccount?.address, group]
+  )
+  const toggleAvailability = (accountAddress: string) => {
+    const addr = accountAddress.toLowerCase()
+    const existingGroup = addressToGroupMap.get(addr)
+
+    setGroupAvailability(prev => {
+      if (existingGroup) {
+        const nextGroup = (prev[existingGroup] || []).filter(
+          a => a?.toLowerCase() !== addr
+        )
+        const next: Record<string, Array<string> | undefined> = {
+          ...prev,
+          [existingGroup]: nextGroup,
+        }
+        if (nextGroup.length === 0) delete next[existingGroup]
+        return next
+      }
+
+      return {
+        ...prev,
+        [NO_GROUP_KEY]: [...(prev[NO_GROUP_KEY] || []), addr],
+      }
+    })
+  }
+
+  const removeParticipant = (participant: ParticipantInfo) => {
+    const schedulerAddr = currentAccount?.address?.toLowerCase()
+    const accountAddr = participant.account_address?.toLowerCase()
+    const guestEmail = participant.guest_email?.toLowerCase()
+
+    if (accountAddr) {
+      if (schedulerAddr && accountAddr === schedulerAddr) {
+        return
+      }
+
+      setParticipants(prev =>
+        prev.filter(p => {
+          if (isGroupParticipant(p)) return true
+          return p.account_address?.toLowerCase() !== accountAddr
+        })
+      )
+
+      setGroupAvailability(prev =>
+        Object.fromEntries(
+          Object.entries(prev)
+            .map(([key, addresses]) => [
+              key,
+              (addresses || []).filter(a => a?.toLowerCase() !== accountAddr),
+            ])
+            .filter(([, addresses]) => addresses.length > 0)
+        )
+      )
+
+      setGroupParticipants(prev =>
+        Object.fromEntries(
+          Object.entries(prev)
+            .map(([key, addresses]) => [
+              key,
+              (addresses || []).filter(a => a?.toLowerCase() !== accountAddr),
+            ])
+            .filter(([, addresses]) => addresses.length > 0)
+        )
+      )
+
+      return
+    }
+
+    if (guestEmail) {
+      setParticipants(prev =>
+        prev.filter(p => {
+          if (isGroupParticipant(p)) return true
+          return (p.guest_email || '').toLowerCase() !== guestEmail
+        })
+      )
+    }
+  }
   const value = {
-    participants,
-    standAloneParticipants,
-    groupParticipants,
+    addGroup,
+    allAvailaibility,
+    allParticipants,
+    contacts,
     groupAvailability,
+    groupMembersAvailabilities,
+    groupParticipants,
+    group,
+    isContactsPrefetching,
+    isGroupPrefetching,
     meetingMembers,
     meetingOwners,
-    groups,
-    setGroups,
-    isGroupPrefetching,
-    setParticipants,
-    setGroupParticipants,
+    participants,
+    removeGroup,
+    removeParticipant,
     setGroupAvailability,
+    setGroupMembersAvailabilities,
+    setGroupParticipants,
+    setGroup,
+    setIsGroupPrefetching,
     setMeetingMembers,
     setMeetingOwners,
-    setIsGroupPrefetching,
-    addGroup,
-    removeGroup,
-    contacts,
-    isContactsPrefetching,
+    setParticipants,
     setStandAloneParticipants,
+    standAloneParticipants,
+    toggleAvailability,
   }
 
   return (

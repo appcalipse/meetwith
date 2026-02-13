@@ -11,6 +11,7 @@ import * as Sentry from '@sentry/nextjs'
 import NextErrorComponent from 'next/error'
 import { useRouter } from 'next/router'
 import posthog from 'posthog-js'
+
 const MyError = ({ statusCode, hasGetInitialPropsRun, err }) => {
   if (!hasGetInitialPropsRun && err) {
     // getInitialProps is not called in case of
@@ -23,19 +24,19 @@ const MyError = ({ statusCode, hasGetInitialPropsRun, err }) => {
   const router = useRouter()
   return (
     <>
-      <Container maxW="7xl" mt={8} flex={1} my={{ base: 12, md: 24 }}>
-        <VStack alignItems="center" py={10} px={6}>
+      <Container flex={1} maxW="7xl" mt={8} my={{ base: 12, md: 24 }}>
+        <VStack alignItems="center" px={6} py={10}>
           <Heading
-            display="inline-block"
             as="h2"
-            size="2xl"
-            bgGradient="linear(to-r, primary.400, primary.600)"
             backgroundClip="text"
+            bgGradient="linear(to-r, primary.400, primary.600)"
+            display="inline-block"
+            size="2xl"
           >
             Something went wrong
           </Heading>
           <Spacer />
-          <Image src="/assets/404.svg" alt="404" width="300px" />
+          <Image alt="404" src="/assets/404.svg" width="300px" />
           <Spacer />
           <Text color={'gray.500'} my={6} textAlign="center">
             We encountered an unexpected error. Our team has been notified and
@@ -43,8 +44,8 @@ const MyError = ({ statusCode, hasGetInitialPropsRun, err }) => {
           </Text>
           <Spacer />
           <Button
-            onClick={() => router.reload()}
             colorScheme="primary"
+            onClick={() => router.reload()}
             variant="solid"
           >
             Reload page
@@ -56,12 +57,12 @@ const MyError = ({ statusCode, hasGetInitialPropsRun, err }) => {
   )
 }
 
-MyError.getInitialProps = async ({ res, err, asPath }) => {
+MyError.getInitialProps = async contextData => {
+  const { res, err, asPath } = contextData
   const errorInitialProps = await NextErrorComponent.getInitialProps({
-    res,
     err,
+    res,
   })
-
   // Workaround for https://github.com/vercel/next.js/issues/8592, mark when
   // getInitialProps has run
   errorInitialProps.hasGetInitialPropsRun = true
@@ -80,8 +81,8 @@ MyError.getInitialProps = async ({ res, err, asPath }) => {
   //    Boundaries: https://reactjs.org/docs/error-boundaries.html
 
   if (err) {
-    Sentry.captureException(err)
     posthog.captureException(err)
+    Sentry.captureException(err)
 
     // Flushing before returning is necessary if deploying to Vercel, see
     // https://vercel.com/docs/platform/limits#streaming-responses

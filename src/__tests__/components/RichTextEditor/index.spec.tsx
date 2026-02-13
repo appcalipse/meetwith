@@ -1,5 +1,7 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: Jest setup overrides */
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+
 jest.setTimeout(30000)
 // Setup Virtual D.O.M for Tests To Stop Potential Errors
 export class ClipboardDataMock {
@@ -43,20 +45,21 @@ export class DragEventMock extends Event {
     this.dataTransfer = new DataTransferMock()
   }
 }
+
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 ;(global as any).ClipboardEvent = ClipboardEventMock
 ;(global as any).DragEvent = DragEventMock
 
 function getBoundingClientRect(): DOMRect {
   const rec = {
-    x: 0,
-    y: 0,
     bottom: 0,
     height: 0,
     left: 0,
     right: 0,
     top: 0,
     width: 0,
+    x: 0,
+    y: 0,
   }
   return { ...rec, toJSON: () => rec }
 }
@@ -84,7 +87,7 @@ describe('Rich Text Editor', () => {
   })
   test('renders RichTextEditor component', () => {
     const rawComponent = (
-      <RichTextEditor value="RichTextEditor Works!" placeholder="Enter Text" />
+      <RichTextEditor placeholder="Enter Text" value="RichTextEditor Works!" />
     )
     const { getByText, getByPlaceholderText } = render(rawComponent)
     const linkElement = getByText('RichTextEditor Works!')
@@ -94,7 +97,7 @@ describe('Rich Text Editor', () => {
   })
   test('RichTextEditor component can update', async () => {
     const rawComponent = (
-      <RichTextEditor value="RichTextEditor Works!" placeholder="Enter Text" />
+      <RichTextEditor placeholder="Enter Text" value="RichTextEditor Works!" />
     )
     const { getByText, getByPlaceholderText } = render(rawComponent)
     const linkElement = getByText('RichTextEditor Works!')
@@ -182,9 +185,9 @@ describe('Rich Text Editor', () => {
     const onValueChange = jest.fn(() => promise)
     const component = render(
       <RichTextEditor
+        onValueChange={onValueChange}
         placeholder="Enter Text"
         value=""
-        onValueChange={onValueChange}
       />
     )
     expect(component).toBeDefined()
@@ -204,9 +207,9 @@ describe('Rich Text Editor', () => {
     const onValueChange = jest.fn(() => promise)
     const component = render(
       <RichTextEditor
+        onValueChange={onValueChange}
         placeholder="Enter Text"
         value=""
-        onValueChange={onValueChange}
       />
     )
     expect(component).toBeDefined()

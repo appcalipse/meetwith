@@ -30,9 +30,10 @@ export default async function handler(
 
     const participantData = participants.map(p => ({
       account_address: p.account_address,
-      guest_name: p.guest_name,
       guest_email: p.guest_email,
+      guest_name: p.guest_name,
       participant_type: p.participant_type,
+      status: p.status,
     }))
 
     await updateQuickPollParticipants(id, {

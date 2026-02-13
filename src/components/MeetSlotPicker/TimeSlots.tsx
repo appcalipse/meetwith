@@ -8,7 +8,7 @@ import {
 } from '@chakra-ui/react'
 import { RescheduleConferenceData } from '@components/public-meeting'
 import { DateTime, Interval } from 'luxon'
-import React, { FC, useContext, useMemo } from 'react'
+import { FC, useContext, useMemo } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'

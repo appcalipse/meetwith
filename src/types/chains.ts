@@ -1,9 +1,9 @@
 import {
   arbitrum,
   arbitrumSepolia,
+  Chain,
   celo,
   celoAlfajoresTestnet,
-  Chain,
   defineChain,
   mainnet,
   polygon,
@@ -13,8 +13,6 @@ import {
 import { metis } from 'viem/chains'
 
 import { zeroAddress } from '@/utils/generic_utils'
-
-import { Address } from './Transactions'
 
 export interface ChainInfo {
   chain: SupportedChain
@@ -168,293 +166,294 @@ export const getNativeDecimals = (_chain: SupportedChain): number => {
 
 export const supportedChains: ChainInfo[] = [
   {
+    acceptableTokens: [
+      {
+        contractAddress: zeroAddress,
+        token: AcceptedToken.ETHER,
+      },
+      {
+        contractAddress: '0x1DF8FcA6035342eeD37c3C10dcD4cC1B4030628D',
+        token: AcceptedToken.DAI,
+      },
+      {
+        contractAddress: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+        token: AcceptedToken.USDC,
+      },
+    ],
+    blockExplorerUrl: 'https://sepolia.etherscan.com',
     chain: SupportedChain.SEPOLIA,
-    thirdwebChain: sepolia,
-    id: 11155111,
-    name: 'Sepolia',
+    domainContractAddess: '0x2809e5Cf4776640D0Da184605B0c82F803e97EFc',
     fullName: 'Ethereum Sepolia',
+    id: 11155111,
+    image: '/assets/chains/ethereum.svg',
+    isProduction: false,
+    name: 'Sepolia',
+    nativeTokenSymbol: 'ETH',
+    registarContractAddress: '0x2B1a67268BD808781bf5Eb761f1c43987dfa8E33',
     rpcUrl: 'https://rpc2.sepolia.org',
     testnet: true,
-    nativeTokenSymbol: 'ETH',
-    domainContractAddess: '0x2809e5Cf4776640D0Da184605B0c82F803e97EFc',
-    registarContractAddress: '0x2B1a67268BD808781bf5Eb761f1c43987dfa8E33',
-    blockExplorerUrl: 'https://sepolia.etherscan.com',
-    image: '/assets/chains/ethereum.svg',
-    isProduction: false,
-    acceptableTokens: [
-      {
-        token: AcceptedToken.ETHER,
-        contractAddress: zeroAddress,
-      },
-      {
-        token: AcceptedToken.DAI,
-        contractAddress: '0x1DF8FcA6035342eeD37c3C10dcD4cC1B4030628D',
-      },
-      {
-        token: AcceptedToken.USDC,
-        contractAddress: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-      },
-    ],
+    thirdwebChain: sepolia,
   },
   {
+    acceptableTokens: [
+      {
+        contractAddress: zeroAddress,
+        token: AcceptedToken.MATIC,
+      },
+      {
+        contractAddress: '0x9474C5069DaDc58A23dB7cFDD4fE29FF94764016',
+        token: AcceptedToken.DAI,
+      },
+    ],
+    blockExplorerUrl: 'https://amoy.polygonscan.com/',
     chain: SupportedChain.POLYGON_AMOY,
-    thirdwebChain: polygonAmoy,
-    id: 80002,
-    name: 'Amoy',
+    domainContractAddess: '0x579846cFDe1d332b4Fd8E28Ce8cb880c81e9b302',
     fullName: 'Polygon Amoy',
+    id: 80002,
+    image: '/assets/chains/Polygon.svg',
+    isProduction: false,
+    name: 'Amoy',
+    nativeTokenSymbol: 'MATIC',
+    registarContractAddress: '0x2Fa75727De367844b948172a94B5F752c2af8237',
     rpcUrl: 'https://rpc-amoy.polygon.technology/',
     testnet: true,
-    nativeTokenSymbol: 'MATIC',
-    domainContractAddess: '0x579846cFDe1d332b4Fd8E28Ce8cb880c81e9b302',
-    registarContractAddress: '0x2Fa75727De367844b948172a94B5F752c2af8237',
-    blockExplorerUrl: 'https://amoy.polygonscan.com/',
-    image: '/assets/chains/Polygon.svg',
-    isProduction: false,
-    acceptableTokens: [
-      {
-        token: AcceptedToken.MATIC,
-        contractAddress: zeroAddress,
-      },
-      {
-        token: AcceptedToken.DAI,
-        contractAddress: '0x9474C5069DaDc58A23dB7cFDD4fE29FF94764016',
-      },
-    ],
+    thirdwebChain: polygonAmoy,
   },
   {
-    chain: SupportedChain.ETHEREUM,
-    thirdwebChain: mainnet,
-    id: 1,
-    name: 'Ethereum',
-    fullName: 'Ethereum',
-    rpcUrl: 'https://mainnet.infura.io/v3/e9561b79c40044eea932e764d03895df',
-    testnet: false,
-    nativeTokenSymbol: 'ETH',
-    domainContractAddess: '0x444463a3892EA730e43e3B54E8e45005a9Fe1fbd',
-    registarContractAddress: '0x7721a7C1472A565534A80511734Bc84fB27eb0a2',
+    acceptableTokens: [
+      {
+        contractAddress: zeroAddress,
+        token: AcceptedToken.ETHER,
+      },
+      {
+        contractAddress: '0x6b175474e89094c44da98b954eedeac495271d0f',
+        token: AcceptedToken.DAI,
+      },
+      {
+        contractAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+        token: AcceptedToken.USDC,
+      },
+    ],
     blockExplorerUrl: 'https://etherscan.com',
+    chain: SupportedChain.ETHEREUM,
+    domainContractAddess: '0x444463a3892EA730e43e3B54E8e45005a9Fe1fbd',
+    fullName: 'Ethereum',
+    id: 1,
     image: '/assets/chains/ethereum.svg',
     isProduction: true,
-    acceptableTokens: [
-      {
-        token: AcceptedToken.ETHER,
-        contractAddress: zeroAddress,
-      },
-      {
-        token: AcceptedToken.DAI,
-        contractAddress: '0x6b175474e89094c44da98b954eedeac495271d0f',
-      },
-      {
-        token: AcceptedToken.USDC,
-        contractAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-      },
-    ],
+    name: 'Ethereum',
+    nativeTokenSymbol: 'ETH',
+    registarContractAddress: '0x7721a7C1472A565534A80511734Bc84fB27eb0a2',
+    rpcUrl: 'https://mainnet.infura.io/v3/e9561b79c40044eea932e764d03895df',
+    testnet: false,
+    thirdwebChain: mainnet,
   },
   {
-    chain: SupportedChain.POLYGON_MATIC,
-    id: 137,
-    thirdwebChain: polygon,
-    name: 'Polygon',
-    fullName: 'Polygon Mainnet',
-    rpcUrl: 'https://polygon-rpc.com',
-    testnet: false,
-    nativeTokenSymbol: 'MATIC',
-    domainContractAddess: '0xB054ef071881a35a276dc434D95BF087a957736b',
-    registarContractAddress: '0xf652014545758Bae52A019CAf671a29A6B117759',
+    acceptableTokens: [
+      {
+        contractAddress: zeroAddress,
+        token: AcceptedToken.MATIC,
+      },
+      {
+        contractAddress: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
+        token: AcceptedToken.DAI,
+      },
+      {
+        contractAddress: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+        token: AcceptedToken.USDC,
+      },
+    ],
     blockExplorerUrl: 'https://polygonscan.com',
+    chain: SupportedChain.POLYGON_MATIC,
+    domainContractAddess: '0xB054ef071881a35a276dc434D95BF087a957736b',
+    fullName: 'Polygon Mainnet',
+    id: 137,
     image: '/assets/chains/Polygon.svg',
     isProduction: true,
-    acceptableTokens: [
-      {
-        token: AcceptedToken.MATIC,
-        contractAddress: zeroAddress,
-      },
-      {
-        token: AcceptedToken.DAI,
-        contractAddress: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
-      },
-      {
-        token: AcceptedToken.USDC,
-        contractAddress: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
-      },
-    ],
+    name: 'Polygon',
+    nativeTokenSymbol: 'MATIC',
+    registarContractAddress: '0xf652014545758Bae52A019CAf671a29A6B117759',
+    rpcUrl: 'https://polygon-rpc.com',
+    testnet: false,
+    thirdwebChain: polygon,
   },
   {
-    chain: SupportedChain.METIS_ANDROMEDA,
-    thirdwebChain: defineChain(metis),
-    id: 1088,
-    name: 'Metis',
-    fullName: 'Metis Andromeda Mainnet',
-    rpcUrl: 'https://andromeda.metis.io/?owner=1088',
-    testnet: false,
-    nativeTokenSymbol: 'METIS',
-    domainContractAddess: '0xECfd0052945e235a1E4aE78C02F05F802282cb74',
-    registarContractAddress: '0x13B5065B2586f0D457641b4C4FA09C2550843F42',
+    acceptableTokens: [
+      {
+        contractAddress: zeroAddress,
+        token: AcceptedToken.METIS,
+      },
+      {
+        contractAddress: '0x0ea32a96608495e54156ae48931a7c20f0dcc1a21',
+        token: AcceptedToken.USDC,
+      },
+    ],
     blockExplorerUrl: 'https://andromeda-explorer.metis.io',
+    chain: SupportedChain.METIS_ANDROMEDA,
+    domainContractAddess: '0xECfd0052945e235a1E4aE78C02F05F802282cb74',
+    fullName: 'Metis Andromeda Mainnet',
+    id: 1088,
     image: '/assets/chains/Metis.svg',
     isProduction: true,
-    acceptableTokens: [
-      {
-        token: AcceptedToken.METIS,
-        contractAddress: zeroAddress,
-      },
-      {
-        token: AcceptedToken.USDC,
-        contractAddress: '0x0ea32a96608495e54156ae48931a7c20f0dcc1a21',
-      },
-    ],
+    name: 'Metis',
+    nativeTokenSymbol: 'METIS',
+    registarContractAddress: '0x13B5065B2586f0D457641b4C4FA09C2550843F42',
+    rpcUrl: 'https://andromeda.metis.io/?owner=1088',
+    testnet: false,
+    thirdwebChain: defineChain(metis),
   },
   {
-    chain: SupportedChain.CELO,
-    thirdwebChain: celo,
-    id: 42220,
-    name: 'Celo',
-    fullName: 'Celo Mainnet',
-    rpcUrl: 'https://forno.celo.org',
-    testnet: false,
-    nativeTokenSymbol: 'CELO',
-    domainContractAddess: '0x000000000000000000000000000000000000ce10',
-    registarContractAddress: '', // no applicable registar contract on Celo
-    blockExplorerUrl: 'https://explorer.celo.org',
-    image: '/assets/chains/Celo.svg',
-    walletSupported: true,
-    isProduction: true,
     acceptableTokens: [
       {
-        token: AcceptedToken.CELO,
         contractAddress: '0x471EcE3750Da237f93B8E339c536989b8978a438',
         displayName: 'Celo',
         icon: '/assets/chains/Celo.svg',
+        token: AcceptedToken.CELO,
         walletSupported: true,
       },
       {
-        token: AcceptedToken.CUSD,
         contractAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a', // cUSD
         displayName: 'Celo Dollar',
         icon: '/assets/tokens/CUSD.png',
+        token: AcceptedToken.CUSD,
         walletSupported: true,
       },
       {
-        token: AcceptedToken.USDC,
         contractAddress: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C',
         displayName: 'US Dollar Coin',
         icon: '/assets/tokens/USDC.svg',
+        token: AcceptedToken.USDC,
         walletSupported: true,
       },
       {
-        token: AcceptedToken.USDT,
         contractAddress: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',
         displayName: 'Tether',
         icon: '/assets/tokens/USDT.svg',
+        token: AcceptedToken.USDT,
         walletSupported: true,
       },
       {
-        token: AcceptedToken.CEUR, // cEUR
         contractAddress: '0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73',
         displayName: 'Celo Euro',
         icon: '/assets/tokens/CEUR.png',
+        token: AcceptedToken.CEUR, // cEUR
         walletSupported: true,
       },
     ],
+    blockExplorerUrl: 'https://explorer.celo.org',
+    chain: SupportedChain.CELO,
+    domainContractAddess: '0x000000000000000000000000000000000000ce10',
+    fullName: 'Celo Mainnet',
+    id: 42220,
+    image: '/assets/chains/Celo.svg',
+    isProduction: true,
+    name: 'Celo',
+    nativeTokenSymbol: 'CELO',
+    registarContractAddress: '', // no applicable registar contract on Celo
+    rpcUrl: 'https://forno.celo.org',
+    testnet: false,
+    thirdwebChain: celo,
+    walletSupported: true,
   },
   {
-    chain: SupportedChain.CELO_ALFAJORES,
-    thirdwebChain: celoAlfajoresTestnet,
-    id: 44787,
-    name: 'Celo Alfajores',
-    fullName: 'Celo Alfajores Testnet',
-    rpcUrl: 'https://alfajores.celoscan.io',
-    testnet: true,
-    nativeTokenSymbol: 'ETH',
-    domainContractAddess: '0x0000000000000000000000000000000000000000', // N/A
-    registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
-    blockExplorerUrl: 'https://alfajores.celoscan.io',
-    image: '/assets/chains/Celo.svg',
-    isProduction: false,
     acceptableTokens: [
       {
-        token: AcceptedToken.CELO,
         contractAddress: '0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9',
+        token: AcceptedToken.CELO,
       },
       {
-        token: AcceptedToken.CUSD,
         contractAddress: '0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
+        token: AcceptedToken.CUSD,
       },
     ],
+    blockExplorerUrl: 'https://alfajores.celoscan.io',
+    chain: SupportedChain.CELO_ALFAJORES,
+    domainContractAddess: '0x0000000000000000000000000000000000000000', // N/A
+    fullName: 'Celo Alfajores Testnet',
+    id: 44787,
+    image: '/assets/chains/Celo.svg',
+    isProduction: false,
+    name: 'Celo Alfajores',
+    nativeTokenSymbol: 'ETH',
+    registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
+    rpcUrl: 'https://alfajores.celoscan.io',
+    testnet: true,
+    thirdwebChain: celoAlfajoresTestnet,
   },
   {
-    chain: SupportedChain.ARBITRUM,
-    thirdwebChain: arbitrum,
-    id: 42161,
-    name: 'Arbitrum',
-    fullName: 'Arbitrum One Mainnet',
-    rpcUrl: 'https://arb1.arbitrum.io/rpc',
-    testnet: false,
-    nativeTokenSymbol: 'ETH',
-    domainContractAddess: '0x0000000000000000000000000000000000000000', // N/A
-    registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
-    blockExplorerUrl: 'https://arbiscan.io',
-    image: '/assets/chains/Arbitrum.svg',
-    walletSupported: true, // Supported in wallet
-    isProduction: true,
     acceptableTokens: [
       {
-        token: AcceptedToken.ETHER,
         contractAddress: zeroAddress,
         displayName: 'Ethereum',
         icon: '/assets/chains/ethereum.svg',
+        token: AcceptedToken.ETHER,
         walletSupported: false,
       },
       {
-        token: AcceptedToken.USDC,
         contractAddress: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', // Arbitrum-native USDC :contentReference[oaicite:1]{index_1}
         displayName: 'US Dollar Coin',
         icon: '/assets/tokens/USDC.svg',
+        token: AcceptedToken.USDC,
         walletSupported: true,
       },
       {
-        token: AcceptedToken.USDT,
         contractAddress: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
         displayName: 'Tether',
         icon: '/assets/tokens/USDT.svg',
+        token: AcceptedToken.USDT,
         walletSupported: true,
       },
     ],
+    blockExplorerUrl: 'https://arbiscan.io',
+    chain: SupportedChain.ARBITRUM,
+    domainContractAddess: '0x0000000000000000000000000000000000000000', // N/A
+    fullName: 'Arbitrum One Mainnet',
+    id: 42161,
+    image: '/assets/chains/Arbitrum.svg',
+    isProduction: true,
+    name: 'Arbitrum',
+    nativeTokenSymbol: 'ETH',
+    registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
+    rpcUrl: 'https://arb1.arbitrum.io/rpc',
+    testnet: false,
+    thirdwebChain: arbitrum,
+    walletSupported: true, // Supported in wallet
   },
   {
-    chain: SupportedChain.ARBITRUM_SEPOLIA,
-    thirdwebChain: arbitrumSepolia,
-    id: 421614,
-    name: 'Arbitrum Sepolia',
-    fullName: 'Arbitrum Sepolia',
-    rpcUrl: 'https://sepolia.arbiscan.io/rpc',
-    testnet: true,
-    nativeTokenSymbol: 'ETH',
-    domainContractAddess: '0x0000000000000000000000000000000000000000', // N/A
-    registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
-    blockExplorerUrl: 'https://sepolia.arbiscan.io',
-    image: '/assets/chains/Arbitrum.svg',
-    walletSupported: true, // Supported in wallet
-    isProduction: false,
     acceptableTokens: [
       {
-        token: AcceptedToken.ETHER,
         contractAddress: zeroAddress,
         displayName: 'Ethereum',
         icon: '/assets/chains/ethereum.svg',
+        token: AcceptedToken.ETHER,
         walletSupported: false,
       },
       {
-        token: AcceptedToken.USDC,
         contractAddress: '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d', // Arbitrum-native USDC :contentReference[oaicite:1]{index_1}
         displayName: 'US Dollar Coin',
         icon: '/assets/tokens/USDC.svg',
+        token: AcceptedToken.USDC,
         walletSupported: true,
       },
     ],
+    blockExplorerUrl: 'https://sepolia.arbiscan.io',
+    chain: SupportedChain.ARBITRUM_SEPOLIA,
+    domainContractAddess: '0x0000000000000000000000000000000000000000', // N/A
+    fullName: 'Arbitrum Sepolia',
+    id: 421614,
+    image: '/assets/chains/Arbitrum.svg',
+    isProduction: false,
+    name: 'Arbitrum Sepolia',
+    nativeTokenSymbol: 'ETH',
+    registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
+    rpcUrl: 'https://sepolia.arbiscan.io/rpc',
+    testnet: true,
+    thirdwebChain: arbitrumSepolia,
+    walletSupported: true, // Supported in wallet
   },
 ]
-export const DEFAULT_CHAIN_ID = 42220
+
+export const DEFAULT_CHAIN_ID = 42161
 
 export const getTestnetChains = (): ChainInfo[] => {
   return supportedChains.filter(chain => chain.testnet)

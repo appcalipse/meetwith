@@ -22,6 +22,19 @@ const getContentFromEncrypted = async (
     const pvtKey = decryptContent(signature, account.encoded_signature)
     return await decryptWithPrivateKey(pvtKey, encrypted)
   } catch (error) {
+    console.error(error, encrypted)
+    return ''
+  }
+}
+const getContentFromEncryptedPublic = async (
+  encrypted: Encrypted
+): Promise<string> => {
+  try {
+    return await decryptWithPrivateKey(
+      process.env.NEXT_SERVER_PVT_KEY!,
+      encrypted
+    )
+  } catch (error) {
     console.error(error)
     return ''
   }
@@ -73,4 +86,5 @@ export {
   decryptContent,
   encryptContent,
   getContentFromEncrypted,
+  getContentFromEncryptedPublic,
 }

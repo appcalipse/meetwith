@@ -21,9 +21,16 @@ type Props = {
   index: number
   sync: (id: string) => void
   refetch: () => void
+  hasProAccess?: boolean
 }
 
-const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
+const ContactListItem: FC<Props> = ({
+  account,
+  index,
+  sync,
+  refetch,
+  hasProAccess = true,
+}) => {
   const [isRemoving, setIsRemoving] = React.useState(false)
   const { push } = useRouter()
   const toast = useToast()
@@ -159,6 +166,12 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
             onClick={() => {
               push(`${appUrl}/${account.domain || account.address}`)
             }}
+            isDisabled={!hasProAccess}
+            title={
+              !hasProAccess
+                ? 'Upgrade to Pro to schedule with contacts'
+                : undefined
+            }
           >
             Schedule
           </Button>

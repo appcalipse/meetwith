@@ -1,6 +1,7 @@
 import Ably, { InboundMessage, RealtimeChannel } from 'ably'
 
 export const DEFAULT_MESSAGE_NAME = 'webhook-event'
+export const DEFAULT_SUBSCRIPTION_MESSAGE_NAME = 'subscription-webhook-event'
 
 interface SubscriptionCallback {
   (message: InboundMessage): void
@@ -23,7 +24,7 @@ export class PubSubManager {
     this.readyPromise = new Promise(resolve => {
       this.ably.connection.once('connected', () => {
         // eslint-disable-next-line no-restricted-syntax
-        console.log('Connected to Ably!')
+        console.info('Connected to Ably!')
         this.isReady = true
         resolve()
       })

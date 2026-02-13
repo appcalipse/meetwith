@@ -90,7 +90,7 @@ const ContactsCard: FC<IContactsCard> = props => {
                 <SearchInput
                   setValue={setSearch}
                   value={search}
-                  placeholder="Search from contacts"
+                  placeholder="Search for person in contacts"
                 />
               </Box>
               <HStack

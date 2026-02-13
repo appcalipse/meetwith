@@ -61,7 +61,7 @@ import {
 interface IProps {
   currentSubscription?: Subscription
   isDialogOpen: boolean
-  cancelDialogRef: React.MutableRefObject<any>
+  cancelDialogRef: React.MutableRefObject<HTMLButtonElement | null>
   onDialogClose: () => void
   onSuccessPurchase?: (sub: Subscription, couponCode?: string) => void
   defaultCoupon?: string
@@ -98,7 +98,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const { currentAccount } = useContext(AccountContext)
   const [domain, setDomain] = useState<string>('')
   const [currentChain, setCurrentChain] = useState<ChainInfo | undefined>(
-    _currentSubscription ? getChainInfo(_currentSubscription.chain) : undefined
+    _currentSubscription && _currentSubscription.chain
+      ? getChainInfo(_currentSubscription.chain)
+      : undefined
   )
   const [currentToken, setCurrentToken] = useState<
     AcceptedTokenInfo | undefined
@@ -141,15 +143,17 @@ const SubscriptionDialog: React.FC<IProps> = ({
         if (neededApproval != 0n) {
           setNeedsApproval(true)
         }
-      } catch (e: any) {
-        toast({
-          title: 'Error',
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          toast({
+            title: 'Error',
+            description: e.message,
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        }
       }
       setCheckingCanSubscribe(false)
     }
@@ -330,7 +334,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
       setTxRunning(true)
 
-      const tx = await subscribeToPlan(
+      const _tx = await subscribeToPlan(
         currentAccount!.address,
         Plan.PRO,
         currentChain!.chain,
@@ -348,25 +352,27 @@ const SubscriptionDialog: React.FC<IProps> = ({
       onSuccessPurchase && onSuccessPurchase(sub!)
       logEvent('Subscription', { currentChain, currentToken, domain })
       onDialogClose()
-    } catch (e: any) {
+    } catch (e: unknown) {
       setTxRunning(false)
       setWaitingConfirmation(false)
       setNeedsApproval(false)
       setCheckingCanSubscribe(false)
-      toast({
-        title: 'Error',
-        description: e.message,
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      if (e instanceof Error) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
       updateSubscriptionDetails()
     }
   }
 
   useEffect(() => {
-    if (_currentSubscription) {
+    if (_currentSubscription && _currentSubscription.chain) {
       !domain && updateDomain()
       setCurrentChain(getChainInfo(_currentSubscription.chain))
     }
@@ -505,6 +511,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
   const renderChainInfo = (showInfo = false) => {
     if (_currentSubscription) {
+      if (!_currentSubscription.chain) {
+        return null
+      }
       return _currentSubscription.chain === SupportedChain.CUSTOM ? (
         <Text mt="4">You are currently subscribed using a coupon.</Text>
       ) : (
@@ -636,10 +645,10 @@ const SubscriptionDialog: React.FC<IProps> = ({
             {couponCode
               ? 'Apply Coupon'
               : needsApproval
-              ? `Approve ${currentToken?.token} to be spent`
-              : _currentSubscription
-              ? 'Extend'
-              : 'Subscribe'}
+                ? `Approve ${currentToken?.token} to be spent`
+                : _currentSubscription
+                  ? 'Extend'
+                  : 'Subscribe'}
           </Button>
         </ModalFooter>
       </ModalContent>

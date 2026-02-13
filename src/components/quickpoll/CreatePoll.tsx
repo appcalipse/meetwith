@@ -16,7 +16,6 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  Select,
   Text,
   Textarea,
   useColorModeValue,
@@ -24,6 +23,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, {
@@ -36,10 +36,9 @@ import React, {
 import { FaArrowLeft } from 'react-icons/fa'
 import { FiArrowLeft } from 'react-icons/fi'
 import { HiOutlineUserAdd } from 'react-icons/hi'
-
-import { ChipInput } from '@/components/chip-input'
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
+import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import InfoTooltip from '@/components/profile/components/Tooltip'
@@ -59,7 +58,6 @@ import {
   QuickPollBySlugResponse,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
-  QuickPollWithParticipants,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
@@ -76,9 +74,17 @@ import {
   MeetingPermissions,
   QuickPollPermissionsList,
 } from '@/utils/constants/schedule'
+import {
+  getnoClearCustomSelectComponent,
+  Option,
+} from '@/utils/constants/select'
 import { createLocalDate, createLocalDateTime } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
-import { clearValidationError, deduplicateArray } from '@/utils/generic_utils'
+import {
+  clearValidationError,
+  deduplicateArray,
+  isAccountSchedulerOrOwner,
+} from '@/utils/generic_utils'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { quickPollSchema } from '@/utils/schemas'
@@ -138,8 +144,15 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     setGroupAvailability,
     groupParticipants,
     setGroupParticipants,
-    groups: allGroups,
+    group,
   } = useParticipants()
+  const inviteKey = useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
   const { currentAccount } = useContext(AccountContext)
   const { fetchPollCounts } = useContext(MetricStateContext)
 
@@ -154,17 +167,28 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   })
 
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
+    MeetingPermissions.SCHEDULE_MEETING,
     MeetingPermissions.SEE_GUEST_LIST,
-    MeetingPermissions.EDIT_MEETING,
+    MeetingPermissions.INVITE_GUESTS,
   ])
+  const [removeExpiryDate, setRemoveExpiryDate] = useState(false)
+
+  const durationOptions: Option<number>[] = useMemo(
+    () =>
+      DEFAULT_GROUP_SCHEDULING_DURATION.map(type => ({
+        value: type.duration,
+        label: durationToHumanReadable(type.duration),
+      })),
+    []
+  )
 
   // Get all participants
   const allMergedParticipants = useMemo(() => {
     const merged = getMergedParticipants(
       participants,
-      allGroups,
       groupParticipants,
-      currentAccount?.address
+      undefined,
+      isEditMode ? undefined : currentAccount?.address
     )
 
     const processedKeys = new Set<string>()
@@ -178,7 +202,47 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     })
 
     return deduplicatedParticipants
-  }, [participants, allGroups, groupParticipants, currentAccount?.address])
+  }, [participants, groupParticipants, currentAccount?.address, isEditMode])
+
+  useEffect(() => {
+    const needsUpdate = participants.some(participant => {
+      if (isGroupParticipant(participant)) {
+        return false
+      }
+      const participantInfo = participant as ParticipantInfo
+      const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+        [participantInfo],
+        participantInfo.account_address
+      )
+      if (isSchedulerOrOwner) {
+        return participantInfo.isHidden !== true
+      }
+      return participantInfo.isHidden === true
+    })
+
+    if (!needsUpdate) return
+
+    setParticipants(prev =>
+      prev.map(participant => {
+        if (isGroupParticipant(participant)) {
+          return participant
+        }
+        const participantInfo = participant as ParticipantInfo
+        const isSchedulerOrOwner = isAccountSchedulerOrOwner(
+          [participantInfo],
+          participantInfo.account_address
+        )
+        if (isSchedulerOrOwner) {
+          return participantInfo.isHidden === true
+            ? participantInfo
+            : { ...participantInfo, isHidden: true }
+        }
+        return participantInfo.isHidden === true
+          ? { ...participantInfo, isHidden: false }
+          : participantInfo
+      })
+    )
+  }, [participants, setParticipants])
 
   useEffect(() => {
     if (allMergedParticipants.length > 0 && validationErrors.participants) {
@@ -192,7 +256,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const router = useRouter()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const iconColor = useColorModeValue('#181F24', 'white')
-
   // Fetch poll data when in edit mode
   const {
     data: pollData,
@@ -206,7 +269,12 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   })
 
   const [originalParticipants, setOriginalParticipants] = useState<
-    Array<{ id: string; account_address?: string; guest_email: string }>
+    Array<{
+      id: string
+      account_address?: string
+      guest_email: string
+      participant_type?: QuickPollParticipantType
+    }>
   >([])
 
   useEffect(() => {
@@ -214,14 +282,24 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       const pollResponse = pollData as QuickPollBySlugResponse
       const poll = pollResponse.poll
 
+      const hasExpiry = !!poll.expires_at
+      setRemoveExpiryDate(!hasExpiry)
+
       // Set form data
+      const defaultExpiryDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
       setFormData({
         title: poll.title,
         duration: poll.duration_minutes,
         startDate: new Date(poll.starts_at),
         endDate: new Date(poll.ends_at),
-        expiryDate: new Date(poll.expires_at),
-        expiryTime: new Date(poll.expires_at),
+        expiryDate:
+          hasExpiry && poll.expires_at !== null
+            ? new Date(poll.expires_at)
+            : defaultExpiryDate,
+        expiryTime:
+          hasExpiry && poll.expires_at !== null
+            ? new Date(poll.expires_at)
+            : new Date(),
         description: poll.description || '',
       })
 
@@ -229,32 +307,26 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       setSelectedPermissions(poll.permissions || [])
 
       const originalParticipantsData =
-        poll.participants
-          ?.filter(
-            p => p.participant_type !== QuickPollParticipantType.SCHEDULER
-          )
-          .map(p => ({
-            id: p.id,
-            account_address: p.account_address,
-            guest_email: p.guest_email,
-          })) || []
+        poll.participants?.map(p => ({
+          id: p.id,
+          account_address: p.account_address,
+          guest_email: p.guest_email,
+          participant_type: p.participant_type,
+        })) || []
 
       setOriginalParticipants(originalParticipantsData)
 
       // Convert poll participants to ParticipantInfo format and set them
       const participantInfos =
-        poll.participants
-          ?.filter(
-            p => p.participant_type !== QuickPollParticipantType.SCHEDULER
-          ) // Exclude the scheduler/host
-          .map(participant => ({
-            account_address: participant.account_address,
-            name: participant.guest_name,
-            guest_email: participant.guest_email,
-            status: mapQuickPollStatus(participant.status),
-            meeting_id: '',
-            type: mapQuickPollType(participant.participant_type),
-          })) || []
+        poll.participants?.map(participant => ({
+          account_address: participant.account_address,
+          name: participant.guest_name,
+          guest_email: participant.guest_email,
+          status: mapQuickPollStatus(participant.status),
+          meeting_id: '',
+          type: mapQuickPollType(participant.participant_type),
+          isHidden: true,
+        })) || []
 
       setParticipants(participantInfos)
 
@@ -292,13 +364,14 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const createPollMutation = useMutation({
     mutationFn: (pollData: CreateQuickPollRequest) => createQuickPoll(pollData),
-    onSuccess: () => {
+    onSuccess: response => {
       showSuccessToast(
         'Poll Created Successfully!',
         'Your quick poll has been created and is ready to share with participants.'
       )
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['quickpolls-check'] })
       void fetchPollCounts()
 
       // Reset form state
@@ -311,12 +384,21 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         expiryTime: new Date(),
         description: '',
       })
-      setSelectedPermissions([MeetingPermissions.SEE_GUEST_LIST])
+      setSelectedPermissions([
+        MeetingPermissions.SEE_GUEST_LIST,
+        MeetingPermissions.SCHEDULE_MEETING,
+      ])
+      setRemoveExpiryDate(false)
       setParticipants([])
       setGroupAvailability({})
       setGroupParticipants({})
 
-      router.push('/dashboard/quickpoll')
+      const pollId = (response as { poll?: { id?: string } })?.poll?.id
+      if (pollId) {
+        router.push(
+          `/dashboard/schedule?ref=quickpoll&pollId=${pollId}&intent=edit_availability`
+        )
+      }
     },
     onError: error => {
       handleApiError('Failed to create poll', error)
@@ -337,6 +419,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['quickpoll', pollSlug] })
+      queryClient.invalidateQueries({ queryKey: ['quickpolls-check'] })
       void fetchPollCounts()
       router.push('/dashboard/quickpoll')
     },
@@ -358,6 +441,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       )
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
+      queryClient.invalidateQueries({ queryKey: ['quickpolls-check'] })
       void fetchPollCounts()
       closeCancelModal()
       router.push('/dashboard/quickpoll')
@@ -373,6 +457,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     const validationData = {
       ...formData,
       participants: allMergedParticipants,
+      removeExpiryDate,
     }
 
     const validationResult = quickPollSchema.safeParse(validationData)
@@ -396,11 +481,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           'Invalid Expiry Time',
           'The poll expiry time must be in the future. Please select a later date and time.'
         )
-      } else {
-        showErrorToast(
-          'Validation Error',
-          'Please check the form and fix any errors before submitting.'
-        )
       }
       return
     }
@@ -414,10 +494,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         duration_minutes: formData.duration,
         starts_at: createLocalDate(formData.startDate),
         ends_at: createLocalDate(formData.endDate),
-        expires_at: createLocalDateTime(
-          formData.expiryDate,
-          formData.expiryTime
-        ),
+        expires_at: removeExpiryDate
+          ? null
+          : createLocalDateTime(formData.expiryDate, formData.expiryTime),
         permissions: selectedPermissions as MeetingPermissions[],
         participants:
           participantChanges.toAdd.length > 0 ||
@@ -435,17 +514,19 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         duration_minutes: formData.duration,
         starts_at: createLocalDate(formData.startDate),
         ends_at: createLocalDate(formData.endDate),
-        expires_at: createLocalDateTime(
-          formData.expiryDate,
-          formData.expiryTime
-        ),
+        expires_at: removeExpiryDate
+          ? null
+          : createLocalDateTime(formData.expiryDate, formData.expiryTime),
         permissions: selectedPermissions as MeetingPermissions[],
-        participants: allMergedParticipants.map(p => ({
-          account_address: p.account_address,
-          name: p.name,
-          guest_email: p.guest_email,
-          participant_type: QuickPollParticipantType.INVITEE,
-        })),
+        participants:
+          allMergedParticipants.length > 0
+            ? allMergedParticipants.map(p => ({
+                account_address: p.account_address,
+                name: p.name,
+                guest_email: p.guest_email,
+                participant_type: QuickPollParticipantType.INVITEE,
+              }))
+            : [],
       }
 
       createPollMutation.mutate(pollData)
@@ -454,6 +535,14 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const handleCancelPoll = () => {
     cancelPollMutation.mutate()
+  }
+
+  const handleBackToPolls = () => {
+    router.push('/dashboard/quickpoll')
+  }
+
+  const handleBackToPollsFromHeader = () => {
+    push('/dashboard/quickpoll')
   }
 
   // Function to calculate participant changes for update mode
@@ -486,21 +575,21 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     // original participants not in current list
     const toRemove = originalParticipants
       .filter(original => {
-        // Check if this original participant is still in the current list
+        if (original.participant_type === QuickPollParticipantType.SCHEDULER) {
+          return false
+        }
         const existsInCurrent = currentParticipants.some(current => {
-          // Match by account_address if available, otherwise by guest_email
           if (current.account_address && original.account_address) {
             return (
               current.account_address.toLowerCase() ===
               original.account_address.toLowerCase()
             )
           }
-          // For guests without account_address, match by email
           return current.guest_email === original.guest_email
         })
         return !existsInCurrent
       })
-      .map(p => p.id) // Return participant IDs for removal
+      .map(p => p.id)
 
     return {
       toAdd: toAdd.map(p => ({
@@ -515,6 +604,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
+      const normalizedParticipants = _participants.map(participant => ({
+        ...participant,
+        isHidden: false,
+      }))
+
       const currentMerged = allMergedParticipants
       const isRemoval = _participants.length < currentMerged.length
 
@@ -525,7 +619,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             const groupParticipants = prev.filter(user =>
               isGroupParticipant(user)
             )
-            return [...groupParticipants, ..._participants]
+            return [...groupParticipants, ...normalizedParticipants]
           })
         })
 
@@ -580,7 +674,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             const groupParticipants = prevUsers.filter(user =>
               isGroupParticipant(user)
             )
-            return [...groupParticipants, ..._participants]
+            return [...groupParticipants, ...normalizedParticipants]
           })
 
           if (addressesToAdd.length > 0) {
@@ -619,6 +713,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       validationErrors,
     ]
   )
+
+  const isLoading =
+    createPollMutation.isLoading ||
+    updatePollMutation.isLoading ||
+    cancelPollMutation.isLoading
 
   // Show loading when fetching poll data in edit mode
   if (isEditMode && isPollLoading) {
@@ -660,7 +759,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 fontSize="14px"
                 fontWeight="600"
                 borderRadius="8px"
-                onClick={() => router.push('/dashboard/quickpoll')}
+                onClick={handleBackToPolls}
               >
                 Back to Polls
               </Button>
@@ -670,11 +769,6 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       </Box>
     )
   }
-
-  const isLoading =
-    createPollMutation.isLoading ||
-    updatePollMutation.isLoading ||
-    cancelPollMutation.isLoading
 
   return (
     <Box
@@ -686,13 +780,13 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       display="flex"
       justifyContent="center"
     >
-      <VStack spacing={8} align="stretch" maxW="600px" width="100%">
+      <VStack spacing={8} align="stretch" maxW="450px" width="100%">
         {/* Header with Back Button */}
         <VStack spacing={4} align="flex-start">
           <HStack
             color="primary.400"
             cursor="pointer"
-            onClick={() => push('/dashboard/quickpoll')}
+            onClick={handleBackToPollsFromHeader}
             _hover={{ color: 'primary.500' }}
           >
             <Icon as={FaArrowLeft} />
@@ -713,6 +807,53 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
         {/* Form */}
         <VStack spacing={6} align="stretch">
+          {/* Meeting Date Range */}
+          <FormControl>
+            <FormLabel htmlFor="date">
+              Meeting Date options (From → To)
+            </FormLabel>
+            <HStack w={'100%'} gap={4}>
+              <SingleDatepicker
+                date={formData.startDate}
+                onDateChange={date =>
+                  setFormData(prev => ({ ...prev, startDate: date }))
+                }
+                blockPast={true}
+                inputProps={{
+                  height: 'auto',
+                  py: 3,
+                  pl: 12,
+                  borderColor: 'neutral.400',
+                  _placeholder: {
+                    color: 'neutral.400',
+                  },
+                }}
+                iconColor="neutral.400"
+                iconSize={20}
+                disabled={isLoading}
+              />
+              <SingleDatepicker
+                date={formData.endDate}
+                onDateChange={date =>
+                  setFormData(prev => ({ ...prev, endDate: date }))
+                }
+                blockPast={true}
+                inputProps={{
+                  height: 'auto',
+                  py: 3,
+                  pl: 12,
+                  borderColor: 'neutral.400',
+                  _placeholder: {
+                    color: 'neutral.400',
+                  },
+                }}
+                iconColor="neutral.400"
+                iconSize={20}
+                disabled={isLoading}
+              />
+            </HStack>
+          </FormControl>
+
           {/* Title and Duration - Same Line */}
           <HStack spacing={4} align="start">
             <FormControl isInvalid={!!validationErrors.title} flex={3}>
@@ -761,30 +902,45 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   *
                 </Text>
               </FormLabel>
-              <Select
+              <ChakraSelect<Option<number>>
                 id="duration"
                 placeholder="Duration"
-                onChange={e => {
-                  setFormData(prev => ({
-                    ...prev,
-                    duration: Number(e.target.value),
-                  }))
+                value={
+                  durationOptions.find(o => o.value === formData.duration) ??
+                  null
+                }
+                onChange={opt => {
+                  if (opt) {
+                    clearValidationError(setValidationErrors, 'duration')
+                    setFormData(prev => ({
+                      ...prev,
+                      duration: opt.value,
+                    }))
+                  }
                 }}
-                onBlur={clearValidationError(setValidationErrors, 'duration')}
-                value={formData.duration}
-                borderColor="neutral.400"
-                width={'max-content'}
-                maxW="350px"
-                isInvalid={!!validationErrors.duration}
-                errorBorderColor="red.500"
+                onBlur={() =>
+                  clearValidationError(setValidationErrors, 'duration')
+                }
+                options={durationOptions}
+                colorScheme="primary"
+                className="noLeftBorder timezone-select"
+                components={getnoClearCustomSelectComponent<
+                  Option<number>,
+                  false
+                >()}
+                chakraStyles={{
+                  container: provided => ({
+                    ...provided,
+                    borderColor: validationErrors.duration
+                      ? 'red.500'
+                      : 'input-border',
+                    bg: 'select-bg',
+                    width: 'max-content',
+                    maxW: '350px',
+                  }),
+                }}
                 isDisabled={isLoading}
-              >
-                {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                  <option key={type.id} value={type.duration}>
-                    {durationToHumanReadable(type.duration)}
-                  </option>
-                ))}
-              </Select>
+              />
               <Box minH="20px">
                 {validationErrors.duration && (
                   <FormHelperText color="red.500" mt={1}>
@@ -795,60 +951,10 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             </FormControl>
           </HStack>
 
-          {/* Meeting Date Range */}
-          <FormControl>
-            <FormLabel htmlFor="date">
-              Meeting Date options (From → To)
-            </FormLabel>
-            <HStack w={'100%'} gap={4}>
-              <SingleDatepicker
-                date={formData.startDate}
-                onDateChange={date =>
-                  setFormData(prev => ({ ...prev, startDate: date }))
-                }
-                blockPast={true}
-                inputProps={{
-                  height: 'auto',
-                  py: 3,
-                  pl: 12,
-                  borderColor: 'neutral.400',
-                  _placeholder: {
-                    color: 'neutral.400',
-                  },
-                }}
-                iconColor="neutral.400"
-                iconSize={20}
-                disabled={isLoading}
-              />
-              <SingleDatepicker
-                date={formData.endDate}
-                onDateChange={date =>
-                  setFormData(prev => ({ ...prev, endDate: date }))
-                }
-                blockPast={true}
-                inputProps={{
-                  height: 'auto',
-                  py: 3,
-                  pl: 12,
-                  borderColor: 'neutral.400',
-                  _placeholder: {
-                    color: 'neutral.400',
-                  },
-                }}
-                iconColor="neutral.400"
-                iconSize={20}
-                disabled={isLoading}
-              />
-            </HStack>
-          </FormControl>
-
           {/* Add Guest from Groups */}
-          <FormControl w="100%" maxW="100%">
+          <FormControl w="100%" maxW="100%" mt={-2}>
             <FormLabel htmlFor="participants">
-              Add Participants to the meeting
-              <Text color="red.500" display="inline">
-                *
-              </Text>{' '}
+              Add Participants to the meeting{' '}
               <InfoTooltip text="Add participants from groups, contacts, or enter manually" />
             </FormLabel>
             <Box w="100%" maxW="100%">
@@ -892,13 +998,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               />
             </Box>
             <FormHelperText minW={{ md: '600px' }}>
-              {validationErrors.participants ? (
+              {validationErrors.participants && (
                 <Text color="red.500">{validationErrors.participants}</Text>
-              ) : (
-                <Text>
-                  Separate participants by comma. You will be added
-                  automatically, no need to insert yourself.
-                </Text>
               )}
             </FormHelperText>
           </FormControl>
@@ -943,7 +1044,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
-                disabled={isLoading}
+                disabled={isLoading || removeExpiryDate}
               />
               <InputTimePicker
                 value={format(formData.expiryTime, 'p')}
@@ -959,50 +1060,77 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   _placeholder: {
                     color: 'neutral.400',
                   },
-                  isDisabled: isLoading,
+                  isDisabled: isLoading || removeExpiryDate,
                 }}
                 iconColor="neutral.400"
                 iconSize={20}
               />
             </HStack>
+            <HStack w="100%" justifyContent="space-between" mt={2}>
+              <Text fontSize="sm" color="text-primary">
+                Remove expiry date
+              </Text>
+              <Checkbox
+                isChecked={removeExpiryDate}
+                onChange={e => setRemoveExpiryDate(e.target.checked)}
+                colorScheme="primary"
+                isDisabled={isLoading}
+              />
+            </HStack>
           </FormControl>
 
-          {/* Guest Permissions - Using ScheduleBase pattern */}
+          {/* Guest Permissions - Chip Select */}
           <VStack w="100%" gap={4} alignItems="flex-start">
             <Heading fontSize="lg" fontWeight={500}>
               Guest permissions
             </Heading>
 
-            {QuickPollPermissionsList.map(permission => (
-              <Checkbox
-                key={permission.value}
-                isChecked={selectedPermissions?.includes(permission.value)}
-                w="100%"
-                colorScheme="primary"
-                flexDir="row-reverse"
-                justifyContent={'space-between'}
-                fontWeight={700}
-                color="primary.200"
-                fontSize="16px"
-                size={'lg'}
-                p={0}
-                marginInlineStart={0}
-                onChange={e => {
-                  const { checked } = e.target
-                  setSelectedPermissions(prev =>
-                    checked
-                      ? (prev || []).concat(permission.value)
-                      : prev?.filter(p => p !== permission.value) || []
-                  )
-                }}
-                isDisabled={isLoading}
-              >
-                <HStack marginInlineStart={-2} gap={0}>
-                  <Text>{permission.label}</Text>
-                  {permission.info && <InfoTooltip text={permission.info} />}
-                </HStack>
-              </Checkbox>
-            ))}
+            <ChakraSelect<Option<MeetingPermissions>, true>
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  border: '0px solid',
+                  borderTopColor: 'currentColor',
+                  borderLeftColor: 'currentColor',
+                  borderRightColor: 'currentColor',
+                  borderBottomColor: 'currentColor',
+                  borderColor: 'neutral.400',
+                  borderRadius: 'md',
+                  w: '100%',
+                  display: 'block',
+                }),
+                placeholder: provided => ({
+                  ...provided,
+                  color: 'neutral.400',
+                  fontSize: 'sm',
+                  textAlign: 'left',
+                }),
+              }}
+              className="permissions-select"
+              colorScheme="gray"
+              components={getnoClearCustomSelectComponent<
+                Option<MeetingPermissions>,
+                true
+              >()}
+              isDisabled={isLoading}
+              isMulti
+              onChange={val => {
+                const selected = val
+                setSelectedPermissions(selected.map(item => item.value))
+              }}
+              options={QuickPollPermissionsList.map(permission => ({
+                value: permission.value,
+                label: permission.label,
+              }))}
+              placeholder="Select permissions"
+              tagVariant={'solid'}
+              value={QuickPollPermissionsList.filter(permission =>
+                selectedPermissions?.includes(permission.value)
+              ).map(permission => ({
+                value: permission.value,
+                label: permission.label,
+              }))}
+            />
           </VStack>
 
           {/* Action Buttons */}
@@ -1055,8 +1183,21 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
         {/* Invite Participants Modal */}
         <InviteParticipants
+          key={inviteKey}
           isOpen={isInviteModalOpen}
           onClose={closeInviteModal}
+          isQuickPoll={true}
+          groupAvailability={groupAvailability}
+          groupParticipants={groupParticipants}
+          participants={participants}
+          handleUpdateParticipants={setParticipants}
+          handleUpdateGroups={(
+            groupAvailability: Record<string, string[] | undefined>,
+            groupParticipants: Record<string, string[] | undefined>
+          ) => {
+            setGroupAvailability(groupAvailability)
+            setGroupParticipants(groupParticipants)
+          }}
         />
 
         {/* Cancel Poll Confirmation Modal */}

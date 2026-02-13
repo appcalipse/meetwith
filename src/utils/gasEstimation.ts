@@ -47,14 +47,11 @@ export const estimateGasFee = async (
   try {
     const chainInfo = getChainInfo(sendNetwork)
     if (!chainInfo) {
-      return { estimatedFee: 0, success: false, error: 'Unsupported network' }
+      return { error: 'Unsupported network', estimatedFee: 0, success: false }
     }
 
     // Create contract instance
     const contract = getContract({
-      client: thirdWebClient,
-      chain: chainInfo.thirdwebChain,
-      address: selectedToken.address as `0x${string}`,
       abi: [
         {
           inputs: [
@@ -67,6 +64,9 @@ export const estimateGasFee = async (
           type: 'function',
         },
       ],
+      address: selectedToken.address as `0x${string}`,
+      chain: chainInfo.thirdwebChain,
+      client: thirdWebClient,
     })
 
     // Get token info for decimals
@@ -76,9 +76,9 @@ export const estimateGasFee = async (
     )
     if (!tokenInfo?.decimals) {
       return {
+        error: 'Unable to get token details',
         estimatedFee: 0,
         success: false,
-        error: 'Unable to get token details',
       }
     }
 
@@ -104,14 +104,14 @@ export const estimateGasFee = async (
 
     // Estimate gas
     const gasEstimate = await estimateGas({
-      transaction,
       account: activeWallet.getAccount()!,
+      transaction,
     })
 
     // Get current gas price
     const gasPrice = await getGasPrice({
-      client: thirdWebClient,
       chain: chainInfo.thirdwebChain,
+      client: thirdWebClient,
     })
 
     // Calculate fee in native token
@@ -119,8 +119,8 @@ export const estimateGasFee = async (
 
     // Convert to USD using native token price
     const nativeTokenSymbolMap: Record<string, AcceptedToken> = {
-      ETH: AcceptedToken.ETHER,
       CELO: AcceptedToken.CELO,
+      ETH: AcceptedToken.ETHER,
     }
     const nativeToken =
       nativeTokenSymbolMap[chainInfo.nativeTokenSymbol] || AcceptedToken.ETHER
@@ -137,9 +137,9 @@ export const estimateGasFee = async (
     console.error('Error estimating gas fee:', error)
 
     return {
+      error: error instanceof Error ? error.message : 'Unknown error',
       estimatedFee: 0,
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
     }
   }
 }

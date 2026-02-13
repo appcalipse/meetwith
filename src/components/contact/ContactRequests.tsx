@@ -1,7 +1,6 @@
 import {
-  Button,
+  Box,
   HStack,
-  Spacer,
   Spinner,
   Table,
   TableContainer,
@@ -14,9 +13,10 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
-import React, { ReactNode, useContext, useEffect, useState } from 'react'
+import { ReactNode, useContext, useEffect, useRef } from 'react'
 
 import { Account } from '@/types/Account'
 import { ContactInvite } from '@/types/Contacts'
@@ -26,6 +26,8 @@ import {
   getContactInviteRequests,
 } from '@/utils/api_helper'
 import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 
 import { ContactStateContext } from '../profile/Contact'
 import ContactAcceptInviteModal from './ContactAcceptInviteModal'
@@ -38,16 +40,15 @@ type Props = {
   reloadContacts: () => void
 }
 
+const PAGE_SIZE = 10
+
 const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
-  const [requests, setRequests] = useState<Array<ContactInvite>>([])
   const { setSelectedContact } = useContext(ContactStateContext)
   const { query, push } = useRouter()
   const { intent, identifier } = query as {
     intent: Intents.ACCEPT_CONTACT
     identifier: string
   }
-  const [loading, setIsLoading] = useState(true)
-  const [noMoreFetch, setNoMoreFetch] = useState(false)
   const {
     isOpen: isRejectOpenModal,
     onOpen: openRejectModal,
@@ -59,33 +60,83 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
     onClose: closeAcceptModal,
   } = useDisclosure()
 
-  const [firstFetch, setFirstFetch] = useState(true)
   const toast = useToast()
-  const fetchRequests = async (reset?: boolean, limit = 10) => {
-    const PAGE_SIZE = limit
-    setIsLoading(true)
-    const newRequests = await getContactInviteRequests(
-      PAGE_SIZE,
-      reset ? 0 : requests.length,
-      search
+  const loadMoreRef = useRef<HTMLTableRowElement | null>(null)
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteQuery({
+    queryKey: QueryKeys.contactRequests(currentAccount?.address, search),
+    queryFn: async ({ pageParam: offset = 0 }) => {
+      const requests = await getContactInviteRequests(PAGE_SIZE, offset, search)
+
+      return {
+        requests,
+        nextOffset: offset + requests.length,
+        hasMore: requests.length >= PAGE_SIZE,
+      }
+    },
+    getNextPageParam: lastPage =>
+      lastPage.hasMore ? lastPage.nextOffset : undefined,
+    enabled: !!currentAccount?.address,
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+  })
+
+  const requests = data?.pages.flatMap(page => page.requests) ?? []
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          void fetchNextPage()
+        }
+      },
+      {
+        root: null,
+        rootMargin: '200px',
+        threshold: 0.1,
+      }
     )
 
-    if (newRequests.length < PAGE_SIZE) {
-      setNoMoreFetch(true)
-    }
-    setRequests((reset ? [] : [...requests]).concat(newRequests))
-    setIsLoading(false)
-  }
-  const resetState = async () => {
-    setFirstFetch(true)
-    setNoMoreFetch(false)
-    await fetchRequests(true)
-    setFirstFetch(false)
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+  const handleSyncRequest = (id: string) => {
+    // Optimistically remove from UI
+    queryClient.setQueryData<
+      InfiniteData<{
+        requests: ContactInvite[]
+        nextOffset: number
+        hasMore: boolean
+      }>
+    >(QueryKeys.contactRequests(currentAccount?.address, search), old => {
+      if (!old) return old
+      return {
+        ...old,
+        pages: old.pages.map(page => ({
+          ...page,
+          requests: page.requests.filter((r: ContactInvite) => r.id !== id),
+        })),
+      }
+    })
+    reloadContacts()
   }
 
-  useEffect(() => {
-    void resetState()
-  }, [currentAccount?.address, search])
+  const handleRefetch = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: QueryKeys.contactRequests(currentAccount?.address, search),
+    })
+  }
+
   let content: ReactNode
   const handleLoadContactInvite = async () => {
     try {
@@ -129,10 +180,11 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
   }
   useEffect(() => {
     if (identifier && intent) {
-      handleLoadContactInvite()
+      void handleLoadContactInvite()
     }
   }, [intent, identifier])
-  if (firstFetch) {
+
+  if (isLoading) {
     content = (
       <Tbody>
         <Tr color="text-primary">
@@ -149,6 +201,18 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
                 <Text fontSize="lg">Checking your contact requests...</Text>
               </HStack>
             </VStack>
+          </Th>
+        </Tr>
+      </Tbody>
+    )
+  } else if (isError) {
+    content = (
+      <Tbody>
+        <Tr color="text-primary">
+          <Th colSpan={6}>
+            <Text textAlign="center" w="100%" mx="auto" py={4} color="red.500">
+              Failed to load contact requests. Please try again.
+            </Text>
           </Th>
         </Tr>
       </Tbody>
@@ -172,30 +236,36 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
           <ContactRequestItem
             account={account}
             key={`contact-request-${account.address}`}
-            refetch={() => fetchRequests(true, requests.length + 1)}
-            syncAccept={() => {
-              reloadContacts()
-            }}
+            refetch={handleRefetch}
+            syncAccept={reloadContacts}
             index={index}
             openRejectModal={openRejectModal}
           />
         ))}
-        {!noMoreFetch && !firstFetch && (
+        {hasNextPage && (
+          <Tr ref={loadMoreRef} color="text-primary">
+            <Th justifyContent="center" colSpan={6}>
+              <Box
+                w="100%"
+                h="20px"
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                my={4}
+              >
+                {isFetchingNextPage && (
+                  <Spinner size="md" color="primary.500" />
+                )}
+              </Box>
+            </Th>
+          </Tr>
+        )}
+        {!hasNextPage && requests.length > 0 && (
           <Tr color="text-primary">
             <Th justifyContent="center" colSpan={6}>
-              <VStack mb={8}>
-                <Button
-                  isLoading={loading}
-                  colorScheme="primary"
-                  variant="outline"
-                  alignSelf="center"
-                  my={4}
-                  onClick={() => fetchRequests()}
-                >
-                  Load more
-                </Button>
-                <Spacer />
-              </VStack>
+              <Text color="gray.500" fontSize="sm" textAlign="center" my={4}>
+                No more requests to load
+              </Text>
             </Th>
           </Tr>
         )}
@@ -209,25 +279,19 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
         isOpen={isRejectOpenModal}
         onClose={() => {
           closeRejectModal()
-          push(`/dashboard/${EditMode.CONTACTS}`)
+          void push(`/dashboard/${EditMode.CONTACTS}`)
         }}
-        sync={id => {
-          setRequests(requests.filter(r => r.id !== id))
-          reloadContacts()
-        }}
-        refetch={() => fetchRequests(true, requests.length + 1)}
+        sync={handleSyncRequest}
+        refetch={handleRefetch}
       />
       <ContactAcceptInviteModal
         isOpen={isAcceptOpenModal}
         onClose={() => {
           closeAcceptModal()
-          push(`/dashboard/${EditMode.CONTACTS}`)
+          void push(`/dashboard/${EditMode.CONTACTS}`)
         }}
-        sync={id => {
-          setRequests(requests.filter(r => r.id !== id))
-          reloadContacts()
-        }}
-        refetch={() => fetchRequests(true, requests.length + 1)}
+        sync={handleSyncRequest}
+        refetch={handleRefetch}
         openRejectModal={openRejectModal}
       />
       <Table variant="unstyled" colorScheme="whiteAlpha">

@@ -5,6 +5,7 @@ import { getAccountDisplayName } from '@utils/user_manager'
 import React from 'react'
 
 import { apiUrl } from '@/utils/constants'
+
 interface IProps {
   account?: Account
   teamMeetingRequest?: GroupMeetingRequest

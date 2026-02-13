@@ -1,39 +1,49 @@
 import {
-  Button,
   Heading,
   HStack,
   Icon,
+  useBreakpointValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Interval } from 'luxon'
 import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
+import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
-  AvailabilitySlot,
   PollVisibility,
   QuickPollBySlugResponse,
   QuickPollIntent,
   QuickPollParticipant,
 } from '@/types/QuickPoll'
 import {
+  fetchBusySlotsRawForQuickPollParticipants,
+  getExistingAccounts,
   getPollParticipantByIdentifier,
   getQuickPollById,
   updatePollParticipantAvailability,
   updateQuickPoll,
 } from '@/utils/api_helper'
-import { convertSelectedSlotsToAvailabilitySlots } from '@/utils/quickpoll_helper'
+import { parseMonthAvailabilitiesToDate } from '@/utils/date_helper'
+import {
+  computeAvailabilitySlotsWithOverrides,
+  computeBaseAvailability,
+  convertBusySlotsToIntervals,
+  convertSelectedSlotsToAvailabilitySlots,
+  getMonthRange,
+  mergeAvailabilitySlots,
+} from '@/utils/quickpoll_helper'
 import { getGuestPollDetails } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 
-import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import CustomError from '../CustomError'
 import CustomLoading from '../CustomLoading'
 import { Grid4 } from '../icons/Grid4'
@@ -43,6 +53,7 @@ import {
   useAvailabilityTracker,
 } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import GuestIdentificationModal from './GuestIdentificationModal'
+import MobileQuickPollParticipantModal from './MobileQuickPollParticipant'
 import { QuickPollParticipants } from './QuickPollParticipants'
 import { QuickPollPickAvailability } from './QuickPollPickAvailability'
 import QuickPollSaveChangesModal from './QuickPollSaveChangesModal'
@@ -60,32 +71,41 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 > = ({ pollId, pollData, onNavigateToGuestDetails }) => {
   const {
     isInviteParticipantsOpen,
-    showCalendarModal,
     showGuestIdModal,
-    showCalendarImportFlow,
     currentParticipantId,
     currentGuestEmail,
     isEditingAvailability,
     isSavingAvailability,
     isRefreshingAvailabilities,
     setIsInviteParticipantsOpen,
-    setShowCalendarModal,
     setShowGuestIdModal,
-    setShowCalendarImportFlow,
     setCurrentParticipantId,
     setCurrentGuestEmail,
     setIsEditingAvailability,
     setIsSavingAvailability,
     setIsRefreshingAvailabilities,
   } = useQuickPollAvailability()
-
+  const {
+    groupAvailability,
+    groupParticipants,
+    participants,
+    setGroupAvailability,
+    setGroupParticipants,
+    setParticipants,
+  } = useParticipants()
+  const inviteKey = useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
   const router = useRouter()
   const toast = useToast()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const currentAccount = useAccountContext()
-  const { timezone } = useScheduleState()
-  const { getAvailabilitySlots, clearSlots, selectedSlots } =
-    useAvailabilityTracker()
+  const { timezone, currentSelectedDate } = useScheduleState()
+  const { clearSlots, selectedSlots } = useAvailabilityTracker()
   const queryClient = useQueryClient()
 
   const {
@@ -95,7 +115,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   } = useQuery({
     queryKey: ['quickpoll-schedule', pollId],
     queryFn: () => getQuickPollById(pollId!),
-    enabled: !!pollId && !pollData,
+    enabled: !!pollId,
     onError: (err: unknown) => {
       showErrorToast(
         'Failed to load poll',
@@ -105,7 +125,33 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   })
 
   const currentPollData =
-    pollData || (fetchedPollData as QuickPollBySlugResponse)
+    (fetchedPollData as QuickPollBySlugResponse) || pollData
+
+  const isDesktop = useBreakpointValue({ base: false, md: true }) ?? false
+
+  useEffect(() => {
+    if (!currentAccount?.address || !currentPollData?.poll?.participants) {
+      return
+    }
+
+    const accountParticipant = currentPollData.poll.participants.find(
+      participant =>
+        participant.account_address?.toLowerCase() ===
+        currentAccount.address.toLowerCase()
+    )
+
+    if (
+      accountParticipant?.id &&
+      accountParticipant.id !== currentParticipantId
+    ) {
+      setCurrentParticipantId(accountParticipant.id)
+    }
+  }, [
+    currentAccount?.address,
+    currentPollData?.poll?.participants,
+    currentParticipantId,
+    setCurrentParticipantId,
+  ])
 
   const refreshAvailabilities = async () => {
     try {
@@ -232,9 +278,62 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         setIsSavingAvailability(true)
 
         try {
+          const participantRecord = currentPollData?.poll.participants.find(
+            participant => participant.id === currentParticipantId
+          )
+
+          if (!participantRecord) {
+            showErrorToast(
+              'Participant not found',
+              'You are not a participant in this poll.'
+            )
+            return
+          }
+
+          // Compute month range for base availability calculation
+          const { monthStart, monthEnd } = getMonthRange(
+            currentSelectedDate.toJSDate(),
+            timezone
+          )
+
+          // Get busy slots from calendar for guests
+          const busySlotsRaw = await fetchBusySlotsRawForQuickPollParticipants(
+            [{ participant_id: currentParticipantId }],
+            monthStart,
+            monthEnd
+          )
+          const busyIntervals = convertBusySlotsToIntervals(busySlotsRaw)
+
+          // Compute base availability (without existing overrides)
+          // Guests don't have default availability, so pass empty array
+          const baseAvailability = computeBaseAvailability(
+            participantRecord,
+            [],
+            [],
+            busyIntervals,
+            monthStart,
+            monthEnd,
+            timezone
+          )
+
+          // Compute availability with overrides
+          const availabilitySlots = computeAvailabilitySlotsWithOverrides(
+            selectedSlots,
+            baseAvailability,
+            monthStart,
+            monthEnd,
+            timezone
+          )
+
+          // Merge with existing slots
+          const mergedAvailability = mergeAvailabilitySlots(
+            participantRecord.available_slots || [],
+            availabilitySlots
+          )
+
           await updatePollParticipantAvailability(
             storedDetails.participantId,
-            availabilitySlots,
+            mergedAvailability,
             timezone
           )
 
@@ -249,7 +348,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             'Availability saved',
             'Your availability has been saved successfully.'
           )
-        } catch (error) {
+        } catch (_error) {
           showErrorToast(
             'Failed to save availability',
             'There was an error saving your availability. Please try again.'
@@ -259,7 +358,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         }
       } else {
         // First-time guest: navigate to details form
-        setGuestAvailabilitySlots(availabilitySlots)
+        setGuestAvailabilitySlots(mergeAvailabilitySlots([], availabilitySlots))
         setCurrentTimezone(timezone)
 
         if (onNavigateToGuestDetails) {
@@ -280,7 +379,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
               currentPollData.poll.slug,
               currentAccount.address
             )) as QuickPollParticipant
-          } catch (error) {
+          } catch (_error) {
             showErrorToast(
               'Participant not found',
               'You are not a participant in this poll.'
@@ -288,11 +387,67 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             return
           }
 
-          const availabilitySlots = getAvailabilitySlots()
+          // Compute month range for base availability calculation
+          const { monthStart, monthEnd } = getMonthRange(
+            currentSelectedDate.toJSDate(),
+            timezone
+          )
+
+          // Get default availability and busy slots for account owners
+          let defaultIntervals: Interval[] = []
+          let busyIntervals: Interval[] = []
+
+          if (currentAccount?.address) {
+            // Get default availability from account preferences
+            const account = await getExistingAccounts([currentAccount.address])
+            if (account.length > 0 && account[0].preferences?.availabilities) {
+              defaultIntervals = parseMonthAvailabilitiesToDate(
+                account[0].preferences.availabilities,
+                monthStart,
+                monthEnd,
+                account[0].preferences.timezone || timezone
+              )
+            }
+
+            // Get busy slots from calendar
+            const busySlotsRaw =
+              await fetchBusySlotsRawForQuickPollParticipants(
+                [{ account_address: currentAccount.address }],
+                monthStart,
+                monthEnd
+              )
+            busyIntervals = convertBusySlotsToIntervals(busySlotsRaw)
+          }
+
+          // Compute base availability (without existing overrides)
+          const baseAvailability = computeBaseAvailability(
+            participant,
+            [],
+            defaultIntervals,
+            busyIntervals,
+            monthStart,
+            monthEnd,
+            timezone
+          )
+
+          // Compute availability with overrides
+          const availabilitySlots = computeAvailabilitySlotsWithOverrides(
+            selectedSlots,
+            baseAvailability,
+            monthStart,
+            monthEnd,
+            timezone
+          )
+
+          // Merge with existing slots to preserve any slots outside the current month
+          const mergedAvailability = mergeAvailabilitySlots(
+            participant.available_slots || [],
+            availabilitySlots
+          )
 
           await updatePollParticipantAvailability(
             participant.id,
-            availabilitySlots,
+            mergedAvailability,
             currentAccount.preferences?.timezone || 'UTC'
           )
 
@@ -308,7 +463,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             'Your availability has been saved successfully.'
           )
         }
-      } catch (error) {
+      } catch (_error) {
         showErrorToast(
           'Failed to save availability',
           'There was an error saving your availability. Please try again.'
@@ -331,19 +486,14 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         setCurrentGuestEmail(email)
         setShowGuestIdModal(false)
 
-        if (showCalendarImportFlow) {
-          setShowCalendarImportFlow(false)
-          setShowCalendarModal(true)
-        } else {
-          setIsEditingAvailability(true)
-        }
+        setIsEditingAvailability(true)
       } else {
         showErrorToast(
           'Participant not found',
           'No participant found with this email address.'
         )
       }
-    } catch (error) {
+    } catch (_error) {
       showErrorToast(
         'Identification failed',
         'There was an error identifying you. Please try again.'
@@ -365,25 +515,8 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     })
   }
 
-  const handleCalendarImport = () => {
-    if (
-      !currentAccount &&
-      currentPollData?.poll.visibility === PollVisibility.PRIVATE
-    ) {
-      if (!currentParticipantId || !currentGuestEmail) {
-        setShowCalendarImportFlow(true)
-        setShowGuestIdModal(true)
-      } else {
-        setShowCalendarModal(true)
-      }
-    } else {
-      setShowCalendarModal(true)
-    }
-  }
-
   const handleCloseGuestIdModal = () => {
     setShowGuestIdModal(false)
-    setShowCalendarImportFlow(false)
   }
 
   const handleAvailabilityAction = () => {
@@ -392,6 +525,11 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     } else {
       handleEditAvailability()
     }
+  }
+
+  const handleCancelEditing = () => {
+    setIsEditingAvailability(false)
+    clearSlots()
   }
 
   // Only show loading when we don't have pollData and we're fetching
@@ -499,12 +637,17 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         gap={4}
         display={{ base: 'flex', md: 'none' }}
       >
+        <MobileQuickPollParticipantModal
+          onClose={() => setIsInviteParticipantsOpen(false)}
+          isOpen={isInviteParticipantsOpen}
+          pollData={currentPollData}
+        />
         <QuickPollPickAvailability
           openParticipantModal={() => setIsInviteParticipantsOpen(true)}
           pollData={currentPollData}
           onSaveAvailability={handleAvailabilityAction}
+          onCancelEditing={handleCancelEditing}
           onSharePoll={handleSharePoll}
-          onImportCalendar={handleCalendarImport}
           isEditingAvailability={isEditingAvailability}
           isSavingAvailability={isSavingAvailability}
           isRefreshingAvailabilities={isRefreshingAvailabilities}
@@ -512,58 +655,60 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
       </VStack>
 
       {/* Desktop Layout */}
-      <HStack
-        width="100%"
-        justifyContent={'flex-start'}
-        align={'flex-start'}
-        height={'fit-content'}
-        gap={'14px'}
-        display={{ base: 'none', md: 'flex' }}
-      >
-        <InviteParticipants
-          onClose={() => setIsInviteParticipantsOpen(false)}
-          isOpen={isInviteParticipantsOpen}
-          isQuickPoll={true}
-          pollData={currentPollData}
-          onInviteSuccess={async () => {
-            await queryClient.invalidateQueries({
-              queryKey: ['quickpoll-public'],
-            })
-            await queryClient.invalidateQueries({
-              queryKey: ['quickpoll-schedule'],
-            })
-            setIsInviteParticipantsOpen(false)
-          }}
-        />
-        <QuickPollParticipants
-          pollData={currentPollData}
-          onAddParticipants={() => setIsInviteParticipantsOpen(true)}
-          onAvailabilityToggle={refreshAvailabilities}
-          currentGuestEmail={currentGuestEmail}
-          onParticipantRemoved={onParticipantRemoved}
-        />
-        <QuickPollPickAvailability
-          openParticipantModal={() => setIsInviteParticipantsOpen(true)}
-          pollData={currentPollData}
-          onSaveAvailability={handleAvailabilityAction}
-          onSharePoll={handleSharePoll}
-          onImportCalendar={handleCalendarImport}
-          isEditingAvailability={isEditingAvailability}
-          isSavingAvailability={isSavingAvailability}
-          isRefreshingAvailabilities={isRefreshingAvailabilities}
-        />
-      </HStack>
-
-      {/* Calendar Import Modal */}
-      <ConnectCalendarModal
-        isOpen={showCalendarModal}
-        onClose={() => setShowCalendarModal(false)}
-        isQuickPoll={true}
-        participantId={currentParticipantId}
-        pollData={currentPollData}
-        refetch={refreshAvailabilities}
-        pollSlug={currentPollData?.poll.slug}
-      />
+      {isDesktop && (
+        <HStack
+          width="100%"
+          justifyContent={'flex-start'}
+          align={'flex-start'}
+          height={'fit-content'}
+          gap={'14px'}
+        >
+          <InviteParticipants
+            key={inviteKey}
+            onClose={() => setIsInviteParticipantsOpen(false)}
+            isOpen={isInviteParticipantsOpen}
+            isQuickPoll={true}
+            pollData={currentPollData}
+            onInviteSuccess={async () => {
+              await queryClient.invalidateQueries({
+                queryKey: ['quickpoll-public'],
+              })
+              await queryClient.invalidateQueries({
+                queryKey: ['quickpoll-schedule'],
+              })
+              setIsInviteParticipantsOpen(false)
+            }}
+            groupAvailability={groupAvailability}
+            groupParticipants={groupParticipants}
+            participants={participants}
+            handleUpdateGroups={(
+              groupAvailability: Record<string, Array<string> | undefined>,
+              groupParticipants: Record<string, Array<string> | undefined>
+            ) => {
+              setGroupAvailability(groupAvailability)
+              setGroupParticipants(groupParticipants)
+            }}
+            handleUpdateParticipants={setParticipants}
+          />
+          <QuickPollParticipants
+            pollData={currentPollData}
+            onAddParticipants={() => setIsInviteParticipantsOpen(true)}
+            onAvailabilityToggle={refreshAvailabilities}
+            currentGuestEmail={currentGuestEmail}
+            onParticipantRemoved={onParticipantRemoved}
+          />
+          <QuickPollPickAvailability
+            openParticipantModal={() => setIsInviteParticipantsOpen(true)}
+            pollData={currentPollData}
+            onSaveAvailability={handleAvailabilityAction}
+            onCancelEditing={handleCancelEditing}
+            onSharePoll={handleSharePoll}
+            isEditingAvailability={isEditingAvailability}
+            isSavingAvailability={isSavingAvailability}
+            isRefreshingAvailabilities={isRefreshingAvailabilities}
+          />
+        </HStack>
+      )}
 
       {currentPollData?.poll.visibility === PollVisibility.PRIVATE && (
         <GuestIdentificationModal

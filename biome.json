@@ -1,0 +1,135 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "recommended": true,
+        "organizeImports": "on"
+      }
+    },
+    "enabled": true
+  },
+  "files": {
+    "includes": ["**", "!**/*.json", "!**/*.css"]
+  },
+  "formatter": {
+    "bracketSpacing": true,
+    "enabled": true,
+    "indentStyle": "space",
+    "lineWidth": 80
+  },
+  "javascript": {
+    "formatter": {
+      "arrowParentheses": "asNeeded",
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5"
+    },
+    "globals": ["React"],
+    "parser": { "unsafeParameterDecoratorsEnabled": true }
+  },
+  "json": { "parser": {} },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "a11y": {
+        "noAriaUnsupportedElements": "warn",
+        "useAltText": "warn",
+        "useAriaPropsForRole": "warn",
+        "useAriaPropsSupportedByRole": "warn",
+        "useKeyWithClickEvents": "off",
+        "useValidAriaProps": "warn",
+        "useValidAriaValues": "warn"
+      },
+      "complexity": {
+        "noBannedTypes": "error",
+        "noUselessThisAlias": "error",
+        "noUselessTypeConstraint": "error",
+        "useArrowFunction": "off"
+      },
+      "correctness": {
+        "noChildrenProp": "off",
+        "noUnusedVariables": "warn",
+        "useExhaustiveDependencies": "off"
+      },
+      "nursery": {
+        "noUnknownAttribute": "off",
+        "noUnusedExpressions": "off",
+        "useConsistentArrowReturn": "off"
+      },
+      "recommended": false,
+      "security": { "noBlankTarget": "off" },
+      "style": {
+        "noCommonJs": "error",
+        "noNamespace": "error",
+        "noNonNullAssertion": "off",
+        "noRestrictedImports": "off",
+        "useArrayLiterals": "error",
+        "useAsConstAssertion": "error",
+        "useBlockStatements": "off",
+        "useConst": "warn"
+      },
+      "suspicious": {
+        "noConsole": {
+          "level": "error",
+          "options": { "allow": ["error", "info", "debug", "warn", "trace"] }
+        },
+        "noEmptyBlockStatements": "off",
+        "noExplicitAny": "error",
+        "noExtraNonNullAssertion": "error",
+        "noMisleadingInstantiator": "error",
+        "noNonNullAssertedOptionalChain": "error",
+        "noTsIgnore": "error",
+        "noUnsafeDeclarationMerging": "error",
+        "useNamespaceKeyword": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["*.ts", "*.tsx", "*.mts", "*.cts"],
+      "linter": {
+        "rules": {
+          "complexity": { "noArguments": "error" },
+          "correctness": {
+            "noConstAssign": "off",
+            "noGlobalObjectCalls": "off",
+            "noInvalidBuiltinInstantiation": "off",
+            "noInvalidConstructorSuper": "off",
+            "noSetterReturn": "off",
+            "noUndeclaredVariables": "off",
+            "noUnreachable": "off",
+            "noUnreachableSuper": "off"
+          },
+          "style": { "useConst": "error" },
+          "suspicious": {
+            "noClassAssign": "off",
+            "noDuplicateClassMembers": "off",
+            "noDuplicateObjectKeys": "off",
+            "noDuplicateParameters": "off",
+            "noFunctionAssign": "off",
+            "noImportAssign": "off",
+            "noRedeclare": "off",
+            "noUnsafeNegation": "off",
+            "noVar": "error",
+            "noWith": "off",
+            "useGetterReturn": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["*.ts"],
+      "assist": {
+        "enabled": true,
+        "actions": {
+          "source": {
+            "organizeImports": "on",
+            "useSortedAttributes": "on",
+            "useSortedKeys": "on"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -8,7 +8,6 @@ import { MeetingCreationRequest } from '@/types/Requests'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
-  registerMeetingSession,
   saveMeeting,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
@@ -83,6 +82,7 @@ export const handleMeetingSchedule = async (
       )
       return res.status(200).json(meetingResult)
     } catch (e) {
+      console.error(e)
       if (e instanceof TimeNotAvailableError) {
         return res.status(409).send(e)
       } else if (e instanceof MeetingCreationError) {
@@ -93,9 +93,11 @@ export const handleMeetingSchedule = async (
         return res.status(402).send(e)
       } else if (e instanceof TransactionIsRequired) {
         return res.status(400).send(e)
-      } else {
+      } else if (e instanceof Error) {
         Sentry.captureException(e)
-        return res.status(500).send(e)
+        return res.status(500).send(e.message)
+      } else {
+        return res.status(500).send('Unknown error occurred')
       }
     }
   }

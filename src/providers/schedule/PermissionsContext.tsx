@@ -18,6 +18,8 @@ interface IPermissionsContext {
   setCanCancel: React.Dispatch<React.SetStateAction<boolean>>
   setIsScheduler: React.Dispatch<React.SetStateAction<boolean>>
   setCanEditMeetingDetails: React.Dispatch<React.SetStateAction<boolean>>
+  canEditMeetingParticipants: boolean
+  setCanEditMeetingParticipants: React.Dispatch<React.SetStateAction<boolean>>
   isUpdatingMeeting: boolean
 }
 
@@ -47,21 +49,25 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
   const [canCancel, setCanCancel] = useState(true)
   const [isScheduler, setIsScheduler] = useState(true)
   const [canEditMeetingDetails, setCanEditMeetingDetails] = useState(true)
+  const [canEditMeetingParticipants, setCanEditMeetingParticipants] =
+    useState(true)
   const query = useRouter().query
   const isUpdatingMeeting = useMemo(() => !!query.meetingId, [query.meetingId])
 
-  const value = {
-    isDeleting,
-    canDelete,
+  const value: IPermissionsContext = {
     canCancel,
-    isScheduler,
-    setIsDeleting,
-    setCanDelete,
-    setCanCancel,
-    setIsScheduler,
+    canDelete,
     canEditMeetingDetails,
-    setCanEditMeetingDetails,
+    canEditMeetingParticipants,
+    isDeleting,
+    isScheduler,
     isUpdatingMeeting,
+    setCanCancel,
+    setCanDelete,
+    setCanEditMeetingDetails,
+    setCanEditMeetingParticipants,
+    setIsDeleting,
+    setIsScheduler,
   }
   return (
     <PermissionsContext.Provider value={value}>

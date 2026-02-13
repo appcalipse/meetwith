@@ -9,10 +9,15 @@ import { formatUnits } from 'viem'
 
 import { getSupportedChainFromId } from '@/types/chains'
 import { ConfirmCryptoTransactionRequest } from '@/types/Requests'
-import { Address, IPurchaseData } from '@/types/Transactions'
+import { Address, IPurchaseData, ISubscriptionData } from '@/types/Transactions'
 import { PaymentType, TokenType } from '@/utils/constants/meeting-types'
 import { ChainNotFound } from '@/utils/errors'
-import { DEFAULT_MESSAGE_NAME, PubSubManager } from '@/utils/pub-sub.helper'
+import {
+  DEFAULT_MESSAGE_NAME,
+  DEFAULT_SUBSCRIPTION_MESSAGE_NAME,
+  PubSubManager,
+} from '@/utils/pub-sub.helper'
+import { handleCryptoSubscriptionPayment } from '@/utils/services/crypto.helper'
 
 export default async function handler(
   req: NextApiRequest,
@@ -30,17 +35,12 @@ export default async function handler(
           headerRecord[key] = value[0] // Take first value if array
         }
       }
-      console.log(
-        process.env.THIRDWEB_WEBHOOK_SECRET,
-        JSON.stringify(req.body),
-        headerRecord
-      )
       const payload: WebhookPayload = await Bridge.Webhook.parse(
         JSON.stringify(req.body),
         headerRecord,
         process.env.THIRDWEB_WEBHOOK_SECRET!
       )
-      console.log(payload)
+      console.debug(payload)
       if (
         ['pay.onramp-transaction', 'pay.onchain-transaction'].includes(
           payload.type
@@ -59,14 +59,62 @@ export default async function handler(
           throw new ChainNotFound(chainId.toString())
         }
 
-        const {
-          guest_email,
-          guest_name,
-          message_channel,
-          guest_address,
-          meeting_type_id,
-        } = payload.data.purchaseData as IPurchaseData
+        const purchaseData = payload.data.purchaseData as
+          | IPurchaseData
+          | ISubscriptionData
+
         if (payload.data.status === 'COMPLETED') {
+          // Check if this is a subscription payment
+          const isSubscriptionPayment = 'subscription_channel' in purchaseData
+
+          if (isSubscriptionPayment) {
+            // Handle subscription payment
+            try {
+              const subscriptionData = purchaseData as ISubscriptionData
+              const result = await handleCryptoSubscriptionPayment(
+                payload,
+                subscriptionData
+              )
+
+              // Publish transaction to subscription channel for frontend
+              const pubSubManager = new PubSubManager()
+              await pubSubManager.publishMessage(
+                subscriptionData.subscription_channel,
+                DEFAULT_SUBSCRIPTION_MESSAGE_NAME,
+                JSON.stringify(result.transaction)
+              )
+
+              // Subscription payment handled successfully
+              return res.status(200).send('OK')
+            } catch (error) {
+              captureException(error, {
+                extra: {
+                  payloadType: payload.type,
+                  subscriptionData: purchaseData,
+                },
+              })
+              console.error(
+                'Failed to handle crypto subscription payment:',
+                error
+              )
+              return res
+                .status(500)
+                .send('Failed to process subscription payment')
+            }
+          }
+
+          // Continue with existing meeting payment flow
+          const {
+            guest_email,
+            guest_name,
+            message_channel,
+            guest_address,
+            meeting_type_id,
+            environment,
+          } = payload.data.purchaseData as IPurchaseData
+          if (environment !== process.env.NEXT_PUBLIC_ENV_CONFIG) {
+            return res.status(200).send('OK')
+          }
           let transactionHash =
             payload.type === 'pay.onramp-transaction'
               ? payload.data.transactionHash
@@ -100,7 +148,7 @@ export default async function handler(
               ? payload.data.id
               : /*cast type as this is not added on the package yet*/
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
+                // @ts-expect-error
                 payload.data?.transactionId || payload.data?.paymentId
 
           let fee_breakdown
@@ -108,6 +156,8 @@ export default async function handler(
           let metadata
           if (payload.type === 'pay.onchain-transaction') {
             fee_breakdown = {
+              developer:
+                (fiat_equivalent * payload?.data?.developerFeeBps) / 100 ** 2,
               network:
                 payload.data.originToken?.priceUsd *
                   parseFloat(
@@ -117,8 +167,6 @@ export default async function handler(
                     )
                   ) -
                 fiat_equivalent,
-              developer:
-                (fiat_equivalent * payload?.data?.developerFeeBps) / 100 ** 2,
             }
             total_fee = Object.values(fee_breakdown).reduce(
               (acc, fee) => acc + fee,
@@ -134,30 +182,28 @@ export default async function handler(
             }
           }
           const transactionRequest: ConfirmCryptoTransactionRequest = {
-            transaction_hash: transactionHash as Address,
             amount: parsedAmount,
             chain: supportedChain?.chain,
+            fee_breakdown,
             fiat_equivalent,
-            meeting_type_id: meeting_type_id,
+            guest_address,
+            guest_email,
+            guest_name,
+            meeting_type_id: meeting_type_id ?? null,
+            metadata,
             payment_method: PaymentType.CRYPTO,
+            provider_reference_id,
             token_address,
             token_type: TokenType.ERC20,
-            guest_email,
-            guest_address,
-            guest_name,
-            provider_reference_id,
-            fee_breakdown,
             total_fee,
-            metadata,
+            transaction_hash: transactionHash as Address,
           }
           // Log so we can track in case of misses
-          // eslint-disable-next-line no-restricted-syntax
-          console.log(transactionRequest)
+
           const transaction = await createCryptoTransaction(
             transactionRequest,
             guest_address
           )
-          console.log(transaction)
 
           await pubSubManager.publishMessage(
             message_channel,

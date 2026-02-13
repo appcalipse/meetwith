@@ -22,8 +22,16 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(200).json(group)
     }
     if (req.method === 'PUT') {
-      const { slug, name } = req.body as UpdateGroupPayload
-      await editGroup(group_id, account_address, name, slug)
+      const { slug, name, avatar_url, description } =
+        req.body as UpdateGroupPayload
+      await editGroup(
+        group_id,
+        account_address,
+        name,
+        slug,
+        avatar_url,
+        description
+      )
       return res.status(200).json({
         success: true,
       })
@@ -34,7 +42,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         success: true,
       })
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof NotGroupMemberError) {
       return res.status(403).json({ error: error.message })
     }
@@ -44,9 +52,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (error instanceof GroupNotExistsError) {
       return res.status(404).json({ error: error.message })
     }
-    return res
-      .status(500)
-      .json({ error: error.message, details: error.details })
+    return res.status(500).json({
+      details:
+        typeof error === 'object' && error !== null && 'details' in error
+          ? error.details
+          : undefined,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
   return res.status(405).send('Method not allowed')
 }

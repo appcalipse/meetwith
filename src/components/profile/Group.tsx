@@ -5,7 +5,6 @@ import {
   Flex,
   Heading,
   HStack,
-  Link,
   Tab,
   TabList,
   TabPanel,
@@ -13,22 +12,25 @@ import {
   Tabs,
   Text,
   useDisclosure,
+  VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
-import { FaArrowRight } from 'react-icons/fa'
 
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
 import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
-import { useAvailabilityBlock } from '@/hooks/availability'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
-import { EditMode, Intents, InviteType } from '@/types/Dashboard'
+import { Intents, InviteType } from '@/types/Dashboard'
 import { Group as GroupResponse } from '@/types/Group'
 import { getGroupExternal, listConnectedCalendars } from '@/utils/api_helper'
+import {
+  getActiveProSubscription,
+  isTrialEligible,
+} from '@/utils/subscription_manager'
 
 import GroupInvites, { GroupInvitesRef } from '../group/GroupInvites'
 import Groups, { GroupRef } from '../group/Groups'
@@ -44,12 +46,15 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const groupRef = useRef<GroupRef>(null)
   const groupInviteRef = useRef<GroupInvitesRef>(null)
 
-  const {
-    block: defaultAvailabilityBlock,
-    isLoading: isLoadingAvailabilityBlocks,
-  } = useAvailabilityBlock(currentAccount?.preferences?.availaibility_id)
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
+
+  const activeSubscription = getActiveProSubscription(currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+  const canCreateGroup = hasProAccess
 
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
+  const [isGroupsEmpty, setIsGroupsEmpty] = useState<boolean | null>(null)
   const router = useRouter()
   const { join, intent, groupId, email, type } = useRouter().query
   const {
@@ -101,13 +106,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setInviteDataIsLoading(false)
   }
 
-  const handleViewAvailabilityBlock = () => {
-    if (defaultAvailabilityBlock) {
-      router.push(
-        `/dashboard/availability?editBlock=${defaultAvailabilityBlock.id}`
-      )
-    }
+  const handleUpgradeClick = () => {
+    router.push('/dashboard/settings/subscriptions')
   }
+
   useEffect(() => {
     if (join) {
       void fetchGroup(join as string)
@@ -171,18 +173,31 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             value={debouncedValue}
             placeholder="Search for group"
           />
-          <Button
-            onClick={() => router.push('/dashboard/create-group')}
-            flexShrink={0}
-            colorScheme="primary"
+          <VStack
+            align="stretch"
+            w="100%"
             display={{ base: 'flex', md: 'none' }}
-            mt={{ base: 4, md: 0 }}
+            mt={4}
             mb={4}
-            leftIcon={<FaPlus />}
-            w={'100%'}
+            spacing={2}
+            minW={0}
           >
-            Create new group
-          </Button>
+            <Button
+              onClick={() => router.push('/dashboard/create-group')}
+              flexShrink={0}
+              colorScheme="primary"
+              leftIcon={<FaPlus />}
+              w={'100%'}
+              isDisabled={!canCreateGroup}
+              title={
+                !canCreateGroup
+                  ? 'Upgrade to Pro to create more groups'
+                  : undefined
+              }
+            >
+              Create new group
+            </Button>
+          </VStack>
           <TabList
             w={{ base: '100%', md: 'auto' }}
             bg="bg-surface-secondary"
@@ -230,60 +245,48 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               )}
             </Tab>
           </TabList>
-          <Button
-            onClick={() => router.push('/dashboard/create-group')}
-            flexShrink={0}
-            colorScheme="primary"
+          <VStack
+            align="flex-end"
             display={{ base: 'none', md: 'flex' }}
-            leftIcon={<FaPlus />}
+            spacing={2}
+            w="fit-content"
           >
-            Create new group
-          </Button>
+            <Button
+              onClick={() => router.push('/dashboard/create-group')}
+              flexShrink={0}
+              colorScheme="primary"
+              leftIcon={<FaPlus />}
+              isDisabled={!canCreateGroup}
+              title={
+                !canCreateGroup
+                  ? 'Upgrade to Pro to create more groups'
+                  : undefined
+              }
+            >
+              Create new group
+            </Button>
+          </VStack>
         </HStack>
 
-        {/* Availability Block Banner */}
-        {currentAccount?.preferences?.availaibility_id && (
-          <Box
-            bg="neutral.700"
-            borderRadius="8px"
-            px={3}
-            py={1}
-            mb={4}
-            width="max-content"
-          >
-            <Text color="white" fontSize="sm">
-              Availability block used for groups:{' '}
-              {isLoadingAvailabilityBlocks ? (
-                <Text as="span" fontWeight="700" color="primary.200">
-                  Loading...
-                </Text>
-              ) : defaultAvailabilityBlock ? (
-                <Text
-                  as="button"
-                  onClick={handleViewAvailabilityBlock}
-                  color="primary.200"
-                  fontWeight="700"
-                  cursor="pointer"
-                  textDecoration="underline"
-                  bg="transparent"
-                  border="none"
-                  p={0}
-                  m={0}
-                  fontSize="inherit"
-                  lineHeight="inherit"
-                  _hover={{
-                    color: 'primary.300',
-                  }}
-                >
-                  {defaultAvailabilityBlock.title}
-                </Text>
-              ) : (
-                <Text as="span" fontWeight="700" color="red.300">
-                  Not found
-                </Text>
-              )}
+        {/* Limit text when free user cannot create groups */}
+        {!canCreateGroup && currentAccount && isGroupsEmpty === false && (
+          <HStack mb={4}>
+            <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
+              Upgrade to create and schedule with groups.{' '}
+              <Button
+                variant="link"
+                colorScheme="primary"
+                px={0}
+                onClick={() => router.push('/dashboard/settings/subscriptions')}
+                textDecoration="underline"
+                fontSize="14px"
+                height="auto"
+                minW="auto"
+              >
+                {trialEligible ? 'Try PRO for free' : 'Go PRO'}
+              </Button>
             </Text>
-          </Box>
+          </HStack>
         )}
 
         <TabPanels p={0}>
@@ -292,6 +295,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               currentAccount={currentAccount}
               search={debouncedValue}
               ref={groupRef}
+              onEmptyStateChange={setIsGroupsEmpty}
+              canCreateGroup={canCreateGroup}
+              trialEligible={trialEligible}
+              onUpgradeClick={handleUpgradeClick}
             />
           </TabPanel>
           <TabPanel p={0}>

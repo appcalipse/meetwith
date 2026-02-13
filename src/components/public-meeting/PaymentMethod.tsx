@@ -18,24 +18,28 @@ interface IProps {
   icon: ComponentWithAs<'svg', IconProps>
   type: PaymentType
   disabled?: boolean
+  disabledText?: string | null
   onClick?: () => Promise<void>
 }
 
 const PaymentMethod: FC<IProps> = props => {
-  const { handleSelectPaymentMethod, setPaymentType } = useContext(
-    PublicScheduleContext
-  )
+  const scheduleCtx = useContext(PublicScheduleContext)
+  const handleSelectPaymentMethod = scheduleCtx?.handleSelectPaymentMethod
+  const setPaymentType = scheduleCtx?.setPaymentType
   const [loading, setLoading] = useState(false)
   const tagBg = useColorModeValue('neutral.100', '#2D3748')
   const handleSelect = async () => {
     setLoading(true)
-    if (props.onClick) {
-      setPaymentType(props.type)
-      await props.onClick()
-    } else {
-      await handleSelectPaymentMethod(props.type, props.step)
+    try {
+      if (props.onClick) {
+        setPaymentType?.(props.type)
+        await props.onClick()
+      } else if (handleSelectPaymentMethod) {
+        await handleSelectPaymentMethod(props.type, props.step)
+      }
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
   return (
     <VStack
@@ -55,8 +59,8 @@ const PaymentMethod: FC<IProps> = props => {
           props.step === PaymentStep.SELECT_CRYPTO_NETWORK
             ? 16
             : props.step === PaymentStep.HANDLE_SEND_INVOICE
-            ? '70px'
-            : 12
+              ? '70px'
+              : 12
         }
         mx="auto"
       />
@@ -73,7 +77,11 @@ const PaymentMethod: FC<IProps> = props => {
           isLoading={loading}
           isDisabled={props.disabled}
         >
-          {props.disabled ? 'Coming Soon' : props.name}
+          {props.disabled
+            ? props.disabledText !== undefined
+              ? props.disabledText || props.name
+              : 'Coming Soon'
+            : props.name}
         </Button>
       </VStack>
     </VStack>

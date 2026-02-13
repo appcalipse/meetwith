@@ -106,7 +106,7 @@ export const TokenGateConfig: React.FC<{ currentAccount: Account }> = ({
           {!isPro && (
             <Text>
               <Link
-                href="/dashboard/details#subscriptions"
+                href="/dashboard/settings/subscriptions"
                 colorScheme="primary"
                 fontWeight="bold"
               >
@@ -192,9 +192,9 @@ const GateConditionCard = (props: {
   onRemove: (gateId: string) => void
   onEdit: (gate: GateConditionObject) => void
 }) => {
-  const [images, setImages] = useState<string[]>([])
-  const [symbols, setSymbols] = useState<string[]>([])
-  const getImages = async (element: GateConditionObject) => {
+  const [_images, setImages] = useState<string[]>([])
+  const [_symbols, setSymbols] = useState<string[]>([])
+  const _getImages = async (element: GateConditionObject) => {
     const elements = element.definition.elements
     const images = []
     const symbols = []

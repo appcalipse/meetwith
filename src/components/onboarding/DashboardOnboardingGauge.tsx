@@ -16,6 +16,7 @@ import { FC, useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
 
 const DashboardOnboardingGauge: FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -65,17 +66,17 @@ const DashboardOnboardingGauge: FC = () => {
     {
       enabled: accountDetailsComplete,
       label: 'Add a display name',
-      link: '/dashboard/details',
+      link: `/dashboard/settings/${SettingsSection.DETAILS}`,
     },
     {
       enabled: calendarsConnected,
       label: 'Connect a calendar',
-      link: '/dashboard/calendars',
+      link: `/dashboard/settings/${SettingsSection.CONNECTED_CALENDARS}`,
     },
     {
       enabled: availabilitiesSet,
       label: 'Set availabilities',
-      link: '/dashboard/availability',
+      link: `/dashboard/${EditMode.AVAILABILITY}`,
     },
   ]
 

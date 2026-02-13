@@ -49,22 +49,21 @@ export const useCryptoBalances = ({
       .filter(tokenInfo => tokenInfo.contractAddress !== zeroAddress) // Exclude native tokens
       .filter(tokenInfo => tokenInfo.walletSupported) // Only include wallet-supported tokens
       .map(tokenInfo => ({
+        chain: selectedChain,
+        chainId: chainInfo.id,
         token: tokenInfo.token,
         tokenAddress: tokenInfo.contractAddress,
-        chainId: chainInfo.id,
-        chain: selectedChain,
       }))
   }, [chainInfo, selectedChain])
 
   // Fetch all balances in parallel using useQueries
   const balanceQueries = useQueries({
     queries: chainTokens.map(tokenInfo => ({
-      queryKey: [
-        'token-balance',
-        currentAccount?.address,
-        tokenInfo.tokenAddress,
-        tokenInfo.chainId,
-      ],
+      cacheTime: 0,
+      enabled:
+        !!currentAccount?.address &&
+        !!tokenInfo.tokenAddress &&
+        tokenInfo.chainId !== 0,
       queryFn: async () => {
         return getCryptoTokenBalance(
           currentAccount?.address || '',
@@ -72,13 +71,14 @@ export const useCryptoBalances = ({
           tokenInfo.chain
         )
       },
-      enabled:
-        !!currentAccount?.address &&
-        !!tokenInfo.tokenAddress &&
-        tokenInfo.chainId !== 0,
-      staleTime: 0,
-      cacheTime: 0,
+      queryKey: [
+        'token-balance',
+        currentAccount?.address,
+        tokenInfo.tokenAddress,
+        tokenInfo.chainId,
+      ],
       refetchInterval: 10000,
+      staleTime: 0,
     })),
   })
 
@@ -109,21 +109,21 @@ export const useCryptoBalances = ({
       const chainId = tokenInfo.chainId
 
       return {
-        name: configItem?.name || tokenInfo.token,
-        symbol: configItem?.symbol || tokenInfo.token,
-        icon: configItem?.icon || getTokenIcon(tokenInfo.token) || '',
-        price: configItem?.price || '0',
-        tokenAddress,
-        chainId,
         balance: balance
           ? `${balance.toLocaleString()} ${tokenInfo.token}`
           : `0 ${tokenInfo.token}`,
-        usdValue: balance ? `$${balance.toLocaleString()}` : '$0',
-        fullBalance: balance ? balance.toString() : '0',
+        chainId,
         currencyIcon: configItem?.icon || getTokenIcon(tokenInfo.token) || '',
-        networkName: chainInfo?.name || selectedChain,
-        isLoading: isLoading || isConfigLoading,
         error,
+        fullBalance: balance ? balance.toString() : '0',
+        icon: configItem?.icon || getTokenIcon(tokenInfo.token) || '',
+        isLoading: isLoading || isConfigLoading,
+        name: configItem?.name || tokenInfo.token,
+        networkName: chainInfo?.name || selectedChain,
+        price: configItem?.price || '0',
+        symbol: configItem?.symbol || tokenInfo.token,
+        tokenAddress,
+        usdValue: balance ? `$${balance.toLocaleString()}` : '$0',
       }
     })
   }, [
@@ -137,16 +137,19 @@ export const useCryptoBalances = ({
   ])
 
   return {
-    cryptoAssetsWithBalances,
     balances: {
-      ...chainTokens.reduce((acc, tokenInfo, index) => {
-        const balanceQuery = balanceQueries[index]
-        const key = `${tokenInfo.tokenAddress.toLowerCase()}${
-          chainInfo?.name?.replace(/\s+/g, '') || selectedChain
-        }Balance`
-        acc[key] = balanceQuery?.data || { balance: 0 }
-        return acc
-      }, {} as Record<string, { balance: number }>),
+      ...chainTokens.reduce(
+        (acc, tokenInfo, index) => {
+          const balanceQuery = balanceQueries[index]
+          const key = `${tokenInfo.tokenAddress.toLowerCase()}${
+            chainInfo?.name?.replace(/\s+/g, '') || selectedChain
+          }Balance`
+          acc[key] = balanceQuery?.data || { balance: 0 }
+          return acc
+        },
+        {} as Record<string, { balance: number }>
+      ),
     },
+    cryptoAssetsWithBalances,
   }
 }

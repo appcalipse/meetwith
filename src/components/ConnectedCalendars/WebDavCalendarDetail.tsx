@@ -9,13 +9,11 @@ import {
   Link,
   Text,
 } from '@chakra-ui/react'
-import { useRouter } from 'next/router'
 import { useContext, useState } from 'react'
 import { v4 } from 'uuid'
 
-import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
-import { EditMode } from '@/types/Dashboard'
+import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
   addOrUpdateICloud,
   addOrUpdateWebdav,
@@ -36,7 +34,7 @@ interface WebDavDetailsPanelProps {
   onSuccess: () => Promise<void>
   isQuickPoll?: boolean
   participantId?: string
-  pollData?: any
+  pollData?: QuickPollBySlugResponse
 }
 
 const APPLE_DISCLAIMER = (
@@ -161,7 +159,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
                 name:
                   typeof calendar.displayName === 'string'
                     ? calendar.displayName
-                    : calendar.ctag ?? v4(),
+                    : (calendar.ctag ?? v4()),
                 color: calendar.calendarColor && calendar.calendarColor._cdata,
               }
             }),
@@ -188,7 +186,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
                 name:
                   typeof calendar.displayName === 'string'
                     ? calendar.displayName
-                    : calendar.ctag ?? v4(),
+                    : (calendar.ctag ?? v4()),
                 color: calendar.calendarColor && calendar.calendarColor._cdata,
               }
             }),

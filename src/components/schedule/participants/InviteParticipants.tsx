@@ -12,20 +12,39 @@ import {
   ModalContent,
   ModalOverlay,
   Text,
-  VStack,
 } from '@chakra-ui/react'
+import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react'
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import PublicGroupLink from '@/components/group/PublicGroupLink'
-import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
-import { useParticipants } from '@/providers/schedule/ParticipantsContext'
+import useAccountContext from '@/hooks/useAccountContext'
+import {
+  IParticipantsContext,
+  ParticipantsContext,
+  useParticipants,
+} from '@/providers/schedule/ParticipantsContext'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { QuickPollParticipantType } from '@/types/QuickPoll'
-import { isGroupParticipant } from '@/types/schedule'
-import { addQuickPollParticipants } from '@/utils/api_helper'
+import {
+  QuickPollBulkAddParticipants,
+  QuickPollBySlugResponse,
+  QuickPollParticipantStatus,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
+import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
+import {
+  addQuickPollParticipantsBySlugAsGuest,
+  updateQuickPoll,
+} from '@/utils/api_helper'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
@@ -36,12 +55,25 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 import AddFromContact from './AddFromContact'
 import AddFromGroups from './AddFromGroups'
 import AllMeetingParticipants from './AllMeetingParticipants'
+import PollInviteSection from './PollInviteSection'
+
 interface IProps {
   isOpen: boolean
   onClose: () => void
   isQuickPoll?: boolean
-  pollData?: any
+  pollData?: QuickPollBySlugResponse
   onInviteSuccess?: () => void
+  participants: Array<ParticipantInfo | IGroupParticipant>
+  groupParticipants: Record<string, Array<string> | undefined>
+  groupAvailability: Record<string, Array<string> | undefined>
+
+  handleUpdateParticipants: (
+    participants: Array<ParticipantInfo | IGroupParticipant>
+  ) => void
+  handleUpdateGroups: (
+    groupAvailability: Record<string, Array<string> | undefined>,
+    groupParticipants: Record<string, Array<string> | undefined>
+  ) => void
 }
 
 const InviteParticipants: FC<IProps> = ({
@@ -50,62 +82,180 @@ const InviteParticipants: FC<IProps> = ({
   isQuickPoll,
   pollData,
   onInviteSuccess,
+  handleUpdateParticipants,
+  handleUpdateGroups,
+  participants: defaultParticipantsInfo,
+  groupParticipants: defaultGroupParticipants,
+  groupAvailability: defaultGroupAvailability,
 }) => {
+  const currentAccount = useAccountContext()
   const {
-    groups,
+    group,
+    setGroup,
     isGroupPrefetching,
-    setParticipants,
-    setGroupAvailability,
-    setGroupParticipants,
-    setStandAloneParticipants,
-    standAloneParticipants,
-    participants: contextParticipants,
-    groupParticipants: contextGroupParticipants,
+    setIsGroupPrefetching,
+    contacts,
+    isContactsPrefetching,
+    meetingMembers,
+    meetingOwners,
+    setMeetingMembers,
+    setMeetingOwners,
+    allAvailaibility,
+    allParticipants,
+    removeParticipant,
+    toggleAvailability,
+    groupMembersAvailabilities,
+    setGroupMembersAvailabilities,
   } = useParticipants()
+  const [standAloneParticipants, setStandAloneParticipants] = useState<
+    Array<ParticipantInfo>
+  >([])
+  const [inviteParticipants, setInviteParticipants] = useState<
+    Array<ParticipantInfo>
+  >([])
+  const [groupParticipants, setGroupParticipants] = useState<
+    Record<string, Array<string> | undefined>
+  >(defaultGroupParticipants)
+  const [participants, setParticipants] = useState<
+    Array<ParticipantInfo | IGroupParticipant>
+  >(defaultParticipantsInfo)
+  const [groupAvailability, setGroupAvailability] = useState<
+    Record<string, Array<string> | undefined>
+  >(defaultGroupAvailability)
   const groupId = useRouter().query.groupId as string | undefined
   const [isLoading, setIsLoading] = React.useState(false)
   const { showSuccessToast } = useToastHelpers()
 
   const [baselineIds, setBaselineIds] = useState<Set<string>>(new Set())
-  const toIdentifier = (p: ParticipantInfo) =>
-    (p.account_address || p.guest_email || '').toLowerCase()
+  const baselineInitializedRef = useRef(false)
+  const prevIsOpenRef = useRef(isOpen)
+  const prevInviteIdsRef = useRef<Set<string>>(new Set())
+  const toIdentifier = useCallback(
+    (p: ParticipantInfo | IGroupParticipant): string => {
+      if (isGroupParticipant(p)) {
+        return ''
+      }
+      return (p.account_address || p.guest_email || '').toLowerCase()
+    },
+    []
+  )
+
+  const addParticipantsAsGuestMutation = useMutation({
+    mutationFn: async (input: {
+      slug: string
+      participants: QuickPollBulkAddParticipants
+    }) => {
+      return await addQuickPollParticipantsBySlugAsGuest(
+        input.slug,
+        input.participants
+      )
+    },
+  })
 
   const combinedSelection = useMemo(() => {
+    if (isQuickPoll) {
+      const fromContacts = participants.filter(
+        (p): p is ParticipantInfo =>
+          !isGroupParticipant(p) && !!p.account_address
+      )
+      return [...fromContacts, ...inviteParticipants]
+    }
     const merged = getMergedParticipants(
-      contextParticipants ?? [],
-      groups,
-      contextGroupParticipants ?? {},
+      participants ?? [],
+      groupParticipants ?? {},
+      group,
       undefined
     )
-    const fromContext = merged.filter(p => !!p.account_address)
+    const fromContext = merged.filter(
+      (p): p is ParticipantInfo => !!p.account_address
+    )
     return [...fromContext, ...standAloneParticipants]
   }, [
-    contextParticipants,
-    groups,
-    contextGroupParticipants,
+    groupParticipants,
+    group,
     standAloneParticipants,
+    inviteParticipants,
+    participants,
+    isQuickPoll,
   ])
 
   const newInvitees = useMemo(() => {
     if (!baselineIds) return combinedSelection
-    return combinedSelection.filter(p => {
+    return combinedSelection.filter((p): p is ParticipantInfo => {
       const id = toIdentifier(p)
       return !!id && !baselineIds.has(id)
     })
-  }, [combinedSelection, baselineIds])
+  }, [combinedSelection, baselineIds, toIdentifier])
 
   useEffect(() => {
-    if (isOpen) {
+    const wasOpen = prevIsOpenRef.current
+
+    if (isOpen && !wasOpen) {
+      setParticipants(defaultParticipantsInfo)
+      setGroupParticipants(defaultGroupParticipants)
+      setGroupAvailability(defaultGroupAvailability)
+      setInviteParticipants([])
+      prevInviteIdsRef.current = new Set()
+
       const ids = new Set<string>()
-      combinedSelection.forEach(p => {
+      defaultParticipantsInfo.forEach(p => {
         const id = toIdentifier(p)
         if (id) ids.add(id)
       })
+
       setBaselineIds(ids)
-    } else {
-      setBaselineIds(new Set())
+      baselineInitializedRef.current = true
     }
-  }, [isOpen])
+    if (!isOpen && wasOpen) {
+      setBaselineIds(new Set())
+      baselineInitializedRef.current = false
+    }
+
+    prevIsOpenRef.current = isOpen
+  }, [
+    isOpen,
+    defaultParticipantsInfo,
+    defaultGroupParticipants,
+    defaultGroupAvailability,
+    toIdentifier,
+  ])
+
+  const addGroup = (group: IGroupParticipant) => {
+    setParticipants(prev => {
+      const groupAdded = prev.some(val => {
+        if (isGroupParticipant(val)) {
+          return val.isGroup && val.id === group.id
+        }
+        return false
+      })
+      if (groupAdded) {
+        return prev
+      }
+      return [...prev, group]
+    })
+  }
+
+  const removeGroup = (groupId: string) => {
+    setParticipants(prev =>
+      prev.filter(val => {
+        if (isGroupParticipant(val)) {
+          return val.id !== groupId
+        }
+        return true
+      })
+    )
+    setGroupAvailability(prev => {
+      const newGroupAvailability = { ...prev }
+      delete newGroupAvailability[groupId]
+      return newGroupAvailability
+    })
+
+    setGroupParticipants(prev => {
+      const newGroupParticipants = { ...prev }
+      delete newGroupParticipants[groupId]
+      return newGroupParticipants
+    })
+  }
 
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
@@ -114,16 +264,34 @@ const InviteParticipants: FC<IProps> = ({
         .filter((a): a is string => !!a)
 
       setParticipants(prevUsers => {
-        const groupParticipants = prevUsers?.filter(
-          user => isGroupParticipant(user) || user.isHidden
-        )
-        return [...groupParticipants, ..._participants]
+        // Preserve both group participants AND contact participants
+        const groupAndContactParticipants = prevUsers?.filter(user => {
+          if (isGroupParticipant(user) || user.isHidden) return true
+          // Check if this participant is from contacts
+          if (user.account_address) {
+            return Object.values(groupParticipants ?? {}).some(
+              addresses =>
+                addresses && addresses.includes(user.account_address!)
+            )
+          }
+          return false
+        })
+        return [...groupAndContactParticipants, ..._participants]
       })
       setStandAloneParticipants(prevUsers => {
-        const groupParticipants = prevUsers?.filter(
-          user => isGroupParticipant(user) || user.isHidden
-        )
-        return [...groupParticipants, ..._participants]
+        // Preserve both group participants AND contact participants
+        const groupAndContactParticipants = prevUsers?.filter(user => {
+          if (isGroupParticipant(user) || user.isHidden) return true
+          // Check if this participant is from contacts
+          if (user.account_address) {
+            return Object.values(groupParticipants ?? {}).some(
+              addresses =>
+                addresses && addresses.includes(user.account_address!)
+            )
+          }
+          return false
+        })
+        return [...groupAndContactParticipants, ..._participants]
       })
       React.startTransition(() => {
         if (addressesToAdd.length > 0) {
@@ -145,49 +313,89 @@ const InviteParticipants: FC<IProps> = ({
         }
       })
     },
-    [setParticipants, setGroupAvailability, setGroupParticipants]
+    [
+      setParticipants,
+      setGroupAvailability,
+      setGroupParticipants,
+      groupParticipants,
+    ]
   )
 
-  const handleQuickPollSendInvite = useCallback(async () => {
-    if (!pollData) return
+  const handleQuickPollSaveChanges = useCallback(async () => {
+    if (!pollData) {
+      hanleClose()
+      return
+    }
 
+    // For existing polls, add participants and send invites
     setIsLoading(true)
     try {
-      if (newInvitees.length === 0) {
+      const allToAdd = currentAccount
+        ? [
+            ...newInvitees.filter(
+              (p): p is ParticipantInfo => !!p.account_address
+            ),
+            ...inviteParticipants,
+          ]
+        : inviteParticipants
+
+      if (allToAdd.length === 0) {
         setIsLoading(false)
+        hanleClose()
         return
       }
 
-      const invitees = newInvitees.map(p => ({
+      const toAdd = allToAdd.map(p => ({
         account_address: p.account_address,
         guest_name: p.name,
         guest_email: p.guest_email || '',
         participant_type: QuickPollParticipantType.INVITEE,
+        status: p.account_address
+          ? QuickPollParticipantStatus.ACCEPTED
+          : QuickPollParticipantStatus.PENDING,
       }))
 
-      await addQuickPollParticipants(pollData.poll.id, invitees)
+      if (currentAccount) {
+        await updateQuickPoll(pollData.poll.id, {
+          participants: { toAdd },
+        })
+      } else {
+        await addParticipantsAsGuestMutation.mutateAsync({
+          slug: pollData.poll.slug,
+          participants: toAdd,
+        })
+      }
 
-      showSuccessToast(
-        'Invitations sent successfully',
-        `${invitees.length} participant${invitees.length > 1 ? 's' : ''} ${
-          invitees.length === 1 ? 'has' : 'have'
-        } been invited to the poll.`
-      )
+      showSuccessToast('invite(s) sent successfully', '')
 
+      setInviteParticipants([])
       onInviteSuccess?.()
-      onClose()
+      hanleClose()
     } catch (error) {
-      handleApiError('Failed to send invitations', error)
+      handleApiError('Failed to add participants', error)
     } finally {
       setIsLoading(false)
     }
   }, [
     pollData,
-    standAloneParticipants,
+    newInvitees,
+    inviteParticipants,
+    currentAccount,
     onInviteSuccess,
-    onClose,
     showSuccessToast,
   ])
+  const hanleClose = () => {
+    handleUpdateParticipants(participants)
+    handleUpdateGroups(groupAvailability, groupParticipants)
+    onClose()
+  }
+  const handleSaveChangesClick = useCallback(() => {
+    if (isQuickPoll) {
+      void handleQuickPollSaveChanges()
+    } else {
+      hanleClose()
+    }
+  }, [isQuickPoll, handleQuickPollSaveChanges, hanleClose])
   const renderParticipantItem = useCallback((p: ParticipantInfo) => {
     if (p.account_address) {
       return p.name || ellipsizeAddress(p.account_address)
@@ -199,79 +407,169 @@ const InviteParticipants: FC<IProps> = ({
       return p.guest_email!
     }
   }, [])
+
+  const onInviteParticipantsChange = useCallback(
+    (_participants: Array<ParticipantInfo>) => {
+      setInviteParticipants(_participants)
+
+      const newInviteIds = new Set(
+        _participants
+          .map(
+            p =>
+              p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+          )
+          .filter((id): id is string => !!id)
+      )
+
+      const removedIds = new Set(
+        [...prevInviteIdsRef.current].filter(id => !newInviteIds.has(id))
+      )
+
+      setParticipants(prev => {
+        const filtered = prev.filter(p => {
+          if (isGroupParticipant(p)) return true
+          const id =
+            p.account_address?.toLowerCase() ||
+            p.guest_email?.toLowerCase() ||
+            ''
+          return !removedIds.has(id)
+        })
+
+        const existingIds = new Set(
+          filtered
+            .filter((p): p is ParticipantInfo => !isGroupParticipant(p))
+            .map(
+              p =>
+                p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+            )
+            .filter((id): id is string => !!id)
+        )
+
+        const newParticipantsToAdd = _participants.filter(p => {
+          const id =
+            p.account_address?.toLowerCase() || p.guest_email?.toLowerCase()
+          return id && !existingIds.has(id)
+        })
+
+        return [...filtered, ...newParticipantsToAdd]
+      })
+
+      prevInviteIdsRef.current = newInviteIds
+    },
+    []
+  )
+  const context: IParticipantsContext = {
+    participants,
+    standAloneParticipants,
+    groupParticipants,
+    groupAvailability,
+    groupMembersAvailabilities,
+    meetingMembers,
+    meetingOwners,
+    group,
+    setGroup,
+    isGroupPrefetching,
+    setParticipants,
+    setGroupParticipants,
+    setGroupAvailability,
+    setGroupMembersAvailabilities,
+    setMeetingMembers,
+    setMeetingOwners,
+    setIsGroupPrefetching,
+    addGroup,
+    removeGroup,
+    contacts,
+    isContactsPrefetching,
+    setStandAloneParticipants,
+    allAvailaibility,
+    allParticipants,
+    removeParticipant,
+    toggleAvailability,
+  }
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
-      <ModalContent
-        maxWidth="500px"
-        width="500px"
-        borderWidth={1}
-        bg="bg-surface"
-        borderColor="border-default"
-        py={6}
-        shadow="none"
-      >
-        <ModalCloseButton />
-        <ModalBody>
-          <AllMeetingParticipants />
-          <Divider my={6} borderColor="neutral.400" />
-          <Heading fontSize="24px" pb={2} mb={4}>
-            Invite more participants
-          </Heading>
-          {isGroupPrefetching ? (
-            <VStack mb={6} w="100%" justifyContent="center">
-              <Loading />
-            </VStack>
-          ) : groups.length > 0 ? (
-            <AddFromGroups />
-          ) : (
-            <Text>No groups available. Please create a group first.</Text>
-          )}
-          <Divider my={6} borderColor="neutral.400" />
-          <AddFromContact />
-          <Divider my={6} borderColor="neutral.400" />
-          <FormControl w="100%" maxW="100%">
-            <FormLabel htmlFor="participants">
-              Invite participants by their ID (Cc)
-              <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
-            </FormLabel>
-            <Box w="100%" maxW="100%">
-              <ChipInput
-                currentItems={standAloneParticipants}
-                placeholder="Enter email, wallet address or ENS of user"
-                onChange={onParticipantsChange}
-                renderItem={renderParticipantItem}
+    <ParticipantsContext.Provider value={context}>
+      <Modal isOpen={isOpen} onClose={hanleClose} isCentered>
+        <ModalOverlay bg="#131A20CC" backdropFilter={'blur(25px)'} />
+        <ModalContent
+          maxWidth={{ base: '100%', md: '500px' }}
+          width={{ base: '100%', md: '500px' }}
+          borderWidth={1}
+          bg="bg-surface"
+          borderColor="border-default"
+          py={6}
+          shadow="none"
+          height={{ base: '100vh', md: 'auto' }}
+          minH={{ base: '100vh', md: 'auto' }}
+          maxH={{ base: '100vh', md: '95vh' }}
+          borderRadius={{ base: 0, md: 'md' }}
+          overflowY="scroll"
+        >
+          <ModalCloseButton />
+          <ModalBody>
+            <Heading fontSize="22px" pb={2} mb={4}>
+              Meeting participants
+            </Heading>
+            <AllMeetingParticipants />
+            {isQuickPoll ? (
+              <PollInviteSection
+                pollData={pollData}
+                inviteParticipants={inviteParticipants}
+                onInviteParticipantsChange={onInviteParticipantsChange}
+                onSendInvite={handleSaveChangesClick}
+                isLoading={isLoading}
+                isDisabled={
+                  isLoading ||
+                  (newInvitees.filter(
+                    (p): p is ParticipantInfo => !!p.account_address
+                  ).length === 0 &&
+                    inviteParticipants.length === 0)
+                }
+                onRequestSignIn={onClose}
               />
-            </Box>
-            <FormHelperText mt={1}>
-              <Text fontSize="12px" color="neutral.400">
-                Separate participants by comma. You will be added automatically,
-                no need to insert yourself
-              </Text>
-            </FormHelperText>
-          </FormControl>
-
-          {isQuickPoll && (
-            <Button
-              mt={6}
-              w="fit-content"
-              colorScheme="primary"
-              onClick={handleQuickPollSendInvite}
-              isLoading={isLoading}
-              isDisabled={isLoading || newInvitees.length === 0}
-            >
-              Send Invite & Add Participant(s)
-            </Button>
-          )}
-
-          {groupId && (
-            <Box mt={6}>
-              <PublicGroupLink groupId={groupId} />
-            </Box>
-          )}
-        </ModalBody>
-      </ModalContent>
-    </Modal>
+            ) : (
+              <>
+                <AddFromGroups />
+                <AddFromContact />
+                <Divider my={6} borderColor="neutral.400" />
+                <FormControl w="100%" maxW="100%">
+                  <FormLabel htmlFor="participants">
+                    Invite participants by their ID (Cc)
+                    <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
+                  </FormLabel>
+                  <Box w="100%" maxW="100%">
+                    <ChipInput
+                      currentItems={standAloneParticipants}
+                      placeholder="Enter email, wallet address or ENS of user"
+                      onChange={onParticipantsChange}
+                      renderItem={renderParticipantItem}
+                    />
+                  </Box>
+                  <FormHelperText mt={1}>
+                    <Text fontSize="12px" color="neutral.400">
+                      Separate participants by comma. You will be added
+                      automatically, no need to insert yourself
+                    </Text>
+                  </FormHelperText>
+                </FormControl>
+                <Button
+                  mt={6}
+                  w="fit-content"
+                  colorScheme="primary"
+                  onClick={handleSaveChangesClick}
+                >
+                  Save Changes
+                </Button>
+                {groupId && (
+                  <Box mt={6}>
+                    <PublicGroupLink groupId={groupId} />
+                  </Box>
+                )}
+              </>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+    </ParticipantsContext.Provider>
   )
 }
 

@@ -7,7 +7,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useCallback, useMemo } from 'react'
+import { FC, useCallback, useMemo } from 'react'
 
 import { Avatar } from '@/components/profile/components/Avatar'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
@@ -35,16 +35,16 @@ const ContactMemberItem: FC<IContactMemberItem> = props => {
     setGroupParticipants,
     participants,
     setParticipants,
-    groups,
+    group,
     groupParticipants,
   } = useParticipants()
   const participantAddressesSet = useMemo(() => {
     return new Set(
-      getMergedParticipants(participants, groups, groupParticipants)
+      getMergedParticipants(participants, groupParticipants, group)
         .map(user => user.account_address)
         .filter(Boolean)
     )
-  }, [participants, groups, groupParticipants])
+  }, [participants, group, groupParticipants])
 
   const isContactAlreadyAdded = useCallback(() => {
     return participantAddressesSet.has(props.address)
@@ -90,19 +90,25 @@ const ContactMemberItem: FC<IContactMemberItem> = props => {
       )
     )
 
-    setGroupParticipants(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: prev[NO_GROUP_KEY]?.filter(
-        address => address !== props.address
-      ),
-    }))
+    setGroupAvailability(prev => {
+      const updated = { ...prev }
+      Object.keys(updated).forEach(key => {
+        if (updated[key]?.includes(props.address)) {
+          updated[key] = updated[key].filter(val => val !== props.address)
+        }
+      })
+      return updated
+    })
 
-    setGroupAvailability(prev => ({
-      ...prev,
-      [NO_GROUP_KEY]: prev[NO_GROUP_KEY]?.filter(
-        address => address !== props.address
-      ),
-    }))
+    setGroupParticipants(prev => {
+      const updated = { ...prev }
+      Object.keys(updated).forEach(key => {
+        if (updated[key]?.includes(props.address)) {
+          updated[key] = updated[key].filter(val => val !== props.address)
+        }
+      })
+      return updated
+    })
   }
   const handleParticipantsChange = () => {
     if (isContactAlreadyAdded()) {

@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import { Address } from '@/types/Transactions'
 
 export default class QueryKeys {
@@ -5,7 +6,7 @@ export default class QueryKeys {
     return ['existingAccounts', addresses.sort(), fullInformation]
   }
 
-  static connectedCalendars(syncOnly?: boolean) {
+  static connectedCalendars(syncOnly = false): readonly unknown[] {
     return ['connectedCalendars', syncOnly]
   }
 
@@ -13,10 +14,17 @@ export default class QueryKeys {
     return ['meetingsByAccount', account]
   }
 
+  static calendarEvents(date?: DateTime) {
+    return [
+      'calendarEvents',
+      date?.startOf('month').startOf('week').toISODate() || '',
+      date?.endOf('month').endOf('week').toISODate() || '',
+    ].filter(Boolean)
+  }
+
   static meeting(slot_id?: string) {
     return ['meeting', slot_id]
   }
-
   static account(id?: string) {
     return ['account', id]
   }
@@ -63,5 +71,25 @@ export default class QueryKeys {
   }
   static supportedCountries() {
     return ['supportedCountries']
+  }
+  static groupFull(
+    limit?: number,
+    offset?: number,
+    search?: string,
+    includeInvites = true
+  ) {
+    return ['groupFull', limit, offset, search, includeInvites]
+  }
+  static contactFull(limit?: number, offset?: number, query?: string) {
+    return ['contactFull', limit, offset, query]
+  }
+  static contacts(accountAddress?: string, search?: string) {
+    return ['contacts', accountAddress, search]
+  }
+  static contactRequests(accountAddress?: string, search?: string) {
+    return ['contactRequests', accountAddress, search]
+  }
+  static upcomingMeetings(accountAddress?: string) {
+    return ['upcomingMeetings', accountAddress || '']
   }
 }

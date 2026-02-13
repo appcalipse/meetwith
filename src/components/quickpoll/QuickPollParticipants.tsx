@@ -5,14 +5,17 @@ import {
   Heading,
   HStack,
   Icon,
+  Link,
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { useCallback, useContext, useMemo, useState } from 'react'
+import { useRouter } from 'next/router'
+import { useCallback, useContext, useMemo, useState } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import {
   ParticipantInfo,
@@ -21,11 +24,13 @@ import {
 } from '@/types/ParticipantInfo'
 import {
   QuickPollBySlugResponse,
+  QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { queryClient } from '@/utils/react_query'
+import { getGuestPollDetails } from '@/utils/storage'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import InviteParticipants from '../schedule/participants/InviteParticipants'
@@ -38,9 +43,12 @@ interface QuickPollParticipantsProps {
   currentGuestEmail?: string
   onParticipantAdded?: () => void
   onParticipantRemoved?: (participantId: string) => void
+  onClose?: () => void
 }
 
-const convertQuickPollParticipant = (participant: any): ParticipantInfo => {
+const convertQuickPollParticipant = (
+  participant: QuickPollParticipant
+): ParticipantInfo => {
   return {
     account_address: participant.account_address,
     name: participant.account_name || participant.guest_name || '',
@@ -66,17 +74,22 @@ export function QuickPollParticipants({
   currentGuestEmail,
   onParticipantAdded,
   onParticipantRemoved,
+  onClose,
 }: QuickPollParticipantsProps) {
   const { currentAccount } = useContext(AccountContext)
+  const router = useRouter()
+
+  const { setCurrentParticipantId } = useQuickPollAvailability()
+
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const {
+    setParticipants,
     groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
     groupParticipants,
+    participants,
   } = useParticipants()
-
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
-  const { setParticipants } = useParticipants()
 
   const handleParticipantAdded = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
@@ -87,19 +100,40 @@ export function QuickPollParticipants({
   const handleOpenInviteModal = useCallback(() => {
     if (pollData?.poll?.participants) {
       const convertedParticipants = pollData.poll.participants.map(
-        convertQuickPollParticipant
+        participant => convertQuickPollParticipant(participant)
       )
       setParticipants(convertedParticipants)
     }
     setIsInviteModalOpen(true)
   }, [pollData, setParticipants])
 
+  const handleCloseInviteModal = useCallback(() => {
+    setIsInviteModalOpen(false)
+    onClose?.()
+  }, [onClose])
+  const inviteKey = useMemo(
+    () =>
+      `${Object.values(groupAvailability).flat().length}-${
+        Object.values(groupParticipants).flat().length
+      }-${participants.length}`,
+    [groupAvailability, groupParticipants, participants]
+  )
   const host = pollData?.poll.participants.find(
     p => p.participant_type === QuickPollParticipantType.SCHEDULER
   )
   const isHost =
     host?.account_address?.toLowerCase() ===
     currentAccount?.address?.toLowerCase()
+
+  // Check if guest has permission to add participants
+  const canAddParticipants = useMemo(() => {
+    if (isHost) return true
+    if (!pollData) return false
+    return (
+      pollData.poll.permissions?.includes(MeetingPermissions.INVITE_GUESTS) ||
+      false
+    )
+  }, [isHost, pollData])
 
   const groupKey = useMemo(() => {
     return pollData ? `quickpoll-${pollData.poll.id}` : ''
@@ -108,8 +142,8 @@ export function QuickPollParticipants({
   const meetingMembers = useMemo(() => {
     if (!pollData) return []
 
-    const allParticipants = pollData.poll.participants.map(
-      convertQuickPollParticipant
+    const allParticipants = pollData.poll.participants.map(participant =>
+      convertQuickPollParticipant(participant)
     )
 
     const currentGroupParticipants = groupParticipants[groupKey] || []
@@ -193,6 +227,10 @@ export function QuickPollParticipants({
   }
 
   const handleParticipantRemove = (participant: ParticipantInfo) => {
+    if (participant.type === ParticipantType.Scheduler) {
+      return
+    }
+
     if (pollData?.poll?.participants) {
       const match = pollData.poll.participants.find(p => {
         const id1 = (p.account_address || p.guest_email || '').toLowerCase()
@@ -237,6 +275,25 @@ export function QuickPollParticipants({
       }
     })
   }
+
+  const handleEditProfile = useCallback(() => {
+    if (!pollData?.poll?.id) return
+
+    // Get participant ID from localStorage for this poll
+    const guestDetails = getGuestPollDetails(pollData.poll.id)
+
+    if (guestDetails?.participantId) {
+      setCurrentParticipantId(guestDetails.participantId)
+      router.push({
+        pathname: router.pathname,
+        query: {
+          ...router.query,
+          tab: 'guest-details',
+          participantId: guestDetails.participantId,
+        },
+      })
+    }
+  }, [pollData?.poll?.id, router, setCurrentParticipantId])
 
   return (
     <VStack
@@ -338,9 +395,26 @@ export function QuickPollParticipants({
                       Organizer
                     </Text>
                   )}
+                  {/* Show Edit profile link for guests viewing their own profile */}
+                  {!participant.account_address &&
+                    participant.guest_email &&
+                    currentGuestEmail &&
+                    participant.guest_email.toLowerCase() ===
+                      currentGuestEmail.toLowerCase() && (
+                      <Link
+                        fontSize={{ base: 'xs', md: 'sm' }}
+                        color="primary.200"
+                        textDecoration="underline"
+                        cursor="pointer"
+                        onClick={handleEditProfile}
+                        _hover={{ color: 'primary.300' }}
+                      >
+                        Edit profile
+                      </Link>
+                    )}
                 </VStack>
               </HStack>
-              {isHost && (
+              {isHost && participant.type !== ParticipantType.Scheduler && (
                 <Icon
                   as={IoMdClose}
                   w={{ base: 4, md: 5 }}
@@ -356,9 +430,8 @@ export function QuickPollParticipants({
         })}
       </VStack>
 
-      {isHost && (
+      {canAddParticipants && (
         <Button
-          variant="outline"
           colorScheme="primary"
           w="100%"
           px={{ base: 3, md: 4 }}
@@ -371,10 +444,22 @@ export function QuickPollParticipants({
       )}
 
       <InviteParticipants
+        key={inviteKey}
         isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
+        onClose={handleCloseInviteModal}
         isQuickPoll={true}
         pollData={pollData}
+        groupAvailability={groupAvailability}
+        groupParticipants={groupParticipants}
+        participants={participants}
+        handleUpdateParticipants={setParticipants}
+        handleUpdateGroups={(
+          groupAvailability: Record<string, Array<string> | undefined>,
+          groupParticipants: Record<string, Array<string> | undefined>
+        ) => {
+          setGroupAvailability(groupAvailability)
+          setGroupParticipants(groupParticipants)
+        }}
         onInviteSuccess={() => {
           handleParticipantAdded()
           setIsInviteModalOpen(false)

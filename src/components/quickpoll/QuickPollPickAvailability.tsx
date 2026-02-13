@@ -1,35 +1,27 @@
-/* eslint-disable tailwindcss/no-custom-classname */
 import { InfoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
   Flex,
-  FormControl,
-  FormLabel,
   Grid,
   Heading,
   HStack,
   IconButton,
-  Select as ChakraSelect,
   SlideFade,
+  SystemStyleObject,
   Text,
   useBreakpointValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { useMutation } from '@tanstack/react-query'
 import { Select, SingleValue } from 'chakra-react-select'
-import { addDays, isSameMonth } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
-import React, { useEffect, useMemo, useState } from 'react'
-import {
-  FaArrowRight,
-  FaChevronLeft,
-  FaChevronRight,
-  FaShare,
-} from 'react-icons/fa'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
+import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
 import { MdShare } from 'react-icons/md'
 
@@ -38,6 +30,7 @@ import InfoTooltip from '@/components/profile/components/Tooltip'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useDebounceCallback } from '@/hooks/useDebounceCallback'
 import useSlotsWithAvailability from '@/hooks/useSlotsWithAvailability'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import {
   Page,
@@ -46,6 +39,7 @@ import {
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useParticipantPermissions } from '@/providers/schedule/PermissionsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
+import { Account } from '@/types/Account'
 import {
   QuickPollBySlugResponse,
   QuickPollIntent,
@@ -54,22 +48,43 @@ import {
 import {
   fetchBusySlotsRawForQuickPollParticipants,
   getExistingAccounts,
+  getSuggestedSlots,
 } from '@/utils/api_helper'
-import { durationToHumanReadable } from '@/utils/calendar_manager'
-import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import { customSelectComponents, Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import {
+  clampDateTimeToPollRange,
+  clampMonthRangeToPollRange,
+  clampSlotTimeToPollRange,
+  clipIntervalsToBounds,
+  computeBaseAvailability,
+  convertAvailabilityToSelectedSlots,
   createMockMeetingMembers,
-  generateQuickPollBestSlots,
+  extractOverrideIntervals,
+  filterSlotsToPollRange,
+  generateFullDayBlocks,
+  getDefaultMonthOptions,
+  getMonthOptionsForPollRange,
+  isDayInPollRange,
+  isPollRangeNextDisabled,
+  mergeLuxonIntervals,
+  parsePollMeetingDateRange,
   processPollParticipantAvailabilities,
+  subtractBusyTimesFromBlocks,
+  subtractRemovalIntervals,
 } from '@/utils/quickpoll_helper'
 import { getMergedParticipants } from '@/utils/schedule.helper'
-import { suggestBestSlots } from '@/utils/slots.helper'
+import { getEmptySlots } from '@/utils/slots.helper'
+import { saveQuickPollSignInContext } from '@/utils/storage'
 
+import { useAvailabilityTracker } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
+import { AccountAddressRecord } from '../schedule/schedule-time-discover/SchedulePickTime'
+import ChooseAvailabilityMethodModal from './ChooseAvailabilityMethodModal'
+import { QuickPollParticipationInstructions } from './QuickPollParticipationInstructions'
 
 export enum State {
   ALL_AVAILABLE,
@@ -85,7 +100,7 @@ export const getBgColor = (state: State) => {
     case State.MOST_AVAILABLE:
       return 'yellow.600'
     case State.SOME_AVAILABLE:
-      return '#2F89F8'
+      return 'blue.400'
     case State.NONE_AVAILABLE:
       return 'text-primary'
   }
@@ -119,6 +134,7 @@ interface QuickPollPickAvailabilityProps {
   openParticipantModal: () => void
   pollData?: QuickPollBySlugResponse
   onSaveAvailability?: () => void
+  onCancelEditing?: () => void
   onSharePoll?: () => void
   onImportCalendar?: () => void
   isEditingAvailability?: boolean
@@ -130,13 +146,13 @@ export function QuickPollPickAvailability({
   openParticipantModal,
   pollData,
   onSaveAvailability,
+  onCancelEditing,
   onSharePoll,
-  onImportCalendar,
   isEditingAvailability,
   isSavingAvailability,
   isRefreshingAvailabilities,
 }: QuickPollPickAvailabilityProps) {
-  const router = useRouter()
+  const _router = useRouter()
   const {
     timezone,
     setTimezone,
@@ -146,12 +162,13 @@ export function QuickPollPickAvailability({
     pickedTime,
     duration,
     setDuration,
-    isScheduling,
   } = useScheduleState()
-  const { canEditMeetingDetails, isUpdatingMeeting } =
-    useParticipantPermissions()
+  const { isUpdatingMeeting } = useParticipantPermissions()
   const currentAccount = useAccountContext()
-  const { currentGuestEmail } = useQuickPollAvailability()
+  const { currentGuestEmail, currentParticipantId } = useQuickPollAvailability()
+  const { loadSlots } = useAvailabilityTracker()
+  const { openConnection } = useContext(OnboardingModalContext)
+  const [showMethodModal, setShowMethodModal] = useState(false)
 
   const isHost = useMemo(() => {
     if (!pollData || !currentAccount) return false
@@ -163,15 +180,107 @@ export function QuickPollPickAvailability({
     )
   }, [pollData, currentAccount])
 
+  const canScheduleFromPoll = useMemo(() => {
+    if (!pollData?.poll) return false
+    return (
+      isHost ||
+      (pollData.poll.permissions?.includes(
+        MeetingPermissions.SCHEDULE_MEETING
+      ) ??
+        false)
+    )
+  }, [pollData?.poll, isHost])
+
+  // Get current participant
+  const currentParticipant = useMemo(() => {
+    if (!pollData) return null
+    if (currentAccount) {
+      return pollData.poll.participants.find(
+        p =>
+          p.account_address?.toLowerCase() ===
+          currentAccount.address.toLowerCase()
+      )
+    }
+    if (currentGuestEmail) {
+      return pollData.poll.participants.find(
+        p =>
+          p.guest_email?.toLowerCase() === currentGuestEmail.toLowerCase() ||
+          p.id === currentParticipantId
+      )
+    }
+    if (currentParticipantId) {
+      return pollData.poll.participants.find(p => p.id === currentParticipantId)
+    }
+    return null
+  }, [pollData, currentAccount, currentGuestEmail, currentParticipantId])
+
+  // Check if user has any availability
+  const hasAvailability = useMemo(() => {
+    if (!currentParticipant) return false
+
+    // Check if they have manual availability slots
+    const hasManualAvailability =
+      currentParticipant.available_slots &&
+      currentParticipant.available_slots.length > 0
+
+    // Check if account owner has default availability blocks
+    const hasDefaultAvailability =
+      currentAccount &&
+      currentAccount.preferences?.availabilities &&
+      currentAccount.preferences.availabilities.length > 0
+
+    return hasManualAvailability || hasDefaultAvailability
+  }, [currentParticipant, currentAccount?.preferences?.availabilities])
+
   const { currentIntent } = useQuickPollAvailability()
   const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
   const isEditAvailabilityIntent =
     currentIntent === QuickPollIntent.EDIT_AVAILABILITY ||
     (!currentIntent && !isSchedulingIntent)
 
-  const [suggestedTimes, setSuggestedTimes] = useState<Interval<true>[]>([])
+  const {
+    groupAvailability,
+    setGroupAvailability,
+    setGroupParticipants,
+    meetingMembers,
+    setMeetingMembers,
+    participants,
+    group,
+    allAvailaibility,
+  } = useParticipants()
+
+  const addresses = useMemo(
+    () =>
+      allAvailaibility
+        .filter((val): val is AccountAddressRecord => !!val.account_address)
+        .map(val => val.account_address)
+        .sort(),
+    [allAvailaibility]
+  )
+  const { mutateAsync: fetchBestSlot, isLoading: isBestSlotLoading } =
+    useMutation({
+      mutationKey: ['busySlots', addresses.join(','), duration],
+      mutationFn: ({
+        endDate,
+        startDate,
+      }: {
+        startDate: Date
+        endDate: Date
+      }) => getSuggestedSlots(addresses, startDate, endDate, duration),
+      onError: () =>
+        toast({
+          title: 'Error fetching suggested slots',
+          description: `There was an error fetching suggested slots`,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        }),
+    })
+
   const toast = useToast()
   const [isBreakpointResolved, setIsBreakpointResolved] = useState(false)
+  const [hasLoadedInitialSlots, setHasLoadedInitialSlots] = useState(false)
   const SLOT_LENGTH =
     useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) ?? 3
 
@@ -196,16 +305,6 @@ export function QuickPollPickAvailability({
     return () => clearTimeout(timer)
   }, [])
 
-  const {
-    groupAvailability,
-    setGroupAvailability,
-    groupParticipants,
-    setGroupParticipants,
-    meetingMembers,
-    setMeetingMembers,
-    participants,
-    groups,
-  } = useParticipants()
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
 
   useEffect(() => {
@@ -263,47 +362,128 @@ export function QuickPollPickAvailability({
     return Array.from(participantsSet)
   }, [pollData, groupAvailability])
 
-  const getEmptySlots = (
-    time: Date,
-    scheduleDuration = duration
-  ): Array<Interval<true>> => {
-    const slots: Array<Interval<true>> = []
-    const slotsPerHour = 60 / (scheduleDuration || 30)
-    const totalSlots = 24 * slotsPerHour
+  // Only days/slots within meeting date range are shown and selectable
+  const pollDateRange = useMemo(() => {
+    if (!pollData?.poll?.starts_at || !pollData?.poll?.ends_at) return null
+    return parsePollMeetingDateRange(
+      pollData.poll.starts_at,
+      pollData.poll.ends_at,
+      timezone
+    )
+  }, [pollData?.poll?.starts_at, pollData?.poll?.ends_at, timezone])
 
-    for (let i = 0; i < totalSlots; i++) {
-      const minutesFromStart = i * (scheduleDuration || 30)
-      const start = DateTime.fromJSDate(time)
-        .setZone(timezone)
-        .startOf('day')
-        .plus({ minutes: minutesFromStart })
-      const slot = Interval.after(start, { minute: scheduleDuration || 30 })
-      if (slot.isValid) slots.push(slot)
-    }
-    return slots
-  }
+  const pollStart = pollDateRange?.pollStart ?? null
+  const pollEnd = pollDateRange?.pollEnd ?? null
 
   const months = useMemo(() => {
-    const monthsArray = []
-    let currentDateInTimezone = DateTime.now().setZone(timezone)
-    while (monthsArray.length < 12) {
-      monthsArray.push({
-        value: String(currentDateInTimezone.month),
-        label: currentDateInTimezone.toFormat('MMMM yyyy'),
-      })
-      currentDateInTimezone = currentDateInTimezone.plus({ months: 1 })
+    if (pollStart && pollEnd)
+      return getMonthOptionsForPollRange(pollStart, pollEnd)
+    return getDefaultMonthOptions(timezone, 12)
+  }, [pollStart, pollEnd, timezone])
+
+  // Keep currentSelectedDate within poll range and sync month dropdown when pollData exists
+  useEffect(() => {
+    if (!pollStart || !pollEnd) return
+    const current = currentSelectedDate.setZone(timezone).startOf('day')
+    const clamped = clampDateTimeToPollRange(current, pollStart, pollEnd)
+    if (!clamped.equals(current)) {
+      setCurrentSelectedDate(clamped)
     }
-    return monthsArray
-  }, [currentSelectedDate.getFullYear(), timezone])
+    if (months.length > 0) {
+      const label = clamped.toFormat('MMMM yyyy')
+      const option = months.find(m => m.label === label)
+      if (option) setMonthValue(option)
+    }
+  }, [
+    pollStart,
+    pollEnd,
+    timezone,
+    setCurrentSelectedDate,
+    currentSelectedDate,
+    months,
+  ])
 
   const [dates, setDates] = useState<Array<Dates>>([])
+
+  // Get current user identifier
+  const currentUserIdentifier = useMemo(() => {
+    if (currentAccount) {
+      return currentAccount.address.toLowerCase()
+    }
+    if (currentGuestEmail) {
+      return currentGuestEmail.toLowerCase()
+    }
+    if (currentParticipant) {
+      return (
+        currentParticipant.account_address?.toLowerCase() ||
+        currentParticipant.guest_email?.toLowerCase() ||
+        ''
+      )
+    }
+    return ''
+  }, [currentAccount, currentGuestEmail, currentParticipant])
+
+  // When editing availability, show only current user's slots
+  const effectiveBusySlots = busySlots
+  const effectiveAvailableSlots = useMemo(() => {
+    if (!isEditingAvailability || !currentUserIdentifier) {
+      return availableSlots
+    }
+
+    if (!hasAvailability) {
+      return availableSlots
+    }
+    // Filter to show only current user's availability
+    const userSlots = availableSlots.get(currentUserIdentifier)
+    const filteredMap = new Map<string, Interval<true>[]>()
+    if (userSlots && userSlots.length > 0) {
+      filteredMap.set(currentUserIdentifier, userSlots)
+    }
+    return filteredMap
+  }, [
+    isEditingAvailability,
+    availableSlots,
+    currentUserIdentifier,
+    hasAvailability,
+  ])
+  const effectiveMeetingMembers = useMemo(() => {
+    if (!isEditingAvailability || !hasAvailability) {
+      return meetingMembers
+    }
+    return []
+  }, [isEditingAvailability, meetingMembers, hasAvailability])
+  const effectiveAvailabilityAddresses = useMemo(() => {
+    if (!isEditingAvailability) {
+      return availabilityAddresses
+    }
+
+    if (!hasAvailability) {
+      return availabilityAddresses
+    }
+    // When editing, only show current user's availability
+    if (
+      currentUserIdentifier &&
+      availabilityAddresses.includes(currentUserIdentifier)
+    ) {
+      return [currentUserIdentifier]
+    }
+    return []
+  }, [
+    isEditingAvailability,
+    availabilityAddresses,
+    currentUserIdentifier,
+    hasAvailability,
+  ])
   const datesSlotsWithAvailability = useSlotsWithAvailability(
     dates,
-    busySlots,
-    availableSlots,
-    meetingMembers,
-    availabilityAddresses,
-    timezone
+    effectiveBusySlots,
+    effectiveAvailableSlots,
+    effectiveMeetingMembers,
+    effectiveAvailabilityAddresses,
+    timezone,
+    undefined,
+    undefined,
+    true
   )
 
   const [monthValue, setMonthValue] = useState<
@@ -320,14 +500,18 @@ export function QuickPollPickAvailability({
     const month = newValue as SingleValue<{ label: string; value: string }>
     setMonthValue(month)
     if (!month?.value) return
-    if (!newMonth) {
-      const year = month.label.split(' ')[1]
-      setCurrentSelectedDate(
-        DateTime.now()
-          .set({ month: Number(month.value), day: 1, year: Number(year) })
-          .toJSDate()
-      )
+    const year = month.label.split(' ')[1]
+    const firstOfMonth = DateTime.now()
+      .set({ month: Number(month.value), day: 1, year: Number(year) })
+      .setZone(timezone)
+      .startOf('day')
+    let target = newMonth
+      ? DateTime.fromJSDate(newMonth).setZone(timezone).startOf('day')
+      : firstOfMonth
+    if (pollStart && pollEnd) {
+      target = clampDateTimeToPollRange(target, pollStart, pollEnd)
     }
+    setCurrentSelectedDate(target)
   }
 
   const _onChangeDuration = (newValue: unknown) => {
@@ -347,6 +531,19 @@ export function QuickPollPickAvailability({
     []
   )
 
+  const selectChakraStyles = {
+    container: (provided: SystemStyleObject) => ({
+      ...provided,
+      borderColor: 'input-border',
+      bg: 'select-bg',
+    }),
+  }
+
+  const getAvailabilityButtonText = () => {
+    if (isEditingAvailability) return 'Save availability'
+    return hasAvailability ? 'Edit availability' : 'Add Availability'
+  }
+
   const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
     tzOptions.filter(val => val.value === timezone)[0] || tzOptions[0]
   )
@@ -363,26 +560,21 @@ export function QuickPollPickAvailability({
   }
 
   const getDates = (scheduleDuration = duration) => {
+    const monthStart = currentSelectedDate.setZone(timezone).startOf('month')
     const days = Array.from({ length: SLOT_LENGTH }, (v, k) => k)
-      .map(k => addDays(currentSelectedDate, k))
-      .filter(val =>
-        isSameMonth(
-          val,
-          DateTime.fromJSDate(currentSelectedDate)
-            .setZone(timezone)
-            .startOf('month')
-            .toJSDate()
-        )
-      )
-    return days.map(date => {
-      const slots = getEmptySlots(date, scheduleDuration)
-      date = DateTime.fromJSDate(date)
-        .setZone(timezone)
-        .startOf('day')
-        .toJSDate()
-
+      .map(k => currentSelectedDate.plus({ days: k }))
+      .filter(val => monthStart.hasSame(val, 'month'))
+    const filteredDays =
+      pollStart && pollEnd
+        ? days.filter(d => isDayInPollRange(d, pollStart, pollEnd, timezone))
+        : days
+    return filteredDays.map(date => {
+      let slots = getEmptySlots(date, scheduleDuration, timezone)
+      if (pollStart && pollEnd) {
+        slots = filterSlotsToPollRange(slots, pollStart, pollEnd)
+      }
       return {
-        date,
+        date: date.setZone(timezone).startOf('day').toJSDate(),
         slots,
       }
     })
@@ -394,50 +586,284 @@ export function QuickPollPickAvailability({
     try {
       setAvailableSlots(new Map())
       setBusySlots(new Map())
-      const monthStart = DateTime.fromJSDate(currentSelectedDate)
+      const rawMonthStart = currentSelectedDate
         .setZone(timezone)
         .startOf('month')
-        .toJSDate()
-      const monthEnd = DateTime.fromJSDate(currentSelectedDate)
-        .setZone(timezone)
-        .endOf('month')
-        .toJSDate()
+      const rawMonthEnd = currentSelectedDate.setZone(timezone).endOf('month')
+      const { monthStart, monthEnd } =
+        pollStart && pollEnd
+          ? clampMonthRangeToPollRange(
+              rawMonthStart,
+              rawMonthEnd,
+              pollStart,
+              pollEnd
+            )
+          : { monthStart: rawMonthStart, monthEnd: rawMonthEnd }
+      const monthStartDate = monthStart.toJSDate()
+      const monthEndDate = monthEnd.toJSDate()
 
       if (pollData) {
         const filteredGroupAvailability = Object.fromEntries(
           Object.entries(groupAvailability).filter(([_, v]) => v !== undefined)
         ) as Record<string, string[]>
 
-        const availableSlotsMap = processPollParticipantAvailabilities(
+        const manualAvailabilityMap = processPollParticipantAvailabilities(
           pollData,
           filteredGroupAvailability,
-          monthStart,
-          monthEnd,
+          monthStartDate,
+          monthEndDate,
           timezone,
           currentAccount,
           isHost,
           currentGuestEmail
         )
+
+        manualAvailabilityMap.forEach((intervals, identifier) => {
+          manualAvailabilityMap.set(identifier, mergeLuxonIntervals(intervals))
+        })
+
+        const participantMeta = new Map<string, { hasAccount: boolean }>()
+        pollData.poll.participants.forEach(participant => {
+          const identifier = (
+            participant.account_address || participant.guest_email
+          )?.toLowerCase()
+          if (!identifier) return
+          participantMeta.set(identifier, {
+            hasAccount: !!participant.account_address,
+          })
+        })
+
+        const accountAddresses = deduplicateArray(
+          pollData.poll.participants
+            .map(participant => participant.account_address?.toLowerCase())
+            .filter(Boolean) as string[]
+        )
+
+        const defaultAvailabilityMap = new Map<string, Interval[]>()
+        let quickPollAccountDetails: Account[] = []
+
+        if (accountAddresses.length > 0) {
+          quickPollAccountDetails = await getExistingAccounts(accountAddresses)
+
+          quickPollAccountDetails.forEach(account => {
+            const identifier = account.address?.toLowerCase()
+            if (!identifier) return
+
+            const defaultAvailability = mergeLuxonIntervals(
+              parseMonthAvailabilitiesToDate(
+                account.preferences?.availabilities || [],
+                monthStartDate,
+                monthEndDate,
+                account.preferences?.timezone || timezone
+              )
+            )
+
+            if (defaultAvailability.length > 0) {
+              defaultAvailabilityMap.set(identifier, defaultAvailability)
+            }
+          })
+        }
+
+        const visibleParticipants = Array.from(
+          new Set(Object.values(filteredGroupAvailability).flat())
+        )
+        const visibleParticipantsData = pollData.poll.participants.filter(p => {
+          const identifier = (p.account_address || p.guest_email)?.toLowerCase()
+          return identifier && visibleParticipants.includes(identifier)
+        })
+
+        const quickPollParticipants = visibleParticipantsData.map(p => ({
+          account_address: p.account_address,
+          participant_id: p.id,
+        }))
+
+        const syntheticToRealIdMap = new Map<string, string>()
+        visibleParticipantsData.forEach(p => {
+          const realIdentifier = (
+            p.account_address || p.guest_email
+          )?.toLowerCase()
+          if (!realIdentifier) return
+          if (p.account_address) {
+            syntheticToRealIdMap.set(
+              p.account_address.toLowerCase(),
+              realIdentifier
+            )
+          } else if (p.id) {
+            syntheticToRealIdMap.set(`quickpoll_${p.id}`, realIdentifier)
+          }
+        })
+
+        const busySlotsRaw = await fetchBusySlotsRawForQuickPollParticipants(
+          quickPollParticipants,
+          monthStartDate,
+          monthEndDate
+        )
+
+        const busySlotsMap: Map<string, Interval[]> = new Map()
+        busySlotsRaw.forEach(busySlot => {
+          const syntheticId = busySlot.account_address?.toLowerCase()
+          if (!syntheticId) return
+          const realIdentifier = syntheticToRealIdMap.get(syntheticId)
+          if (!realIdentifier) return
+
+          const interval = Interval.fromDateTimes(
+            new Date(busySlot.start),
+            new Date(busySlot.end)
+          )
+          if (interval.isValid) {
+            const existing = busySlotsMap.get(realIdentifier) || []
+            busySlotsMap.set(realIdentifier, [...existing, interval])
+          }
+        })
+
+        const allIdentifiers = new Set<string>()
+        manualAvailabilityMap.forEach((_, identifier) =>
+          allIdentifiers.add(identifier)
+        )
+        defaultAvailabilityMap.forEach((_, identifier) =>
+          allIdentifiers.add(identifier)
+        )
+        busySlotsMap.forEach((_, identifier) => allIdentifiers.add(identifier))
+        visibleParticipants.forEach(identifier =>
+          allIdentifiers.add(identifier.toLowerCase())
+        )
+
+        const finalAvailabilityMap = new Map<string, Interval[]>()
+
+        allIdentifiers.forEach(identifier => {
+          if (!identifier) return
+
+          const manualAvailability = manualAvailabilityMap.get(identifier) || []
+          const defaultAvailability =
+            defaultAvailabilityMap.get(identifier) || []
+          const busyTimes = busySlotsMap.get(identifier) || []
+          const hasBusyEntry = busySlotsMap.has(identifier)
+          const hasAccount =
+            participantMeta.get(identifier)?.hasAccount ??
+            defaultAvailability.length > 0
+
+          // Extract overrides from participant's available_slots
+          const participant = pollData.poll.participants.find(
+            p =>
+              p.account_address?.toLowerCase() === identifier ||
+              p.guest_email?.toLowerCase() === identifier
+          )
+          const overrides = participant
+            ? extractOverrideIntervals(
+                participant,
+                monthStartDate,
+                monthEndDate,
+                timezone
+              )
+            : { additions: [], removals: [] }
+
+          let manualToInclude = manualAvailability
+          if (hasAccount && defaultAvailability.length > 0) {
+            manualToInclude = clipIntervalsToBounds(
+              manualAvailability,
+              defaultAvailability
+            )
+          }
+
+          let calendarBase: Interval[] = []
+          if (hasBusyEntry) {
+            if (hasAccount) {
+              if (defaultAvailability.length > 0) {
+                calendarBase = defaultAvailability
+              } else if (manualAvailability.length > 0) {
+                calendarBase = manualAvailability
+              } else {
+                calendarBase = generateFullDayBlocks(
+                  monthStartDate,
+                  monthEndDate,
+                  timezone
+                )
+              }
+            } else {
+              calendarBase = generateFullDayBlocks(
+                monthStartDate,
+                monthEndDate,
+                timezone
+              )
+            }
+          } else if (hasAccount && defaultAvailability.length > 0) {
+            calendarBase = defaultAvailability
+          }
+
+          let calendarFree: Interval[] = []
+          if (hasBusyEntry && calendarBase.length > 0) {
+            if (busyTimes.length > 0) {
+              calendarFree = subtractBusyTimesFromBlocks(
+                calendarBase,
+                busyTimes
+              )
+            } else {
+              calendarFree = calendarBase
+            }
+          } else if (
+            !hasBusyEntry &&
+            hasAccount &&
+            defaultAvailability.length > 0
+          ) {
+            calendarFree = defaultAvailability
+          }
+
+          // Use computeBaseAvailability to get base (excludes existing removals)
+          const baseAvailability = participant
+            ? computeBaseAvailability(
+                participant,
+                manualAvailability,
+                defaultAvailability,
+                busyTimes,
+                monthStartDate,
+                monthEndDate,
+                timezone
+              )
+            : mergeLuxonIntervals([...manualToInclude, ...calendarFree])
+
+          // Start with base availability
+          let combined = baseAvailability
+
+          // Apply overrides: add additions (even if busy), remove removals (even if free)
+          if (overrides.additions.length > 0) {
+            combined = mergeLuxonIntervals([
+              ...combined,
+              ...overrides.additions,
+            ])
+
+            const currentBusySlots = busySlotsMap.get(identifier) || []
+            const updatedBusySlots = subtractRemovalIntervals(
+              currentBusySlots,
+              overrides.additions
+            )
+            busySlotsMap.set(identifier, updatedBusySlots)
+          }
+
+          if (overrides.removals.length > 0) {
+            combined = mergeLuxonIntervals(
+              subtractRemovalIntervals(combined, overrides.removals)
+            )
+          }
+
+          finalAvailabilityMap.set(identifier, combined)
+        })
+
+        const freeSlotsMap: Map<string, Interval[]> = new Map()
+        finalAvailabilityMap.forEach((availabilities, identifier) => {
+          freeSlotsMap.set(identifier, mergeLuxonIntervals(availabilities))
+        })
 
         const mockMeetingMembers = createMockMeetingMembers(
           pollData,
           currentAccount,
           isHost,
-          currentGuestEmail
+          currentGuestEmail,
+          quickPollAccountDetails
         )
 
-        const suggestedSlots = generateQuickPollBestSlots(
-          monthStart,
-          monthEnd,
-          duration,
-          timezone,
-          availableSlotsMap
-        )
-
-        setAvailableSlots(availableSlotsMap)
-        setBusySlots(new Map())
+        setAvailableSlots(freeSlotsMap)
+        setBusySlots(busySlotsMap)
         setDates(getDates(duration))
-        setSuggestedTimes(suggestedSlots)
         setMeetingMembers(mockMeetingMembers)
         setIsLoading(false)
         return
@@ -446,28 +872,16 @@ export function QuickPollPickAvailability({
       const accounts = deduplicateArray(Object.values(groupAvailability).flat())
       const allParticipants = getMergedParticipants(
         participants,
-        groups,
         groupAvailability,
-        undefined
+        group
       )
 
       const quickPollParticipants = allParticipants
-        .map(val => {
-          if (pollData && val.guest_email) {
-            const pollParticipant = (pollData as any).poll.participants.find(
-              (p: any) =>
-                p.guest_email?.toLowerCase() === val.guest_email?.toLowerCase()
-            )
-            return {
-              participant_id: pollParticipant?.id,
-              account_address: undefined,
-            }
-          }
-          return {
-            account_address: val.account_address,
-            participant_id: undefined,
-          }
-        })
+        .filter(p => p.account_address)
+        .map(p => ({
+          account_address: p.account_address,
+          participant_id: undefined,
+        }))
         .concat([
           {
             account_address: currentAccount?.address,
@@ -478,8 +892,8 @@ export function QuickPollPickAvailability({
       const [busySlots, meetingMembers] = await Promise.all([
         fetchBusySlotsRawForQuickPollParticipants(
           quickPollParticipants,
-          monthStart,
-          monthEnd
+          monthStartDate,
+          monthEndDate
         ).then(busySlots =>
           busySlots.map(busySlot => ({
             account_address: busySlot.account_address,
@@ -508,8 +922,8 @@ export function QuickPollPickAvailability({
         if (!memberAccount.address) continue
         const availabilities = parseMonthAvailabilitiesToDate(
           memberAccount?.preferences?.availabilities || [],
-          monthStart,
-          monthEnd,
+          monthStartDate,
+          monthEndDate,
           memberAccount?.preferences?.timezone || 'UTC'
         )
         availableSlotsMap.set(
@@ -527,20 +941,11 @@ export function QuickPollPickAvailability({
           busySlots
         )
       }
-      const suggestedSlots = suggestBestSlots(
-        monthStart,
-        duration,
-        monthEnd,
-        timezone,
-        busySlots.map(slot => slot.interval).filter(slot => slot.isValid),
-        meetingMembers
-      )
 
       setBusySlots(busySlotsMap)
       setMeetingMembers(meetingMembers)
       setAvailableSlots(availableSlotsMap)
       setDates(getDates(duration))
-      setSuggestedTimes(suggestedSlots)
     } catch (error: unknown) {
       handleApiError('Error merging availabilities', error)
     } finally {
@@ -555,12 +960,13 @@ export function QuickPollPickAvailability({
     debouncedHandleSlotLoad()
   }, [
     groupAvailability,
-    currentSelectedDate.getMonth(),
+    currentSelectedDate.month,
     duration,
     inviteModalOpen,
     isBreakpointResolved,
     pollData,
     isRefreshingAvailabilities,
+    currentParticipant,
   ])
 
   useEffect(() => {
@@ -571,10 +977,56 @@ export function QuickPollPickAvailability({
     setDates(getDates())
   }, [currentSelectedDate, timezone, SLOT_LENGTH])
 
+  // This ensures that when editing starts again, slots are reloaded from the latest availability
+  useEffect(() => {
+    if (!isEditingAvailability) {
+      setHasLoadedInitialSlots(false)
+    }
+  }, [isEditingAvailability])
+
+  // Pre-select existing slots when editing starts
+  useEffect(() => {
+    if (
+      !isEditingAvailability ||
+      !currentUserIdentifier ||
+      hasLoadedInitialSlots ||
+      !loadSlots ||
+      dates.length === 0
+    ) {
+      return
+    }
+
+    // Get user's existing availability slots
+    const userSlots = effectiveAvailableSlots.get(currentUserIdentifier)
+    if (!userSlots || userSlots.length === 0) {
+      setHasLoadedInitialSlots(true)
+      return
+    }
+
+    // Convert availability intervals to duration-sized slots that match rendered slots
+    const allRenderedSlots = dates.flatMap(dateData => dateData.slots)
+    const uniqueSlots = convertAvailabilityToSelectedSlots(
+      userSlots,
+      allRenderedSlots
+    )
+
+    // Load slots into the tracker
+    if (uniqueSlots.length > 0 && typeof loadSlots === 'function') {
+      loadSlots(uniqueSlots)
+    }
+    setHasLoadedInitialSlots(true)
+  }, [
+    isEditingAvailability,
+    currentUserIdentifier,
+    effectiveAvailableSlots,
+    loadSlots,
+    hasLoadedInitialSlots,
+    dates,
+    duration,
+  ])
+
   const handleScheduledTimeBack = () => {
-    const currentDate = DateTime.fromJSDate(currentSelectedDate)
-      .setZone(timezone)
-      .startOf('day')
+    const currentDate = currentSelectedDate.setZone(timezone).startOf('day')
     let newDate = currentDate.minus({ days: SLOT_LENGTH })
     const differenceInDays = currentDate
       .diff(currentDate.startOf('month'), 'days')
@@ -582,8 +1034,10 @@ export function QuickPollPickAvailability({
     if (differenceInDays && differenceInDays < SLOT_LENGTH) {
       newDate = currentDate.startOf('month')
     }
+    if (pollStart && pollEnd) {
+      newDate = clampDateTimeToPollRange(newDate, pollStart, pollEnd)
+    }
     if (!newDate.hasSame(currentDate, 'month')) {
-      newDate = newDate.endOf('month').startOf('week')
       _onChangeMonth(
         {
           label: `${newDate.toFormat('MMMM yyyy')}`,
@@ -592,16 +1046,16 @@ export function QuickPollPickAvailability({
         newDate.toJSDate()
       )
     }
-    setCurrentSelectedDate(newDate.toJSDate())
+    setCurrentSelectedDate(newDate)
   }
 
   const handleScheduledTimeNext = () => {
-    const currentDate = DateTime.fromJSDate(currentSelectedDate)
-      .setZone(timezone)
-      .startOf('day')
+    const currentDate = currentSelectedDate.setZone(timezone).startOf('day')
     let newDate = currentDate.plus({ days: SLOT_LENGTH })
+    if (pollStart && pollEnd) {
+      newDate = clampDateTimeToPollRange(newDate, pollStart, pollEnd)
+    }
     if (!newDate.hasSame(currentDate, 'month')) {
-      newDate = newDate.startOf('month')
       _onChangeMonth(
         {
           label: `${newDate.toFormat('MMMM yyyy')}`,
@@ -610,12 +1064,11 @@ export function QuickPollPickAvailability({
         newDate.toJSDate()
       )
     }
-
-    setCurrentSelectedDate(newDate.toJSDate())
+    setCurrentSelectedDate(newDate)
   }
 
   const HOURS_SLOTS = useMemo(() => {
-    const slots = getEmptySlots(new Date(), duration >= 45 ? duration : 60)
+    const slots = getEmptySlots(DateTime.now(), duration >= 45 ? duration : 60)
     return slots.map(val => {
       const zonedTime = val.start.setZone(timezone)
       return zonedTime.toFormat(zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a')
@@ -623,55 +1076,96 @@ export function QuickPollPickAvailability({
   }, [duration, timezone])
 
   const isBackDisabled = useMemo(() => {
-    const selectedDate =
-      DateTime.fromJSDate(currentSelectedDate).setZone(timezone)
-    const currentDate = DateTime.now().setZone(timezone)
+    const selectedDate = currentSelectedDate.setZone(timezone).startOf('day')
+    const currentDate = DateTime.now().setZone(timezone).startOf('day')
+    if (pollStart && selectedDate <= pollStart) return true
     return selectedDate < currentDate || isLoading
-  }, [currentSelectedDate, timezone, isLoading])
+  }, [currentSelectedDate, timezone, isLoading, pollStart])
 
-  const durationOptions = useMemo(
+  const isNextDisabled = useMemo(
     () =>
-      DEFAULT_GROUP_SCHEDULING_DURATION.map(type => ({
-        value: type.duration,
-        label: durationToHumanReadable(type.duration),
-      })),
-    []
+      isPollRangeNextDisabled(
+        currentSelectedDate,
+        timezone,
+        SLOT_LENGTH,
+        pollEnd
+      ),
+    [currentSelectedDate, timezone, pollEnd, SLOT_LENGTH]
   )
 
-  const handleJumpToBestSlot = () => {
+  const handleJumpToBestSlot = async () => {
+    const rangeStart = pollStart
+      ? pollStart.toJSDate()
+      : currentSelectedDate.toJSDate()
+    const rangeEnd = pollEnd
+      ? pollEnd.toJSDate()
+      : currentSelectedDate.plus({ months: 1 }).toJSDate()
+    const suggestedTimes = await fetchBestSlot({
+      startDate: rangeStart,
+      endDate: rangeEnd,
+    })
     if (suggestedTimes.length === 0) {
       toast({
-        title: 'No suggested slots available',
+        title: 'No Matching Times',
         description:
-          'There are no available time slots that fit all participants schedules in the selected month. Please try changing the month or duration.',
-        status: 'warning',
+          'No slots in the poll date range work for all participants. Choose a time from the calendar grid that works best.',
+        status: 'info',
         duration: 5000,
         isClosable: true,
-        position: 'top',
       })
       return
     }
-    const bestSlot = suggestedTimes[0]
-    setPickedTime(bestSlot.start.toJSDate())
-
-    if (pollData) {
-      setPickedTime(bestSlot.start.toJSDate())
-      handlePageSwitch(Page.SCHEDULE_DETAILS)
-    } else {
-      handlePageSwitch(Page.SCHEDULE_DETAILS)
+    let bestSlotStart = DateTime.fromJSDate(new Date(suggestedTimes[0].start))
+    if (pollStart && pollEnd) {
+      bestSlotStart = clampSlotTimeToPollRange(
+        bestSlotStart,
+        pollStart,
+        pollEnd
+      )
     }
-  }
+    const bestSlotStartDate = bestSlotStart.toJSDate()
+    setPickedTime(bestSlotStartDate)
+    setCurrentSelectedDate(bestSlotStart.setZone(timezone).startOf('day'))
 
+    handlePageSwitch(Page.SCHEDULE_DETAILS)
+  }
   const handleTimeSelection = (time: Date) => {
     React.startTransition(() => {
       setPickedTime(time)
     })
 
-    if (isHost && isSchedulingIntent) {
+    if (canScheduleFromPoll && isSchedulingIntent) {
       if (pollData) {
         handlePageSwitch(Page.SCHEDULE_DETAILS)
       }
     }
+  }
+
+  const handleAvailabilityButtonClick = () => {
+    if (currentAccount || isEditingAvailability) {
+      onSaveAvailability?.()
+    } else {
+      setShowMethodModal(true)
+    }
+  }
+
+  const handleSelectManual = () => {
+    setShowMethodModal(false)
+    onSaveAvailability?.()
+  }
+
+  const handleSelectImport = () => {
+    setShowMethodModal(false)
+    if (!pollData?.poll) return
+
+    saveQuickPollSignInContext({
+      pollSlug: pollData.poll.slug,
+      pollId: pollData.poll.id,
+      pollTitle: pollData.poll.title,
+      returnUrl: window.location.href,
+    })
+
+    openConnection(`/poll/${pollData.poll.slug}`)
   }
 
   return (
@@ -691,13 +1185,7 @@ export function QuickPollPickAvailability({
               className="noLeftBorder timezone-select"
               options={tzOptions}
               components={customSelectComponents}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  borderColor: 'input-border',
-                  bg: 'select-bg',
-                }),
-              }}
+              chakraStyles={selectChakraStyles}
             />
           </VStack>
 
@@ -710,13 +1198,7 @@ export function QuickPollPickAvailability({
               className="noLeftBorder timezone-select"
               options={months}
               components={customSelectComponents}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  borderColor: 'input-border',
-                  bg: 'select-bg',
-                }),
-              }}
+              chakraStyles={selectChakraStyles}
             />
           </VStack>
         </VStack>
@@ -732,23 +1214,45 @@ export function QuickPollPickAvailability({
           display={{ base: 'none', md: 'flex' }}
         >
           {onSaveAvailability && isEditAvailabilityIntent && (
-            <Button
-              colorScheme="primary"
-              onClick={onSaveAvailability}
-              px="16px"
-              py="8px"
-              fontSize="16px"
-              fontWeight="700"
-              borderRadius="8px"
-              width="230px"
-              isLoading={isSavingAvailability}
-              loadingText="Saving..."
-              isDisabled={isSavingAvailability}
-            >
-              {isEditingAvailability
-                ? 'Save availability'
-                : 'Edit availability'}
-            </Button>
+            <HStack spacing={3}>
+              <ChooseAvailabilityMethodModal
+                isOpen={showMethodModal}
+                onClose={() => setShowMethodModal(false)}
+                onSelectManual={handleSelectManual}
+                onSelectImport={handleSelectImport}
+              >
+                <Button
+                  colorScheme="primary"
+                  onClick={handleAvailabilityButtonClick}
+                  px="16px"
+                  py="8px"
+                  fontSize="16px"
+                  fontWeight="700"
+                  borderRadius="8px"
+                  width="230px"
+                  isLoading={isSavingAvailability}
+                  loadingText="Saving..."
+                  isDisabled={isSavingAvailability}
+                >
+                  {getAvailabilityButtonText()}
+                </Button>
+              </ChooseAvailabilityMethodModal>
+              {isEditingAvailability && onCancelEditing && (
+                <Button
+                  variant="outline"
+                  colorScheme="primary"
+                  px="16px"
+                  py="8px"
+                  fontSize="16px"
+                  fontWeight="700"
+                  borderRadius="8px"
+                  onClick={onCancelEditing}
+                  isDisabled={isSavingAvailability}
+                >
+                  Cancel
+                </Button>
+              )}
+            </HStack>
           )}
           <VStack gap={2} alignItems={'flex-start'} minW={'max-content'}>
             <HStack width="fit-content" gap={0}>
@@ -762,13 +1266,7 @@ export function QuickPollPickAvailability({
               className="noLeftBorder timezone-select"
               options={tzOptions}
               components={customSelectComponents}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  borderColor: 'input-border',
-                  bg: 'select-bg',
-                }),
-              }}
+              chakraStyles={selectChakraStyles}
             />
           </VStack>
           <VStack
@@ -786,13 +1284,7 @@ export function QuickPollPickAvailability({
               className="noLeftBorder timezone-select"
               options={months}
               components={customSelectComponents}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  borderColor: 'input-border',
-                  bg: 'select-bg',
-                }),
-              }}
+              chakraStyles={selectChakraStyles}
             />
           </VStack>
 
@@ -863,37 +1355,46 @@ export function QuickPollPickAvailability({
         {/* Mobile Action Buttons */}
         <VStack gap={3} w="100%" display={{ base: 'flex', md: 'none' }}>
           {onSaveAvailability && (
-            <Button
-              colorScheme="primary"
-              size="md"
-              w="100%"
-              py={3}
-              fontSize="16px"
-              fontWeight="600"
-              borderRadius="8px"
-              onClick={onSaveAvailability}
-              isLoading={isSavingAvailability}
-              loadingText="Saving..."
-              isDisabled={isSavingAvailability}
-            >
-              {isEditingAvailability
-                ? 'Save availability'
-                : 'Edit availability'}
-            </Button>
-          )}
-          {onImportCalendar && !isSchedulingIntent && (
-            <Button
-              variant="outline"
-              colorScheme="primary"
-              onClick={onImportCalendar}
-              w="100%"
-              py={3}
-              fontSize="16px"
-              fontWeight="600"
-              borderRadius="8px"
-            >
-              Import from calendar
-            </Button>
+            <>
+              <ChooseAvailabilityMethodModal
+                isOpen={showMethodModal}
+                onClose={() => setShowMethodModal(false)}
+                onSelectManual={handleSelectManual}
+                onSelectImport={handleSelectImport}
+              >
+                <Button
+                  colorScheme="primary"
+                  size="md"
+                  w="100%"
+                  py={3}
+                  fontSize="16px"
+                  fontWeight="600"
+                  borderRadius="8px"
+                  onClick={handleAvailabilityButtonClick}
+                  isLoading={isSavingAvailability}
+                  loadingText="Saving..."
+                  isDisabled={isSavingAvailability}
+                >
+                  {getAvailabilityButtonText()}
+                </Button>
+              </ChooseAvailabilityMethodModal>
+              {isEditingAvailability && onCancelEditing && (
+                <Button
+                  variant="outline"
+                  colorScheme="primary"
+                  size="md"
+                  w="100%"
+                  py={3}
+                  fontSize="16px"
+                  fontWeight="600"
+                  borderRadius="8px"
+                  onClick={onCancelEditing}
+                  isDisabled={isSavingAvailability}
+                >
+                  Cancel
+                </Button>
+              )}
+            </>
           )}
           {onSharePoll && (
             <Button
@@ -916,24 +1417,25 @@ export function QuickPollPickAvailability({
         <VStack
           gap={4}
           w="100%"
-          alignItems="flex-start"
+          alignItems="center"
           display={{ base: 'flex', md: 'none' }}
         >
-          <VStack align="flex-start" gap={2} w="100%">
+          <VStack align="center" gap={2} w="100%" textAlign="center">
             <Heading fontSize="16px" fontWeight={700} color="text-primary">
-              Availabilities Provided by Participants
+              Select all the time slots that work for you
             </Heading>
             <Text fontSize="14px" color="text-primary">
-              All time slots shown below are the available times between you and
-              those who are interested in the event.
+              Click on each cell to mark when you&apos;re available, so the host
+              can easily find the best time for everyone.
             </Text>
           </VStack>
 
-          {isHost && isSchedulingIntent && (
+          {canScheduleFromPoll && isSchedulingIntent && (
             <Button
               colorScheme="primary"
               onClick={handleJumpToBestSlot}
               w="100%"
+              isLoading={isBestSlotLoading}
               py={3}
               fontSize="16px"
               fontWeight="600"
@@ -943,6 +1445,8 @@ export function QuickPollPickAvailability({
             </Button>
           )}
         </VStack>
+
+        <QuickPollParticipationInstructions />
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
           <VStack
@@ -1039,6 +1543,7 @@ export function QuickPollPickAvailability({
                 aria-label={'right-icon'}
                 icon={<FaChevronRight />}
                 onClick={handleScheduledTimeNext}
+                isDisabled={isNextDisabled}
                 size="sm"
                 bg="bg-surface-tertiary"
                 _hover={{ bg: 'bg-surface-tertiary' }}
@@ -1048,7 +1553,7 @@ export function QuickPollPickAvailability({
             {/* Desktop Date Navigation */}
             <HStack
               w="100%"
-              justify={'space-between'}
+              justify="flex-start"
               position="relative"
               display={{ base: 'none', md: 'flex' }}
             >
@@ -1060,21 +1565,12 @@ export function QuickPollPickAvailability({
                   isDisabled={isBackDisabled}
                   gap={0}
                 />
-                {onImportCalendar && !isSchedulingIntent && (
-                  <Button
-                    variant="outline"
-                    colorScheme="primary"
-                    onClick={onImportCalendar}
-                    display={{ lg: 'block', base: 'none' }}
-                  >
-                    Import from calendar
-                  </Button>
-                )}
-                {isHost && isSchedulingIntent && (
+                {canScheduleFromPoll && isSchedulingIntent && (
                   <Button
                     colorScheme="primary"
                     onClick={handleJumpToBestSlot}
                     display={{ lg: 'block', base: 'none' }}
+                    isLoading={isBestSlotLoading}
                   >
                     Jump to Best Slot
                   </Button>
@@ -1083,6 +1579,9 @@ export function QuickPollPickAvailability({
 
               <Box
                 maxW="400px"
+                position="absolute"
+                left="50%"
+                transform="translateX(-50%)"
                 textAlign="center"
                 display={{ lg: 'block', base: 'none' }}
               >
@@ -1095,9 +1594,7 @@ export function QuickPollPickAvailability({
                 </Text>
               </Box>
 
-              <HStack spacing={4}>{/* Placeholder for alignment */}</HStack>
-
-              <HStack gap={0}>
+              <HStack gap={0} ml="auto">
                 <Grid
                   gridTemplateColumns={'1fr 1fr'}
                   justifyContent={'space-between'}
@@ -1169,6 +1666,7 @@ export function QuickPollPickAvailability({
                 aria-label={'left-icon'}
                 icon={<FaChevronRight />}
                 onClick={handleScheduledTimeNext}
+                isDisabled={isNextDisabled}
                 position="sticky"
                 top={28}
                 bg="bg-surface-secondary"

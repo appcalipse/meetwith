@@ -21,38 +21,43 @@ const Schedule: NextPage<ScheduleProps> = ({ currentUrl, ...rest }) => {
   return <PublicPage {...rest} url={currentUrl} />
 }
 
-const EnhancedSchedule = forceAuthenticationCheck(Schedule)
+const EnhancedSchedule: NextPage<ScheduleProps> =
+  forceAuthenticationCheck<ScheduleProps>(Schedule)
 
-EnhancedSchedule.getInitialProps = async ctx => {
+EnhancedSchedule.getInitialProps = async (ctx): Promise<ScheduleProps> => {
   const address = ctx.query.address
   const serverSide = Boolean(ctx.res)
 
   if (!address || !address[0]) {
-    return redirectTo('/404', 302, ctx)
+    return redirectTo('/404', 302, ctx) as Promise<ScheduleProps>
   }
 
   if (isValidEVMAddress(address[0])) {
     const newLocation = `/address/${address[0]}`
-    return redirectTo(newLocation, 302, ctx)
+    return redirectTo(newLocation, 302, ctx) as Promise<ScheduleProps>
   }
 
   try {
     const account = await getAccount(address[0])
 
     if (account.is_invited || !isProAccount(account)) {
-      return redirectTo('/404', 302, ctx)
+      return redirectTo('/404', 302, ctx) as Promise<ScheduleProps>
     }
 
     const host = ctx.req?.headers.host
     const currentUrl = host && ctx.asPath ? host + ctx.asPath : ''
 
-    return { currentUrl, account, serverSideRender: serverSide }
+    return {
+      currentUrl,
+      account,
+      serverSideRender: serverSide,
+    }
   } catch (e) {
     if (!(e instanceof AccountNotFoundError)) {
       Sentry.captureException(e)
     }
 
-    return redirectTo('/404', 302, ctx)
+    return redirectTo('/404', 302, ctx) as Promise<ScheduleProps>
   }
 }
 

@@ -1,6 +1,11 @@
+import { Client, GraphError } from '@microsoft/microsoft-graph-client'
+import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials'
 import * as Sentry from '@sentry/nextjs'
-import { format } from 'date-fns'
-
+import format from 'date-fns/format'
+import { instance } from 'gaxios'
+import { DateTime } from 'luxon'
+import { RRule, rrulestr, Weekday, WeekdayStr } from 'rrule'
+import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
@@ -9,63 +14,48 @@ import {
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { MeetingCreationSyncRequest } from '@/types/Requests'
-
-import { noNoReplyEmailForAccount } from '../calendar_manager'
-import { appUrl, NO_REPLY_EMAIL } from '../constants'
+import {
+  Attendee,
+  DaysOfWeek,
+  EventBusyDate,
+  MicrosoftGraphCalendar,
+  MicrosoftGraphEvent,
+  RecurrencePattern,
+  RecurrenceRange,
+  RecurrenceRangeType,
+} from '@/types/Office365'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
+import {
+  DeleteInstanceRequest,
+  MeetingCancelSyncRequest,
+  MeetingCreationSyncRequest,
+  MeetingInstanceCreationSyncRequest,
+} from '@/types/Requests'
+import { appUrl } from '../constants'
+import { NO_MEETING_TYPE } from '../constants/meeting-types'
 import {
   getOfficeEventMappingId,
+  getOwnerPublicUrlServer,
   insertOfficeEventMapping,
   updateCalendarPayload,
 } from '../database'
+import { extractUrlFromText, isAccountSchedulerOrOwner } from '../generic_utils'
+import { getCalendarPrimaryEmail } from '../sync_helper'
+import { isValidEmail, isValidUrl } from '../validations'
 import { CalendarServiceHelper } from './calendar.helper'
-import { CalendarService } from './calendar.service.types'
+import { IOffcie365CalendarService } from './calendar.service.types'
+import { Office365EventMapper } from './office.mapper'
+import {
+  O365AuthCredentials,
+  RefreshTokenCredential,
+} from './office365.credential'
 
-export type BufferedBusyTime = {
-  start: string
-  end: string
-}
-
-export type BatchResponse = {
-  responses: SubResponse[]
-}
-
-export type SubResponse = {
-  body: { value: { start: { dateTime: string }; end: { dateTime: string } }[] }
-}
-
-interface TokenResponse {
-  access_token: string
-  expires_in: number
-}
-
-export function handleErrorsResponse(
-  response: Response,
-  skipResponseProcess?: boolean
-) {
-  if (!response.ok) {
-    response.json().then(console.error)
-    throw Error(response.statusText)
-  }
-  if (skipResponseProcess) {
-    return
-  }
-  return response.json()
-}
-
-export type EventBusyDate = Record<'start' | 'end', Date | string>
-
-export type O365AuthCredentials = {
-  expiry_date: number
-  access_token: string
-  refresh_token: string
-}
-
-export default class Office365CalendarService
-  implements CalendarService<TimeSlotSource.OFFICE>
-{
-  private auth: { getToken: () => Promise<string> }
+export class Office365CalendarService implements IOffcie365CalendarService {
+  private graphClient: Client
   private email: string
 
   constructor(
@@ -73,93 +63,60 @@ export default class Office365CalendarService
     email: string,
     credential: O365AuthCredentials | string
   ) {
-    this.auth = this.o365Auth(
-      address,
-      email,
+    const cred =
       typeof credential === 'string' ? JSON.parse(credential) : credential
+
+    const tokenCredential = new RefreshTokenCredential(
+      cred,
+      process.env.MS_GRAPH_CLIENT_ID!,
+      process.env.MS_GRAPH_CLIENT_SECRET!,
+      async (token, expiry) => {
+        await updateCalendarPayload(address, email, TimeSlotSource.OFFICE, {
+          ...cred,
+          access_token: token,
+          expiry_date: expiry,
+        })
+      }
     )
+
+    const authProvider = new TokenCredentialAuthenticationProvider(
+      tokenCredential,
+      {
+        scopes: ['https://graph.microsoft.com/.default'],
+      }
+    )
+
+    this.graphClient = Client.initWithMiddleware({
+      authProvider,
+    })
     this.email = email
   }
 
   getConnectedEmail = () => this.email
 
-  private o365Auth = (
-    address: string,
-    email: string,
-    credential: O365AuthCredentials
-  ) => {
-    const isExpired = (expiryDate: number) =>
-      // Giving 1 minute safety renewal for token to renew
-      expiryDate < Math.round((new Date().getTime() - 1000 * 60) / 1000)
+  async refreshConnection(): Promise<CalendarSyncInfo[]> {
+    const response = await this.graphClient.api('/me/calendars').get()
 
-    const [client_secret, client_id] = [
-      process.env.MS_GRAPH_CLIENT_SECRET!,
-      process.env.MS_GRAPH_CLIENT_ID!,
-    ]
+    const calendars: MicrosoftGraphCalendar[] = response.value
 
-    const refreshAccessToken = (refreshToken: string) => {
-      return fetch(
-        'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            scope: 'User.Read Calendars.Read Calendars.ReadWrite',
-            client_id,
-            refresh_token: refreshToken,
-            grant_type: 'refresh_token',
-            client_secret,
-          }),
-        }
-      )
-        .then(handleErrorsResponse)
-        .then((responseBody: TokenResponse) => {
-          credential.access_token = responseBody.access_token
-          credential.expiry_date = Math.round(
-            new Date().getTime() / 1000 + responseBody.expires_in
-          )
-          return updateCalendarPayload(
-            address,
-            email,
-            TimeSlotSource.OFFICE,
-            credential
-          ).then(() => {
-            return credential.access_token
-          })
-        })
-    }
-
-    return {
-      getToken: () =>
-        !isExpired(credential.expiry_date)
-          ? Promise.resolve(credential.access_token)
-          : refreshAccessToken(credential.refresh_token),
-    }
+    return calendars.map(calendar => ({
+      calendarId: calendar.id!,
+      color: calendar.hexColor,
+      enabled: calendar.isDefaultCalendar ?? false,
+      isReadOnly: calendar.canEdit === false,
+      name: calendar.name!,
+      sync: false,
+    }))
   }
 
-  async refreshConnection(): Promise<CalendarSyncInfo[]> {
-    const accessToken = await this.auth.getToken()
-
-    const calendarsResponse = await fetch(
-      'https://graph.microsoft.com/v1.0/me/calendars',
-      {
-        headers: { Authorization: 'Bearer ' + accessToken },
-      }
-    )
-
-    const calendars = await calendarsResponse.json()
-
-    const mapped = calendars.value.map((c: any) => {
-      return {
-        calendarId: c.id,
-        name: c.name,
-        sync: false,
-        enabled: c.isDefaultCalendar,
-        color: c.hexColor,
-      }
-    })
-
-    return mapped
+  async getEvent(
+    eventId: string,
+    calendarId: string
+  ): Promise<MicrosoftGraphEvent> {
+    const event: MicrosoftGraphEvent = await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${eventId}`)
+      .get()
+    return event
   }
 
   /**
@@ -173,34 +130,31 @@ export default class Office365CalendarService
     owner: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    calendarId: string
-  ): Promise<NewCalendarEventType> {
+    calendarId: string,
+    useParticipants?: boolean
+  ): Promise<MicrosoftGraphEvent & Partial<NewCalendarEventType>> {
     try {
-      const accessToken = await this.auth.getToken()
+      const body: MicrosoftGraphEvent = await this.translateEvent(
+        owner,
+        meetingDetails,
+        meetingDetails.meeting_id,
+        meeting_creation_time,
+        useParticipants
+      )
 
-      const body = JSON.stringify(
-        this.translateEvent(
-          owner,
-          meetingDetails,
-          meetingDetails.meeting_id,
-          meeting_creation_time
+      const event: MicrosoftGraphEvent = await this.graphClient
+        .api(`/me/calendars/${calendarId}/events`)
+        .header(
+          'Prefer',
+          'outlook.send-meeting-invitations="sendToAllAndSaveCopy"'
         )
-      )
+        .post(JSON.stringify(body))
 
-      const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: 'Bearer ' + accessToken,
-            'Content-Type': 'application/json',
-          },
-          body,
-        }
-      )
-
-      const event = await handleErrorsResponse(response)
-      await insertOfficeEventMapping(event.id, meetingDetails.meeting_id)
+      if (event.id)
+        await insertOfficeEventMapping(
+          event.id,
+          meetingDetails.ical_uid || meetingDetails.meeting_id
+        )
 
       return event
     } catch (error) {
@@ -211,14 +165,17 @@ export default class Office365CalendarService
 
   async updateEvent(
     owner: string,
-    meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
     calendarId: string
-  ): Promise<NewCalendarEventType> {
+  ): Promise<MicrosoftGraphEvent> {
     try {
-      const accessToken = await this.auth.getToken()
-      const officeId = await getOfficeEventMappingId(meeting_id)
+      const meeting_id = meetingDetails.meeting_id
+      const officeId = await getOfficeEventMappingId(
+        meetingDetails.ical_uid || meeting_id
+      )
+
       if (!officeId) {
+        // event does not exists create a new one
         return await this.createEvent(
           owner,
           meetingDetails,
@@ -226,24 +183,33 @@ export default class Office365CalendarService
           calendarId
         )
       }
-      const body = JSON.stringify({
-        ...this.translateEvent(owner, meetingDetails, meeting_id, new Date()),
+      const originalEvent = await this.getEvent(officeId, calendarId)
+      const useParticipants =
+        originalEvent.attendees &&
+        originalEvent.attendees.filter(
+          attendee =>
+            attendee?.emailAddress.address !== this.getConnectedEmail()
+        ).length > 0
+
+      const body = {
+        ...this.translateEvent(
+          owner,
+          meetingDetails,
+          meeting_id,
+          new Date(),
+          useParticipants
+        ),
         id: officeId,
-      })
+      }
 
-      const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${officeId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: 'Bearer ' + accessToken,
-            'Content-Type': 'application/json',
-          },
-          body,
-        }
-      )
-
-      return handleErrorsResponse(response)
+      const event: MicrosoftGraphEvent = await this.graphClient
+        .api(`/me/calendars/${calendarId}/events/${officeId}`)
+        .header(
+          'Prefer',
+          'outlook.send-meeting-invitations="sendToAllAndSaveCopy"'
+        )
+        .patch(body)
+      return event
     } catch (error) {
       Sentry.captureException(error)
       throw error
@@ -252,8 +218,6 @@ export default class Office365CalendarService
 
   async deleteEvent(meeting_id: string, calendarId: string): Promise<void> {
     try {
-      const accessToken = await this.auth.getToken()
-
       const officeId = await getOfficeEventMappingId(meeting_id)
 
       if (!officeId) {
@@ -261,22 +225,184 @@ export default class Office365CalendarService
         return
       }
 
-      const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${officeId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: 'Bearer ' + accessToken,
-            'Content-Type': 'application/json',
-          },
-        }
-      )
-
-      return handleErrorsResponse(response, true)
+      await this.graphClient
+        .api(`/me/calendars/${calendarId}/events/${officeId}`)
+        .delete()
     } catch (error) {
       Sentry.captureException(error)
       throw error
     }
+  }
+
+  async getAvailability(
+    calendarIds: string[],
+    dateFrom: string,
+    dateTo: string
+  ): Promise<EventBusyDate[]> {
+    const dateFromParsed = new Date(dateFrom)
+    const dateToParsed = new Date(dateTo)
+
+    const promises: Promise<EventBusyDate[]>[] = calendarIds.map(
+      async calendarId => {
+        try {
+          const allEvents: EventBusyDate[] = []
+          let nextLink: string | undefined
+
+          // Initial request
+          let response = await this.graphClient
+            .api(`/me/calendars/${calendarId}/calendarView`)
+            .query({
+              $top: '500',
+              enddatetime: dateToParsed.toISOString(),
+              startdatetime: dateFromParsed.toISOString(),
+            })
+            .get()
+
+          // Process first page
+          allEvents.push(
+            ...response.value.map((evt: MicrosoftGraphEvent) => ({
+              email: this.email,
+              end: evt.end?.dateTime + 'Z',
+              eventId: evt.id || '',
+              start: evt.start?.dateTime + 'Z',
+              title: evt.subject || '',
+              webLink: evt.webLink || undefined,
+            }))
+          )
+
+          // Follow @odata.nextLink to get subsequent pages
+          nextLink = response['@odata.nextLink']
+          while (nextLink) {
+            // Extract the path and query string from the full URL
+            const url = new URL(nextLink)
+            const path = url.pathname + url.search
+
+            response = await this.graphClient.api(path).get()
+
+            allEvents.push(
+              ...response.value.map((evt: MicrosoftGraphEvent) => ({
+                email: this.email,
+                end: evt.end?.dateTime + 'Z',
+                eventId: evt.id || '',
+                start: evt.start?.dateTime + 'Z',
+                title: evt.subject || '',
+                webLink: evt.webLink || undefined,
+              }))
+            )
+
+            nextLink = response['@odata.nextLink']
+          }
+
+          return allEvents
+        } catch (err) {
+          Sentry.captureException(err)
+          return []
+        }
+      }
+    )
+
+    const result = await Promise.all(promises)
+    return result.flat()
+  }
+
+  async getEventsCalendarId(
+    calendarId: string,
+    calendarName: string,
+    isReadOnlyCalendar: boolean,
+    dateFrom: string,
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
+  ): Promise<UnifiedEvent[]> {
+    const dateFromParsed = new Date(dateFrom)
+    const dateToParsed = new Date(dateTo)
+
+    const events: MicrosoftGraphEvent[] = []
+    let nextLink: string | undefined
+
+    let response = await this.graphClient
+      .api(`/me/calendars/${calendarId}/calendarView`)
+      .query({
+        $top: '500',
+        enddatetime: dateToParsed.toISOString(),
+        startdatetime: dateFromParsed.toISOString(),
+      })
+      .get()
+
+    events.push(...response.value)
+
+    nextLink = response['@odata.nextLink']
+    while (nextLink) {
+      const url = new URL(nextLink)
+      const path = url.pathname + url.search
+      response = await this.graphClient.api(path).get()
+
+      events.push(...response.value)
+
+      nextLink = response['@odata.nextLink']
+    }
+    const filteredEvents = onlyWithMeetingLinks
+      ? events.filter(event => {
+          const hasOnlineMeetingInfo =
+            isValidUrl(event.onlineMeeting?.joinUrl) ||
+            isValidUrl(event.onlineMeeting?.conferenceId)
+
+          const hasDeprecatedUrl = isValidUrl(event.onlineMeetingUrl)
+
+          const locationHasUrl =
+            event.location?.displayName &&
+            isValidUrl(event.location?.displayName)
+
+          const locationsHaveUrl = event.locations?.some(
+            loc => loc.displayName && isValidUrl(loc.displayName)
+          )
+          const hasExtractedUrl = isValidUrl(
+            extractUrlFromText(event.body?.content)
+          )
+
+          return (
+            hasOnlineMeetingInfo ||
+            hasDeprecatedUrl ||
+            locationHasUrl ||
+            locationsHaveUrl ||
+            hasExtractedUrl
+          )
+        })
+      : events
+
+    return Promise.all(
+      filteredEvents.map(
+        async event =>
+          await Office365EventMapper.toUnified(
+            event,
+            calendarId,
+            calendarName,
+            this.getConnectedEmail(),
+            isReadOnlyCalendar
+          )
+      )
+    )
+  }
+  async getEvents(
+    calendars: Array<
+      Pick<CalendarSyncInfo, 'name' | 'calendarId' | 'isReadOnly'>
+    >,
+    dateFrom: string,
+    dateTo: string,
+    onlyWithMeetingLinks?: boolean
+  ): Promise<UnifiedEvent[]> {
+    const events = await Promise.all(
+      calendars.map(cal =>
+        this.getEventsCalendarId(
+          cal.calendarId,
+          cal.name,
+          cal.isReadOnly ?? false,
+          dateFrom,
+          dateTo,
+          onlyWithMeetingLinks
+        )
+      )
+    )
+    return events.flat()
   }
   private createReminder(indicator: MeetingReminders) {
     switch (indicator) {
@@ -295,169 +421,405 @@ export default class Office365CalendarService
         return 10
     }
   }
-  private translateEvent = (
+  private translateEvent = async (
     calendarOwnerAccountAddress: string,
     details: MeetingCreationSyncRequest,
     meeting_id: string,
-    meeting_creation_time: Date
+    meeting_creation_time: Date,
+    useParticipants?: boolean
   ) => {
     const participantsInfo: ParticipantInfo[] = details.participants.map(
       participant => ({
-        type: participant.type,
-        name: participant.name,
         account_address: participant.account_address,
-        status: participant.status,
-        slot_id: '',
         meeting_id,
+        name: participant.name,
+        slot_id: '',
+        status: participant.status,
+        type: participant.type,
       })
     )
+    const ownerParticipant = participantsInfo.find(
+      p => p.type === ParticipantType.Owner
+    )
+    const ownerAccountAddress = ownerParticipant?.account_address
 
-    const slot_id = details.participants.filter(
-      p => p.account_address === calendarOwnerAccountAddress
-    )[0].slot_id
-    const hasGuests = details.participants.some(p => p.guest_email)
-    const payload: Record<string, unknown> = {
+    let changeUrl
+    if (
+      details.meeting_type_id &&
+      ownerAccountAddress &&
+      details.meeting_type_id !== NO_MEETING_TYPE
+    ) {
+      changeUrl = `${await getOwnerPublicUrlServer(
+        ownerAccountAddress,
+        details.meeting_type_id
+      )}?conferenceId=${details.meeting_id}`
+    } else {
+      changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${details.meeting_id}&intent=${Intents.UPDATE_MEETING}`
+      // recurring meetings should have ical_uid as an extra identifier to avoid collisions
+      if (details.ical_uid) {
+        changeUrl += `&icalUid=${details.ical_uid}`
+      }
+    }
+    const payload: MicrosoftGraphEvent = {
+      allowNewTimeProposals: false,
+      attendees: [],
+      body: {
+        content: CalendarServiceHelper.getMeetingSummary(
+          details.content,
+          details.meeting_url,
+          changeUrl
+        ),
+        contentType: 'text',
+      },
+      createdDateTime: new Date(meeting_creation_time).toISOString(),
+      end: {
+        dateTime: new Date(details.end).toISOString(),
+        timeZone: 'UTC',
+      },
+      isOnlineMeeting: true,
+      location: {
+        displayName: details.meeting_url,
+      },
+      onlineMeeting: {
+        joinUrl: details.meeting_url,
+      },
+      onlineMeetingProvider: 'unknown',
+      onlineMeetingUrl: details.meeting_url,
+      organizer: {
+        emailAddress: {
+          address: this.getConnectedEmail(), // Use the actual email
+          name: calendarOwnerAccountAddress,
+        },
+      },
+      singleValueExtendedProperties: [
+        {
+          id: 'String {00020329-0000-0000-C000-000000000046} Name meeting_id',
+          value: meeting_id,
+        },
+      ],
+      start: {
+        dateTime: new Date(details.start).toISOString(),
+        timeZone: 'UTC',
+      },
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
         participantsInfo,
         details.title
       ),
-      body: {
-        contentType: 'TEXT',
-        content: CalendarServiceHelper.getMeetingSummary(
-          details.content,
-          details.meeting_url,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
-          hasGuests
-        ),
-      },
-      start: {
-        dateTime: new Date(details.start).toISOString(),
-        timeZone: 'UTC',
-      },
-      end: {
-        dateTime: new Date(details.end).toISOString(),
-        timeZone: 'UTC',
-      },
-      createdDateTime: new Date(meeting_creation_time).toISOString(),
-      location: {
-        displayName: details.meeting_url,
-      },
-      organizer: {
-        emailAddress: {
-          name: 'Meetwith',
-          address: NO_REPLY_EMAIL,
-        },
-      },
-      attendees: [],
-      allowNewTimeProposals: false,
-      transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
+      transactionId: details.ical_uid || meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
     }
-    if (details.meetingReminders) {
+    if (details.meetingReminders && details.meetingReminders.length > 0) {
       payload.isReminderOn = true
       const lowestReminder = details.meetingReminders.reduce((prev, current) =>
         prev < current ? prev : current
       )
       payload.reminderMinutesBeforeStart = this.createReminder(lowestReminder)
     }
-    if (
-      details.meetingRepeat &&
-      details?.meetingRepeat !== MeetingRepeat.NO_REPEAT
-    ) {
+
+    if (details.rrule.length > 0) {
+      const rruleString = details.rrule[0]
+      const parsed = rrulestr(rruleString)
+      const options = parsed.origOptions
+
+      // Map RRULE FREQ to Office365 type
       let type!: Office365RecurrenceType
-      switch (details.meetingRepeat) {
-        case MeetingRepeat.DAILY:
-          type = Office365RecurrenceType.DAILY
-          break
-        case MeetingRepeat.WEEKLY:
-          type = Office365RecurrenceType.WEEKLY
-          break
-        case MeetingRepeat.MONTHLY:
-          type = Office365RecurrenceType.RELATIVE_MONTHLY
-          break
+      const freq = options.freq
+
+      if (freq === RRule.DAILY) {
+        type = Office365RecurrenceType.DAILY
+      } else if (freq === RRule.WEEKLY) {
+        type = Office365RecurrenceType.WEEKLY
+      } else if (freq === RRule.MONTHLY) {
+        // BYSETPOS indicates relative monthly (e.g., "2nd Friday")
+        type = options.bysetpos
+          ? Office365RecurrenceType.RELATIVE_MONTHLY
+          : Office365RecurrenceType.ABSOLUTE_MONTHLY
       }
 
       const meetingDate = new Date(details.start)
-      const daysOfWeek = format(meetingDate, 'eeee').toLowerCase()
-      payload['recurrence'] = {
-        type,
-        interval: 1,
-        daysOfWeek,
+      const pattern: RecurrencePattern = {
         firstDayOfWeek: 'sunday',
+        interval: options.interval || 1,
+        type,
       }
-    }
-    for (const participant of details.participants) {
-      ;(payload.attendees as any).push({
-        emailAddress: {
-          name: participant.name || participant.account_address,
-          address:
-            calendarOwnerAccountAddress === participant.account_address
-              ? this.getConnectedEmail()
-              : CalendarServiceHelper.sanitizeEmail(
-                  participant.guest_email ||
-                    noNoReplyEmailForAccount(
-                      (participant.name || participant.account_address)!
-                    )
-                ),
-        },
-      })
-    }
 
-    return payload
-  }
-
-  async getAvailability(
-    calendarIds: string[],
-    dateFrom: string,
-    dateTo: string
-  ): Promise<EventBusyDate[]> {
-    const dateFromParsed = new Date(dateFrom)
-    const dateToParsed = new Date(dateTo)
-
-    const filter = `?startdatetime=${encodeURIComponent(
-      dateFromParsed.toISOString()
-    )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}&$top=500`
-
-    const promises: Promise<EventBusyDate[]>[] = []
-
-    calendarIds.forEach(async calendarId => {
-      promises.push(
-        new Promise(async (resolve, reject) => {
-          try {
-            const accessToken = await this.auth.getToken()
-
-            // TODO: consider proper pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
-            // not only the first 500 events
-            const eventsResponse = await fetch(
-              `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/calendarView${filter}`,
-              {
-                method: 'GET',
-                headers: {
-                  Authorization: 'Bearer ' + accessToken,
-                  'Content-Type': 'application/json',
-                },
-              }
-            )
-            const eventsJson = await handleErrorsResponse(eventsResponse)
-
-            resolve(
-              eventsJson.value.map((evt: any) => {
-                return {
-                  start: evt.start.dateTime + 'Z',
-                  end: evt.end.dateTime + 'Z',
-                }
-              })
-            )
-          } catch (err) {
-            Sentry.captureException(err)
-            reject()
+      // Map BYDAY to daysOfWeek for weekly/monthly
+      if (options.byweekday && Array.isArray(options.byweekday)) {
+        const dayMap: Array<DaysOfWeek> = [
+          'sunday',
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+        ]
+        const weekStrMap: Record<WeekdayStr, DaysOfWeek> = {
+          SU: 'sunday',
+          MO: 'monday',
+          TU: 'tuesday',
+          WE: 'wednesday',
+          TH: 'thursday',
+          FR: 'friday',
+          SA: 'saturday',
+        }
+        pattern.daysOfWeek = options.byweekday.map(d => {
+          switch (true) {
+            case typeof d === 'number':
+              return dayMap[d]
+            case d instanceof Weekday:
+              return dayMap[d.weekday]
+            default:
+              return weekStrMap[d]
           }
         })
+      } else if (
+        type === Office365RecurrenceType.WEEKLY ||
+        type === Office365RecurrenceType.RELATIVE_MONTHLY
+      ) {
+        // Fallback: use meeting date's day of week
+        pattern.daysOfWeek = [
+          format(meetingDate, 'eeee').toLowerCase(),
+        ] as RecurrencePattern['daysOfWeek']
+      }
+
+      // For relative monthly: map BYSETPOS to index
+      if (
+        type === Office365RecurrenceType.RELATIVE_MONTHLY &&
+        options.bysetpos
+      ) {
+        const pos = Array.isArray(options.bysetpos)
+          ? options.bysetpos[0]
+          : options.bysetpos
+        const indexMap: Record<number, RecurrencePattern['index']> = {
+          1: 'first',
+          2: 'second',
+          3: 'third',
+          4: 'fourth',
+          [-1]: 'last',
+        }
+        pattern.index = indexMap[pos] || 'first'
+      }
+
+      // For absolute monthly: use day of month
+      if (type === Office365RecurrenceType.ABSOLUTE_MONTHLY) {
+        pattern.dayOfMonth = meetingDate.getDate()
+      }
+
+      // Determine range type: COUNT vs UNTIL vs no end
+
+      let rangeType!: RecurrenceRangeType
+      let numberOfOccurrences: RecurrenceRange['numberOfOccurrences']
+      let endDate: RecurrenceRange['endDate']
+      if (options.count) {
+        rangeType = 'numbered'
+        numberOfOccurrences = options.count
+      } else if (options.until) {
+        rangeType = 'endDate'
+        endDate = format(options.until, 'yyyy-MM-dd')
+      } else {
+        rangeType = 'noEnd'
+      }
+      const range: RecurrenceRange = {
+        recurrenceTimeZone: 'UTC',
+        startDate: format(meetingDate, 'yyyy-MM-dd'),
+        type: rangeType,
+        numberOfOccurrences,
+        endDate,
+      }
+      payload['recurrence'] = { pattern, range }
+    }
+
+    if (useParticipants && payload.attendees) {
+      for (const participant of details.participants) {
+        const email =
+          calendarOwnerAccountAddress === participant.account_address
+            ? this.getConnectedEmail()
+            : participant.guest_email ||
+              (await getCalendarPrimaryEmail(participant.account_address!))
+        if (!email || !isValidEmail(email)) {
+          continue
+        }
+        const attendee: Attendee = {
+          emailAddress: {
+            address: email,
+            name: participant.name || participant.account_address,
+          },
+          status: {
+            response:
+              participant.status === ParticipationStatus.Accepted
+                ? 'accepted'
+                : participant.status === ParticipationStatus.Rejected
+                  ? 'declined'
+                  : 'notResponded',
+            time: new Date().toISOString(),
+          },
+          type: 'required',
+        }
+        if (
+          isAccountSchedulerOrOwner(
+            details.participants,
+            participant.account_address
+          )
+        ) {
+          attendee.type = 'required'
+        }
+        payload.attendees.push(attendee)
+      }
+    }
+    return payload
+  }
+  async updateEventInstance(
+    calendarOwnerAccountAddress: string,
+    meetingDetails: MeetingInstanceCreationSyncRequest,
+    calendarId: string
+  ): Promise<void> {
+    const meeting_id = meetingDetails.meeting_id
+    const officeId = await getOfficeEventMappingId(meeting_id)
+
+    if (!officeId) {
+      Sentry.captureException("Can't find office event mapping")
+      throw new Error("Can't find office event mapping")
+    }
+    const originalStartTime = meetingDetails.original_start_time
+    const dateFrom = encodeURIComponent(
+      DateTime.fromJSDate(new Date(originalStartTime)).startOf('day').toISO()!
+    )
+    const dateTo = encodeURIComponent(
+      DateTime.fromJSDate(new Date(originalStartTime)).endOf('day').toISO()!
+    )
+    const instances = await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${officeId}/instances`)
+      .query({
+        endDateTime: dateTo!,
+        startDateTime: dateFrom!,
+      })
+      .get()
+
+    const instance: MicrosoftGraphEvent | null = instances.value[0]
+
+    if (!instance || !instance?.id) {
+      throw new Error('Instance not found')
+    }
+    const useParticipants =
+      instance.attendees &&
+      instance.attendees.filter(
+        attendee => attendee?.emailAddress.address !== this.getConnectedEmail()
+      ).length > 0
+    await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${instance.id}`)
+      .patch(
+        this.translateEvent(
+          calendarOwnerAccountAddress,
+          meetingDetails,
+          meeting_id,
+          new Date(),
+          useParticipants
+        )
       )
-    })
+  }
+  async deleteEventInstance(
+    calendarId: string,
+    meetingDetails: DeleteInstanceRequest
+  ): Promise<void> {
+    const meeting_id = meetingDetails.ical_uid || meetingDetails.meeting_id
+    const original_start_time = meetingDetails.start
+    const officeId = await getOfficeEventMappingId(meeting_id)
 
-    const result = await Promise.all(promises)
+    if (!officeId) {
+      Sentry.captureException("Can't find office event mapping")
+      throw new Error("Can't find office event mapping")
+    }
+    const dateFrom = encodeURIComponent(
+      DateTime.fromJSDate(new Date(original_start_time)).startOf('day').toISO()!
+    )
+    const dateTo = encodeURIComponent(
+      DateTime.fromJSDate(new Date(original_start_time)).endOf('day').toISO()!
+    )
+    const instances = await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${officeId}/instances`)
+      .query({
+        endDateTime: dateTo!,
+        startDateTime: dateFrom!,
+      })
+      .get()
 
-    return result.flat()
+    const instance: MicrosoftGraphEvent | null = instances.value[0]
+
+    if (!instance || !instance?.id) {
+      throw new Error('Instance not found')
+    }
+
+    await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${instance.id}`)
+      .delete()
+  }
+  async updateExternalEvent(event: Partial<MicrosoftGraphEvent>) {
+    if (!event.id) {
+      throw new Error('Event ID is required for update')
+    }
+    await this.graphClient.api(`/me/events/${event.id}`).patch(event)
+  }
+  async updateEventRsvpForExternalEvent(
+    calendarId: string,
+    eventId: string,
+    attendeeEmail: string,
+    responseStatus: AttendeeStatus
+  ) {
+    const connectedEmail = this.getConnectedEmail()
+    if (connectedEmail.toLowerCase() !== attendeeEmail.toLowerCase()) {
+      throw new Error('Can only update RSVP status for the connected account')
+    }
+
+    const event = await this.getEvent(eventId, calendarId)
+    if (event.responseRequested === false) {
+      throw new Error('RSVP not allowed for this event by organizer')
+    }
+
+    let endpoint: string
+    const body = {
+      sendResponse: true,
+      comment: '',
+    }
+
+    switch (responseStatus) {
+      case AttendeeStatus.ACCEPTED:
+      case AttendeeStatus.COMPLETED:
+        endpoint = `/me/events/${eventId}/accept`
+        break
+      case AttendeeStatus.DECLINED:
+        endpoint = `/me/events/${eventId}/decline`
+        break
+      case AttendeeStatus.NEEDS_ACTION:
+      case AttendeeStatus.TENTATIVE:
+      case AttendeeStatus.DELEGATED:
+        endpoint = `/me/events/${eventId}/tentativelyAccept`
+        break
+      default:
+        throw new Error(`Unsupported response status: ${responseStatus}`)
+    }
+
+    try {
+      await this.graphClient.api(endpoint).post(body)
+    } catch (error: unknown) {
+      // Handle specific error cases
+      if (
+        error instanceof GraphError &&
+        error?.code === 'ErrorInvalidRequest' &&
+        error?.message?.includes("hasn't requested a response")
+      ) {
+        throw new Error('RSVP not allowed for this event')
+      }
+      throw error
+    }
+  }
+
+  async deleteExternalEvent(
+    calendarId: string,
+    eventId: string
+  ): Promise<void> {
+    return await this.graphClient
+      .api(`/me/calendars/${calendarId}/events/${eventId}`)
+      .delete()
   }
 }

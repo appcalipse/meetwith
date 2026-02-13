@@ -23,7 +23,13 @@ const credentials = {
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { code, error, state }: OAuthCallbackQuery = req.query
+  const { method, query } = req
+
+  if (method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const { code, error, state }: OAuthCallbackQuery = query
 
   const stateObject =
     typeof state === 'string'
@@ -76,32 +82,32 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     .oauth2('v2')
     .userinfo.get({ auth: oAuth2Client })
 
-  const calendar = google.calendar({ version: 'v3', auth: oAuth2Client })
+  const calendar = google.calendar({ auth: oAuth2Client, version: 'v3' })
 
   let calendars: Array<CalendarSyncInfo>
   try {
     calendars = (await calendar.calendarList.list()).data.items!.map(c => {
       return {
         calendarId: c.id!,
-        name: c.summary!,
         color: c.backgroundColor || undefined,
-        sync: true,
         enabled: Boolean(c.primary),
+        name: c.summary!,
+        sync: true,
       }
     })
-  } catch (e) {
+  } catch (_e) {
     const info = google.oauth2({
-      version: 'v2',
       auth: oAuth2Client,
+      version: 'v2',
     })
     const user = (await info.userinfo.get()).data
     calendars = [
       {
         calendarId: user.email!,
-        name: user.email!,
         color: undefined,
-        sync: true,
         enabled: true,
+        name: user.email!,
+        sync: true,
       },
     ]
   }
@@ -128,7 +134,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         guestEmail.toLowerCase()
       )
       participantExists = true
-    } catch (error) {
+    } catch (_error) {
       participantExists = false
     }
 
@@ -165,7 +171,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     participantId,
     userInfoRes.data.email!,
     TimeSlotSource.GOOGLE,
-    key as Record<string, unknown>
+    key as Record<string, unknown>,
+    calendars
   )
 
   if (!stateObject?.participantId) {

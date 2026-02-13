@@ -8,22 +8,24 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
 import React, { useState } from 'react'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
+import { LuCalendarSearch } from 'react-icons/lu'
 
 import { TimeSlotSource } from '@/types/Meeting'
+import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
   getQuickPollGoogleAuthConnectUrl,
   getQuickPollOffice365ConnectUrl,
 } from '@/utils/api_helper'
+import { isProduction } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
-
+import WebCalDetail from './WebCalDetail'
 import WebDavDetailsPanel from './WebDavCalendarDetail'
 
 interface ConnectCalendarProps {
@@ -33,7 +35,7 @@ interface ConnectCalendarProps {
   refetch?: () => Promise<void>
   isQuickPoll?: boolean
   participantId?: string
-  pollData?: any
+  pollData?: QuickPollBySlugResponse
   pollSlug?: string
 }
 
@@ -48,7 +50,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   pollSlug,
 }) => {
   const [loading, setLoading] = useState<TimeSlotSource | undefined>()
-  const toast = useToast()
   const [selectedProvider, setSelectedProvider] = useState<
     TimeSlotSource | undefined
   >()
@@ -88,6 +89,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
         return
       case TimeSlotSource.ICLOUD:
       case TimeSlotSource.WEBDAV:
+      case TimeSlotSource.WEBCAL:
         // no redirect, these providers will handle the logic
         break
       default:
@@ -113,7 +115,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
       isCentered
     >
       <ModalOverlay>
-        <ModalContent maxW="45rem">
+        <ModalContent maxW={{ base: '20rem', md: '45rem' }}>
           <ModalHeader>
             <Heading size={'md'}>Choose calendar type</Heading>
           </ModalHeader>
@@ -125,6 +127,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 flexDirection={{ base: 'column', md: 'row' }}
                 justifyContent="center"
                 gap={4}
+                flexWrap={{ base: 'wrap', lg: 'nowrap' }}
               >
                 <Button
                   onClick={selectOption(TimeSlotSource.GOOGLE)}
@@ -166,6 +169,19 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 >
                   Webdav
                 </Button>
+                <Button
+                  onClick={selectOption(TimeSlotSource.WEBCAL)}
+                  leftIcon={<LuCalendarSearch />}
+                  variant={
+                    selectedProvider === TimeSlotSource.WEBCAL
+                      ? 'solid'
+                      : 'outline'
+                  }
+                  display={isQuickPoll ? 'none' : undefined}
+                  isLoading={loading === TimeSlotSource.WEBCAL}
+                >
+                  Use ICS
+                </Button>
               </HStack>
               <VStack
                 hidden={selectedProvider !== TimeSlotSource.ICLOUD}
@@ -187,6 +203,18 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
               >
                 <WebDavDetailsPanel
                   isApple={false}
+                  onSuccess={handleWebDavSuccess}
+                  isQuickPoll={isQuickPoll}
+                  participantId={participantId}
+                  pollData={pollData}
+                />
+              </VStack>
+              <VStack
+                hidden={selectedProvider !== TimeSlotSource.WEBCAL}
+                p="10"
+                pt="0"
+              >
+                <WebCalDetail
                   onSuccess={handleWebDavSuccess}
                   isQuickPoll={isQuickPoll}
                   participantId={participantId}

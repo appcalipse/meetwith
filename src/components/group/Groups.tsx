@@ -1,5 +1,6 @@
 import {
   Accordion,
+  Box,
   Button,
   HStack,
   Image,
@@ -10,12 +11,13 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from 'react'
 import { FaPlus } from 'react-icons/fa'
@@ -25,11 +27,16 @@ import EditGroupNameModal from '@/components/group/EditGroupNameModal'
 import EditGroupSlugModal from '@/components/group/EditGroupSlugModal'
 import GroupAdminChangeModal from '@/components/group/GroupAdminChangeModal'
 import GroupAdminLeaveModal from '@/components/group/GroupAdminLeaveModal'
+import GroupSettingsModal from '@/components/group/GroupSettingsModal'
 import LeaveGroupModal from '@/components/group/LeaveGroupModal'
 import RemoveGroupMemberModal from '@/components/group/RemoveGroupMemberModal'
 import { Account } from '@/types/Account'
-import { GroupMember, MemberType } from '@/types/Group'
-import { getGroupsFull } from '@/utils/api_helper'
+import { AvailabilityBlock } from '@/types/availability'
+import { GetGroupsFullResponse, GroupMember, MemberType } from '@/types/Group'
+import {
+  getAvailabilityBlocks,
+  getGroupsFullWithMetadata,
+} from '@/utils/api_helper'
 import { GROUP_PAGE_SIZE } from '@/utils/constants/group'
 import { ApiFetchError } from '@/utils/errors'
 import QueryKeys from '@/utils/query_keys'
@@ -41,6 +48,10 @@ import InviteModal from '../group/InviteModal'
 type Props = {
   currentAccount: Account
   search: string
+  onEmptyStateChange?: (isEmpty: boolean) => void
+  canCreateGroup?: boolean
+  trialEligible?: boolean
+  onUpgradeClick?: () => void
 }
 
 export interface GroupRef {
@@ -78,29 +89,64 @@ const DEFAULT_STATE: IGroupModal = {
 export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 
 const Groups = forwardRef<GroupRef, Props>(
-  ({ currentAccount, search }: Props, ref) => {
+  (
+    {
+      currentAccount,
+      search,
+      onEmptyStateChange,
+      canCreateGroup: canCreateGroupProp,
+      trialEligible,
+      onUpgradeClick,
+    }: Props,
+    ref
+  ) => {
     const toast = useToast()
 
-    const { data, isLoading, isFetching, hasNextPage, fetchNextPage, error } =
-      useInfiniteQuery({
-        queryKey: QueryKeys.groups(currentAccount?.address, search),
-        queryFn: ({ pageParam = 0 }) => {
-          return getGroupsFull(GROUP_PAGE_SIZE, pageParam, search)
-        },
-        getNextPageParam: (lastPage, allPages) => {
-          if (!lastPage || lastPage.length < GROUP_PAGE_SIZE) {
-            return undefined
-          }
-          return allPages.flat().length
-        },
-        enabled: !!currentAccount?.address,
-        staleTime: 0,
-        refetchOnMount: true,
-      })
-    const groups = data?.pages.flat() ?? []
+    const {
+      data,
+      isLoading,
+      isFetchingNextPage,
+      hasNextPage,
+      fetchNextPage,
+      error,
+    } = useInfiniteQuery({
+      queryKey: QueryKeys.groups(currentAccount?.address, search),
+      queryFn: ({ pageParam = 0 }) => {
+        return getGroupsFullWithMetadata(GROUP_PAGE_SIZE, pageParam, search)
+      },
+      getNextPageParam: (lastPage, allPages) => {
+        if (
+          !lastPage ||
+          !lastPage.groups ||
+          lastPage.groups.length < GROUP_PAGE_SIZE
+        ) {
+          return undefined
+        }
+        return allPages.reduce(
+          (acc, page) => acc + (page.groups?.length || 0),
+          0
+        )
+      },
+      enabled: !!currentAccount?.address,
+      staleTime: 0,
+      refetchOnMount: true,
+    })
+    const groups = data?.pages.flatMap(page => page.groups || []) ?? []
+    const canCreateGroupFromApi = data?.pages[0]?.isPro ?? true
+    const canCreateGroup = canCreateGroupProp ?? canCreateGroupFromApi
     const firstFetch = isLoading
-    const loading = isFetching
-    const noMoreFetch = !hasNextPage
+
+    useEffect(() => {
+      if (firstFetch) return
+      onEmptyStateChange?.(groups.length === 0)
+    }, [firstFetch, groups.length])
+
+    // Fetch user's availability blocks (used in settings modal)
+    const { data: availabilityBlocks } = useQuery<AvailabilityBlock[]>({
+      queryKey: ['availabilityBlocks', currentAccount?.address],
+      queryFn: () => getAvailabilityBlocks(),
+      enabled: !!currentAccount?.address,
+    })
     const resetState = async () => {
       await queryClient.invalidateQueries({
         queryKey: QueryKeys.groups(currentAccount?.address, search),
@@ -144,6 +190,11 @@ const Groups = forwardRef<GroupRef, Props>(
       onOpen: openSlugEditModal,
       onClose: closeSlugEditModal,
     } = useDisclosure()
+    const {
+      isOpen: isSettingsModalOpen,
+      onOpen: openSettingsModal,
+      onClose: closeSettingsModal,
+    } = useDisclosure()
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
     const [selectedGroupName, setSelectedGroupName] = useState<string>('')
     const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('')
@@ -171,16 +222,54 @@ const Groups = forwardRef<GroupRef, Props>(
       setSelectedGroupMember,
       openRemoveModal,
     }
-    const fetchGroups = () => {
-      if (hasNextPage && !isFetching) {
-        fetchNextPage()
-      }
-    }
+
+    const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+    // Intersection Observer for infinite scroll
+    useEffect(() => {
+      if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return
+
+      const observer = new IntersectionObserver(
+        entries => {
+          if (entries[0].isIntersecting) {
+            void fetchNextPage()
+          }
+        },
+        {
+          root: null,
+          rootMargin: '200px',
+          threshold: 0.1,
+        }
+      )
+
+      observer.observe(loadMoreRef.current)
+      return () => observer.disconnect()
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
     const handleAddNewMember = (groupId: string, groupName: string) => {
       setSelectedGroupId(groupId)
       setSelectedGroupName(groupName)
       onOpen()
+    }
+
+    const handleOpenSettingsModal = (groupId: string) => {
+      setSelectedGroupId(groupId)
+      openSettingsModal()
+    }
+
+    const handleCloseSettingsModal = () => {
+      closeSettingsModal()
+      setSelectedGroupId(null)
+    }
+
+    // Get the selected group data
+    const selectedGroup = groups.find(g => g.id === selectedGroupId)
+
+    const isUserGroupAdmin = (group: GetGroupsFullResponse): boolean => {
+      return (
+        group.members.find(m => m.address === currentAccount?.address)?.role ===
+        MemberType.ADMIN
+      )
     }
 
     if (firstFetch) {
@@ -196,7 +285,12 @@ const Groups = forwardRef<GroupRef, Props>(
     } else if (groups.length === 0) {
       return (
         <VStack alignItems="center" gap={4}>
-          <Image src="/assets/no_group.svg" height="200px" alt="Loading..." />
+          <Image
+            src="/assets/no_group.svg"
+            height="200px"
+            alt="Loading..."
+            mt={8}
+          />
           <Text fontSize="lg">
             You will see your Groups here once you created a new Group.
           </Text>
@@ -206,11 +300,34 @@ const Groups = forwardRef<GroupRef, Props>(
             colorScheme="primary"
             display={{ base: 'none', md: 'flex' }}
             mt={{ base: 4, md: 0 }}
-            mb={4}
+            mb={0}
             leftIcon={<FaPlus />}
+            isDisabled={!canCreateGroup}
+            title={
+              !canCreateGroup
+                ? 'Upgrade to Pro to create more groups'
+                : undefined
+            }
           >
             Create new group
           </Button>
+          {!canCreateGroup && onUpgradeClick && (
+            <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
+              Upgrade to create and schedule with groups.{' '}
+              <Button
+                variant="link"
+                colorScheme="primary"
+                px={0}
+                onClick={onUpgradeClick}
+                textDecoration="underline"
+                fontSize="14px"
+                height="auto"
+                minW="auto"
+              >
+                {trialEligible ? 'Try PRO for free' : 'Go PRO'}
+              </Button>
+            </Text>
+          )}
         </VStack>
       )
     } else {
@@ -261,6 +378,16 @@ const Groups = forwardRef<GroupRef, Props>(
               groupSlug={selectedGroupSlug}
               groupID={selectedGroupId}
             />
+            {selectedGroupId && selectedGroup && (
+              <GroupSettingsModal
+                isOpen={isSettingsModalOpen}
+                onClose={handleCloseSettingsModal}
+                group={selectedGroup}
+                availabilityBlocks={availabilityBlocks || []}
+                isAdmin={isUserGroupAdmin(selectedGroup)}
+                resetState={resetState}
+              />
+            )}
             <Accordion allowMultiple width="100%">
               {groups.map(group => (
                 <GroupCard
@@ -268,28 +395,37 @@ const Groups = forwardRef<GroupRef, Props>(
                   currentAccount={currentAccount}
                   {...group}
                   onAddNewMember={(...args) => {
-                    const actor = group.members.find(
+                    const actor = group.members?.find(
                       member => member.address === currentAccount?.address
                     )
                     if (!actor || actor?.role !== MemberType.ADMIN) return
                     handleAddNewMember(...args)
                   }}
+                  onOpenSettingsModal={() => handleOpenSettingsModal(group.id)}
                   mt={0}
                   resetState={resetState}
                 />
               ))}
             </Accordion>
-            {!noMoreFetch && !firstFetch && (
-              <Button
-                isLoading={loading}
-                colorScheme="primary"
-                variant="outline"
-                alignSelf="center"
+            {hasNextPage && (
+              <Box
+                ref={loadMoreRef}
+                w="100%"
+                h="20px"
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
                 my={4}
-                onClick={() => fetchGroups()}
               >
-                Load more
-              </Button>
+                {isFetchingNextPage && (
+                  <Spinner size="md" color="primary.500" />
+                )}
+              </Box>
+            )}
+            {!hasNextPage && groups.length > 0 && (
+              <Text color="gray.500" fontSize="sm" textAlign="center" my={4}>
+                No more groups to load
+              </Text>
             )}
             <Spacer />
             <InviteModal

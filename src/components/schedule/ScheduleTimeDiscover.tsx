@@ -1,8 +1,12 @@
-import { Heading, HStack, Icon, VStack } from '@chakra-ui/react'
+import { Heading, HStack, Icon, useMediaQuery, VStack } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import { useState } from 'react'
+import { FC, useCallback, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
+import {
+  Page,
+  useScheduleNavigation,
+} from '@/providers/schedule/NavigationContext'
 import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
@@ -12,18 +16,33 @@ import { ScheduleParticipants } from './schedule-time-discover/ScheduleParticipa
 import { SchedulePickTime } from './schedule-time-discover/SchedulePickTime'
 
 export type MeetingMembers = ParticipantInfo & { isCalendarConnected?: boolean }
-
-const ScheduleTimeDiscover = () => {
+interface ScheduleTimeDiscoverProps {
+  onClose?: () => void
+}
+const ScheduleTimeDiscover: FC<ScheduleTimeDiscoverProps> = ({ onClose }) => {
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
-  const handleClose = () => {
-    let url = `/dashboard/${EditMode.MEETINGS}`
-    if (router.query.ref === 'group') {
-      url = `/dashboard/${EditMode.GROUPS}`
+  const { handlePageSwitch } = useScheduleNavigation()
+  const [isLargeScreen] = useMediaQuery('(min-width: 992px)', {
+    ssr: true,
+    fallback: true,
+  })
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose()
+    } else {
+      if (router.query.intent) {
+        handlePageSwitch(Page.SCHEDULE_DETAILS)
+      } else {
+        let url = `/dashboard/${EditMode.MEETINGS}`
+        if (router.query.ref === 'group') {
+          url = `/dashboard/${EditMode.GROUPS}`
+        }
+        router.push(url)
+      }
     }
-    router.push(url)
-  }
-
+  }, [onClose, router.query])
+  const handleOpenParticipantModal = useCallback(() => setIsOpen(true), [])
   return (
     <VStack
       width="100%"
@@ -39,13 +58,14 @@ const ScheduleTimeDiscover = () => {
             Back
           </Heading>
         </HStack>
-        <Grid4
-          w={8}
-          h={8}
-          onClick={() => setIsOpen(!isOpen)}
-          cursor={'pointer'}
-          display={{ base: 'block', lg: 'none' }}
-        />
+        {!isLargeScreen && (
+          <Grid4
+            w={8}
+            h={8}
+            onClick={() => setIsOpen(!isOpen)}
+            cursor={'pointer'}
+          />
+        )}
       </HStack>
       <HStack
         width="100%"
@@ -59,7 +79,10 @@ const ScheduleTimeDiscover = () => {
           isOpen={isOpen}
         />
         <ScheduleParticipants />
-        <SchedulePickTime openParticipantModal={() => setIsOpen(true)} />
+        <SchedulePickTime
+          openParticipantModal={handleOpenParticipantModal}
+          onClose={onClose}
+        />
       </HStack>
     </VStack>
   )

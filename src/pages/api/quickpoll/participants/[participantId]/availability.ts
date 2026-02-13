@@ -6,6 +6,11 @@ import { updateQuickPollParticipantAvailability } from '@/utils/database'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method, query, body } = req
+
+  if (method !== 'PUT' && method !== 'PATCH') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   const participantId = query.participantId as string
 
   if (!participantId) {

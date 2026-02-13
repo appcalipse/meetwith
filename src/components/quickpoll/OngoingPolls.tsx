@@ -1,5 +1,6 @@
 import { Box, Button, Flex, Spinner, Text, VStack } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { FiRefreshCcw } from 'react-icons/fi'
 
@@ -7,21 +8,34 @@ import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import EmptyState from '@/components/EmptyState'
 import Pagination from '@/components/profile/Pagination'
+import useAccountContext from '@/hooks/useAccountContext'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { PollStatus } from '@/types/QuickPoll'
 import { getQuickPolls } from '@/utils/api_helper'
 import { QUICKPOLL_DEFAULT_LIMIT } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
+import { isTrialEligible } from '@/utils/subscription_manager'
 
 import PollCard from './PollCard'
 
 interface OngoingPollsProps {
   searchQuery?: string
+  upgradeRequired?: boolean
+  canSchedule?: boolean
 }
 
-const OngoingPolls = ({ searchQuery = '' }: OngoingPollsProps) => {
+const OngoingPolls = ({
+  searchQuery = '',
+  upgradeRequired = false,
+  canSchedule = true,
+}: OngoingPollsProps) => {
+  const { push } = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
+  const currentAccount = useAccountContext()
+
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
 
   const {
     data: ongoingPollsData,
@@ -88,13 +102,30 @@ const OngoingPolls = ({ searchQuery = '' }: OngoingPollsProps) => {
 
   return (
     <VStack spacing={4} align="stretch">
+      {upgradeRequired && currentPolls.length > 0 && currentAccount && (
+        <Text fontSize="14px" color="neutral.400">
+          Unlock unlimited QuickPolls with PRO.{' '}
+          <Button
+            variant="link"
+            colorScheme="primary"
+            px={0}
+            onClick={() => push('/dashboard/settings/subscriptions')}
+            textDecoration="underline"
+            fontSize="14px"
+            height="auto"
+            minW="auto"
+          >
+            {trialEligible ? 'Try for free' : 'Go PRO'}
+          </Button>
+        </Text>
+      )}
       {isLoadingOngoing && debouncedSearchQuery ? (
         <CustomLoading text="Searching polls..." />
       ) : currentPolls.length > 0 ? (
         <>
           <VStack spacing={4} align="stretch">
             {currentPolls.map(poll => (
-              <PollCard key={poll.id} poll={poll} />
+              <PollCard key={poll.id} poll={poll} canSchedule={canSchedule} />
             ))}
           </VStack>
 

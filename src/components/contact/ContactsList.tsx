@@ -1,7 +1,6 @@
 import {
-  Button,
+  Box,
   HStack,
-  Spacer,
   Spinner,
   Table,
   TableContainer,
@@ -12,69 +11,123 @@ import {
   Tr,
   VStack,
 } from '@chakra-ui/react'
+import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query'
 import Image from 'next/image'
-import React, {
+import {
   forwardRef,
   ReactNode,
   useEffect,
   useImperativeHandle,
-  useState,
+  useRef,
 } from 'react'
 
 import { Account } from '@/types/Account'
 import { Contact } from '@/types/Contacts'
 import { getContacts } from '@/utils/api_helper'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 
 import ContactListItem from './ContactListItem'
 
 type Props = {
   currentAccount: Account | null
   search: string
+  hasProAccess?: boolean
 }
 export interface ContactLisRef {
   reloadContacts: () => void
 }
 
+const PAGE_SIZE = 10
+
 const ContactsList = forwardRef<ContactLisRef, Props>(
-  ({ currentAccount, search }: Props, ref) => {
-    const [contacts, setContacts] = useState<Array<Contact>>([])
-    const [loading, setIsLoading] = useState(true)
-    const [noMoreFetch, setNoMoreFetch] = useState(false)
-    const [firstFetch, setFirstFetch] = useState(true)
-    const fetchContacts = async (reset?: boolean, limit = 10) => {
-      const PAGE_SIZE = limit
-      setIsLoading(true)
-      const newContacts = await getContacts(
-        PAGE_SIZE,
-        reset ? 0 : contacts.length,
-        search
-      )
+  ({ currentAccount, search, hasProAccess = true }: Props, ref) => {
+    const loadMoreRef = useRef<HTMLTableRowElement | null>(null)
 
-      if (newContacts.length < PAGE_SIZE) {
-        setNoMoreFetch(true)
-      }
-      setContacts((reset ? [] : [...contacts]).concat(newContacts))
-      setIsLoading(false)
-    }
+    const {
+      data,
+      fetchNextPage,
+      hasNextPage,
+      isFetchingNextPage,
+      isLoading,
+      isError,
+    } = useInfiniteQuery({
+      queryKey: QueryKeys.contacts(currentAccount?.address, search),
+      queryFn: async ({ pageParam: offset = 0 }) => {
+        const contacts = await getContacts(PAGE_SIZE, offset, search)
 
-    const resetState = async () => {
-      setFirstFetch(true)
-      setNoMoreFetch(false)
-      await fetchContacts(true)
-      setFirstFetch(false)
-    }
+        return {
+          contacts,
+          nextOffset: offset + contacts.length,
+          hasMore: contacts.length >= PAGE_SIZE,
+        }
+      },
+      getNextPageParam: lastPage =>
+        lastPage.hasMore ? lastPage.nextOffset : undefined,
+      enabled: !!currentAccount?.address,
+      refetchOnWindowFocus: true,
+      staleTime: 30_000,
+    })
+
+    const contacts = data?.pages.flatMap(page => page.contacts) ?? []
 
     useImperativeHandle(ref, () => ({
-      reloadContacts: () => fetchContacts(true, contacts.length + 2),
+      reloadContacts: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: QueryKeys.contacts(currentAccount?.address, search),
+        })
+      },
     }))
 
     useEffect(() => {
-      void resetState()
-    }, [currentAccount?.address, search])
+      if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return
+
+      const observer = new IntersectionObserver(
+        entries => {
+          if (entries[0].isIntersecting) {
+            void fetchNextPage()
+          }
+        },
+        {
+          root: null,
+          rootMargin: '200px',
+          threshold: 0.1,
+        }
+      )
+
+      observer.observe(loadMoreRef.current)
+      return () => observer.disconnect()
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+    const handleContactSync = (id: string) => {
+      // Optimistically update UI
+      queryClient.setQueryData<
+        InfiniteData<{
+          contacts: Contact[]
+          nextOffset: number
+          hasMore: boolean
+        }>
+      >(QueryKeys.contacts(currentAccount?.address, search), old => {
+        if (!old) return old
+        return {
+          ...old,
+          pages: old.pages.map(page => ({
+            ...page,
+            contacts: page.contacts.filter((c: Contact) => c.id !== id),
+          })),
+        }
+      })
+    }
+
+    const handleRefetch = async () => {
+      await queryClient.invalidateQueries({
+        queryKey: QueryKeys.contacts(currentAccount?.address, search),
+      })
+    }
 
     let content: ReactNode
 
-    if (firstFetch) {
+    if (isLoading) {
       content = (
         <Tbody>
           <Tr color="text-primary">
@@ -91,6 +144,24 @@ const ContactsList = forwardRef<ContactLisRef, Props>(
                   <Text fontSize="lg">Checking your contacts...</Text>
                 </HStack>
               </VStack>
+            </Th>
+          </Tr>
+        </Tbody>
+      )
+    } else if (isError) {
+      content = (
+        <Tbody>
+          <Tr color="text-primary">
+            <Th colSpan={6}>
+              <Text
+                textAlign="center"
+                w="100%"
+                mx="auto"
+                py={4}
+                color="red.500"
+              >
+                Failed to load contacts. Please try again.
+              </Text>
             </Th>
           </Tr>
         </Tbody>
@@ -115,28 +186,35 @@ const ContactsList = forwardRef<ContactLisRef, Props>(
               account={account}
               key={`contact-${account.address}`}
               index={index}
-              sync={(id: string) =>
-                setContacts(contacts.filter(r => r.id !== id))
-              }
-              refetch={() => fetchContacts(true, contacts.length + 1)}
+              sync={handleContactSync}
+              refetch={handleRefetch}
+              hasProAccess={hasProAccess}
             />
           ))}
-          {!noMoreFetch && !firstFetch && (
+          {hasNextPage && (
+            <Tr ref={loadMoreRef} color="text-primary">
+              <Th justifyContent="center" colSpan={6}>
+                <Box
+                  w="100%"
+                  h="20px"
+                  display="flex"
+                  justifyContent="center"
+                  alignItems="center"
+                  my={4}
+                >
+                  {isFetchingNextPage && (
+                    <Spinner size="md" color="primary.500" />
+                  )}
+                </Box>
+              </Th>
+            </Tr>
+          )}
+          {!hasNextPage && contacts.length > 0 && (
             <Tr color="text-primary">
               <Th justifyContent="center" colSpan={6}>
-                <VStack mb={8}>
-                  <Button
-                    isLoading={loading}
-                    colorScheme="primary"
-                    variant="outline"
-                    alignSelf="center"
-                    my={4}
-                    onClick={() => fetchContacts()}
-                  >
-                    Load more
-                  </Button>
-                  <Spacer />
-                </VStack>
+                <Text color="gray.500" fontSize="sm" textAlign="center" my={4}>
+                  No more contacts to load
+                </Text>
               </Th>
             </Tr>
           )}

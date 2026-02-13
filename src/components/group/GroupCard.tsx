@@ -2,6 +2,8 @@ import {
   AccordionButton,
   AccordionItem,
   AccordionPanel,
+  Badge,
+  Box,
   Button,
   Flex,
   Heading,
@@ -15,34 +17,40 @@ import {
   MenuList,
   Portal,
   Spacer,
+  Spinner,
   Table,
   TableContainer,
   Tbody,
   Text,
   Th,
   Thead,
+  Tooltip,
   Tr,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import * as Tooltip from '@radix-ui/react-tooltip'
+import * as RadixTooltip from '@radix-ui/react-tooltip'
 import { useRouter } from 'next/router'
 import React, { Fragment, useContext, useId, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 
 import { GroupContext } from '@/components/group/Groups'
+import { useAvailabilityBlock } from '@/hooks/availability'
 import { Account } from '@/types/Account'
 import { GetGroupsFullResponse, MemberType, MenuOptions } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { updateGroupRole } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 
+import GroupAvatar from './GroupAvatar'
 import GroupMemberCard from './GroupMemberCard'
 
 export interface IGroupCard extends GetGroupsFullResponse {
   currentAccount: Account
   onAddNewMember: (groupId: string, groupName: string) => void
+  onOpenSettingsModal?: () => void
   mt: number
   resetState: () => void
 }
@@ -54,12 +62,16 @@ const GroupCard: React.FC<IGroupCard> = props => {
 
   const id = useId()
   const { push } = useRouter()
-  const actor = props.members.find(
+  const actor = props.members?.find(
     member => member.address === props.currentAccount.address
   )
   const [isAdmin, setIsAdmin] = useState(actor?.role === MemberType.ADMIN)
+
+  const activeSubscription = getActiveProSubscription(props.currentAccount)
+  const hasProAccess = Boolean(activeSubscription)
+
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>(
-    props.members.map(member => member.role)
+    props.members?.map(member => member.role) || []
   )
   const {
     openDeleteModal,
@@ -70,7 +82,17 @@ const GroupCard: React.FC<IGroupCard> = props => {
   } = useContext(GroupContext)
 
   const renderPopOverOptions = (role: MemberType): Array<MenuOptions> => {
-    const defaultOptions: Array<MenuOptions> = []
+    const defaultOptions: Array<MenuOptions> = [
+      {
+        label: 'Group settings',
+        onClick: () => {
+          if (props.onOpenSettingsModal) {
+            pickGroupId(props.id)
+            props.onOpenSettingsModal()
+          }
+        },
+      },
+    ]
     switch (role) {
       case MemberType.ADMIN:
         return [
@@ -107,7 +129,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
           },
         ]
       default:
-        return []
+        return defaultOptions
     }
   }
   const updateRole = async (data: ChangeGroupAdminRequest) => {
@@ -118,6 +140,24 @@ const GroupCard: React.FC<IGroupCard> = props => {
     () => renderPopOverOptions(actor?.role || MemberType.MEMBER),
     [actor?.role]
   )
+
+  // Fetch default availability block for fallback
+  const { block: defaultAvailabilityBlock } = useAvailabilityBlock(
+    props.currentAccount?.preferences?.availaibility_id
+  )
+
+  // Use group-specific availability if available, otherwise fallback to default
+  const displayAvailabilities = useMemo(() => {
+    if (props.member_availabilities && props.member_availabilities.length > 0) {
+      return props.member_availabilities
+    }
+    // Fallback to default availability block when no group-specific availability
+    if (defaultAvailabilityBlock) {
+      return [defaultAvailabilityBlock]
+    }
+    return []
+  }, [props.member_availabilities, defaultAvailabilityBlock])
+
   return (
     <AccordionItem
       width="100%"
@@ -140,34 +180,78 @@ const GroupCard: React.FC<IGroupCard> = props => {
               base: 'column',
               md: 'row',
             }}
+            gap={3}
           >
-            <VStack gap={0} alignItems="start">
-              <Heading
-                size={'lg'}
-                maxW={{ '2xl': '400px', lg: 270, xl: 300, base: 200 }}
-                w="fit-content"
-                whiteSpace="nowrap"
-                overflow="hidden"
-                textOverflow="ellipsis"
-              >
-                {props.name}
-              </Heading>
-            </VStack>
-            <Button
-              colorScheme="primary"
-              display={{ base: 'flex', md: 'none' }}
-              onClick={() =>
-                push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
-              }
+            <HStack gap={3} alignItems="center" flex={1} minW={0}>
+              {/* Group Avatar */}
+              <GroupAvatar
+                avatarUrl={props.avatar_url}
+                groupName={props.name}
+                boxSize={{ base: '40px', md: '48px' }}
+                flexShrink={0}
+              />
+              <Tooltip label={props.name}>
+                <Heading
+                  size={'lg'}
+                  maxW={{ '2xl': '400px', lg: 270, xl: 300, base: 200 }}
+                  w="fit-content"
+                  whiteSpace="nowrap"
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  cursor={'pointer'}
+                >
+                  {props.name}
+                </Heading>
+              </Tooltip>
+            </HStack>
+
+            {/* Desktop Layout */}
+            <HStack
+              gap={3}
+              alignItems="center"
+              flexShrink={0}
+              display={{ base: 'none', md: 'flex' }}
             >
-              Schedule
-            </Button>
-            <HStack gap={3} width="fit-content">
+              {/* Availability Block Badge */}
+              {displayAvailabilities && displayAvailabilities.length > 0 && (
+                <HStack gap={2} flexWrap="wrap">
+                  {displayAvailabilities.slice(0, 2).map(block => (
+                    <Badge
+                      key={block.id}
+                      bg="bg-surface-tertiary-2"
+                      color="text-primary"
+                      borderRadius={6}
+                      fontSize="xs"
+                      px={2}
+                      py={0.5}
+                    >
+                      {block.title}
+                    </Badge>
+                  ))}
+                  {displayAvailabilities.length > 2 && (
+                    <Badge
+                      bg="bg-surface-tertiary-2"
+                      color="text-primary"
+                      borderRadius={6}
+                      fontSize="xs"
+                      px={2}
+                      py={0.5}
+                    >
+                      +{displayAvailabilities.length - 2} more
+                    </Badge>
+                  )}
+                </HStack>
+              )}
               <Button
                 colorScheme="primary"
-                display={{ base: 'none', md: 'flex' }}
                 onClick={() =>
                   push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
+                }
+                isDisabled={!hasProAccess}
+                title={
+                  !hasProAccess
+                    ? 'Upgrade to Pro to schedule with groups'
+                    : undefined
                 }
               >
                 Schedule
@@ -246,6 +330,146 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 }
               />
             </HStack>
+
+            {/* Mobile Layout */}
+            <VStack
+              width="100%"
+              alignItems="flex-start"
+              gap={2}
+              display={{ base: 'flex', md: 'none' }}
+            >
+              {/* Availability badges - full width, can wrap */}
+              {displayAvailabilities && displayAvailabilities.length > 0 && (
+                <HStack gap={2} flexWrap="wrap" width="100%">
+                  {displayAvailabilities.slice(0, 2).map(block => (
+                    <Badge
+                      key={block.id}
+                      bg="bg-surface-tertiary-2"
+                      color="text-primary"
+                      borderRadius={6}
+                      fontSize="xs"
+                      px={2}
+                      py={0.5}
+                    >
+                      {block.title}
+                    </Badge>
+                  ))}
+                  {displayAvailabilities.length > 2 && (
+                    <Badge
+                      bg="bg-surface-tertiary-2"
+                      color="text-primary"
+                      borderRadius={6}
+                      fontSize="xs"
+                      px={2}
+                      py={0.5}
+                    >
+                      +{displayAvailabilities.length - 2} more
+                    </Badge>
+                  )}
+                </HStack>
+              )}
+
+              {/* Action buttons - separate row, won't get squeezed */}
+              <HStack
+                gap={2}
+                alignItems="center"
+                width="100%"
+                justifyContent="space-between"
+              >
+                <Button
+                  colorScheme="primary"
+                  flex={1}
+                  onClick={() =>
+                    push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
+                  }
+                  isDisabled={!hasProAccess}
+                  title={
+                    !hasProAccess
+                      ? 'Upgrade to Pro to schedule with groups'
+                      : undefined
+                  }
+                >
+                  Schedule
+                </Button>
+                <HStack gap={2} alignItems="center" flexShrink={0}>
+                  {isAdmin && (
+                    <IconButton
+                      aria-label="Add Contact"
+                      p={'8px 16px'}
+                      icon={<IoMdPersonAdd size={20} />}
+                      onClick={() => props.onAddNewMember(props.id, props.name)}
+                    />
+                  )}
+                  <Menu>
+                    <MenuButton
+                      as={IconButton}
+                      aria-label="Group Settings"
+                      p={'8px 16px'}
+                      icon={<IoMdSettings size={20} />}
+                      key={`${props?.id}-option-mobile`}
+                    />
+                    <Portal>
+                      <MenuList backgroundColor={menuBgColor}>
+                        {menuItems.map((val, index, arr) => (
+                          <Fragment key={`${val.label}-${props?.id}-mobile`}>
+                            {val.link ? (
+                              <MenuItem
+                                as="a"
+                                href={val.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                backgroundColor={menuBgColor}
+                              >
+                                {val.label}
+                              </MenuItem>
+                            ) : (
+                              <MenuItem
+                                color={
+                                  val.important ? 'primary.500' : undefined
+                                }
+                                onClick={val.onClick}
+                                backgroundColor={menuBgColor}
+                                key={`${val.label}-${props?.id}-mobile`}
+                              >
+                                {val.label}
+                              </MenuItem>
+                            )}
+                            {index !== arr.length - 1 && (
+                              <MenuDivider borderColor="neutral.600" />
+                            )}
+                          </Fragment>
+                        ))}
+                        {!isProduction && (
+                          <>
+                            <MenuDivider borderColor="neutral.600" />
+                            <MenuItem
+                              backgroundColor={menuBgColor}
+                              onClick={() => console.debug(props)}
+                            >
+                              Log info (for debugging)
+                            </MenuItem>
+                          </>
+                        )}
+                      </MenuList>
+                    </Portal>
+                  </Menu>
+                  <AccordionButton
+                    as={IconButton}
+                    width="fit-content"
+                    m={0}
+                    aria-label="Expand Group"
+                    p={'8px 16px'}
+                    icon={
+                      isExpanded ? (
+                        <FaChevronUp size={20} />
+                      ) : (
+                        <FaChevronDown size={20} />
+                      )
+                    }
+                  />
+                </HStack>
+              </HStack>
+            </VStack>
           </HStack>
           <AccordionPanel px={0} pb={4}>
             <VStack my={6} width="100%" px={0}>
@@ -263,9 +487,9 @@ const GroupCard: React.FC<IGroupCard> = props => {
                           <Heading size="sm" fontWeight={800}>
                             Contact Connection{' '}
                           </Heading>
-                          <Tooltip.Provider delayDuration={400}>
-                            <Tooltip.Root>
-                              <Tooltip.Trigger>
+                          <RadixTooltip.Provider delayDuration={400}>
+                            <RadixTooltip.Root>
+                              <RadixTooltip.Trigger>
                                 <Flex
                                   w="16px"
                                   h="16px"
@@ -281,8 +505,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
                                     as={FaInfo}
                                   />
                                 </Flex>
-                              </Tooltip.Trigger>
-                              <Tooltip.Content>
+                              </RadixTooltip.Trigger>
+                              <RadixTooltip.Content>
                                 <Text
                                   fontSize="sm"
                                   p={4}
@@ -294,10 +518,10 @@ const GroupCard: React.FC<IGroupCard> = props => {
                                   contacts list or has already been sent a
                                   contact invite from you.
                                 </Text>
-                                <Tooltip.Arrow />
-                              </Tooltip.Content>
-                            </Tooltip.Root>
-                          </Tooltip.Provider>
+                                <RadixTooltip.Arrow />
+                              </RadixTooltip.Content>
+                            </RadixTooltip.Root>
+                          </RadixTooltip.Provider>
                         </Flex>
                       </Th>
                       <Th pl={0}>
@@ -305,9 +529,9 @@ const GroupCard: React.FC<IGroupCard> = props => {
                           <Heading size="sm" fontWeight={800}>
                             Role{' '}
                           </Heading>
-                          <Tooltip.Provider delayDuration={400}>
-                            <Tooltip.Root>
-                              <Tooltip.Trigger>
+                          <RadixTooltip.Provider delayDuration={400}>
+                            <RadixTooltip.Root>
+                              <RadixTooltip.Trigger>
                                 <Flex
                                   w="16px"
                                   h="16px"
@@ -323,8 +547,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
                                     as={FaInfo}
                                   />
                                 </Flex>
-                              </Tooltip.Trigger>
-                              <Tooltip.Content>
+                              </RadixTooltip.Trigger>
+                              <RadixTooltip.Content>
                                 <Text
                                   fontSize="sm"
                                   p={4}
@@ -336,21 +560,21 @@ const GroupCard: React.FC<IGroupCard> = props => {
                                   group, change the group&apos;s name, calendar
                                   link, and delete group.
                                 </Text>
-                                <Tooltip.Arrow />
-                              </Tooltip.Content>
-                            </Tooltip.Root>
-                          </Tooltip.Provider>
+                                <RadixTooltip.Arrow />
+                              </RadixTooltip.Content>
+                            </RadixTooltip.Root>
+                          </RadixTooltip.Provider>
                         </Flex>
                       </Th>
                       <Th pr={0}></Th>
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {props.members.map(member => (
+                    {props.members?.map(member => (
                       <GroupMemberCard
                         currentAccount={props.currentAccount}
                         key={member?.address}
-                        isEmpty={props.members.length < 2}
+                        isEmpty={props.members && props.members.length < 2}
                         viewerRole={actor?.role || MemberType.MEMBER}
                         groupRoles={groupRoles}
                         setGroupRoles={setGroupRoles}

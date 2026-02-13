@@ -6,7 +6,7 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useCallback, useMemo } from 'react'
+import { FC, useCallback, useMemo } from 'react'
 
 import { Avatar } from '@/components/profile/components/Avatar'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
@@ -27,24 +27,22 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const {
     groupParticipants,
-    groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
     addGroup,
     removeGroup,
     participants,
-    groups: allGroups,
+    group,
   } = useParticipants()
   const allGroupParticipants = groupParticipants[props.groupId] || []
-  const allGroupAvailability = groupAvailability[props.groupId] || []
 
   const participantAddressesSet = useMemo(() => {
     return new Set(
-      getMergedParticipants(participants, allGroups, groupParticipants)
+      getMergedParticipants(participants, groupParticipants, group)
         .map(user => user.account_address)
         .filter(Boolean)
     )
-  }, [participants, allGroups, groupParticipants])
+  }, [participants, group, groupParticipants])
 
   const isMemberAlreadyAdded = useCallback(() => {
     return participantAddressesSet.has(props.address)
@@ -56,41 +54,60 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
       }),
     [participants]
   )
-  const handleParticipantsChange = () => {
-    const newParticipants = allGroupParticipants.includes(props.address)
-      ? allGroupParticipants.filter(val => val !== props.address)
-      : [...allGroupParticipants, props.address]
+  const handleParticipantsRemove = () => {
+    const newParticipants = allGroupParticipants.filter(
+      val => val !== props.address
+    )
+
     if (newParticipants.length === 0) {
       removeGroup(props.groupId)
-    } else if (!groups.some(group => group.id === props.groupId)) {
+    }
+    setGroupAvailability(prev => {
+      const updated = { ...prev }
+      Object.keys(updated).forEach(key => {
+        if (updated[key]?.includes(props.address)) {
+          updated[key] = updated[key].filter(val => val !== props.address)
+        }
+      })
+      return updated
+    })
+
+    setGroupParticipants(prev => {
+      const updated = { ...prev }
+      Object.keys(updated).forEach(key => {
+        if (updated[key]?.includes(props.address)) {
+          updated[key] = updated[key].filter(val => val !== props.address)
+        }
+      })
+      return updated
+    })
+  }
+  const handlParticipantAdd = () => {
+    const newParticipants = [...allGroupParticipants, props.address]
+    if (!groups.some(group => group.id === props.groupId)) {
       addGroup({
         id: props.groupId,
         name: props.displayName || '',
         isGroup: true,
       })
     }
-    setGroupParticipants(prev => {
-      if (newParticipants.length === 0) {
-        const newGroupParticipants = { ...prev }
-        delete newGroupParticipants[props.groupId]
-        return newGroupParticipants
-      } else {
-        return {
-          ...prev,
-          [props.groupId]: newParticipants,
-        }
-      }
-    })
-    const filteredAvailability = allGroupAvailability.filter(
-      val => val !== props.address
-    )
+
+    setGroupParticipants(prev => ({
+      ...prev,
+      [props.groupId]: newParticipants,
+    }))
 
     setGroupAvailability(prev => ({
       ...prev,
-      [props.groupId]: allGroupParticipants.includes(props.address)
-        ? filteredAvailability
-        : [...filteredAvailability, props.address],
+      [props.groupId]: newParticipants,
     }))
+  }
+  const handleMemberChange = () => {
+    if (isMemberAlreadyAdded()) {
+      handleParticipantsRemove()
+    } else {
+      handlParticipantAdd()
+    }
   }
   return (
     <HStack
@@ -124,7 +141,7 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
       <Box flexBasis="43%">
         <Button
           colorScheme="primary"
-          onClick={handleParticipantsChange}
+          onClick={handleMemberChange}
           variant={isMemberAlreadyAdded() ? 'outline' : 'solid'}
         >
           {isMemberAlreadyAdded() ? 'Remove' : 'Add to Meeting'}

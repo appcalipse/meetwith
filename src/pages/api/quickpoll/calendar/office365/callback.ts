@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
+import { CalendarInfo } from '@/types/Office365'
 import {
   OAuthCallbackQuery,
   PollVisibility,
@@ -22,7 +23,13 @@ const credentials = {
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { code, error, state }: OAuthCallbackQuery = req.query
+  const { method, query } = req
+
+  if (method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const { code, error, state }: OAuthCallbackQuery = query
 
   const stateObject =
     typeof state === 'string'
@@ -66,10 +73,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const tokenResponse = await fetch(
     'https://login.microsoftonline.com/common/oauth2/v2.0/token',
     {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
       body: new URLSearchParams({
         client_id: client_id!,
         client_secret: client_secret!,
@@ -77,6 +80,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         grant_type: 'authorization_code',
         redirect_uri,
       }),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      method: 'POST',
     }
   )
 
@@ -109,12 +116,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const calendarsData = await calendarsResponse.json()
 
   const calendars: Array<CalendarSyncInfo> =
-    calendarsData.value?.map((c: any) => ({
+    calendarsData.value?.map((c: CalendarInfo) => ({
       calendarId: c.id,
-      name: c.name,
       color: c.color,
-      sync: true,
       enabled: true,
+      isReadOnly: !c.canEdit,
+      name: c.name,
+      sync: true,
     })) || []
 
   let participantId = stateObject?.participantId
@@ -140,7 +148,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         guestEmail.toLowerCase()
       )
       participantExists = true
-    } catch (error) {
+    } catch (_error) {
       participantExists = false
     }
 
@@ -177,7 +185,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     participantId,
     userData.mail || userData.userPrincipalName,
     TimeSlotSource.OFFICE,
-    tokenData
+    tokenData,
+    calendars
   )
 
   if (!stateObject?.participantId) {

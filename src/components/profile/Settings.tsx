@@ -24,56 +24,63 @@ import AccountPlansAndBilling from '@/components/profile/AccountPlansAndBilling'
 import WalletAndPayment from '@/components/profile/WalletAndPayment'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
-import { EditMode } from '@/types/Dashboard'
-import { isProduction } from '@/utils/constants'
+import { EditMode, SettingsSection } from '@/types/Dashboard'
+import { getActiveProSubscription } from '@/utils/subscription_manager'
 
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
-import Block from './components/Block'
 import ConnectCalendar from './ConnectCalendar'
 import ConnectedAccounts from './ConnectedAccounts'
-
-enum SettingsSection {
-  ACCOUNT_DETAILS = 'account-details',
-  CONNECTED_CALENDARS = 'connected-calendars',
-  CONNECTED_ACCOUNTS = 'connected-accounts',
-  NOTIFICATIONS = 'notifications',
-  ACCOUNT_PLANS_BILLING = 'account-plans-billing',
-  WALLET_PAYMENT = 'wallet-payment',
-}
+import Block from './components/Block'
 
 interface SettingsNavItem {
   name: string
   section: SettingsSection
+  isDisabled?: boolean
 }
 
-const Settings: React.FC<{ currentAccount: Account }> = ({
-  currentAccount,
-}) => {
+const getAllSettingsNavItems = (hasProAccess: boolean): SettingsNavItem[] => {
+  return [
+    { name: 'Account details', section: SettingsSection.DETAILS },
+    {
+      name: 'Connected calendars',
+      section: SettingsSection.CONNECTED_CALENDARS,
+    },
+    {
+      name: 'Connected accounts',
+      section: SettingsSection.CONNECTED_ACCOUNTS,
+    },
+    { name: 'Notifications', section: SettingsSection.NOTIFICATIONS },
+    {
+      name: 'Account plans & Billing',
+      section: SettingsSection.SUBSCRIPTIONS,
+    },
+    {
+      name: 'Wallet & Payments',
+      section: SettingsSection.WALLET_PAYMENT,
+      isDisabled: !hasProAccess,
+    },
+  ]
+}
+
+const Settings: React.FC<{
+  currentAccount: Account
+}> = ({ currentAccount }) => {
   const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
-  const settingsNavItems: SettingsNavItem[] = useMemo(() => {
-    const tabs = [
-      { name: 'Account details', section: SettingsSection.ACCOUNT_DETAILS },
-      {
-        name: 'Connected calendars',
-        section: SettingsSection.CONNECTED_CALENDARS,
-      },
-      {
-        name: 'Connected accounts',
-        section: SettingsSection.CONNECTED_ACCOUNTS,
-      },
-      { name: 'Notifications', section: SettingsSection.NOTIFICATIONS },
-      {
-        name: 'Account plans & Billing',
-        section: SettingsSection.ACCOUNT_PLANS_BILLING,
-      },
-      {
-        name: 'Wallet & Payments',
-        section: SettingsSection.WALLET_PAYMENT,
-      },
-    ]
-    return tabs
-  }, [])
+  const hasProAccess = useMemo(
+    () => Boolean(getActiveProSubscription(currentAccount)),
+    [currentAccount]
+  )
+
+  const allSettingsNavItems = useMemo(
+    () => getAllSettingsNavItems(hasProAccess),
+    [hasProAccess]
+  )
+
+  const settingsNavItems: SettingsNavItem[] = useMemo(
+    () => allSettingsNavItems.filter(item => !item.isDisabled),
+    [allSettingsNavItems]
+  )
   const [activeSection, setActiveSection] = useState<
     SettingsSection | undefined
   >(undefined)
@@ -85,7 +92,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
 
   const renderContent = () => {
     switch (activeSection) {
-      case SettingsSection.ACCOUNT_DETAILS:
+      case SettingsSection.DETAILS:
         return <AccountDetails currentAccount={currentAccount} />
       case SettingsSection.CONNECTED_CALENDARS:
         return <ConnectCalendar currentAccount={currentAccount} />
@@ -99,7 +106,7 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
         )
       case SettingsSection.NOTIFICATIONS:
         return <NotificationsConfig currentAccount={currentAccount} />
-      case SettingsSection.ACCOUNT_PLANS_BILLING:
+      case SettingsSection.SUBSCRIPTIONS:
         return <AccountPlansAndBilling currentAccount={currentAccount} />
       case SettingsSection.WALLET_PAYMENT:
         return <WalletAndPayment currentAccount={currentAccount} />
@@ -128,29 +135,21 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
   const handleSectionNavigation = (section: SettingsSection) => {
     setActiveSection(section)
 
-    const sectionHash = {
-      [SettingsSection.ACCOUNT_DETAILS]: '',
-      [SettingsSection.CONNECTED_CALENDARS]: 'connected-calendars',
-      [SettingsSection.CONNECTED_ACCOUNTS]: 'connected-accounts',
-      [SettingsSection.NOTIFICATIONS]: 'notifications',
-      [SettingsSection.ACCOUNT_PLANS_BILLING]: 'subscriptions',
-      [SettingsSection.WALLET_PAYMENT]: 'wallet-payment',
+    const sectionPath: Record<SettingsSection, string> = {
+      [SettingsSection.DETAILS]: '/dashboard/settings/details',
+      [SettingsSection.CONNECTED_CALENDARS]:
+        '/dashboard/settings/connected-calendars',
+      [SettingsSection.CONNECTED_ACCOUNTS]:
+        '/dashboard/settings/connected-accounts',
+      [SettingsSection.NOTIFICATIONS]: '/dashboard/settings/notifications',
+      [SettingsSection.SUBSCRIPTIONS]: '/dashboard/settings/subscriptions',
+      [SettingsSection.WALLET_PAYMENT]: '/dashboard/settings/wallet-payment',
     }
-
-    const hash = sectionHash[section]
-    const { section: _omit, ...restQuery } = router.query ?? {}
-
-    const query: Record<string, string> = {}
-    Object.entries(restQuery).forEach(([k, v]) => {
-      if (typeof v === 'string') query[k] = v
-      else if (Array.isArray(v) && v.length) query[k] = v.join(',')
-    })
 
     router.replace(
       {
-        pathname: '/dashboard/details',
-        hash,
-        query,
+        pathname: sectionPath[section],
+        query: {},
       },
       undefined,
       { shallow: true }
@@ -205,33 +204,42 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
 
       void router.replace(
         {
-          pathname: '/dashboard/details',
-          hash: calendarResult ? 'connected-calendars' : 'connected-accounts',
+          pathname: calendarResult
+            ? '/dashboard/settings/connected-calendars'
+            : '/dashboard/settings/connected-accounts',
           query,
         },
-        undefined,
-        { shallow: true }
+        undefined
       )
     }
   }, [calendarResult, stripeResult])
   useEffect(() => {
     if (!router.isReady) return
-    const hash = router.asPath.split('#')[1] || ''
+    const path = router.asPath.split('?')[0]
+    const sectionSlug = path.replace('/dashboard/settings/', '')
 
-    if (hash === 'subscriptions') {
-      setActiveSection(SettingsSection.ACCOUNT_PLANS_BILLING)
-    } else if (hash === 'connected-accounts') {
-      setActiveSection(SettingsSection.CONNECTED_ACCOUNTS)
-    } else if (hash === 'connected-calendars') {
-      setActiveSection(SettingsSection.CONNECTED_CALENDARS)
-    } else if (hash === 'notifications') {
-      setActiveSection(SettingsSection.NOTIFICATIONS)
-    } else if (hash === 'wallet-payment') {
-      setActiveSection(SettingsSection.WALLET_PAYMENT)
-    } else {
-      setActiveSection(SettingsSection.ACCOUNT_DETAILS)
+    switch (sectionSlug) {
+      case SettingsSection.SUBSCRIPTIONS:
+        setActiveSection(SettingsSection.SUBSCRIPTIONS)
+        break
+      case SettingsSection.CONNECTED_ACCOUNTS:
+        setActiveSection(SettingsSection.CONNECTED_ACCOUNTS)
+        break
+      case SettingsSection.CONNECTED_CALENDARS:
+        setActiveSection(SettingsSection.CONNECTED_CALENDARS)
+        break
+      case SettingsSection.NOTIFICATIONS:
+        setActiveSection(SettingsSection.NOTIFICATIONS)
+        break
+      case SettingsSection.WALLET_PAYMENT:
+        setActiveSection(SettingsSection.WALLET_PAYMENT)
+        break
+      case SettingsSection.DETAILS:
+      default:
+        setActiveSection(SettingsSection.DETAILS)
+        break
     }
-  }, [router.asPath])
+  }, [router.asPath, router.isReady, allSettingsNavItems])
   useEffect(() => {
     if (router.query.code) {
       handleSectionNavigation(SettingsSection.CONNECTED_ACCOUNTS)

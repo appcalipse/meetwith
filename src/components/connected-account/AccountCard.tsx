@@ -28,6 +28,7 @@ import { useToastHelpers } from '@utils/toasts'
 import Image from 'next/image'
 import React, { FC, useContext } from 'react'
 import { GoDotFill } from 'react-icons/go'
+
 type DisconnectHandler = () => Promise<unknown>
 
 interface DisconnectConfig {
@@ -36,6 +37,7 @@ interface DisconnectConfig {
   logEvent?: boolean
   disableSuccessAction?: boolean
 }
+
 import usePoller from '@/hooks/usePoller'
 import { AccountContext } from '@/providers/AccountProvider'
 import {
@@ -276,7 +278,7 @@ const AccountCard: FC<IProps> = props => {
       setIsGeneratingLink(true)
       const url = await generateDashboardLink()
       window.open(url, '_blank', 'noopener noreferrer')
-    } catch (e) {
+    } catch (_e) {
       showErrorToast('Failed to open dashboard', 'Please try again later.')
     } finally {
       setIsGeneratingLink(false)

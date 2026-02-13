@@ -2,6 +2,7 @@ import { AddIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
+  Divider,
   Heading,
   HStack,
   Spacer,
@@ -16,7 +17,9 @@ import MeetingTypeCard from '@components/meeting-settings/MeetingTypeCard'
 import { Account, MeetingType } from '@meta/Account'
 import { useQuery } from '@tanstack/react-query'
 import { getAccountCalendarUrl } from '@utils/calendar_manager'
-import React, { ReactNode, useEffect, useState } from 'react'
+import { SessionType } from '@utils/constants/meeting-types'
+import { useRouter } from 'next/router'
+import React, { ReactNode, useEffect, useMemo, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
 import { AvailabilityBlock } from '@/types/availability'
@@ -24,19 +27,24 @@ import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
   getAvailabilityBlocks,
-  getMeetingTypes,
+  getMeetingTypesWithMetadata,
   getStripeStatus,
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { getDefaultValues } from '@/utils/constants/meeting-types'
+import { isTrialEligible } from '@/utils/subscription_manager'
 
 import MeetingTypeModal from '../meeting-settings/MeetingTypeModal'
+
 const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
+  const router = useRouter()
   const bgColor = useColorModeValue('white', 'neutral.900')
   const [selectedType, setSelectedType] = useState<MeetingType | null>(null)
   const [createKey, setCreateKey] = useState<string>(uuidv4())
+  const [canCreateMeetingType, setCanCreateMeetingType] = useState(true)
+  const [isPro, setIsPro] = useState(true)
 
   const {
     isOpen: isModalOpen,
@@ -57,6 +65,9 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
     queryFn: () => listConnectedCalendars(),
     enabled: !!currentAccount?.id,
   })
+
+  // Trial eligibility from account context
+  const trialEligible = isTrialEligible(currentAccount)
   const { data: availabilityBlocks, isLoading: isAvailabilityLoading } =
     useQuery<AvailabilityBlock[]>({
       queryKey: ['availabilityBlocks', currentAccount?.address],
@@ -75,34 +86,92 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
 
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
+
   const fetchMeetingTypes = async (reset?: boolean, limit = 10) => {
     const PAGE_SIZE = limit
     setIsLoading(true)
-    const netMeetingTypes = await getMeetingTypes(
+    const response = await getMeetingTypesWithMetadata(
       PAGE_SIZE,
       reset ? 0 : meetingTypes.length
     )
+
+    const netMeetingTypes = response.meetingTypes || []
 
     if (netMeetingTypes.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
     setMeetingTypes((reset ? [] : [...meetingTypes]).concat(netMeetingTypes))
+    setCanCreateMeetingType(!response.upgradeRequired)
+    setIsPro(response.isPro)
     setIsLoading(false)
     setFirstFetch(false)
   }
+
   useEffect(() => {
     fetchMeetingTypes(true, 10)
   }, [currentAccount?.address])
 
-  let content: ReactNode
+  // Separate free and paid meeting types for free users
+  const { freeMeetingTypes, paidMeetingTypes } = useMemo(() => {
+    const free = meetingTypes.filter(mt => mt.type === SessionType.FREE)
+    const paid = meetingTypes.filter(mt => mt.type === SessionType.PAID)
+    return { freeMeetingTypes: free, paidMeetingTypes: paid }
+  }, [meetingTypes])
+
   const refetch = async () => {
     await fetchMeetingTypes(true, meetingTypes.length + 1)
     setCreateKey(uuidv4())
     setSelectedType(null)
   }
+
+  // Render meeting type cards
+  const renderMeetingTypeCards = (
+    types: MeetingType[],
+    isRestricted = false
+  ) => {
+    return (
+      <Box
+        justifyContent="space-between"
+        flexWrap="wrap"
+        width="100%"
+        display="flex"
+        flexDirection="row"
+        rowGap={'1vw'}
+        opacity={isRestricted ? 0.7 : 1}
+        pointerEvents={isRestricted ? 'none' : 'auto'}
+      >
+        {types.map(type => {
+          const url = `${getAccountCalendarUrl(currentAccount, false)}/${
+            type.slug
+          }`
+          return (
+            <MeetingTypeCard
+              {...type}
+              key={type.id}
+              onSelect={(type: MeetingType) => {
+                if (!isRestricted) {
+                  setSelectedType(type)
+                  openModal()
+                }
+              }}
+              url={url}
+            />
+          )
+        })}
+      </Box>
+    )
+  }
+
+  let content: ReactNode
   if (firstFetch) {
     content = (
-      <Box mx="auto">
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minH="200px"
+        w="100%"
+      >
         <Loading />
       </Box>
     )
@@ -112,35 +181,62 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         No meeting types found
       </Text>
     )
-  } else {
+  } else if (isPro) {
     content = (
       <VStack w={'100%'}>
-        <Box
-          justifyContent="space-between"
-          flexWrap="wrap"
-          width="100%"
-          display="flex"
-          flexDirection="row"
-          mt={{ md: 6 }}
-          rowGap={'1vw'}
-        >
-          {meetingTypes.map(type => {
-            const url = `${getAccountCalendarUrl(currentAccount, false)}/${
-              type.slug
-            }`
-            return (
-              <MeetingTypeCard
-                {...type}
-                key={type.id}
-                onSelect={(type: MeetingType) => {
-                  setSelectedType(type)
-                  openModal()
-                }}
-                url={url}
-              />
-            )
-          })}
-        </Box>
+        {renderMeetingTypeCards(meetingTypes)}
+        {!noMoreFetch && !firstFetch && (
+          <VStack mb={8}>
+            <Button
+              isLoading={isLoading}
+              colorScheme="primary"
+              variant="outline"
+              alignSelf="center"
+              my={4}
+              onClick={() => fetchMeetingTypes()}
+            >
+              Load more
+            </Button>
+            <Spacer />
+          </VStack>
+        )}
+      </VStack>
+    )
+  } else {
+    content = (
+      <VStack w={'100%'} spacing={6}>
+        {freeMeetingTypes.length > 0 && (
+          <>{renderMeetingTypeCards(freeMeetingTypes)}</>
+        )}
+
+        {paidMeetingTypes.length > 0 && (
+          <>
+            {freeMeetingTypes.length > 0 && (
+              <Divider borderColor="neutral.600" my={4} />
+            )}
+
+            <Text fontSize="md" color="neutral.400" w="100%">
+              The session types below are no longer visible on your public page
+              because you&apos;re on the free plan.{' '}
+              <Button
+                variant="link"
+                colorScheme="primary"
+                px={0}
+                onClick={() => router.push('/dashboard/settings/subscriptions')}
+                textDecoration="underline"
+                fontSize="md"
+                height="auto"
+                minW="auto"
+              >
+                {trialEligible ? 'Try PRO for free' : 'Upgrade to PRO'}
+              </Button>{' '}
+              to restore them.
+            </Text>
+
+            {renderMeetingTypeCards(paidMeetingTypes, true)}
+          </>
+        )}
+
         {!noMoreFetch && !firstFetch && (
           <VStack mb={8}>
             <Button
@@ -159,6 +255,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
       </VStack>
     )
   }
+
   return (
     <Box width="100%" bg={bgColor} p={8} borderRadius={12}>
       <MeetingTypeModal
@@ -178,6 +275,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         isAvailabilityLoading={isAvailabilityLoading}
         stripeStatus={stripeStatus}
         isStripeLoading={isStripeLoading}
+        isPro={isPro}
         onDelete={() => {
           openDeleteConfirmationModal()
           closeModal()
@@ -208,6 +306,12 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
                 base: 'xs',
                 md: 'md',
               }}
+              isDisabled={!canCreateMeetingType}
+              title={
+                !canCreateMeetingType
+                  ? 'Upgrade to Pro to create more meeting types'
+                  : undefined
+              }
             >
               New Meeting Type
             </Button>
@@ -216,11 +320,35 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
             width="100%"
             alignItems="flex-start"
             justifyContent="space-between"
+            flexWrap="wrap"
+            gap={2}
           >
-            <Text color="neutral.400">Here are your meeting types</Text>
+            <Text color="neutral.400">Here are your created meeting types</Text>
+            {!isPro && (
+              <Text fontSize="14px" color="neutral.400">
+                <Button
+                  variant="link"
+                  colorScheme="primary"
+                  px={0}
+                  onClick={() =>
+                    router.push('/dashboard/settings/subscriptions')
+                  }
+                  textDecoration="none"
+                  fontSize="14px"
+                  height="auto"
+                  minW="auto"
+                >
+                  {trialEligible ? 'Try PRO for free' : 'Go PRO'}
+                </Button>{' '}
+                to add as many plan types as you want
+              </Text>
+            )}
           </HStack>
         </VStack>
-        {content}
+
+        <Box mt={{ md: 6 }} width="100%">
+          {content}
+        </Box>
       </VStack>
     </Box>
   )

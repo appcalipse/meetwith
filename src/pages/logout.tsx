@@ -1,6 +1,6 @@
-import { Container, VStack } from '@chakra-ui/react'
+import { Container, useToast, VStack } from '@chakra-ui/react'
 import { queryClient } from '@utils/react_query'
-import router, { useRouter } from 'next/router'
+import router from 'next/router'
 import { useContext, useEffect } from 'react'
 import { useActiveWallet } from 'thirdweb/react'
 
@@ -9,6 +9,7 @@ import { AccountContext } from '../providers/AccountProvider'
 
 export default function LogoutPage() {
   const { logout } = useContext(AccountContext)
+  const toast = useToast()
   useEffect(() => {
     doLogout()
   }, [])
@@ -17,14 +18,15 @@ export default function LogoutPage() {
 
   const doLogout = async () => {
     queryClient.clear()
+    toast.closeAll()
     logout(wallet!)
     await router.push('/')
   }
 
   return (
     <>
-      <Container maxW="7xl" mt={8} flex={1}>
-        <VStack alignItems="center" py={10} px={6}>
+      <Container flex={1} maxW="7xl" mt={8}>
+        <VStack alignItems="center" px={6} py={10}>
           <Loading label="Logging out..." />
         </VStack>
       </Container>

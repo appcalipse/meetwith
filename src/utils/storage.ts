@@ -1,9 +1,11 @@
-import { GuestPollDetails } from '@/types/QuickPoll'
+import { GuestPollDetails, QuickPollSignInContext } from '@/types/QuickPoll'
+import { CONTEXT_EXPIRY_MS, QUICKPOLL_SIGNIN_CONTEXT_KEY } from './constants'
 
 const SIGNATURE_KEY = 'current_user_sig'
 const SCHEDULES = 'meetings_scheduled'
 const NOTIFICATION = 'group_notifications'
 const GUEST_POLL_DETAILS = 'quickpoll_guest_details'
+const SUBSCRIPTION_HANDLE = 'subscription_handle'
 const ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
@@ -116,16 +118,67 @@ const removeGuestPollDetails = (pollId: string) => {
   window.localStorage.removeItem(`${GUEST_POLL_DETAILS}:${pollId}`)
 }
 
+const saveSubscriptionHandle = (handle: string): void => {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(SUBSCRIPTION_HANDLE, handle)
+}
+
+const getSubscriptionHandle = (): string | null => {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(SUBSCRIPTION_HANDLE)
+}
+
+const removeSubscriptionHandle = (): void => {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(SUBSCRIPTION_HANDLE)
+}
+
 export {
   getGuestPollDetails,
   getMeetingsScheduled,
   getNotificationTime,
   getSignature,
+  getSubscriptionHandle,
   incrementNotificationLookup,
   removeGuestPollDetails,
   removeSignature,
+  removeSubscriptionHandle,
   saveGuestPollDetails,
   saveMeetingsScheduled,
   saveNotificationTime,
   saveSignature,
+  saveSubscriptionHandle,
+}
+
+export const saveQuickPollSignInContext = (
+  context: Omit<QuickPollSignInContext, 'timestamp'>
+) => {
+  const contextWithTimestamp: QuickPollSignInContext = {
+    ...context,
+    timestamp: Date.now(),
+  }
+  localStorage.setItem(
+    QUICKPOLL_SIGNIN_CONTEXT_KEY,
+    JSON.stringify(contextWithTimestamp)
+  )
+}
+
+export const getQuickPollSignInContext = (): QuickPollSignInContext | null => {
+  const stored = localStorage.getItem(QUICKPOLL_SIGNIN_CONTEXT_KEY)
+  if (!stored) return null
+
+  try {
+    const context: QuickPollSignInContext = JSON.parse(stored)
+    if (Date.now() - context.timestamp > CONTEXT_EXPIRY_MS) {
+      clearQuickPollSignInContext()
+      return null
+    }
+    return context
+  } catch {
+    return null
+  }
+}
+
+export const clearQuickPollSignInContext = () => {
+  localStorage.removeItem(QUICKPOLL_SIGNIN_CONTEXT_KEY)
 }

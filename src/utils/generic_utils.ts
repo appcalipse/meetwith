@@ -1,11 +1,13 @@
+import { DateTime } from 'luxon'
 import { useEffect, useState } from 'react'
 import slugify from 'slugify'
 
 import { GroupMember } from '@/types/Group'
-import { MeetingProvider } from '@/types/Meeting'
+import { DBSlot, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 
 import { MeetingPermissions } from './constants/schedule'
+import { isValidUrl } from './validations'
 
 export const zeroAddress = '0x0000000000000000000000000000000000000000' as const
 
@@ -47,24 +49,31 @@ export function parseUnits(value: `${number}`, decimals: number) {
   return BigInt(`${negative ? '-' : ''}${integer}${fraction}`)
 }
 export const isAccountSchedulerOrOwner = (
-  participants?: ParticipantInfo[],
-  address?: string,
+  participants?: ParticipantInfo[] | DBSlot[],
+  identifier?: string,
   participantsType = [ParticipantType.Scheduler, ParticipantType.Owner]
-) =>
-  participantsType.includes(
-    participants?.find(p => p.account_address === address)?.type ||
-      ParticipantType?.Invitee
+) => {
+  const actor = participants?.find(p => p.account_address === identifier)
+  if (!actor) return false
+  return participantsType.includes(
+    ('type' in actor ? actor.type : actor.role) || ParticipantType.Invitee
   )
+}
 
 export const canAccountAccessPermission = (
   permissions?: MeetingPermissions[],
-  participants?: ParticipantInfo[],
-  address?: string,
-  permission = MeetingPermissions.SEE_GUEST_LIST
+  participants?: ParticipantInfo[] | DBSlot[],
+  identifier?: string,
+  permission:
+    | MeetingPermissions
+    | MeetingPermissions[] = MeetingPermissions.SEE_GUEST_LIST
 ) =>
-  permissions === undefined ||
-  !!permissions?.includes(permission) ||
-  isAccountSchedulerOrOwner(participants, address)
+  (permissions
+    ? permission instanceof Array
+      ? permission.some(perm => permissions?.includes(perm))
+      : !!permissions?.includes(permission)
+    : true) || // if no permissions are set, allow by default
+  isAccountSchedulerOrOwner(participants, identifier)
 
 export function formatUnits(value: bigint, decimals: number) {
   let display = value.toString()
@@ -112,7 +121,7 @@ export const getSlugFromText = (text: string) =>
     strict: true,
   })
 
-export const useDebounce = (value: any, delay: number) => {
+export const useDebounce = (value: unknown, delay: number) => {
   // State and setters for debounced value
   const [debouncedValue, setDebouncedValue] = useState(value)
   useEffect(
@@ -139,7 +148,7 @@ export const shouldEnforceColorOnPath = (pathname: string): boolean => {
 export const isJson = (str: string) => {
   try {
     JSON.parse(str)
-  } catch (e) {
+  } catch (_e) {
     return false
   }
   return true
@@ -162,14 +171,14 @@ export const renderProviderName = (provider: MeetingProvider) => {
 
 export const convertMinutes = (minutes: number) => {
   if (minutes < 60) {
-    return { amount: minutes, type: 'minutes', isEmpty: false }
+    return { amount: minutes, isEmpty: false, type: 'minutes' }
   } else if (minutes < 60 * 24) {
-    return { amount: Math.floor(minutes / 60), type: 'hours', isEmpty: false }
+    return { amount: Math.floor(minutes / 60), isEmpty: false, type: 'hours' }
   } else {
     return {
       amount: Math.floor(minutes / (60 * 24)),
-      type: 'days',
       isEmpty: false,
+      type: 'days',
     }
   }
 }
@@ -205,9 +214,9 @@ export const formatCurrency = (
   minimumFractionDigits = 0
 ) => {
   return new Intl.NumberFormat('en-US', {
-    style: 'currency',
     currency,
     minimumFractionDigits,
+    style: 'currency',
   }).format(amount)
 }
 
@@ -241,6 +250,50 @@ export const deduplicateMembers = (members: GroupMember[]): GroupMember[] => {
   }
   return Array.from(seen.values())
 }
+
+export const groupByFields = <T extends object>(
+  items: T[],
+  fieldsToCompare: (keyof T | 'end.dateTime' | 'start.dateTime')[]
+): T[][] => {
+  const groupMap = new Map<string, T[]>()
+  for (const item of items) {
+    // Create a unique key from the specified fields
+    const key = fieldsToCompare
+      .map(field => {
+        let value: unknown
+        if (
+          typeof field === 'string' &&
+          field.includes('.') &&
+          ['start.dateTime', 'end.dateTime'].includes(field)
+        ) {
+          const rawValue = field.split('.').reduce<unknown>((acc, curr) => {
+            if (acc && typeof acc === 'object') {
+              return (acc as Record<string, unknown>)[curr]
+            }
+            return undefined
+          }, item)
+          value =
+            typeof rawValue === 'string'
+              ? DateTime.fromISO(rawValue).toFormat('HH:mm')
+              : undefined
+        } else {
+          value = item[field as keyof T]
+        }
+
+        return value !== undefined ? JSON.stringify(value) : 'undefined'
+      })
+      .join('|')
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, [])
+    }
+
+    groupMap.get(key)!.push(item)
+  }
+
+  return Array.from(groupMap.values()).sort((a, b) => a.length - b.length)
+}
+
 /**
  * Creates a handler function to clear a specific validation error on blur
  * @param setErrors - The setState function for validation errors
@@ -254,7 +307,7 @@ export const deduplicateMembers = (members: GroupMember[]): GroupMember[] => {
  * />
  * ```
  */
-export const clearValidationError = <T extends Record<string, any>>(
+export const clearValidationError = <T extends Record<string, unknown>>(
   setErrors: React.Dispatch<React.SetStateAction<T>>,
   fieldName: keyof T
 ) => {
@@ -267,4 +320,45 @@ export const clearValidationError = <T extends Record<string, any>>(
       return prev
     })
   }
+}
+
+/**
+ * Extracts a URL from text that may contain meeting links
+ * e.g., "Meeting at https://zoom.us/j/123456" -> "https://zoom.us/j/123456"
+ */
+export const extractUrlFromText = (text?: string | null): string | null => {
+  if (!text) return null
+
+  // Whitelist of allowed meeting domains
+  const allowedDomains = [
+    'zoom.us',
+    'meet.google.com',
+    'teams.microsoft.com',
+    'jitsi.meet',
+    'huddle01.app',
+  ]
+
+  // URL regex pattern to match http/https URLs
+  const urlPattern = /(https?:\/\/[^\s<>"]+)/gi
+  const matches = text.match(urlPattern)
+
+  if (!matches || matches.length === 0) return null
+
+  // Return the first valid URL from allowed domains
+  for (const match of matches) {
+    // Clean up potential trailing punctuation
+    const cleanUrl = match.replace(/[.,;!?]+$/, '')
+
+    if (isValidUrl(cleanUrl)) {
+      // Check if URL is from an allowed domain
+      const isAllowedDomain = allowedDomains.some(domain =>
+        cleanUrl.includes(domain)
+      )
+      if (isAllowedDomain) {
+        return cleanUrl
+      }
+    }
+  }
+
+  return null
 }

@@ -1,4 +1,9 @@
+import { Auth } from 'googleapis'
+import { DateTime } from 'luxon'
 import { MeetingPermissions } from '@/utils/constants/schedule'
+import { CaldavCredentials } from '@/utils/services/caldav.service'
+import { O365AuthCredentials } from '@/utils/services/office365.credential'
+import { CalendarSyncInfo } from './CalendarConnections'
 
 // Enums
 export enum PollStatus {
@@ -35,6 +40,10 @@ export interface AvailabilitySlot {
   weekday: number
   ranges: Array<{ start: string; end: string }>
   date?: string
+  overrides?: {
+    additions?: Array<{ start: string; end: string }>
+    removals?: Array<{ start: string; end: string }>
+  }
 }
 
 // Base interfaces
@@ -47,7 +56,7 @@ export interface QuickPoll {
   duration_minutes: number
   starts_at: string
   ends_at: string
-  expires_at: string
+  expires_at: string | null
   status: PollStatus
   visibility: PollVisibility
   permissions: MeetingPermissions[]
@@ -62,11 +71,18 @@ export interface QuickPollParticipant {
   poll_id: string
   account_address?: string
   guest_name?: string
+  account_name?: string
   guest_email: string
   status: QuickPollParticipantStatus
   available_slots: AvailabilitySlot[]
   timezone?: string
   participant_type: QuickPollParticipantType
+}
+
+export interface QuickPollJoinContext {
+  pollId: string
+  pollSlug: string
+  pollTitle: string
 }
 
 export interface QuickPollCalendar {
@@ -76,7 +92,8 @@ export interface QuickPollCalendar {
   participant_id: string
   email: string
   provider: string
-  payload?: Record<string, unknown>
+  payload?: string | Auth.Credentials | O365AuthCredentials | CaldavCredentials
+  calendars: CalendarSyncInfo[]
 }
 
 // Extended interfaces for API responses
@@ -99,9 +116,9 @@ export interface CreateQuickPollRequest {
   duration_minutes: number
   starts_at: string
   ends_at: string
-  expires_at: string
+  expires_at: string | null
   permissions: MeetingPermissions[]
-  participants: {
+  participants?: {
     account_address?: string
     name?: string
     guest_email?: string
@@ -117,7 +134,7 @@ export interface UpdateQuickPollRequest {
   duration_minutes?: number
   starts_at?: string
   ends_at?: string
-  expires_at?: string
+  expires_at?: string | null
   permissions?: MeetingPermissions[]
   participants?: {
     toAdd?: AddParticipantData[]
@@ -138,7 +155,10 @@ export interface AddParticipantData {
   guest_name?: string
   guest_email: string
   participant_type: QuickPollParticipantType
+  status?: QuickPollParticipantStatus
 }
+
+export type QuickPollBulkAddParticipants = AddParticipantData[]
 
 export interface QuickPollParticipantUpdateFields {
   status: QuickPollParticipantStatus
@@ -184,6 +204,9 @@ export interface QuickPollListResponse {
   polls: QuickPollWithParticipants[]
   total_count: number
   has_more: boolean
+  isPro?: boolean
+  canSchedule?: boolean
+  upgradeRequired?: boolean
 }
 
 export interface QuickPollResponse {
@@ -218,3 +241,18 @@ export interface GuestPollDetails {
   email: string
   name: string
 }
+
+export interface QuickPollSignInContext {
+  pollSlug: string
+  pollId: string
+  pollTitle: string
+  returnUrl: string
+  timestamp: number
+}
+
+export type PollDateRange = {
+  pollStart: DateTime
+  pollEnd: DateTime
+}
+
+export type MonthOption = { value: string; label: string }

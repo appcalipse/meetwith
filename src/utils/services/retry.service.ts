@@ -1,6 +1,6 @@
 import { GaxiosError } from 'gaxios'
 
-interface RetryOptions {
+export interface RetryOptions {
   maxRetries?: number
   baseDelay?: number
   maxDelay?: number
@@ -9,7 +9,10 @@ interface RetryOptions {
 }
 
 export class RetryableError extends Error {
-  constructor(message: string, public readonly originalError: unknown) {
+  constructor(
+    message: string,
+    public readonly originalError: unknown
+  ) {
     super(message)
     this.name = 'RetryableError'
   }

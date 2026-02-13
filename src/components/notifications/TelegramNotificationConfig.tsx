@@ -3,6 +3,7 @@ import Link from 'next/link'
 
 import { Account } from '@/types/Account'
 import { NotificationType } from '@/types/AccountNotifications'
+import { SettingsSection } from '@/types/Dashboard'
 
 interface Props {
   account: Account
@@ -49,7 +50,9 @@ const TelegramNotificationConfig: React.FC<Props> = ({
       {!telegramConnected && (
         <Text>
           (Please first{' '}
-          <Link href="/dashboard/details#connected-accounts" passHref>
+          <Link
+            href={`/dashboard/settings/${SettingsSection.CONNECTED_ACCOUNTS}`}
+          >
             <Text
               as="span"
               color="primary.200"
