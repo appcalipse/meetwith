@@ -38,6 +38,7 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   eventId?: string | null
   calendar_id?: string | null
   calendar_organizer_address?: string
+  isRsvpUpdate?: boolean
 }
 export interface MeetingSeriesUpdateRequest extends MeetingUpdateRequest {
   /**

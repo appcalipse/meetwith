@@ -4399,14 +4399,17 @@ const updateMeeting = async (
   const { meetingResponse, slots, index, changingTime, timezone } =
     await parseParticipantSlots(participantActing, meetingUpdateRequest)
 
-  // one last check to make sure that the version did not change
-  const everySlotId = meetingUpdateRequest.participants_mapping
-    .filter(it => it.slot_id)
-    .map(it => it.slot_id?.split('_')[0]) as string[]
-  const everySlot = await getMeetingsFromDB(everySlotId)
+  // rsvp updates should ignore versions as the updates is made from the latest version of an event
+  if (!meetingUpdateRequest.isRsvpUpdate) {
+    // one last check to make sure that the version did not change
+    const everySlotId = meetingUpdateRequest.participants_mapping
+      .filter(it => it.slot_id)
+      .map(it => it.slot_id?.split('_')[0]) as string[]
+    const everySlot = await getMeetingsFromDB(everySlotId)
 
-  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
-    throw new MeetingChangeConflictError()
+    if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
+      throw new MeetingChangeConflictError()
+  }
   // there is no support from supabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts

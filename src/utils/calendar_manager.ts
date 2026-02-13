@@ -3228,7 +3228,8 @@ const rsvpMeeting = async (
     guestsToRemove: [],
     ignoreOwnerAvailability: true,
     slotsToRemove: [],
-    version: decryptedMeeting.version + 1,
+    version: decryptedMeeting.version,
+    isRsvpUpdate: true,
   }
   const slot: DBSlot = await apiUpdateMeeting(
     decryptedMeeting.id,
@@ -3355,7 +3356,8 @@ const rsvpMeetingInstance = async (
     guestsToRemove: [],
     ignoreOwnerAvailability: true,
     slotsToRemove: [],
-    version: decryptedMeeting.version + 1,
+    version: decryptedMeeting.version,
+    isRsvpUpdate: true,
   }
 
   const dbSlot: DBSlot = await apiUpdateMeetingInstance(
