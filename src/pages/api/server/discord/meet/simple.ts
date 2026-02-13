@@ -115,7 +115,6 @@ export default async function simpleDiscordMeet(
         undefined,
         title,
         reminder ? [reminder] : [],
-        undefined,
         [
           MeetingPermissions.SEE_GUEST_LIST,
           MeetingPermissions.EDIT_MEETING,
