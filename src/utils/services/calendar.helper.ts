@@ -5,6 +5,7 @@ import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { getAllParticipantsDisplayName } from '../user_manager'
+const isEllipsized = (str: string) => str.includes('...')
 
 export interface CalendarAttendee {
   email: string
@@ -28,7 +29,9 @@ export const CalendarServiceHelper = {
           : CalendarServiceHelper.sanitizeEmail(
               participant.guest_email ||
                 noNoReplyEmailForAccount(
-                  (participant.name || participant.account_address)!
+                  (participant.name && !isEllipsized(participant.name)
+                    ? participant.name
+                    : participant.account_address) || ''
                 )
             )
 

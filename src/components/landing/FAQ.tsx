@@ -9,7 +9,7 @@ import {
   ListItem,
   VStack,
 } from '@chakra-ui/react'
-import { ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { BiCaretDown, BiCaretUp } from 'react-icons/bi'
 
 interface Faq {
