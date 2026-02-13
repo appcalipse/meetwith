@@ -27,11 +27,11 @@ import {
   FaWallet,
 } from 'react-icons/fa'
 import { FaUserGroup, FaUsers } from 'react-icons/fa6'
+import { RiContactsBook2Fill } from 'react-icons/ri'
 import {
   TbLayoutSidebarLeftExpand,
   TbLayoutSidebarRightExpand,
 } from 'react-icons/tb'
-
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
@@ -47,7 +47,6 @@ import {
 } from '@/utils/storage'
 import { getActiveProSubscription } from '@/utils/subscription_manager'
 import { getAccountDisplayName } from '@/utils/user_manager'
-
 import { ThemeSwitcher } from '../../ThemeSwitcher'
 import { Avatar } from './Avatar'
 import { CopyLinkButton } from './CopyLinkButton'
@@ -68,7 +67,6 @@ interface LinkItemProps {
   isBeta?: boolean
   isDisabled?: boolean
 }
-
 export const NavMenu: React.FC<{
   currentSection?: EditMode
   isMenuOpen?: boolean
@@ -105,7 +103,7 @@ export const NavMenu: React.FC<{
       },
       {
         name: 'My Contacts',
-        icon: FaUserGroup,
+        icon: RiContactsBook2Fill,
         mode: EditMode.CONTACTS,
         badge: contactsRequestCount,
         isBeta: true,
