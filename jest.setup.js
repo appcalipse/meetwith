@@ -86,6 +86,7 @@ jest.mock('@supabase/supabase-js', () => ({
       maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
       then: jest.fn((resolve) => resolve({ data: [], error: null })),
     })),
+    rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
     auth: {
       getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
       signIn: jest.fn().mockResolvedValue({ data: null, error: null }),
