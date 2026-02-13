@@ -146,9 +146,9 @@ describe('database.ts - Quality Tests', () => {
         insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
       }))
 
-      await expect(
-        addUserToGroup(groupId, memberId)
-      ).resolves.not.toThrow()
+      await addUserToGroup(groupId, memberId)
+      // Successfully resolves without throwing
+      expect(true).toBe(true)
     })
 
     it('adds user with admin role without throwing', async () => {
@@ -156,9 +156,9 @@ describe('database.ts - Quality Tests', () => {
         insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
       }))
 
-      await expect(
-        addUserToGroup(groupId, memberId, MemberType.ADMIN)
-      ).resolves.not.toThrow()
+      await addUserToGroup(groupId, memberId, MemberType.ADMIN)
+      // Successfully resolves without throwing
+      expect(true).toBe(true)
     })
 
     it('adds user with member role without throwing', async () => {
@@ -166,9 +166,9 @@ describe('database.ts - Quality Tests', () => {
         insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
       }))
 
-      await expect(
-        addUserToGroup(groupId, memberId, MemberType.MEMBER)
-      ).resolves.not.toThrow()
+      await addUserToGroup(groupId, memberId, MemberType.MEMBER)
+      // Successfully resolves without throwing
+      expect(true).toBe(true)
     })
 
     it('handles concurrent additions', async () => {
@@ -411,7 +411,9 @@ describe('database.ts - Quality Tests', () => {
         insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
       }))
 
-      await expect(addUserToGroup(groupId, userId, MemberType.ADMIN)).resolves.not.toThrow()
+      await addUserToGroup(groupId, userId, MemberType.ADMIN)
+      // Successfully resolves without throwing
+      expect(true).toBe(true)
     })
 
     it('adding member completes without error', async () => {
@@ -422,7 +424,9 @@ describe('database.ts - Quality Tests', () => {
         insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
       }))
 
-      await expect(addUserToGroup(groupId, userId, MemberType.MEMBER)).resolves.not.toThrow()
+      await addUserToGroup(groupId, userId, MemberType.MEMBER)
+      // Successfully resolves without throwing
+      expect(true).toBe(true)
     })
 
     it('handles sequential operations on different groups', async () => {
