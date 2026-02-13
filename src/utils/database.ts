@@ -10644,6 +10644,8 @@ const syncConnectedCalendars = async (accountAddress: string) => {
               color: refreshedCal.color ?? existingCal.color,
               isReadOnly: refreshedCal.isReadOnly ?? existingCal.isReadOnly,
               name: refreshedCal.name,
+              enabled: refreshedCal.isReadOnly ? false : existingCal.enabled,
+              sync: refreshedCal.isReadOnly ? false : existingCal.sync,
             }
           }
           return existingCal
