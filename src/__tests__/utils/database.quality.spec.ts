@@ -770,7 +770,7 @@ describe('database.ts - Quality Tests', () => {
   // ========================================
 
   describe('Account management integration tests', () => {
-    it('validates address normalization in getAccountFromDB', () => {
+    it('validates address normalization logic', () => {
       const mixedCaseAddress = '0xAbCdEf1234567890AbCdEf1234567890AbCdEf12'
       const normalized = mixedCaseAddress.toLowerCase()
       
@@ -778,7 +778,7 @@ describe('database.ts - Quality Tests', () => {
       expect(normalized.length).toBe(42)
     })
 
-    it('validates email trimming in findAccountByEmail', () => {
+    it('validates email trimming logic', () => {
       const email = '  test@example.com  '
       const trimmed = email.trim()
       
@@ -786,7 +786,7 @@ describe('database.ts - Quality Tests', () => {
       expect(trimmed.indexOf(' ')).toBe(-1)
     })
 
-    it('validates subscription expiry comparison logic', () => {
+    it('validates subscription expiry date comparison logic', () => {
       const now = new Date()
       const expiredSub = { expiry_time: new Date(now.getTime() - 86400000).toISOString() }
       const activeSub = { expiry_time: new Date(now.getTime() + 86400000).toISOString() }
@@ -795,7 +795,7 @@ describe('database.ts - Quality Tests', () => {
       expect(new Date(activeSub.expiry_time) > now).toBe(true)
     })
 
-    it('validates account preference structure', () => {
+    it('validates account preference object structure', () => {
       const preferences = {
         owner_account_address: '0x1234567890123456789012345678901234567890',
         name: 'Test User',
@@ -825,7 +825,7 @@ describe('database.ts - Quality Tests', () => {
       })
     })
 
-    it('validates group name trimming', () => {
+    it('validates group name trimming logic', () => {
       const name = '  Engineering Team  '
       const trimmed = name.trim()
       
@@ -911,9 +911,10 @@ describe('database.ts - Quality Tests', () => {
       expect(user1.length).toBe(user2.length)
     })
 
-    it('prevents self-contact relationships', () => {
+    it('validates self-contact detection logic', () => {
       const address = '0x1234567890123456789012345678901234567890'
-      const isSelfContact = address === address
+      const contactAddress = '0x1234567890123456789012345678901234567890'
+      const isSelfContact = address === contactAddress
       
       expect(isSelfContact).toBe(true)
     })
