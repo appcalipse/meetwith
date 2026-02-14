@@ -86,6 +86,7 @@ jest.mock('@supabase/supabase-js', () => ({
       maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
       then: jest.fn((resolve) => resolve({ data: [], error: null })),
     })),
+    rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
     auth: {
       getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
       signIn: jest.fn().mockResolvedValue({ data: null, error: null }),
@@ -103,7 +104,7 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // Mock sharp for image processing
 jest.mock('sharp', () => {
-  return jest.fn(() => ({
+  const mockSharp = jest.fn(() => ({
     resize: jest.fn().mockReturnThis(),
     toFormat: jest.fn().mockReturnThis(),
     toBuffer: jest.fn().mockResolvedValue(Buffer.from('test')),
@@ -112,6 +113,24 @@ jest.mock('sharp', () => {
     metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
     lanczos3: jest.fn().mockReturnThis(),
   }))
+  
+  // Add static properties
+  mockSharp.fit = {
+    inside: 'inside',
+    cover: 'cover',
+    contain: 'contain',
+    fill: 'fill',
+    outside: 'outside',
+  }
+  
+  mockSharp.kernel = {
+    lanczos3: 'lanczos3',
+    lanczos2: 'lanczos2',
+    cubic: 'cubic',
+    mitchell: 'mitchell',
+  }
+  
+  return mockSharp
 })
 
 // Mock email templates
@@ -172,9 +191,33 @@ jest.mock('next/router', () => ({
 
 // Mock @tanstack/react-query
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: jest.fn(() => ({ data: null, isLoading: false, error: null })),
+  useQuery: jest.fn(() => ({ 
+    data: null, 
+    isLoading: false, 
+    error: null,
+    reset: jest.fn(),
+    refetch: jest.fn(),
+    isRefetching: false,
+  })),
+  useInfiniteQuery: jest.fn(() => ({ 
+    data: null, 
+    isLoading: false, 
+    error: null,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+  })),
   useMutation: jest.fn(() => ({ mutate: jest.fn(), isLoading: false })),
-  QueryClient: jest.fn(),
+  useQueryClient: jest.fn(() => ({
+    invalidateQueries: jest.fn(),
+    setQueryData: jest.fn(),
+    getQueryData: jest.fn(),
+  })),
+  QueryClient: jest.fn().mockImplementation(() => ({
+    invalidateQueries: jest.fn(),
+    setQueryData: jest.fn(),
+    getQueryData: jest.fn(),
+  })),
   QueryClientProvider: ({ children }) => children,
 }))
 
@@ -211,6 +254,37 @@ jest.mock('viem', () => ({
   encodeFunctionData: jest.fn(),
   decodeFunctionData: jest.fn(),
 }))
+
+// Mock @chakra-ui/react useColorMode
+jest.mock('@chakra-ui/react', () => {
+  const React = require('react')
+  return {
+    ChakraProvider: ({ children }) => children,
+    useColorMode: jest.fn(() => ({
+      colorMode: 'dark',
+      setColorMode: jest.fn(),
+      toggleColorMode: jest.fn(),
+    })),
+    useToast: jest.fn(() => jest.fn()),
+    Box: jest.fn(({ children }) => React.createElement('div', null, children)),
+    Flex: jest.fn(({ children }) => React.createElement('div', null, children)),
+    Input: jest.fn(({ children }) => React.createElement('input', null, children)),
+    Button: jest.fn(({ children }) => React.createElement('button', null, children)),
+    Text: jest.fn(({ children }) => React.createElement('span', null, children)),
+    Heading: jest.fn(({ children }) => React.createElement('h1', null, children)),
+    Stack: jest.fn(({ children }) => React.createElement('div', null, children)),
+    HStack: jest.fn(({ children }) => React.createElement('div', null, children)),
+    VStack: jest.fn(({ children }) => React.createElement('div', null, children)),
+  }
+})
+
+// Add navigator.clipboard mock
+Object.assign(navigator, {
+  clipboard: {
+    writeText: jest.fn().mockResolvedValue(undefined),
+    readText: jest.fn().mockResolvedValue(''),
+  },
+})
 
 // Set environment to localhost for constants
 process.env.NEXT_PUBLIC_VERCEL_URL = 'localhost'
