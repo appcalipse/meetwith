@@ -256,30 +256,27 @@ jest.mock('viem', () => ({
 }))
 
 // Mock @chakra-ui/react useColorMode
-jest.mock('@chakra-ui/react', () => ({
-  ...jest.requireActual('@chakra-ui/react'),
-  useColorMode: jest.fn(() => ({
-    colorMode: 'dark',
-    setColorMode: jest.fn(),
-    toggleColorMode: jest.fn(),
-  })),
-}))
-
-// Mock react-hook-form
-jest.mock('react-hook-form', () => ({
-  ...jest.requireActual('react-hook-form'),
-  useForm: jest.fn(() => ({
-    register: jest.fn(),
-    handleSubmit: jest.fn((fn) => fn),
-    reset: jest.fn(),
-    watch: jest.fn(),
-    setValue: jest.fn(),
-    getValues: jest.fn(),
-    formState: { errors: {}, isDirty: false, isValid: true },
-    control: {},
-  })),
-  Controller: ({ children }) => children,
-}))
+jest.mock('@chakra-ui/react', () => {
+  const React = require('react')
+  return {
+    ChakraProvider: ({ children }) => children,
+    useColorMode: jest.fn(() => ({
+      colorMode: 'dark',
+      setColorMode: jest.fn(),
+      toggleColorMode: jest.fn(),
+    })),
+    useToast: jest.fn(() => jest.fn()),
+    Box: jest.fn(({ children }) => React.createElement('div', null, children)),
+    Flex: jest.fn(({ children }) => React.createElement('div', null, children)),
+    Input: jest.fn(({ children }) => React.createElement('input', null, children)),
+    Button: jest.fn(({ children }) => React.createElement('button', null, children)),
+    Text: jest.fn(({ children }) => React.createElement('span', null, children)),
+    Heading: jest.fn(({ children }) => React.createElement('h1', null, children)),
+    Stack: jest.fn(({ children }) => React.createElement('div', null, children)),
+    HStack: jest.fn(({ children }) => React.createElement('div', null, children)),
+    VStack: jest.fn(({ children }) => React.createElement('div', null, children)),
+  }
+})
 
 // Add navigator.clipboard mock
 Object.assign(navigator, {
