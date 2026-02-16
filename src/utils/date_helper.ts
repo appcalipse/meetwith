@@ -14,47 +14,48 @@ import {
   Interval as LuxonInterval,
   WeekdayNumbers,
 } from 'luxon'
-import spacetime from 'spacetime'
-import soft from 'timezone-soft'
 
 import { DayAvailability } from '@/types/Account'
 import { CustomTimeRange } from '@/types/common'
 import { MeetingRepeat } from '@/types/Meeting'
 
-const timezonesObj = ct.getAllTimezones()
-
-const timezonesKeys = Object.keys(timezonesObj) as Array<
-  keyof typeof timezonesObj
+const timezonesKeys = Object.keys(ct.getAllTimezones()) as Array<
+  keyof ReturnType<typeof ct.getAllTimezones>
 >
-export const timezones = timezonesKeys
-  .map(key => {
-    const timeInfo = timezonesObj[key]
-    const display = soft(key)[0]
-    let show = timeInfo.utcOffsetStr
-    let offset = timeInfo.utcOffset
-    const countries = ct.getCountriesForTimezone(key)
-    // check if we in standard time, or daylight time?
-    const s = spacetime.now(display?.iana)
-    if (s.isDST()) {
-      show = timeInfo.dstOffsetStr
-      offset = timeInfo.dstOffset
-    }
-    return {
-      countries: countries.map(c => ({
-        id: c.id,
-        name: c.name,
-      })),
-      name: `${key.replace(/^Etc\/GMT([+-]\d+)?$/, (match, gmtOffset) => {
-        if (!gmtOffset) return 'GMT'
-        const sign = gmtOffset[0] === '+' ? '-' : '+'
-        const number = gmtOffset.slice(1)
-        return `GMT${sign}${number}`
-      })} (UTC${show})`,
-      offset,
-      tzCode: key,
-    }
-  })
-  .sort((a, b) => a.offset - b.offset)
+/**
+ * Returns timezone list with current DST-aware offsets.
+ * Must be called at render time (not module load) so offsets reflect
+ * the actual DST state at the moment the user sees the picker.
+ *
+ * Uses Luxon to compute the live UTC offset instead of static data from
+ * countries-and-timezones, which has inverted standard/DST definitions
+ * for zones like Europe/Dublin and Africa/Casablanca.
+ */
+export const getTimezones = () =>
+  timezonesKeys
+    .map(key => {
+      const countries = ct.getCountriesForTimezone(key)
+      // Compute the real offset right now via Luxon — handles DST,
+      // inverted-DST zones (Ireland), and everything else correctly.
+      const now = DateTime.now().setZone(key)
+      const offset = now.offset // minutes from UTC
+      const offsetStr = now.toFormat('ZZ') // e.g. "+00:00", "-05:00", "+05:30"
+      return {
+        countries: countries.map(c => ({
+          id: c.id,
+          name: c.name,
+        })),
+        name: `${key.replace(/^Etc\/GMT([+-]?\d+)?$/, (match, gmtOffset) => {
+          if (!gmtOffset || Number(gmtOffset) === 0) return 'GMT'
+          const sign = gmtOffset[0] === '+' ? '-' : '+'
+          const number = gmtOffset.replace(/^[+-]/, '')
+          return `GMT${sign}${number}`
+        })} (UTC${offsetStr})`,
+        offset,
+        tzCode: key,
+      }
+    })
+    .sort((a, b) => a.offset - b.offset)
 
 export const convertTimeRangesToDate = (
   timeRanges: CustomTimeRange[],

@@ -302,13 +302,7 @@ const getEmailNotification = async (
       if (request.changeType === MeetingChangeType.DELETE) {
         return Promise.resolve(false)
       }
-      return newMeetingEmail(
-        toEmail,
-        participant.type,
-        participant.slot_id!,
-        request.meetingDetails,
-        participant.account_address
-      )
+      return newMeetingEmail(toEmail, participant, request.meetingDetails)
     case MeetingChangeType.DELETE:
       if (request.changeType !== MeetingChangeType.DELETE) {
         return Promise.resolve(false)
@@ -321,7 +315,7 @@ const getEmailNotification = async (
         displayName,
         toEmail,
         request.meetingDetails,
-        participant.account_address
+        participant
       )
     case MeetingChangeType.UPDATE:
       if (request.changeType === MeetingChangeType.DELETE) {
@@ -330,10 +324,8 @@ const getEmailNotification = async (
       return updateMeetingEmail(
         toEmail,
         getParticipantActingDisplayName(participantActing, participant),
-        participant.type,
-        participant.meeting_id,
-        request.meetingDetails,
-        participant.account_address
+        participant,
+        request.meetingDetails
       )
     default:
   }

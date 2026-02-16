@@ -1,7 +1,7 @@
 import { Flex } from '@chakra-ui/react'
 import { NextComponentType, NextPageContext } from 'next'
 import { useRouter } from 'next/router'
-import { useContext } from 'react'
+import { useContext, useEffect, useRef } from 'react'
 
 import Loading from '../components/Loading'
 import { AccountContext } from '../providers/AccountProvider'
@@ -51,23 +51,24 @@ const redirectBasedOnLogin = async (
     redirectUrl = `${route}${redirectQuery}`
   }
 
-  // Only redirect here if we are on server side
-  if (!!ctx.req && shouldRedirect) {
-    // https://github.com/zeit/next.js/wiki/Redirecting-in-%60getInitialProps%60
-    if (ctx.res) {
-      ctx.res.writeHead(302, {
-        Location: redirectUrl,
-      })
-      ctx.res.end()
-    } else {
-      // For client-side redirects in getInitialProps, use Router (not useRouter)
-      const Router = (await import('next/router')).default
-      Router.push(redirectUrl)
-    }
+  // Only redirect server-side; client-side redirect is handled in the HOC via useEffect
+  if (ctx.res && shouldRedirect) {
+    ctx.res.writeHead(302, {
+      Location: redirectUrl,
+    })
+    ctx.res.end()
     return null
   }
 
   return currentAccount
+}
+
+function buildRedirectUrl(route: string, currentRoute: string): string {
+  if (currentRoute && currentRoute !== route) {
+    const redirectQuery = `?redirect=${encodeURIComponent(currentRoute)}`
+    return `${route}${redirectQuery}`
+  }
+  return route
 }
 
 const withAuthRedirect =
@@ -77,72 +78,34 @@ const withAuthRedirect =
       const { checkAuthOnClient } = props
       const { logged, currentAccount } = useContext(AccountContext)
       const router = useRouter()
+      const redirectingRef = useRef(false)
 
-      // Prevent infinite redirects by checking if we're already on the target route
       const currentRoute = router.pathname
       const isOnTargetRoute = currentRoute === route
 
-      // On the client side, if the user is not logged in,
-      // then redirect it to the equivalent endpoint
-      if (
-        !logged &&
-        redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED &&
-        !isOnTargetRoute
-      ) {
-        let redirectUrl = route
-        if (currentRoute && currentRoute !== route) {
-          let redirectQuery = ''
-          if (currentRoute) {
-            redirectQuery = `?redirect=${encodeURIComponent(currentRoute)}`
-          }
-          redirectUrl = `${route}${redirectQuery}`
+      const needsRedirect =
+        (!logged &&
+          redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED &&
+          !isOnTargetRoute) ||
+        (logged &&
+          redirectType === AuthRedirect.REDIRECT_IF_AUTHED &&
+          !isOnTargetRoute)
+
+      useEffect(() => {
+        if (needsRedirect && !redirectingRef.current) {
+          redirectingRef.current = true
+          const redirectUrl = buildRedirectUrl(route, currentRoute)
+          router.push(redirectUrl)
         }
-        router.push(redirectUrl)
+      }, [needsRedirect, currentRoute, router])
 
+      if (needsRedirect) {
         return (
           <Flex
             alignItems="center"
             height="100%"
             justifyContent="center"
             width="100%"
-          >
-            <Loading />
-          </Flex>
-        )
-      }
-
-      // Similar check for authenticated users
-      if (
-        logged &&
-        redirectType === AuthRedirect.REDIRECT_IF_AUTHED &&
-        !isOnTargetRoute
-      ) {
-        router.push(route)
-        return (
-          <Flex
-            alignItems="center"
-            height="100%"
-            justifyContent="center"
-            width="100%"
-          >
-            <Loading />
-          </Flex>
-        )
-      }
-
-      // Similar check for authenticated users
-      if (
-        logged &&
-        redirectType === AuthRedirect.REDIRECT_IF_AUTHED &&
-        !isOnTargetRoute
-      ) {
-        router.push(route)
-        return (
-          <Flex
-            width="100%"
-            height="100%"
-            alignItems="center"
-            justifyContent="center"
           >
             <Loading />
           </Flex>

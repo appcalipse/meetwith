@@ -45,7 +45,10 @@ import {
   TimeZoneOption,
   timeZoneFilter,
 } from '@/utils/constants/select'
-import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
+import {
+  getTimezones,
+  parseMonthAvailabilitiesToDate,
+} from '@/utils/date_helper'
 import {
   buildHourlyTimeRangeLabelRows,
   calculateEffectiveDuration,
@@ -552,7 +555,7 @@ export function SchedulePickTime({
 
   const tzOptions = useMemo(
     () =>
-      timezones.map(tz => ({
+      getTimezones().map(tz => ({
         value: tz.tzCode,
         label: tz.name,
         searchKeys: tz.countries,

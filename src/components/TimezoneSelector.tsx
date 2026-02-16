@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { getBrowserTimezone } from '@/utils/availability.helper'
 import { TimeZoneOption, timeZoneFilter } from '@/utils/constants/select'
-import { timezones } from '@/utils/date_helper'
+import { getTimezones } from '@/utils/date_helper'
 
 interface TimezoneProps {
   value?: string | null
@@ -13,7 +13,7 @@ interface TimezoneProps {
 const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
   const tzs = useMemo(
     () =>
-      timezones.map(tz => {
+      getTimezones().map(tz => {
         return {
           value: tz.tzCode,
           label: tz.name,
