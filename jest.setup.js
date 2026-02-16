@@ -255,28 +255,333 @@ jest.mock('viem', () => ({
   decodeFunctionData: jest.fn(),
 }))
 
-// Mock @chakra-ui/react useColorMode
+// Mock @chakra-ui/react with comprehensive Proxy-based approach
 jest.mock('@chakra-ui/react', () => {
   const React = require('react')
-  return {
+  
+  // Create a generic React component that accepts any props and renders children
+  const createMockComponent = (displayName) => {
+    const Component = ({ children, ...props }) => React.createElement('div', props, children)
+    Component.displayName = displayName
+    return Component
+  }
+
+  // Explicit mocks for commonly used components and hooks
+  const explicitMocks = {
+    // Provider
     ChakraProvider: ({ children }) => children,
+    
+    // Hooks
     useColorMode: jest.fn(() => ({
       colorMode: 'dark',
       setColorMode: jest.fn(),
       toggleColorMode: jest.fn(),
     })),
+    useColorModeValue: jest.fn((light, dark) => light),
+    useDisclosure: jest.fn(() => ({
+      isOpen: false,
+      onOpen: jest.fn(),
+      onClose: jest.fn(),
+      onToggle: jest.fn(),
+    })),
+    useBreakpointValue: jest.fn((values) => {
+      if (typeof values === 'object') {
+        return values.base || values.md || values.lg || Object.values(values)[0]
+      }
+      return values
+    }),
+    useMediaQuery: jest.fn(() => [false, false]),
     useToast: jest.fn(() => jest.fn()),
-    Box: jest.fn(({ children }) => React.createElement('div', null, children)),
-    Flex: jest.fn(({ children }) => React.createElement('div', null, children)),
-    Input: jest.fn(({ children }) => React.createElement('input', null, children)),
-    Button: jest.fn(({ children }) => React.createElement('button', null, children)),
-    Text: jest.fn(({ children }) => React.createElement('span', null, children)),
-    Heading: jest.fn(({ children }) => React.createElement('h1', null, children)),
-    Stack: jest.fn(({ children }) => React.createElement('div', null, children)),
-    HStack: jest.fn(({ children }) => React.createElement('div', null, children)),
-    VStack: jest.fn(({ children }) => React.createElement('div', null, children)),
+    useTheme: jest.fn(() => ({})),
+    useStyles: jest.fn(() => ({})),
+    useMultiStyleConfig: jest.fn(() => ({})),
+    useStyleConfig: jest.fn(() => ({})),
+    useToken: jest.fn((...args) => args),
+    useClipboard: jest.fn(() => ({ onCopy: jest.fn(), hasCopied: false, value: '' })),
+    
+    // Special functions
+    forwardRef: React.forwardRef,
+    
+    // Layout Components
+    Box: createMockComponent('Box'),
+    Flex: createMockComponent('Flex'),
+    Grid: createMockComponent('Grid'),
+    GridItem: createMockComponent('GridItem'),
+    SimpleGrid: createMockComponent('SimpleGrid'),
+    Stack: createMockComponent('Stack'),
+    HStack: createMockComponent('HStack'),
+    VStack: createMockComponent('VStack'),
+    Wrap: createMockComponent('Wrap'),
+    WrapItem: createMockComponent('WrapItem'),
+    Center: createMockComponent('Center'),
+    Container: createMockComponent('Container'),
+    Spacer: createMockComponent('Spacer'),
+    
+    // Typography
+    Text: createMockComponent('Text'),
+    Heading: createMockComponent('Heading'),
+    
+    // Form Components
+    Input: createMockComponent('Input'),
+    Button: createMockComponent('Button'),
+    IconButton: createMockComponent('IconButton'),
+    Checkbox: createMockComponent('Checkbox'),
+    Radio: createMockComponent('Radio'),
+    RadioGroup: createMockComponent('RadioGroup'),
+    Switch: createMockComponent('Switch'),
+    Select: createMockComponent('Select'),
+    Textarea: createMockComponent('Textarea'),
+    FormControl: createMockComponent('FormControl'),
+    FormLabel: createMockComponent('FormLabel'),
+    FormErrorMessage: createMockComponent('FormErrorMessage'),
+    FormHelperText: createMockComponent('FormHelperText'),
+    NumberInput: createMockComponent('NumberInput'),
+    NumberInputField: createMockComponent('NumberInputField'),
+    NumberInputStepper: createMockComponent('NumberInputStepper'),
+    NumberIncrementStepper: createMockComponent('NumberIncrementStepper'),
+    NumberDecrementStepper: createMockComponent('NumberDecrementStepper'),
+    PinInput: createMockComponent('PinInput'),
+    PinInputField: createMockComponent('PinInputField'),
+    Slider: createMockComponent('Slider'),
+    SliderTrack: createMockComponent('SliderTrack'),
+    SliderFilledTrack: createMockComponent('SliderFilledTrack'),
+    SliderThumb: createMockComponent('SliderThumb'),
+    Editable: createMockComponent('Editable'),
+    EditableInput: createMockComponent('EditableInput'),
+    EditablePreview: createMockComponent('EditablePreview'),
+    
+    // Overlay Components
+    Modal: createMockComponent('Modal'),
+    ModalOverlay: createMockComponent('ModalOverlay'),
+    ModalContent: createMockComponent('ModalContent'),
+    ModalHeader: createMockComponent('ModalHeader'),
+    ModalBody: createMockComponent('ModalBody'),
+    ModalFooter: createMockComponent('ModalFooter'),
+    ModalCloseButton: createMockComponent('ModalCloseButton'),
+    Drawer: createMockComponent('Drawer'),
+    DrawerOverlay: createMockComponent('DrawerOverlay'),
+    DrawerContent: createMockComponent('DrawerContent'),
+    DrawerHeader: createMockComponent('DrawerHeader'),
+    DrawerBody: createMockComponent('DrawerBody'),
+    DrawerFooter: createMockComponent('DrawerFooter'),
+    DrawerCloseButton: createMockComponent('DrawerCloseButton'),
+    Popover: createMockComponent('Popover'),
+    PopoverTrigger: createMockComponent('PopoverTrigger'),
+    PopoverContent: createMockComponent('PopoverContent'),
+    PopoverHeader: createMockComponent('PopoverHeader'),
+    PopoverBody: createMockComponent('PopoverBody'),
+    PopoverFooter: createMockComponent('PopoverFooter'),
+    PopoverArrow: createMockComponent('PopoverArrow'),
+    PopoverCloseButton: createMockComponent('PopoverCloseButton'),
+    Tooltip: createMockComponent('Tooltip'),
+    AlertDialog: createMockComponent('AlertDialog'),
+    AlertDialogOverlay: createMockComponent('AlertDialogOverlay'),
+    AlertDialogContent: createMockComponent('AlertDialogContent'),
+    AlertDialogHeader: createMockComponent('AlertDialogHeader'),
+    AlertDialogBody: createMockComponent('AlertDialogBody'),
+    AlertDialogFooter: createMockComponent('AlertDialogFooter'),
+    
+    // Menu Components
+    Menu: createMockComponent('Menu'),
+    MenuButton: createMockComponent('MenuButton'),
+    MenuList: createMockComponent('MenuList'),
+    MenuItem: createMockComponent('MenuItem'),
+    MenuGroup: createMockComponent('MenuGroup'),
+    MenuDivider: createMockComponent('MenuDivider'),
+    MenuItemOption: createMockComponent('MenuItemOption'),
+    MenuOptionGroup: createMockComponent('MenuOptionGroup'),
+    
+    // Data Display
+    Table: createMockComponent('Table'),
+    Thead: createMockComponent('Thead'),
+    Tbody: createMockComponent('Tbody'),
+    Tfoot: createMockComponent('Tfoot'),
+    Tr: createMockComponent('Tr'),
+    Th: createMockComponent('Th'),
+    Td: createMockComponent('Td'),
+    TableCaption: createMockComponent('TableCaption'),
+    Badge: createMockComponent('Badge'),
+    Tag: createMockComponent('Tag'),
+    TagLabel: createMockComponent('TagLabel'),
+    TagLeftIcon: createMockComponent('TagLeftIcon'),
+    TagRightIcon: createMockComponent('TagRightIcon'),
+    TagCloseButton: createMockComponent('TagCloseButton'),
+    Avatar: createMockComponent('Avatar'),
+    AvatarBadge: createMockComponent('AvatarBadge'),
+    AvatarGroup: createMockComponent('AvatarGroup'),
+    Card: createMockComponent('Card'),
+    CardHeader: createMockComponent('CardHeader'),
+    CardBody: createMockComponent('CardBody'),
+    CardFooter: createMockComponent('CardFooter'),
+    Code: createMockComponent('Code'),
+    Kbd: createMockComponent('Kbd'),
+    List: createMockComponent('List'),
+    ListItem: createMockComponent('ListItem'),
+    ListIcon: createMockComponent('ListIcon'),
+    OrderedList: createMockComponent('OrderedList'),
+    UnorderedList: createMockComponent('UnorderedList'),
+    Stat: createMockComponent('Stat'),
+    StatLabel: createMockComponent('StatLabel'),
+    StatNumber: createMockComponent('StatNumber'),
+    StatHelpText: createMockComponent('StatHelpText'),
+    StatArrow: createMockComponent('StatArrow'),
+    StatGroup: createMockComponent('StatGroup'),
+    
+    // Tabs
+    Tabs: createMockComponent('Tabs'),
+    TabList: createMockComponent('TabList'),
+    Tab: createMockComponent('Tab'),
+    TabPanels: createMockComponent('TabPanels'),
+    TabPanel: createMockComponent('TabPanel'),
+    
+    // Feedback
+    Alert: createMockComponent('Alert'),
+    AlertIcon: createMockComponent('AlertIcon'),
+    AlertTitle: createMockComponent('AlertTitle'),
+    AlertDescription: createMockComponent('AlertDescription'),
+    CircularProgress: createMockComponent('CircularProgress'),
+    CircularProgressLabel: createMockComponent('CircularProgressLabel'),
+    Progress: createMockComponent('Progress'),
+    Skeleton: createMockComponent('Skeleton'),
+    SkeletonCircle: createMockComponent('SkeletonCircle'),
+    SkeletonText: createMockComponent('SkeletonText'),
+    Spinner: createMockComponent('Spinner'),
+    
+    // Other Components
+    Image: createMockComponent('Image'),
+    Link: createMockComponent('Link'),
+    Icon: createMockComponent('Icon'),
+    Divider: createMockComponent('Divider'),
+    Accordion: createMockComponent('Accordion'),
+    AccordionItem: createMockComponent('AccordionItem'),
+    AccordionButton: createMockComponent('AccordionButton'),
+    AccordionPanel: createMockComponent('AccordionPanel'),
+    AccordionIcon: createMockComponent('AccordionIcon'),
+    Breadcrumb: createMockComponent('Breadcrumb'),
+    BreadcrumbItem: createMockComponent('BreadcrumbItem'),
+    BreadcrumbLink: createMockComponent('BreadcrumbLink'),
+    BreadcrumbSeparator: createMockComponent('BreadcrumbSeparator'),
+    CloseButton: createMockComponent('CloseButton'),
+    VisuallyHidden: createMockComponent('VisuallyHidden'),
+    Portal: ({ children }) => children,
+    Show: ({ children }) => children,
+    Hide: () => null,
+  }
+
+  // Return a Proxy that provides explicit mocks first, then falls back to auto-generated ones
+  return new Proxy(explicitMocks, {
+    get: (target, prop) => {
+      // If we have an explicit mock, return it
+      if (prop in target) {
+        return target[prop]
+      }
+      
+      // For any unknown property, determine if it's a component or hook
+      const propStr = String(prop)
+      
+      // Hooks (start with 'use')
+      if (propStr.startsWith('use')) {
+        return jest.fn(() => ({}))
+      }
+      
+      // Components (start with uppercase letter)
+      if (propStr[0] === propStr[0].toUpperCase()) {
+        return createMockComponent(propStr)
+      }
+      
+      // For anything else, return undefined
+      return undefined
+    }
+  })
+})
+
+// Mock puppeteer for browser automation tests
+jest.mock('puppeteer', () => ({
+  launch: jest.fn(() => Promise.resolve({
+    newPage: jest.fn(() => Promise.resolve({
+      goto: jest.fn(),
+      setViewport: jest.fn(),
+      screenshot: jest.fn(),
+      evaluate: jest.fn(),
+      close: jest.fn(),
+    })),
+    close: jest.fn(),
+  })),
+}))
+
+// Mock ical.js for calendar parsing
+jest.mock('ical.js', () => {
+  class Component {
+    constructor() {
+      this.properties = new Map()
+    }
+    getFirstPropertyValue(name) {
+      return this.properties.get(name) || null
+    }
+    getFirstProperty(name) {
+      return {
+        getFirstValue: () => this.getFirstPropertyValue(name),
+        getValues: () => [this.getFirstPropertyValue(name)],
+      }
+    }
+    getAllProperties(name) {
+      return []
+    }
+    getAllSubcomponents(name) {
+      return []
+    }
+    getFirstSubcomponent(name) {
+      return null
+    }
+  }
+  
+  return {
+    Component,
+    parse: jest.fn(() => ({})),
+    Time: jest.fn(function() {
+      this.toString = () => '2024-01-01T00:00:00Z'
+      this.toJSDate = () => new Date('2024-01-01T00:00:00Z')
+      return this
+    }),
+    Event: jest.fn(),
+    Property: jest.fn(),
   }
 })
+
+// Mock googleapis for Google Calendar integration
+jest.mock('googleapis', () => ({
+  google: {
+    calendar: jest.fn(() => ({
+      events: {
+        list: jest.fn(() => Promise.resolve({ data: { items: [] } })),
+        insert: jest.fn(() => Promise.resolve({ data: {} })),
+        update: jest.fn(() => Promise.resolve({ data: {} })),
+        delete: jest.fn(() => Promise.resolve({ data: {} })),
+        get: jest.fn(() => Promise.resolve({ data: {} })),
+      },
+      calendarList: {
+        list: jest.fn(() => Promise.resolve({ data: { items: [] } })),
+        get: jest.fn(() => Promise.resolve({ data: {} })),
+        insert: jest.fn(() => Promise.resolve({ data: {} })),
+        update: jest.fn(() => Promise.resolve({ data: {} })),
+        delete: jest.fn(() => Promise.resolve({ data: {} })),
+      },
+      calendars: {
+        get: jest.fn(() => Promise.resolve({ data: {} })),
+      },
+      freebusy: {
+        query: jest.fn(() => Promise.resolve({ data: { calendars: {} } })),
+      },
+    })),
+    auth: {
+      OAuth2: jest.fn(function() {
+        this.setCredentials = jest.fn()
+        this.getAccessToken = jest.fn((callback) => callback(null, 'mock-token'))
+        return this
+      }),
+    },
+  },
+}))
 
 // Add navigator.clipboard mock
 Object.assign(navigator, {
