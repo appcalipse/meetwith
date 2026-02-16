@@ -364,14 +364,17 @@ const buildMeetingData = async (
   const participantsMappings = []
 
   for (const participant of sanitizedParticipants) {
+    const currentAccount = allAccounts.find(
+      account =>
+        account.address.toLowerCase() ===
+        participant.account_address?.toLowerCase()
+    )
+
     // we use participant key if it is an actual participant, otherwise, it is a
     // guest and have not a PK yet, so we encode data using our pk.
     const encodingKey =
-      allAccounts.find(
-        account =>
-          account.address.toLowerCase() ===
-          participant.account_address?.toLowerCase()
-      )?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
+      currentAccount?.internal_pub_key ||
+      process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
 
     const privateInfoComplete = JSON.stringify({
       ...privateInfo,
@@ -400,7 +403,11 @@ const buildMeetingData = async (
         (participant.type === ParticipantType.Scheduler
           ? ParticipationStatus.Accepted
           : ParticipationStatus.Pending),
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timeZone:
+        participant.type === ParticipantType.Scheduler
+          ? Intl.DateTimeFormat().resolvedOptions().timeZone // schedulers should keep the timezone they scheduled from
+          : currentAccount?.preferences?.timezone ||
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
       type: participant.type,
     }
 
