@@ -57,6 +57,14 @@ const customJestConfig = {
     Uint8Array,
     ArrayBuffer,
   },
+  coverageThreshold: {
+    global: {
+      statements: 60,
+      branches: 60,
+      functions: 60,
+      lines: 60,
+    },
+  },
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
