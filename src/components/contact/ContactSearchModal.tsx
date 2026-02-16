@@ -60,9 +60,20 @@ const ContactSearchModal = (props: Props) => {
       void reset()
     }
   }, [debouncedValue])
+  const extractSearchTerm = (input: string): string => {
+    try {
+      const url = new URL(input.trim())
+      const slug = url.pathname.split('/').filter(Boolean).pop()
+      return slug || input
+    } catch {
+      return input
+    }
+  }
   const handleSearch = async (reset = true) => {
+    const query = extractSearchTerm(debouncedValue).trim().toLowerCase()
+
     const search = await mutateAsync({
-      query: debouncedValue.trim().toLowerCase(),
+      query,
       offset: reset ? 0 : result?.result?.length,
     })
 
@@ -127,7 +138,7 @@ const ContactSearchModal = (props: Props) => {
             <Input
               pl={10}
               w="100%"
-              placeholder="Search with email or wallet address"
+              placeholder="Search by email, username, or account URL"
               id="search"
               defaultValue={debouncedValue}
               onChange={e => setValue(e.target.value)}
@@ -180,11 +191,18 @@ const ContactSearchModal = (props: Props) => {
                       index={index}
                       {...account}
                       handleUpdateResult={() => {
-                        const updatedResult = result
-                        if (updatedResult?.result) {
-                          updatedResult.result[index].is_invited = true
-                          setResult(updatedResult)
-                        }
+                        setResult(prev => {
+                          if (!prev?.result) return prev
+                          return {
+                            ...prev,
+                            result: prev.result.map(item =>
+                              item.address === account.address &&
+                              item.email === account.email
+                                ? { ...item, is_invited: true }
+                                : item
+                            ),
+                          }
+                        })
                       }}
                     />
                   ))}
