@@ -301,6 +301,10 @@ jest.mock('@chakra-ui/react', () => {
     
     // Special functions
     forwardRef: React.forwardRef,
+    createStandaloneToast: jest.fn(() => ({
+      toast: jest.fn(),
+      ToastContainer: createMockComponent('ToastContainer'),
+    })),
     
     // Layout Components
     Box: createMockComponent('Box'),
