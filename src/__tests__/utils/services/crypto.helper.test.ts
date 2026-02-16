@@ -1,5 +1,5 @@
 /**
- * Tests for crypto payment helper functions
+ * Tests for crypto.helper - Crypto payment and subscription functions
  */
 
 import { SubscriptionType } from '@/types/Billing'

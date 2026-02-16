@@ -1,6 +1,6 @@
 /**
  * Smoke tests for availabilities components
- * 
+ *
  * These tests verify that components can be imported and have basic structure
  */
 
