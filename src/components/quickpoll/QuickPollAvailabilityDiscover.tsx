@@ -398,15 +398,22 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           let busyIntervals: Interval[] = []
 
           if (currentAccount?.address) {
-            // Get default availability from account preferences
-            const account = await getExistingAccounts([currentAccount.address])
-            if (account.length > 0 && account[0].preferences?.availabilities) {
-              defaultIntervals = parseMonthAvailabilitiesToDate(
-                account[0].preferences.availabilities,
-                monthStart,
-                monthEnd,
-                account[0].preferences.timezone || timezone
-              )
+            // Only use account default when participant has no poll-specific slots
+            if (!participant.available_slots?.length) {
+              const account = await getExistingAccounts([
+                currentAccount.address,
+              ])
+              if (
+                account.length > 0 &&
+                account[0].preferences?.availabilities?.length
+              ) {
+                defaultIntervals = parseMonthAvailabilitiesToDate(
+                  account[0].preferences.availabilities,
+                  monthStart,
+                  monthEnd,
+                  account[0].preferences.timezone || timezone
+                )
+              }
             }
 
             // Get busy slots from calendar
@@ -419,7 +426,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             busyIntervals = convertBusySlotsToIntervals(busySlotsRaw)
           }
 
-          // Compute base availability (without existing overrides)
+          // Compute base availability
           const baseAvailability = computeBaseAvailability(
             participant,
             [],

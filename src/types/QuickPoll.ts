@@ -109,6 +109,15 @@ export interface QuickPollParticipantWithAccount extends QuickPollParticipant {
   account_avatar?: string
 }
 
+// Poll-specific availability: either selected block IDs or custom schedule
+export interface PollCustomAvailability {
+  timezone: string
+  weekly_availability: Array<{
+    weekday: number
+    ranges: Array<{ start: string; end: string }>
+  }>
+}
+
 // Request interfaces
 export interface CreateQuickPollRequest {
   title: string
@@ -125,6 +134,10 @@ export interface CreateQuickPollRequest {
     participant_type: QuickPollParticipantType
     timezone?: string
   }[]
+  /** When set, owner's availability is derived from these blocks (merged). Ignored if custom_availability is set. */
+  availability_block_ids?: string[]
+  /** When set, owner's availability uses this config instead of blocks. */
+  custom_availability?: PollCustomAvailability
 }
 
 export interface UpdateQuickPollRequest {
@@ -140,6 +153,8 @@ export interface UpdateQuickPollRequest {
     toAdd?: AddParticipantData[]
     toRemove?: string[]
   }
+  availability_block_ids?: string[]
+  custom_availability?: PollCustomAvailability
 }
 
 export interface AddParticipantRequest {

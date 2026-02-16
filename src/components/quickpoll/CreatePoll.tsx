@@ -35,7 +35,11 @@ import React, {
 } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
 import { FiArrowLeft } from 'react-icons/fi'
-import { HiOutlineUserAdd } from 'react-icons/hi'
+import { HiOutlinePencilAlt, HiOutlineUserAdd } from 'react-icons/hi'
+import {
+  PollAvailabilityModal,
+  PollAvailabilityResult,
+} from '@/components/availabilities/PollAvailabilityModal'
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
 import { ChipInput } from '@/components/chip-input'
@@ -43,6 +47,7 @@ import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import InviteParticipants from '@/components/schedule/participants/InviteParticipants'
+import { useAvailabilityBlocks } from '@/hooks/availability/useAvailabilityBlocks'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
@@ -55,6 +60,7 @@ import {
   AddParticipantData,
   CreatePollProps,
   CreateQuickPollRequest,
+  PollCustomAvailability,
   QuickPollBySlugResponse,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
@@ -67,6 +73,10 @@ import {
   getQuickPollBySlug,
   updateQuickPoll,
 } from '@/utils/api_helper'
+import {
+  findMatchingAvailabilityBlocks,
+  initializeEmptyAvailabilities,
+} from '@/utils/availability.helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import {
@@ -138,6 +148,12 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   } = useDisclosure()
 
   const {
+    isOpen: isAvailabilityModalOpen,
+    onOpen: openAvailabilityModal,
+    onClose: closeAvailabilityModal,
+  } = useDisclosure()
+
+  const {
     participants,
     setParticipants,
     groupAvailability,
@@ -155,6 +171,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   )
   const { currentAccount } = useContext(AccountContext)
   const { fetchPollCounts } = useContext(MetricStateContext)
+  const { blocks: availabilityBlocks } = useAvailabilityBlocks(
+    currentAccount?.address
+  )
+  const defaultAvailabilityBlockId =
+    availabilityBlocks?.find(b => b.isDefault)?.id ?? null
 
   const [formData, setFormData] = useState({
     title: '',
@@ -172,6 +193,14 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     MeetingPermissions.INVITE_GUESTS,
   ])
   const [removeExpiryDate, setRemoveExpiryDate] = useState(false)
+  // Poll-specific availability: either block IDs or custom schedule
+  const [pollAvailabilityBlockIds, setPollAvailabilityBlockIds] = useState<
+    string[]
+  >([])
+  const [pollCustomAvailability, setPollCustomAvailability] =
+    useState<PollCustomAvailability | null>(null)
+  const hasSetDefaultAvailability = React.useRef(false)
+  const hasInitializedPollAvailabilityFromPoll = React.useRef(false)
 
   const durationOptions: Option<number>[] = useMemo(
     () =>
@@ -203,6 +232,29 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
     return deduplicatedParticipants
   }, [participants, groupParticipants, currentAccount?.address, isEditMode])
+
+  // Default availability to default block when blocks load (create mode only)
+  useEffect(() => {
+    if (
+      !isEditMode &&
+      availabilityBlocks &&
+      availabilityBlocks.length > 0 &&
+      pollAvailabilityBlockIds.length === 0 &&
+      pollCustomAvailability === null &&
+      !hasSetDefaultAvailability.current
+    ) {
+      const defaultBlock = availabilityBlocks.find(b => b.isDefault)
+      if (defaultBlock) {
+        hasSetDefaultAvailability.current = true
+        setPollAvailabilityBlockIds([defaultBlock.id])
+      }
+    }
+  }, [
+    isEditMode,
+    availabilityBlocks,
+    pollAvailabilityBlockIds.length,
+    pollCustomAvailability,
+  ])
 
   useEffect(() => {
     const needsUpdate = participants.some(participant => {
@@ -362,6 +414,67 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     setGroupParticipants,
   ])
 
+  // When editing a poll, pre-fill availability from the scheduler's current slots
+  useEffect(() => {
+    if (!isEditMode) {
+      hasInitializedPollAvailabilityFromPoll.current = false
+      return
+    }
+    if (
+      !pollData ||
+      !availabilityBlocks ||
+      hasInitializedPollAvailabilityFromPoll.current
+    ) {
+      return
+    }
+    const pollResponse = pollData as QuickPollBySlugResponse
+    const poll = pollResponse.poll
+    const scheduler = poll.participants?.find(
+      p => p.participant_type === QuickPollParticipantType.SCHEDULER
+    )
+    if (!scheduler?.available_slots?.length) {
+      hasInitializedPollAvailabilityFromPoll.current = true
+      return
+    }
+    const timezone = scheduler.timezone || 'UTC'
+    // Normalize to all 7 weekdays so we can match blocks that store 0-6 (including empty days)
+    const emptyByWeekday = Object.fromEntries(
+      [0, 1, 2, 3, 4, 5, 6].map(w => [
+        w,
+        { weekday: w, ranges: [] as Array<{ start: string; end: string }> },
+      ])
+    )
+    for (const s of scheduler.available_slots) {
+      emptyByWeekday[s.weekday] = {
+        weekday: s.weekday,
+        ranges: (s.ranges || []).map(r => ({
+          start: r.start || '',
+          end: r.end || '',
+        })),
+      }
+    }
+    const weeklySlots = Object.values(emptyByWeekday)
+    const matchingBlocks = findMatchingAvailabilityBlocks(
+      availabilityBlocks,
+      timezone,
+      weeklySlots
+    )
+    if (matchingBlocks.length > 0) {
+      setPollAvailabilityBlockIds(matchingBlocks.map(b => b.id))
+      setPollCustomAvailability(null)
+    } else {
+      setPollCustomAvailability({
+        timezone,
+        weekly_availability: weeklySlots.map(s => ({
+          weekday: s.weekday,
+          ranges: s.ranges,
+        })),
+      })
+      setPollAvailabilityBlockIds([])
+    }
+    hasInitializedPollAvailabilityFromPoll.current = true
+  }, [isEditMode, pollData, availabilityBlocks])
+
   const createPollMutation = useMutation({
     mutationFn: (pollData: CreateQuickPollRequest) => createQuickPoll(pollData),
     onSuccess: response => {
@@ -392,6 +505,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       setParticipants([])
       setGroupAvailability({})
       setGroupParticipants({})
+      setPollAvailabilityBlockIds([])
+      setPollCustomAvailability(null)
+      hasSetDefaultAvailability.current = false
 
       const pollId = (response as { poll?: { id?: string } })?.poll?.id
       if (pollId) {
@@ -504,6 +620,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             ? participantChanges
             : undefined, // Only include participants if there are changes
       }
+      if (pollCustomAvailability) {
+        updateData.custom_availability = pollCustomAvailability
+      } else if (pollAvailabilityBlockIds.length > 0) {
+        updateData.availability_block_ids = pollAvailabilityBlockIds
+      }
 
       updatePollMutation.mutate(updateData)
     } else {
@@ -527,6 +648,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 participant_type: QuickPollParticipantType.INVITEE,
               }))
             : [],
+      }
+      if (pollCustomAvailability) {
+        pollData.custom_availability = pollCustomAvailability
+      } else if (pollAvailabilityBlockIds.length > 0) {
+        pollData.availability_block_ids = pollAvailabilityBlockIds
       }
 
       createPollMutation.mutate(pollData)
@@ -873,6 +999,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   color: 'neutral.400',
                 }}
                 borderColor="neutral.400"
+                px={3}
                 value={formData.title}
                 onChange={e => {
                   setFormData(prev => ({ ...prev, title: e.target.value }))
@@ -951,6 +1078,85 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             </FormControl>
           </HStack>
 
+          {/* Availability */}
+          <FormControl>
+            <FormLabel htmlFor="availability">
+              Availability{' '}
+              <InfoTooltip text="Availability block(s) used for this poll. Click the pencil to choose or customize." />
+            </FormLabel>
+            <HStack
+              w="100%"
+              spacing={0}
+              border="1px solid"
+              borderColor="neutral.400"
+              borderRadius="md"
+              px={3}
+              minH="40px"
+              bg="bg-canvas"
+              align="center"
+            >
+              <Flex
+                flex={1}
+                flexWrap="wrap"
+                gap={2}
+                py={2}
+                align="center"
+                minH="40px"
+              >
+                {pollCustomAvailability ? (
+                  <Box
+                    as="span"
+                    px={1.5}
+                    py={0.15}
+                    bg="border-default"
+                    border="1px solid"
+                    borderColor="border-default"
+                    color="text-primary"
+                    fontSize="12px"
+                    borderRadius={6}
+                  >
+                    Custom
+                  </Box>
+                ) : pollAvailabilityBlockIds.length > 0 ? (
+                  (availabilityBlocks || [])
+                    .filter(b => pollAvailabilityBlockIds.includes(b.id))
+                    .map(b => (
+                      <Box
+                        key={b.id}
+                        as="span"
+                        px={1.5}
+                        py={0.15}
+                        bg="border-default"
+                        border="1px solid"
+                        borderColor="border-default"
+                        color="text-primary"
+                        fontSize="12px"
+                        borderRadius={6}
+                      >
+                        {b.title}
+                      </Box>
+                    ))
+                ) : (
+                  <Text color="neutral.400" fontSize="sm">
+                    Availability block(s) used for poll
+                  </Text>
+                )}
+              </Flex>
+              <Button
+                aria-label="Edit availability"
+                variant="ghost"
+                size="sm"
+                p={1}
+                minW="auto"
+                onClick={openAvailabilityModal}
+                isDisabled={isLoading}
+                _hover={{ bg: 'transparent' }}
+              >
+                <Icon as={HiOutlinePencilAlt} color={iconColor} boxSize={5} />
+              </Button>
+            </HStack>
+          </FormControl>
+
           {/* Add Guest from Groups */}
           <FormControl w="100%" maxW="100%" mt={-2}>
             <FormLabel htmlFor="participants">
@@ -974,6 +1180,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                   }
                 }}
                 inputProps={{
+                  pl: 3,
                   pr: 180,
                   isInvalid: !!validationErrors.participants,
                   errorBorderColor: 'red.500',
@@ -1018,6 +1225,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               borderColor="neutral.400"
               color="text-primary"
               _placeholder={{ color: 'neutral.400' }}
+              px={3}
               rows={4}
               isDisabled={isLoading}
             />
@@ -1180,6 +1388,25 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             </Button>
           )}
         </VStack>
+
+        {/* Poll Availability Modal */}
+        <PollAvailabilityModal
+          isOpen={isAvailabilityModalOpen}
+          onClose={closeAvailabilityModal}
+          onSave={(result: PollAvailabilityResult) => {
+            if (result.type === 'blocks') {
+              setPollAvailabilityBlockIds(result.blockIds)
+              setPollCustomAvailability(null)
+            } else {
+              setPollCustomAvailability(result.custom)
+              setPollAvailabilityBlockIds([])
+            }
+          }}
+          availableBlocks={availabilityBlocks ?? []}
+          defaultBlockId={defaultAvailabilityBlockId}
+          initialBlockIds={pollAvailabilityBlockIds}
+          initialCustom={pollCustomAvailability}
+        />
 
         {/* Invite Participants Modal */}
         <InviteParticipants

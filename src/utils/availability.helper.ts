@@ -315,8 +315,8 @@ export const handleCopyToDays = (
       copyType === 'all'
         ? 'all other days'
         : copyType === 'weekdays'
-          ? 'weekdays (Mon-Fri)'
-          : 'weekends (Sat-Sun)',
+        ? 'weekdays (Mon-Fri)'
+        : 'weekends (Sat-Sun)',
     targetWeekdays,
   }
 }
@@ -357,4 +357,88 @@ export const sortAvailabilitiesByWeekday = (
 
     return getWeekdayOrder(a.weekday) - getWeekdayOrder(b.weekday)
   })
+}
+
+/** Normalize a single day's ranges for comparison. */
+function dayRangesSignature(ranges: TimeRange[] | undefined): string {
+  if (!ranges || ranges.length === 0) return ''
+  const sorted = [...ranges].sort((a, b) =>
+    (a.start || '').localeCompare(b.start || '')
+  )
+  return sorted.map(r => `${r.start}-${r.end}`).join('|')
+}
+
+/** Build a stable signature for weekly availability so we can compare two configs. */
+export const getWeeklyAvailabilitySignature = (
+  availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
+): string => {
+  const sorted = sortAvailabilitiesByWeekday(
+    (availabilities || []).map(a => ({ ...a }))
+  )
+  return sorted
+    .map(a => `${a.weekday}:${dayRangesSignature(a.ranges)}`)
+    .join(';')
+}
+
+/** Returns true if the two weekly availability configs are equivalent. */
+export const weeklyAvailabilityMatches = (
+  a: Array<{ weekday: number; ranges: TimeRange[] }>,
+  b: Array<{ weekday: number; ranges: TimeRange[] }>
+): boolean => {
+  return getWeeklyAvailabilitySignature(a) === getWeeklyAvailabilitySignature(b)
+}
+
+/** Find blocks that exactly match the given weekly availability (and same timezone). */
+export const findMatchingAvailabilityBlocks = (
+  blocks: AvailabilityBlock[],
+  timezone: string,
+  weeklyAvailability: Array<{ weekday: number; ranges: TimeRange[] }>
+): AvailabilityBlock[] => {
+  return blocks.filter(
+    block =>
+      block.timezone === timezone &&
+      weeklyAvailabilityMatches(block.weekly_availability, weeklyAvailability)
+  )
+}
+
+/** Merge multiple blocks' weekly_availability into one (union of ranges per weekday). Assumes same timezone or caller normalizes. */
+export const mergeWeeklyAvailabilityFromBlocks = (
+  blocks: AvailabilityBlock[]
+): Array<{ weekday: number; ranges: TimeRange[] }> => {
+  const byWeekday = new Map<number, Array<{ start: string; end: string }>>()
+  for (let w = 0; w <= 6; w++) {
+    byWeekday.set(w, [])
+  }
+  for (const block of blocks) {
+    for (const day of block.weekly_availability || []) {
+      const existing = byWeekday.get(day.weekday) || []
+      for (const r of day.ranges || []) {
+        if (r.start && r.end) existing.push({ start: r.start, end: r.end })
+      }
+      byWeekday.set(day.weekday, existing)
+    }
+  }
+  // Merge overlapping ranges per weekday and sort
+  const result: Array<{ weekday: number; ranges: TimeRange[] }> = []
+  byWeekday.forEach((ranges, weekday) => {
+    if (ranges.length === 0) {
+      result.push({ weekday, ranges: [] })
+      return
+    }
+    ranges.sort((x, y) => x.start.localeCompare(y.start))
+    const merged: TimeRange[] = []
+    let [curStart, curEnd] = [ranges[0].start, ranges[0].end]
+    for (let i = 1; i < ranges.length; i++) {
+      if (ranges[i].start <= curEnd) {
+        if (ranges[i].end > curEnd) curEnd = ranges[i].end
+      } else {
+        merged.push({ start: curStart, end: curEnd })
+        curStart = ranges[i].start
+        curEnd = ranges[i].end
+      }
+    }
+    merged.push({ start: curStart, end: curEnd })
+    result.push({ weekday, ranges: merged })
+  })
+  return sortAvailabilitiesByWeekday(result)
 }
