@@ -11,7 +11,7 @@ import {
   BillingEmailPlan,
   PaymentProvider,
 } from '@/types/Billing'
-import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
+import { Intents, SettingsSection } from '@/types/Dashboard'
 import { Group } from '@/types/Group'
 import { MeetingChangeType } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
@@ -20,7 +20,10 @@ import {
   MeetingCreationSyncRequest,
 } from '@/types/Requests'
 import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
-import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
+import {
+  ParticipantInfoForInviteNotification,
+  ParticipantInfoForNotification,
+} from '@/utils/notification_helper'
 
 import {
   dateToHumanReadable,
@@ -205,19 +208,19 @@ export const newGroupRejectEmail = async (
 }
 export const newMeetingEmail = async (
   toEmail: string,
-  participantType: ParticipantType,
-  slot_id: string,
-  meetingDetails: MeetingCreationSyncRequest,
-  destinationAccountAddress?: string
+  participant: ParticipantInfoForNotification,
+  meetingDetails: MeetingCreationSyncRequest
 ): Promise<boolean> => {
   const participants = meetingDetails.participants
+  const participantType = participant.type
+  const destinationAccountAddress = participant.account_address
   const email = new Email()
   const title = meetingDetails.title
   const description = meetingDetails.content
   const meetingUrl = meetingDetails.meeting_url
   const start = new Date(meetingDetails.start)
   const end = new Date(meetingDetails.end)
-  const timezone = meetingDetails.timezone
+  const timezone = participant.timezone
   const meeting_id = meetingDetails.meeting_id
   const meetingPermissions = meetingDetails.meetingPermissions
   const meetingTypeId = meetingDetails.meeting_type_id
@@ -352,8 +355,9 @@ export const cancelledMeetingEmail = async (
   currentActorDisplayName: string,
   toEmail: string,
   meetingDetails: MeetingCancelSyncRequest,
-  destinationAccountAddress: string | undefined
+  participant: ParticipantInfoForNotification
 ): Promise<boolean> => {
+  const destinationAccountAddress = participant.account_address
   const start = new Date(meetingDetails.start)
   const end = new Date(meetingDetails.end)
   const title = meetingDetails.title
@@ -445,19 +449,19 @@ export const cancelledMeetingEmail = async (
 export const updateMeetingEmail = async (
   toEmail: string,
   currentActorDisplayName: string,
-  participantType: ParticipantType,
-  slot_id: string,
-  meetingDetails: MeetingCreationSyncRequest,
-  destinationAccountAddress?: string
+  participant: ParticipantInfoForNotification,
+  meetingDetails: MeetingCreationSyncRequest
 ): Promise<boolean> => {
   const participants = meetingDetails.participants
+  const participantType = participant.type
+  const destinationAccountAddress = participant.account_address
   const title = meetingDetails.title
   const description = meetingDetails.content
   const meetingUrl = meetingDetails.meeting_url
   const start = new Date(meetingDetails.start)
   const end = new Date(meetingDetails.end)
   const meeting_id = meetingDetails.meeting_id
-  const timezone = meetingDetails.timezone
+  const timezone = participant.timezone
   const meetingPermissions = meetingDetails.meetingPermissions
   const meetingTypeId = meetingDetails.meeting_type_id
   const changes = meetingDetails.changes
@@ -890,7 +894,7 @@ export const sendSubscriptionConfirmationEmail = async (
     periodEnd,
     periodStart,
     planName: billingPlan.name,
-    price: isTrial ? 0 : (transaction?.amount ?? billingPlan.price),
+    price: isTrial ? 0 : transaction?.amount ?? billingPlan.price,
     provider,
   }
 
