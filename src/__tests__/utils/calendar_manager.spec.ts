@@ -33,9 +33,26 @@ import {
   participantStatusToICSStatus,
   rsvpMeeting,
   deleteMeeting,
+  scheduleRecurringMeeting,
+  updateMeetingSeries,
+  deleteMeetingSeries,
+  rsvpMeetingInstance,
+  cancelMeetingGuest,
+  updateMeetingAsGuest,
+  generateGoogleCalendarUrl,
+  generateOffice365CalendarUrl,
+  dateToLocalizedRange,
+  decryptMeeting,
+  decryptMeetingGuest,
+  decodeMeeting,
+  getMeetingRepeatFromRule,
+  handleRRULEForMeeting,
+  isDiffRRULE,
+  getOwnerPublicUrl,
+  loadMeetingAccountAddresses,
 } from '@/utils/calendar_manager'
 import * as crypto from '@/utils/cryptography'
-import { MeetingWithYourselfError, TimeNotAvailableError } from '@/utils/errors'
+import { MeetingWithYourselfError, TimeNotAvailableError, DecryptionFailedError } from '@/utils/errors'
 import { MeetingReminders } from '@/types/common'
 
 jest.mock('@/utils/api_helper')
@@ -1062,3 +1079,401 @@ describe('generateIcs', () => {
     expect(result.error).toBeUndefined()
   })
 })
+
+describe('Recurring Meeting Functions', () => {
+  describe('scheduleRecurringMeeting', () => {
+    it('should schedule a recurring meeting series', async () => {
+      const mockScheduler = { address: '0x123', name: 'Scheduler' } as any
+      const mockMeetingInfo = {
+        title: 'Weekly Standup',
+        content: 'Team meeting',
+        start: new Date('2024-01-15T10:00:00Z'),
+        end: new Date('2024-01-15T11:00:00Z'),
+        participants: [],
+        rrule: ['FREQ=WEEKLY;COUNT=10'],
+      }
+
+      jest.spyOn(helper, 'apiScheduleMeetingSeries').mockResolvedValue({
+        meeting_id: 'series-123',
+        slot_id: 'slot-123',
+      } as any)
+
+      const result = await scheduleRecurringMeeting(
+        mockScheduler,
+        mockMeetingInfo as any,
+        'signature',
+        'UTC'
+      )
+
+      expect(result).toBeDefined()
+      expect(helper.apiScheduleMeetingSeries).toHaveBeenCalled()
+    })
+
+    it('should handle recurring meeting creation errors', async () => {
+      const mockScheduler = { address: '0x123' } as any
+      const mockMeetingInfo = {
+        title: 'Meeting',
+        rrule: ['FREQ=DAILY;COUNT=5'],
+      }
+
+      jest.spyOn(helper, 'apiScheduleMeetingSeries').mockRejectedValue(
+        new Error('Creation failed')
+      )
+
+      await expect(
+        scheduleRecurringMeeting(mockScheduler, mockMeetingInfo as any, 'sig', 'UTC')
+      ).rejects.toThrow()
+    })
+  })
+
+  describe('updateMeetingSeries', () => {
+    it('should update an entire meeting series', async () => {
+      const seriesId = 'series-123'
+      const mockUpdates = {
+        title: 'Updated Series Title',
+        content: 'Updated content',
+      }
+
+      jest.spyOn(helper, 'getSlotSeries').mockResolvedValue({
+        series_id: seriesId,
+        scheduler_address: '0x123',
+      } as any)
+      jest.spyOn(helper, 'apiUpdateMeetingSeries').mockResolvedValue({
+        series_id: seriesId,
+        ...mockUpdates,
+      } as any)
+
+      const result = await updateMeetingSeries(
+        seriesId,
+        '0x123',
+        mockUpdates as any,
+        'signature'
+      )
+
+      expect(result).toBeDefined()
+      expect(helper.apiUpdateMeetingSeries).toHaveBeenCalled()
+    })
+  })
+
+  describe('deleteMeetingSeries', () => {
+    it('should delete an entire meeting series', async () => {
+      const seriesId = 'series-123'
+
+      jest.spyOn(helper, 'getSlotSeries').mockResolvedValue({
+        series_id: seriesId,
+        scheduler_address: '0x123',
+      } as any)
+      jest.spyOn(helper, 'apiCancelMeetingSeries').mockResolvedValue({
+        success: true,
+      } as any)
+
+      const result = await deleteMeetingSeries(seriesId, '0x123')
+
+      expect(result).toBeDefined()
+      expect(helper.apiCancelMeetingSeries).toHaveBeenCalled()
+    })
+  })
+
+  describe('rsvpMeetingInstance', () => {
+    it('should RSVP to a meeting instance', async () => {
+      const instanceId = 'instance-123'
+      const status = ParticipationStatus.Accepted
+
+      jest.spyOn(helper, 'getSlotInstanceById').mockResolvedValue({
+        instance_id: instanceId,
+        participants: [],
+      } as any)
+
+      const result = await rsvpMeetingInstance(instanceId, '0x123', status)
+
+      expect(result).toBeDefined()
+    })
+  })
+})
+
+describe('Guest Meeting Functions', () => {
+  describe('cancelMeetingGuest', () => {
+    it('should cancel meeting as guest', async () => {
+      const meetingId = 'meeting-123'
+      const guestPrivateKey = 'private-key'
+
+      jest.spyOn(helper, 'getMeetingGuest').mockResolvedValue({
+        meeting_id: meetingId,
+        guest_email: 'guest@example.com',
+      } as any)
+      jest.spyOn(helper, 'conferenceGuestMeetingCancel').mockResolvedValue({
+        success: true,
+      } as any)
+
+      const result = await cancelMeetingGuest(meetingId, guestPrivateKey)
+
+      expect(result).toBeDefined()
+      expect(helper.conferenceGuestMeetingCancel).toHaveBeenCalled()
+    })
+  })
+
+  describe('updateMeetingAsGuest', () => {
+    it('should update meeting as guest', async () => {
+      const meetingId = 'meeting-123'
+      const guestPrivateKey = 'private-key'
+      const updates = {
+        start: new Date('2024-01-16T10:00:00Z'),
+        end: new Date('2024-01-16T11:00:00Z'),
+      }
+
+      jest.spyOn(helper, 'getMeetingGuest').mockResolvedValue({
+        meeting_id: meetingId,
+      } as any)
+      jest.spyOn(helper, 'apiUpdateMeetingAsGuest').mockResolvedValue({
+        meeting_id: meetingId,
+        ...updates,
+      } as any)
+
+      const result = await updateMeetingAsGuest(
+        meetingId,
+        updates.start,
+        updates.end,
+        guestPrivateKey
+      )
+
+      expect(result).toBeDefined()
+      expect(helper.apiUpdateMeetingAsGuest).toHaveBeenCalled()
+    })
+  })
+})
+
+describe('URL Generation Functions', () => {
+  describe('generateGoogleCalendarUrl', () => {
+    it('should generate Google Calendar add event URL', () => {
+      const meetingInfo = {
+        title: 'Test Meeting',
+        content: 'Description',
+        start: new Date('2024-01-15T10:00:00Z'),
+        end: new Date('2024-01-15T11:00:00Z'),
+        meeting_url: 'https://meet.google.com/test',
+      }
+
+      const url = generateGoogleCalendarUrl(meetingInfo as any)
+
+      expect(url).toBeDefined()
+      expect(url).toContain('calendar.google.com')
+      expect(url).toContain(encodeURIComponent('Test Meeting'))
+    })
+  })
+
+  describe('generateOffice365CalendarUrl', () => {
+    it('should generate Office 365 Calendar add event URL', () => {
+      const meetingInfo = {
+        title: 'Test Meeting',
+        content: 'Description',
+        start: new Date('2024-01-15T10:00:00Z'),
+        end: new Date('2024-01-15T11:00:00Z'),
+      }
+
+      const url = generateOffice365CalendarUrl(meetingInfo as any)
+
+      expect(url).toBeDefined()
+      expect(url).toContain('outlook.office.com')
+    })
+  })
+
+  describe('dateToLocalizedRange', () => {
+    it('should format date range in local timezone', () => {
+      const start = new Date('2024-01-15T10:00:00Z')
+      const end = new Date('2024-01-15T11:00:00Z')
+
+      const result = dateToLocalizedRange(start, end, 'America/New_York')
+
+      expect(result).toBeDefined()
+      expect(typeof result).toBe('string')
+    })
+
+    it('should handle different timezones', () => {
+      const start = new Date('2024-01-15T10:00:00Z')
+      const end = new Date('2024-01-15T11:00:00Z')
+
+      const resultEst = dateToLocalizedRange(start, end, 'America/New_York')
+      const resultUtc = dateToLocalizedRange(start, end, 'UTC')
+
+      expect(resultEst).not.toEqual(resultUtc)
+    })
+  })
+})
+
+describe('Decryption Functions', () => {
+  describe('decryptMeeting', () => {
+    it('should decrypt meeting details', async () => {
+      const mockSlot = {
+        meeting_id: 'meeting-123',
+        encrypted_meeting: 'encrypted-data',
+        participants: [],
+      }
+
+      jest.spyOn(helper, 'getMeeting').mockResolvedValue(mockSlot as any)
+      jest.spyOn(crypto, 'getContentFromEncrypted').mockResolvedValue(
+        JSON.stringify({
+          title: 'Decrypted Meeting',
+          content: 'Details',
+        })
+      )
+
+      const result = await decryptMeeting('meeting-123', '0x123')
+
+      expect(result).toBeDefined()
+      expect(result.title).toBe('Decrypted Meeting')
+    })
+
+    it('should throw DecryptionFailedError on decryption failure', async () => {
+      jest.spyOn(helper, 'getMeeting').mockResolvedValue({
+        meeting_id: 'meeting-123',
+        encrypted_meeting: 'invalid-data',
+      } as any)
+      jest.spyOn(crypto, 'getContentFromEncrypted').mockRejectedValue(
+        new Error('Decryption failed')
+      )
+
+      await expect(decryptMeeting('meeting-123', '0x123')).rejects.toThrow(
+        DecryptionFailedError
+      )
+    })
+  })
+
+  describe('decryptMeetingGuest', () => {
+    it('should decrypt meeting for guest', async () => {
+      const mockGuestSlot = {
+        meeting_id: 'meeting-123',
+        encrypted_meeting: 'encrypted-data',
+      }
+
+      jest.spyOn(helper, 'getMeetingGuest').mockResolvedValue(mockGuestSlot as any)
+      jest.spyOn(crypto, 'getContentFromEncryptedPublic').mockResolvedValue(
+        JSON.stringify({
+          title: 'Guest Meeting',
+        })
+      )
+
+      const result = await decryptMeetingGuest('meeting-123', 'private-key')
+
+      expect(result).toBeDefined()
+      expect(result.title).toBe('Guest Meeting')
+    })
+  })
+
+  describe('decodeMeeting', () => {
+    it('should decode and decrypt meeting', async () => {
+      const mockSlot = {
+        meeting_id: 'meeting-123',
+        encrypted_meeting: 'encrypted',
+      }
+
+      jest.spyOn(helper, 'getMeeting').mockResolvedValue(mockSlot as any)
+      jest.spyOn(crypto, 'getContentFromEncrypted').mockResolvedValue(
+        JSON.stringify({ title: 'Decoded' })
+      )
+
+      const result = await decodeMeeting('meeting-123', '0x123')
+
+      expect(result).toBeDefined()
+    })
+  })
+})
+
+describe('RRULE and Recurrence Functions', () => {
+  describe('getMeetingRepeatFromRule', () => {
+    it('should parse RRULE to MeetingRepeat object', () => {
+      const rrule = 'FREQ=WEEKLY;COUNT=10;BYDAY=MO,WE,FR'
+
+      const result = getMeetingRepeatFromRule([rrule])
+
+      expect(result).toBeDefined()
+      expect(result.frequency).toBe('WEEKLY')
+    })
+
+    it('should handle daily recurrence', () => {
+      const rrule = 'FREQ=DAILY;COUNT=5'
+
+      const result = getMeetingRepeatFromRule([rrule])
+
+      expect(result.frequency).toBe('DAILY')
+    })
+
+    it('should handle monthly recurrence', () => {
+      const rrule = 'FREQ=MONTHLY;COUNT=12'
+
+      const result = getMeetingRepeatFromRule([rrule])
+
+      expect(result.frequency).toBe('MONTHLY')
+    })
+  })
+
+  describe('handleRRULEForMeeting', () => {
+    it('should convert MeetingRepeat to RRULE array', () => {
+      const repeat: MeetingRepeat = {
+        frequency: 'WEEKLY',
+        count: 10,
+        byweekday: [0, 2, 4], // Mon, Wed, Fri
+      }
+
+      const result = handleRRULEForMeeting(repeat, new Date('2024-01-15'))
+
+      expect(result).toBeDefined()
+      expect(Array.isArray(result)).toBe(true)
+      expect(result.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('isDiffRRULE', () => {
+    it('should detect different RRULEs', () => {
+      const rrule1 = ['FREQ=WEEKLY;COUNT=10']
+      const rrule2 = ['FREQ=DAILY;COUNT=5']
+
+      const result = isDiffRRULE(rrule1, rrule2)
+
+      expect(result).toBe(true)
+    })
+
+    it('should return false for same RRULEs', () => {
+      const rrule1 = ['FREQ=WEEKLY;COUNT=10']
+      const rrule2 = ['FREQ=WEEKLY;COUNT=10']
+
+      const result = isDiffRRULE(rrule1, rrule2)
+
+      expect(result).toBe(false)
+    })
+  })
+})
+
+describe('Utility Functions', () => {
+  describe('getOwnerPublicUrl', () => {
+    it('should get owner public URL from account', async () => {
+      const mockAccount = {
+        address: '0x123',
+        custom_url: 'custom-url',
+      }
+
+      jest.spyOn(helper, 'getAccount').mockResolvedValue(mockAccount as any)
+
+      const result = await getOwnerPublicUrl('0x123')
+
+      expect(result).toBeDefined()
+    })
+  })
+
+  describe('loadMeetingAccountAddresses', () => {
+    it('should load account addresses from meeting participants', async () => {
+      const mockMeeting = {
+        participants: [
+          { account_address: '0x123' },
+          { account_address: '0x456' },
+        ],
+      }
+
+      const result = await loadMeetingAccountAddresses(mockMeeting as any)
+
+      expect(result).toBeDefined()
+      expect(Array.isArray(result)).toBe(true)
+      expect(result).toHaveLength(2)
+    })
+  })
+})
+
