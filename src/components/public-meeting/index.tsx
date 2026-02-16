@@ -50,7 +50,10 @@ import {
   SessionType,
 } from '@utils/constants/meeting-types'
 import { type TimeZoneOption } from '@utils/constants/select'
-import { parseMonthAvailabilitiesToDate, timezones } from '@utils/date_helper'
+import {
+  getTimezones,
+  parseMonthAvailabilitiesToDate,
+} from '@utils/date_helper'
 import {
   AllMeetingSlotsUsedError,
   GateConditionNotValidError,
@@ -77,8 +80,8 @@ import { v4 } from 'uuid'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import {
-  type SupportedChain,
   AcceptedToken,
+  type SupportedChain,
   supportedChains,
 } from '@/types/chains'
 import type { Address, Transaction } from '@/types/Transactions'
@@ -102,13 +105,6 @@ import { useToastHelpers } from '@/utils/toasts'
 
 import Loading from '../Loading'
 
-const tzs = timezones.map(tz => {
-  return {
-    value: String(tz.tzCode),
-    label: tz.name,
-    searchKeys: tz.countries,
-  }
-})
 interface IProps {
   account: PublicAccount
   url: string
@@ -345,6 +341,15 @@ export const ScheduleStateContext =
   React.createContext<IScheduleContext>(scheduleBaseState)
 const PublicPage: FC<IProps> = props => {
   const bgColor = useColorModeValue('white', 'neutral.900')
+  const tzs = useMemo(
+    () =>
+      getTimezones().map(tz => ({
+        value: String(tz.tzCode),
+        label: tz.name,
+        searchKeys: tz.countries,
+      })),
+    []
+  )
   const { query, push, isReady, beforePopState, replace, asPath } = useRouter()
   const [pageGettingReady, setPageGettingReady] = useState(true)
   const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
