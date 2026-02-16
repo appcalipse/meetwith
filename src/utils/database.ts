@@ -120,6 +120,7 @@ import {
   AddParticipantData,
   AvailabilitySlot,
   CreateQuickPollRequest,
+  PollCustomAvailability,
   PollStatus,
   PollVisibility,
   QuickPollCalendar,
@@ -165,6 +166,7 @@ import {
   OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
+import { mergeWeeklyAvailabilityFromBlocks } from '@/utils/availability.helper'
 import {
   MODIFIED_BY_APP_TIMEOUT,
   PaymentNotificationType,
@@ -8399,6 +8401,55 @@ const countScheduledQuickPollsThisMonth = async (
   return count || 0
 }
 
+/**
+ * Resolves poll availability from custom config or availability block IDs.
+ */
+const resolvePollAvailabilityFromRequest = async (
+  ownerAddress: string | null,
+  customAvailability: PollCustomAvailability | null | undefined,
+  availabilityBlockIds: string[] | null | undefined
+): Promise<{ slots: AvailabilitySlot[]; timezone: string }> => {
+  if (customAvailability) {
+    const custom = customAvailability
+    const slots = (custom.weekly_availability || []).map(day => ({
+      ranges: day.ranges || [],
+      weekday: day.weekday,
+    }))
+    return { slots, timezone: custom.timezone }
+  }
+  if (availabilityBlockIds && availabilityBlockIds.length > 0 && ownerAddress) {
+    const { data: blocks } = await db.supabase
+      .from('availabilities')
+      .select('id, title, timezone, weekly_availability')
+      .eq('account_owner_address', ownerAddress.toLowerCase())
+      .in('id', availabilityBlockIds)
+
+    if (blocks && blocks.length > 0) {
+      const asAvailabilityBlocks: AvailabilityBlock[] = blocks.map(
+        (b: {
+          id: string
+          title: string
+          timezone: string
+          weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+        }) => ({
+          id: b.id,
+          title: b.title,
+          timezone: b.timezone,
+          isDefault: false,
+          weekly_availability: b.weekly_availability || [],
+        })
+      )
+      const merged = mergeWeeklyAvailabilityFromBlocks(asAvailabilityBlocks)
+      const slots = merged.map(day => ({
+        ranges: day.ranges || [],
+        weekday: day.weekday,
+      }))
+      return { slots, timezone: asAvailabilityBlocks[0].timezone }
+    }
+  }
+  return { slots: [], timezone: '' }
+}
+
 const createQuickPoll = async (
   owner_address: string,
   pollData: CreateQuickPollRequest
@@ -8434,24 +8485,40 @@ const createQuickPoll = async (
       owner_address
     )
 
-    // Get owner's availability
     let ownerAvailableSlots: AvailabilitySlot[] = []
+    let ownerTimezone = ownerAccount.preferences?.timezone || 'UTC'
     try {
-      const availabilityId = await getDefaultAvailabilityBlockId(owner_address)
-      if (availabilityId) {
-        const { data: availability } = await db.supabase
-          .from('availabilities')
-          .select('weekly_availability')
-          .eq('id', availabilityId)
-          .maybeSingle()
+      const resolved = await resolvePollAvailabilityFromRequest(
+        owner_address,
+        pollData.custom_availability,
+        pollData.availability_block_ids
+      )
+      if (resolved.slots.length > 0) {
+        ownerAvailableSlots = resolved.slots
+        ownerTimezone = resolved.timezone
+      }
+      if (ownerAvailableSlots.length === 0) {
+        const availabilityId = await getDefaultAvailabilityBlockId(
+          owner_address
+        )
+        if (availabilityId) {
+          const { data: availability } = await db.supabase
+            .from('availabilities')
+            .select('weekly_availability, timezone')
+            .eq('id', availabilityId)
+            .maybeSingle()
 
-        if (availability?.weekly_availability) {
-          ownerAvailableSlots = availability.weekly_availability.map(
-            (day: AvailabilitySlot) => ({
-              ranges: day.ranges || [],
-              weekday: day.weekday,
-            })
-          )
+          if (availability?.weekly_availability) {
+            ownerAvailableSlots = availability.weekly_availability.map(
+              (day: AvailabilitySlot) => ({
+                ranges: day.ranges || [],
+                weekday: day.weekday,
+              })
+            )
+            if (availability.timezone) {
+              ownerTimezone = availability.timezone
+            }
+          }
         }
       }
     } catch (error) {
@@ -8466,7 +8533,7 @@ const createQuickPoll = async (
       participant_type: QuickPollParticipantType.SCHEDULER,
       poll_id: poll.id,
       status: QuickPollParticipantStatus.ACCEPTED,
-      timezone: ownerAccount.preferences?.timezone || 'UTC',
+      timezone: ownerTimezone,
     }
 
     const invitees = await Promise.all(
@@ -8934,7 +9001,51 @@ const updateQuickPoll = async (
       await updateQuickPollParticipants(pollId, participantUpdates)
     }
 
-    const { participants: _, ...pollUpdates } = updates
+    const {
+      participants: _,
+      availability_block_ids: availBlockIds,
+      custom_availability: customAvail,
+      ...pollUpdates
+    } = updates
+
+    // If scheduler is updating availability, apply to scheduler participant
+    if (
+      isScheduler &&
+      (availBlockIds !== undefined || customAvail !== undefined)
+    ) {
+      const { data: schedulerParticipant } = await db.supabase
+        .from('quick_poll_participants')
+        .select('id')
+        .eq('poll_id', pollId)
+        .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+        .maybeSingle()
+
+      if (schedulerParticipant?.id) {
+        try {
+          const resolved = await resolvePollAvailabilityFromRequest(
+            ownerAddress ?? null,
+            customAvail,
+            availBlockIds
+          )
+          const defaultTimezone = ownerAddress
+            ? (await getAccountFromDB(ownerAddress)).preferences?.timezone ||
+              'UTC'
+            : 'UTC'
+          const newSlots = resolved.slots
+          const newTimezone =
+            resolved.slots.length > 0 ? resolved.timezone : defaultTimezone
+          if (newSlots.length > 0 || customAvail) {
+            await updateQuickPollParticipantAvailability(
+              schedulerParticipant.id,
+              newSlots,
+              newTimezone
+            )
+          }
+        } catch (availError) {
+          console.warn('Could not update poll availability:', availError)
+        }
+      }
+    }
 
     const { data: updatedPoll, error } = await db.supabase
       .from('quick_polls')
