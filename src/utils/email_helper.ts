@@ -364,7 +364,7 @@ export const cancelledMeetingEmail = async (
   const reason = meetingDetails.reason
 
   const created_at = new Date(meetingDetails.created_at)
-  const timezone = meetingDetails.timezone
+  const timezone = participant.timezone
   const meeting_id = meetingDetails.meeting_id
 
   const email = new Email()
