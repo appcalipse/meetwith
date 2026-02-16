@@ -22,7 +22,18 @@ const customJestConfig = {
   moduleFileExtensions: ['js', 'jsx', 'tsx', 'ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testMatch: ['**/__tests__/**/*.(spec|test).(ts|tsx|js|jsx)', '**/*.(spec|test).(ts|tsx|js|jsx)'],
-  collectCoverageFrom: ['./src/**'],
+  collectCoverageFrom: [
+    './src/**',
+    '!./src/__tests__/**',
+    '!./src/**/*.d.ts',
+    '!./src/utils/services/calendar.service.types.ts',
+    '!./src/instrumentation*.ts',
+    '!./src/testing/**',
+    '!./src/**/*.test.ts',
+    '!./src/**/*.spec.ts',
+    '!./src/**/*.test.tsx',
+    '!./src/**/*.spec.tsx',
+  ],
   verbose: true,
   resolver: `./resolver.js`,
   transform: {
@@ -45,6 +56,14 @@ const customJestConfig = {
   globals: {
     Uint8Array,
     ArrayBuffer,
+  },
+  coverageThreshold: {
+    global: {
+      statements: 60,
+      branches: 60,
+      functions: 60,
+      lines: 60,
+    },
   },
 }
 
