@@ -95,6 +95,22 @@ import {
   getGroupMembersAvailabilities,
   deleteGroup,
   getGroup,
+  deleteConnectedCalendar,
+  updateConnectedCalendar,
+  syncSubscriptions,
+  getSubscriptionHistory,
+  getBillingPlans,
+  subscribeToBillingPlan,
+  cancelCryptoSubscription,
+  duplicateAvailabilityBlock,
+  getMeetingTypesForAvailabilityBlock,
+  getGateCondition,
+  getWalletPOAPs,
+  createHuddleRoom,
+  createZoomMeeting,
+  validateWebdav,
+  generateDiscordAccount,
+  deleteDiscordIntegration,
 } from '@/utils/api_helper'
 
 import {
@@ -1596,6 +1612,497 @@ describe('api_helper.ts', () => {
         const result = await updateCustomSubscriptionDomain({} as any)
 
         expect(result).toEqual(mockResponse)
+      })
+    })
+  })
+
+  describe('Bulk Operations', () => {
+    describe('fetchBusySlotsRawForMultipleAccounts', () => {
+      it('should fetch busy slots for multiple accounts', async () => {
+        const mockAccounts = ['0x123', '0x456']
+        const mockSlots = { '0x123': [], '0x456': [] }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockSlots,
+        })
+
+        const result = await fetchBusySlotsRawForMultipleAccounts(
+          mockAccounts,
+          new Date('2024-01-01'),
+          new Date('2024-01-31')
+        )
+
+        expect(result).toEqual(mockSlots)
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/busy'),
+          expect.any(Object)
+        )
+      })
+
+      it('should handle empty account list', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({}),
+        })
+
+        const result = await fetchBusySlotsRawForMultipleAccounts(
+          [],
+          new Date('2024-01-01'),
+          new Date('2024-01-31')
+        )
+
+        expect(result).toEqual({})
+      })
+    })
+
+    describe('fetchBusySlotsRawForQuickPollParticipants', () => {
+      it('should fetch busy slots for quick poll participants', async () => {
+        const mockParticipants = [
+          { account_address: '0x123' },
+          { account_address: '0x456' },
+        ]
+        const mockSlots = { '0x123': [], '0x456': [] }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockSlots,
+        })
+
+        const result = await fetchBusySlotsRawForQuickPollParticipants(
+          mockParticipants as any,
+          new Date('2024-01-01'),
+          new Date('2024-01-31')
+        )
+
+        expect(result).toEqual(mockSlots)
+      })
+    })
+  })
+
+  describe('Group Management Extended', () => {
+    describe('getGroupsFullWithMetadata', () => {
+      it('should fetch groups with metadata', async () => {
+        const mockGroups = {
+          groups: [{ id: 'group-1', name: 'Test Group' }],
+          metadata: { total: 1, page: 1 },
+        }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockGroups,
+        })
+
+        const result = await getGroupsFullWithMetadata()
+
+        expect(result).toEqual(mockGroups)
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/secure/group'),
+          expect.any(Object)
+        )
+      })
+    })
+
+    describe('removeGroupMember', () => {
+      it('should remove a group member', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({ success: true }),
+        })
+
+        const result = await removeGroupMember('group-123', '0xMember')
+
+        expect(result).toEqual({ success: true })
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/secure/group/group-123/member'),
+          expect.objectContaining({ method: 'DELETE' })
+        )
+      })
+    })
+
+    describe('editGroup', () => {
+      it('should update group details', async () => {
+        const groupData = {
+          id: 'group-123',
+          name: 'Updated Group',
+          description: 'New description',
+        }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => groupData,
+        })
+
+        const result = await editGroup(groupData as any)
+
+        expect(result).toEqual(groupData)
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/secure/group'),
+          expect.objectContaining({
+            method: 'PUT',
+            body: JSON.stringify(groupData),
+          })
+        )
+      })
+    })
+
+    describe('uploadGroupAvatar', () => {
+      it('should upload group avatar', async () => {
+        const mockFile = new File(['test'], 'avatar.png', {
+          type: 'image/png',
+        })
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({ url: 'https://example.com/avatar.png' }),
+        })
+
+        const result = await uploadGroupAvatar('group-123', mockFile)
+
+        expect(result).toEqual({ url: 'https://example.com/avatar.png' })
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/secure/group/group-123/avatar'),
+          expect.objectContaining({ method: 'POST' })
+        )
+      })
+    })
+
+    describe('getGroupMemberAvailabilities', () => {
+      it('should fetch member availabilities for a group', async () => {
+        const mockAvailabilities = [
+          { member_address: '0x123', blocks: [] },
+        ]
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockAvailabilities,
+        })
+
+        const result = await getGroupMemberAvailabilities('group-123')
+
+        expect(result).toEqual(mockAvailabilities)
+      })
+    })
+  })
+
+  describe('Calendar Operations Extended', () => {
+    describe('syncMeeting', () => {
+      it('should sync a meeting to calendars', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({ success: true }),
+        })
+
+        const result = await syncMeeting('meeting-123')
+
+        expect(result).toEqual({ success: true })
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/secure/meetings/sync'),
+          expect.any(Object)
+        )
+      })
+
+      it('should handle sync errors', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 500,
+          json: async () => ({ error: 'Sync failed' }),
+        })
+
+        await expect(syncMeeting('meeting-123')).rejects.toThrow()
+        expect(Sentry.captureException).toHaveBeenCalled()
+      })
+    })
+
+    describe('deleteConnectedCalendar', () => {
+      it('should delete a connected calendar', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({ success: true }),
+        })
+
+        const result = await deleteConnectedCalendar('calendar-123')
+
+        expect(result).toEqual({ success: true })
+        expect(queryClient.invalidateQueries).toHaveBeenCalled()
+      })
+    })
+
+    describe('updateConnectedCalendar', () => {
+      it('should update calendar settings', async () => {
+        const calendarData = {
+          id: 'cal-123',
+          enabled: true,
+          sync: true,
+        }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => calendarData,
+        })
+
+        const result = await updateConnectedCalendar(calendarData as any)
+
+        expect(result).toEqual(calendarData)
+        expect(queryClient.invalidateQueries).toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('Subscription and Billing', () => {
+    describe('syncSubscriptions', () => {
+      it('should sync subscription status', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({ synced: true }),
+        })
+
+        const result = await syncSubscriptions()
+
+        expect(result).toEqual({ synced: true })
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/secure/subscriptions/sync'),
+          expect.any(Object)
+        )
+      })
+    })
+
+    describe('getSubscriptionHistory', () => {
+      it('should fetch subscription history', async () => {
+        const mockHistory = [
+          { id: 'sub-1', status: 'active', created_at: '2024-01-01' },
+        ]
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockHistory,
+        })
+
+        const result = await getSubscriptionHistory()
+
+        expect(result).toEqual(mockHistory)
+      })
+    })
+
+    describe('getBillingPlans', () => {
+      it('should fetch available billing plans', async () => {
+        const mockPlans = [
+          { id: 'plan-1', name: 'Pro', price: 10 },
+          { id: 'plan-2', name: 'Enterprise', price: 50 },
+        ]
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockPlans,
+        })
+
+        const result = await getBillingPlans()
+
+        expect(result).toEqual(mockPlans)
+      })
+    })
+
+    describe('subscribeToBillingPlan', () => {
+      it('should subscribe to a billing plan', async () => {
+        const subscriptionData = {
+          plan_id: 'plan-1',
+          payment_method: 'card',
+        }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({ subscription_id: 'sub-123' }),
+        })
+
+        const result = await subscribeToBillingPlan(subscriptionData as any)
+
+        expect(result).toEqual({ subscription_id: 'sub-123' })
+      })
+
+      it('should handle payment required error', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 402,
+          json: async () => ({ error: 'Payment required' }),
+        })
+
+        await expect(
+          subscribeToBillingPlan({ plan_id: 'plan-1' } as any)
+        ).rejects.toThrow()
+      })
+    })
+
+    describe('cancelCryptoSubscription', () => {
+      it('should cancel crypto subscription', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({ cancelled: true }),
+        })
+
+        const result = await cancelCryptoSubscription()
+
+        expect(result).toEqual({ cancelled: true })
+      })
+    })
+  })
+
+  describe('Availability Blocks Extended', () => {
+    describe('duplicateAvailabilityBlock', () => {
+      it('should duplicate an availability block', async () => {
+        const mockBlock = {
+          id: 'block-new',
+          name: 'Copy of Block',
+          days: [1, 2, 3],
+        }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockBlock,
+        })
+
+        const result = await duplicateAvailabilityBlock('block-123')
+
+        expect(result).toEqual(mockBlock)
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/secure/availabilities/block-123/duplicate'),
+          expect.any(Object)
+        )
+      })
+    })
+
+    describe('getMeetingTypesForAvailabilityBlock', () => {
+      it('should fetch meeting types using an availability block', async () => {
+        const mockMeetingTypes = [
+          { id: 'type-1', name: 'Meeting Type 1' },
+        ]
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockMeetingTypes,
+        })
+
+        const result = await getMeetingTypesForAvailabilityBlock('block-123')
+
+        expect(result).toEqual(mockMeetingTypes)
+      })
+    })
+  })
+
+  describe('Advanced Features', () => {
+    describe('getGateCondition', () => {
+      it('should fetch gate condition for meeting type', async () => {
+        const mockGate = {
+          conditions: [],
+          elements: [{ type: 'ERC20', itemId: '0x123' }],
+        }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockGate,
+        })
+
+        const result = await getGateCondition('type-123')
+
+        expect(result).toEqual(mockGate)
+      })
+    })
+
+    describe('getWalletPOAPs', () => {
+      it('should fetch POAPs for wallet', async () => {
+        const mockPOAPs = [
+          { event: { id: 1, name: 'POAP Event' } },
+        ]
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockPOAPs,
+        })
+
+        const result = await getWalletPOAPs('0x123')
+
+        expect(result).toEqual(mockPOAPs)
+      })
+    })
+
+    describe('createHuddleRoom', () => {
+      it('should create a Huddle room', async () => {
+        const mockRoom = { roomId: 'room-123', url: 'https://huddle.com/room-123' }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockRoom,
+        })
+
+        const result = await createHuddleRoom('meeting-123')
+
+        expect(result).toEqual(mockRoom)
+      })
+    })
+
+    describe('createZoomMeeting', () => {
+      it('should create a Zoom meeting', async () => {
+        const mockMeeting = {
+          id: 'zoom-123',
+          join_url: 'https://zoom.us/j/123',
+        }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockMeeting,
+        })
+
+        const result = await createZoomMeeting({
+          topic: 'Test Meeting',
+          start_time: new Date('2024-01-01'),
+        } as any)
+
+        expect(result).toEqual(mockMeeting)
+      })
+    })
+
+    describe('validateWebdav', () => {
+      it('should validate WebDAV credentials', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({ valid: true }),
+        })
+
+        const result = await validateWebdav({
+          url: 'https://example.com/dav',
+          username: 'user',
+          password: 'pass',
+        })
+
+        expect(result).toEqual({ valid: true })
+      })
+
+      it('should handle invalid credentials', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 401,
+          json: async () => ({ error: 'Unauthorized' }),
+        })
+
+        await expect(
+          validateWebdav({
+            url: 'https://example.com/dav',
+            username: 'user',
+            password: 'wrong',
+          })
+        ).rejects.toThrow()
+      })
+    })
+  })
+
+  describe('Discord and Telegram', () => {
+    describe('generateDiscordAccount', () => {
+      it('should generate Discord account link', async () => {
+        const mockAccount = {
+          discord_id: 'discord-123',
+          linked: true,
+        }
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => mockAccount,
+        })
+
+        const result = await generateDiscordAccount()
+
+        expect(result).toEqual(mockAccount)
+      })
+    })
+
+    describe('deleteDiscordIntegration', () => {
+      it('should delete Discord integration', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          status: 200,
+          json: async () => ({ success: true }),
+        })
+
+        const result = await deleteDiscordIntegration()
+
+        expect(result).toEqual({ success: true })
       })
     })
   })
