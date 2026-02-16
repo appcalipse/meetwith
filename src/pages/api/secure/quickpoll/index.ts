@@ -147,7 +147,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         }
       }
 
-      const poll = await createQuickPoll(address, {
+      const createPayload: CreateQuickPollRequest = {
         description: pollData.description?.trim() || '',
         duration_minutes: pollData.duration_minutes,
         ends_at: pollData.ends_at,
@@ -156,7 +156,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         permissions: pollData.permissions,
         starts_at: pollData.starts_at,
         title: pollData.title.trim(),
-      })
+      }
+      if (pollData.custom_availability) {
+        createPayload.custom_availability = pollData.custom_availability
+      }
+      if (
+        pollData.availability_block_ids &&
+        pollData.availability_block_ids.length > 0
+      ) {
+        createPayload.availability_block_ids = pollData.availability_block_ids
+      }
+      const poll = await createQuickPoll(address, createPayload)
 
       return res.status(201).json({ poll })
     }

@@ -644,25 +644,51 @@ export function QuickPollPickAvailability({
 
         if (accountAddresses.length > 0) {
           quickPollAccountDetails = await getExistingAccounts(accountAddresses)
+        }
 
-          quickPollAccountDetails.forEach(account => {
-            const identifier = account.address?.toLowerCase()
-            if (!identifier) return
+        // Use poll-specific availability when present; otherwise fall back to account default
+        pollData.poll.participants.forEach(participant => {
+          const identifier = (
+            participant.account_address || participant.guest_email
+          )?.toLowerCase()
+          if (!identifier) return
 
-            const defaultAvailability = mergeLuxonIntervals(
+          let defaultAvailability: Interval[] = []
+          if (
+            participant.available_slots &&
+            participant.available_slots.length > 0 &&
+            participant.timezone
+          ) {
+            defaultAvailability = mergeLuxonIntervals(
               parseMonthAvailabilitiesToDate(
-                account.preferences?.availabilities || [],
+                participant.available_slots,
                 monthStartDate,
                 monthEndDate,
-                account.preferences?.timezone || timezone
+                participant.timezone
               )
             )
-
-            if (defaultAvailability.length > 0) {
-              defaultAvailabilityMap.set(identifier, defaultAvailability)
+          }
+          if (defaultAvailability.length === 0 && participant.account_address) {
+            const account = quickPollAccountDetails.find(
+              a =>
+                a.address?.toLowerCase() ===
+                participant.account_address?.toLowerCase()
+            )
+            if (account?.preferences?.availabilities?.length) {
+              defaultAvailability = mergeLuxonIntervals(
+                parseMonthAvailabilitiesToDate(
+                  account.preferences.availabilities,
+                  monthStartDate,
+                  monthEndDate,
+                  account.preferences?.timezone || timezone
+                )
+              )
             }
-          })
-        }
+          }
+          if (defaultAvailability.length > 0) {
+            defaultAvailabilityMap.set(identifier, defaultAvailability)
+          }
+        })
 
         const visibleParticipants = Array.from(
           new Set(Object.values(filteredGroupAvailability).flat())
