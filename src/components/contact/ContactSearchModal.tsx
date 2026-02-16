@@ -180,11 +180,18 @@ const ContactSearchModal = (props: Props) => {
                       index={index}
                       {...account}
                       handleUpdateResult={() => {
-                        const updatedResult = result
-                        if (updatedResult?.result) {
-                          updatedResult.result[index].is_invited = true
-                          setResult(updatedResult)
-                        }
+                        setResult(prev => {
+                          if (!prev?.result) return prev
+                          return {
+                            ...prev,
+                            result: prev.result.map(item =>
+                              item.address === account.address &&
+                              item.email === account.email
+                                ? { ...item, is_invited: true }
+                                : item
+                            ),
+                          }
+                        })
                       }}
                     />
                   ))}
