@@ -19583,7 +19583,6 @@ __metadata:
     satori: "npm:^0.18.3"
     sharp: "npm:^0.34.5"
     slugify: "npm:^1.6.5"
-    spacetime: "npm:^7.7.0"
     stripe: "npm:^19.1.0"
     styled-components: "npm:^4.2.0"
     swiper: "npm:^8.4.5"
@@ -23920,7 +23919,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"spacetime@npm:^7.6.0, spacetime@npm:^7.7.0":
+"spacetime@npm:^7.6.0":
   version: 7.7.0
   resolution: "spacetime@npm:7.7.0"
   checksum: 10c0/cee72d77101e6c7b0774a3c207c392de402ff16846451f5a81889cf10f36c2e0cb695949f8f30cbc3634a1d93d28dc7bc7de43cf93f0b46777ef4b5bb238085b
