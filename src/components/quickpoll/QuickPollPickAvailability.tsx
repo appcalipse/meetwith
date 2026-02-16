@@ -52,7 +52,10 @@ import {
 } from '@/utils/api_helper'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { customSelectComponents, Option } from '@/utils/constants/select'
-import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
+import {
+  getTimezones,
+  parseMonthAvailabilitiesToDate,
+} from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { deduplicateArray } from '@/utils/generic_utils'
 import {
@@ -524,7 +527,7 @@ export function QuickPollPickAvailability({
 
   const tzOptions = useMemo(
     () =>
-      timezones.map(tz => ({
+      getTimezones().map(tz => ({
         value: tz.tzCode,
         label: tz.name,
       })),
