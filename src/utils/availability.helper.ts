@@ -1,5 +1,6 @@
 import { Account, TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
+import { AvailabilitySlot, PollCustomAvailability } from '@/types/QuickPoll'
 
 export const getHoursPerWeek = (
   availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
@@ -441,4 +442,30 @@ export const mergeWeeklyAvailabilityFromBlocks = (
     result.push({ weekday, ranges: merged })
   })
   return sortAvailabilitiesByWeekday(result)
+}
+
+export const convertPollResultToAvailabilitySlots = (
+  result:
+    | { type: 'blocks'; blockIds: string[] }
+    | { type: 'custom'; custom: PollCustomAvailability },
+  blocks: AvailabilityBlock[]
+): AvailabilitySlot[] => {
+  if (result.type === 'custom') {
+    return (result.custom.weekly_availability || []).map(a => ({
+      weekday: a.weekday,
+      ranges: (a.ranges || []).map(r => ({
+        start: r.start || '',
+        end: r.end || '',
+      })),
+    }))
+  }
+  const selectedBlocks = blocks.filter(b => result.blockIds.includes(b.id))
+  const merged = mergeWeeklyAvailabilityFromBlocks(selectedBlocks)
+  return merged.map(a => ({
+    weekday: a.weekday,
+    ranges: (a.ranges || []).map(r => ({
+      start: r.start || '',
+      end: r.end || '',
+    })),
+  }))
 }
