@@ -42,7 +42,7 @@ export type PollAvailabilityResult =
 interface PollAvailabilityModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (result: PollAvailabilityResult) => void
+  onSave: (result: PollAvailabilityResult) => void | Promise<void>
   availableBlocks: AvailabilityBlock[]
   defaultBlockId: string | null
   /** Initial selection when opening: either block ids or custom config. */
@@ -186,36 +186,39 @@ export function PollAvailabilityModal({
     targetWeekdays.forEach(w => handleAvailabilityChange(w, [...ranges]))
   }
 
+  const [isSaving, setIsSaving] = useState(false)
   const hasValidationErrors = validationErrors.size > 0
   const toggleInputMode = () => setUseDirectInput(prev => !prev)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const matchingBlocks = findMatchingAvailabilityBlocks(
       availableBlocks,
       timezone,
       availabilities
     )
-    if (matchingBlocks.length > 0) {
-      onSave({
-        type: 'blocks',
-        blockIds: matchingBlocks.map(b => b.id),
-      })
-    } else {
-      onSave({
-        type: 'custom',
-        custom: {
-          timezone,
-          weekly_availability: availabilities.map(a => ({
-            weekday: a.weekday,
-            ranges: a.ranges.map(r => ({
-              start: r.start || '',
-              end: r.end || '',
-            })),
-          })),
-        },
-      })
+    const result: PollAvailabilityResult =
+      matchingBlocks.length > 0
+        ? { type: 'blocks', blockIds: matchingBlocks.map(b => b.id) }
+        : {
+            type: 'custom',
+            custom: {
+              timezone,
+              weekly_availability: availabilities.map(a => ({
+                weekday: a.weekday,
+                ranges: a.ranges.map(r => ({
+                  start: r.start || '',
+                  end: r.end || '',
+                })),
+              })),
+            },
+          }
+    setIsSaving(true)
+    try {
+      await Promise.resolve(onSave(result))
+      onClose()
+    } finally {
+      setIsSaving(false)
     }
-    onClose()
   }
 
   const blockOptions: Option<string>[] = (availableBlocks || []).map(b => ({
@@ -397,6 +400,7 @@ export function PollAvailabilityModal({
                   borderColor="primary.200"
                   borderRadius={8}
                   onClick={onClose}
+                  isDisabled={isSaving}
                 >
                   Cancel
                 </Button>
@@ -412,7 +416,9 @@ export function PollAvailabilityModal({
                   borderRadius={8}
                   fontSize={16}
                   fontWeight={700}
-                  isDisabled={hasValidationErrors}
+                  isDisabled={hasValidationErrors || isSaving}
+                  isLoading={isSaving}
+                  loadingText="Saving..."
                 >
                   Save
                 </Button>

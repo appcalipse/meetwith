@@ -1,11 +1,10 @@
 import { Box } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect } from 'react'
 
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
-import JoinPollConfirmModal from '@/components/quickpoll/JoinPollConfirmModal'
 import QuickPollMain, {
   QuickPollPage,
 } from '@/components/quickpoll/QuickPollMain'
@@ -18,11 +17,7 @@ import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
 import { PermissionsProvider } from '@/providers/schedule/PermissionsContext'
 import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
 import { NotificationChannel } from '@/types/AccountNotifications'
-import {
-  QuickPollBySlugResponse,
-  QuickPollJoinContext,
-  QuickPollParticipantType,
-} from '@/types/QuickPoll'
+import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
   getNotificationSubscriptions,
   getQuickPollBySlug,
@@ -42,77 +37,77 @@ const PollPage = () => {
   const { slug, tab, participantId } = router.query
   const currentAccount = useAccountContext()
   const { isOnboardingOpened } = useContext(OnboardingModalContext)
-  const [showJoinPollConfirmation, setShowJoinPollConfirmation] =
-    useState(false)
-  const [pollContextForConfirmation, setPollContextForConfirmation] =
-    useState<QuickPollJoinContext | null>(null)
   const { showSuccessToast, showErrorToast } = useToastHelpers()
 
-  const { data: notifications, isLoading: isNotificationsLoading } = useQuery({
+  const { data: notifications } = useQuery({
     queryKey: ['notification-subscriptions', currentAccount?.address],
     queryFn: getNotificationSubscriptions,
-    enabled: !!currentAccount?.address && showJoinPollConfirmation,
+    enabled: !!currentAccount?.address,
   })
-
   const accountEmail =
     notifications?.notification_types?.find(
       n => n.channel === NotificationChannel.EMAIL && !n.disabled
     )?.destination ?? ''
 
+  // When user returns from sign-in/sign-up with poll context: add to poll immediately and redirect
   useEffect(() => {
     if (
       !currentAccount?.address ||
       typeof slug !== 'string' ||
-      !router.isReady
+      !router.isReady ||
+      isOnboardingOpened
     ) {
       return
     }
     const context = getQuickPollSignInContext()
-    if (context && context.pollSlug === slug) {
-      setPollContextForConfirmation({
-        pollId: context.pollId,
-        pollSlug: context.pollSlug,
-        pollTitle: context.pollTitle,
-      })
-      setShowJoinPollConfirmation(true)
-    }
-  }, [currentAccount?.address, slug, router.isReady, router.query.calState])
+    if (!context || context.pollSlug !== slug) return
 
-  const handleJoinPollConfirmation = async (
-    pollName: string,
-    pollEmail: string
-  ) => {
-    if (!pollContextForConfirmation) return
-    try {
-      const { alreadyInPoll } = await joinQuickPollAsParticipant(
-        pollContextForConfirmation.pollId,
-        pollEmail,
-        pollName
-      )
-      clearQuickPollSignInContext()
-      setShowJoinPollConfirmation(false)
-      setPollContextForConfirmation(null)
-      if (alreadyInPoll) {
-        showSuccessToast(
-          'You are already part of this poll',
-          'Redirecting you to the poll.'
+    clearQuickPollSignInContext()
+    const pollIdToJoin = context.pollId
+
+    let cancelled = false
+    const run = async () => {
+      try {
+        const displayName =
+          currentAccount.preferences?.name || currentAccount.address
+        const { alreadyInPoll } = await joinQuickPollAsParticipant(
+          pollIdToJoin,
+          accountEmail || undefined,
+          displayName
         )
-      } else {
-        showSuccessToast(
-          "You've been added to the poll",
-          'Redirecting you to add your availability.'
+        if (cancelled) return
+        if (alreadyInPoll) {
+          showSuccessToast(
+            'You are already part of the poll',
+            'Redirecting you to the poll.'
+          )
+        } else {
+          showSuccessToast(
+            "You've been added to the poll",
+            'Redirecting you to add your availability.'
+          )
+        }
+        await router.push(
+          `/dashboard/schedule?ref=quickpoll&pollId=${pollIdToJoin}&intent=edit_availability`
         )
+      } catch (error) {
+        if (!cancelled) {
+          handleApiError('Failed to join poll', error)
+        }
       }
-      await router.push(
-        `/dashboard/schedule?ref=quickpoll&pollId=${pollContextForConfirmation.pollId}&intent=edit_availability`
-      )
-    } catch (error) {
-      showErrorToast(
-        'Failed to join poll',
-        'There was an error adding you to the poll. Please try again.'
-      )
     }
-  }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    currentAccount?.address,
+    currentAccount?.preferences?.name,
+    slug,
+    router.isReady,
+    isOnboardingOpened,
+    accountEmail,
+  ])
 
   let initialPage = QuickPollPage.AVAILABILITY
   if (tab === 'guest-details') {
@@ -215,23 +210,6 @@ const PollPage = () => {
           </NavigationProvider>
         </ScheduleStateProvider>
       </QuickPollAvailabilityProvider>
-      {pollContextForConfirmation && pollData && (
-        <JoinPollConfirmModal
-          isOpen={showJoinPollConfirmation && !isOnboardingOpened}
-          onClose={() => {
-            setShowJoinPollConfirmation(false)
-            setPollContextForConfirmation(null)
-            clearQuickPollSignInContext()
-          }}
-          pollId={pollContextForConfirmation.pollId}
-          pollSlug={pollContextForConfirmation.pollSlug}
-          pollTitle={pollContextForConfirmation.pollTitle}
-          initialFullName={currentAccount?.preferences?.name ?? ''}
-          initialEmail={accountEmail}
-          isPrefillLoading={isNotificationsLoading}
-          onSave={handleJoinPollConfirmation}
-        />
-      )}
     </Box>
   )
 }
