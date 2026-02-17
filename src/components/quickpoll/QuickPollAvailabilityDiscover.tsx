@@ -9,13 +9,14 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Interval } from 'luxon'
 import { useRouter } from 'next/router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
-
+import { useAvailabilityBlocks } from '@/hooks/availability/useAvailabilityBlocks'
 import useAccountContext from '@/hooks/useAccountContext'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
+import { NotificationChannel } from '@/types/AccountNotifications'
 import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import {
@@ -27,12 +28,16 @@ import {
 import {
   fetchBusySlotsRawForQuickPollParticipants,
   getExistingAccounts,
+  getNotificationSubscriptions,
   getPollParticipantByIdentifier,
   getQuickPollById,
+  joinQuickPollAsParticipant,
   updatePollParticipantAvailability,
   updateQuickPoll,
 } from '@/utils/api_helper'
+import { convertPollResultToAvailabilitySlots } from '@/utils/availability.helper'
 import { parseMonthAvailabilitiesToDate } from '@/utils/date_helper'
+import { handleApiError } from '@/utils/error_helper'
 import {
   computeAvailabilitySlotsWithOverrides,
   computeBaseAvailability,
@@ -41,9 +46,16 @@ import {
   getMonthRange,
   mergeAvailabilitySlots,
 } from '@/utils/quickpoll_helper'
-import { getGuestPollDetails } from '@/utils/storage'
+import {
+  getGuestPollDetails,
+  hasPollAvailabilityModalBeenShown,
+  markPollAvailabilityModalAsShown,
+} from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
-
+import {
+  PollAvailabilityModal,
+  PollAvailabilityResult,
+} from '../availabilities/PollAvailabilityModal'
 import CustomError from '../CustomError'
 import CustomLoading from '../CustomLoading'
 import { Grid4 } from '../icons/Grid4'
@@ -57,7 +69,6 @@ import MobileQuickPollParticipantModal from './MobileQuickPollParticipant'
 import { QuickPollParticipants } from './QuickPollParticipants'
 import { QuickPollPickAvailability } from './QuickPollPickAvailability'
 import QuickPollSaveChangesModal from './QuickPollSaveChangesModal'
-
 export type MeetingMembers = ParticipantInfo & { isCalendarConnected?: boolean }
 
 interface QuickPollAvailabilityDiscoverProps {
@@ -107,6 +118,9 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   const { timezone, currentSelectedDate } = useScheduleState()
   const { clearSlots, selectedSlots } = useAvailabilityTracker()
   const queryClient = useQueryClient()
+  const { blocks: availabilityBlocks } = useAvailabilityBlocks(
+    currentAccount?.address
+  )
 
   const {
     data: fetchedPollData,
@@ -174,6 +188,39 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   const showBack = !!currentAccount
 
+  const isLoggedInAndNotInPoll = useMemo(
+    () =>
+      !!currentAccount &&
+      !!currentPollData &&
+      !currentPollData.poll.participants.some(
+        p =>
+          p.account_address?.toLowerCase() ===
+          currentAccount.address.toLowerCase()
+      ),
+    [currentAccount, currentPollData]
+  )
+
+  const { data: notifications } = useQuery({
+    queryKey: ['notification-subscriptions', currentAccount?.address],
+    queryFn: getNotificationSubscriptions,
+    enabled: !!currentAccount?.address && isLoggedInAndNotInPoll,
+  })
+  const accountEmail =
+    notifications?.notification_types?.find(
+      n => n.channel === NotificationChannel.EMAIL && !n.disabled
+    )?.destination ?? ''
+
+  const [showPollAvailabilityForJoin, setShowPollAvailabilityForJoin] =
+    useState(false)
+  const isJoinInProgressRef = useRef(false)
+  const [
+    isPendingManualJoinForLoggedInUser,
+    setIsPendingManualJoinForLoggedInUser,
+  ] = useState(false)
+
+  const [showPollAvailabilityOneTime, setShowPollAvailabilityOneTime] =
+    useState(false)
+
   // Track participant removals to prompt save
   const [removedParticipantIds, setRemovedParticipantIds] = useState<string[]>(
     []
@@ -216,6 +263,37 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   }, [router.query.intent, setCurrentIntent])
 
   const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
+
+  useEffect(() => {
+    if (
+      !currentPollId ||
+      !currentAccount ||
+      !currentPollData ||
+      isLoggedInAndNotInPoll ||
+      currentIntent !== QuickPollIntent.EDIT_AVAILABILITY
+    ) {
+      return
+    }
+    const participant = currentPollData.poll.participants.find(
+      p =>
+        p.account_address?.toLowerCase() ===
+        currentAccount.address.toLowerCase()
+    )
+    if (
+      !participant ||
+      (participant.available_slots && participant.available_slots.length > 0) ||
+      hasPollAvailabilityModalBeenShown(currentPollId, participant.id)
+    ) {
+      return
+    }
+    setShowPollAvailabilityOneTime(true)
+  }, [
+    currentPollId,
+    currentAccount,
+    currentPollData,
+    isLoggedInAndNotInPoll,
+    currentIntent,
+  ])
 
   const { mutate: saveRemovals, isLoading: isSavingRemovals } = useMutation({
     mutationFn: async () =>
@@ -267,6 +345,52 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   }
 
   const handleSaveAvailability = async () => {
+    if (isPendingManualJoinForLoggedInUser && currentAccount && currentPollId) {
+      if (selectedSlots.length === 0) {
+        showErrorToast(
+          'Select at least one time slot',
+          'Please select when you are available before saving.'
+        )
+        return
+      }
+      setIsSavingAvailability(true)
+      try {
+        const { participant, alreadyInPoll } = await joinQuickPollAsParticipant(
+          currentPollId,
+          accountEmail || undefined,
+          currentAccount.preferences?.name || undefined
+        )
+        const availabilitySlots =
+          convertSelectedSlotsToAvailabilitySlots(selectedSlots)
+        await updatePollParticipantAvailability(
+          participant.id,
+          availabilitySlots,
+          currentAccount.preferences?.timezone || 'UTC'
+        )
+        setIsPendingManualJoinForLoggedInUser(false)
+        setIsEditingAvailability(false)
+        clearSlots()
+        await queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+        await queryClient.invalidateQueries({
+          queryKey: ['quickpoll-schedule'],
+        })
+        if (!alreadyInPoll) {
+          showSuccessToast(
+            "You've been added to the poll",
+            'Redirecting you to edit your availability.'
+          )
+        }
+        await router.push(
+          `/dashboard/schedule?ref=quickpoll&pollId=${currentPollId}&intent=edit_availability`
+        )
+      } catch (error: unknown) {
+        handleApiError('Failed to join poll', error)
+      } finally {
+        setIsSavingAvailability(false)
+      }
+      return
+    }
+
     if (!currentAccount) {
       // Check if guest has saved details in localStorage
       const storedDetails = getGuestPollDetails(currentPollData?.poll.id || '')
@@ -535,8 +659,114 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   }
 
   const handleCancelEditing = () => {
+    if (isPendingManualJoinForLoggedInUser) {
+      setIsPendingManualJoinForLoggedInUser(false)
+    }
     setIsEditingAvailability(false)
     clearSlots()
+  }
+
+  const handleJoinAndImportFromAccount = () => {
+    setShowPollAvailabilityForJoin(true)
+  }
+
+  const handleCloseJoinPollModalWithoutSaving = () => {
+    setShowPollAvailabilityForJoin(false)
+  }
+
+  const savePollAvailabilityForParticipant = async (
+    result: PollAvailabilityResult,
+    participantId: string
+  ): Promise<void> => {
+    const blocks = availabilityBlocks || []
+    const availabilitySlots = convertPollResultToAvailabilitySlots(
+      result,
+      blocks
+    )
+    const timezone =
+      result.type === 'custom'
+        ? result.custom.timezone
+        : result.blockIds.length > 0
+        ? blocks.find(b => result.blockIds.includes(b.id))?.timezone
+        : currentAccount?.preferences?.timezone || 'UTC'
+    await updatePollParticipantAvailability(
+      participantId,
+      availabilitySlots,
+      timezone
+    )
+  }
+
+  const handleSavingPollAvailabilityForJoiningPoll = async (
+    result: PollAvailabilityResult
+  ) => {
+    if (!currentPollId || !currentAccount) return
+    if (isJoinInProgressRef.current) return
+    isJoinInProgressRef.current = true
+    try {
+      const { participant, alreadyInPoll } = await joinQuickPollAsParticipant(
+        currentPollId,
+        accountEmail || undefined,
+        currentAccount.preferences?.name || undefined
+      )
+      await savePollAvailabilityForParticipant(result, participant.id)
+      setShowPollAvailabilityForJoin(false)
+      await queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+      await queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
+      if (!alreadyInPoll) {
+        showSuccessToast(
+          "You've been added to the poll",
+          'Redirecting you to edit your availability.'
+        )
+      }
+      await router.push(
+        `/dashboard/schedule?ref=quickpoll&pollId=${currentPollId}&intent=edit_availability`
+      )
+    } catch (error: unknown) {
+      handleApiError('Failed to join poll', error)
+    } finally {
+      isJoinInProgressRef.current = false
+    }
+  }
+
+  const handlePollAvailabilitySave = async (result: PollAvailabilityResult) => {
+    if (!currentPollId || !currentAccount || !currentPollData) return
+    const participant = currentPollData.poll.participants.find(
+      p =>
+        p.account_address?.toLowerCase() ===
+        currentAccount.address.toLowerCase()
+    )
+    if (!participant) return
+    try {
+      await savePollAvailabilityForParticipant(result, participant.id)
+      markPollAvailabilityModalAsShown(currentPollId, participant.id)
+      setShowPollAvailabilityOneTime(false)
+      await queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+      await queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
+      showSuccessToast(
+        'Availability saved',
+        'Your poll-specific availability has been saved.'
+      )
+    } catch (error: unknown) {
+      handleApiError('Failed to save availability', error)
+    }
+  }
+
+  const handlePollAvailabilityOneTimeClose = () => {
+    if (!currentPollData || !currentAccount) return
+    const participant = currentPollData.poll.participants.find(
+      p =>
+        p.account_address?.toLowerCase() ===
+        currentAccount.address.toLowerCase()
+    )
+    if (participant) {
+      markPollAvailabilityModalAsShown(currentPollId || '', participant.id)
+    }
+    setShowPollAvailabilityOneTime(false)
+  }
+
+  const handleStartManualAvailabilityForLoggedInNotInPoll = () => {
+    setIsPendingManualJoinForLoggedInUser(true)
+    setIsEditingAvailability(true)
   }
 
   // Only show loading when we don't have pollData and we're fetching
@@ -658,6 +888,22 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           isEditingAvailability={isEditingAvailability}
           isSavingAvailability={isSavingAvailability}
           isRefreshingAvailabilities={isRefreshingAvailabilities}
+          onJoinAndImportFromAccount={
+            isLoggedInAndNotInPoll ? handleJoinAndImportFromAccount : undefined
+          }
+          onJoinAndStartManualEdit={
+            isLoggedInAndNotInPoll
+              ? handleStartManualAvailabilityForLoggedInNotInPoll
+              : undefined
+          }
+          isPendingManualJoinForLoggedInUser={
+            isPendingManualJoinForLoggedInUser
+          }
+          hasManualAvailabilityChange={
+            isPendingManualJoinForLoggedInUser
+              ? selectedSlots.length > 0
+              : undefined
+          }
         />
       </VStack>
 
@@ -713,6 +959,24 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
             isEditingAvailability={isEditingAvailability}
             isSavingAvailability={isSavingAvailability}
             isRefreshingAvailabilities={isRefreshingAvailabilities}
+            onJoinAndImportFromAccount={
+              isLoggedInAndNotInPoll
+                ? handleJoinAndImportFromAccount
+                : undefined
+            }
+            onJoinAndStartManualEdit={
+              isLoggedInAndNotInPoll
+                ? handleStartManualAvailabilityForLoggedInNotInPoll
+                : undefined
+            }
+            isPendingManualJoinForLoggedInUser={
+              isPendingManualJoinForLoggedInUser
+            }
+            hasManualAvailabilityChange={
+              isPendingManualJoinForLoggedInUser
+                ? selectedSlots.length > 0
+                : undefined
+            }
           />
         </HStack>
       )}
@@ -733,6 +997,38 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         onDiscard={handleDiscard}
         onConfirm={() => saveRemovals()}
       />
+
+      {isLoggedInAndNotInPoll && currentAccount && (
+        <PollAvailabilityModal
+          isOpen={showPollAvailabilityForJoin}
+          onClose={handleCloseJoinPollModalWithoutSaving}
+          onSave={handleSavingPollAvailabilityForJoiningPoll}
+          availableBlocks={availabilityBlocks || []}
+          defaultBlockId={
+            availabilityBlocks?.find(b => b.isDefault)?.id ?? null
+          }
+          initialBlockIds={[]}
+          initialCustom={null}
+        />
+      )}
+
+      {showPollAvailabilityOneTime &&
+        currentAccount &&
+        !isLoggedInAndNotInPoll && (
+          <PollAvailabilityModal
+            isOpen={showPollAvailabilityOneTime}
+            onClose={handlePollAvailabilityOneTimeClose}
+            onSave={result => {
+              handlePollAvailabilitySave(result)
+            }}
+            availableBlocks={availabilityBlocks || []}
+            defaultBlockId={
+              availabilityBlocks?.find(b => b.isDefault)?.id ?? null
+            }
+            initialBlockIds={[]}
+            initialCustom={null}
+          />
+        )}
     </VStack>
   )
 }
