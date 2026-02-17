@@ -303,16 +303,19 @@ export const handleSubscriptionUpdated = async (
                 )
                 return true
               } catch (error) {
+                console.error(error)
                 Sentry.captureException(error)
                 return false
               }
             })
           }
         } catch (error) {
+          console.error(error)
           Sentry.captureException(error)
         }
       }
     } catch (error) {
+      console.error(error)
       Sentry.captureException(error)
     }
   } else if (isJustReactivated) {
@@ -334,6 +337,7 @@ export const handleSubscriptionUpdated = async (
         }
       }
     } catch (error) {
+      console.error(error)
       Sentry.captureException(error)
     }
   }
@@ -434,6 +438,7 @@ export const handleSubscriptionUpdated = async (
               }
             }
           } catch (error) {
+            console.error(error)
             Sentry.captureException(error)
             return
           }
@@ -519,6 +524,7 @@ export const handleSubscriptionUpdated = async (
       )
     }
   } catch (error) {
+    console.error(error)
     Sentry.captureException(error)
   }
 }
