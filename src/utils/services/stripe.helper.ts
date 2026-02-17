@@ -60,94 +60,114 @@ export const getRawBody = async (req: NextApiRequest): Promise<Buffer> => {
 export const handleAccountUpdate = async (
   event: Stripe.AccountUpdatedEvent
 ) => {
-  const eventObject = event.data.object
-  const accountId = eventObject.id
-  const provider = await getPaymentAccountByProviderId(accountId)
-  if (!provider) {
-    return null
-  }
-  const stripe = new StripeService()
-  const account = await stripe.accounts.retrieve(accountId)
+  try {
+    const eventObject = event.data.object
+    const accountId = eventObject.id
+    const provider = await getPaymentAccountByProviderId(accountId)
+    if (!provider) {
+      return null
+    }
+    const stripe = new StripeService()
+    const account = await stripe.accounts.retrieve(accountId)
 
-  if (account.details_submitted) {
-    await updatePaymentAccount(provider.id, provider.owner_account_address, {
-      status: PaymentAccountStatus.CONNECTED,
-    })
-    return
-  } else if (account) {
-    await updatePaymentAccount(provider.id, provider.owner_account_address, {
-      status: PaymentAccountStatus.PENDING,
-    })
-    return
-  } else {
-    await updatePaymentAccount(provider.id, provider.owner_account_address, {
-      status: PaymentAccountStatus.FAILED,
-    })
-    return
+    if (account.details_submitted) {
+      await updatePaymentAccount(provider.id, provider.owner_account_address, {
+        status: PaymentAccountStatus.CONNECTED,
+      })
+      return
+    } else if (account) {
+      await updatePaymentAccount(provider.id, provider.owner_account_address, {
+        status: PaymentAccountStatus.PENDING,
+      })
+      return
+    } else {
+      await updatePaymentAccount(provider.id, provider.owner_account_address, {
+        status: PaymentAccountStatus.FAILED,
+      })
+      return
+    }
+  } catch (error) {
+    console.error('[handleAccountUpdate] Error:', error)
+    Sentry.captureException(error)
   }
 }
 export const handleChargeSucceeded = async (
   event: Stripe.ChargeSucceededEvent
 ) => {
-  const eventObject = event.data.object
-  const metadata = eventObject.metadata as ICheckoutMetadata
-  if (metadata.environment !== process.env.NEXT_PUBLIC_ENV_CONFIG) {
-    return
-  }
-  await confirmFiatTransaction(
-    eventObject.id,
-    metadata,
-    (eventObject.application_fee_amount || 0) / 100,
-    {
-      amount_received: eventObject.amount / 100,
-      currency: eventObject.currency,
-      destination: event.account || event.context || '',
-      payment_method: `${eventObject.payment_method_details?.type || ''}`,
-      provider: PaymentProvider.STRIPE,
-      receipt_url: eventObject.receipt_url || '',
+  try {
+    const eventObject = event.data.object
+    const metadata = eventObject.metadata as ICheckoutMetadata
+    if (metadata.environment !== process.env.NEXT_PUBLIC_ENV_CONFIG) {
+      return
     }
-  )
+    await confirmFiatTransaction(
+      eventObject.id,
+      metadata,
+      (eventObject.application_fee_amount || 0) / 100,
+      {
+        amount_received: eventObject.amount / 100,
+        currency: eventObject.currency,
+        destination: event.account || event.context || '',
+        payment_method: `${eventObject.payment_method_details?.type || ''}`,
+        provider: PaymentProvider.STRIPE,
+        receipt_url: eventObject.receipt_url || '',
+      }
+    )
+  } catch (error) {
+    console.error('[handleChargeSucceeded] Error:', error)
+    Sentry.captureException(error)
+  }
 }
 export const handleChargeFailed = async (
   event: Stripe.ChargeFailedEvent | Stripe.CheckoutSessionExpiredEvent
 ) => {
-  const eventObject = event.data.object
-  const metadata = eventObject.metadata as ICheckoutMetadata
-  await handleUpdateTransactionStatus(
-    metadata.transaction_id,
-    PaymentStatus.FAILED
-  )
+  try {
+    const eventObject = event.data.object
+    const metadata = eventObject.metadata as ICheckoutMetadata
+    await handleUpdateTransactionStatus(
+      metadata.transaction_id,
+      PaymentStatus.FAILED
+    )
+  } catch (error) {
+    console.error('[handleChargeFailed] Error:', error)
+    Sentry.captureException(error)
+  }
 }
 
 export const handleFeeCollected = async (
   event: Stripe.ApplicationFeeCreatedEvent
 ) => {
-  const stripe = new StripeService()
-  const eventObject = event.data.object
-  const charge =
-    typeof eventObject.charge === 'string'
-      ? eventObject.charge
-      : eventObject.charge.id
-  const accountId =
-    typeof eventObject.account === 'string'
-      ? eventObject.account
-      : eventObject.account.id
-  const chargeObj = await stripe.charges.retrieve(charge, {
-    stripeAccount: accountId,
-  })
-  await confirmFiatTransaction(
-    chargeObj.id,
-    chargeObj.metadata as ICheckoutMetadata,
-    (chargeObj.application_fee_amount || 0) / 100,
-    {
-      amount_received: chargeObj.amount / 100,
-      currency: chargeObj.currency,
-      destination: accountId,
-      payment_method: `${chargeObj.payment_method_details?.type || ''}`,
-      provider: PaymentProvider.STRIPE,
-      receipt_url: chargeObj.receipt_url || '',
-    }
-  )
+  try {
+    const stripe = new StripeService()
+    const eventObject = event.data.object
+    const charge =
+      typeof eventObject.charge === 'string'
+        ? eventObject.charge
+        : eventObject.charge.id
+    const accountId =
+      typeof eventObject.account === 'string'
+        ? eventObject.account
+        : eventObject.account.id
+    const chargeObj = await stripe.charges.retrieve(charge, {
+      stripeAccount: accountId,
+    })
+    await confirmFiatTransaction(
+      chargeObj.id,
+      chargeObj.metadata as ICheckoutMetadata,
+      (chargeObj.application_fee_amount || 0) / 100,
+      {
+        amount_received: chargeObj.amount / 100,
+        currency: chargeObj.currency,
+        destination: accountId,
+        payment_method: `${chargeObj.payment_method_details?.type || ''}`,
+        provider: PaymentProvider.STRIPE,
+        receipt_url: chargeObj.receipt_url || '',
+      }
+    )
+  } catch (error) {
+    console.error('[handleFeeCollected] Error:', error)
+    Sentry.captureException(error)
+  }
 }
 
 export const handleSubscriptionCreated = async (
@@ -188,6 +208,10 @@ export const handleSubscriptionCreated = async (
       billingPlanId
     )
   } catch (error) {
+    console.error(
+      '[handleSubscriptionCreated] Error creating stripe subscription:',
+      error
+    )
     Sentry.captureException(error)
   }
 }
@@ -438,17 +462,23 @@ export const handleSubscriptionUpdated = async (
               }
             }
           } catch (error) {
-            console.error(error)
+            console.error(
+              '[handleSubscriptionUpdated] Error fetching full subscription for plan change:',
+              error
+            )
             Sentry.captureException(error)
             return
           }
 
           if (!currentPeriodEnd || typeof currentPeriodEnd !== 'number') {
-            Sentry.captureException(
-              new Error(
-                `Stripe subscription ${stripeSubscriptionId} missing current_period_end after API fetch`
-              )
+            const missingPeriodEndError = new Error(
+              `Stripe subscription ${stripeSubscriptionId} missing current_period_end after API fetch`
             )
+            console.error(
+              '[handleSubscriptionUpdated]',
+              missingPeriodEndError.message
+            )
+            Sentry.captureException(missingPeriodEndError)
             return
           }
 
@@ -456,11 +486,14 @@ export const handleSubscriptionUpdated = async (
 
           // Validate the date is valid
           if (isNaN(new Date(newExpiryTime).getTime())) {
-            Sentry.captureException(
-              new Error(
-                `Invalid expiry time for subscription ${stripeSubscriptionId}: ${newExpiryTime}`
-              )
+            const invalidExpiryError = new Error(
+              `Invalid expiry time for subscription ${stripeSubscriptionId}: ${newExpiryTime}`
             )
+            console.error(
+              '[handleSubscriptionUpdated]',
+              invalidExpiryError.message
+            )
+            Sentry.captureException(invalidExpiryError)
             return
           }
 
@@ -493,35 +526,41 @@ export const handleSubscriptionUpdated = async (
             }
           }
         } catch (error) {
+          console.error(
+            '[handleSubscriptionUpdated] Error handling plan change period creation:',
+            error
+          )
           Sentry.captureException(error)
         }
       } else if (newBillingPlanId === null) {
         // Product ID not found in our billing_plan_providers table
-        Sentry.captureException(
-          new Error(
-            `Stripe product ID ${stripeProductId} not found in billing_plan_providers`
-          )
+        const productNotFoundError = new Error(
+          `Stripe product ID ${stripeProductId} not found in billing_plan_providers`
         )
+        console.error(
+          '[handleSubscriptionUpdated]',
+          productNotFoundError.message
+        )
+        Sentry.captureException(productNotFoundError)
       }
     } else {
       // No subscription items or price/product information available
       // This shouldn't happen in normal operation, but we handle it gracefully
       // Skip plan change detection for this webhook event
-      Sentry.captureException(
-        new Error(
-          `Could not extract product ID from Stripe subscription: ${stripeSubscriptionId}`
-        ),
-        {
-          extra: {
-            hasItems: !!subscription.items,
-            itemsCount: subscription.items?.data?.length || 0,
-          },
-          tags: {
-            stripe_subscription_id: stripeSubscriptionId,
-            webhook_event: 'customer.subscription.updated',
-          },
-        }
+      const noProductIdError = new Error(
+        `Could not extract product ID from Stripe subscription: ${stripeSubscriptionId}`
       )
+      console.error('[handleSubscriptionUpdated]', noProductIdError.message)
+      Sentry.captureException(noProductIdError, {
+        extra: {
+          hasItems: !!subscription.items,
+          itemsCount: subscription.items?.data?.length || 0,
+        },
+        tags: {
+          stripe_subscription_id: stripeSubscriptionId,
+          webhook_event: 'customer.subscription.updated',
+        },
+      })
     }
   } catch (error) {
     console.error(error)
@@ -840,6 +879,10 @@ export const handleInvoicePaymentSucceeded = async (
         try {
           await updateSubscriptionPeriodDomain(existingPeriod.id, handle)
         } catch (error) {
+          console.error(
+            '[handleInvoicePaymentSucceeded] Error updating subscription period domain:',
+            error
+          )
           Sentry.captureException(error)
         }
       }
@@ -892,6 +935,10 @@ export const handleInvoicePaymentSucceeded = async (
           )
           return true
         } catch (error) {
+          console.error(
+            '[handleInvoicePaymentSucceeded] Error sending subscription confirmation email:',
+            error
+          )
           Sentry.captureException(error)
           return false
         }
@@ -899,7 +946,10 @@ export const handleInvoicePaymentSucceeded = async (
 
       return // Don't proceed to renewal flow
     } catch (error) {
-      console.error(error)
+      console.error(
+        '[handleInvoicePaymentSucceeded] Error creating subscription period (subscription_create):',
+        error
+      )
       Sentry.captureException(error)
       return // Don't create duplicate period
     }
@@ -944,6 +994,10 @@ export const handleInvoicePaymentSucceeded = async (
             )
             return true
           } catch (error) {
+            console.error(
+              '[handleInvoicePaymentSucceeded] Error sending plan change confirmation email:',
+              error
+            )
             Sentry.captureException(error)
             return false
           }
@@ -951,6 +1005,10 @@ export const handleInvoicePaymentSucceeded = async (
 
         return // Don't create a new subscription period
       } catch (error) {
+        console.error(
+          '[handleInvoicePaymentSucceeded] Error linking transaction for plan change:',
+          error
+        )
         Sentry.captureException(error)
       }
     }
@@ -1037,6 +1095,10 @@ export const handleInvoicePaymentSucceeded = async (
             try {
               await updateSubscriptionPeriodDomain(existingPeriod.id, handle)
             } catch (error) {
+              console.error(
+                '[handleInvoicePaymentSucceeded] Error updating period domain (subscription_update fallback):',
+                error
+              )
               Sentry.captureException(error)
             }
           }
@@ -1048,6 +1110,10 @@ export const handleInvoicePaymentSucceeded = async (
                 transactionId
               )
             } catch (error) {
+              console.error(
+                '[handleInvoicePaymentSucceeded] Error updating period transaction (subscription_update fallback):',
+                error
+              )
               Sentry.captureException(error)
             }
           }
@@ -1083,6 +1149,10 @@ export const handleInvoicePaymentSucceeded = async (
             )
             return true
           } catch (error) {
+            console.error(
+              '[handleInvoicePaymentSucceeded] Error sending plan update confirmation email:',
+              error
+            )
             Sentry.captureException(error)
             return false
           }
@@ -1091,6 +1161,10 @@ export const handleInvoicePaymentSucceeded = async (
         return
       }
     } catch (error) {
+      console.error(
+        '[handleInvoicePaymentSucceeded] Error in subscription_update fallback flow:',
+        error
+      )
       Sentry.captureException(error)
     }
     return
@@ -1142,6 +1216,10 @@ export const handleInvoicePaymentSucceeded = async (
           transactionId
         )
       } catch (error) {
+        console.error(
+          '[handleInvoicePaymentSucceeded] Error updating existing period transaction (cycle/fallback):',
+          error
+        )
         Sentry.captureException(error)
       }
     }
@@ -1159,6 +1237,10 @@ export const handleInvoicePaymentSucceeded = async (
       existingDomain
     )
   } catch (error) {
+    console.error(
+      '[handleInvoicePaymentSucceeded] Error creating subscription period (cycle/fallback):',
+      error
+    )
     Sentry.captureException(error)
   }
 }
@@ -1166,32 +1248,41 @@ export const handleInvoicePaymentSucceeded = async (
 export const handleInvoicePaymentFailed = async (
   event: Stripe.InvoicePaymentFailedEvent
 ) => {
-  const invoice = event.data.object
+  try {
+    const invoice = event.data.object
 
-  // Get subscription ID from invoice
-  const subscriptionIdOrObject = (
-    invoice as unknown as { subscription?: string | Stripe.Subscription }
-  ).subscription
-  const stripeSubscriptionId =
-    typeof subscriptionIdOrObject === 'string'
-      ? subscriptionIdOrObject
-      : subscriptionIdOrObject?.id
+    // Get subscription ID from invoice
+    const subscriptionIdOrObject = (
+      invoice as unknown as { subscription?: string | Stripe.Subscription }
+    ).subscription
+    const stripeSubscriptionId =
+      typeof subscriptionIdOrObject === 'string'
+        ? subscriptionIdOrObject
+        : subscriptionIdOrObject?.id
 
-  if (!stripeSubscriptionId) {
-    return
+    if (!stripeSubscriptionId) {
+      return
+    }
+
+    // Find stripe_subscriptions record
+    const stripeSubscription = await getStripeSubscriptionById(
+      stripeSubscriptionId
+    )
+
+    if (!stripeSubscription) {
+      return
+    }
+
+    // Note: Stripe automatically sends payment failure emails to customers when invoice.payment_failed events occur.
+    // Stripe will also automatically retry payment attempts, so we don't immediately expire subscriptions.
+    // We handle this webhook event primarily for logging/monitoring purposes, not for sending duplicate notifications.
+    const paymentFailedError = new Error(
+      `Stripe invoice payment failed for subscription ${stripeSubscriptionId}`
+    )
+    console.error('[handleInvoicePaymentFailed]', paymentFailedError.message)
+    Sentry.captureException(paymentFailedError)
+  } catch (error) {
+    console.error('[handleInvoicePaymentFailed] Error:', error)
+    Sentry.captureException(error)
   }
-
-  // Find stripe_subscriptions record
-  const stripeSubscription = await getStripeSubscriptionById(
-    stripeSubscriptionId
-  )
-
-  if (!stripeSubscription) {
-    return
-  }
-
-  // Note: Stripe automatically sends payment failure emails to customers when invoice.payment_failed events occur.
-  // Stripe will also automatically retry payment attempts, so we don't immediately expire subscriptions.
-  // We handle this webhook event primarily for logging/monitoring purposes, not for sending duplicate notifications.
-  Sentry.captureException(new Error('Stripe invoice payment failed'))
 }
