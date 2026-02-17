@@ -51,6 +51,7 @@ const Home: NextPage = () => {
           href="/assets/product-ui.webp"
           as="image"
           type="image/webp"
+          fetchPriority="high"
         />
       </NextHead>
       <DarkMode>
