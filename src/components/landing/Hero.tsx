@@ -1,12 +1,28 @@
-import { ArrowForwardIcon } from '@chakra-ui/icons'
-import { Box, Button, Heading, HStack, Text, VStack } from '@chakra-ui/react'
+import type { IconProps } from '@chakra-ui/react'
+import {
+  Box,
+  Button,
+  Heading,
+  HStack,
+  Icon,
+  Text,
+  VStack,
+} from '@chakra-ui/react'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useContext } from 'react'
-
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
+
+const ArrowForwardIcon = (props: IconProps) => (
+  <Icon viewBox="0 0 24 24" {...props}>
+    <path
+      fill="currentColor"
+      d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"
+    />
+  </Icon>
+)
 
 function Hero() {
   const { currentAccount, loginIn } = useContext(AccountContext)

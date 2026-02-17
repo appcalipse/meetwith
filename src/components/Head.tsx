@@ -79,27 +79,8 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
         key="msapplication-TileColor"
       />
       <meta name="theme-color" content="#f35826" key="theme-color" />
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://res.cloudinary.com" />
-      <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossOrigin="anonymous"
-      />
       <link rel="dns-prefetch" href="https://meetwith.xyz" />
       <link rel="preconnect" href="https://meetwith.xyz" />
-      <link
-        rel="preload"
-        href="/assets/product-ui.webp"
-        as="image"
-        type="image/webp"
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        fetchpriority="high"
-      />
-      <meta httpEquiv="Cache-Control" content="no-cache, must-revalidate" />
-      <meta httpEquiv="Pragma" content="no-cache" />
-      <meta httpEquiv="Expires" content="0" />
     </NextHead>
   )
 }

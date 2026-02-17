@@ -1,4 +1,5 @@
 import { Box, ChakraProvider, useMediaQuery } from '@chakra-ui/react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import React, { ReactNode, useContext } from 'react'
 import { CookiesProvider } from 'react-cookie'
@@ -7,9 +8,17 @@ import { CookieConsent } from '@/components/CookieConsent'
 import Footer from '@/components/Footer'
 import { ChakraMDXProvider } from '@/components/mdx.provider'
 import { Navbar } from '@/components/nav/Navbar'
-import DiscordOnboardingModal from '@/components/onboarding/DiscordOnboardingModal'
-import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import { AccountContext } from '@/providers/AccountProvider'
+
+const OnboardingModal = dynamic(
+  () => import('@/components/onboarding/OnboardingModal'),
+  { ssr: false }
+)
+const DiscordOnboardingModal = dynamic(
+  () => import('@/components/onboarding/DiscordOnboardingModal'),
+  { ssr: false }
+)
+
 import customTheme from '@/styles/theme'
 import {
   DASHBOARD_ROUTE_PREFIX,
