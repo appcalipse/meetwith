@@ -1,12 +1,28 @@
-import { ArrowForwardIcon } from '@chakra-ui/icons'
-import { Box, Button, Grid, Heading, HStack, VStack } from '@chakra-ui/react'
+import type { IconProps } from '@chakra-ui/react'
+import {
+  Box,
+  Button,
+  Grid,
+  Heading,
+  HStack,
+  Icon,
+  VStack,
+} from '@chakra-ui/react'
 import Image from 'next/image'
-import router from 'next/router'
+import { useRouter } from 'next/router'
 import { useContext } from 'react'
-
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
+
+const ArrowForwardIcon = (props: IconProps) => (
+  <Icon viewBox="0 0 24 24" {...props}>
+    <path
+      fill="currentColor"
+      d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"
+    />
+  </Icon>
+)
 
 export interface Slides {
   id: number
@@ -57,6 +73,7 @@ const FEATURES = [
 export function Features() {
   const { currentAccount, loginIn } = useContext(AccountContext)
   const { openConnection } = useContext(OnboardingModalContext)
+  const router = useRouter()
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on FREE plan')
@@ -158,7 +175,7 @@ export function Features() {
                 alt={val.title}
                 width={val.width / 3}
                 height={val.height / 3}
-                priority
+                loading="lazy"
                 style={{
                   maxWidth: '100%',
                   height: 'auto',

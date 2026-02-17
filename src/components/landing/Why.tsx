@@ -67,12 +67,7 @@ function Why() {
               base: '1fr',
             }}
           >
-            <SlideFade
-              in={isWhyContainerVisible}
-              delay={0.25}
-              offsetY={-50}
-              unmountOnExit={true}
-            >
+            <SlideFade in={isWhyContainerVisible} delay={0.25} offsetY={-50}>
               <VStack
                 px={10}
                 py={20}
@@ -97,7 +92,7 @@ function Why() {
                     alt="Users"
                     width={38}
                     height={38}
-                    priority
+                    loading="lazy"
                     style={{
                       width: 36,
                       height: 36,
@@ -118,12 +113,7 @@ function Why() {
               </VStack>
             </SlideFade>
             <Grid gridTemplateColumns="1fr">
-              <SlideFade
-                in={isWhyContainerVisible}
-                delay={0.75}
-                offsetY={-50}
-                unmountOnExit={true}
-              >
+              <SlideFade in={isWhyContainerVisible} delay={0.75} offsetY={-50}>
                 <Flex
                   py={12}
                   px={9}
@@ -152,7 +142,7 @@ function Why() {
                       alt="Box"
                       width={38}
                       height={38}
-                      priority
+                      loading="lazy"
                       style={{
                         width: 36,
                         height: 36,
@@ -175,12 +165,7 @@ function Why() {
                 </Flex>
               </SlideFade>
 
-              <SlideFade
-                in={isWhyContainerVisible}
-                delay={1}
-                offsetY={-50}
-                unmountOnExit={true}
-              >
+              <SlideFade in={isWhyContainerVisible} delay={1} offsetY={-50}>
                 <Flex
                   py={12}
                   px={9}
@@ -207,7 +192,7 @@ function Why() {
                     <Image
                       src="/assets/whys/Lock.svg"
                       alt="Box"
-                      priority
+                      loading="lazy"
                       width={38}
                       height={38}
                       style={{
@@ -231,12 +216,7 @@ function Why() {
                 </Flex>
               </SlideFade>
             </Grid>
-            <SlideFade
-              in={isWhyContainerVisible}
-              delay={0.5}
-              offsetY={-50}
-              unmountOnExit={true}
-            >
+            <SlideFade in={isWhyContainerVisible} delay={0.5} offsetY={-50}>
               <VStack
                 px={10}
                 py={20}
@@ -262,7 +242,7 @@ function Why() {
                     alt="Box"
                     width={38}
                     height={38}
-                    priority
+                    loading="lazy"
                     style={{
                       width: 36,
                       height: 36,
@@ -289,12 +269,7 @@ function Why() {
               base: '1fr',
             }}
           >
-            <SlideFade
-              in={isWhyContainerVisible}
-              delay={0.75}
-              offsetY={-50}
-              unmountOnExit={true}
-            >
+            <SlideFade in={isWhyContainerVisible} delay={0.75} offsetY={-50}>
               <VStack
                 px={10}
                 py={20}
@@ -317,7 +292,7 @@ function Why() {
                     alt="Box"
                     width={26}
                     height={36}
-                    priority
+                    loading="lazy"
                     style={{
                       width: 36,
                       height: 36,
@@ -338,12 +313,7 @@ function Why() {
               </VStack>
             </SlideFade>
 
-            <SlideFade
-              in={isWhyContainerVisible}
-              delay={1}
-              offsetY={-50}
-              unmountOnExit={true}
-            >
+            <SlideFade in={isWhyContainerVisible} delay={1} offsetY={-50}>
               <VStack
                 px={10}
                 py={20}
@@ -367,7 +337,7 @@ function Why() {
                     alt="Box"
                     width={38}
                     height={38}
-                    priority
+                    loading="lazy"
                     style={{
                       width: 36,
                       height: 36,

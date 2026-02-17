@@ -5,7 +5,6 @@ import { IoCheckmarkCircle } from 'react-icons/io5'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
 
 const FREE_FEATURES = [
   'Personal scheduling page',
