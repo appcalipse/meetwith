@@ -39,6 +39,37 @@ const hasOverlap = (
 
   return false
 }
+
+/**
+ * Checks if the slot is fully contained (engulfed) by any interval.
+ * Used for availability checks where the entire slot must fall within
+ * an available window.
+ */
+const isEngulfed = (
+  slot: Interval<true>,
+  sortedIntervals: Array<{ start: number; end: number }>
+) => {
+  const slotStart = slot.start.toMillis()
+  const slotEnd = slot.end.toMillis()
+
+  // Binary search for the last interval where start <= slotStart
+  let left = 0
+  let right = sortedIntervals.length - 1
+  let candidate = -1
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2)
+    if (sortedIntervals[mid].start <= slotStart) {
+      candidate = mid
+      left = mid + 1
+    } else {
+      right = mid - 1
+    }
+  }
+
+  if (candidate === -1) return false
+  return sortedIntervals[candidate].end >= slotEnd
+}
 const createIntervalLookup = (intervals: Interval<true>[]) => {
   return intervals
     .map(i => ({ end: i.end.toMillis(), start: i.start.toMillis() }))
@@ -121,7 +152,7 @@ const useSlotsWithAvailability = (
             const availableLookup = availableLookupsMap.get(account) || []
 
             const isBusy = hasOverlap(slot, busyLookup)
-            const hasAvailability = hasOverlap(slot, availableLookup)
+            const hasAvailability = isEngulfed(slot, availableLookup)
 
             const isUserAvailable = ignoreBusyOverlaps
               ? hasAvailability

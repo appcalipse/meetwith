@@ -91,7 +91,12 @@ const SchedulerPicker = () => {
     if (account?.preferences?.availabilities) {
       getAvailableSlots()
     }
-  }, [account?.preferences?.availabilities, currentMonth, selectedType])
+  }, [
+    account?.preferences?.availabilities,
+    currentMonth,
+    selectedType,
+    timezone.value,
+  ])
   const handleContactCheck = async () => {
     try {
       if (!account?.address) return
@@ -153,7 +158,7 @@ const SchedulerPicker = () => {
         }
 
         return (
-          daySlots.some(available => available.overlaps(slot)) &&
+          daySlots.some(available => available.engulfs(slot)) &&
           !busySlots.some(busy => busy.overlaps(slot))
         )
       })
@@ -166,6 +171,7 @@ const SchedulerPicker = () => {
       selectedType?.duration_minutes,
       selectedType?.min_notice_minutes,
       timezone.value,
+      rescheduleSlot,
     ]
   )
   const _onChange = (newValue: unknown) => {

@@ -386,10 +386,7 @@ const PublicPage: FC<IProps> = props => {
 
   const [timezone, setTimezone] = useState<TimeZoneOption>(
     tzs.find(
-      val =>
-        val.value ===
-        (currentAccount?.preferences?.timezone ||
-          Intl.DateTimeFormat().resolvedOptions().timeZone)
+      val => val.value === Intl.DateTimeFormat().resolvedOptions().timeZone
     ) || tzs[0]
   )
   const [paymentStep, setPaymentStep] = useState<PaymentStep | undefined>(
@@ -458,6 +455,7 @@ const PublicPage: FC<IProps> = props => {
   const [cachedRange, setCachedRange] = useState<{
     startDate: Date
     endDate: Date
+    timezone: string
   } | null>(null)
   const toast = useToast()
   const [rescheduleSlot, setRescheduleSlot] = useState<
@@ -911,8 +909,8 @@ const PublicPage: FC<IProps> = props => {
         .startOf('month')
         .toJSDate()
       const endDate = DateTime.fromJSDate(currentMonth)
-        .endOf('month')
         .setZone(timezone.value || 'UTC')
+        .endOf('month')
         .toJSDate()
       let busySlots: Interval[] = []
       try {
@@ -960,6 +958,7 @@ const PublicPage: FC<IProps> = props => {
     if (
       !skipCache &&
       cachedRange &&
+      cachedRange.timezone === (timezone.value || 'UTC') &&
       currentMonth >= cachedRange.startDate &&
       currentMonth <= cachedRange.endDate
     ) {
@@ -972,8 +971,8 @@ const PublicPage: FC<IProps> = props => {
       .startOf('month')
       .toJSDate()
     const endDate = DateTime.fromJSDate(currentMonth)
-      .endOf('month')
       .setZone(timezone.value || 'UTC')
+      .endOf('month')
       .toJSDate()
     let busySlots: Interval[] = []
 
@@ -1023,7 +1022,7 @@ const PublicPage: FC<IProps> = props => {
 
     setBusySlots(busySlots)
     setAvailableSlots(deduplicatedAvailabilities)
-    setCachedRange({ startDate, endDate })
+    setCachedRange({ startDate, endDate, timezone: timezone.value || 'UTC' })
     setCheckingSlots(false)
   }
   const fetchNotificationSubscriptions = async () => {
