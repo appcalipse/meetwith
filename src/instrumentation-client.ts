@@ -4,28 +4,24 @@
 
 import * as Sentry from '@sentry/nextjs'
 
+const isEnabled = process.env.NEXT_PUBLIC_ENV === 'production'
+
 Sentry.init({
-  dsn: 'https://9bd15726a7fd440e96e8f30b70b9bf1f@o366052.ingest.us.sentry.io/6110717',
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  environment: process.env.NEXT_PUBLIC_ENV,
+  enabled: isEnabled,
+
   // Enable logs to be sent to Sentry
   enableLogs: true,
 
-  // Add optional integrations for additional features
-  integrations: [Sentry.replayIntegration()],
+  // Replay intentionally excluded — adds ~70-100KB to client bundle,
+  // installs DOM MutationObserver that records every DOM change.
+  // This alone can add 200-400ms to TBT.
+  integrations: [],
 
-  // Define how likely Replay events are sampled when an error occurs.
-  replaysOnErrorSampleRate: 1.0,
-
-  // Define how likely Replay events are sampled.
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
-
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
-
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
+  // Keep low. 100% tracing creates a performance trace for every
+  // client-side navigation, adding network + CPU overhead.
+  tracesSampleRate: 0.1,
 })
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
