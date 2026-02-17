@@ -72,6 +72,24 @@ const moduleExports = {
         ],
       },
       {
+        source: '/assets/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/fonts/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
         source: '/_next/static/(.*)',
         headers: [
           {
@@ -82,14 +100,14 @@ const moduleExports = {
       },
     ]
   },
-  // compiler: {
-  //   removeConsole:
-  //     process.env.NODE_ENV === 'production'
-  //       ? {
-  //           exclude: ['error', 'warn'],
-  //         }
-  //       : false,
-  // },
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? {
+            exclude: ['error', 'warn'],
+          }
+        : false,
+  },
 
   webpack: (config, { dev }) => {
     if (!dev) {
@@ -139,6 +157,20 @@ const moduleExports = {
             name: 'chakra-ui',
             chunks: 'all',
             priority: 35,
+            enforce: true,
+          },
+          thirdweb: {
+            test: /[\\/]node_modules[\\/](thirdweb|@walletconnect|@reown|viem|abitype)[\\/]/,
+            name: 'thirdweb',
+            chunks: 'all',
+            priority: 36,
+            enforce: true,
+          },
+          posthog: {
+            test: /[\\/]node_modules[\\/](posthog-js|posthog-node)[\\/]/,
+            name: 'posthog',
+            chunks: 'all',
+            priority: 34,
             enforce: true,
           },
         },

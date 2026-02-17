@@ -7,13 +7,13 @@ import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
+import dynamic from 'next/dynamic'
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
 import * as React from 'react'
 import { ThirdwebProvider } from 'thirdweb/react'
 
 import { Head } from '@/components/Head'
-import { ConnectModal } from '@/components/nav/ConnectModal'
 import RedirectHandler from '@/components/redirect'
 import RedirectNotifier from '@/components/redirect/RedirectNotifier'
 import { BaseLayout } from '@/layouts/Base'
@@ -24,6 +24,11 @@ import type { Account } from '@/types/Account'
 import { initAnalytics, pageView } from '@/utils/analytics'
 import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
+
+const ConnectModal = dynamic(
+  () => import('@/components/nav/ConnectModal').then(mod => mod.ConnectModal),
+  { ssr: false }
+)
 
 interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
