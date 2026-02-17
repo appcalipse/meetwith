@@ -99,13 +99,13 @@ const TimeSlots: FC<IProps> = ({
     }
 
     return (
-      daySlots.some(available => available.overlaps(slot)) &&
+      daySlots.some(available => available.engulfs(slot)) &&
       !busySlots.some(busy => busy.overlaps(slot))
     )
   })
   const selfAvailabilityCheck = (slot: Interval): boolean => {
     return (
-      selDaySlots.some(selfSlot => selfSlot.overlaps(slot)) &&
+      selDaySlots.some(selfSlot => selfSlot.engulfs(slot)) &&
       !selfBusySlots.some(busySlot => busySlot.overlaps(slot))
     )
   }

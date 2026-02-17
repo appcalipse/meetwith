@@ -118,7 +118,7 @@ export const isTimeInsideAvailabilities = (
     timezone || 'UTC'
   )
   return slots.some(slot =>
-    slot.overlaps(LuxonInterval.fromDateTimes(startTime, endTime))
+    slot.engulfs(LuxonInterval.fromDateTimes(startTime, endTime))
   )
 }
 
@@ -155,7 +155,7 @@ export const suggestBestSlots = (
   ).filter(slot => slot.isValid && slot.start >= now)
   return allSlots.filter(slot => {
     const hasAvailability = accountAvailabilities.every(({ availabilities }) =>
-      hasOverlapBinary(slot, availabilities)
+      isEngulfedBinary(slot, availabilities)
     )
     return hasAvailability && !hasOverlapBinary(slot, sortedBusySlots)
   })
@@ -182,6 +182,31 @@ export const getEmptySlots = (
   }
 
   return slots
+}
+
+function isEngulfedBinary(
+  slot: LuxonInterval<true>,
+  sortedIntervals: LuxonInterval<true>[]
+): boolean {
+  if (sortedIntervals.length === 0) return false
+
+  // Binary search for the last interval where start <= slot.start
+  let left = 0
+  let right = sortedIntervals.length - 1
+  let candidate = -1
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2)
+    if (sortedIntervals[mid].start.toMillis() <= slot.start.toMillis()) {
+      candidate = mid
+      left = mid + 1
+    } else {
+      right = mid - 1
+    }
+  }
+
+  if (candidate === -1) return false
+  return sortedIntervals[candidate].end.toMillis() >= slot.end.toMillis()
 }
 
 function hasOverlapBinary(
