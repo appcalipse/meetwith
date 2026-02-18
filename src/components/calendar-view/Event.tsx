@@ -12,12 +12,11 @@ import {
 import { colord } from 'colord'
 import { DateTime } from 'luxon'
 import * as React from 'react'
-import { FaExpand, FaX } from 'react-icons/fa6'
+import { FaExpand } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import {
   CalendarEventsData,
-  createEventsQueryKey,
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
 import {
@@ -35,6 +34,7 @@ import {
   generateBorderColor,
   getDesignSystemTextColor,
 } from '@/utils/color-utils'
+import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import { DeleteEventDialog } from '../schedule/delete-event-dialog'
@@ -103,7 +103,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
     const isCalEvent = isCalendarEvent(event)
 
     queryClient.setQueriesData<CalendarEventsData>(
-      { queryKey: ['calendar-events'] },
+      { queryKey: [QueryKeys.calendarEvents()] },
       old => {
         if (!old) return old
 
@@ -121,7 +121,7 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
     )
     close()
 
-    queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
+    queryClient.invalidateQueries({ queryKey: [QueryKeys.calendarEvents()] })
   }
 
   return (
