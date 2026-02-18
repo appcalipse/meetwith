@@ -5,8 +5,8 @@ import {
   Spacer,
   Spinner,
   Text,
-  useToast,
   VStack,
+  useToast,
 } from '@chakra-ui/react'
 import {
   InfiniteData,
@@ -128,7 +128,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   const updateAttendeeStatus = useCallback(
     (eventId: string, accountEmail: string, status: AttendeeStatus) => {
       queryClient.setQueriesData<InfiniteData<ExtendedCalendarEvents>>(
-        { queryKey: ['meetings', currentAccount.address] },
+        { queryKey: QueryKeys.meetingsByAccount(currentAccount.address) },
         old => {
           if (!old?.pages) return old
 
@@ -169,7 +169,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   const updateParticipationStatus = useCallback(
     (eventId: string, accountAddress: string, status: ParticipationStatus) => {
       queryClient.setQueriesData<InfiniteData<ExtendedCalendarEvents>>(
-        { queryKey: ['meetings', currentAccount.address] },
+        { queryKey: QueryKeys.meetingsByAccount(currentAccount.address) },
         old => {
           if (!old?.pages) return old
 
@@ -210,7 +210,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   const removeEventFromCache = useCallback(
     (eventId: string) => {
       queryClient.setQueriesData<InfiniteData<ExtendedCalendarEvents>>(
-        { queryKey: ['meetings', currentAccount.address] },
+        { queryKey: QueryKeys.meetingsByAccount(currentAccount.address) },
         old => {
           if (!old?.pages) return old
 
@@ -291,7 +291,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
 
     if (meeting || removedSlots) {
       await queryClient.invalidateQueries({
-        queryKey: ['meetings', currentAccount.address],
+        queryKey: QueryKeys.meetingsByAccount(currentAccount.address),
       })
 
       if (skipToast) return
