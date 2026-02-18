@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import AvailabilityModal from '@/components/availabilities/AvailabilityModal'
+import { AvailabilityModal } from '@/components/availabilities/AvailabilityModal'
 
 describe('AvailabilityModal', () => {
   it('renders without crashing', () => {

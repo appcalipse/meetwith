@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import WeekdayConfig from '@/components/availabilities/WeekdayConfig'
+import { WeekdayConfig } from '@/components/availabilities/WeekdayConfig'
 
 describe('WeekdayConfig', () => {
   it('renders without crashing', () => {

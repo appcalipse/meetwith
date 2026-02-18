@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import AvailabilityBlockCard from '@/components/availabilities/AvailabilityBlockCard'
+import { AvailabilityBlockCard } from '@/components/availabilities/AvailabilityBlockCard'
 
 describe('AvailabilityBlockCard', () => {
   it('renders without crashing', () => {

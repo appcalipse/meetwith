@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import AvailabilityEmptyState from '@/components/availabilities/AvailabilityEmptyState'
+import { AvailabilityEmptyState } from '@/components/availabilities/AvailabilityEmptyState'
 
 describe('AvailabilityEmptyState', () => {
   it('renders without crashing', () => {
