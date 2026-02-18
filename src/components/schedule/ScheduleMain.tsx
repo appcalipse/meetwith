@@ -1074,8 +1074,6 @@ const ScheduleMain: FC<IInitialProps> = ({
         handleApiError('Error scheduling meeting', e as Error)
       }
     } finally {
-      queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
-      queryClient.invalidateQueries({ queryKey: ['meeting'] })
       setIsScheduling(false)
     }
   }
