@@ -13,4 +13,9 @@ class Email {
   }
 }
 
-module.exports = Email
+// Create a jest mock that returns the Email class
+const EmailMock = jest.fn().mockImplementation((config) => new Email())
+
+// Make it compatible with both default and named exports
+module.exports = EmailMock
+module.exports.default = EmailMock
