@@ -133,6 +133,50 @@ jest.mock('sharp', () => {
   return mockSharp
 })
 
+// Mock Stripe
+jest.mock('stripe', () => {
+  return jest.fn().mockImplementation(() => ({
+    customers: {
+      create: jest.fn().mockResolvedValue({ id: 'cus_test123' }),
+      retrieve: jest.fn().mockResolvedValue({ id: 'cus_test123' }),
+      update: jest.fn().mockResolvedValue({ id: 'cus_test123' }),
+      del: jest.fn().mockResolvedValue({ deleted: true }),
+    },
+    subscriptions: {
+      create: jest.fn().mockResolvedValue({ id: 'sub_test123' }),
+      retrieve: jest.fn().mockResolvedValue({ id: 'sub_test123' }),
+      update: jest.fn().mockResolvedValue({ id: 'sub_test123' }),
+      cancel: jest.fn().mockResolvedValue({ id: 'sub_test123', status: 'canceled' }),
+      list: jest.fn().mockResolvedValue({ data: [] }),
+    },
+    checkout: {
+      sessions: {
+        create: jest.fn().mockResolvedValue({ id: 'cs_test123', url: 'https://checkout.stripe.com/test' }),
+        retrieve: jest.fn().mockResolvedValue({ id: 'cs_test123' }),
+      },
+    },
+    accounts: {
+      create: jest.fn().mockResolvedValue({ id: 'acct_test123' }),
+      retrieve: jest.fn().mockResolvedValue({ id: 'acct_test123' }),
+      update: jest.fn().mockResolvedValue({ id: 'acct_test123' }),
+    },
+    accountLinks: {
+      create: jest.fn().mockResolvedValue({ url: 'https://connect.stripe.com/test' }),
+    },
+    prices: {
+      list: jest.fn().mockResolvedValue({ data: [] }),
+      retrieve: jest.fn().mockResolvedValue({ id: 'price_test123' }),
+    },
+    products: {
+      list: jest.fn().mockResolvedValue({ data: [] }),
+      retrieve: jest.fn().mockResolvedValue({ id: 'prod_test123' }),
+    },
+    webhooks: {
+      constructEvent: jest.fn(),
+    },
+  }))
+})
+
 // Mock email templates
 jest.mock('resend', () => ({
   Resend: jest.fn().mockImplementation(() => ({
@@ -192,16 +236,20 @@ jest.mock('next/router', () => ({
 // Mock @tanstack/react-query
 jest.mock('@tanstack/react-query', () => ({
   useQuery: jest.fn(() => ({ 
-    data: null, 
-    isLoading: false, 
+    data: undefined, 
+    isLoading: false,
+    isError: false,
     error: null,
-    reset: jest.fn(),
     refetch: jest.fn(),
+    isSuccess: false,
+    status: 'idle',
+    reset: jest.fn(),
     isRefetching: false,
   })),
   useInfiniteQuery: jest.fn(() => ({ 
-    data: null, 
-    isLoading: false, 
+    data: undefined, 
+    isLoading: false,
+    isError: false,
     error: null,
     fetchNextPage: jest.fn(),
     hasNextPage: false,
@@ -294,12 +342,25 @@ jest.mock('@chakra-ui/react', () => {
     useToast: jest.fn(() => jest.fn()),
     useTheme: jest.fn(() => ({})),
     useStyles: jest.fn(() => ({})),
-    useMultiStyleConfig: jest.fn(() => ({})),
-    useStyleConfig: jest.fn(() => ({})),
+    useMultiStyleConfig: jest.fn(() => {
+      return new Proxy({}, {
+        get: () => ({})
+      })
+    }),
+    useStyleConfig: jest.fn(() => {
+      return new Proxy({}, {
+        get: () => ({})
+      })
+    }),
     useToken: jest.fn((...args) => args),
     useClipboard: jest.fn(() => ({ onCopy: jest.fn(), hasCopied: false, value: '' })),
     
-    // Special functions
+    // Special functions and utilities
+    keyframes: jest.fn((...args) => ''),
+    css: jest.fn(),
+    chakra: jest.fn(),
+    defineStyle: jest.fn(),
+    defineStyleConfig: jest.fn(),
     forwardRef: React.forwardRef,
     createStandaloneToast: jest.fn(() => ({
       toast: jest.fn(),
@@ -493,8 +554,9 @@ jest.mock('@chakra-ui/react', () => {
         return createMockComponent(propStr)
       }
       
-      // For anything else, return undefined
-      return undefined
+      // For lowercase non-hook exports (functions like keyframes, css, etc.)
+      // Return a jest.fn() instead of undefined to prevent crashes
+      return jest.fn()
     }
   })
 })
@@ -539,12 +601,47 @@ jest.mock('ical.js', () => {
     }
   }
   
+  // Create Time constructor with static methods
+  const TimeConstructor = jest.fn(function(data) {
+    this.toString = () => '2024-01-01T00:00:00Z'
+    this.toJSDate = () => new Date('2024-01-01T00:00:00Z')
+    this.compare = jest.fn()
+    this.clone = jest.fn(() => this)
+    this.adjust = jest.fn()
+    return this
+  })
+  
+  // Add static methods to Time
+  TimeConstructor.fromJSDate = jest.fn((date) => {
+    const instance = new TimeConstructor()
+    instance.toString = () => date.toISOString()
+    instance.toJSDate = () => date
+    return instance
+  })
+  
+  TimeConstructor.now = jest.fn(() => {
+    const instance = new TimeConstructor()
+    instance.toString = () => new Date().toISOString()
+    instance.toJSDate = () => new Date()
+    return instance
+  })
+  
   return {
     Component,
-    parse: jest.fn(() => ({})),
-    Time: jest.fn(function() {
-      this.toString = () => '2024-01-01T00:00:00Z'
-      this.toJSDate = () => new Date('2024-01-01T00:00:00Z')
+    parse: jest.fn(() => new Component()),
+    Time: TimeConstructor,
+    Duration: jest.fn(function() {
+      this.toString = () => 'PT1H'
+      this.toSeconds = () => 3600
+      return this
+    }),
+    Timezone: jest.fn(function() {
+      this.tzid = 'UTC'
+      return this
+    }),
+    RecurExpansion: jest.fn(function() {
+      this.next = jest.fn()
+      this.complete = false
       return this
     }),
     Event: jest.fn(),
@@ -594,6 +691,50 @@ Object.assign(navigator, {
     readText: jest.fn().mockResolvedValue(''),
   },
 })
+
+// Mock thirdweb
+jest.mock('thirdweb', () => ({
+  createThirdwebClient: jest.fn(() => ({ clientId: 'test-client-id' })),
+}), { virtual: true })
+
+jest.mock('thirdweb/react', () => ({
+  ConnectButton: jest.fn(() => null),
+  ConnectEmbed: jest.fn(() => null),
+  AutoConnect: jest.fn(() => null),
+  useActiveWallet: jest.fn(() => null),
+  useActiveWalletConnectionStatus: jest.fn(() => 'disconnected'),
+  useDisconnect: jest.fn(() => ({ disconnect: jest.fn() })),
+  darkTheme: jest.fn(),
+  lightTheme: jest.fn(),
+}), { virtual: true })
+
+jest.mock('thirdweb/wallets', () => ({
+  createWallet: jest.fn(),
+  inAppWallet: jest.fn(),
+}), { virtual: true })
+
+// Mock @lens-protocol/client
+jest.mock('@lens-protocol/client', () => ({
+  LensClient: jest.fn(),
+  production: {},
+  development: {},
+}), { virtual: true })
+
+// Mock tawk-messenger-react
+jest.mock('@tawk.to/tawk-messenger-react', () => ({
+  default: jest.fn(() => null),
+}), { virtual: true })
+
+// Mock @fortawesome
+jest.mock('@fortawesome/react-fontawesome', () => ({
+  FontAwesomeIcon: jest.fn(() => null),
+}), { virtual: true })
+
+jest.mock('@fortawesome/free-solid-svg-icons', () => ({
+  faCheck: {},
+  faSpinner: {},
+  faExclamationTriangle: {},
+}), { virtual: true })
 
 // Set environment to localhost for constants
 process.env.NEXT_PUBLIC_VERCEL_URL = 'localhost'
