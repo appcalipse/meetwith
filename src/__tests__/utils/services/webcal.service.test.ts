@@ -301,37 +301,34 @@ END:VCALENDAR`
     })
   })
 
-  describe('fetchIcsData - timeout handling', () => {
-    it('should timeout after 30 seconds', async () => {
-      ;(global.fetch as jest.Mock).mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            // Never resolves to simulate timeout
-          })
-      )
-
-      // We can't easily test timeout without waiting, so just verify the fetch is called
-      const promise = (service as any).fetchIcsData()
-      
-      // Clean up
-      jest.advanceTimersByTime(0)
-    })
-
-    it('should validate content-type header', async () => {
+  describe('fetchIcsData - content validation', () => {
+    it('should accept text/calendar content-type', async () => {
       ;(global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
-        text: jest.fn().mockResolvedValue(''),
+        text: jest.fn().mockResolvedValue('BEGIN:VCALENDAR\nEND:VCALENDAR'),
         headers: {
-          get: jest.fn().mockReturnValue('application/json'),
+          get: jest.fn().mockReturnValue('text/calendar'),
         },
       })
 
-      // This might throw or handle gracefully depending on implementation
-      try {
-        await (service as any).fetchIcsData()
-      } catch (error) {
-        // Expected if content-type validation is strict
-      }
+      const result = await (service as any).fetchIcsData()
+
+      expect(result).toBeDefined()
+      expect(typeof result).toBe('string')
+    })
+
+    it('should accept text/plain content-type for ICS data', async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        text: jest.fn().mockResolvedValue('BEGIN:VCALENDAR\nEND:VCALENDAR'),
+        headers: {
+          get: jest.fn().mockReturnValue('text/plain'),
+        },
+      })
+
+      const result = await (service as any).fetchIcsData()
+
+      expect(result).toBeDefined()
     })
   })
 })
