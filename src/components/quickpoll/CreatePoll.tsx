@@ -16,6 +16,7 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
+  Spinner,
   Text,
   Textarea,
   useColorModeValue,
@@ -73,10 +74,6 @@ import {
   getQuickPollBySlug,
   updateQuickPoll,
 } from '@/utils/api_helper'
-import {
-  findMatchingAvailabilityBlocks,
-  initializeEmptyAvailabilities,
-} from '@/utils/availability.helper'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import { NO_GROUP_KEY } from '@/utils/constants/group'
 import {
@@ -171,9 +168,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   )
   const { currentAccount } = useContext(AccountContext)
   const { fetchPollCounts } = useContext(MetricStateContext)
-  const { blocks: availabilityBlocks } = useAvailabilityBlocks(
-    currentAccount?.address
-  )
+  const { blocks: availabilityBlocks, isLoading: isAvailabilityBlocksLoading } =
+    useAvailabilityBlocks(currentAccount?.address)
   const defaultAvailabilityBlockId =
     availabilityBlocks?.find(b => b.isDefault)?.id ?? null
 
@@ -414,17 +410,13 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     setGroupParticipants,
   ])
 
-  // When editing a poll, pre-fill availability from the scheduler's current slots
+  // When editing a poll, pre-fill availability from the scheduler (block-based or custom)
   useEffect(() => {
     if (!isEditMode) {
       hasInitializedPollAvailabilityFromPoll.current = false
       return
     }
-    if (
-      !pollData ||
-      !availabilityBlocks ||
-      hasInitializedPollAvailabilityFromPoll.current
-    ) {
+    if (!pollData || hasInitializedPollAvailabilityFromPoll.current) {
       return
     }
     const pollResponse = pollData as QuickPollBySlugResponse
@@ -432,48 +424,35 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     const scheduler = poll.participants?.find(
       p => p.participant_type === QuickPollParticipantType.SCHEDULER
     )
-    if (!scheduler?.available_slots?.length) {
+    if (!scheduler) {
       hasInitializedPollAvailabilityFromPoll.current = true
       return
     }
-    const timezone = scheduler.timezone || 'UTC'
-    // Normalize to all 7 weekdays so we can match blocks that store 0-6 (including empty days)
-    const emptyByWeekday = Object.fromEntries(
-      [0, 1, 2, 3, 4, 5, 6].map(w => [
-        w,
-        { weekday: w, ranges: [] as Array<{ start: string; end: string }> },
-      ])
-    )
-    for (const s of scheduler.available_slots) {
-      emptyByWeekday[s.weekday] = {
-        weekday: s.weekday,
-        ranges: (s.ranges || []).map(r => ({
-          start: r.start || '',
-          end: r.end || '',
-        })),
-      }
-    }
-    const weeklySlots = Object.values(emptyByWeekday)
-    const matchingBlocks = findMatchingAvailabilityBlocks(
-      availabilityBlocks,
-      timezone,
-      weeklySlots
-    )
-    if (matchingBlocks.length > 0) {
-      setPollAvailabilityBlockIds(matchingBlocks.map(b => b.id))
+    const blockIds = (scheduler as { availability_block_ids?: string[] })
+      ?.availability_block_ids
+    if (blockIds?.length) {
+      setPollAvailabilityBlockIds(blockIds)
       setPollCustomAvailability(null)
-    } else {
+      hasInitializedPollAvailabilityFromPoll.current = true
+      return
+    }
+    const slots = scheduler.available_slots
+    if (slots?.length) {
+      const timezone = scheduler.timezone || 'UTC'
       setPollCustomAvailability({
         timezone,
-        weekly_availability: weeklySlots.map(s => ({
+        weekly_availability: slots.map(s => ({
           weekday: s.weekday,
-          ranges: s.ranges,
+          ranges: (s.ranges || []).map(r => ({
+            start: r.start || '',
+            end: r.end || '',
+          })),
         })),
       })
       setPollAvailabilityBlockIds([])
     }
     hasInitializedPollAvailabilityFromPoll.current = true
-  }, [isEditMode, pollData, availabilityBlocks])
+  }, [isEditMode, pollData])
 
   const createPollMutation = useMutation({
     mutationFn: (pollData: CreateQuickPollRequest) => createQuickPoll(pollData),
@@ -1103,7 +1082,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 align="center"
                 minH="40px"
               >
-                {pollCustomAvailability ? (
+                {isAvailabilityBlocksLoading ? (
+                  <HStack spacing={2}>
+                    <Spinner size="sm" color="border-default" />
+                  </HStack>
+                ) : pollCustomAvailability ? (
                   <Box
                     as="span"
                     px={1.5}
@@ -1149,7 +1132,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 p={1}
                 minW="auto"
                 onClick={openAvailabilityModal}
-                isDisabled={isLoading}
+                isDisabled={isLoading || isAvailabilityBlocksLoading}
                 _hover={{ bg: 'transparent' }}
               >
                 <Icon as={HiOutlinePencilAlt} color={iconColor} boxSize={5} />
