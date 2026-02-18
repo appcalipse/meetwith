@@ -738,6 +738,35 @@ jest.mock('@fortawesome/free-solid-svg-icons', () => ({
   faExclamationTriangle: {},
 }), { virtual: true })
 
+// Mock chakra-react-select (depends on Chakra theme internals which don't work with mocked Chakra)
+jest.mock('chakra-react-select', () => {
+  const React = require('react')
+  const MockSelect = React.forwardRef(({ children, ...props }, ref) =>
+    React.createElement('select', { ref, ...props }, children)
+  )
+  MockSelect.displayName = 'MockChakraReactSelect'
+  return {
+    Select: MockSelect,
+    CreatableSelect: MockSelect,
+    AsyncSelect: MockSelect,
+    AsyncCreatableSelect: MockSelect,
+    chakraComponents: {},
+  }
+})
+
+// Mock next/font/google (used by theme.ts)
+jest.mock('next/font/google', () => ({
+  DM_Sans: () => ({ style: { fontFamily: 'DM Sans' } }),
+  Inter: () => ({ style: { fontFamily: 'Inter' } }),
+}))
+
+// Mock @chakra-ui/theme-tools
+jest.mock('@chakra-ui/theme-tools', () => ({
+  mode: jest.fn((light, dark) => light),
+  createBreakpoints: jest.fn(),
+  transparentize: jest.fn(),
+}))
+
 // Set environment to localhost for constants
 process.env.NEXT_PUBLIC_VERCEL_URL = 'localhost'
 process.env.VERCEL_URL = 'localhost'
