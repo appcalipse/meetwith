@@ -808,4 +808,354 @@ describe('Stripe Helper Functions', () => {
       expect(database.getStripeSubscriptionById).not.toHaveBeenCalled()
     })
   })
+
+  describe('Error Handling - handleAccountUpdate', () => {
+    it('should handle Stripe API errors when retrieving account', async () => {
+      const mockAccountId = 'acct_error'
+      const mockProvider = {
+        id: 'provider-id',
+        owner_account_address: '0xtest',
+      }
+
+      jest.spyOn(database, 'getConnectedAccountByStripeId').mockResolvedValue(mockProvider as any)
+      jest.spyOn(StripeService.prototype, 'getAccount').mockRejectedValue(
+        new Error('Stripe API unavailable')
+      )
+
+      await handleAccountUpdate(mockAccountId)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+      expect(database.updateConnectedAccount).not.toHaveBeenCalled()
+    })
+
+    it('should handle null provider scenario', async () => {
+      const mockAccountId = 'acct_null'
+
+      jest.spyOn(database, 'getConnectedAccountByStripeId').mockResolvedValue(null)
+
+      await handleAccountUpdate(mockAccountId)
+
+      expect(StripeService.prototype.getAccount).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Error Handling - handleChargeSucceeded', () => {
+    it('should handle database transaction confirmation failures', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            id: 'ch_test',
+            metadata: {
+              payment_type: PaymentType.INVOICE_PAYMENT,
+              transaction_id: 'tx-123',
+            },
+          },
+        },
+      } as any
+
+      jest.spyOn(database, 'confirmFiatTransaction').mockRejectedValue(
+        new Error('Database error')
+      )
+
+      await handleChargeSucceeded(mockEvent)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+
+    it('should handle malformed metadata gracefully', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            id: 'ch_malformed',
+            metadata: {
+              invalid_key: 'value',
+            },
+          },
+        },
+      } as any
+
+      await handleChargeSucceeded(mockEvent)
+
+      // Should complete without throwing
+      expect(Sentry.captureException).not.toHaveBeenCalled()
+    })
+
+    it('should handle null metadata', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            id: 'ch_null_meta',
+            metadata: null,
+          },
+        },
+      } as any
+
+      await handleChargeSucceeded(mockEvent)
+
+      expect(database.confirmFiatTransaction).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Error Handling - handleChargeFailed', () => {
+    it('should capture exception with charge details', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            id: 'ch_failed',
+            failure_message: 'Card declined',
+            metadata: {
+              transaction_id: 'tx-456',
+            },
+          },
+        },
+      } as any
+
+      await handleChargeFailed(mockEvent)
+
+      expect(Sentry.captureException).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('ch_failed'),
+        }),
+        expect.any(Object)
+      )
+    })
+
+    it('should handle missing metadata in failed charge', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            id: 'ch_no_meta',
+          },
+        },
+      } as any
+
+      await handleChargeFailed(mockEvent)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+  })
+
+  describe('Error Handling - handleFeeCollected', () => {
+    it('should handle Stripe charge retrieve failures', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            charge: 'ch_error',
+          },
+        },
+      } as any
+
+      jest.spyOn(StripeService.prototype, 'retrieveCharge').mockRejectedValue(
+        new Error('Charge not found')
+      )
+
+      await handleFeeCollected(mockEvent)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+
+    it('should handle missing charge reference', async () => {
+      const mockEvent = {
+        data: {
+          object: {},
+        },
+      } as any
+
+      await handleFeeCollected(mockEvent)
+
+      expect(StripeService.prototype.retrieveCharge).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Error Handling - handleSubscriptionCreated', () => {
+    it('should handle database createSubscription failures', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            id: 'sub_create_error',
+            customer: 'cus_test',
+            current_period_start: 1234567890,
+            current_period_end: 1234567890,
+            items: {
+              data: [
+                {
+                  price: {
+                    id: 'price_test',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      } as any
+
+      jest.spyOn(database, 'createStripeSubscription').mockRejectedValue(
+        new Error('Database constraint violation')
+      )
+
+      await handleSubscriptionCreated(mockEvent)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+  })
+
+  describe('Error Handling - handleSubscriptionUpdated', () => {
+    it('should handle Stripe API errors during update', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            id: 'sub_update_error',
+            status: 'active',
+          },
+        },
+      } as any
+
+      jest.spyOn(database, 'updateStripeSubscription').mockRejectedValue(
+        new Error('Stripe API timeout')
+      )
+
+      await handleSubscriptionUpdated(mockEvent)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+
+    it('should handle complex plan changes', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            id: 'sub_plan_change',
+            status: 'active',
+            items: {
+              data: [
+                {
+                  price: {
+                    id: 'price_new',
+                    recurring: {
+                      interval: 'year',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      } as any
+
+      jest.spyOn(database, 'updateStripeSubscription').mockResolvedValue({} as any)
+
+      await handleSubscriptionUpdated(mockEvent)
+
+      expect(database.updateStripeSubscription).toHaveBeenCalledWith(
+        'sub_plan_change',
+        expect.objectContaining({
+          status: 'active',
+        })
+      )
+    })
+  })
+
+  describe('Error Handling - handleInvoicePaymentSucceeded', () => {
+    it('should handle billing plan lookup failures', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            subscription: 'sub_test',
+            customer: 'cus_test',
+            total: 1000,
+          },
+        },
+      } as any
+
+      jest.spyOn(database, 'getStripeSubscriptionById').mockResolvedValue({
+        account_address: '0xtest',
+        billing_plan_id: 'plan-missing',
+      } as any)
+      jest.spyOn(database, 'getBillingPlanById').mockResolvedValue(null)
+
+      await handleInvoicePaymentSucceeded(mockEvent)
+
+      expect(database.createSubscriptionTransaction).not.toHaveBeenCalled()
+    })
+
+    it('should handle transaction creation errors', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            subscription: 'sub_test',
+            customer: 'cus_test',
+            total: 1000,
+          },
+        },
+      } as any
+
+      jest.spyOn(database, 'getStripeSubscriptionById').mockResolvedValue({
+        account_address: '0xtest',
+        billing_plan_id: 'plan-123',
+      } as any)
+      jest.spyOn(database, 'getBillingPlanById').mockResolvedValue({
+        id: 'plan-123',
+        name: 'Pro',
+        interval: 'month',
+      } as any)
+      jest.spyOn(database, 'createSubscriptionTransaction').mockRejectedValue(
+        new Error('Transaction creation failed')
+      )
+
+      await handleInvoicePaymentSucceeded(mockEvent)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+
+    it('should handle missing subscription in invoice', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            customer: 'cus_test',
+            total: 1000,
+          },
+        },
+      } as any
+
+      await handleInvoicePaymentSucceeded(mockEvent)
+
+      expect(database.getStripeSubscriptionById).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Error Handling - handleInvoicePaymentFailed', () => {
+    it('should handle database lookup failures', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            subscription: 'sub_fail',
+          },
+        },
+      } as any
+
+      jest.spyOn(database, 'getStripeSubscriptionById').mockRejectedValue(
+        new Error('Database connection lost')
+      )
+
+      await handleInvoicePaymentFailed(mockEvent)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+
+    it('should handle null subscription lookup', async () => {
+      const mockEvent = {
+        data: {
+          object: {
+            subscription: 'sub_nonexistent',
+          },
+        },
+      } as any
+
+      jest.spyOn(database, 'getStripeSubscriptionById').mockResolvedValue(null)
+
+      await handleInvoicePaymentFailed(mockEvent)
+
+      // Should still capture the failure event
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+  })
 })

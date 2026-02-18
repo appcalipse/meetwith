@@ -1507,4 +1507,109 @@ describe('sync_helper', () => {
       expect(Sentry.captureException).toHaveBeenCalled()
     })
   })
+
+  describe('delete', () => {
+    const createMockDeleteRequest = () => ({
+      organizer_address: mockAccount,
+      meeting_id: 'meeting-123',
+      meeting_type_id: 'type-123',
+      externalEventId: 'ext-event-123',
+    })
+
+    it('should delete event from connected calendars', async () => {
+      const mockIntegration = {
+        deleteEvent: jest.fn().mockResolvedValue({}),
+      }
+      ;(database.getConnectedCalendars as jest.Mock).mockResolvedValue(
+        mockCalendars
+      )
+      ;(
+        connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock
+      ).mockReturnValue(mockIntegration)
+
+      await ExternalCalendarSync.delete(createMockDeleteRequest())
+
+      expect(mockIntegration.deleteEvent).toHaveBeenCalled()
+    })
+
+    it('should handle delete errors gracefully', async () => {
+      const mockIntegration = {
+        deleteEvent: jest.fn().mockRejectedValue(new Error('Delete failed')),
+      }
+      ;(database.getConnectedCalendars as jest.Mock).mockResolvedValue(
+        mockCalendars
+      )
+      ;(
+        connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock
+      ).mockReturnValue(mockIntegration)
+
+      await ExternalCalendarSync.delete(createMockDeleteRequest())
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+
+    it('should handle missing calendars gracefully', async () => {
+      ;(database.getConnectedCalendars as jest.Mock).mockResolvedValue([])
+
+      // Should not throw
+      await ExternalCalendarSync.delete(createMockDeleteRequest())
+    })
+  })
+
+  describe('deleteInstance', () => {
+    const createMockDeleteInstanceRequest = (): DeleteInstanceRequest => ({
+      organizer_address: mockAccount,
+      meeting_id: 'meeting-123',
+      meeting_type_id: 'type-123',
+      externalEventId: 'ext-event-123',
+      instanceDate: new Date('2024-01-15T10:00:00Z'),
+    })
+
+    it('should delete instance from connected calendars', async () => {
+      const mockIntegration = {
+        deleteEventInstance: jest.fn().mockResolvedValue({}),
+      }
+      ;(database.getConnectedCalendars as jest.Mock).mockResolvedValue(
+        mockCalendars
+      )
+      ;(
+        connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock
+      ).mockReturnValue(mockIntegration)
+
+      await ExternalCalendarSync.deleteInstance(
+        createMockDeleteInstanceRequest()
+      )
+
+      expect(mockIntegration.deleteEventInstance).toHaveBeenCalled()
+    })
+
+    it('should handle delete instance errors gracefully', async () => {
+      const mockIntegration = {
+        deleteEventInstance: jest
+          .fn()
+          .mockRejectedValue(new Error('Delete failed')),
+      }
+      ;(database.getConnectedCalendars as jest.Mock).mockResolvedValue(
+        mockCalendars
+      )
+      ;(
+        connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock
+      ).mockReturnValue(mockIntegration)
+
+      await ExternalCalendarSync.deleteInstance(
+        createMockDeleteInstanceRequest()
+      )
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+
+    it('should handle missing calendars gracefully', async () => {
+      ;(database.getConnectedCalendars as jest.Mock).mockResolvedValue([])
+
+      // Should not throw
+      await ExternalCalendarSync.deleteInstance(
+        createMockDeleteInstanceRequest()
+      )
+    })
+  })
 })
