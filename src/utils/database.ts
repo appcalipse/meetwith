@@ -4310,16 +4310,18 @@ const parseParticipantSlots = async (
             await getTypeMeetingAvailabilityTypeFromDB(
               meetingUpdateRequest.meetingTypeId
             )
-          isTimeAvailable = () =>
-            ownerAccount &&
-            accountAvailabilities?.some(availability =>
-              isTimeInsideAvailabilities(
-                new Date(meetingUpdateRequest.start),
-                new Date(meetingUpdateRequest.end),
-                availability?.weekly_availability || [],
-                availability?.timezone
+          if (accountAvailabilities && accountAvailabilities.length > 0) {
+            isTimeAvailable = () =>
+              ownerAccount &&
+              accountAvailabilities.some(availability =>
+                isTimeInsideAvailabilities(
+                  new Date(meetingUpdateRequest.start),
+                  new Date(meetingUpdateRequest.end),
+                  availability?.weekly_availability || [],
+                  availability?.timezone
+                )
               )
-            )
+          }
         }
 
         if (

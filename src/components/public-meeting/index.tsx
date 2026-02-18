@@ -1006,17 +1006,27 @@ const PublicPage: FC<IProps> = props => {
         position: 'top-right',
       })
     }
-    const availabilities =
-      selectedType?.availabilities?.flatMap(availability =>
-        parseMonthAvailabilitiesToDate(
-          availability.weekly_availability || [],
+    // fallback for when user accidentally didn't set an availaibility for their current meeting type
+    const hasTypeAvailabilities =
+      selectedType?.availabilities && selectedType.availabilities.length > 0
+
+    const availabilities = hasTypeAvailabilities
+      ? selectedType.availabilities.flatMap(availability =>
+          parseMonthAvailabilitiesToDate(
+            availability.weekly_availability || [],
+            startDate,
+            endDate,
+            availability.timezone ||
+              props?.account?.preferences?.timezone ||
+              'UTC'
+          )
+        )
+      : parseMonthAvailabilitiesToDate(
+          props?.account?.preferences?.availabilities || [],
           startDate,
           endDate,
-          availability.timezone ||
-            props?.account?.preferences?.timezone ||
-            'UTC'
+          props?.account?.preferences?.timezone || 'UTC'
         )
-      ) || []
 
     const deduplicatedAvailabilities = mergeLuxonIntervals(availabilities)
 
