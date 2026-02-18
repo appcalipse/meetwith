@@ -38,9 +38,11 @@ import { MeetingProvider } from '@/types/Meeting'
 import { PaymentProvider } from '@/types/Billing'
 import * as database from '@/utils/database'
 import * as calendarManager from '@/utils/calendar_manager'
+import * as syncHelper from '@/utils/sync_helper'
 
 jest.mock('@/utils/database')
 jest.mock('@/utils/calendar_manager')
+jest.mock('@/utils/sync_helper')
 jest.mock('resend')
 jest.mock('email-templates')
 jest.mock('puppeteer')
@@ -141,11 +143,12 @@ describe('email_helper - newGroupRejectEmail', () => {
 
 describe('email_helper - newMeetingEmail', () => {
   it('should send new meeting notification email', async () => {
+    const slot_id = randomUUID()
     const participants: ParticipantInfo[] = [
       {
         account_address: faker.datatype.uuid(),
         meeting_id: randomUUID(),
-        slot_id: randomUUID(),
+        slot_id: slot_id,
         status: ParticipationStatus.Accepted,
         type: ParticipantType.Owner,
         name: 'Owner User',
@@ -153,7 +156,7 @@ describe('email_helper - newMeetingEmail', () => {
       {
         account_address: faker.datatype.uuid(),
         meeting_id: randomUUID(),
-        slot_id: randomUUID(),
+        slot_id: slot_id,
         status: ParticipationStatus.Pending,
         type: ParticipantType.Scheduler,
         name: 'Scheduler User',
@@ -169,19 +172,35 @@ describe('email_helper - newMeetingEmail', () => {
       'https://meetwith.com/user123'
     )
 
-    const result = await newMeetingEmail(
+    jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([
       {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        participants,
-        meeting_url: 'https://meet.google.com/test',
-        content: 'Test meeting content',
-        title: 'Test Meeting',
-        meeting_id: randomUUID(),
-        iana_timezone: 'UTC',
-        provider: MeetingProvider.GOOGLE_MEET,
-      } as any,
+        calendars: [
+          {
+            enabled: true,
+            sync: false,
+          },
+        ],
+      },
+    ] as any)
+
+    const meetingDetails = {
+      start: new Date(),
+      end: new Date(Date.now() + 3600000),
+      participants,
+      meeting_url: 'https://meet.google.com/test',
+      content: 'Test meeting content',
+      title: 'Test Meeting',
+      meeting_id: randomUUID(),
+      iana_timezone: 'UTC',
+      provider: MeetingProvider.GOOGLE_MEET,
+      rrule: [],
+    }
+
+    const result = await newMeetingEmail(
       'test@example.com',
+      ParticipantType.Scheduler,
+      slot_id,
+      meetingDetails as any,
       faker.datatype.uuid()
     )
 
@@ -189,11 +208,12 @@ describe('email_helper - newMeetingEmail', () => {
   })
 
   it('should handle meeting email with guest participants', async () => {
+    const slot_id = randomUUID()
     const participants: ParticipantInfo[] = [
       {
         guest_email: 'guest@example.com',
         meeting_id: randomUUID(),
-        slot_id: randomUUID(),
+        slot_id: slot_id,
         status: ParticipationStatus.Pending,
         type: ParticipantType.Scheduler,
         name: 'Guest User',
@@ -205,19 +225,35 @@ describe('email_helper - newMeetingEmail', () => {
       value: 'ICS_CONTENT',
     } as any)
 
-    const result = await newMeetingEmail(
+    jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([
       {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        participants,
-        meeting_url: 'https://meet.google.com/test',
-        content: 'Test meeting',
-        title: 'Guest Meeting',
-        meeting_id: randomUUID(),
-        iana_timezone: 'UTC',
-        provider: MeetingProvider.GOOGLE_MEET,
-      } as any,
+        calendars: [
+          {
+            enabled: true,
+            sync: false,
+          },
+        ],
+      },
+    ] as any)
+
+    const meetingDetails = {
+      start: new Date(),
+      end: new Date(Date.now() + 3600000),
+      participants,
+      meeting_url: 'https://meet.google.com/test',
+      content: 'Test meeting',
+      title: 'Guest Meeting',
+      meeting_id: randomUUID(),
+      iana_timezone: 'UTC',
+      provider: MeetingProvider.GOOGLE_MEET,
+      rrule: [],
+    }
+
+    const result = await newMeetingEmail(
       'guest@example.com',
+      ParticipantType.Scheduler,
+      slot_id,
+      meetingDetails as any,
       undefined
     )
 
@@ -259,11 +295,12 @@ describe('email_helper - cancelledMeetingEmail', () => {
 
 describe('email_helper - updateMeetingEmail', () => {
   it('should send meeting update email', async () => {
+    const slot_id = randomUUID()
     const participants: ParticipantInfo[] = [
       {
         account_address: faker.datatype.uuid(),
         meeting_id: randomUUID(),
-        slot_id: randomUUID(),
+        slot_id: slot_id,
         status: ParticipationStatus.Accepted,
         type: ParticipantType.Owner,
         name: 'Owner User',
@@ -275,19 +312,24 @@ describe('email_helper - updateMeetingEmail', () => {
       value: 'ICS_CONTENT',
     } as any)
 
+    const meetingDetails = {
+      start: new Date(),
+      end: new Date(Date.now() + 3600000),
+      participants,
+      meeting_url: 'https://meet.google.com/test',
+      content: 'Updated meeting',
+      title: 'Updated Meeting',
+      meeting_id: randomUUID(),
+      iana_timezone: 'UTC',
+      provider: MeetingProvider.GOOGLE_MEET,
+    }
+
     const result = await updateMeetingEmail(
-      {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        participants,
-        meeting_url: 'https://meet.google.com/test',
-        content: 'Updated meeting',
-        title: 'Updated Meeting',
-        meeting_id: randomUUID(),
-        iana_timezone: 'UTC',
-        provider: MeetingProvider.GOOGLE_MEET,
-      } as any,
       'test@example.com',
+      'Current User',
+      ParticipantType.Owner,
+      slot_id,
+      meetingDetails as any,
       faker.datatype.uuid()
     )
 
@@ -297,23 +339,45 @@ describe('email_helper - updateMeetingEmail', () => {
 
 describe('email_helper - sendInvitationEmail', () => {
   it('should send invitation email', async () => {
+    const group: Group = {
+      id: randomUUID(),
+      name: 'Test Group',
+      description: 'Test Description',
+      created_at: new Date(),
+      owner_address: faker.datatype.uuid(),
+    }
+
     const result = await sendInvitationEmail(
       'invitee@example.com',
       'Test User',
+      'Please join our group',
+      group.id,
+      group,
       'https://meetwith.com/invite/123'
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 
   it('should handle missing inviter name', async () => {
+    const group: Group = {
+      id: randomUUID(),
+      name: 'Test Group',
+      description: 'Test Description',
+      created_at: new Date(),
+      owner_address: faker.datatype.uuid(),
+    }
+
     const result = await sendInvitationEmail(
       'invitee@example.com',
-      undefined,
+      '',
+      'Please join our group',
+      group.id,
+      group,
       'https://meetwith.com/invite/123'
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 })
 
@@ -322,10 +386,11 @@ describe('email_helper - sendContactInvitationEmail', () => {
     const result = await sendContactInvitationEmail(
       'contact@example.com',
       'Inviter Name',
-      faker.datatype.uuid()
+      'https://meetwith.com/invite/accept/123',
+      'https://meetwith.com/invite/decline/123'
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 })
 
@@ -339,19 +404,12 @@ describe('email_helper - sendReceiptEmail', () => {
       description: 'Payment for meeting',
     }
 
-    jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
-      name: 'Test User',
-      email: 'user@example.com',
-      address: faker.datatype.uuid(),
-    } as any)
-
     const result = await sendReceiptEmail(
       'user@example.com',
-      receipt as any,
-      faker.datatype.uuid()
+      receipt as any
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 })
 
@@ -364,26 +422,24 @@ describe('email_helper - sendSubscriptionConfirmationEmail', () => {
       interval: 'month',
     }
 
-    const period = {
-      start: new Date(),
-      end: new Date(Date.now() + 30 * 24 * 3600000),
+    const account = {
+      email: 'user@example.com',
+      displayName: 'Test User',
     }
 
-    jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
-      name: 'Test User',
-      email: 'user@example.com',
-      address: faker.datatype.uuid(),
-    } as any)
+    const period = {
+      registered_at: new Date(),
+      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
+    }
 
     const result = await sendSubscriptionConfirmationEmail(
-      'user@example.com',
-      faker.datatype.uuid(),
-      plan as any,
+      account as any,
       period as any,
+      plan as any,
       PaymentProvider.STRIPE
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 
   it('should send subscription confirmation email for Crypto', async () => {
@@ -394,26 +450,24 @@ describe('email_helper - sendSubscriptionConfirmationEmail', () => {
       interval: 'month',
     }
 
-    const period = {
-      start: new Date(),
-      end: new Date(Date.now() + 30 * 24 * 3600000),
+    const account = {
+      email: 'user@example.com',
+      displayName: 'Test User',
     }
 
-    jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
-      name: 'Test User',
-      email: 'user@example.com',
-      address: faker.datatype.uuid(),
-    } as any)
+    const period = {
+      registered_at: new Date(),
+      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
+    }
 
     const result = await sendSubscriptionConfirmationEmail(
-      'user@example.com',
-      faker.datatype.uuid(),
-      plan as any,
+      account as any,
       period as any,
+      plan as any,
       PaymentProvider.CRYPTO
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 })
 
@@ -426,25 +480,24 @@ describe('email_helper - sendSubscriptionCancelledEmail', () => {
       interval: 'month',
     }
 
-    const period = {
-      start: new Date(),
-      end: new Date(Date.now() + 30 * 24 * 3600000),
+    const account = {
+      email: 'user@example.com',
+      displayName: 'Test User',
     }
 
-    jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
-      name: 'Test User',
-      email: 'user@example.com',
-      address: faker.datatype.uuid(),
-    } as any)
+    const period = {
+      registered_at: new Date(),
+      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
+    }
 
     const result = await sendSubscriptionCancelledEmail(
-      'user@example.com',
-      faker.datatype.uuid(),
+      account as any,
+      period as any,
       plan as any,
-      period as any
+      PaymentProvider.STRIPE
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 })
 
@@ -457,19 +510,23 @@ describe('email_helper - sendSubscriptionExpiredEmail', () => {
       interval: 'month',
     }
 
-    jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
-      name: 'Test User',
+    const account = {
       email: 'user@example.com',
-      address: faker.datatype.uuid(),
-    } as any)
+      displayName: 'Test User',
+    }
+
+    const period = {
+      registered_at: new Date(),
+      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
+    }
 
     const result = await sendSubscriptionExpiredEmail(
-      'user@example.com',
-      faker.datatype.uuid(),
+      account as any,
+      period as any,
       plan as any
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 })
 
@@ -482,45 +539,54 @@ describe('email_helper - sendSubscriptionRenewalDueEmail', () => {
       interval: 'month',
     }
 
-    const period = {
-      start: new Date(),
-      end: new Date(Date.now() + 30 * 24 * 3600000),
+    const account = {
+      email: 'user@example.com',
+      displayName: 'Test User',
     }
 
-    jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
-      name: 'Test User',
-      email: 'user@example.com',
-      address: faker.datatype.uuid(),
-    } as any)
+    const period = {
+      registered_at: new Date(),
+      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
+    }
 
     const result = await sendSubscriptionRenewalDueEmail(
-      'user@example.com',
-      faker.datatype.uuid(),
-      plan as any,
+      account as any,
       period as any,
+      plan as any,
       7
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 })
 
 describe('email_helper - sendCryptoExpiryReminderEmail', () => {
   it('should send crypto expiry reminder email', async () => {
-    jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
-      name: 'Test User',
+    const account = {
       email: 'user@example.com',
-      address: faker.datatype.uuid(),
-    } as any)
+      displayName: 'Test User',
+    }
+
+    const plan = {
+      name: 'Pro Plan',
+      price: 29.99,
+      currency: 'USD',
+      interval: 'month',
+    }
+
+    const period = {
+      registered_at: new Date(),
+      expiry_time: new Date(Date.now() + 7 * 24 * 3600000),
+    }
 
     const result = await sendCryptoExpiryReminderEmail(
-      'user@example.com',
-      faker.datatype.uuid(),
-      new Date(Date.now() + 7 * 24 * 3600000),
+      account as any,
+      period as any,
+      plan as any,
       7
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 })
 
@@ -542,11 +608,11 @@ describe('email_helper - sendInvoiceEmail', () => {
 
     const result = await sendInvoiceEmail(
       'user@example.com',
-      invoice as any,
-      faker.datatype.uuid()
+      'Test User',
+      invoice as any
     )
 
-    expect(typeof result).toBe('boolean')
+    expect(result).toBeUndefined()
   })
 })
 
@@ -554,7 +620,6 @@ describe('email_helper - sendResetPinEmail', () => {
   it('should send reset PIN email', async () => {
     const result = await sendResetPinEmail(
       'user@example.com',
-      'Test User',
       'https://meetwith.com/reset/123456'
     )
 
@@ -566,7 +631,6 @@ describe('email_helper - sendChangeEmailEmail', () => {
   it('should send change email confirmation', async () => {
     const result = await sendChangeEmailEmail(
       'newemail@example.com',
-      'Test User',
       'https://meetwith.com/confirm/123456'
     )
 
@@ -577,8 +641,7 @@ describe('email_helper - sendChangeEmailEmail', () => {
 describe('email_helper - sendPinResetSuccessEmail', () => {
   it('should send PIN reset success email', async () => {
     const result = await sendPinResetSuccessEmail(
-      'user@example.com',
-      'Test User'
+      'user@example.com'
     )
 
     expect(typeof result).toBe('boolean')
@@ -589,8 +652,7 @@ describe('email_helper - sendEnablePinEmail', () => {
   it('should send enable PIN email', async () => {
     const result = await sendEnablePinEmail(
       'user@example.com',
-      'Test User',
-      '123456'
+      'https://meetwith.com/enable/123456'
     )
 
     expect(typeof result).toBe('boolean')
@@ -601,7 +663,6 @@ describe('email_helper - sendVerificationCodeEmail', () => {
   it('should send verification code email', async () => {
     const result = await sendVerificationCodeEmail(
       'user@example.com',
-      'Test User',
       '123456'
     )
 
@@ -611,17 +672,16 @@ describe('email_helper - sendVerificationCodeEmail', () => {
 
 describe('email_helper - sendCryptoDebitEmail', () => {
   it('should send crypto debit notification email', async () => {
-    jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
-      name: 'Test User',
-      email: 'user@example.com',
-      address: faker.datatype.uuid(),
-    } as any)
-
     const result = await sendCryptoDebitEmail(
       'user@example.com',
-      faker.datatype.uuid(),
-      '0.5 ETH',
-      'Subscription Payment'
+      {
+        amount: 0.5,
+        currency: 'ETH',
+        recipientName: 'Recipient User',
+        transactionId: faker.datatype.uuid(),
+        transactionDate: new Date().toISOString(),
+        userName: 'Test User',
+      }
     )
 
     expect(typeof result).toBe('boolean')
@@ -630,17 +690,16 @@ describe('email_helper - sendCryptoDebitEmail', () => {
 
 describe('email_helper - sendSessionBookingIncomeEmail', () => {
   it('should send session booking income email', async () => {
-    jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
-      name: 'Test User',
-      email: 'user@example.com',
-      address: faker.datatype.uuid(),
-    } as any)
-
     const result = await sendSessionBookingIncomeEmail(
       'user@example.com',
-      faker.datatype.uuid(),
-      '50.00 USD',
-      'Test User Booked'
+      {
+        amount: 50.0,
+        currency: 'USD',
+        senderName: 'Sender User',
+        transactionId: faker.datatype.uuid(),
+        transactionDate: new Date().toISOString(),
+        userName: 'Test User',
+      }
     )
 
     expect(typeof result).toBe('boolean')
@@ -651,8 +710,9 @@ describe('email_helper - sendEmailChangeSuccessEmail', () => {
   it('should send email change success notification', async () => {
     const result = await sendEmailChangeSuccessEmail(
       'oldemail@example.com',
-      'Test User',
-      'newemail@example.com'
+      'oldemail@example.com',
+      'newemail@example.com',
+      'Test User'
     )
 
     expect(typeof result).toBe('boolean')
