@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react'
-import dayOfMonth from '@/components/input-date-picker/components/dayOfMonth'
+import { DayOfMonth as dayOfMonth } from '@/components/input-date-picker/components/dayOfMonth'
 
 describe('dayOfMonth', () => {
   it('renders without crashing', () => {

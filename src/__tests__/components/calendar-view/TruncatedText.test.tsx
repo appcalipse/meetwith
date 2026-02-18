@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react'
-import TruncatedText from '@/components/calendar-view/TruncatedText'
+import { TruncatedText } from '@/components/calendar-view/TruncatedText'
 
 describe('Calendar TruncatedText', () => {
   it('renders without crashing', () => {

@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react'
-import calendarPanel from '@/components/input-date-picker/components/calendarPanel'
+import { CalendarPanel as calendarPanel } from '@/components/input-date-picker/components/calendarPanel'
 
 describe('calendarPanel', () => {
   it('renders without crashing', () => {

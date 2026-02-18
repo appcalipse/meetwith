@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 
-import ConnectModal from '@/components/nav/ConnectModal'
+import { ConnectModal } from '@/components/nav/ConnectModal'
 
 describe('ConnectModal', () => {
   it('renders when open', () => {
