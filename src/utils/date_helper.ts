@@ -175,10 +175,10 @@ export const parseMonthAvailabilitiesToDate = (
   const slots = []
   let currentWeek = DateTime.fromJSDate(startDate, {
     zone: ownerTimezone,
-  }).startOf('month') // Start of first week
+  }).startOf('week') // Start of the week containing startDate
   const endWeek = DateTime.fromJSDate(endDate, {
     zone: ownerTimezone,
-  }).endOf('month') // End of last week
+  }).endOf('week') // End of the week containing endDate
 
   while (currentWeek <= endWeek) {
     for (const availability of availabilities) {
