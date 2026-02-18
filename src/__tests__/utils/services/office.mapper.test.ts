@@ -1,4 +1,4 @@
-import * as office_mapperService from '@/utils/services/office_mapper'
+import * as office_mapperService from '@/utils/services/office.mapper'
 
 describe('office_mapper service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('office_mapper service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/office_mapper')).not.toThrow()
+    expect(() => require('@/utils/services/office.mapper')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('office_mapper service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/office_mapper')
-    const second = require('@/utils/services/office_mapper')
+    const first = require('@/utils/services/office.mapper')
+    const second = require('@/utils/services/office.mapper')
     expect(first).toEqual(second)
   })
 

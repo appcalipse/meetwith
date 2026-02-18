@@ -1,4 +1,4 @@
-import * as masterGoogleServiceService from '@/utils/services/master_google.service'
+import * as masterGoogleServiceService from '@/utils/services/master.google.service'
 
 describe('master_google.service service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('master_google.service service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/master_google.service')).not.toThrow()
+    expect(() => require('@/utils/services/master.google.service')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('master_google.service service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/master_google.service')
-    const second = require('@/utils/services/master_google.service')
+    const first = require('@/utils/services/master.google.service')
+    const second = require('@/utils/services/master.google.service')
     expect(first).toEqual(second)
   })
 

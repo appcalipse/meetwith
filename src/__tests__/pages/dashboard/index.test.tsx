@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react'
 import { NextPageContext } from 'next'
-import Dashboard from '../index'
+import Dashboard from '@/pages/dashboard/index'
 import redirectTo from '@/utils/redirect'
 
 jest.mock('@/session/forceAuthenticationCheck', () => ({

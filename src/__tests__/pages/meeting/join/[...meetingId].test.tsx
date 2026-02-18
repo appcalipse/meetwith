@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/router'
 import * as Sentry from '@sentry/nextjs'
-import JoinMeetingPage from '../[...meetingId]'
+import JoinMeetingPage from '@/pages/meeting/join/[...meetingId]'
 import { getConferenceMeeting } from '@/utils/api_helper'
 import { useLogin } from '@/session/login'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'

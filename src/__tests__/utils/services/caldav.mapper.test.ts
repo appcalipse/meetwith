@@ -1,4 +1,4 @@
-import * as caldav_mapperService from '@/utils/services/caldav_mapper'
+import * as caldav_mapperService from '@/utils/services/caldav.mapper'
 
 describe('caldav_mapper service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('caldav_mapper service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/caldav_mapper')).not.toThrow()
+    expect(() => require('@/utils/services/caldav.mapper')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('caldav_mapper service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/caldav_mapper')
-    const second = require('@/utils/services/caldav_mapper')
+    const first = require('@/utils/services/caldav.mapper')
+    const second = require('@/utils/services/caldav.mapper')
     expect(first).toEqual(second)
   })
 

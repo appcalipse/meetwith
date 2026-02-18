@@ -1,4 +1,4 @@
-import * as telegram_helperService from '@/utils/services/telegram_helper'
+import * as telegram_helperService from '@/utils/services/telegram.helper'
 
 describe('telegram_helper service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('telegram_helper service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/telegram_helper')).not.toThrow()
+    expect(() => require('@/utils/services/telegram.helper')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('telegram_helper service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/telegram_helper')
-    const second = require('@/utils/services/telegram_helper')
+    const first = require('@/utils/services/telegram.helper')
+    const second = require('@/utils/services/telegram.helper')
     expect(first).toEqual(second)
   })
 

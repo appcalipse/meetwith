@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react'
-import { useDebounceValue } from '../useDebounceValue'
+import { useDebounceValue } from '@/hooks/useDebounceValue'
 
-jest.mock('../useDebounceCallback', () => ({
+jest.mock('@/hooks/useDebounceCallback', () => ({
   useDebounceCallback: jest.fn((fn, delay, options) => {
     let timeoutId: NodeJS.Timeout | null = null
     const debouncedFn = (...args: any[]) => {

@@ -1,4 +1,4 @@
-import * as calendar_helperService from '@/utils/services/calendar_helper'
+import * as calendar_helperService from '@/utils/services/calendar.helper'
 
 describe('calendar_helper service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('calendar_helper service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/calendar_helper')).not.toThrow()
+    expect(() => require('@/utils/services/calendar.helper')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('calendar_helper service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/calendar_helper')
-    const second = require('@/utils/services/calendar_helper')
+    const first = require('@/utils/services/calendar.helper')
+    const second = require('@/utils/services/calendar.helper')
     expect(first).toEqual(second)
   })
 

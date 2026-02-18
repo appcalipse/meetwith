@@ -6,7 +6,7 @@ import {
   isValidUrl,
   isValidSlug,
   isEmptyString,
-} from '../validations'
+} from '@/utils/validations'
 
 describe('validations', () => {
   describe('isValidEmail', () => {

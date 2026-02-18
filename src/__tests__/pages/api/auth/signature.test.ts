@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import getDefaultSignature from '../signature/[address]'
+import getDefaultSignature from '@/pages/api/auth/signature/[address]'
 import { getAccountFromDB } from '@/utils/database'
 import { DEFAULT_MESSAGE } from '@/utils/constants'
 

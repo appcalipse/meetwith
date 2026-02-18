@@ -13,6 +13,8 @@ const esModules = [
   '@walletconnect',
   'viem',
   '@tanstack',
+  'uint8arrays',
+  '@mdx-js',
 ].join('|')
 
 // Add any custom config to be passed to Jest
@@ -52,6 +54,7 @@ const customJestConfig = {
     '^.+\\.(ts|tsx)?$': 'ts-jest',
   },
   moduleNameMapper: {
+    'swr': '<rootDir>/__mocks__/swr.js',
     '@/(.*)': 'src/$1',
     'swiper/react': 'swiper/react/swiper-react.js',
     'swiper/css': '<rootDir>/__mocks__/jestMock.js',

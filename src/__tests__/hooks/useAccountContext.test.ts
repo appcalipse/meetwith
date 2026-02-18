@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { useContext } from 'react'
-import useAccountContext from '../useAccountContext'
+import useAccountContext from '@/hooks/useAccountContext'
 import { AccountContext } from '@/providers/AccountProvider'
 
 jest.mock('react', () => ({

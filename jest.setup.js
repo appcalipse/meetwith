@@ -356,6 +356,7 @@ jest.mock('@chakra-ui/react', () => {
     useClipboard: jest.fn(() => ({ onCopy: jest.fn(), hasCopied: false, value: '' })),
     
     // Special functions and utilities
+    extendTheme: jest.fn((config) => config || {}),
     keyframes: jest.fn((...args) => ''),
     css: jest.fn(),
     chakra: jest.fn(),
@@ -704,6 +705,7 @@ jest.mock('thirdweb/react', () => ({
   useActiveWallet: jest.fn(() => null),
   useActiveWalletConnectionStatus: jest.fn(() => 'disconnected'),
   useDisconnect: jest.fn(() => ({ disconnect: jest.fn() })),
+  useConnect: jest.fn(() => ({ connect: jest.fn() })),
   darkTheme: jest.fn(),
   lightTheme: jest.fn(),
 }), { virtual: true })

@@ -1,4 +1,4 @@
-import * as rsvp_queueWorker from '@/utils/workers/rsvp_queue'
+import * as rsvp_queueWorker from '@/utils/workers/rsvp.queue'
 
 describe('rsvp_queue worker', () => {
   it('exports worker', () => {
@@ -14,7 +14,7 @@ describe('rsvp_queue worker', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/workers/rsvp_queue')).not.toThrow()
+    expect(() => require('@/utils/workers/rsvp.queue')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('rsvp_queue worker', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/workers/rsvp_queue')
-    const second = require('@/utils/workers/rsvp_queue')
+    const first = require('@/utils/workers/rsvp.queue')
+    const second = require('@/utils/workers/rsvp.queue')
     expect(first).toEqual(second)
   })
 

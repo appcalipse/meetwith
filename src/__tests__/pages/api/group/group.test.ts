@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import handler from '../[group_id]/index'
+import handler from '@/pages/api/group/[group_id]/index'
 import { getGroupName, initDB } from '@/utils/database'
 import { GroupNotExistsError, NotGroupMemberError } from '@/utils/errors'
 

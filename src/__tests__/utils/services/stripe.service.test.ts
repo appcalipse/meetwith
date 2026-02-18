@@ -1,4 +1,4 @@
-import * as stripe_serviceService from '@/utils/services/stripe_service'
+import * as stripe_serviceService from '@/utils/services/stripe.service'
 
 describe('stripe_service service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('stripe_service service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/stripe_service')).not.toThrow()
+    expect(() => require('@/utils/services/stripe.service')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('stripe_service service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/stripe_service')
-    const second = require('@/utils/services/stripe_service')
+    const first = require('@/utils/services/stripe.service')
+    const second = require('@/utils/services/stripe.service')
     expect(first).toEqual(second)
   })
 

@@ -1,4 +1,4 @@
-import * as retry_serviceService from '@/utils/services/retry_service'
+import * as retry_serviceService from '@/utils/services/retry.service'
 
 describe('retry_service service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('retry_service service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/retry_service')).not.toThrow()
+    expect(() => require('@/utils/services/retry.service')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('retry_service service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/retry_service')
-    const second = require('@/utils/services/retry_service')
+    const first = require('@/utils/services/retry.service')
+    const second = require('@/utils/services/retry.service')
     expect(first).toEqual(second)
   })
 

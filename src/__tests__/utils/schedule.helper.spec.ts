@@ -9,11 +9,11 @@ import {
   getMergedParticipants,
 } from '@/utils/schedule.helper'
 
-jest.mock('@utils/api_helper', () => ({
+jest.mock('@/utils/api_helper', () => ({
   getAccount: jest.fn(),
 }))
 
-jest.mock('@utils/rpc_helper_front', () => ({
+jest.mock('@/utils/rpc_helper_front', () => ({
   getAddressFromDomain: jest.fn(),
 }))
 

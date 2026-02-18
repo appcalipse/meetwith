@@ -1,4 +1,4 @@
-import * as connected_calendars_factoryService from '@/utils/services/connected_calendars_factory'
+import * as connected_calendars_factoryService from '@/utils/services/connected_calendars.factory'
 
 describe('connected_calendars_factory service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('connected_calendars_factory service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/connected_calendars_factory')).not.toThrow()
+    expect(() => require('@/utils/services/connected_calendars.factory')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('connected_calendars_factory service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/connected_calendars_factory')
-    const second = require('@/utils/services/connected_calendars_factory')
+    const first = require('@/utils/services/connected_calendars.factory')
+    const second = require('@/utils/services/connected_calendars.factory')
     expect(first).toEqual(second)
   })
 

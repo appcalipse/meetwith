@@ -1,4 +1,4 @@
-import * as poap_helperService from '@/utils/services/poap_helper'
+import * as poap_helperService from '@/utils/services/poap.helper'
 
 describe('poap_helper service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('poap_helper service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/poap_helper')).not.toThrow()
+    expect(() => require('@/utils/services/poap.helper')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('poap_helper service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/poap_helper')
-    const second = require('@/utils/services/poap_helper')
+    const first = require('@/utils/services/poap.helper')
+    const second = require('@/utils/services/poap.helper')
     expect(first).toEqual(second)
   })
 

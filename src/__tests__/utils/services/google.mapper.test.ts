@@ -1,4 +1,4 @@
-import * as google_mapperService from '@/utils/services/google_mapper'
+import * as google_mapperService from '@/utils/services/google.mapper'
 
 describe('google_mapper service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('google_mapper service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/google_mapper')).not.toThrow()
+    expect(() => require('@/utils/services/google.mapper')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('google_mapper service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/google_mapper')
-    const second = require('@/utils/services/google_mapper')
+    const first = require('@/utils/services/google.mapper')
+    const second = require('@/utils/services/google.mapper')
     expect(first).toEqual(second)
   })
 
