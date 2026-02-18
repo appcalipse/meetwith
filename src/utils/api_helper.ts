@@ -92,6 +92,8 @@ import {
   QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
+  UpdateParticipantAvailabilityRequest,
+  UpdateQuickPollParticipantAvailabilityOptions,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
@@ -2510,15 +2512,20 @@ export const cancelQuickPoll = async (
 export const updatePollParticipantAvailability = async (
   participantId: string,
   availableSlots: AvailabilitySlot[],
-  timezone?: string
+  timezone?: string,
+  options?: UpdateQuickPollParticipantAvailabilityOptions
 ) => {
+  const body: UpdateParticipantAvailabilityRequest = {
+    available_slots: availableSlots,
+    timezone,
+  }
+  if (options?.availability_block_ids !== undefined) {
+    body.availability_block_ids = options.availability_block_ids
+  }
   return await internalFetch(
     `/quickpoll/participants/${participantId}/availability`,
     'PATCH',
-    {
-      available_slots: availableSlots,
-      timezone,
-    }
+    body
   )
 }
 
