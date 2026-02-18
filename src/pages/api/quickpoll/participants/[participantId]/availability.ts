@@ -17,20 +17,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: 'Participant ID is required' })
   }
 
-  const { available_slots, timezone }: UpdateParticipantAvailabilityRequest =
-    body
+  const {
+    available_slots,
+    timezone,
+    availability_block_ids,
+  }: UpdateParticipantAvailabilityRequest = body
 
-  if (!available_slots || !Array.isArray(available_slots)) {
-    return res
-      .status(400)
-      .json({ error: 'Available slots must be provided as an array' })
+  const hasBlockIds =
+    availability_block_ids &&
+    Array.isArray(availability_block_ids) &&
+    availability_block_ids.filter(Boolean).length > 0
+
+  if (!hasBlockIds && (!available_slots || !Array.isArray(available_slots))) {
+    return res.status(400).json({
+      error:
+        'Either available_slots or availability_block_ids must be provided',
+    })
   }
 
   try {
     const participant = await updateQuickPollParticipantAvailability(
       participantId,
-      available_slots,
-      timezone
+      hasBlockIds ? [] : available_slots,
+      timezone,
+      hasBlockIds ? { availability_block_ids } : undefined
     )
 
     return res.status(200).json(participant)

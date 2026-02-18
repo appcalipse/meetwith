@@ -191,27 +191,32 @@ export function PollAvailabilityModal({
   const toggleInputMode = () => setUseDirectInput(prev => !prev)
 
   const handleSave = async () => {
-    const matchingBlocks = findMatchingAvailabilityBlocks(
-      availableBlocks,
-      timezone,
-      availabilities
-    )
-    const result: PollAvailabilityResult =
-      matchingBlocks.length > 0
-        ? { type: 'blocks', blockIds: matchingBlocks.map(b => b.id) }
-        : {
-            type: 'custom',
-            custom: {
-              timezone,
-              weekly_availability: availabilities.map(a => ({
-                weekday: a.weekday,
-                ranges: a.ranges.map(r => ({
-                  start: r.start || '',
-                  end: r.end || '',
+    let result: PollAvailabilityResult
+    if (selectedBlockIds.length > 0) {
+      result = { type: 'blocks', blockIds: selectedBlockIds }
+    } else {
+      const matchingBlocks = findMatchingAvailabilityBlocks(
+        availableBlocks,
+        timezone,
+        availabilities
+      )
+      result =
+        matchingBlocks.length > 0
+          ? { type: 'blocks', blockIds: matchingBlocks.map(b => b.id) }
+          : {
+              type: 'custom',
+              custom: {
+                timezone,
+                weekly_availability: availabilities.map(a => ({
+                  weekday: a.weekday,
+                  ranges: a.ranges.map(r => ({
+                    start: r.start || '',
+                    end: r.end || '',
+                  })),
                 })),
-              })),
-            },
-          }
+              },
+            }
+    }
     setIsSaving(true)
     try {
       await Promise.resolve(onSave(result))

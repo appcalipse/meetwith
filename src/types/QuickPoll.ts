@@ -77,6 +77,8 @@ export interface QuickPollParticipant {
   available_slots: AvailabilitySlot[]
   timezone?: string
   participant_type: QuickPollParticipantType
+  availability_block_ids?: string[]
+  availability_block_titles?: string[]
 }
 
 export interface QuickPollJoinContext {
@@ -181,9 +183,14 @@ export interface QuickPollParticipantUpdateFields {
   participant_type?: QuickPollParticipantType
 }
 
+export interface UpdateQuickPollParticipantAvailabilityOptions {
+  availability_block_ids?: string[] | null
+}
+
 export interface UpdateParticipantAvailabilityRequest {
   available_slots: AvailabilitySlot[]
   timezone?: string
+  availability_block_ids?: string[] | null
 }
 
 export interface SaveParticipantCalendarRequest {

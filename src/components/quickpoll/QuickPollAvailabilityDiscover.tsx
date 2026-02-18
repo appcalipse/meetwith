@@ -679,21 +679,27 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     participantId: string
   ): Promise<void> => {
     const blocks = availabilityBlocks || []
-    const availabilitySlots = convertPollResultToAvailabilitySlots(
-      result,
-      blocks
-    )
     const timezone =
       result.type === 'custom'
         ? result.custom.timezone
         : result.blockIds.length > 0
         ? blocks.find(b => result.blockIds.includes(b.id))?.timezone
         : currentAccount?.preferences?.timezone || 'UTC'
-    await updatePollParticipantAvailability(
-      participantId,
-      availabilitySlots,
-      timezone
-    )
+    if (result.type === 'blocks' && result.blockIds.length > 0) {
+      await updatePollParticipantAvailability(participantId, [], timezone, {
+        availability_block_ids: result.blockIds,
+      })
+    } else {
+      const availabilitySlots = convertPollResultToAvailabilitySlots(
+        result,
+        blocks
+      )
+      await updatePollParticipantAvailability(
+        participantId,
+        availabilitySlots,
+        timezone
+      )
+    }
   }
 
   const handleSavingPollAvailabilityForJoiningPoll = async (
