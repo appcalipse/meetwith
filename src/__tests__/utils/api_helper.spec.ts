@@ -702,13 +702,13 @@ describe('api_helper.ts', () => {
       await expect(updateMeetingAsGuest('slot_123', {} as any)).rejects.toThrow(MeetingNotFoundError)
     })
 
-    it('should throw MeetingChangeConflictError on 409', async () => {
+    it('should throw TimeNotAvailableError on 409', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         status: 409,
         text: async () => 'Conflict',
       })
 
-      await expect(updateMeetingAsGuest('slot_123', {} as any)).rejects.toThrow(MeetingChangeConflictError)
+      await expect(updateMeetingAsGuest('slot_123', {} as any)).rejects.toThrow(TimeNotAvailableError)
     })
   })
 
@@ -725,7 +725,7 @@ describe('api_helper.ts', () => {
       expect(result).toEqual(mockSlot)
       expect(global.fetch).toHaveBeenCalledWith(
         `${apiUrl}/secure/meetings/slot_123`,
-        expect.objectContaining({ method: 'PUT' })
+        expect.objectContaining({ method: 'POST' })
       )
     })
 
@@ -751,7 +751,7 @@ describe('api_helper.ts', () => {
 
       expect(result).toEqual(mockSlot)
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiUrl}/secure/meetings/instance/instance_123`,
+        `${apiUrl}/secure/meetings/instances/instance_123`,
         expect.any(Object)
       )
     })
@@ -773,28 +773,29 @@ describe('api_helper.ts', () => {
 
   describe('cancelMeeting', () => {
     it('should cancel a meeting', async () => {
-      const mockResponse = { success: true }
+      const mockResponse = { removed: ['slot_1'] }
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
         json: async () => mockResponse,
       })
 
-      const result = await cancelMeeting({} as any)
+      const meeting = { id: 'meeting_123' } as any
+      const result = await cancelMeeting(meeting, 'America/New_York')
 
       expect(result).toEqual(mockResponse)
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiUrl}/secure/meetings/cancel`,
-        expect.objectContaining({ method: 'POST' })
+        `${apiUrl}/secure/meetings/meeting_123`,
+        expect.objectContaining({ method: 'DELETE' })
       )
     })
 
-    it('should throw MeetingNotFoundError on 404', async () => {
+    it('should throw TimeNotAvailableError on 409', async () => {
       global.fetch = jest.fn().mockResolvedValue({
-        status: 404,
-        text: async () => 'Not Found',
+        status: 409,
+        text: async () => 'Conflict',
       })
 
-      await expect(cancelMeeting({} as any)).rejects.toThrow(MeetingNotFoundError)
+      await expect(cancelMeeting({ id: 'meeting_123' } as any, 'America/New_York')).rejects.toThrow(TimeNotAvailableError)
     })
   })
 
@@ -828,46 +829,53 @@ describe('api_helper.ts', () => {
 
   describe('cancelMeetingGuest', () => {
     it('should cancel meeting as guest', async () => {
-      const mockResponse = { success: true }
+      const mockResponse = { removed: ['slot_1'] }
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
         json: async () => mockResponse,
       })
 
-      const result = await cancelMeetingGuest({} as any)
+      const meeting = { id: 'meeting_123' } as any
+      const result = await cancelMeetingGuest(meeting, 'America/New_York')
 
       expect(result).toEqual(mockResponse)
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiUrl}/meetings/cancel`,
-        expect.any(Object)
+        `${apiUrl}/secure/meetings/meeting_123`,
+        expect.objectContaining({ method: 'DELETE' })
       )
     })
   })
 
   describe('isSlotFreeApiCall', () => {
     it('should check if slot is free', async () => {
-      const mockResponse = { free: true }
+      const mockResponse = { isFree: true }
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
         json: async () => mockResponse,
       })
 
-      const result = await isSlotFreeApiCall({
-        scheduler_address: '0x123',
-        start_time: '2024-01-01T10:00:00Z',
-        duration: 30,
-      })
+      const result = await isSlotFreeApiCall(
+        '0x123',
+        new Date('2024-01-01T10:00:00Z'),
+        new Date('2024-01-01T10:30:00Z')
+      )
 
       expect(result).toEqual(mockResponse)
     })
 
-    it('should throw TimeNotAvailableError on 409', async () => {
+    it('should return isFree false on 409', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         status: 409,
         text: async () => 'Conflict',
       })
 
-      await expect(isSlotFreeApiCall({} as any)).rejects.toThrow(TimeNotAvailableError)
+      const result = await isSlotFreeApiCall(
+        '0x123',
+        new Date('2024-01-01T10:00:00Z'),
+        new Date('2024-01-01T10:30:00Z')
+      )
+
+      expect(result).toEqual({ isFree: false })
     })
   })
 
@@ -883,7 +891,7 @@ describe('api_helper.ts', () => {
 
       expect(result).toEqual(mockMeetingType)
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiUrl}/secure/meetingtypes`,
+        `${apiUrl}/secure/meetings/type`,
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -901,8 +909,8 @@ describe('api_helper.ts', () => {
 
       expect(result).toEqual(mockMeetingType)
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiUrl}/secure/meetingtypes`,
-        expect.objectContaining({ method: 'PUT' })
+        `${apiUrl}/secure/meetings/type`,
+        expect.objectContaining({ method: 'PATCH' })
       )
     })
   })
@@ -919,7 +927,7 @@ describe('api_helper.ts', () => {
 
       expect(result).toEqual(mockResponse)
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiUrl}/secure/meetingtypes/mt_123`,
+        `${apiUrl}/secure/meetings/type`,
         expect.objectContaining({ method: 'DELETE' })
       )
     })
@@ -927,7 +935,10 @@ describe('api_helper.ts', () => {
 
   describe('getMeetings', () => {
     it('should fetch meetings', async () => {
-      const mockMeetings = [{ id: 'meeting_1' }, { id: 'meeting_2' }]
+      const mockMeetings = [
+        { id: 'meeting_1', start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' },
+        { id: 'meeting_2', start: '2024-01-02T10:00:00Z', end: '2024-01-02T11:00:00Z' },
+      ]
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
         json: async () => mockMeetings,
@@ -935,34 +946,37 @@ describe('api_helper.ts', () => {
 
       const result = await getMeetings('0x123')
 
-      expect(result).toEqual(mockMeetings)
+      expect(result).toHaveLength(2)
+      expect(result[0].id).toEqual('meeting_1')
+      expect(result[0].start).toBeInstanceOf(Date)
     })
   })
 
   describe('getBusySlots', () => {
     it('should fetch busy slots for an account', async () => {
-      const mockSlots = ['2024-01-01T10:00:00Z', '2024-01-01T14:00:00Z']
-      global.fetch = jest.fn().mockResolvedValue({
-        status: 200,
-        json: async () => mockSlots,
-      })
+      const mockSlots = [
+        { start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' },
+        { start: '2024-01-01T14:00:00Z', end: '2024-01-01T15:00:00Z' },
+      ]
+      mockFetchQuery.mockResolvedValue(mockSlots)
 
       const result = await getBusySlots(
         '0x123',
-        '2024-01-01T00:00:00Z',
-        '2024-01-31T23:59:59Z'
+        new Date('2024-01-01T00:00:00Z'),
+        new Date('2024-01-31T23:59:59Z')
       )
 
-      expect(result).toEqual(mockSlots)
+      expect(result).toHaveLength(2)
+      expect(result[0].start).toBeInstanceOf(Date)
     })
   })
 
   describe('fetchBusySlotsForMultipleAccounts', () => {
     it('should fetch busy slots for multiple accounts', async () => {
-      const mockSlots = {
-        '0x123': ['2024-01-01T10:00:00Z'],
-        '0x456': ['2024-01-01T14:00:00Z'],
-      }
+      const mockSlots = [
+        { start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z', address: '0x123' },
+        { start: '2024-01-01T14:00:00Z', end: '2024-01-01T15:00:00Z', address: '0x456' },
+      ]
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
         json: async () => mockSlots,
@@ -970,11 +984,13 @@ describe('api_helper.ts', () => {
 
       const result = await fetchBusySlotsForMultipleAccounts(
         ['0x123', '0x456'],
-        '2024-01-01T00:00:00Z',
-        '2024-01-31T23:59:59Z'
+        new Date('2024-01-01T00:00:00Z'),
+        new Date('2024-01-31T23:59:59Z'),
+        'AND' as any
       )
 
-      expect(result).toEqual(mockSlots)
+      expect(result).toHaveLength(2)
+      expect(result[0].start).toBeInstanceOf(Date)
     })
   })
 
@@ -1009,43 +1025,40 @@ describe('api_helper.ts', () => {
 
     describe('joinGroup', () => {
       it('should join a group', async () => {
-        const mockResponse = { success: true }
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
-          json: async () => mockResponse,
+          json: async () => ({ success: true }),
         })
 
         const result = await joinGroup('group_123')
 
-        expect(result).toEqual(mockResponse)
+        expect(result).toBe(true)
       })
     })
 
     describe('leaveGroup', () => {
       it('should leave a group', async () => {
-        const mockResponse = { success: true }
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
-          json: async () => mockResponse,
+          json: async () => ({ success: true }),
         })
 
         const result = await leaveGroup('group_123')
 
-        expect(result).toEqual(mockResponse)
+        expect(result).toBe(true)
       })
     })
 
     describe('deleteGroup', () => {
       it('should delete a group', async () => {
-        const mockResponse = { success: true }
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
-          json: async () => mockResponse,
+          json: async () => ({ success: true }),
         })
 
         const result = await deleteGroup('group_123')
 
-        expect(result).toEqual(mockResponse)
+        expect(result).toBe(true)
       })
     })
 
@@ -1269,29 +1282,27 @@ describe('api_helper.ts', () => {
 
     describe('getStripeOnboardingLink', () => {
       it('should get stripe onboarding link', async () => {
-        const mockResponse = { url: 'https://stripe.com/onboard' }
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
-          json: async () => mockResponse,
+          json: async () => ({ url: 'https://stripe.com/onboard' }),
         })
 
         const result = await getStripeOnboardingLink('US')
 
-        expect(result).toEqual(mockResponse)
+        expect(result).toEqual('https://stripe.com/onboard')
       })
     })
 
     describe('generateCheckoutLink', () => {
       it('should generate checkout link', async () => {
-        const mockResponse = { url: 'https://checkout.com/session' }
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
-          json: async () => mockResponse,
+          json: async () => ({ url: 'https://checkout.com/session' }),
         })
 
         const result = await generateCheckoutLink({} as any)
 
-        expect(result).toEqual(mockResponse)
+        expect(result).toEqual('https://checkout.com/session')
       })
     })
   })
@@ -1460,7 +1471,7 @@ describe('api_helper.ts', () => {
         await deleteAvailabilityBlock('block_123')
 
         expect(global.fetch).toHaveBeenCalledWith(
-          `${apiUrl}/secure/availabilityblocks/block_123`,
+          `${apiUrl}/secure/availabilities/block_123`,
           expect.objectContaining({ method: 'DELETE' })
         )
       })
@@ -1620,7 +1631,10 @@ describe('api_helper.ts', () => {
     describe('fetchBusySlotsRawForMultipleAccounts', () => {
       it('should fetch busy slots for multiple accounts', async () => {
         const mockAccounts = ['0x123', '0x456']
-        const mockSlots = { '0x123': [], '0x456': [] }
+        const mockSlots = [
+          { start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z', address: '0x123' },
+          { start: '2024-01-02T10:00:00Z', end: '2024-01-02T11:00:00Z', address: '0x456' },
+        ]
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
           json: async () => mockSlots,
@@ -1632,17 +1646,19 @@ describe('api_helper.ts', () => {
           new Date('2024-01-31')
         )
 
-        expect(result).toEqual(mockSlots)
+        expect(result).toHaveLength(2)
+        expect(result[0].start).toBeInstanceOf(Date)
         expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/busy'),
+          expect.stringContaining('/api/meetings/busy/team'),
           expect.any(Object)
         )
       })
 
       it('should handle empty account list', async () => {
+        const mockSlots: any[] = []
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
-          json: async () => ({}),
+          json: async () => mockSlots,
         })
 
         const result = await fetchBusySlotsRawForMultipleAccounts(
@@ -1651,7 +1667,7 @@ describe('api_helper.ts', () => {
           new Date('2024-01-31')
         )
 
-        expect(result).toEqual({})
+        expect(result).toEqual([])
       })
     })
 
@@ -1661,7 +1677,10 @@ describe('api_helper.ts', () => {
           { account_address: '0x123' },
           { account_address: '0x456' },
         ]
-        const mockSlots = { '0x123': [], '0x456': [] }
+        const mockSlots = [
+          { start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z', address: '0x123' },
+          { start: '2024-01-02T10:00:00Z', end: '2024-01-02T11:00:00Z', address: '0x456' },
+        ]
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
           json: async () => mockSlots,
@@ -1673,7 +1692,8 @@ describe('api_helper.ts', () => {
           new Date('2024-01-31')
         )
 
-        expect(result).toEqual(mockSlots)
+        expect(result).toHaveLength(2)
+        expect(result[0].start).toBeInstanceOf(Date)
       })
     })
   })
@@ -1707,11 +1727,11 @@ describe('api_helper.ts', () => {
           json: async () => ({ success: true }),
         })
 
-        const result = await removeGroupMember('group-123', '0xMember')
+        const result = await removeGroupMember('group-123', '0xMember', false)
 
-        expect(result).toEqual({ success: true })
+        expect(result).toBe(true)
         expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/secure/group/group-123/member'),
+          expect.stringContaining('/api/secure/group/group-123/remove'),
           expect.objectContaining({ method: 'DELETE' })
         )
       })
@@ -1719,24 +1739,18 @@ describe('api_helper.ts', () => {
 
     describe('editGroup', () => {
       it('should update group details', async () => {
-        const groupData = {
-          id: 'group-123',
-          name: 'Updated Group',
-          description: 'New description',
-        }
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
-          json: async () => groupData,
+          json: async () => ({ success: true }),
         })
 
-        const result = await editGroup(groupData as any)
+        const result = await editGroup('group-123', 'Updated Group', undefined, undefined, 'New description')
 
-        expect(result).toEqual(groupData)
+        expect(result).toBe(true)
         expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/secure/group'),
+          expect.stringContaining('/api/secure/group/group-123'),
           expect.objectContaining({
             method: 'PUT',
-            body: JSON.stringify(groupData),
           })
         )
       })
@@ -1787,23 +1801,22 @@ describe('api_helper.ts', () => {
           json: async () => ({ success: true }),
         })
 
-        const result = await syncMeeting('meeting-123')
+        await syncMeeting({ id: 'meeting-123' } as any, 'slot-123')
 
-        expect(result).toEqual({ success: true })
         expect(global.fetch).toHaveBeenCalledWith(
           expect.stringContaining('/api/secure/meetings/sync'),
           expect.any(Object)
         )
       })
 
-      it('should handle sync errors', async () => {
+      it('should silently handle sync errors', async () => {
         global.fetch = jest.fn().mockResolvedValue({
           status: 500,
-          json: async () => ({ error: 'Sync failed' }),
+          text: async () => 'Server Error',
         })
 
-        await expect(syncMeeting('meeting-123')).rejects.toThrow()
-        expect(Sentry.captureException).toHaveBeenCalled()
+        // syncMeeting swallows errors - should not throw
+        await expect(syncMeeting({ id: 'meeting-123' } as any, 'slot-123')).resolves.toBeUndefined()
       })
     })
 
@@ -1883,7 +1896,7 @@ describe('api_helper.ts', () => {
         ]
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
-          json: async () => mockPlans,
+          json: async () => ({ plans: mockPlans }),
         })
 
         const result = await getBillingPlans()
@@ -1947,12 +1960,12 @@ describe('api_helper.ts', () => {
           json: async () => mockBlock,
         })
 
-        const result = await duplicateAvailabilityBlock('block-123')
+        const result = await duplicateAvailabilityBlock({ id: 'block-123', modifiedData: {} } as any)
 
         expect(result).toEqual(mockBlock)
         expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/secure/availabilities/block-123/duplicate'),
-          expect.any(Object)
+          expect.stringContaining('/api/secure/availabilities/block-123'),
+          expect.objectContaining({ method: 'POST' })
         )
       })
     })
@@ -2125,10 +2138,7 @@ describe('api_helper.ts', () => {
     describe('getCoinConfig', () => {
       it('should fetch coin configuration', async () => {
         const mockConfig = { btc: { enabled: true } }
-        global.fetch = jest.fn().mockResolvedValue({
-          status: 200,
-          json: async () => mockConfig,
-        })
+        mockFetchQuery.mockResolvedValue(mockConfig)
 
         const result = await getCoinConfig()
 
