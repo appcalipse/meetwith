@@ -760,12 +760,61 @@ jest.mock('next/font/google', () => ({
   Inter: () => ({ style: { fontFamily: 'Inter' } }),
 }))
 
-// Mock @chakra-ui/theme-tools
+// Mock @chakra-ui/theme-tools with all commonly used exports
 jest.mock('@chakra-ui/theme-tools', () => ({
   mode: jest.fn((light, dark) => light),
   createBreakpoints: jest.fn(),
-  transparentize: jest.fn(),
+  transparentize: jest.fn((color, opacity) => color),
+  cssVar: jest.fn((name, options) => ({
+    variable: `--chakra-${name}`,
+    reference: `var(--chakra-${name})`,
+  })),
+  calc: jest.fn(() => ({
+    add: jest.fn().mockReturnThis(),
+    subtract: jest.fn().mockReturnThis(),
+    multiply: jest.fn().mockReturnThis(),
+    divide: jest.fn().mockReturnThis(),
+    negate: jest.fn().mockReturnThis(),
+    toString: jest.fn(() => '0'),
+  })),
+  isDecimal: jest.fn(() => false),
+  addPrefix: jest.fn((value, prefix) => `${prefix}-${value}`),
+  toVarRef: jest.fn((name, fallback) => `var(${name})`),
+  toVar: jest.fn((value, prefix) => `--${prefix}-${value}`),
+  orient: jest.fn(() => ({})),
+  getColor: jest.fn(() => '#000'),
+  darken: jest.fn(() => '#000'),
+  lighten: jest.fn(() => '#fff'),
+  whiten: jest.fn(() => '#fff'),
+  blacken: jest.fn(() => '#000'),
+  randomColor: jest.fn(() => '#000'),
+  isDark: jest.fn(() => false),
+  isLight: jest.fn(() => true),
+  generateStripe: jest.fn(() => ({})),
+  anatomy: jest.fn(() => ({
+    keys: [],
+    toPart: jest.fn(() => ({})),
+    extend: jest.fn(() => ({})),
+    __type: {},
+  })),
 }))
+
+// Mock @chakra-ui/icons to avoid loading real Chakra theme pipeline
+jest.mock('@chakra-ui/icons', () => {
+  const React = require('react')
+  const createIconMock = (name) => {
+    const Icon = (props) => React.createElement('svg', { 'data-testid': name, ...props })
+    Icon.displayName = name
+    return Icon
+  }
+  return new Proxy({}, {
+    get: (target, prop) => {
+      if (prop === '__esModule') return true
+      if (prop === 'default') return createIconMock('DefaultIcon')
+      return createIconMock(String(prop))
+    }
+  })
+})
 
 // Set environment to localhost for constants
 process.env.NEXT_PUBLIC_VERCEL_URL = 'localhost'
