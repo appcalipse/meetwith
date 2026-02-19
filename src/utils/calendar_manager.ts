@@ -200,6 +200,7 @@ const mapRelatedSlots = async (
   isSlotSeries?: boolean
 ) => {
   const accountSlot: { [account: string]: string } = {}
+
   for (const slotId of meeting.related_slot_ids) {
     try {
       let slot
@@ -222,6 +223,13 @@ const mapRelatedSlots = async (
         }
       } catch (_e) {}
     }
+  }
+  if (
+    meeting?.id &&
+    currentAccountAddress &&
+    !accountSlot[currentAccountAddress]
+  ) {
+    accountSlot[currentAccountAddress] = meeting.id
   }
   return accountSlot
 }
@@ -759,6 +767,7 @@ const updateMeeting = async (
     existingMeeting!,
     currentAccountAddress
   )
+
   const oldGuests = decryptedMeeting.participants.filter(p => p.guest_email)
 
   const guests = participants
