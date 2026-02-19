@@ -35,6 +35,9 @@ export const handleMeetingSchedule = async (
   res: NextApiResponse
 ) => {
   if (req.method === 'POST') {
+    if (!meeting.meeting_url) {
+      return res.status(400).send('Meeting URL is required')
+    }
     const account = await getAccountFromDB(account_address)
     if (
       meeting.participants_mapping.filter(
