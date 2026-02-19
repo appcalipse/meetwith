@@ -37,9 +37,15 @@ jest.mock('@/utils/generic_utils')
 jest.mock('@/utils/user_manager')
 jest.mock('@/utils/workers/calendar-sync.queue')
 
+// The source file calendar_sync_helpers.ts imports from @utils/ (not @/utils/),
+// which may resolve to a different module in Jest. We need to also import from
+// the same path to get the same mock instance.
+import * as genericUtilsAlt from '@utils/generic_utils'
+
 const mockDatabase = database as jest.Mocked<typeof database>
 const mockCalendarManager = calendarManager as jest.Mocked<typeof calendarManager>
-const mockGenericUtils = genericUtils as jest.Mocked<typeof genericUtils>
+// Use the @utils/ import to get the same module instance that the source uses
+const mockGenericUtils = genericUtilsAlt as jest.Mocked<typeof genericUtils>
 const mockUserManager = userManager as jest.Mocked<typeof userManager>
 const mockCalendarSyncQueue = calendarSyncQueue as jest.Mocked<
   typeof calendarSyncQueue
@@ -237,6 +243,7 @@ describe('calendar_sync_helpers', () => {
     })
 
     it('should throw MeetingDetailsModificationDenied when changing provider without permission', async () => {
+      mockGenericUtils.canAccountAccessPermission.mockReset()
       mockGenericUtils.canAccountAccessPermission
         .mockReturnValueOnce(true) // Can invite guests
         .mockReturnValueOnce(false) // Cannot edit meeting details
@@ -257,6 +264,7 @@ describe('calendar_sync_helpers', () => {
     })
 
     it('should throw MeetingDetailsModificationDenied when changing time without permission', async () => {
+      mockGenericUtils.canAccountAccessPermission.mockReset()
       mockGenericUtils.canAccountAccessPermission
         .mockReturnValueOnce(true) // Can invite guests
         .mockReturnValueOnce(false) // Cannot edit meeting details
@@ -277,6 +285,7 @@ describe('calendar_sync_helpers', () => {
     })
 
     it('should throw MeetingDetailsModificationDenied when changing reminders without permission', async () => {
+      mockGenericUtils.canAccountAccessPermission.mockReset()
       mockGenericUtils.canAccountAccessPermission
         .mockReturnValueOnce(true) // Can invite guests
         .mockReturnValueOnce(false) // Cannot edit meeting details
@@ -299,6 +308,7 @@ describe('calendar_sync_helpers', () => {
     })
 
     it('should throw MeetingDetailsModificationDenied when changing recurrence without permission', async () => {
+      mockGenericUtils.canAccountAccessPermission.mockReset()
       mockGenericUtils.canAccountAccessPermission
         .mockReturnValueOnce(true) // Can invite guests
         .mockReturnValueOnce(false) // Cannot edit meeting details
@@ -322,6 +332,7 @@ describe('calendar_sync_helpers', () => {
     })
 
     it('should throw MeetingDetailsModificationDenied when changing permissions without permission', async () => {
+      mockGenericUtils.canAccountAccessPermission.mockReset()
       mockGenericUtils.canAccountAccessPermission
         .mockReturnValueOnce(true) // Can invite guests
         .mockReturnValueOnce(false) // Cannot edit meeting details
@@ -1496,6 +1507,7 @@ describe('calendar_sync_helpers', () => {
     }
 
     it('should deny update when lacking edit permissions', async () => {
+      mockGenericUtils.canAccountAccessPermission.mockReset()
       mockGenericUtils.canAccountAccessPermission
         .mockReturnValueOnce(true) // Can invite
         .mockReturnValueOnce(false) // Cannot edit
