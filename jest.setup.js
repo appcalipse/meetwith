@@ -761,43 +761,57 @@ jest.mock('next/font/google', () => ({
 }))
 
 // Mock @chakra-ui/theme-tools with all commonly used exports
-jest.mock('@chakra-ui/theme-tools', () => ({
-  mode: jest.fn((light, dark) => light),
-  createBreakpoints: jest.fn(),
-  transparentize: jest.fn((color, opacity) => color),
-  cssVar: jest.fn((name, options) => ({
-    variable: `--chakra-${name}`,
-    reference: `var(--chakra-${name})`,
-  })),
-  calc: jest.fn(() => ({
-    add: jest.fn().mockReturnThis(),
-    subtract: jest.fn().mockReturnThis(),
-    multiply: jest.fn().mockReturnThis(),
-    divide: jest.fn().mockReturnThis(),
-    negate: jest.fn().mockReturnThis(),
-    toString: jest.fn(() => '0'),
-  })),
-  isDecimal: jest.fn(() => false),
-  addPrefix: jest.fn((value, prefix) => `${prefix}-${value}`),
-  toVarRef: jest.fn((name, fallback) => `var(${name})`),
-  toVar: jest.fn((value, prefix) => `--${prefix}-${value}`),
-  orient: jest.fn(() => ({})),
-  getColor: jest.fn(() => '#000'),
-  darken: jest.fn(() => '#000'),
-  lighten: jest.fn(() => '#fff'),
-  whiten: jest.fn(() => '#fff'),
-  blacken: jest.fn(() => '#000'),
-  randomColor: jest.fn(() => '#000'),
-  isDark: jest.fn(() => false),
-  isLight: jest.fn(() => true),
-  generateStripe: jest.fn(() => ({})),
-  anatomy: jest.fn(() => ({
-    keys: [],
-    toPart: jest.fn(() => ({})),
-    extend: jest.fn(() => ({})),
-    __type: {},
-  })),
-}))
+jest.mock('@chakra-ui/theme-tools', () => {
+  // calc must be both a callable function AND have static methods (Object.assign pattern)
+  const createCalcResult = () => ({
+    add: (...args) => createCalcResult(),
+    subtract: (...args) => createCalcResult(),
+    multiply: (...args) => createCalcResult(),
+    divide: (...args) => createCalcResult(),
+    negate: () => createCalcResult(),
+    toString: () => '0',
+    reference: 'var(--chakra-mock)',
+    variable: '--chakra-mock',
+  })
+  const calcFn = (x) => createCalcResult()
+  // Static methods that can be called as calc.subtract(...), calc.add(...)
+  calcFn.add = (...args) => `calc(mock + mock)`
+  calcFn.subtract = (...args) => `calc(mock - mock)`
+  calcFn.multiply = (...args) => `calc(mock * mock)`
+  calcFn.divide = (...args) => `calc(mock / mock)`
+  calcFn.negate = (x) => `-mock`
+
+  return {
+    mode: jest.fn((light, dark) => light),
+    createBreakpoints: jest.fn(),
+    transparentize: jest.fn((color, opacity) => color),
+    cssVar: jest.fn((name, options) => ({
+      variable: `--chakra-${name}`,
+      reference: `var(--chakra-${name})`,
+    })),
+    calc: calcFn,
+    isDecimal: jest.fn(() => false),
+    addPrefix: jest.fn((value, prefix) => `${prefix}-${value}`),
+    toVarRef: jest.fn((name, fallback) => `var(${name})`),
+    toVar: jest.fn((value, prefix) => `--${prefix}-${value}`),
+    orient: jest.fn(() => ({})),
+    getColor: jest.fn(() => '#000'),
+    darken: jest.fn(() => '#000'),
+    lighten: jest.fn(() => '#fff'),
+    whiten: jest.fn(() => '#fff'),
+    blacken: jest.fn(() => '#000'),
+    randomColor: jest.fn(() => '#000'),
+    isDark: jest.fn(() => false),
+    isLight: jest.fn(() => true),
+    generateStripe: jest.fn(() => ({})),
+    anatomy: jest.fn(() => ({
+      keys: [],
+      toPart: jest.fn(() => ({})),
+      extend: jest.fn(() => ({})),
+      __type: {},
+    })),
+  }
+})
 
 // Mock @chakra-ui/icons to avoid loading real Chakra theme pipeline
 jest.mock('@chakra-ui/icons', () => {
