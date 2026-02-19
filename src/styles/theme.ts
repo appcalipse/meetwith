@@ -308,6 +308,10 @@ const newTheme = {
         _dark: 'orange.700',
         default: 'orange.700',
       },
+      'text-base': {
+        _dark: 'white',
+        default: 'gray.700',
+      },
     },
   },
   styles: {

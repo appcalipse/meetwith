@@ -7,9 +7,7 @@ class MyDocument extends Document {
   render() {
     return (
       <Html suppressHydrationWarning>
-        <Head>
-          <meta name="viewport" content="initial-scale=1, width=device-width" />
-        </Head>
+        <Head />
         <body>
           <ColorModeScript
             initialColorMode={theme.config.initialColorMode}
