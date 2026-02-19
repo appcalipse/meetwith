@@ -1,4 +1,4 @@
-import * as stripe_helperService from '@/utils/services/stripe_helper'
+import * as stripe_helperService from '@/utils/services/stripe.helper'
 
 describe('stripe_helper service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('stripe_helper service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/stripe_helper')).not.toThrow()
+    expect(() => require('@/utils/services/stripe.helper')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('stripe_helper service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/stripe_helper')
-    const second = require('@/utils/services/stripe_helper')
+    const first = require('@/utils/services/stripe.helper')
+    const second = require('@/utils/services/stripe.helper')
     expect(first).toEqual(second)
   })
 

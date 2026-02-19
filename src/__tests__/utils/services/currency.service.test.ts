@@ -1,4 +1,4 @@
-import * as currency_serviceService from '@/utils/services/currency_service'
+import * as currency_serviceService from '@/utils/services/currency.service'
 
 describe('currency_service service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('currency_service service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/currency_service')).not.toThrow()
+    expect(() => require('@/utils/services/currency.service')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('currency_service service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/currency_service')
-    const second = require('@/utils/services/currency_service')
+    const first = require('@/utils/services/currency.service')
+    const second = require('@/utils/services/currency.service')
     expect(first).toEqual(second)
   })
 

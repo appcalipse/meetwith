@@ -1,4 +1,4 @@
-import * as onramp_moneyService from '@/utils/services/onramp_money'
+import * as onramp_moneyService from '@/utils/services/onramp.money'
 
 describe('onramp_money service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('onramp_money service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/onramp_money')).not.toThrow()
+    expect(() => require('@/utils/services/onramp.money')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('onramp_money service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/onramp_money')
-    const second = require('@/utils/services/onramp_money')
+    const first = require('@/utils/services/onramp.money')
+    const second = require('@/utils/services/onramp.money')
     expect(first).toEqual(second)
   })
 

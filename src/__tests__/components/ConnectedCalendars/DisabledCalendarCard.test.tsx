@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react'
-import DisabledCalendarCard from '@/components/ConnectedCalendars/DisabledCalendarCard/index'
+import { DisabledCalendarCard } from '@/components/ConnectedCalendars/DisabledCalendarCard/index'
 
 describe('DisabledCalendarCard', () => {
   it('renders without crashing', () => {

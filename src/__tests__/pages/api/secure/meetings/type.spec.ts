@@ -18,7 +18,7 @@ jest.mock('@/ironAuth/withSessionApiRoute', () => ({
   withSessionRoute: jest.fn((handler) => handler),
 }))
 
-jest.mock('@utils/errors', () => ({
+jest.mock('@/utils/errors', () => ({
   LastMeetingTypeError: class extends Error {},
   MeetingSlugAlreadyExists: class extends Error {},
   MeetingTypeLimitExceededError: class extends Error {},

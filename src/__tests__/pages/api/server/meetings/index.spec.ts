@@ -6,7 +6,7 @@
 process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_SUPABASE_KEY = 'test-key'
 
-jest.mock('../../secure/meetings', () => ({
+jest.mock('@/pages/api/secure/meetings', () => ({
   handleMeetingSchedule: jest.fn(),
 }))
 

@@ -1,4 +1,4 @@
-import * as caldav_serviceService from '@/utils/services/caldav_service'
+import * as caldav_serviceService from '@/utils/services/caldav.service'
 
 describe('caldav_service service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('caldav_service service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/caldav_service')).not.toThrow()
+    expect(() => require('@/utils/services/caldav.service')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('caldav_service service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/caldav_service')
-    const second = require('@/utils/services/caldav_service')
+    const first = require('@/utils/services/caldav.service')
+    const second = require('@/utils/services/caldav.service')
     expect(first).toEqual(second)
   })
 

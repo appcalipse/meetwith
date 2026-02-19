@@ -1,4 +1,4 @@
-import * as email_queueWorker from '@/utils/workers/email_queue'
+import * as email_queueWorker from '@/utils/workers/email.queue'
 
 describe('email_queue worker', () => {
   it('exports worker', () => {
@@ -14,7 +14,7 @@ describe('email_queue worker', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/workers/email_queue')).not.toThrow()
+    expect(() => require('@/utils/workers/email.queue')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('email_queue worker', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/workers/email_queue')
-    const second = require('@/utils/workers/email_queue')
+    const first = require('@/utils/workers/email.queue')
+    const second = require('@/utils/workers/email.queue')
     expect(first).toEqual(second)
   })
 

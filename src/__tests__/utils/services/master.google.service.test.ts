@@ -1,4 +1,4 @@
-import * as masterGoogleServiceService from '@/utils/services/master_google.service'
+import * as masterGoogleServiceService from '@/utils/services/master.google.service'
 
 describe('master_google.service service', () => {
   it('exports service', () => {
@@ -10,43 +10,43 @@ describe('master_google.service service', () => {
   })
 
   it('is importable', () => {
-    expect(master_google.serviceService).toBeTruthy()
+    expect(masterGoogleServiceService).toBeTruthy()
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/master_google.service')).not.toThrow()
+    expect(() => require('@/utils/services/master.google.service')).not.toThrow()
   })
 
   it('has valid exports', () => {
-    expect(Object.keys(master_google.serviceService).length).toBeGreaterThanOrEqual(0)
+    expect(Object.keys(masterGoogleServiceService).length).toBeGreaterThanOrEqual(0)
   })
 
   it('exports are defined', () => {
-    Object.values(master_google.serviceService).forEach(exp => {
+    Object.values(masterGoogleServiceService).forEach(exp => {
       expect(exp).toBeDefined()
     })
   })
 
   it('module structure is valid', () => {
-    expect(master_google.serviceService).not.toBeNull()
+    expect(masterGoogleServiceService).not.toBeNull()
   })
 
   it('provides service functions', () => {
-    expect(master_google.serviceService).toBeTruthy()
+    expect(masterGoogleServiceService).toBeTruthy()
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/master_google.service')
-    const second = require('@/utils/services/master_google.service')
+    const first = require('@/utils/services/master.google.service')
+    const second = require('@/utils/services/master.google.service')
     expect(first).toEqual(second)
   })
 
   it('exports are accessible', () => {
-    expect(master_google.serviceService).not.toBeUndefined()
+    expect(masterGoogleServiceService).not.toBeUndefined()
   })
 
   it('functions are callable', () => {
-    Object.values(master_google.serviceService).forEach(exp => {
+    Object.values(masterGoogleServiceService).forEach(exp => {
       if (typeof exp === 'function') {
         expect(typeof exp).toBe('function')
       }
@@ -54,6 +54,6 @@ describe('master_google.service service', () => {
   })
 
   it('has correct module format', () => {
-    expect(typeof master_google.serviceService).not.toBe('undefined')
+    expect(typeof masterGoogleServiceService).not.toBe('undefined')
   })
 })

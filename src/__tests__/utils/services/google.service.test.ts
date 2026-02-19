@@ -1,4 +1,4 @@
-import * as google_serviceService from '@/utils/services/google_service'
+import * as google_serviceService from '@/utils/services/google.service'
 
 describe('google_service service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('google_service service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/google_service')).not.toThrow()
+    expect(() => require('@/utils/services/google.service')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('google_service service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/google_service')
-    const second = require('@/utils/services/google_service')
+    const first = require('@/utils/services/google.service')
+    const second = require('@/utils/services/google.service')
     expect(first).toEqual(second)
   })
 

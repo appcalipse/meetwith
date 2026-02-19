@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react'
-import dateNavBtns from '@/components/input-date-picker/components/dateNavBtns'
+import { DatepickerBackBtns as dateNavBtns } from '@/components/input-date-picker/components/dateNavBtns'
 
 describe('dateNavBtns', () => {
   it('renders without crashing', () => {

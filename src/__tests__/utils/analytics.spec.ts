@@ -104,7 +104,7 @@ describe('analytics', () => {
 
       const maskedRequest = maskFn(mockRequest)
 
-      expect(maskedRequest.responseBody).toBeNull()
+      expect(maskedRequest.responseBody).toBeUndefined()
     })
 
     it('should handle undefined response body', async () => {

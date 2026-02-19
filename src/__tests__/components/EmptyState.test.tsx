@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import EmptyState from '../EmptyState'
+import EmptyState from '@/components/EmptyState'
 
 describe('EmptyState', () => {
   it('should render title and description', () => {

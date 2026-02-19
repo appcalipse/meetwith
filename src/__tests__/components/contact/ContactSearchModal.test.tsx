@@ -3,8 +3,21 @@ import React from 'react'
 
 import ContactSearchModal from '@/components/contact/ContactSearchModal'
 
+jest.mock('@/utils/api_helper')
+
 jest.mock('next/router', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), query: {} }),
+}))
+
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    mutateAsync: jest.fn().mockResolvedValue(undefined),
+    isLoading: false,
+    reset: jest.fn(),
+  })),
+  QueryClientProvider: ({ children }: any) => children,
 }))
 
 describe('ContactSearchModal', () => {

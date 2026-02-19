@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react'
-import Chip from '@/components/chip-input/chip'
+import { BadgeChip as Chip } from '@/components/chip-input/chip'
 
 describe('Chip', () => {
   it('renders without crashing', () => {

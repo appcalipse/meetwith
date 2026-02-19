@@ -687,17 +687,19 @@ describe('quickpoll_helper', () => {
   describe('createMockMeetingMembers', () => {
     it('should create mock meeting members from poll data', () => {
       const pollData: any = {
-        poll_id: 'poll-123',
-        participants: [
-          {
-            participant_id: '1',
-            poll_id: 'poll-123',
-            account_address: '0x123',
-            participant_type: QuickPollParticipantType.ORGANIZER,
-            timezone: 'UTC',
-            created_at: new Date().toISOString(),
-          },
-        ],
+        poll: {
+          poll_id: 'poll-123',
+          participants: [
+            {
+              participant_id: '1',
+              poll_id: 'poll-123',
+              account_address: '0x123',
+              participant_type: QuickPollParticipantType.ORGANIZER,
+              timezone: 'UTC',
+              created_at: new Date().toISOString(),
+            },
+          ],
+        },
       }
       
       const members = createMockMeetingMembers(pollData)
@@ -706,18 +708,20 @@ describe('quickpoll_helper', () => {
 
     it('should handle poll data with guest participants', () => {
       const pollData: any = {
-        poll_id: 'poll-123',
-        participants: [
-          {
-            participant_id: '1',
-            poll_id: 'poll-123',
-            guest_email: 'guest@example.com',
-            guest_name: 'Guest User',
-            participant_type: QuickPollParticipantType.PARTICIPANT,
-            timezone: 'UTC',
-            created_at: new Date().toISOString(),
-          },
-        ],
+        poll: {
+          poll_id: 'poll-123',
+          participants: [
+            {
+              participant_id: '1',
+              poll_id: 'poll-123',
+              guest_email: 'guest@example.com',
+              guest_name: 'Guest User',
+              participant_type: QuickPollParticipantType.PARTICIPANT,
+              timezone: 'UTC',
+              created_at: new Date().toISOString(),
+            },
+          ],
+        },
       }
       
       const members = createMockMeetingMembers(pollData)
@@ -726,8 +730,10 @@ describe('quickpoll_helper', () => {
 
     it('should handle poll data without participants', () => {
       const pollData: any = {
-        poll_id: 'poll-123',
-        participants: [],
+        poll: {
+          poll_id: 'poll-123',
+          participants: [],
+        },
       }
       
       const members = createMockMeetingMembers(pollData)

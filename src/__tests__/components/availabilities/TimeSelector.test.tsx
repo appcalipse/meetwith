@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import TimeSelector from '@/components/availabilities/TimeSelector'
+import { TimeSelector } from '@/components/availabilities/TimeSelector'
 
 describe('TimeSelector', () => {
   it('renders without crashing', () => {

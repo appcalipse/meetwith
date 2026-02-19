@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react'
-import usePoller from '../usePoller'
+import usePoller from '@/hooks/usePoller'
 
 describe('usePoller', () => {
   beforeEach(() => {

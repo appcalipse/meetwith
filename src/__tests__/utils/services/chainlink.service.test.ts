@@ -1,4 +1,4 @@
-import * as chainlink_serviceService from '@/utils/services/chainlink_service'
+import * as chainlink_serviceService from '@/utils/services/chainlink.service'
 
 describe('chainlink_service service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('chainlink_service service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/chainlink_service')).not.toThrow()
+    expect(() => require('@/utils/services/chainlink.service')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('chainlink_service service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/chainlink_service')
-    const second = require('@/utils/services/chainlink_service')
+    const first = require('@/utils/services/chainlink.service')
+    const second = require('@/utils/services/chainlink.service')
     expect(first).toEqual(second)
   })
 

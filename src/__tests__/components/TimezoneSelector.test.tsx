@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import TimezoneSelector from '../TimezoneSelector'
+import TimezoneSelector from '@/components/TimezoneSelector'
 import { getBrowserTimezone } from '@/utils/availability.helper'
 import { timezones } from '@/utils/date_helper'
 

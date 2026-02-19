@@ -1,4 +1,4 @@
-import * as office365_credentialService from '@/utils/services/office365_credential'
+import * as office365_credentialService from '@/utils/services/office365.credential'
 
 describe('office365_credential service', () => {
   it('exports service', () => {
@@ -14,7 +14,7 @@ describe('office365_credential service', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/services/office365_credential')).not.toThrow()
+    expect(() => require('@/utils/services/office365.credential')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('office365_credential service', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/services/office365_credential')
-    const second = require('@/utils/services/office365_credential')
+    const first = require('@/utils/services/office365.credential')
+    const second = require('@/utils/services/office365.credential')
     expect(first).toEqual(second)
   })
 

@@ -1,4 +1,4 @@
-import * as calendar_sync_queueWorker from '@/utils/workers/calendar_sync_queue'
+import * as calendar_sync_queueWorker from '@/utils/workers/calendar-sync.queue'
 
 describe('calendar_sync_queue worker', () => {
   it('exports worker', () => {
@@ -14,7 +14,7 @@ describe('calendar_sync_queue worker', () => {
   })
 
   it('loads without error', () => {
-    expect(() => require('@/utils/workers/calendar_sync_queue')).not.toThrow()
+    expect(() => require('@/utils/workers/calendar-sync.queue')).not.toThrow()
   })
 
   it('has valid exports', () => {
@@ -36,8 +36,8 @@ describe('calendar_sync_queue worker', () => {
   })
 
   it('is stable', () => {
-    const first = require('@/utils/workers/calendar_sync_queue')
-    const second = require('@/utils/workers/calendar_sync_queue')
+    const first = require('@/utils/workers/calendar-sync.queue')
+    const second = require('@/utils/workers/calendar-sync.queue')
     expect(first).toEqual(second)
   })
 

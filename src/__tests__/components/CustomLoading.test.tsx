@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import CustomLoading from '../CustomLoading'
+import CustomLoading from '@/components/CustomLoading'
 
 describe('CustomLoading', () => {
   it('should render with default text', () => {

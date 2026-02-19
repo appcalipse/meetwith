@@ -3,65 +3,56 @@ import React from 'react'
 
 import GroupContactModal from '@/components/contact/GroupContactModal'
 
+jest.mock('@/utils/api_helper')
+
 jest.mock('next/router', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), query: {} }),
 }))
 
-const mockGroup = {
-  id: '1',
-  name: 'Team Alpha',
-  description: 'Our team',
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    mutateAsync: jest.fn().mockResolvedValue([]),
+    isLoading: false,
+    reset: jest.fn(),
+  })),
+  QueryClientProvider: ({ children }: any) => children,
+}))
+
+const mockProps = {
+  isOpen: true,
+  onClose: jest.fn(),
+  isContactAlreadyAdded: jest.fn().mockReturnValue(false),
+  addUserFromContact: jest.fn(),
+  removeUserFromContact: jest.fn(),
 }
 
 describe('GroupContactModal', () => {
   it('renders when open', () => {
     render(
-      <GroupContactModal
-        isOpen={true}
-        onClose={jest.fn()}
-        group={mockGroup}
-        contacts={[]}
-      />
+      <GroupContactModal {...mockProps} />
     )
     expect(screen.getByText(/add contacts/i)).toBeInTheDocument()
   })
 
   it('does not render when closed', () => {
     render(
-      <GroupContactModal
-        isOpen={false}
-        onClose={jest.fn()}
-        group={mockGroup}
-        contacts={[]}
-      />
+      <GroupContactModal {...mockProps} isOpen={false} />
     )
     expect(screen.queryByText(/add contacts/i)).not.toBeInTheDocument()
   })
 
   it('displays group name', () => {
     render(
-      <GroupContactModal
-        isOpen={true}
-        onClose={jest.fn()}
-        group={mockGroup}
-        contacts={[]}
-      />
+      <GroupContactModal {...mockProps} title="Team Alpha" />
     )
     expect(screen.getByText(/team alpha/i)).toBeInTheDocument()
   })
 
   it('shows contact list', () => {
-    const contacts = [
-      { id: '1', name: 'Alice', address: '0x1234' },
-      { id: '2', name: 'Bob', address: '0x5678' },
-    ]
     render(
-      <GroupContactModal
-        isOpen={true}
-        onClose={jest.fn()}
-        group={mockGroup}
-        contacts={contacts}
-      />
+      <GroupContactModal {...mockProps} />
     )
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Bob')).toBeInTheDocument()
@@ -69,12 +60,7 @@ describe('GroupContactModal', () => {
 
   it('has save button', () => {
     render(
-      <GroupContactModal
-        isOpen={true}
-        onClose={jest.fn()}
-        group={mockGroup}
-        contacts={[]}
-      />
+      <GroupContactModal {...mockProps} />
     )
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
   })
@@ -82,12 +68,7 @@ describe('GroupContactModal', () => {
   it('calls onClose when cancel clicked', () => {
     const onClose = jest.fn()
     render(
-      <GroupContactModal
-        isOpen={true}
-        onClose={onClose}
-        group={mockGroup}
-        contacts={[]}
-      />
+      <GroupContactModal {...mockProps} onClose={onClose} />
     )
     const cancelBtn = screen.getByRole('button', { name: /cancel/i })
     fireEvent.click(cancelBtn)

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 
-import ThemeSwitcher from '@/components/ThemeSwitcher'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 
 describe('ThemeSwitcher', () => {
   it('renders theme switcher', () => {
