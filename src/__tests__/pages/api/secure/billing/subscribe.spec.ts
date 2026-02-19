@@ -17,12 +17,12 @@ jest.mock('@/utils/database', () => ({
 jest.mock('@/utils/services/stripe.service', () => ({
   StripeService: jest.fn().mockImplementation(() => ({
     customers: {
-      create: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: 'cus_test' }),
       retrieve: jest.fn(),
     },
     checkout: {
       sessions: {
-        create: jest.fn(),
+        create: jest.fn().mockResolvedValue({ id: 'cs_test', url: 'https://test.com' }),
       },
     },
     prices: {
