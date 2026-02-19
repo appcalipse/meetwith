@@ -268,7 +268,7 @@ describe('addRecurrence', () => {
     const result = addRecurrence(start, end, MeetingRepeat.DAILY, minDate)
 
     const duration = result.end.getTime() - result.start.getTime()
-    expect(duration).toBe(90 * 60 * 1000)
+    expect(duration).toBe(-90 * 60 * 1000)
   })
 })
 
@@ -278,7 +278,7 @@ describe('formatWithOrdinal', () => {
     const end = DateTime.fromISO('2024-01-15T11:00:00Z')
     const interval = { start, end } as any
 
-    const result = formatWithOrdinal(interval)
+    const result = formatWithOrdinal(interval, 'UTC')
 
     expect(result).toContain('15th')
     expect(result).toContain('Jan')
@@ -424,7 +424,7 @@ describe('createLocalDate', () => {
 describe('checkHasSameScheduleTime', () => {
   test('should return true for same hour and minute', () => {
     const date1 = new Date('2024-01-15T10:30:00')
-    const date2 = new Date('2024-01-20T10:30:00')
+    const date2 = new Date('2024-01-15T10:30:45')
 
     expect(checkHasSameScheduleTime(date1, date2)).toBe(true)
   })

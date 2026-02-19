@@ -1,11 +1,14 @@
 import { handleApiError } from '@/utils/error_helper'
 import { isJson } from '@/utils/generic_utils'
 
-jest.mock('@chakra-ui/react', () => ({
-  createStandaloneToast: () => ({
-    toast: jest.fn(),
-  }),
-}))
+jest.mock('@chakra-ui/react', () => {
+  const toastFn = jest.fn()
+  return {
+    createStandaloneToast: () => ({
+      toast: toastFn,
+    }),
+  }
+})
 
 jest.mock('@/utils/generic_utils', () => ({
   isJson: jest.fn(),
