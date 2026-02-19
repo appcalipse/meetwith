@@ -1041,7 +1041,7 @@ const handleUpdateSingleRecurringInstance = async (
       meetingInfo,
       participants,
       extractMeetingDescription(event.description || '') || '',
-      event.location || '',
+      meetingInfo.meeting_url || '',
       conferenceMeeting.provider,
       event.summary || '',
       conferenceMeeting.reminders,
