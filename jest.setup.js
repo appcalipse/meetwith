@@ -833,3 +833,70 @@ jest.mock('@chakra-ui/icons', () => {
 // Set environment to localhost for constants
 process.env.NEXT_PUBLIC_VERCEL_URL = 'localhost'
 process.env.VERCEL_URL = 'localhost'
+
+// Mock Chakra UI sub-packages that are imported directly (not through @chakra-ui/react)
+// These load the real styled-system which causes 'colors.180deg' errors
+const chakraSubPackages = [
+  '@chakra-ui/layout',
+  '@chakra-ui/button',
+  '@chakra-ui/color-mode',
+  '@chakra-ui/form-control',
+  '@chakra-ui/media-query',
+  '@chakra-ui/menu',
+  '@chakra-ui/switch',
+  '@chakra-ui/textarea',
+  '@chakra-ui/system',
+  '@chakra-ui/toast',
+  '@chakra-ui/modal',
+  '@chakra-ui/checkbox',
+  '@chakra-ui/input',
+  '@chakra-ui/select',
+  '@chakra-ui/spinner',
+  '@chakra-ui/table',
+  '@chakra-ui/tabs',
+  '@chakra-ui/tag',
+  '@chakra-ui/tooltip',
+  '@chakra-ui/popover',
+  '@chakra-ui/accordion',
+  '@chakra-ui/avatar',
+  '@chakra-ui/image',
+  '@chakra-ui/skeleton',
+  '@chakra-ui/icon',
+]
+
+chakraSubPackages.forEach(pkg => {
+  jest.mock(pkg, () => {
+    const React = require('react')
+    const createMockComponent = (displayName) => {
+      const Component = ({ children, ...props }) => React.createElement('div', props, children)
+      Component.displayName = displayName
+      return Component
+    }
+    return new Proxy({}, {
+      get: (target, prop) => {
+        if (prop === '__esModule') return true
+        if (prop === 'default') return createMockComponent('Default')
+        // Return hooks that match the @chakra-ui/react mock
+        if (prop === 'useColorMode') return jest.fn(() => ({
+          colorMode: 'dark',
+          setColorMode: jest.fn(),
+          toggleColorMode: jest.fn(),
+        }))
+        if (prop === 'useColorModeValue') return jest.fn((light, dark) => light)
+        if (prop === 'useDisclosure') return jest.fn(() => ({
+          isOpen: false, onOpen: jest.fn(), onClose: jest.fn(), onToggle: jest.fn(), getDisclosureProps: jest.fn(() => ({})), getButtonProps: jest.fn(() => ({})),
+        }))
+        if (prop === 'useToast') return jest.fn(() => jest.fn())
+        if (prop === 'useMediaQuery') return jest.fn(() => [false])
+        if (prop === 'useBreakpointValue') return jest.fn((values) => values?.base)
+        if (prop === 'useStyleConfig') return jest.fn(() => ({}))
+        if (prop === 'useToken') return jest.fn((...args) => args)
+        if (prop === 'forwardRef') return React.forwardRef
+        if (prop === 'chakra') return new Proxy({}, {
+          get: (t, p) => createMockComponent(`chakra.${String(p)}`)
+        })
+        return createMockComponent(String(prop))
+      }
+    })
+  })
+})
