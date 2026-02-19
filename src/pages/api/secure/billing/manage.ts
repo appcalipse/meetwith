@@ -9,7 +9,7 @@ import { StripeService } from '@/utils/services/stripe.service'
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     try {
-      if (!req.session.account?.address) {
+      if (!req.session?.account?.address) {
         return res.status(401).json({ error: 'Unauthorized' })
       }
 

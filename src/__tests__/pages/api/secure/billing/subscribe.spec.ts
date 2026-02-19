@@ -25,6 +25,9 @@ jest.mock('@/utils/services/stripe.service', () => ({
         create: jest.fn(),
       },
     },
+    prices: {
+      list: jest.fn().mockResolvedValue({ data: [{ id: 'price_test123' }] }),
+    },
     subscriptions: {
       create: jest.fn(),
     },
