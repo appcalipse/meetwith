@@ -130,6 +130,9 @@ import { apiUrl } from '@/utils/constants'
 
 describe('api_helper.ts', () => {
   let originalFetch: typeof global.fetch
+  const mockCaptureException = Sentry.captureException as jest.Mock
+  const mockInvalidateQueries = queryClient.invalidateQueries as jest.Mock
+  const mockFetchQuery = queryClient.fetchQuery as jest.Mock
 
   beforeAll(() => {
     originalFetch = global.fetch
@@ -145,9 +148,6 @@ describe('api_helper.ts', () => {
   })
 
   describe('internalFetch', () => {
-    const mockCaptureException = Sentry.captureException as jest.Mock
-    const mockInvalidateQueries = queryClient.invalidateQueries as jest.Mock
-    const mockFetchQuery = queryClient.fetchQuery as jest.Mock
 
     it('should make a successful GET request', async () => {
       const mockData = { id: 1, name: 'test' }
