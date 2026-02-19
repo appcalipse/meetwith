@@ -18,7 +18,6 @@ import {
   isProAccountAsync,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
-import { CalendarIntegrationLimitExceededError } from '@/utils/errors'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -92,12 +91,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let calendars: Array<CalendarSyncInfo>
   try {
     calendars = (await calendar.calendarList.list()).data.items!.map(c => {
+      const isReadOnly =
+        c.accessRole === 'reader' || c.accessRole === 'freeBusyReader'
       return {
         calendarId: c.id!,
         color: c.backgroundColor || undefined,
         enabled: Boolean(c.primary),
         name: c.summary!,
-        sync: true,
+        sync: isReadOnly ? false : true,
+        isReadOnly,
       }
     })
   } catch (_e) {
@@ -113,6 +115,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         enabled: true,
         name: user.email!,
         sync: true,
+        isReadOnly: false,
       },
     ]
   }
