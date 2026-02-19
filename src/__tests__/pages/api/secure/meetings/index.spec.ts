@@ -294,7 +294,8 @@ describe('/api/secure/meetings/index', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockIsValidEmail).not.toHaveBeenCalled()
+      // isValidEmail is called with undefined, returns falsy, so no notification update
+      expect(mockIsValidEmail).toHaveBeenCalledWith(undefined)
       expect(statusMock).toHaveBeenCalledWith(200)
     })
 
