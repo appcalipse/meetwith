@@ -7,7 +7,13 @@ const createJestConfig = nextJest({
   dir: './',
 })
 
-const esModules = ['@wagmi', 'html-tags'].join('|')
+const esModules = [
+  '@wagmi',
+  'html-tags',
+  '@walletconnect',
+  'viem',
+  '@tanstack',
+].join('|')
 
 // Add any custom config to be passed to Jest
 
@@ -21,11 +27,28 @@ const customJestConfig = {
   moduleDirectories: ['node_modules', __dirname],
   moduleFileExtensions: ['js', 'jsx', 'tsx', 'ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  collectCoverageFrom: ['./src/**'],
+  testMatch: [
+    '**/__tests__/**/*.(spec|test).(ts|tsx|js|jsx)',
+    '**/*.(spec|test).(ts|tsx|js|jsx)',
+  ],
+  collectCoverageFrom: [
+    './src/**',
+    '!./src/__tests__/**',
+    '!./src/**/*.d.ts',
+    '!./src/utils/services/calendar.service.types.ts',
+    '!./src/instrumentation*.ts',
+    '!./src/testing/**',
+    '!./src/**/*.test.ts',
+    '!./src/**/*.spec.ts',
+    '!./src/**/*.test.tsx',
+    '!./src/**/*.spec.tsx',
+    // Exclude non-testable framework boilerplate and CSS-in-JS
+    '!./src/styles/**',
+    '!./src/pages/**',
+  ],
   verbose: true,
   resolver: `./resolver.js`,
   transform: {
-    '\\.m?[j|t]sx?$': 'jest-esm-transformer',
     '^.+\\.(ts|tsx)?$': 'ts-jest',
   },
   moduleNameMapper: {
@@ -44,6 +67,14 @@ const customJestConfig = {
   globals: {
     Uint8Array,
     ArrayBuffer,
+  },
+  coverageThreshold: {
+    global: {
+      statements: 40,
+      branches: 40,
+      functions: 40,
+      lines: 40,
+    },
   },
 }
 
