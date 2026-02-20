@@ -170,7 +170,10 @@ import {
   OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
-import { mergeWeeklyAvailabilityFromBlocks } from '@/utils/availability.helper'
+import {
+  mergeWeeklyAvailabilityFromBlocks,
+  mergeWeeklyAvailabilityFromBlocksWithTimezone,
+} from '@/utils/availability.helper'
 import {
   MODIFIED_BY_APP_TIMEOUT,
   PaymentNotificationType,
@@ -8443,7 +8446,8 @@ const resolvePollAvailabilityFromRequest = async (
           weekly_availability: b.weekly_availability || [],
         })
       )
-      const merged = mergeWeeklyAvailabilityFromBlocks(asAvailabilityBlocks)
+      const merged =
+        mergeWeeklyAvailabilityFromBlocksWithTimezone(asAvailabilityBlocks)
       const slots = merged.map(day => ({
         ranges: day.ranges || [],
         weekday: day.weekday,
@@ -8614,7 +8618,6 @@ const createQuickPoll = async (
           .from('quick_poll_availabilities')
           .insert(
             ownerBlockIds.map((availability_id: string) => ({
-              poll_id: poll.id,
               participant_id: schedulerRow.id,
               availability_id,
             }))
@@ -8768,7 +8771,7 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
       throw new QuickPollNotFoundError(pollId)
     }
 
-    const { data: participants, error: participantsError } = await db.supabase
+    const participantsPromise = db.supabase
       .from('quick_poll_participants')
       .select(
         `
@@ -8787,14 +8790,19 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
       .neq('status', QuickPollParticipantStatus.PENDING)
       .order('created_at', { ascending: true })
 
-    if (participantsError) throw participantsError
-
-    const { data: pollAvailRows } = await db.supabase
+    const availabilitiesPromise = db.supabase
       .from('quick_poll_availabilities')
       .select(
-        'participant_id, availability_id, availabilities(id, title, timezone, weekly_availability)'
+        'participant_id, availability_id, availabilities(id, title, timezone, weekly_availability), quick_poll_participants!inner(poll_id)'
       )
-      .eq('poll_id', pollId)
+      .eq('quick_poll_participants.poll_id', pollId)
+
+    const [
+      { data: participants, error: participantsError },
+      { data: pollAvailRows },
+    ] = await Promise.all([participantsPromise, availabilitiesPromise])
+
+    if (participantsError) throw participantsError
 
     const blocksByParticipant = buildBlocksByParticipant(pollAvailRows)
 
@@ -8854,7 +8862,7 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
                 weekly_availability: b.weekly_availability,
               })
             )
-            const resolvedSlots = mergeWeeklyAvailabilityFromBlocks(
+            const resolvedSlots = mergeWeeklyAvailabilityFromBlocksWithTimezone(
               asAvailabilityBlocks
             ).map(day => ({
               weekday: day.weekday,
@@ -9781,7 +9789,7 @@ const updateQuickPollParticipantAvailability = async (
   try {
     const { data: existingParticipant, error: fetchError } = await db.supabase
       .from('quick_poll_participants')
-      .select('id, poll_id, account_address')
+      .select('id, account_address')
       .eq('id', participantId)
       .maybeSingle()
 
@@ -9789,7 +9797,6 @@ const updateQuickPollParticipantAvailability = async (
       throw new QuickPollParticipantNotFoundError(participantId)
     }
 
-    const pollId = existingParticipant.poll_id
     const rawBlockIds = options?.availability_block_ids?.filter(Boolean)
     const isBlockBased = Array.isArray(rawBlockIds) && rawBlockIds.length > 0
 
@@ -9798,11 +9805,9 @@ const updateQuickPollParticipantAvailability = async (
         .from('quick_poll_availabilities')
         .delete()
         .eq('participant_id', participantId)
-        .eq('poll_id', pollId)
 
       await db.supabase.from('quick_poll_availabilities').insert(
         rawBlockIds.map((availability_id: string) => ({
-          poll_id: pollId,
           participant_id: participantId,
           availability_id,
         }))
@@ -9841,7 +9846,6 @@ const updateQuickPollParticipantAvailability = async (
       .from('quick_poll_availabilities')
       .delete()
       .eq('participant_id', participantId)
-      .eq('poll_id', pollId)
 
     const updates: Record<string, unknown> = {
       available_slots: availableSlots,

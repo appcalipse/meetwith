@@ -20,6 +20,7 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
+  Tooltip,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
@@ -648,33 +649,53 @@ const PollCard = ({
                 {poll.host_name || 'Unknown'}
               </Text>
             </HStack>
+            {/* Availability */}
             {currentUserAvailabilityBadges.length > 0 && (
-              <HStack gap={2} flexWrap="wrap" mt={1}>
-                {currentUserAvailabilityBadges.slice(0, 2).map(title => (
-                  <Badge
-                    key={title}
-                    bg="bg-surface-tertiary-2"
-                    color="text-primary"
-                    borderRadius={6}
-                    fontSize="xs"
-                    px={2}
-                    py={0.5}
-                  >
-                    {title}
-                  </Badge>
-                ))}
-                {currentUserAvailabilityBadges.length > 2 && (
-                  <Badge
-                    bg="bg-surface-tertiary-2"
-                    color="text-primary"
-                    borderRadius={6}
-                    fontSize="xs"
-                    px={2}
-                    py={0.5}
-                  >
-                    +{currentUserAvailabilityBadges.length - 2} more
-                  </Badge>
-                )}
+              <HStack spacing={2} flexWrap="wrap" align="flex-start">
+                <Text
+                  fontSize={{ base: '14px', md: '16px' }}
+                  color="text-primary"
+                  fontWeight="700"
+                >
+                  Availability:
+                </Text>
+                <HStack gap={2} flexWrap="wrap">
+                  {currentUserAvailabilityBadges.slice(0, 2).map(title => (
+                    <Tooltip
+                      key={title}
+                      label="Availability block used for this poll"
+                      placement="top"
+                    >
+                      <Badge
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        {title}
+                      </Badge>
+                    </Tooltip>
+                  ))}
+                  {currentUserAvailabilityBadges.length > 2 && (
+                    <Tooltip
+                      label="Availability block used for this poll"
+                      placement="top"
+                    >
+                      <Badge
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        +{currentUserAvailabilityBadges.length - 2} more
+                      </Badge>
+                    </Tooltip>
+                  )}
+                </HStack>
               </HStack>
             )}
 

@@ -25,13 +25,19 @@ import { TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import { PollCustomAvailability } from '@/types/QuickPoll'
 import {
-  findMatchingAvailabilityBlocks,
   getBrowserTimezone,
+  getDefaultScheduleAvailability,
   initializeEmptyAvailabilities,
-  mergeWeeklyAvailabilityFromBlocks,
+  mergeWeeklyAvailabilityFromBlocksWithTimezone,
   sortAvailabilitiesByWeekday,
 } from '@/utils/availability.helper'
 import { Option } from '@/utils/constants/select'
+
+const CUSTOM_OPTION_VALUE = '__custom__'
+const CUSTOM_OPTION: Option<string> = {
+  value: CUSTOM_OPTION_VALUE,
+  label: 'Custom',
+}
 
 import { WeekdayConfig } from './WeekdayConfig'
 
@@ -60,6 +66,7 @@ export function PollAvailabilityModal({
   initialCustom,
 }: PollAvailabilityModalProps) {
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([])
+  const [isCustomFromEdit, setIsCustomFromEdit] = useState(false)
   const [timezone, setTimezone] = useState<string>(getBrowserTimezone())
   const [availabilities, setAvailabilities] = useState<
     Array<{ weekday: number; ranges: TimeRange[] }>
@@ -98,14 +105,16 @@ export function PollAvailabilityModal({
       })
       setAvailabilities(merged)
       setSelectedBlockIds([])
+      setIsCustomFromEdit(true)
       return
     }
     if (initialBlockIds.length > 0) {
       const blocks = availableBlocks.filter(b => initialBlockIds.includes(b.id))
       setSelectedBlockIds(initialBlockIds)
+      setIsCustomFromEdit(false)
       if (blocks.length > 0) {
         setTimezone(blocks[0].timezone)
-        setAvailabilities(mergeWeeklyAvailabilityFromBlocks(blocks))
+        setAvailabilities(mergeWeeklyAvailabilityFromBlocksWithTimezone(blocks))
       } else {
         setAvailabilities(initializeEmptyAvailabilities())
       }
@@ -114,6 +123,7 @@ export function PollAvailabilityModal({
     // Default: use default block
     if (defaultBlock) {
       setSelectedBlockIds([defaultBlock.id])
+      setIsCustomFromEdit(false)
       setTimezone(defaultBlock.timezone)
       setAvailabilities(
         sortAvailabilitiesByWeekday(
@@ -126,6 +136,7 @@ export function PollAvailabilityModal({
     } else {
       setTimezone(getBrowserTimezone())
       setAvailabilities(initializeEmptyAvailabilities())
+      setIsCustomFromEdit(false)
     }
   }, [isOpen, initialBlockIds, initialCustom, availableBlocks, defaultBlock])
 
@@ -135,20 +146,30 @@ export function PollAvailabilityModal({
     }
   }, [isOpen])
 
-  // When user changes selected blocks from dropdown, update schedule and timezone from blocks
+  // When user changes selected blocks from dropdown, update schedule and timezone
   const handleBlockSelectionChange = (options: Option<string>[]) => {
-    const ids = options.map(o => o.value)
+    const ids = options
+      .filter(o => o.value !== CUSTOM_OPTION_VALUE)
+      .map(o => o.value)
     setSelectedBlockIds(ids)
-    if (ids.length > 0) {
-      const blocks = availableBlocks.filter(b => ids.includes(b.id))
-      if (blocks.length > 0) {
-        setTimezone(blocks[0].timezone)
-        setAvailabilities(mergeWeeklyAvailabilityFromBlocks(blocks))
+    if (ids.length === 0) {
+      if (options.length === 0) {
+        setTimezone(getBrowserTimezone())
+        setAvailabilities(getDefaultScheduleAvailability())
+        setIsCustomFromEdit(false)
       }
+      return
+    }
+    const blocks = availableBlocks.filter(b => ids.includes(b.id))
+    if (blocks.length > 0) {
+      setIsCustomFromEdit(false)
+      setTimezone(blocks[0].timezone)
+      setAvailabilities(mergeWeeklyAvailabilityFromBlocksWithTimezone(blocks))
     }
   }
 
   const handleTimezoneChange = (tz: string | null | undefined) => {
+    if (selectedBlockIds.length > 0) setIsCustomFromEdit(true)
     setTimezone(tz ?? getBrowserTimezone())
   }
 
@@ -156,6 +177,7 @@ export function PollAvailabilityModal({
     day: number,
     ranges: TimeRange[] | null
   ) => {
+    if (selectedBlockIds.length > 0) setIsCustomFromEdit(true)
     setAvailabilities(prev =>
       prev.map(a =>
         a.weekday === day ? { weekday: day, ranges: ranges ?? [] } : a
@@ -177,6 +199,7 @@ export function PollAvailabilityModal({
     ranges: TimeRange[],
     copyType: 'all' | 'weekdays' | 'weekends'
   ) => {
+    if (selectedBlockIds.length > 0) setIsCustomFromEdit(true)
     const targetWeekdays: number[] =
       copyType === 'all'
         ? availabilities.map(a => a.weekday).filter(w => w !== sourceWeekday)
@@ -191,32 +214,23 @@ export function PollAvailabilityModal({
   const toggleInputMode = () => setUseDirectInput(prev => !prev)
 
   const handleSave = async () => {
-    let result: PollAvailabilityResult
-    if (selectedBlockIds.length > 0) {
-      result = { type: 'blocks', blockIds: selectedBlockIds }
-    } else {
-      const matchingBlocks = findMatchingAvailabilityBlocks(
-        availableBlocks,
+    const saveAsCustom = (): PollAvailabilityResult => ({
+      type: 'custom',
+      custom: {
         timezone,
-        availabilities
-      )
-      result =
-        matchingBlocks.length > 0
-          ? { type: 'blocks', blockIds: matchingBlocks.map(b => b.id) }
-          : {
-              type: 'custom',
-              custom: {
-                timezone,
-                weekly_availability: availabilities.map(a => ({
-                  weekday: a.weekday,
-                  ranges: a.ranges.map(r => ({
-                    start: r.start || '',
-                    end: r.end || '',
-                  })),
-                })),
-              },
-            }
-    }
+        weekly_availability: availabilities.map(a => ({
+          weekday: a.weekday,
+          ranges: a.ranges.map(r => ({
+            start: r.start || '',
+            end: r.end || '',
+          })),
+        })),
+      },
+    })
+    const result: PollAvailabilityResult =
+      isCustomFromEdit || selectedBlockIds.length === 0
+        ? saveAsCustom()
+        : { type: 'blocks', blockIds: selectedBlockIds }
     setIsSaving(true)
     try {
       await Promise.resolve(onSave(result))
@@ -230,9 +244,11 @@ export function PollAvailabilityModal({
     value: b.id,
     label: b.title,
   }))
+  const optionsWithCustom: Option<string>[] = [...blockOptions, CUSTOM_OPTION]
   const selectedBlockOptions = blockOptions.filter(o =>
     selectedBlockIds.includes(o.value)
   )
+  const selectValue = isCustomFromEdit ? [CUSTOM_OPTION] : selectedBlockOptions
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
@@ -289,12 +305,12 @@ export function PollAvailabilityModal({
                   Availability blocks
                 </FormLabel>
                 <ChakraSelect<Option<string>, true>
-                  value={selectedBlockOptions}
+                  value={selectValue}
                   onChange={(newVal: unknown) => {
                     const opts = (newVal as Option<string>[]) || []
                     handleBlockSelectionChange(opts)
                   }}
-                  options={blockOptions}
+                  options={optionsWithCustom}
                   isMulti
                   placeholder="Select blocks..."
                   chakraStyles={{
