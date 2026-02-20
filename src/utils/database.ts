@@ -3482,6 +3482,17 @@ const saveConferenceMeetingToDB = async (
   }
   throw new Error(error.message)
 }
+const deleteConferenceMeetingFromDb = async (meeting_id: string) => {
+  const { error } = await db.supabase
+    .from('meetings')
+    .delete()
+    .eq('id', meeting_id)
+
+  if (!error) {
+    return true
+  }
+  throw new Error(error.message)
+}
 
 const getConnectedCalendars = async (
   address: string,
@@ -10729,6 +10740,7 @@ export {
   createTgConnection,
   createVerification,
   deleteAllTgConnections,
+  deleteConferenceMeetingFromDb,
   deleteGateCondition,
   deleteGroup,
   deleteIcsFile,
