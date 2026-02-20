@@ -30,14 +30,11 @@ const faqs: Faq[] = [
         <p>You can either:</p>
         <List styleType="disc" ml={4} mt={1} spacing={1}>
           <ListItem>
-            Absolutely! Create multiple session types with different durations,
-            prices, and descriptions. For example: 30-min quick calls at $50,
-            90-min strategy sessions at $200.
+            Find the best available time across all members using our discovery
+            tool, or
           </ListItem>
           <ListItem>
-            These five directly address the biggest conversion questions from
-            your customer discovery interviews and remove the main barriers
-            preventing sign-ups from your key segments.
+            Set a fixed time (recurrent or one-off) and notify the group.
           </ListItem>
         </List>
       </>
