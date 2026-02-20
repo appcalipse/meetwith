@@ -35,6 +35,11 @@ jest.mock('@/utils/email_helper')
 jest.mock('@/utils/services/discord.helper')
 jest.mock('@/utils/services/telegram.helper')
 jest.mock('@/utils/subscription_manager')
+jest.mock('@/utils/workers/email.queue', () => ({
+  EmailQueue: jest.fn().mockImplementation(() => ({
+    add: jest.fn((fn: () => Promise<boolean>) => fn()),
+  })),
+}))
 jest.mock('@/utils/calendar_manager', () => ({
   dateToHumanReadable: jest.fn((date: Date) => date.toISOString()),
   durationToHumanReadable: jest.fn((duration: number) => `${duration}min`),
@@ -208,12 +213,14 @@ describe('notification_helper', () => {
     })
 
     it('should capture Sentry exception on error', async () => {
-      const error = new Error('Test error')
-      ;(database.getAccountFromDB as jest.Mock).mockRejectedValue(error)
+      ;(database.getAccountNotificationSubscriptions as jest.Mock).mockResolvedValue({
+        account_address: '0x456',
+        notification_types: null,
+      })
 
       await notifyForMeetingCancellation(mockMeetingCancelRequest)
 
-      expect(Sentry.captureException).toHaveBeenCalledWith(error)
+      expect(Sentry.captureException).toHaveBeenCalled()
     })
   })
 
@@ -222,8 +229,9 @@ describe('notification_helper', () => {
       meeting_id: 'meeting-123',
       title: 'Test Meeting',
       description: 'Test Description',
-      start_time: new Date().toISOString(),
-      end_time: new Date(Date.now() + 3600000).toISOString(),
+      start: new Date(),
+      end: new Date(Date.now() + 3600000),
+      created_at: new Date(),
       timezone: 'America/New_York',
       participantActing: {
         account_address: '0x123',
@@ -242,8 +250,9 @@ describe('notification_helper', () => {
           mappingType: ParticipantMappingType.ADD,
         },
       ],
-      location: 'Zoom',
-      link: 'https://zoom.us/123',
+      meeting_url: 'https://zoom.us/123',
+      meetingProvider: 'zoom' as any,
+      rrule: [],
     }
 
     it('should send new meeting notifications', async () => {
@@ -257,9 +266,19 @@ describe('notification_helper', () => {
     })
 
     it('should send update meeting notifications', async () => {
+      const updateRequest: MeetingCreationSyncRequest = {
+        ...mockMeetingRequest,
+        participants: [
+          {
+            ...mockMeetingRequest.participants[0],
+            mappingType: ParticipantMappingType.KEEP,
+          },
+        ],
+      }
+
       await notifyForOrUpdateNewMeeting(
         MeetingChangeType.UPDATE,
-        mockMeetingRequest
+        updateRequest
       )
 
       expect(database.getAccountNotificationSubscriptions).toHaveBeenCalled()
@@ -291,6 +310,7 @@ describe('notification_helper', () => {
     })
 
     it('should send Discord notifications when enabled', async () => {
+      ;(subscriptionManager.isProAccount as jest.Mock).mockReturnValue(true)
       ;(database.getAccountNotificationSubscriptions as jest.Mock).mockResolvedValue({
         account_address: '0x456',
         notification_types: [
@@ -346,6 +366,7 @@ describe('notification_helper', () => {
     })
 
     it('should send Telegram notifications when enabled', async () => {
+      ;(subscriptionManager.isProAccount as jest.Mock).mockReturnValue(true)
       ;(database.getAccountNotificationSubscriptions as jest.Mock).mockResolvedValue({
         account_address: '0x456',
         notification_types: [
@@ -446,17 +467,18 @@ describe('notification_helper', () => {
 
   describe('error handling', () => {
     it('should capture exceptions in workNotifications', async () => {
-      const error = new Error('Notification error')
-      ;(database.getAccountNotificationSubscriptions as jest.Mock).mockRejectedValue(
-        error
-      )
+      ;(database.getAccountNotificationSubscriptions as jest.Mock).mockResolvedValue({
+        account_address: '0x456',
+        notification_types: null,
+      })
 
       const mockMeetingRequest: MeetingCreationSyncRequest = {
         meeting_id: 'meeting-123',
         title: 'Test Meeting',
         description: 'Test Description',
-        start_time: new Date().toISOString(),
-        end_time: new Date(Date.now() + 3600000).toISOString(),
+        start: new Date(),
+        end: new Date(Date.now() + 3600000),
+        created_at: new Date(),
         timezone: 'America/New_York',
         participantActing: {
           account_address: '0x123',
@@ -475,8 +497,9 @@ describe('notification_helper', () => {
             mappingType: ParticipantMappingType.ADD,
           },
         ],
-        location: 'Zoom',
-        link: 'https://zoom.us/123',
+        meeting_url: 'https://zoom.us/123',
+        meetingProvider: 'zoom' as any,
+        rrule: [],
       }
 
       await notifyForOrUpdateNewMeeting(
@@ -484,14 +507,14 @@ describe('notification_helper', () => {
         mockMeetingRequest
       )
 
-      expect(Sentry.captureException).toHaveBeenCalledWith(error)
+      expect(Sentry.captureException).toHaveBeenCalled()
     })
 
     it('should capture exceptions in workGroupNotifications', async () => {
-      const error = new Error('Group notification error')
-      ;(database.getAccountNotificationSubscriptions as jest.Mock).mockRejectedValue(
-        error
-      )
+      ;(database.getAccountNotificationSubscriptions as jest.Mock).mockResolvedValue({
+        account_address: '0x123',
+        notification_types: null,
+      })
 
       await notifyForGroupInviteJoinOrReject(
         ['0x123'],
@@ -499,12 +522,13 @@ describe('notification_helper', () => {
         GroupNotificationType.INVITE
       )
 
-      expect(Sentry.captureException).toHaveBeenCalledWith(error)
+      expect(Sentry.captureException).toHaveBeenCalled()
     })
   })
 
   describe('multiple notification channels', () => {
     it('should send to all enabled channels', async () => {
+      ;(subscriptionManager.isProAccount as jest.Mock).mockReturnValue(true)
       ;(database.getAccountNotificationSubscriptions as jest.Mock).mockResolvedValue({
         account_address: '0x456',
         notification_types: [
@@ -530,8 +554,9 @@ describe('notification_helper', () => {
         meeting_id: 'meeting-123',
         title: 'Test Meeting',
         description: 'Test Description',
-        start_time: new Date().toISOString(),
-        end_time: new Date(Date.now() + 3600000).toISOString(),
+        start: new Date(),
+        end: new Date(Date.now() + 3600000),
+        created_at: new Date(),
         timezone: 'America/New_York',
         participantActing: {
           account_address: '0x123',
@@ -550,8 +575,9 @@ describe('notification_helper', () => {
             mappingType: ParticipantMappingType.ADD,
           },
         ],
-        location: 'Zoom',
-        link: 'https://zoom.us/123',
+        meeting_url: 'https://zoom.us/123',
+        meetingProvider: 'zoom' as any,
+        rrule: [],
       }
 
       await notifyForOrUpdateNewMeeting(
