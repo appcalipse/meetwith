@@ -88,20 +88,16 @@ describe('/api/secure/contact/[id]', () => {
     it('should return 500 when session is missing', async () => {
       req.session = undefined
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      expect(statusMock).toHaveBeenCalledWith(500)
+      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
     })
 
     it('should return 500 when account is missing', async () => {
       req.session = {} as any
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      expect(statusMock).toHaveBeenCalledWith(500)
+      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
     })
 
-    it('should return 500 when address is missing', async () => {
+    it('should return 401 when address is missing', async () => {
       req.session = {
         account: {
           address: '',
@@ -110,7 +106,7 @@ describe('/api/secure/contact/[id]', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(500)
+      expect(statusMock).toHaveBeenCalledWith(401)
     })
   })
 

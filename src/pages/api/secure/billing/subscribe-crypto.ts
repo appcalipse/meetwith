@@ -26,7 +26,7 @@ const emailQueue = new EmailQueue()
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     try {
-      if (!req.session.account?.address) {
+      if (!req.session?.account?.address) {
         return res.status(401).json({ error: 'Unauthorized' })
       }
 

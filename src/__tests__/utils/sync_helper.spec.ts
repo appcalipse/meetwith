@@ -41,6 +41,9 @@ describe('sync_helper', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    // Suppress console.error to prevent Node.js v24 worker crashes from
+    // caught errors logged by the source code's error handling paths
+    jest.spyOn(console, 'error').mockImplementation(() => {})
     ;(database.getConnectedCalendars as jest.Mock).mockResolvedValue(
       mockCalendars
     )
@@ -1527,7 +1530,7 @@ describe('sync_helper', () => {
         connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock
       ).mockReturnValue(mockIntegration)
 
-      await ExternalCalendarSync.delete(createMockDeleteRequest())
+      await ExternalCalendarSync.delete(mockAccount, ['ext-event-123'])
 
       expect(mockIntegration.deleteEvent).toHaveBeenCalled()
     })
@@ -1543,7 +1546,7 @@ describe('sync_helper', () => {
         connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock
       ).mockReturnValue(mockIntegration)
 
-      await ExternalCalendarSync.delete(createMockDeleteRequest())
+      await ExternalCalendarSync.delete(mockAccount, ['ext-event-123'])
 
       expect(Sentry.captureException).toHaveBeenCalled()
     })
@@ -1552,7 +1555,7 @@ describe('sync_helper', () => {
       ;(database.getConnectedCalendars as jest.Mock).mockResolvedValue([])
 
       // Should not throw
-      await ExternalCalendarSync.delete(createMockDeleteRequest())
+      await ExternalCalendarSync.delete(mockAccount, ['ext-event-123'])
     })
   })
 

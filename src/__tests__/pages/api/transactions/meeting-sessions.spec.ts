@@ -89,13 +89,13 @@ describe('/api/transactions/meeting-sessions', () => {
     it('should return 404 when transaction not found', async () => {
       mockExtractQuery.mockReturnValue('0xabc123')
       mockGetMeetingSessionsByTxHash.mockRejectedValue(
-        new TransactionNotFoundError('Transaction not found')
+        new TransactionNotFoundError('0xabc123' as `0x${string}`)
       )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(404)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Transaction not found' })
+      expect(jsonMock).toHaveBeenCalledWith({ error: 'Transaction with hash: 0xabc123 not found' })
     })
 
     it('should handle empty sessions array', async () => {

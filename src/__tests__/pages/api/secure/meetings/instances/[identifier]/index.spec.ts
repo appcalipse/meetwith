@@ -251,12 +251,12 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
     it('should return 404 for meeting session not found', async () => {
       mockGetSlotInstance.mockResolvedValue({ account_address: '0x1234567890abcdef' })
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockUpdateMeetingInstance.mockRejectedValue(new MeetingSessionNotFoundError('Session not found'))
+      mockUpdateMeetingInstance.mockRejectedValue(new MeetingSessionNotFoundError('meeting_123'))
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(404)
-      expect(sendMock).toHaveBeenCalledWith('Session not found')
+      expect(sendMock).toHaveBeenCalledWith('Meeting session not found for id: meeting_123')
     })
 
     it('should return 400 for transaction required error', async () => {
@@ -440,10 +440,8 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
       req.session = undefined
       req.body = {}
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
       // Should fail when trying to access account.address
-      expect(statusMock).toHaveBeenCalled()
+      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
     })
 
     it('should handle instance with complex data', async () => {

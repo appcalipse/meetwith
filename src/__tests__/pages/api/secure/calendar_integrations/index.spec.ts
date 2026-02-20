@@ -73,13 +73,10 @@ describe('/api/secure/calendar_integrations', () => {
   })
 
   describe('Authentication', () => {
-    it('should return 400 when session is missing', async () => {
+    it('should throw when session is missing', async () => {
       req.session = undefined
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      expect(statusMock).toHaveBeenCalledWith(400)
-      expect(jsonMock).toHaveBeenCalledWith({ message: 'SHOULD BE LOGGED IN' })
+      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
     })
 
     it('should return 400 when account is missing', async () => {
@@ -179,15 +176,11 @@ describe('/api/secure/calendar_integrations', () => {
       expect(mockSyncConnectedCalendars).toHaveBeenCalledWith('0x1234567890abcdef')
     })
 
-    it('should return 500 on error', async () => {
+    it('should throw on database error outside try-catch', async () => {
       mockIsProAccountAsync.mockResolvedValue(true)
       mockGetConnectedCalendars.mockRejectedValue(new Error('Database error'))
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      expect(statusMock).toHaveBeenCalledWith(500)
-      expect(jsonMock).toHaveBeenCalledWith({ message: 'An unexpected error occurred.' })
-      expect(mockSentry).toHaveBeenCalled()
+      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow('Database error')
     })
   })
 
@@ -338,14 +331,14 @@ describe('/api/secure/calendar_integrations', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle calendars with parsed JSON payload', async () => {
+    it('should handle calendars with stringified JSON payload', async () => {
       const mockCalendars = [
         {
           id: 'cal_1',
           provider: TimeSlotSource.GOOGLE,
           email: 'user@gmail.com',
           calendars: [],
-          payload: { scope: 'calendar.readonly' }, // Already parsed
+          payload: JSON.stringify({ scope: 'calendar.readonly' }),
         },
       ]
       

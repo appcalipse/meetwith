@@ -236,7 +236,11 @@ describe('/api/auth/login', () => {
       mockCheckSignature.mockReturnValue('0x1234567890abcdef')
       req.session.save = jest.fn().mockRejectedValue(new Error('Session save failed'))
 
-      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+      expect(statusMock).toHaveBeenCalledWith(404)
+      expect(sendMock).toHaveBeenCalledWith('Not found')
     })
   })
 

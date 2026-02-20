@@ -24,7 +24,7 @@ describe('participant.service', () => {
       ]
 
       const service = new ParticipantService(current, updated)
-      const result = service.handleParticipantUpdate([])
+      const result = service.handleParticipantUpdate([...current])
 
       expect(result).toHaveLength(2)
       expect(result.some(p => p.account_address === '0x456')).toBe(true)

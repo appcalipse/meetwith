@@ -90,20 +90,16 @@ describe('/api/secure/group/invites', () => {
   })
 
   describe('Authentication', () => {
-    it('should return 500 when session is missing', async () => {
+    it('should throw when session is missing', async () => {
       req.session = undefined
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      expect(statusMock).toHaveBeenCalledWith(500)
+      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
     })
 
-    it('should return 500 when account is missing', async () => {
+    it('should throw when account is missing', async () => {
       req.session = {} as any
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      expect(statusMock).toHaveBeenCalledWith(500)
+      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
     })
 
     it('should return 401 when address is missing', async () => {

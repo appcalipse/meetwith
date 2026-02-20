@@ -4,8 +4,8 @@ import { saveEmailToDB } from '@/utils/database'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    const email = req.body.email
-    const plan = req.body.plan
+    const email = req.body?.email
+    const plan = req.body?.plan
 
     if (email) {
       const success = await saveEmailToDB(email, plan)

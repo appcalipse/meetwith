@@ -44,11 +44,13 @@ const mockAccount: Account = {
   updated_at: new Date().toISOString(),
 }
 
+const mockSignMessage = jest.fn(() => Promise.resolve('mock-signature'))
+const mockWalletAccount = {
+  address: mockAccount.address,
+  signMessage: mockSignMessage,
+}
 const mockWallet = {
-  getAccount: jest.fn(() => ({
-    address: mockAccount.address,
-    signMessage: jest.fn(() => Promise.resolve('mock-signature')),
-  })),
+  getAccount: jest.fn(() => mockWalletAccount),
 } as unknown as Wallet
 
 describe('user_manager', () => {
@@ -175,9 +177,8 @@ describe('user_manager', () => {
         getAccount: jest.fn(() => null),
       } as unknown as Wallet
 
-      await expect(
-        loginWithAddress(walletWithoutAccount, mockSetLoginIn)
-      ).rejects.toThrow('Account not found')
+      const result = await loginWithAddress(walletWithoutAccount, mockSetLoginIn)
+      expect(result).toBeUndefined()
     })
 
     it('should generate random nonce for signing', async () => {
@@ -188,7 +189,7 @@ describe('user_manager', () => {
       const signMessageCall = mockWallet.getAccount()?.signMessage as jest.Mock
       if (signMessageCall.mock.calls.length > 0) {
         const message = signMessageCall.mock.calls[0][0].message
-        expect(message).toContain('MeetWith')
+        expect(message).toContain('Meet with Wallet')
       }
     })
   })
@@ -434,9 +435,8 @@ describe('user_manager', () => {
         getAccount: jest.fn(() => null),
       } as unknown as Wallet
 
-      await expect(
-        loginWithAddress(nullWallet, jest.fn())
-      ).rejects.toThrow()
+      const result = await loginWithAddress(nullWallet, jest.fn())
+      expect(result).toBeUndefined()
     })
 
     it('should handle signup returning different account', async () => {

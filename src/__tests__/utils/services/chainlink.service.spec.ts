@@ -23,6 +23,7 @@ jest.mock('@/utils/react_query', () => ({
 describe('ChainlinkService', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.restoreAllMocks()
   })
 
   describe('getPriceForChain', () => {
@@ -84,9 +85,8 @@ describe('ChainlinkService', () => {
     describe('getPrice', () => {
       it('should fetch price from Chainlink oracle', async () => {
         const mockContract = {
-          abi: expect.any(Array),
           address: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
-          chain: expect.any(Object),
+          chain: { id: 42161 },
         }
 
         ;(getContract as jest.Mock).mockReturnValue(mockContract)
@@ -129,7 +129,7 @@ describe('ChainlinkService', () => {
       })
 
       it('should query Chainlink for USDT on Arbitrum', async () => {
-        const mockContract = { address: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7' }
+        const mockContract = { address: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7', chain: { id: 42161 } }
         ;(getContract as jest.Mock).mockReturnValue(mockContract)
         ;(formatUnits as jest.Mock).mockReturnValue('0.99')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([
@@ -151,6 +151,7 @@ describe('ChainlinkService', () => {
       it('should query Chainlink for ETH on Arbitrum', async () => {
         ;(getContract as jest.Mock).mockReturnValue({
           address: '0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612',
+          chain: { id: 42161 },
         })
         ;(formatUnits as jest.Mock).mockReturnValue('2500.00')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([
@@ -172,6 +173,7 @@ describe('ChainlinkService', () => {
       it('should query Chainlink for CELO on Celo', async () => {
         ;(getContract as jest.Mock).mockReturnValue({
           address: '0x0568fD19986748cEfF3301e55c0eb1E729E0Ab7e',
+          chain: { id: 42220 },
         })
         ;(formatUnits as jest.Mock).mockReturnValue('0.75')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([
@@ -193,6 +195,7 @@ describe('ChainlinkService', () => {
       it('should query Chainlink for USDC on Celo Alfajores testnet', async () => {
         ;(getContract as jest.Mock).mockReturnValue({
           address: '0x8b255b1FB27d4D06bD8899f81095627464868EEE',
+          chain: { id: 44787 },
         })
         ;(formatUnits as jest.Mock).mockReturnValue('1.00')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([
@@ -211,16 +214,26 @@ describe('ChainlinkService', () => {
         expect(result).toBe(1.0)
       })
 
-      it('should throw error if feed address not found', async () => {
-        await expect(
-          service.getPrice(SupportedChain.POLYGON_MATIC, AcceptedToken.USDC)
-        ).rejects.toThrow('No feed for USDC on polygon')
+      it('should return fallback when feed address not found', async () => {
+        const result = await service.getPrice(
+          SupportedChain.POLYGON_MATIC,
+          AcceptedToken.USDC
+        )
+
+        expect(result).toBe(1)
+        expect(Sentry.captureException).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: expect.stringContaining('No feed for USDC on POLYGON_MATIC'),
+          }),
+          expect.any(Object)
+        )
       })
 
       it('should return fallback 1 on error and capture exception', async () => {
         const mockError = new Error('Network error')
         ;(getContract as jest.Mock).mockReturnValue({
           address: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
+          chain: { id: 42161 },
         })
         ;(queryClient.fetchQuery as jest.Mock).mockRejectedValue(mockError)
 
@@ -242,6 +255,7 @@ describe('ChainlinkService', () => {
       it('should handle Ethereum mainnet USDC', async () => {
         ;(getContract as jest.Mock).mockReturnValue({
           address: '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4',
+          chain: { id: 1 },
         })
         ;(formatUnits as jest.Mock).mockReturnValue('1.00')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([
@@ -263,6 +277,7 @@ describe('ChainlinkService', () => {
       it('should handle Sepolia testnet', async () => {
         ;(getContract as jest.Mock).mockReturnValue({
           address: '0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E',
+          chain: { id: 11155111 },
         })
         ;(formatUnits as jest.Mock).mockReturnValue('1.00')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([
@@ -284,6 +299,7 @@ describe('ChainlinkService', () => {
       it('should execute readContract with correct parameters', async () => {
         const mockContract = {
           address: '0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3',
+          chain: { id: 42161 },
         }
         ;(getContract as jest.Mock).mockReturnValue(mockContract)
         ;(formatUnits as jest.Mock).mockReturnValue('1.00')
@@ -322,6 +338,7 @@ describe('ChainlinkService', () => {
       it('should handle CUSD on Celo', async () => {
         ;(getContract as jest.Mock).mockReturnValue({
           address: '0xe38A27BE4E7d866327e09736F3C570F256FFd048',
+          chain: { id: 42220 },
         })
         ;(formatUnits as jest.Mock).mockReturnValue('1.00')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([
@@ -343,6 +360,7 @@ describe('ChainlinkService', () => {
       it('should handle CEUR on Celo', async () => {
         ;(getContract as jest.Mock).mockReturnValue({
           address: '0x9a48d9b0AF457eF040281A9Af3867bc65522Fecd',
+          chain: { id: 42220 },
         })
         ;(formatUnits as jest.Mock).mockReturnValue('1.10')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([
@@ -364,6 +382,7 @@ describe('ChainlinkService', () => {
       it('should handle Arbitrum Sepolia testnet', async () => {
         ;(getContract as jest.Mock).mockReturnValue({
           address: '0x0153002d20B96532C639313c2d54c3dA09109309',
+          chain: { id: 421614 },
         })
         ;(formatUnits as jest.Mock).mockReturnValue('1.00')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([

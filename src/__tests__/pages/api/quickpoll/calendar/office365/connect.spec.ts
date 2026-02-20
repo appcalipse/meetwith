@@ -43,7 +43,7 @@ describe('/api/quickpoll/calendar/office365/connect', () => {
         url: expect.stringContaining('login.microsoftonline.com'),
       })
       const url = (jsonMock.mock.calls[0][0] as { url: string }).url
-      expect(url).toContain(`client_id=${process.env.MS_GRAPH_CLIENT_ID}`)
+      expect(url).toContain('client_id=test-ms-client-id')
       expect(url).toContain('response_type=code')
       expect(url).toContain('redirect_uri=')
       expect(url).toContain('scope=')
@@ -63,7 +63,7 @@ describe('/api/quickpoll/calendar/office365/connect', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       const url = (jsonMock.mock.calls[0][0] as { url: string }).url
-      expect(url).toContain('quickpoll/calendar/office365/callback')
+      expect(url).toContain('quickpoll%2Fcalendar%2Foffice365%2Fcallback')
     })
 
     it('should include Office 365 scopes in auth URL', async () => {
@@ -148,7 +148,7 @@ describe('/api/quickpoll/calendar/office365/connect', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       const url = (jsonMock.mock.calls[0][0] as { url: string }).url
-      expect(url).toContain(`client_id=${process.env.MS_GRAPH_CLIENT_ID}`)
+      expect(url).toContain('client_id=test-ms-client-id')
     })
   })
 })

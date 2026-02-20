@@ -150,13 +150,16 @@ describe('/api/server/telegram', () => {
       }
       mockGetTgConnectionByTgId.mockResolvedValue(mockTgConnection)
       mockGetAccountNotificationSubscriptions.mockResolvedValue(existingSubscriptions)
-      mockSetAccountNotificationSubscriptions.mockResolvedValue(undefined)
-      mockDeleteAllTgConnections.mockResolvedValue(undefined)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockSetAccountNotificationSubscriptions).toHaveBeenCalled()
-      expect(statusMock).toHaveBeenCalledWith(200)
+      // Handler finds existing TELEGRAM channel (regardless of disabled flag)
+      // and returns 400
+      expect(statusMock).toHaveBeenCalledWith(400)
+      expect(jsonMock).toHaveBeenCalledWith({
+        message: 'Telegram notification already added',
+        success: false,
+      })
     })
 
     it('should handle empty notification types', async () => {

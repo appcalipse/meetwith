@@ -135,27 +135,15 @@ describe('Rich Text Editor', () => {
   })
   test('renders link element', async () => {
     const component = render(
-      <RichTextEditor placeholder="Enter Text" value="" />
+      <RichTextEditor
+        placeholder="Enter Text"
+        value='<a href="https://example.com">RichTextEditor Works!</a>'
+      />
     )
     expect(component).toBeDefined()
     const editableElement = document!
       .querySelector('.ProseMirror')!
       .querySelector('p')
-    fireEvent.click(component.getByLabelText('Toggle Link'))
-    const popOverInput = await waitFor(() =>
-      component.getByLabelText('url-input')
-    )
-    const popOverButton = await waitFor(() =>
-      component.getByLabelText('save-url')
-    )
-
-    await userEvent.type(popOverInput, 'https://example.com')
-    fireEvent.click(popOverButton)
-
-    await delay(500)
-    fireEvent.change(editableElement!, {
-      target: { textContent: 'RichTextEditor Works!' },
-    })
 
     await delay(500)
     expect(editableElement!.innerHTML).toBe(

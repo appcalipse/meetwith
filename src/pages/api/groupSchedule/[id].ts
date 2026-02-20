@@ -4,7 +4,8 @@ import { selectTeamMeetingRequest } from '@/utils/database'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    const { id } = req.query
+    const rawId = req.query.id
+    const id = Array.isArray(rawId) ? rawId[0] : rawId
 
     const teamMeetingRequest = await selectTeamMeetingRequest(id as string)
     if (teamMeetingRequest) {

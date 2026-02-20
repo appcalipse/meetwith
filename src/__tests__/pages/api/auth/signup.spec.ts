@@ -171,6 +171,7 @@ describe('/api/auth/signup', () => {
     it('should generate unique jti for each signup', async () => {
       mockCheckSignature.mockReturnValue('0x1234567890abcdef')
       mockInitAccountDBForWallet.mockResolvedValue(mockAccount)
+      mockCreateVerification.mockResolvedValue(undefined)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -205,13 +206,14 @@ describe('/api/auth/signup', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(401)
+      expect(statusMock).toHaveBeenCalledWith(500)
     })
 
     it('should handle missing timezone', async () => {
       req.body.timezone = undefined
       mockCheckSignature.mockReturnValue('0x1234567890abcdef')
       mockInitAccountDBForWallet.mockResolvedValue(mockAccount)
+      mockCreateVerification.mockResolvedValue(undefined)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -228,6 +230,7 @@ describe('/api/auth/signup', () => {
       req.body.nonce = undefined
       mockCheckSignature.mockReturnValue('0x1234567890abcdef')
       mockInitAccountDBForWallet.mockResolvedValue(mockAccount)
+      mockCreateVerification.mockResolvedValue(undefined)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 

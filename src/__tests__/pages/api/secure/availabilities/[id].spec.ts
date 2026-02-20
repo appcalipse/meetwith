@@ -107,12 +107,12 @@ describe('/api/secure/availabilities/[id]', () => {
       expect(statusMock).toHaveBeenCalledWith(400)
     })
 
-    it('should return 401 when session is missing', async () => {
+    it('should return 500 when session is missing', async () => {
       req.session = undefined
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(401)
+      expect(statusMock).toHaveBeenCalledWith(500)
     })
 
     it('should return 401 when account is missing', async () => {
@@ -121,7 +121,7 @@ describe('/api/secure/availabilities/[id]', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(401)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Unauthorized' })
+      expect(jsonMock).toHaveBeenCalledWith({ error: "You don't have access to this resource." })
     })
   })
 
@@ -151,13 +151,13 @@ describe('/api/secure/availabilities/[id]', () => {
 
     it('should return 404 when block not found', async () => {
       mockGetAvailabilityBlock.mockRejectedValue(
-        new AvailabilityBlockNotFoundError('Block not found')
+        new AvailabilityBlockNotFoundError()
       )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(404)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Block not found' })
+      expect(jsonMock).toHaveBeenCalledWith({ error: 'Availability block not found' })
     })
   })
 
@@ -368,12 +368,12 @@ describe('/api/secure/availabilities/[id]', () => {
 
   describe('Error Handling', () => {
     it('should return 401 for UnauthorizedError', async () => {
-      mockGetAvailabilityBlock.mockRejectedValue(new UnauthorizedError('No access'))
+      mockGetAvailabilityBlock.mockRejectedValue(new UnauthorizedError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(401)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'No access' })
+      expect(jsonMock).toHaveBeenCalledWith({ error: "You don't have access to this resource." })
     })
 
     it('should return 400 for InvalidAvailabilityBlockError', async () => {

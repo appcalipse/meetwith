@@ -25,7 +25,7 @@ import { Currency } from '@/utils/services/onramp.money'
 import {
   cancelCryptoSubscription,
   handleCryptoSubscriptionPayment,
-} from '@/utils/transaction.helper'
+} from '@/utils/services/crypto.helper'
 
 jest.mock('@sentry/nextjs')
 jest.mock('viem')

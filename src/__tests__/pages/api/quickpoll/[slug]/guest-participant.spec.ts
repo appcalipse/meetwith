@@ -116,6 +116,7 @@ describe('/api/quickpoll/[slug]/guest-participant', () => {
 
     it('should update existing participant availability', async () => {
       mockGetQuickPollParticipantByIdentifier.mockResolvedValue(mockParticipant)
+      mockUpdateQuickPollGuestDetails.mockResolvedValue(mockParticipant)
       mockUpdateQuickPollParticipantAvailability.mockResolvedValue({
         ...mockParticipant,
         available_slots: req.body.available_slots,

@@ -46,7 +46,7 @@ describe('/api/server/webhook/calendar/configure', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockSyncWebhooks).toHaveBeenCalledWith('google')
+      expect(mockSyncWebhooks).toHaveBeenCalledWith('Google')
       expect(statusMock).toHaveBeenCalledWith(200)
       expect(jsonMock).toHaveBeenCalledWith('OK')
     })

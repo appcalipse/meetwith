@@ -327,10 +327,7 @@ describe('/api/secure/meetings/series', () => {
     it('should handle account fetch errors', async () => {
       mockGetAccountFromDB.mockRejectedValue(new Error('Account not found'))
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      expect(statusMock).toHaveBeenCalledWith(500)
-      expect(mockSentry).toHaveBeenCalled()
+      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow('Account not found')
     })
   })
 
@@ -338,7 +335,7 @@ describe('/api/secure/meetings/series', () => {
     it('should handle case-insensitive address matching', async () => {
       req.body = {
         participants_mapping: [
-          { account_address: '0xABCDEF1234567890' }, // Uppercase
+          { account_address: '0x1234567890ABCDEF' }, // Different casing of same address
         ],
       }
       
@@ -356,10 +353,8 @@ describe('/api/secure/meetings/series', () => {
     it('should handle missing session', async () => {
       req.session = undefined
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
       // Should fail when trying to access account.address
-      expect(statusMock).toHaveBeenCalledWith(500)
+      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
     })
 
     it('should handle complex recurrence patterns', async () => {

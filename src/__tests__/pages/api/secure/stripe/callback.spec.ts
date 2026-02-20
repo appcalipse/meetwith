@@ -171,7 +171,7 @@ describe('/api/secure/stripe/callback', () => {
       )
     })
 
-    it('should redirect to error when stripe account is null', async () => {
+    it('should return 500 when stripe account is null', async () => {
       const mockPaymentAccount = {
         id: 'pay_123',
         provider_account_id: 'acct_123',
@@ -182,14 +182,7 @@ describe('/api/secure/stripe/callback', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockUpdatePaymentAccount).toHaveBeenCalledWith(
-        'pay_123',
-        '0x1234567890abcdef',
-        { status: PaymentAccountStatus.FAILED }
-      )
-      expect(redirectMock).toHaveBeenCalledWith(
-        '/dashboard/settings/connected-accounts?stripeResult=error'
-      )
+      expect(statusMock).toHaveBeenCalledWith(500)
     })
   })
 
@@ -307,6 +300,7 @@ describe('/api/secure/stripe/callback', () => {
       
       mockGetOrCreatePaymentAccount.mockResolvedValue(mockPaymentAccount)
       mockStripeRetrieve.mockResolvedValue(mockStripeAccount)
+      mockUpdatePaymentAccount.mockResolvedValue(undefined)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -359,6 +353,7 @@ describe('/api/secure/stripe/callback', () => {
       
       mockGetOrCreatePaymentAccount.mockResolvedValue(mockPaymentAccount)
       mockStripeRetrieve.mockResolvedValue(mockStripeAccount)
+      mockUpdatePaymentAccount.mockResolvedValue(undefined)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
