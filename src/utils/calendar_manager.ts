@@ -818,6 +818,22 @@ const updateMeeting = async (
     await Promise.all(promises)
   }
   const participantData = await handleParticipants(participants, currentAccount)
+  const meeting_url =
+    meetingUrl ||
+    (
+      await generateMeetingUrl({
+        accounts: participantData.allAccounts,
+        content: content,
+        end: endTime,
+        meeting_id: rootMeetingId,
+        meetingProvider,
+        meetingReminders,
+        meetingRepeat: MeetingRepeat.NO_REPEAT,
+        participants_mapping: participantData.sanitizedParticipants,
+        start: startTime,
+        title: meetingTitle || 'No Title',
+      })
+    ).url
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     meetingTypeId,
@@ -831,7 +847,7 @@ const updateMeeting = async (
     }, {}),
     meetingProvider,
     content,
-    meetingUrl,
+    meeting_url,
     rootMeetingId,
     meetingTitle,
     meetingReminders,
@@ -1051,6 +1067,22 @@ const updateMeetingInstance = async (
   const rootMeetingId = existingMeeting?.meeting_id
 
   const participantData = await handleParticipants(participants, currentAccount)
+  const meeting_url =
+    meetingUrl ||
+    (
+      await generateMeetingUrl({
+        accounts: participantData.allAccounts,
+        content: content,
+        end: endTime,
+        meeting_id: rootMeetingId,
+        meetingProvider,
+        meetingReminders,
+        meetingRepeat: MeetingRepeat.NO_REPEAT,
+        participants_mapping: participantData.sanitizedParticipants,
+        start: startTime,
+        title: meetingTitle || 'No Title',
+      })
+    ).url
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     NO_MEETING_TYPE,
@@ -1064,7 +1096,7 @@ const updateMeetingInstance = async (
     }, {}),
     meetingProvider,
     content,
-    meetingUrl,
+    meeting_url,
     rootMeetingId,
     meetingTitle,
     meetingReminders,
