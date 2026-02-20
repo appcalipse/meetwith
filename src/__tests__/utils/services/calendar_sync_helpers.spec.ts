@@ -1,5 +1,5 @@
 import { calendar_v3 } from 'googleapis'
-import { MeetingProvider, MeetingRepeat } from '@meta/Meeting'
+import { MeetingProvider, MeetingRepeat, MeetingVersion } from '@meta/Meeting'
 import { ParticipantType, ParticipationStatus } from '@meta/ParticipantInfo'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import {
@@ -968,8 +968,9 @@ describe('calendar_sync_helpers', () => {
       mockCalendarManager.buildMeetingData.mockResolvedValue({
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
+        participants_mapping: [{ account_address: '0x123', timeZone: 'UTC' }],
       } as any)
-      mockCalendarManager.parseParticipantSlots.mockResolvedValue({
+      mockDatabase.parseParticipantSlots.mockResolvedValue({
         slots: [{ id: 'slot-1', account_address: '0x123', start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' }],
       } as any)
       mockDatabase.upsertSeries.mockResolvedValue([mockSeries[0]] as any)
@@ -987,14 +988,15 @@ describe('calendar_sync_helpers', () => {
         '0x123',
         'meeting-123',
         mockMasterEvent,
+        new Date('2024-01-01T10:00:00Z'),
+        new Date('2024-01-01T11:00:00Z'),
         mockDecryptedMeeting as any,
         [],
         'new content',
         'new url',
         MeetingProvider.GOOGLE_MEET,
         'New Title',
-        [],
-        MeetingRepeat.WEEKLY
+        []
       )
 
       expect(mockDatabase.getEventMasterSeries).toHaveBeenCalledWith(
@@ -1011,6 +1013,8 @@ describe('calendar_sync_helpers', () => {
         '0x123',
         'meeting-123',
         eventWithoutId,
+        new Date('2024-01-01T10:00:00Z'),
+        new Date('2024-01-01T11:00:00Z'),
         mockDecryptedMeeting as any,
         [],
         'content',
@@ -1028,6 +1032,8 @@ describe('calendar_sync_helpers', () => {
         '0x123',
         'meeting-123',
         eventWithoutRecurrence,
+        new Date('2024-01-01T10:00:00Z'),
+        new Date('2024-01-01T11:00:00Z'),
         mockDecryptedMeeting as any,
         [],
         'content',
@@ -1039,7 +1045,7 @@ describe('calendar_sync_helpers', () => {
     })
 
     it('should handle series with new participants', async () => {
-      mockCalendarManager.parseParticipantSlots.mockResolvedValue({
+      mockDatabase.parseParticipantSlots.mockResolvedValue({
         slots: [
           { id: 'slot-1', account_address: '0x123', start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' },
           { id: 'slot-2', account_address: '0x456', start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' }
@@ -1054,6 +1060,8 @@ describe('calendar_sync_helpers', () => {
         '0x123',
         'meeting-123',
         mockMasterEvent,
+        new Date('2024-01-01T10:00:00Z'),
+        new Date('2024-01-01T11:00:00Z'),
         mockDecryptedMeeting as any,
         [{ account_address: '0x456', type: ParticipantType.Invitee }],
         'content',
@@ -1074,6 +1082,7 @@ describe('calendar_sync_helpers', () => {
     }
 
     const mockDecryptedMeeting = {
+      id: 'meeting-123',
       participants: [
         {
           account_address: '0x123',
@@ -1106,7 +1115,7 @@ describe('calendar_sync_helpers', () => {
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
       } as any)
-      mockCalendarManager.parseParticipantSlots.mockResolvedValue({
+      mockDatabase.parseParticipantSlots.mockResolvedValue({
         slots: [{ id: 'slot-1', account_address: '0x123', start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' }],
       } as any)
       mockDatabase.upsertSeries.mockResolvedValue([mockSeries[0]] as any)
@@ -1177,11 +1186,18 @@ describe('calendar_sync_helpers', () => {
           responseStatus: 'accepted',
         },
       ],
+      extendedProperties: {
+        private: {
+          meetingId: 'meeting-123',
+          meetingTypeId: 'meeting-type-1',
+        },
+      },
     }
 
     const mockConferenceMeeting = {
       id: 'conf-123',
       meeting_id: 'meeting-123',
+      version: MeetingVersion.V3,
       provider: MeetingProvider.GOOGLE_MEET,
       reminders: [],
       recurrence: MeetingRepeat.WEEKLY,
@@ -1219,8 +1235,9 @@ describe('calendar_sync_helpers', () => {
       mockCalendarManager.buildMeetingData.mockResolvedValue({
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
+        participants_mapping: [{ account_address: '0x123', timeZone: 'UTC' }],
       } as any)
-      mockCalendarManager.parseParticipantSlots.mockResolvedValue({
+      mockDatabase.parseParticipantSlots.mockResolvedValue({
         slots: [{ id: 'slot-1', account_address: '0x123', version: 1, start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' }],
       } as any)
       mockCalendarManager.decryptConferenceMeeting.mockResolvedValue(mockConferenceMeeting as any)
@@ -1234,10 +1251,8 @@ describe('calendar_sync_helpers', () => {
 
     it('should update single recurring instance', async () => {
       await handleUpdateSingleRecurringInstance(
-        '0x123',
-        'meeting-type-1',
-        'meeting-123',
-        mockEvent
+        mockEvent,
+        '0x123'
       )
 
       expect(mockDatabase.getConferenceMeetingFromDB).toHaveBeenCalledWith('meeting-123')
@@ -1248,23 +1263,19 @@ describe('calendar_sync_helpers', () => {
       const nonRecurringEvent = { ...mockEvent, recurringEventId: undefined }
 
       await handleUpdateSingleRecurringInstance(
-        '0x123',
-        'meeting-type-1',
-        'meeting-123',
-        nonRecurringEvent
+        nonRecurringEvent,
+        '0x123'
       )
 
-      expect(mockDatabase.getConferenceMeetingFromDB).toHaveBeenCalled()
+      expect(mockDatabase.getConferenceMeetingFromDB).not.toHaveBeenCalled()
     })
 
     it('should handle instance with updated RSVP when lacking edit permissions', async () => {
       mockGenericUtils.canAccountAccessPermission.mockReturnValue(false)
 
       await handleUpdateSingleRecurringInstance(
-        '0x123',
-        'meeting-type-1',
-        'meeting-123',
-        mockEvent
+        mockEvent,
+        '0x123'
       )
 
       expect(mockDatabase.getConferenceMeetingFromDB).toHaveBeenCalled()
@@ -1277,11 +1288,19 @@ describe('calendar_sync_helpers', () => {
       recurringEventId: 'recurring-event-123',
       start: { dateTime: '2024-01-01T10:00:00Z' },
       end: { dateTime: '2024-01-01T11:00:00Z' },
+      extendedProperties: {
+        private: {
+          meetingId: 'meeting-123',
+          meetingTypeId: 'meeting-type-1',
+          includesParticipants: 'true',
+        },
+      },
     }
 
     const mockConferenceMeeting = {
       id: 'conf-123',
       meeting_id: 'meeting-123',
+      version: MeetingVersion.V3,
       participants: [
         {
           account_address: '0x123',
@@ -1302,33 +1321,49 @@ describe('calendar_sync_helpers', () => {
     beforeEach(() => {
       mockDatabase.getConferenceMeetingFromDB.mockResolvedValue(mockConferenceMeeting as any)
       mockDatabase.getEventMasterSeries.mockResolvedValue(mockSeries as any)
+      mockDatabase.findAccountsByEmails.mockResolvedValue({} as any)
+      mockDatabase.getAccountFromDB.mockResolvedValue({ address: '0x123' } as any)
       mockGenericUtils.isAccountSchedulerOrOwner.mockReturnValue(true)
+      mockGenericUtils.canAccountAccessPermission.mockReturnValue(true)
       mockCalendarManager.decryptConferenceMeeting.mockResolvedValue(mockConferenceMeeting as any)
+      mockCalendarManager.loadMeetingAccountAddresses.mockResolvedValue(['0x123'])
+      mockCalendarManager.mapRelatedSlots.mockResolvedValue({ '0x123': 'slot-1' })
+      mockCalendarManager.handleParticipants.mockResolvedValue({
+        sanitizedParticipants: [],
+        allAccounts: [],
+      } as any)
+      mockCalendarManager.buildMeetingData.mockResolvedValue({
+        start: new Date('2024-01-01T10:00:00Z'),
+        end: new Date('2024-01-01T11:00:00Z'),
+        participants_mapping: [{ account_address: '0x123', timeZone: 'UTC' }],
+      } as any)
+      mockDatabase.parseParticipantSlots.mockResolvedValue({
+        slots: [{ id: 'slot-1', account_address: '0x123', version: 1, start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' }],
+      } as any)
+      mockUserManager.getParticipantBaseInfoFromAccount.mockReturnValue({
+        account_address: '0x123',
+      } as any)
       mockCalendarSyncQueue.queueCalendarInstanceDeleteSync.mockResolvedValue(undefined as any)
     })
 
     it('should cancel recurring instance when user is owner', async () => {
       await handleCancelOrDeleteForRecurringInstance(
-        '0x123',
-        'meeting-type-1',
-        'meeting-123',
-        mockEvent
+        mockEvent,
+        '0x123'
       )
 
       expect(mockDatabase.getConferenceMeetingFromDB).toHaveBeenCalledWith('meeting-123')
     })
 
     it('should not process event without recurring event ID', async () => {
-      const nonRecurringEvent = { ...mockEvent, recurringEventId: undefined }
+      const nonRecurringEvent = { ...mockEvent, recurringEventId: undefined, extendedProperties: { private: {} } }
 
       await handleCancelOrDeleteForRecurringInstance(
-        '0x123',
-        'meeting-type-1',
-        'meeting-123',
-        nonRecurringEvent
+        nonRecurringEvent,
+        '0x123'
       )
 
-      expect(mockDatabase.getConferenceMeetingFromDB).toHaveBeenCalled()
+      expect(mockDatabase.getConferenceMeetingFromDB).not.toHaveBeenCalled()
     })
 
     it('should handle deletion when user is not owner', async () => {
@@ -1340,17 +1375,20 @@ describe('calendar_sync_helpers', () => {
         sanitizedParticipants: [],
         allAccounts: [],
       } as any)
-      mockCalendarManager.buildMeetingData.mockResolvedValue({} as any)
+      mockCalendarManager.buildMeetingData.mockResolvedValue({
+        participants_mapping: [{ account_address: '0x123', timeZone: 'UTC' }],
+      } as any)
       mockUserManager.getParticipantBaseInfoFromAccount.mockReturnValue({
         account_address: '0x123',
       } as any)
       mockDatabase.getSlotSeries.mockResolvedValue(mockSeries[0] as any)
+      mockDatabase.parseParticipantSlots.mockResolvedValue({
+        slots: [{ id: 'slot-1', account_address: '0x123', version: 1, start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' }],
+      } as any)
 
       await handleCancelOrDeleteForRecurringInstance(
-        '0x456',
-        'meeting-type-1',
-        'meeting-123',
-        mockEvent
+        mockEvent,
+        '0x456'
       )
 
       expect(mockDatabase.getConferenceMeetingFromDB).toHaveBeenCalled()
@@ -1401,6 +1439,8 @@ describe('calendar_sync_helpers', () => {
 
     it('should handle empty series data', async () => {
       mockDatabase.getEventMasterSeries.mockResolvedValue([])
+      mockGenericUtils.isAccountSchedulerOrOwner.mockReturnValue(true)
+      mockDatabase.deleteRecurringSlotInstances.mockResolvedValue(undefined)
 
       const mockEvent: calendar_v3.Schema$Event = {
         id: 'event-123',
@@ -1409,7 +1449,7 @@ describe('calendar_sync_helpers', () => {
 
       await handleCancelOrDeleteSeries(
         '0x123',
-        { participants: [] } as any,
+        { id: 'meeting-123', participants: [] } as any,
         'meeting-123',
         mockEvent
       )
@@ -1639,6 +1679,7 @@ describe('calendar_sync_helpers', () => {
       }
 
       const mockMeeting = {
+        id: 'meeting-123',
         participants: [
           {
             guest_email: 'guest@example.com',
@@ -1669,7 +1710,7 @@ describe('calendar_sync_helpers', () => {
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
       } as any)
-      mockCalendarManager.parseParticipantSlots.mockResolvedValue({
+      mockDatabase.parseParticipantSlots.mockResolvedValue({
         slots: [{ id: 'slot-1', guest_email: 'guest@example.com', start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' }],
       } as any)
       mockDatabase.upsertSeries.mockResolvedValue([mockSeries[0]] as any)
@@ -1891,7 +1932,7 @@ describe('calendar_sync_helpers', () => {
         expect.anything(),
         expect.anything(),
         'America/New_York',
-        expect.anything(),
+        undefined,
         expect.anything()
       )
     })
