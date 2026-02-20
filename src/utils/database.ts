@@ -10625,10 +10625,11 @@ const getSlotInstance = async (slotInstanceId: string) => {
   if (error) {
     throw new Error('Could not fetch slot instance')
   }
-  if (!slotInstance) {
-    throw new Error('Slot instance not found')
+  const data = Array.isArray(slotInstance) ? slotInstance[0] : slotInstance
+  if (!data) {
+    throw new MeetingNotFoundError(slotInstanceId)
   }
-  return Array.isArray(slotInstance) ? slotInstance[0] : slotInstance
+  return data
 }
 const syncConnectedCalendars = async (accountAddress: string) => {
   const calendars = await getConnectedCalendars(accountAddress, {
