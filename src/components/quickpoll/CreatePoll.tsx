@@ -910,8 +910,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           </Heading>
         </VStack>
 
-        {/* Form */}
-        <VStack spacing={6} align="stretch">
+        <VStack spacing={5} align="stretch">
           {/* Meeting Date Range */}
           <FormControl>
             <FormLabel htmlFor="date">
@@ -961,7 +960,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
           {/* Title and Duration - Same Line */}
           <HStack spacing={4} align="start">
-            <FormControl isInvalid={!!validationErrors.title} flex={3}>
+            <FormControl isInvalid={!!validationErrors.title} flex={3} mb={0}>
               <FormLabel
                 _invalid={{
                   color: 'red.500',
@@ -988,19 +987,18 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 isInvalid={!!validationErrors.title}
                 isDisabled={isLoading}
               />
-              <Box minH="20px">
-                {validationErrors.title && (
-                  <FormHelperText color="red.500" mt={1}>
-                    {validationErrors.title}
-                  </FormHelperText>
-                )}
-              </Box>
+              {validationErrors.title && (
+                <FormHelperText color="red.500" mt={1}>
+                  {validationErrors.title}
+                </FormHelperText>
+              )}
             </FormControl>
 
             <FormControl
               w={'max-content'}
               isInvalid={!!validationErrors.duration}
               flex={1}
+              mb={0}
             >
               <FormLabel htmlFor="duration">
                 Duration
@@ -1047,13 +1045,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 }}
                 isDisabled={isLoading}
               />
-              <Box minH="20px">
-                {validationErrors.duration && (
-                  <FormHelperText color="red.500" mt={1}>
-                    {validationErrors.duration}
-                  </FormHelperText>
-                )}
-              </Box>
+              {validationErrors.duration && (
+                <FormHelperText color="red.500" mt={1}>
+                  {validationErrors.duration}
+                </FormHelperText>
+              )}
             </FormControl>
           </HStack>
 
@@ -1141,7 +1137,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           </FormControl>
 
           {/* Add Guest from Groups */}
-          <FormControl w="100%" maxW="100%" mt={-2}>
+          <FormControl w="100%" maxW="100%">
             <FormLabel htmlFor="participants">
               Add Participants to the meeting{' '}
               <InfoTooltip text="Add participants from groups, contacts, or enter manually" />
@@ -1187,11 +1183,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 }
               />
             </Box>
-            <FormHelperText minW={{ md: '600px' }}>
-              {validationErrors.participants && (
+            {validationErrors.participants && (
+              <FormHelperText minW={{ md: '600px' }}>
                 <Text color="red.500">{validationErrors.participants}</Text>
-              )}
-            </FormHelperText>
+              </FormHelperText>
+            )}
           </FormControl>
 
           {/* Description */}

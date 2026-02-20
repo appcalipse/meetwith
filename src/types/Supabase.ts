@@ -1296,21 +1296,18 @@ export type Database = {
           created_at: string
           id: string
           participant_id: string
-          poll_id: string
         }
         Insert: {
           availability_id: string
           created_at?: string
           id?: string
           participant_id: string
-          poll_id: string
         }
         Update: {
           availability_id?: string
           created_at?: string
           id?: string
           participant_id?: string
-          poll_id?: string
         }
         Relationships: [
           {
@@ -1325,13 +1322,6 @@ export type Database = {
             columns: ['participant_id']
             isOneToOne: false
             referencedRelation: 'quick_poll_participants'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'quick_poll_availabilities_poll_id_fkey'
-            columns: ['poll_id']
-            isOneToOne: false
-            referencedRelation: 'quick_polls'
             referencedColumns: ['id']
           }
         ]
