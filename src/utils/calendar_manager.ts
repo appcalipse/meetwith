@@ -70,8 +70,8 @@ import {
   getMeetingGuest,
   getSlotByMeetingId,
   getSlotInstanceById,
-  getSlotsByIds,
   getSlotSeries,
+  getSlotsByIds,
   isSlotFreeApiCall,
   parsedDecryptedParticipants,
   scheduleMeetingAsGuest,
@@ -222,6 +222,13 @@ const mapRelatedSlots = async (
         }
       } catch (_e) {}
     }
+  }
+  if (
+    meeting?.id &&
+    currentAccountAddress &&
+    !accountSlot[currentAccountAddress]
+  ) {
+    accountSlot[currentAccountAddress] = meeting.id
   }
   return accountSlot
 }
