@@ -35,9 +35,8 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import {
   PollStatus,
-  QuickPollParticipant,
+  QuickPollListItem,
   QuickPollParticipantType,
-  QuickPollWithParticipants,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import { deleteQuickPoll, updateQuickPoll } from '@/utils/api_helper'
@@ -49,17 +48,7 @@ import { queryClient } from '@/utils/react_query'
 import { useToastHelpers } from '@/utils/toasts'
 
 interface PollCardProps {
-  poll: Omit<QuickPollWithParticipants, 'participants'> & {
-    quick_poll_participants: QuickPollParticipant[]
-    host_name?: string
-    host_address?: string
-    user_participant_type?: QuickPollParticipantType
-    user_status?: string
-    user_availability_block_ids?: string[]
-    user_availability_block_titles?: string[]
-    user_available_slots?: QuickPollParticipant['available_slots']
-    user_timezone?: string
-  }
+  poll: QuickPollListItem
   showActions?: boolean
   canSchedule?: boolean
 }
