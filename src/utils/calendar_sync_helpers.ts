@@ -525,6 +525,14 @@ const handleCancelOrDeleteSeries = async (
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
   const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create slots via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping series cancel/delete for meeting ${meetingId}: no active series remain`
+    )
+    return
+  }
   const isSchedulerOrOwner = isAccountSchedulerOrOwner(
     decryptedMeeting.participants,
     currentAccountAddress
@@ -980,6 +988,14 @@ const handleUpdateSingleRecurringInstance = async (
     return
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
   const series = await getEventMasterSeries(meetingId, event.recurringEventId!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create slots via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping recurring instance sync for event ${event.id} (meeting ${meetingId}): no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
@@ -1207,6 +1223,14 @@ const handleCancelOrDeleteForRecurringInstance = async (
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
   if (!meetingInfo) return
   const series = await getEventMasterSeries(meetingId, event.recurringEventId!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create slots via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping cancelled recurring instance for event ${event.id} (meeting ${meetingId}): no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )

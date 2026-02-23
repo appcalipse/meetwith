@@ -7559,7 +7559,7 @@ const handleSyncRecurringEvents = async (
       const { meetingInfo, conferenceMeeting } =
         await getConferenceDecryptedMeeting(meetingId)
       if (!meetingInfo || !masterEvent.recurrence) continue
-      // simply process meetingd
+
       if (masterEvent.status === 'cancelled') {
         await handleCancelOrDeleteSeries(
           calendar.account_address,
@@ -7679,12 +7679,14 @@ const getConferenceDecryptedMeeting = async (meetingId: string) => {
   if (!conferenceMeeting || conferenceMeeting.version !== MeetingVersion.V3)
     return {
       conferenceMeeting,
+      hasActiveSlots: false,
       meetingInfo: null,
     }
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
   if (!meetingInfo)
     return {
       conferenceMeeting,
+      hasActiveSlots: false,
       meetingInfo: null,
     }
   const { data } = await db.supabase
@@ -7693,7 +7695,8 @@ const getConferenceDecryptedMeeting = async (meetingId: string) => {
     .in('id', conferenceMeeting.slots)
     .limit(1)
   meetingInfo.version = data?.[0]?.version || 0
-  return { conferenceMeeting, meetingInfo }
+  const hasActiveSlots = (data?.length ?? 0) > 0
+  return { conferenceMeeting, hasActiveSlots, meetingInfo }
 }
 const handleSyncEvent = async (
   event: calendar_v3.Schema$Event,
@@ -7712,10 +7715,18 @@ const handleSyncEvent = async (
     console.warn(`Skipping event ${event.id} due to only scheduler attendee`)
     return
   }
-  const { meetingInfo, conferenceMeeting } =
+  const { meetingInfo, conferenceMeeting, hasActiveSlots } =
     await getConferenceDecryptedMeeting(meetingId)
   if (!meetingInfo) return
   if (!event.start?.dateTime || !event.end?.dateTime) return
+  // If the meeting has no active slots, it was already fully cancelled/deleted.
+  // Processing it again would re-create slots via upsert, causing ghost meetings.
+  if (!hasActiveSlots) {
+    console.info(
+      `Skipping sync for event ${event.id} (meeting ${meetingId}): no active slots remain`
+    )
+    return
+  }
   try {
     // eslint-disable-next-line no-restricted-syntax
     let meeting
