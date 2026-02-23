@@ -17,6 +17,10 @@ jest.mock('@/utils/services/telegram.helper', () => ({
   sendDm: jest.fn(),
 }))
 
+jest.mock('@/utils/calendar_manager', () => ({
+  dateToLocalizedRange: jest.fn(() => '10:15 AM - 11:15 AM'),
+}))
+
 jest.mock('@sentry/node', () => ({
   captureException: jest.fn(),
 }))
@@ -48,18 +52,20 @@ describe('/api/server/webhook/tg-reminder', () => {
     },
   ]
 
+  const fakeNow = new Date('2024-01-01T10:00:00Z')
+
   const mockSlots = [
     {
       id: 'slot-123',
-      start: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      end: new Date(Date.now() + 75 * 60 * 1000).toISOString(),
+      start: new Date(fakeNow.getTime() + 15 * 60 * 1000).toISOString(),
+      end: new Date(fakeNow.getTime() + 75 * 60 * 1000).toISOString(),
     },
   ]
 
   const mockMeeting = {
     title: 'Test Meeting',
     meeting_url: 'https://meet.example.com/123',
-    reminders: [15],
+    reminders: [2],
   }
 
   beforeEach(() => {
@@ -115,7 +121,9 @@ describe('/api/server/webhook/tg-reminder', () => {
       mockGetAccountsWithTgConnected.mockResolvedValue(mockTgAccounts)
       mockGetSlotsForAccountMinimal.mockResolvedValue([])
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
+      const handlerPromise = handler(req as NextApiRequest, res as NextApiResponse)
+      await jest.advanceTimersByTimeAsync(20000)
+      await handlerPromise
 
       expect(mockGetConferenceDataBySlotId).not.toHaveBeenCalled()
       expect(mockSendDm).not.toHaveBeenCalled()
@@ -128,7 +136,9 @@ describe('/api/server/webhook/tg-reminder', () => {
         { id: null, start: new Date(), end: new Date() },
       ])
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
+      const handlerPromise = handler(req as NextApiRequest, res as NextApiResponse)
+      await jest.advanceTimersByTimeAsync(20000)
+      await handlerPromise
 
       expect(mockGetConferenceDataBySlotId).not.toHaveBeenCalled()
       expect(statusMock).toHaveBeenCalledWith(200)
@@ -168,17 +178,18 @@ describe('/api/server/webhook/tg-reminder', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(error)
       expect(Sentry.captureException).toHaveBeenCalledWith(error)
-      expect(statusMock).toHaveBeenCalledWith(200)
+      expect(statusMock).toHaveBeenCalledWith(503)
     })
 
     it('should handle timeout', async () => {
-      mockGetAccountsWithTgConnected.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve(mockTgAccounts), 25000))
+      mockGetAccountsWithTgConnected.mockResolvedValue(mockTgAccounts)
+      mockGetSlotsForAccountMinimal.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => resolve([]), 25000))
       )
 
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      jest.advanceTimersByTime(20000)
+      const handlerPromise = handler(req as NextApiRequest, res as NextApiResponse)
+      await jest.advanceTimersByTimeAsync(20000)
+      await handlerPromise
 
       expect(statusMock).toHaveBeenCalledWith(200)
     })

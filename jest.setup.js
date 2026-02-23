@@ -12,6 +12,10 @@ process.env.RESEND_API_KEY = 'test-resend-key'
 process.env.NEXT_PUBLIC_POSTHOG_KEY = 'test-posthog-key'
 process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_SUPABASE_KEY = 'test-key'
+process.env.GOOGLE_CLIENT_ID = 'test-google-client-id'
+process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret'
+process.env.MS_GRAPH_CLIENT_ID = 'test-ms-client-id'
+process.env.MS_GRAPH_CLIENT_SECRET = 'test-ms-client-secret'
 
 global.TextDecoder = TextDecoder
 global.TextEncoder = TextEncoder
@@ -233,6 +237,12 @@ jest.mock('next/router', () => ({
   }),
 }))
 
+// Mock next/head
+jest.mock('next/head', () => {
+  const React = require('react')
+  return ({ children }) => React.createElement(React.Fragment, null, children)
+})
+
 // Mock @tanstack/react-query
 jest.mock('@tanstack/react-query', () => ({
   useQuery: jest.fn(() => ({ 
@@ -255,7 +265,7 @@ jest.mock('@tanstack/react-query', () => ({
     hasNextPage: false,
     isFetchingNextPage: false,
   })),
-  useMutation: jest.fn(() => ({ mutate: jest.fn(), isLoading: false })),
+  useMutation: jest.fn(() => ({ mutate: jest.fn(), mutateAsync: jest.fn(), isLoading: false, reset: jest.fn() })),
   useQueryClient: jest.fn(() => ({
     invalidateQueries: jest.fn(),
     setQueryData: jest.fn(),
@@ -299,6 +309,8 @@ jest.mock('viem', () => ({
   http: jest.fn(),
   parseEther: jest.fn(),
   formatEther: jest.fn(),
+  parseUnits: jest.fn(),
+  formatUnits: jest.fn(),
   encodeFunctionData: jest.fn(),
   decodeFunctionData: jest.fn(),
 }))
@@ -696,6 +708,11 @@ Object.assign(navigator, {
 // Mock thirdweb
 jest.mock('thirdweb', () => ({
   createThirdwebClient: jest.fn(() => ({ clientId: 'test-client-id' })),
+  getContract: jest.fn(() => ({ address: '0xMockContract', abi: [] })),
+  readContract: jest.fn().mockResolvedValue(BigInt(0)),
+  estimateGas: jest.fn().mockResolvedValue(BigInt(21000)),
+  getGasPrice: jest.fn().mockResolvedValue(BigInt(20000000000)),
+  prepareContractCall: jest.fn(() => ({})),
 }), { virtual: true })
 
 jest.mock('thirdweb/react', () => ({

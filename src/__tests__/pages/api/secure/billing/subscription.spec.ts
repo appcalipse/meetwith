@@ -43,7 +43,7 @@ describe('/api/secure/billing/subscription', () => {
     billing_plan_id: 'plan-1',
     owner_account: '0x1234567890abcdef',
     status: 'active',
-    expiry_time: new Date('2025-01-01').toISOString(),
+    expiry_time: new Date('2030-01-01').toISOString(),
     transaction_id: 'tx-1',
     registered_at: '2024-01-01',
     updated_at: '2024-01-01',

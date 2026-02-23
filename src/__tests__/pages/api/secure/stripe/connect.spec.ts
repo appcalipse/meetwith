@@ -11,14 +11,17 @@ jest.mock('@/utils/database', () => ({
   updatePaymentAccount: jest.fn(),
 }))
 
+const mockStripeAccounts = {
+  create: jest.fn(),
+}
+const mockStripeAccountLinks = {
+  create: jest.fn(),
+}
+
 jest.mock('@/utils/services/stripe.service', () => ({
   StripeService: jest.fn().mockImplementation(() => ({
-    accounts: {
-      create: jest.fn(),
-    },
-    accountLinks: {
-      create: jest.fn(),
-    },
+    accounts: mockStripeAccounts,
+    accountLinks: mockStripeAccountLinks,
   })),
 }))
 
@@ -33,7 +36,6 @@ jest.mock('@sentry/nextjs', () => ({
 import { NextApiRequest, NextApiResponse } from 'next'
 import handler from '@/pages/api/secure/stripe/connect'
 import * as database from '@/utils/database'
-import { StripeService } from '@/utils/services/stripe.service'
 import { PaymentProvider, PaymentAccountStatus } from '@/types/PaymentAccount'
 
 describe('/api/secure/stripe/connect', () => {
@@ -86,9 +88,8 @@ describe('/api/secure/stripe/connect', () => {
       mockGetOrCreatePaymentAccount.mockResolvedValue(mockPaymentAccount)
       mockUpdatePaymentAccount.mockResolvedValue(undefined)
 
-      const mockStripe = new (StripeService as any)()
-      mockStripe.accounts.create.mockResolvedValue(mockStripeAccount)
-      mockStripe.accountLinks.create.mockResolvedValue(mockAccountLink)
+      mockStripeAccounts.create.mockResolvedValue(mockStripeAccount)
+      mockStripeAccountLinks.create.mockResolvedValue(mockAccountLink)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -96,7 +97,7 @@ describe('/api/secure/stripe/connect', () => {
         '0x1234567890abcdef',
         PaymentProvider.STRIPE
       )
-      expect(mockStripe.accounts.create).toHaveBeenCalledWith({
+      expect(mockStripeAccounts.create).toHaveBeenCalledWith({
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
@@ -120,13 +121,12 @@ describe('/api/secure/stripe/connect', () => {
 
       mockGetOrCreatePaymentAccount.mockResolvedValue(existingAccount)
 
-      const mockStripe = new (StripeService as any)()
-      mockStripe.accountLinks.create.mockResolvedValue(mockAccountLink)
+      mockStripeAccountLinks.create.mockResolvedValue(mockAccountLink)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockStripe.accounts.create).not.toHaveBeenCalled()
-      expect(mockStripe.accountLinks.create).toHaveBeenCalledWith({
+      expect(mockStripeAccounts.create).not.toHaveBeenCalled()
+      expect(mockStripeAccountLinks.create).toHaveBeenCalledWith({
         account: 'acct_existing',
         refresh_url: expect.stringContaining('/secure/stripe/refresh'),
         return_url: expect.stringContaining('/secure/stripe/callback'),
@@ -145,8 +145,7 @@ describe('/api/secure/stripe/connect', () => {
 
       mockGetOrCreatePaymentAccount.mockResolvedValue(pendingAccount)
 
-      const mockStripe = new (StripeService as any)()
-      mockStripe.accountLinks.create.mockResolvedValue(mockAccountLink)
+      mockStripeAccountLinks.create.mockResolvedValue(mockAccountLink)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -162,13 +161,12 @@ describe('/api/secure/stripe/connect', () => {
 
       mockGetOrCreatePaymentAccount.mockResolvedValue(mockPaymentAccount)
 
-      const mockStripe = new (StripeService as any)()
-      mockStripe.accounts.create.mockResolvedValue({ id: 'acct_123' })
-      mockStripe.accountLinks.create.mockResolvedValue({ url: 'https://stripe.com' })
+      mockStripeAccounts.create.mockResolvedValue({ id: 'acct_123' })
+      mockStripeAccountLinks.create.mockResolvedValue({ url: 'https://stripe.com' })
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockStripe.accounts.create).toHaveBeenCalledWith(
+      expect(mockStripeAccounts.create).toHaveBeenCalledWith(
         expect.objectContaining({
           country: undefined,
         })
@@ -178,8 +176,7 @@ describe('/api/secure/stripe/connect', () => {
     it('should handle Stripe account creation errors', async () => {
       mockGetOrCreatePaymentAccount.mockResolvedValue(mockPaymentAccount)
 
-      const mockStripe = new (StripeService as any)()
-      mockStripe.accounts.create.mockRejectedValue(new Error('Stripe error'))
+      mockStripeAccounts.create.mockRejectedValue(new Error('Stripe error'))
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -201,8 +198,7 @@ describe('/api/secure/stripe/connect', () => {
         provider_account_id: 'acct_123',
       })
 
-      const mockStripe = new (StripeService as any)()
-      mockStripe.accountLinks.create.mockRejectedValue(new Error('Link error'))
+      mockStripeAccountLinks.create.mockRejectedValue(new Error('Link error'))
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -215,12 +211,11 @@ describe('/api/secure/stripe/connect', () => {
         provider_account_id: 'acct_123',
       })
 
-      const mockStripe = new (StripeService as any)()
-      mockStripe.accountLinks.create.mockResolvedValue({ url: 'https://stripe.com' })
+      mockStripeAccountLinks.create.mockResolvedValue({ url: 'https://stripe.com' })
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      const createCall = mockStripe.accountLinks.create.mock.calls[0][0]
+      const createCall = mockStripeAccountLinks.create.mock.calls[0][0]
       expect(createCall.refresh_url).toContain('/secure/stripe/refresh')
       expect(createCall.return_url).toContain('/secure/stripe/callback')
       expect(createCall.type).toBe('account_onboarding')

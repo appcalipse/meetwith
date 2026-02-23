@@ -17,7 +17,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const { name, slug } = req.body as CreateGroupPayload
 
-  const account_address = req.session.account!.address
+  const account_address = req.session.account?.address
 
   if (!account_address) {
     return res.status(401).send('Unauthorized')

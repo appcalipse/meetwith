@@ -1,5 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 /** biome-ignore-all lint/style/noCommonJs: config file */
+process.env.TZ = 'UTC'
+
 const nextJest = require('next/jest')
 
 const createJestConfig = nextJest({
@@ -55,6 +57,9 @@ const customJestConfig = {
   },
   moduleNameMapper: {
     'swr': '<rootDir>/__mocks__/swr.js',
+    '@meta/(.*)': 'src/types/$1',
+    '@utils/(.*)': 'src/utils/$1',
+    '@components/(.*)': 'src/components/$1',
     '@/(.*)': 'src/$1',
     'swiper/react': 'swiper/react/swiper-react.js',
     'swiper/css': '<rootDir>/__mocks__/jestMock.js',
