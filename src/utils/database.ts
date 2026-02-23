@@ -7550,7 +7550,7 @@ const handleSyncRecurringEvents = async (
       const { meetingInfo, conferenceMeeting } =
         await getConferenceDecryptedMeeting(meetingId)
       if (!meetingInfo || !masterEvent.recurrence) continue
-      // simply process meetingd
+
       if (masterEvent.status === 'cancelled') {
         await handleCancelOrDeleteSeries(
           calendar.account_address,
