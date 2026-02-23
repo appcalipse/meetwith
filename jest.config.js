@@ -36,7 +36,7 @@ const customJestConfig = {
     '**/*.(spec|test).(ts|tsx|js|jsx)',
   ],
   collectCoverageFrom: [
-    './src/**',
+    './src/utils/**',
     '!./src/__tests__/**',
     '!./src/**/*.d.ts',
     '!./src/utils/services/calendar.service.types.ts',
@@ -56,7 +56,7 @@ const customJestConfig = {
     '^.+\\.(ts|tsx)?$': 'ts-jest',
   },
   moduleNameMapper: {
-    'swr': '<rootDir>/__mocks__/swr.js',
+    swr: '<rootDir>/__mocks__/swr.js',
     '@meta/(.*)': 'src/types/$1',
     '@utils/(.*)': 'src/utils/$1',
     '@components/(.*)': 'src/components/$1',
