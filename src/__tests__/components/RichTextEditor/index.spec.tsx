@@ -107,6 +107,13 @@ describe('Rich Text Editor', () => {
     const editableElement = document.querySelector('.ProseMirror')
     if (!editableElement) return
     fireEvent.click(editableElement!)
+    // Place cursor at end of content so typing appends rather than prepends
+    const range = document.createRange()
+    const sel = window.getSelection()
+    range.selectNodeContents(editableElement!)
+    range.collapse(false)
+    sel?.removeAllRanges()
+    sel?.addRange(range)
     await userEvent.type(editableElement!, 'Test')
     expect(editableElement!.innerHTML).toBe('<p>RichTextEditor Works!Test</p>')
     expect(placeHolderElement).toBeInTheDocument()

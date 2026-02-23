@@ -154,7 +154,7 @@ describe('quickpoll_helper', () => {
         },
       ]
       const result = convertSelectedSlotsToAvailabilitySlots(slots)
-      
+
       expect(result).toHaveLength(1)
       expect(result[0]).toHaveProperty('weekday')
       expect(result[0]).toHaveProperty('ranges')
@@ -165,7 +165,7 @@ describe('quickpoll_helper', () => {
     it('should group slots by date', () => {
       const date1 = DateTime.fromISO('2024-01-15')
       const date2 = DateTime.fromISO('2024-01-16')
-      
+
       const slots = [
         {
           start: date1.set({ hour: 9, minute: 0 }),
@@ -183,11 +183,13 @@ describe('quickpoll_helper', () => {
           date: date2.toFormat('yyyy-MM-dd'),
         },
       ]
-      
+
       const result = convertSelectedSlotsToAvailabilitySlots(slots)
       expect(result).toHaveLength(2)
-      
-      const firstDate = result.find(s => s.date === date1.toFormat('yyyy-MM-dd'))
+
+      const firstDate = result.find(
+        s => s.date === date1.toFormat('yyyy-MM-dd')
+      )
       expect(firstDate?.ranges).toHaveLength(2)
     })
 
@@ -200,7 +202,7 @@ describe('quickpoll_helper', () => {
           date: sunday.toFormat('yyyy-MM-dd'),
         },
       ]
-      
+
       const result = convertSelectedSlotsToAvailabilitySlots(slots)
       expect(result[0].weekday).toBe(0)
     })
@@ -219,7 +221,7 @@ describe('quickpoll_helper', () => {
           date: now.toFormat('yyyy-MM-dd'),
         },
       ]
-      
+
       const result = convertSelectedSlotsToAvailabilitySlots(slots)
       expect(result[0].ranges[0]).toEqual({ start: '09:30', end: '10:45' })
     })
@@ -229,16 +231,13 @@ describe('quickpoll_helper', () => {
     it('should merge overlapping intervals', () => {
       const now = DateTime.now()
       const intervals = [
-        Interval.fromDateTimes(
-          now.set({ hour: 9 }),
-          now.set({ hour: 10 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 9 }), now.set({ hour: 10 })),
         Interval.fromDateTimes(
           now.set({ hour: 9, minute: 30 }),
           now.set({ hour: 11 })
         ),
       ]
-      
+
       const merged = mergeLuxonIntervals(intervals)
       expect(merged.length).toBeLessThanOrEqual(intervals.length)
     })
@@ -251,16 +250,10 @@ describe('quickpoll_helper', () => {
     it('should keep non-overlapping intervals separate', () => {
       const now = DateTime.now()
       const intervals = [
-        Interval.fromDateTimes(
-          now.set({ hour: 9 }),
-          now.set({ hour: 10 })
-        ),
-        Interval.fromDateTimes(
-          now.set({ hour: 14 }),
-          now.set({ hour: 15 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 9 }), now.set({ hour: 10 })),
+        Interval.fromDateTimes(now.set({ hour: 14 }), now.set({ hour: 15 })),
       ]
-      
+
       const merged = mergeLuxonIntervals(intervals)
       expect(merged).toHaveLength(2)
     })
@@ -277,7 +270,7 @@ describe('quickpoll_helper', () => {
         start: now.set({ hour: 10 }),
         end: now.set({ hour: 13 }),
       }
-      
+
       const result = doSlotsOverlapOrContain(slot1, slot2)
       expect(result).toBe(true)
     })
@@ -292,7 +285,7 @@ describe('quickpoll_helper', () => {
         start: now.set({ hour: 14 }),
         end: now.set({ hour: 15 }),
       }
-      
+
       const result = doSlotsOverlapOrContain(slot1, slot2)
       expect(result).toBe(false)
     })
@@ -307,7 +300,7 @@ describe('quickpoll_helper', () => {
         start: now.set({ hour: 15 }),
         end: now.set({ hour: 14 }), // Invalid: end before start
       }
-      
+
       const result = doSlotsOverlapOrContain(slot1, slot2)
       expect(result).toBe(false)
     })
@@ -322,7 +315,7 @@ describe('quickpoll_helper', () => {
         start: now.set({ hour: 10 }),
         end: now.set({ hour: 11 }),
       }
-      
+
       const result = doSlotsOverlapOrContain(slot1, slot2)
       expect(result).toBe(true)
     })
@@ -337,7 +330,7 @@ describe('quickpoll_helper', () => {
         start: now.set({ hour: 10 }),
         end: now.set({ hour: 11 }),
       }
-      
+
       const result = doSlotsOverlapOrContain(slot1, slot2)
       expect(result).toBe(false)
     })
@@ -355,7 +348,7 @@ describe('quickpoll_helper', () => {
           ranges: [{ start: '14:00', end: '15:00' }],
         },
       ]
-      
+
       const merged = mergeAvailabilitySlots(slots)
       const mondaySlots = merged.filter(s => s.weekday === 1)
       expect(mondaySlots.length).toBeGreaterThan(0)
@@ -372,7 +365,7 @@ describe('quickpoll_helper', () => {
           ranges: [{ start: '09:00', end: '10:00' }],
         },
       ]
-      
+
       const merged = mergeAvailabilitySlots(slots)
       const weekdays = new Set(merged.map(s => s.weekday))
       expect(weekdays.size).toBe(2)
@@ -386,16 +379,22 @@ describe('quickpoll_helper', () => {
 
   describe('getMonthRange', () => {
     it('should return start and end of month', () => {
-      const { monthStart, monthEnd } = getMonthRange(new Date('2024-01-15'), 'UTC')
-      
+      const { monthStart, monthEnd } = getMonthRange(
+        new Date('2024-01-15'),
+        'UTC'
+      )
+
       expect(monthStart).toBeInstanceOf(Date)
       expect(monthEnd).toBeInstanceOf(Date)
       expect(monthStart.getTime()).toBeLessThan(monthEnd.getTime())
     })
 
     it('should return start and end for specific month', () => {
-      const { monthStart, monthEnd } = getMonthRange(new Date('2024-01-15'), 'UTC')
-      
+      const { monthStart, monthEnd } = getMonthRange(
+        new Date('2024-01-15'),
+        'UTC'
+      )
+
       expect(monthStart.getMonth()).toBe(0) // January
       expect(monthEnd.getMonth()).toBe(0)
       expect(monthStart.getDate()).toBe(1)
@@ -403,9 +402,13 @@ describe('quickpoll_helper', () => {
 
     it('should respect timezone', () => {
       const date = new Date('2024-01-15T12:00:00Z')
-      const { monthStart: monthStartUTC, monthEnd: monthEndUTC } = getMonthRange(date, 'UTC')
-      const { monthStart: monthStartET, monthEnd: monthEndET } = getMonthRange(date, 'America/New_York')
-      
+      const { monthStart: monthStartUTC, monthEnd: monthEndUTC } =
+        getMonthRange(date, 'UTC')
+      const { monthStart: monthStartET, monthEnd: monthEndET } = getMonthRange(
+        date,
+        'America/New_York'
+      )
+
       expect(monthStartUTC).toBeInstanceOf(Date)
       expect(monthStartET).toBeInstanceOf(Date)
     })
@@ -415,18 +418,12 @@ describe('quickpoll_helper', () => {
     it('should clip intervals to bounds', () => {
       const now = DateTime.now()
       const intervals = [
-        Interval.fromDateTimes(
-          now.minus({ hours: 2 }),
-          now.plus({ hours: 2 })
-        ),
+        Interval.fromDateTimes(now.minus({ hours: 2 }), now.plus({ hours: 2 })),
       ]
       const bounds = [
-        Interval.fromDateTimes(
-          now.minus({ hours: 1 }),
-          now.plus({ hours: 1 })
-        ),
+        Interval.fromDateTimes(now.minus({ hours: 1 }), now.plus({ hours: 1 })),
       ]
-      
+
       const clipped = clipIntervalsToBounds(intervals, bounds)
       expect(clipped.length).toBeGreaterThanOrEqual(0)
     })
@@ -434,44 +431,26 @@ describe('quickpoll_helper', () => {
     it('should filter out intervals outside bounds', () => {
       const now = DateTime.now()
       const intervals = [
-        Interval.fromDateTimes(
-          now.minus({ days: 2 }),
-          now.minus({ days: 1 })
-        ),
+        Interval.fromDateTimes(now.minus({ days: 2 }), now.minus({ days: 1 })),
       ]
-      const bounds = [
-        Interval.fromDateTimes(
-          now,
-          now.plus({ days: 1 })
-        ),
-      ]
-      
+      const bounds = [Interval.fromDateTimes(now, now.plus({ days: 1 }))]
+
       const clipped = clipIntervalsToBounds(intervals, bounds)
       expect(Array.isArray(clipped)).toBe(true)
     })
 
     it('should handle empty bounds', () => {
       const now = DateTime.now()
-      const intervals = [
-        Interval.fromDateTimes(
-          now,
-          now.plus({ hours: 1 })
-        ),
-      ]
-      
+      const intervals = [Interval.fromDateTimes(now, now.plus({ hours: 1 }))]
+
       const clipped = clipIntervalsToBounds(intervals, [])
       expect(clipped).toEqual(intervals)
     })
 
     it('should handle empty intervals', () => {
       const now = DateTime.now()
-      const bounds = [
-        Interval.fromDateTimes(
-          now,
-          now.plus({ hours: 1 })
-        ),
-      ]
-      
+      const bounds = [Interval.fromDateTimes(now, now.plus({ hours: 1 }))]
+
       const clipped = clipIntervalsToBounds([], bounds)
       expect(clipped).toEqual([])
     })
@@ -481,14 +460,14 @@ describe('quickpoll_helper', () => {
     it('should generate full day blocks for date range', () => {
       const start = new Date('2024-01-01')
       const end = new Date('2024-01-03')
-      
+
       const blocks = generateFullDayBlocks(start, end, 'UTC')
       expect(blocks.length).toBeGreaterThan(0)
     })
 
     it('should handle single day', () => {
       const date = new Date('2024-01-01')
-      
+
       const blocks = generateFullDayBlocks(date, date, 'UTC')
       expect(blocks.length).toBeGreaterThan(0)
     })
@@ -496,10 +475,10 @@ describe('quickpoll_helper', () => {
     it('should respect timezone', () => {
       const start = new Date('2024-01-01')
       const end = new Date('2024-01-02')
-      
+
       const blocksUTC = generateFullDayBlocks(start, end, 'UTC')
       const blocksET = generateFullDayBlocks(start, end, 'America/New_York')
-      
+
       expect(blocksUTC.length).toBeGreaterThan(0)
       expect(blocksET.length).toBeGreaterThan(0)
     })
@@ -513,7 +492,7 @@ describe('quickpoll_helper', () => {
           end: new Date('2024-01-01T10:00:00Z'),
         },
       ]
-      
+
       const intervals = convertBusySlotsToIntervals(busySlots, 'UTC')
       expect(intervals).toHaveLength(1)
       expect(intervals[0]).toBeInstanceOf(Interval)
@@ -531,10 +510,13 @@ describe('quickpoll_helper', () => {
           end: new Date('2024-01-01T10:00:00Z'),
         },
       ]
-      
+
       const intervalsUTC = convertBusySlotsToIntervals(busySlots, 'UTC')
-      const intervalsET = convertBusySlotsToIntervals(busySlots, 'America/New_York')
-      
+      const intervalsET = convertBusySlotsToIntervals(
+        busySlots,
+        'America/New_York'
+      )
+
       expect(intervalsUTC).toHaveLength(1)
       expect(intervalsET).toHaveLength(1)
     })
@@ -544,18 +526,12 @@ describe('quickpoll_helper', () => {
     it('should subtract busy times from available blocks', () => {
       const now = DateTime.now()
       const blocks = [
-        Interval.fromDateTimes(
-          now.set({ hour: 9 }),
-          now.set({ hour: 17 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 9 }), now.set({ hour: 17 })),
       ]
       const busyTimes = [
-        Interval.fromDateTimes(
-          now.set({ hour: 12 }),
-          now.set({ hour: 13 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 12 }), now.set({ hour: 13 })),
       ]
-      
+
       const result = subtractBusyTimesFromBlocks(blocks, busyTimes)
       expect(result.length).toBeGreaterThan(0)
     })
@@ -563,12 +539,9 @@ describe('quickpoll_helper', () => {
     it('should handle no busy times', () => {
       const now = DateTime.now()
       const blocks = [
-        Interval.fromDateTimes(
-          now.set({ hour: 9 }),
-          now.set({ hour: 17 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 9 }), now.set({ hour: 17 })),
       ]
-      
+
       const result = subtractBusyTimesFromBlocks(blocks, [])
       expect(result).toHaveLength(1)
       expect(result[0].equals(blocks[0])).toBe(true)
@@ -577,12 +550,9 @@ describe('quickpoll_helper', () => {
     it('should handle empty blocks', () => {
       const now = DateTime.now()
       const busyTimes = [
-        Interval.fromDateTimes(
-          now.set({ hour: 12 }),
-          now.set({ hour: 13 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 12 }), now.set({ hour: 13 })),
       ]
-      
+
       const result = subtractBusyTimesFromBlocks([], busyTimes)
       expect(result).toEqual([])
     })
@@ -592,18 +562,12 @@ describe('quickpoll_helper', () => {
     it('should subtract removal intervals from base', () => {
       const now = DateTime.now()
       const base = [
-        Interval.fromDateTimes(
-          now.set({ hour: 9 }),
-          now.set({ hour: 17 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 9 }), now.set({ hour: 17 })),
       ]
       const removals = [
-        Interval.fromDateTimes(
-          now.set({ hour: 12 }),
-          now.set({ hour: 13 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 12 }), now.set({ hour: 13 })),
       ]
-      
+
       const result = subtractRemovalIntervals(base, removals)
       expect(result.length).toBeGreaterThanOrEqual(0)
     })
@@ -611,12 +575,9 @@ describe('quickpoll_helper', () => {
     it('should handle empty removals', () => {
       const now = DateTime.now()
       const base = [
-        Interval.fromDateTimes(
-          now.set({ hour: 9 }),
-          now.set({ hour: 17 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 9 }), now.set({ hour: 17 })),
       ]
-      
+
       const result = subtractRemovalIntervals(base, [])
       expect(result).toEqual(base)
     })
@@ -624,12 +585,9 @@ describe('quickpoll_helper', () => {
     it('should handle empty base', () => {
       const now = DateTime.now()
       const removals = [
-        Interval.fromDateTimes(
-          now.set({ hour: 12 }),
-          now.set({ hour: 13 })
-        ),
+        Interval.fromDateTimes(now.set({ hour: 12 }), now.set({ hour: 13 })),
       ]
-      
+
       const result = subtractRemovalIntervals([], removals)
       expect(result).toEqual([])
     })
@@ -643,7 +601,7 @@ describe('quickpoll_helper', () => {
       }
       const monthStart = new Date('2024-01-01')
       const monthEnd = new Date('2024-01-31')
-      
+
       const result = computeBaseAvailability(
         participant,
         [],
@@ -653,7 +611,7 @@ describe('quickpoll_helper', () => {
         monthEnd,
         'UTC'
       )
-      
+
       expect(Array.isArray(result)).toBe(true)
     })
 
@@ -669,7 +627,7 @@ describe('quickpoll_helper', () => {
       }
       const monthStart = new Date('2024-01-01')
       const monthEnd = new Date('2024-01-31')
-      
+
       const result = computeBaseAvailability(
         participant,
         [],
@@ -679,7 +637,7 @@ describe('quickpoll_helper', () => {
         monthEnd,
         'UTC'
       )
-      
+
       expect(Array.isArray(result)).toBe(true)
     })
   })
@@ -701,7 +659,7 @@ describe('quickpoll_helper', () => {
           ],
         },
       }
-      
+
       const members = createMockMeetingMembers(pollData)
       expect(Array.isArray(members)).toBe(true)
     })
@@ -723,7 +681,7 @@ describe('quickpoll_helper', () => {
           ],
         },
       }
-      
+
       const members = createMockMeetingMembers(pollData)
       expect(Array.isArray(members)).toBe(true)
     })
@@ -735,7 +693,7 @@ describe('quickpoll_helper', () => {
           participants: [],
         },
       }
-      
+
       const members = createMockMeetingMembers(pollData)
       expect(Array.isArray(members)).toBe(true)
     })
