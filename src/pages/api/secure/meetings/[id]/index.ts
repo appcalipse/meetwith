@@ -98,7 +98,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const participantActing = getParticipantBaseInfoFromAccount(
       await getAccountFromDB(req.session.account!.address)
     )
-    await deleteConferenceMeetingFromDb(request.meeting.meeting_id)
     try {
       await deleteMeetingFromDB(
         participantActing,
