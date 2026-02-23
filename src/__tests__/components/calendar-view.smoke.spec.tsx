@@ -66,6 +66,46 @@ describe('calendar-view components', () => {
     it('should import UpcomingEvent without crashing', () => {
       expect(() => require('@/components/calendar-view/UpcomingEvent')).not.toThrow()
     })
+
+    it('should import Calendar without crashing', () => {
+      expect(() => require('@/components/calendar-view/Calendar')).not.toThrow()
+    })
+
+    it('should import CalendarItems without crashing', () => {
+      expect(() => require('@/components/calendar-view/CalendarItems')).not.toThrow()
+    })
+
+    it('should import CalendarPicker without crashing', () => {
+      expect(() => require('@/components/calendar-view/CalendarPicker')).not.toThrow()
+    })
+
+    it('should import ConnectedCalendar without crashing', () => {
+      expect(() => require('@/components/calendar-view/ConnectedCalendar')).not.toThrow()
+    })
+
+    it('should import ConnectedCalendarItem without crashing', () => {
+      expect(() => require('@/components/calendar-view/ConnectedCalendarItem')).not.toThrow()
+    })
+
+    it('should import EventDetailsPopOver without crashing', () => {
+      expect(() => require('@/components/calendar-view/EventDetailsPopOver')).not.toThrow()
+    })
+
+    it('should import MobileCalendarController without crashing', () => {
+      expect(() => require('@/components/calendar-view/MobileCalendarController')).not.toThrow()
+    })
+
+    it('should import ParticipantsControl without crashing', () => {
+      expect(() => require('@/components/calendar-view/ParticipantsControl')).not.toThrow()
+    })
+
+    it('should import UpcomingEvents without crashing', () => {
+      expect(() => require('@/components/calendar-view/UpcomingEvents')).not.toThrow()
+    })
+
+    it('should import calendar-view index without crashing', () => {
+      expect(() => require('@/components/calendar-view')).not.toThrow()
+    })
   })
 
   describe('component structure', () => {

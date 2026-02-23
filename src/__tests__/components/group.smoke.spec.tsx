@@ -65,6 +65,30 @@ describe('group components', () => {
     it('should import GroupAvatarUpload without crashing', () => {
       expect(() => require('@/components/group/GroupAvatarUpload')).not.toThrow()
     })
+
+    it('should import GroupAdminChangeModal without crashing', () => {
+      expect(() => require('@/components/group/GroupAdminChangeModal')).not.toThrow()
+    })
+
+    it('should import GroupMemberCard without crashing', () => {
+      expect(() => require('@/components/group/GroupMemberCard')).not.toThrow()
+    })
+
+    it('should import GroupSettingsModal without crashing', () => {
+      expect(() => require('@/components/group/GroupSettingsModal')).not.toThrow()
+    })
+
+    it('should import Groups without crashing', () => {
+      expect(() => require('@/components/group/Groups')).not.toThrow()
+    })
+
+    it('should import InviteModal without crashing', () => {
+      expect(() => require('@/components/group/InviteModal')).not.toThrow()
+    })
+
+    it('should import InvitedUsersList without crashing', () => {
+      expect(() => require('@/components/group/InvitedUsersList')).not.toThrow()
+    })
   })
 
   describe('component structure', () => {
