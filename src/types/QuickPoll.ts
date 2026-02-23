@@ -107,6 +107,19 @@ export interface QuickPollWithParticipants extends QuickPoll {
   host_address?: string
 }
 
+export interface QuickPollListItem extends Omit<QuickPoll, 'participants'> {
+  quick_poll_participants: QuickPollParticipant[]
+  participant_count: number
+  host_name?: string
+  host_address?: string
+  user_participant_type?: QuickPollParticipantType
+  user_status?: string
+  user_availability_block_ids?: string[]
+  user_availability_block_titles?: string[]
+  user_available_slots?: QuickPollParticipant['available_slots']
+  user_timezone?: string
+}
+
 export interface QuickPollParticipantWithAccount extends QuickPollParticipant {
   account_name?: string
   account_avatar?: string
@@ -224,7 +237,7 @@ export interface OAuthConnectQuery {
 
 // Response interfaces
 export interface QuickPollListResponse {
-  polls: QuickPollWithParticipants[]
+  polls: QuickPollListItem[]
   total_count: number
   has_more: boolean
   isPro?: boolean
