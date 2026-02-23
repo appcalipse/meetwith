@@ -668,6 +668,14 @@ const handleUpdateMeetingSeries = async (
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
   const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create series via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping series update for meeting ${meetingId}: no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
@@ -839,6 +847,13 @@ const handleUpdateMeetingSeriesRsvps = async (
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
   const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  if (series.length === 0) {
+    console.info(
+      `Skipping series RSVP update for meeting ${meetingId}: no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
