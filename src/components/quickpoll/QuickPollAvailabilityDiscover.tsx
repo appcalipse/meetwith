@@ -9,10 +9,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Interval } from 'luxon'
 import { useRouter } from 'next/router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 import { useAvailabilityBlocks } from '@/hooks/availability/useAvailabilityBlocks'
 import useAccountContext from '@/hooks/useAccountContext'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { useParticipants } from '@/providers/schedule/ParticipantsContext'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
@@ -47,7 +48,9 @@ import {
   mergeAvailabilitySlots,
 } from '@/utils/quickpoll_helper'
 import {
+  clearQuickPollSignInContext,
   getGuestPollDetails,
+  getQuickPollSignInContext,
   hasPollAvailabilityModalBeenShown,
   markPollAvailabilityModalAsShown,
 } from '@/utils/storage'
@@ -80,6 +83,7 @@ interface QuickPollAvailabilityDiscoverProps {
 const QuickPollAvailabilityDiscoverInner: React.FC<
   QuickPollAvailabilityDiscoverProps
 > = ({ pollId, pollData, onNavigateToGuestDetails }) => {
+  const { isOnboardingOpened } = useContext(OnboardingModalContext)
   const {
     isInviteParticipantsOpen,
     showGuestIdModal,
@@ -264,13 +268,51 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
 
+  // Show loading on poll page while waiting for onboarding (new user) or join modal (existing user) after auth return
+  const showAuthReturnLoading = useMemo(() => {
+    if (!router.pathname.startsWith('/poll/')) return false
+    const context = getQuickPollSignInContext()
+    if (!context || context.pollId !== currentPollId) return false
+    if (!currentAccount || !isLoggedInAndNotInPoll) return false
+    if (isOnboardingOpened || showPollAvailabilityForJoin) return false
+    return true
+  }, [
+    router.pathname,
+    currentPollId,
+    currentAccount,
+    isLoggedInAndNotInPoll,
+    isOnboardingOpened,
+    showPollAvailabilityForJoin,
+  ])
+
+  const EXISTING_USER_JOIN_MODAL_DELAY_MS = 10000
+  useEffect(() => {
+    if (!router.pathname.startsWith('/poll/')) return
+    const context = getQuickPollSignInContext()
+    if (!context || context.pollId !== currentPollId) return
+    if (!currentAccount || !isLoggedInAndNotInPoll) return
+    if (isOnboardingOpened) return
+
+    const timeoutId = window.setTimeout(() => {
+      setShowPollAvailabilityForJoin(true)
+    }, EXISTING_USER_JOIN_MODAL_DELAY_MS)
+    return () => clearTimeout(timeoutId)
+  }, [
+    router.pathname,
+    currentPollId,
+    currentAccount,
+    isLoggedInAndNotInPoll,
+    isOnboardingOpened,
+  ])
+
   useEffect(() => {
     if (
       !currentPollId ||
       !currentAccount ||
       !currentPollData ||
       isLoggedInAndNotInPoll ||
-      currentIntent !== QuickPollIntent.EDIT_AVAILABILITY
+      currentIntent !== QuickPollIntent.EDIT_AVAILABILITY ||
+      isOnboardingOpened
     ) {
       return
     }
@@ -281,9 +323,15 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     )
     if (
       !participant ||
-      (participant.available_slots && participant.available_slots.length > 0) ||
       hasPollAvailabilityModalBeenShown(currentPollId, participant.id)
     ) {
+      return
+    }
+    const hasCustomSlots =
+      participant.available_slots && participant.available_slots.length > 0
+    const hasBlockBasedAvailability =
+      participant.has_block_based_availability === true
+    if (hasCustomSlots || hasBlockBasedAvailability) {
       return
     }
     setShowPollAvailabilityOneTime(true)
@@ -293,6 +341,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     currentPollData,
     isLoggedInAndNotInPoll,
     currentIntent,
+    isOnboardingOpened,
   ])
 
   const { mutate: saveRemovals, isLoading: isSavingRemovals } = useMutation({
@@ -715,6 +764,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         currentAccount.preferences?.name || undefined
       )
       await savePollAvailabilityForParticipant(result, participant.id)
+      clearQuickPollSignInContext()
       setShowPollAvailabilityForJoin(false)
       await queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
       await queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
@@ -788,6 +838,10 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         imageAlt="Error loading poll"
       />
     )
+  }
+
+  if (showAuthReturnLoading) {
+    return <CustomLoading text="Getting things ready..." />
   }
 
   return (

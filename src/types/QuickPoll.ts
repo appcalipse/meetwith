@@ -79,6 +79,7 @@ export interface QuickPollParticipant {
   participant_type: QuickPollParticipantType
   availability_block_ids?: string[]
   availability_block_titles?: string[]
+  has_block_based_availability?: boolean
 }
 
 export interface QuickPollJoinContext {

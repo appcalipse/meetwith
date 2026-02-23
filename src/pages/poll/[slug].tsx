@@ -1,7 +1,7 @@
 import { Box } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useContext, useEffect } from 'react'
+import { useEffect } from 'react'
 
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
@@ -10,104 +10,30 @@ import QuickPollMain, {
 } from '@/components/quickpoll/QuickPollMain'
 import { AvailabilityTrackerProvider } from '@/components/schedule/schedule-time-discover/AvailabilityTracker'
 import useAccountContext from '@/hooks/useAccountContext'
-import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { QuickPollAvailabilityProvider } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { NavigationProvider } from '@/providers/schedule/NavigationContext'
 import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
 import { PermissionsProvider } from '@/providers/schedule/PermissionsContext'
 import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
-import { NotificationChannel } from '@/types/AccountNotifications'
 import { QuickPollBySlugResponse } from '@/types/QuickPoll'
-import {
-  getNotificationSubscriptions,
-  getQuickPollBySlug,
-  joinQuickPollAsParticipant,
-} from '@/utils/api_helper'
+import { getQuickPollBySlug } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { ApiFetchError } from '@/utils/errors'
 import { isJson } from '@/utils/generic_utils'
-import {
-  clearQuickPollSignInContext,
-  getQuickPollSignInContext,
-} from '@/utils/storage'
-import { useToastHelpers } from '@/utils/toasts'
+import { getQuickPollSignInContext } from '@/utils/storage'
 
 const PollPage = () => {
   const router = useRouter()
   const { slug, tab, participantId } = router.query
   const currentAccount = useAccountContext()
-  const { isOnboardingOpened } = useContext(OnboardingModalContext)
-  const { showSuccessToast, showErrorToast } = useToastHelpers()
 
-  const { data: notifications } = useQuery({
-    queryKey: ['notification-subscriptions', currentAccount?.address],
-    queryFn: getNotificationSubscriptions,
-    enabled: !!currentAccount?.address,
-  })
-  const accountEmail =
-    notifications?.notification_types?.find(
-      n => n.channel === NotificationChannel.EMAIL && !n.disabled
-    )?.destination ?? ''
-
-  // When user returns from sign-in/sign-up with poll context: add to poll immediately and redirect
   useEffect(() => {
-    if (
-      !currentAccount?.address ||
-      typeof slug !== 'string' ||
-      !router.isReady ||
-      isOnboardingOpened
-    ) {
+    if (!currentAccount?.address || typeof slug !== 'string' || !router.isReady)
       return
-    }
     const context = getQuickPollSignInContext()
     if (!context || context.pollSlug !== slug) return
-
-    clearQuickPollSignInContext()
-    const pollIdToJoin = context.pollId
-
-    let cancelled = false
-    const run = async () => {
-      try {
-        const displayName =
-          currentAccount.preferences?.name || currentAccount.address
-        const { alreadyInPoll } = await joinQuickPollAsParticipant(
-          pollIdToJoin,
-          accountEmail || undefined,
-          displayName
-        )
-        if (cancelled) return
-        if (alreadyInPoll) {
-          showSuccessToast(
-            'You are already part of the poll',
-            'Redirecting you to the poll.'
-          )
-        } else {
-          showSuccessToast(
-            "You've been added to the poll",
-            'Redirecting you to add your availability.'
-          )
-        }
-        await router.push(
-          `/dashboard/schedule?ref=quickpoll&pollId=${pollIdToJoin}&intent=edit_availability`
-        )
-      } catch (error) {
-        if (!cancelled) {
-          handleApiError('Failed to join poll', error)
-        }
-      }
-    }
-    run()
-    return () => {
-      cancelled = true
-    }
-  }, [
-    currentAccount?.address,
-    currentAccount?.preferences?.name,
-    slug,
-    router.isReady,
-    isOnboardingOpened,
-    accountEmail,
-  ])
+    // No-op: stay on poll page.
+  }, [currentAccount?.address, slug, router.isReady])
 
   let initialPage = QuickPollPage.AVAILABILITY
   if (tab === 'guest-details') {

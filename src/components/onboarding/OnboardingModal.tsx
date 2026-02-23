@@ -37,6 +37,7 @@ import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
   internalFetch,
+  joinQuickPollAsParticipant,
   listConnectedCalendars,
   saveAccountChanges,
   setNotificationSubscriptions,
@@ -46,9 +47,13 @@ import {
 } from '@/utils/api_helper'
 import { generateDefaultAvailabilities } from '@/utils/calendar_manager'
 import { OnboardingSubject } from '@/utils/constants'
+import { handleApiError } from '@/utils/error_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
-import { getQuickPollSignInContext } from '@/utils/storage'
+import {
+  clearQuickPollSignInContext,
+  getQuickPollSignInContext,
+} from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
@@ -229,6 +234,7 @@ const OnboardingModal = () => {
   }, [isOnboardingOpened])
 
   const toast = useToast()
+  const { showSuccessToast } = useToastHelpers()
 
   function validateFirstStep() {
     if (!timezone) {
@@ -267,6 +273,30 @@ const OnboardingModal = () => {
       return
     }
     goToNextStep()
+  }
+
+  async function doJoinPollAndRedirect(
+    pollId: string,
+    participantEmail: string | undefined,
+    participantName: string | undefined
+  ) {
+    try {
+      await joinQuickPollAsParticipant(
+        pollId,
+        participantEmail,
+        participantName
+      )
+      clearQuickPollSignInContext()
+      showSuccessToast(
+        "You're in!",
+        "You've been added to the poll. Add your availability on the next screen."
+      )
+      await router.push(
+        `/dashboard/schedule?ref=quickpoll&pollId=${pollId}&intent=edit_availability`
+      )
+    } catch (e) {
+      handleApiError('Failed to add you to the poll. Please try again.', e)
+    }
   }
 
   // Calendar Connection Functions
@@ -483,6 +513,7 @@ const OnboardingModal = () => {
       const pollContext = getQuickPollSignInContext()
       if (pollContext) {
         setLoadingSave(false)
+        await doJoinPollAndRedirect(pollContext.pollId, email, name)
         closeOnboarding()
         return
       }
@@ -505,7 +536,9 @@ const OnboardingModal = () => {
   const handleClose = () => {
     const pollContext = getQuickPollSignInContext()
     if (pollContext) {
-      closeOnboarding()
+      doJoinPollAndRedirect(pollContext.pollId, email, name).then(() =>
+        closeOnboarding()
+      )
     } else {
       closeOnboarding(stateObject.redirect)
     }

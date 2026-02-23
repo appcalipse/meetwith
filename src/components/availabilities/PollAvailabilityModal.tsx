@@ -244,10 +244,10 @@ export function PollAvailabilityModal({
     value: b.id,
     label: b.title,
   }))
-  const optionsWithCustom: Option<string>[] = [...blockOptions, CUSTOM_OPTION]
   const selectedBlockOptions = blockOptions.filter(o =>
     selectedBlockIds.includes(o.value)
   )
+  // Custom is only shown as the current value when user has tweaked availability (isCustomFromEdit); it is not a selectable option in the dropdown
   const selectValue = isCustomFromEdit ? [CUSTOM_OPTION] : selectedBlockOptions
 
   return (
@@ -310,7 +310,7 @@ export function PollAvailabilityModal({
                     const opts = (newVal as Option<string>[]) || []
                     handleBlockSelectionChange(opts)
                   }}
-                  options={optionsWithCustom}
+                  options={blockOptions}
                   isMulti
                   placeholder="Select blocks..."
                   chakraStyles={{
