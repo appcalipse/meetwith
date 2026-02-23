@@ -8849,6 +8849,7 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
               availability_block_titles: blocks.map(b => b.title),
               available_slots: resolvedSlots,
               timezone: blocks[0].timezone,
+              has_block_based_availability: true,
             }
           }
           return {
@@ -8857,6 +8858,7 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
             availability_block_titles: undefined,
             available_slots: (p.available_slots as AvailabilitySlot[]) || [],
             timezone: p.timezone,
+            has_block_based_availability: false,
           }
         }),
       },
@@ -9622,8 +9624,7 @@ const addQuickPollParticipant = async (
       )
     }
 
-    // For account owners, fetch their weekly availability
-    let availableSlots: AvailabilitySlot[] = []
+    const availableSlots: AvailabilitySlot[] = []
     let timezone = 'UTC'
 
     if (participantData.account_address) {
@@ -9632,31 +9633,9 @@ const addQuickPollParticipant = async (
           participantData.account_address
         )
         timezone = participantAccount.preferences?.timezone || 'UTC'
-
-        // Get the user's default availability block
-        const availabilityId = await getDefaultAvailabilityBlockId(
-          participantData.account_address
-        )
-        if (availabilityId) {
-          const { data: availability } = await db.supabase
-            .from('availabilities')
-            .select('weekly_availability')
-            .eq('id', availabilityId)
-            .maybeSingle()
-
-          if (availability?.weekly_availability) {
-            // Convert weekly availability to poll format
-            availableSlots = availability.weekly_availability.map(
-              (day: AvailabilitySlot) => ({
-                ranges: day.ranges || [],
-                weekday: day.weekday,
-              })
-            )
-          }
-        }
       } catch (error) {
         console.warn(
-          `Could not fetch timezone/availability for ${participantData.account_address}:`,
+          `Could not fetch timezone for ${participantData.account_address}:`,
           error
         )
       }
