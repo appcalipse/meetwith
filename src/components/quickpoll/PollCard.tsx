@@ -20,20 +20,23 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
+  Tooltip,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useContext, useState } from 'react'
+import { useContext, useMemo, useState } from 'react'
 import { FaRegCopy } from 'react-icons/fa'
 import { FiEdit3, FiMoreVertical, FiRotateCcw, FiTrash2 } from 'react-icons/fi'
-
+import { useAvailabilityBlock } from '@/hooks/availability'
+import { useAvailabilityBlocks } from '@/hooks/availability/useAvailabilityBlocks'
+import useAccountContext from '@/hooks/useAccountContext'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
 import {
   PollStatus,
+  QuickPollListItem,
   QuickPollParticipantType,
-  QuickPollWithParticipants,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import { deleteQuickPoll, updateQuickPoll } from '@/utils/api_helper'
@@ -45,12 +48,7 @@ import { queryClient } from '@/utils/react_query'
 import { useToastHelpers } from '@/utils/toasts'
 
 interface PollCardProps {
-  poll: QuickPollWithParticipants & {
-    host_name?: string
-    host_address?: string
-    user_participant_type?: QuickPollParticipantType
-    user_status?: string
-  }
+  poll: QuickPollListItem
   showActions?: boolean
   canSchedule?: boolean
 }
@@ -63,6 +61,7 @@ const PollCard = ({
   const { showSuccessToast } = useToastHelpers()
   const { push } = useRouter()
   const { fetchPollCounts } = useContext(MetricStateContext)
+  const currentAccount = useAccountContext()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false)
 
@@ -160,6 +159,46 @@ const PollCard = ({
   const iconColor = useColorModeValue('#181F24', 'white')
 
   const statusColors = getStatusColor(poll.status)
+
+  const { blocks: availabilityBlocks } = useAvailabilityBlocks(
+    currentAccount?.address
+  )
+  const { block: defaultAvailabilityBlock } = useAvailabilityBlock(
+    currentAccount?.preferences?.availaibility_id
+  )
+
+  const currentUserAvailabilityBadges = useMemo(() => {
+    if (!currentAccount?.address) return []
+    const participant = poll.quick_poll_participants?.find(
+      p =>
+        p.account_address?.toLowerCase() ===
+        currentAccount.address.toLowerCase()
+    )
+    if (!participant) return []
+
+    const blockIds = poll.user_availability_block_ids ?? []
+    const blockTitles = poll.user_availability_block_titles ?? []
+
+    if (blockIds.length > 0) {
+      if (blockTitles.length > 0) return blockTitles
+      const blocks = availabilityBlocks || []
+      return blockIds
+        .map(id => blocks.find(b => b.id === id)?.title)
+        .filter(Boolean) as string[]
+    }
+    const weeklyAvailability = poll.user_available_slots ?? []
+    if (weeklyAvailability.length === 0) {
+      return defaultAvailabilityBlock ? [defaultAvailabilityBlock.title] : []
+    }
+    return ['Custom']
+  }, [
+    availabilityBlocks,
+    currentAccount?.address,
+    currentAccount?.preferences?.availaibility_id,
+    defaultAvailabilityBlock,
+    poll,
+    poll.quick_poll_participants,
+  ])
 
   const handleDeletePoll = () => {
     deletePollMutation.mutate()
@@ -599,6 +638,55 @@ const PollCard = ({
                 {poll.host_name || 'Unknown'}
               </Text>
             </HStack>
+            {/* Availability */}
+            {currentUserAvailabilityBadges.length > 0 && (
+              <HStack spacing={2} flexWrap="wrap" align="flex-start">
+                <Text
+                  fontSize={{ base: '14px', md: '16px' }}
+                  color="text-primary"
+                  fontWeight="700"
+                >
+                  Availability:
+                </Text>
+                <HStack gap={2} flexWrap="wrap">
+                  {currentUserAvailabilityBadges.slice(0, 2).map(title => (
+                    <Tooltip
+                      key={title}
+                      label="Availability block used for this poll"
+                      placement="top"
+                    >
+                      <Badge
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        {title}
+                      </Badge>
+                    </Tooltip>
+                  ))}
+                  {currentUserAvailabilityBadges.length > 2 && (
+                    <Tooltip
+                      label="Availability block used for this poll"
+                      placement="top"
+                    >
+                      <Badge
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        +{currentUserAvailabilityBadges.length - 2} more
+                      </Badge>
+                    </Tooltip>
+                  )}
+                </HStack>
+              </HStack>
+            )}
 
             {/* Poll link */}
             <HStack spacing={2} align="center" flexWrap="wrap">
