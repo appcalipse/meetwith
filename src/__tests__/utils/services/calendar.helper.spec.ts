@@ -2,9 +2,16 @@ jest.mock('dom-parser', () => ({
   parseFromString: jest.fn((html: string) => {
     // Simple mock parser that extracts text from <p> tags
     const pMatches = html.match(/<p[^>]*>(.*?)<\/p>/gi) || []
-    const paragraphs = pMatches.map(match => ({
-      textContent: match.replace(/<[^>]+>/g, ''),
-    }))
+    const paragraphs = pMatches.map(match => {
+      // Strip tags iteratively to handle nested tags
+      let text = match
+      let prev = ''
+      while (prev !== text) {
+        prev = text
+        text = text.replace(/<[^>]*>/g, '')
+      }
+      return { textContent: text }
+    })
     return {
       getElementsByTagName: (tag: string) => {
         if (tag === 'p') return paragraphs
