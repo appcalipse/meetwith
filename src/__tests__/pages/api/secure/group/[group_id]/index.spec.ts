@@ -139,21 +139,21 @@ describe('/api/secure/group/[group_id]', () => {
     })
 
     it('should return 404 when group does not exist', async () => {
-      mockGetGroup.mockRejectedValue(new GroupNotExistsError('Group not found'))
+      mockGetGroup.mockRejectedValue(new GroupNotExistsError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(404)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Group not found' })
+      expect(jsonMock).toHaveBeenCalledWith({ error: 'Group does not exists' })
     })
 
     it('should return 403 when user is not a member', async () => {
-      mockGetGroup.mockRejectedValue(new NotGroupMemberError('Not a member'))
+      mockGetGroup.mockRejectedValue(new NotGroupMemberError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(403)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Not a member' })
+      expect(jsonMock).toHaveBeenCalledWith({ error: 'Not a group member' })
     })
   })
 
@@ -189,12 +189,12 @@ describe('/api/secure/group/[group_id]', () => {
         name: 'Updated Group',
       }
       
-      mockEditGroup.mockRejectedValue(new NotGroupAdminError('Not an admin'))
+      mockEditGroup.mockRejectedValue(new NotGroupAdminError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(403)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Not an admin' })
+      expect(jsonMock).toHaveBeenCalledWith({ error: 'Not a group admin' })
     })
 
     it('should handle partial updates', async () => {
@@ -235,23 +235,23 @@ describe('/api/secure/group/[group_id]', () => {
     it('should return 403 when user is not admin', async () => {
       req.method = 'DELETE'
       
-      mockDeleteGroup.mockRejectedValue(new NotGroupAdminError('Not an admin'))
+      mockDeleteGroup.mockRejectedValue(new NotGroupAdminError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(403)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Not an admin' })
+      expect(jsonMock).toHaveBeenCalledWith({ error: 'Not a group admin' })
     })
 
     it('should return 404 when group does not exist', async () => {
       req.method = 'DELETE'
       
-      mockDeleteGroup.mockRejectedValue(new GroupNotExistsError('Group not found'))
+      mockDeleteGroup.mockRejectedValue(new GroupNotExistsError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(404)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Group not found' })
+      expect(jsonMock).toHaveBeenCalledWith({ error: 'Group does not exists' })
     })
   })
 
@@ -269,10 +269,8 @@ describe('/api/secure/group/[group_id]', () => {
     })
 
     it('should include error details when available', async () => {
-      const errorWithDetails = {
-        message: 'Validation failed',
-        details: { field: 'name', issue: 'too short' },
-      }
+      const errorWithDetails = new Error('Validation failed') as Error & { details: unknown }
+      errorWithDetails.details = { field: 'name', issue: 'too short' }
       
       mockEditGroup.mockRejectedValue(errorWithDetails)
       req.method = 'PUT'

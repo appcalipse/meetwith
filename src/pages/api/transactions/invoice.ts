@@ -18,7 +18,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       await sendInvoiceEmail(payload.guest_email, payload.guest_name, {
         email_address: payload.guest_email,
         full_name: payload.guest_name,
-        number_of_sessions: meetingType.plan?.no_of_slot.toString() || '0',
+        number_of_sessions: (meetingType.plan?.no_of_slot || 0).toString(),
         payment_method: payload.payment_method,
         plan: meetingType.title,
         price: amount.toString(),

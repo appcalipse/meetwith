@@ -123,7 +123,10 @@ describe('/api/secure/stripe/status', () => {
     it('should handle missing account in session', async () => {
       req.session = { account: undefined } as any
 
-      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(statusMock).toHaveBeenCalledWith(500)
+      expect(sendMock).toHaveBeenCalledWith('An unexpected error occurred.')
     })
   })
 

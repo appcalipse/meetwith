@@ -7,7 +7,6 @@ import {
   getBlockchainSubscriptionsForAccount,
   getDomainInfo,
   getProviderBackend,
-  getProvider,
 } from '@/utils/rpc_helper'
 
 // Mock dependencies
@@ -51,40 +50,34 @@ jest.mock('@/types/chains', () => ({
 
 import * as Sentry from '@sentry/nextjs'
 import { createPublicClient } from 'viem'
+import { getChainInfo } from '@/types/chains'
 
 describe('rpc_helper', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  describe('getProvider', () => {
+  describe('getProviderBackend', () => {
     it('should create public client for chain', () => {
       const mockClient = {
         readContract: jest.fn(),
       }
 
+      ;(getChainInfo as jest.Mock).mockReturnValue({ rpcUrl: 'http://localhost:8545' })
       ;(createPublicClient as jest.Mock).mockReturnValue(mockClient)
 
-      const result = getProvider('ethereum')
+      const result = getProviderBackend('ethereum' as any)
 
       expect(createPublicClient).toHaveBeenCalled()
-      expect(result).toBeDefined()
-    })
-  })
-
-  describe('getProviderBackend', () => {
-    it('should create backend provider for chain', () => {
-      const result = getProviderBackend('ethereum')
-
-      expect(result).toBeDefined()
+      expect(result).toBe(mockClient)
     })
 
-    it('should cache provider instances', () => {
-      const first = getProviderBackend('ethereum')
-      const second = getProviderBackend('ethereum')
+    it('should return null for unknown chain', () => {
+      ;(getChainInfo as jest.Mock).mockReturnValue(null)
 
-      // Should return same instance (cached)
-      expect(first).toBe(second)
+      const result = getProviderBackend('unknown' as any)
+
+      expect(result).toBeNull()
     })
   })
 
@@ -103,9 +96,8 @@ describe('rpc_helper', () => {
           ]), // domains
       }
 
-      // Mock getProviderBackend to return our mock
-      jest.spyOn(require('@/utils/rpc_helper'), 'getProviderBackend')
-        .mockReturnValue(mockProvider)
+      ;(getChainInfo as jest.Mock).mockReturnValue({ rpcUrl: 'http://localhost:8545' })
+      ;(createPublicClient as jest.Mock).mockReturnValue(mockProvider)
 
       const result = await getBlockchainSubscriptionsForAccount('0xtest')
 
@@ -118,8 +110,8 @@ describe('rpc_helper', () => {
         readContract: jest.fn().mockRejectedValue(new Error('RPC error')),
       }
 
-      jest.spyOn(require('@/utils/rpc_helper'), 'getProviderBackend')
-        .mockReturnValue(mockProvider)
+      ;(getChainInfo as jest.Mock).mockReturnValue({ rpcUrl: 'http://localhost:8545' })
+      ;(createPublicClient as jest.Mock).mockReturnValue(mockProvider)
 
       const result = await getBlockchainSubscriptionsForAccount('0xtest')
 
@@ -129,36 +121,22 @@ describe('rpc_helper', () => {
     })
 
     it('should check mainnet chains in production', async () => {
-      const originalEnv = process.env.NODE_ENV
-      process.env.NODE_ENV = 'production'
-
       const mockProvider = {
         readContract: jest.fn().mockResolvedValue([]),
       }
 
-      jest.spyOn(require('@/utils/rpc_helper'), 'getProviderBackend')
-        .mockReturnValue(mockProvider)
+      ;(getChainInfo as jest.Mock).mockReturnValue({ rpcUrl: 'http://localhost:8545' })
+      ;(createPublicClient as jest.Mock).mockReturnValue(mockProvider)
 
       await getBlockchainSubscriptionsForAccount('0xtest')
 
-      // Should call getMainnetChains
+      // Should call getProviderBackend via readContract
       expect(mockProvider.readContract).toHaveBeenCalled()
-
-      process.env.NODE_ENV = originalEnv
     })
   })
 
   describe('getDomainInfo', () => {
     it('should fetch domain information', async () => {
-      const mockContract = {
-        call: jest.fn().mockResolvedValue({
-          owner: '0xowner',
-          planId: '1',
-          expiryTime: Date.now() / 1000 + 86400,
-          domain: 'test.eth',
-        }),
-      }
-
       const result = await getDomainInfo('test.eth')
 
       expect(result).toBeDefined()
@@ -166,10 +144,6 @@ describe('rpc_helper', () => {
     })
 
     it('should handle domain not found', async () => {
-      const mockContract = {
-        call: jest.fn().mockRejectedValue(new Error('Domain not found')),
-      }
-
       const result = await getDomainInfo('nonexistent.eth')
 
       expect(result).toBeDefined()
@@ -190,8 +164,8 @@ describe('rpc_helper', () => {
         readContract: jest.fn().mockRejectedValue(new Error('Network timeout')),
       }
 
-      jest.spyOn(require('@/utils/rpc_helper'), 'getProviderBackend')
-        .mockReturnValue(mockProvider)
+      ;(getChainInfo as jest.Mock).mockReturnValue({ rpcUrl: 'http://localhost:8545' })
+      ;(createPublicClient as jest.Mock).mockReturnValue(mockProvider)
 
       await getBlockchainSubscriptionsForAccount('0xtest')
 
@@ -209,8 +183,8 @@ describe('rpc_helper', () => {
           .mockResolvedValueOnce([]), // Next chain succeeds
       }
 
-      jest.spyOn(require('@/utils/rpc_helper'), 'getProviderBackend')
-        .mockReturnValue(mockProvider)
+      ;(getChainInfo as jest.Mock).mockReturnValue({ rpcUrl: 'http://localhost:8545' })
+      ;(createPublicClient as jest.Mock).mockReturnValue(mockProvider)
 
       const result = await getBlockchainSubscriptionsForAccount('0xtest')
 

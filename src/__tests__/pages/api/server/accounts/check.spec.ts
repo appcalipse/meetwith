@@ -51,6 +51,7 @@ describe('/api/server/accounts/check', () => {
 
     res = {
       status: statusMock,
+      send: sendMock,
     }
   })
 

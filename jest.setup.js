@@ -12,6 +12,10 @@ process.env.RESEND_API_KEY = 'test-resend-key'
 process.env.NEXT_PUBLIC_POSTHOG_KEY = 'test-posthog-key'
 process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_SUPABASE_KEY = 'test-key'
+process.env.GOOGLE_CLIENT_ID = 'test-google-client-id'
+process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret'
+process.env.MS_GRAPH_CLIENT_ID = 'test-ms-client-id'
+process.env.MS_GRAPH_CLIENT_SECRET = 'test-ms-client-secret'
 
 global.TextDecoder = TextDecoder
 global.TextEncoder = TextEncoder
@@ -233,6 +237,12 @@ jest.mock('next/router', () => ({
   }),
 }))
 
+// Mock next/head
+jest.mock('next/head', () => {
+  const React = require('react')
+  return ({ children }) => React.createElement(React.Fragment, null, children)
+})
+
 // Mock @tanstack/react-query
 jest.mock('@tanstack/react-query', () => ({
   useQuery: jest.fn(() => ({ 
@@ -255,7 +265,7 @@ jest.mock('@tanstack/react-query', () => ({
     hasNextPage: false,
     isFetchingNextPage: false,
   })),
-  useMutation: jest.fn(() => ({ mutate: jest.fn(), isLoading: false })),
+  useMutation: jest.fn(() => ({ mutate: jest.fn(), mutateAsync: jest.fn(), isLoading: false, reset: jest.fn() })),
   useQueryClient: jest.fn(() => ({
     invalidateQueries: jest.fn(),
     setQueryData: jest.fn(),
@@ -299,6 +309,8 @@ jest.mock('viem', () => ({
   http: jest.fn(),
   parseEther: jest.fn(),
   formatEther: jest.fn(),
+  parseUnits: jest.fn(),
+  formatUnits: jest.fn(),
   encodeFunctionData: jest.fn(),
   decodeFunctionData: jest.fn(),
 }))
@@ -356,6 +368,7 @@ jest.mock('@chakra-ui/react', () => {
     useClipboard: jest.fn(() => ({ onCopy: jest.fn(), hasCopied: false, value: '' })),
     
     // Special functions and utilities
+    extendTheme: jest.fn((config) => config || {}),
     keyframes: jest.fn((...args) => ''),
     css: jest.fn(),
     chakra: jest.fn(),
@@ -695,6 +708,11 @@ Object.assign(navigator, {
 // Mock thirdweb
 jest.mock('thirdweb', () => ({
   createThirdwebClient: jest.fn(() => ({ clientId: 'test-client-id' })),
+  getContract: jest.fn(() => ({ address: '0xMockContract', abi: [] })),
+  readContract: jest.fn().mockResolvedValue(BigInt(0)),
+  estimateGas: jest.fn().mockResolvedValue(BigInt(21000)),
+  getGasPrice: jest.fn().mockResolvedValue(BigInt(20000000000)),
+  prepareContractCall: jest.fn(() => ({})),
 }), { virtual: true })
 
 jest.mock('thirdweb/react', () => ({
@@ -704,6 +722,7 @@ jest.mock('thirdweb/react', () => ({
   useActiveWallet: jest.fn(() => null),
   useActiveWalletConnectionStatus: jest.fn(() => 'disconnected'),
   useDisconnect: jest.fn(() => ({ disconnect: jest.fn() })),
+  useConnect: jest.fn(() => ({ connect: jest.fn() })),
   darkTheme: jest.fn(),
   lightTheme: jest.fn(),
 }), { virtual: true })
@@ -736,6 +755,165 @@ jest.mock('@fortawesome/free-solid-svg-icons', () => ({
   faExclamationTriangle: {},
 }), { virtual: true })
 
+// Mock chakra-react-select (depends on Chakra theme internals which don't work with mocked Chakra)
+jest.mock('chakra-react-select', () => {
+  const React = require('react')
+  const MockSelect = React.forwardRef(({ children, ...props }, ref) =>
+    React.createElement('select', { ref, ...props }, children)
+  )
+  MockSelect.displayName = 'MockChakraReactSelect'
+  return {
+    Select: MockSelect,
+    CreatableSelect: MockSelect,
+    AsyncSelect: MockSelect,
+    AsyncCreatableSelect: MockSelect,
+    chakraComponents: {},
+  }
+})
+
+// Mock next/font/google (used by theme.ts)
+jest.mock('next/font/google', () => ({
+  DM_Sans: () => ({ style: { fontFamily: 'DM Sans' } }),
+  Inter: () => ({ style: { fontFamily: 'Inter' } }),
+}))
+
+// Mock @chakra-ui/theme-tools with all commonly used exports
+jest.mock('@chakra-ui/theme-tools', () => {
+  // calc must be both a callable function AND have static methods (Object.assign pattern)
+  const createCalcResult = () => ({
+    add: (...args) => createCalcResult(),
+    subtract: (...args) => createCalcResult(),
+    multiply: (...args) => createCalcResult(),
+    divide: (...args) => createCalcResult(),
+    negate: () => createCalcResult(),
+    toString: () => '0',
+    reference: 'var(--chakra-mock)',
+    variable: '--chakra-mock',
+  })
+  const calcFn = (x) => createCalcResult()
+  // Static methods that can be called as calc.subtract(...), calc.add(...)
+  calcFn.add = (...args) => `calc(mock + mock)`
+  calcFn.subtract = (...args) => `calc(mock - mock)`
+  calcFn.multiply = (...args) => `calc(mock * mock)`
+  calcFn.divide = (...args) => `calc(mock / mock)`
+  calcFn.negate = (x) => `-mock`
+
+  return {
+    mode: jest.fn((light, dark) => light),
+    createBreakpoints: jest.fn(),
+    transparentize: jest.fn((color, opacity) => color),
+    cssVar: jest.fn((name, options) => ({
+      variable: `--chakra-${name}`,
+      reference: `var(--chakra-${name})`,
+    })),
+    calc: calcFn,
+    isDecimal: jest.fn(() => false),
+    addPrefix: jest.fn((value, prefix) => `${prefix}-${value}`),
+    toVarRef: jest.fn((name, fallback) => `var(${name})`),
+    toVar: jest.fn((value, prefix) => `--${prefix}-${value}`),
+    orient: jest.fn(() => ({})),
+    getColor: jest.fn(() => '#000'),
+    darken: jest.fn(() => '#000'),
+    lighten: jest.fn(() => '#fff'),
+    whiten: jest.fn(() => '#fff'),
+    blacken: jest.fn(() => '#000'),
+    randomColor: jest.fn(() => '#000'),
+    isDark: jest.fn(() => false),
+    isLight: jest.fn(() => true),
+    generateStripe: jest.fn(() => ({})),
+    anatomy: jest.fn(() => ({
+      keys: [],
+      toPart: jest.fn(() => ({})),
+      extend: jest.fn(() => ({})),
+      __type: {},
+    })),
+  }
+})
+
+// Mock @chakra-ui/icons to avoid loading real Chakra theme pipeline
+jest.mock('@chakra-ui/icons', () => {
+  const React = require('react')
+  const createIconMock = (name) => {
+    const Icon = (props) => React.createElement('svg', { 'data-testid': name, ...props })
+    Icon.displayName = name
+    return Icon
+  }
+  return new Proxy({}, {
+    get: (target, prop) => {
+      if (prop === '__esModule') return true
+      if (prop === 'default') return createIconMock('DefaultIcon')
+      return createIconMock(String(prop))
+    }
+  })
+})
+
 // Set environment to localhost for constants
 process.env.NEXT_PUBLIC_VERCEL_URL = 'localhost'
 process.env.VERCEL_URL = 'localhost'
+
+// Mock Chakra UI sub-packages that are imported directly (not through @chakra-ui/react)
+// These load the real styled-system which causes 'colors.180deg' errors
+const chakraSubPackages = [
+  '@chakra-ui/layout',
+  '@chakra-ui/button',
+  '@chakra-ui/color-mode',
+  '@chakra-ui/form-control',
+  '@chakra-ui/media-query',
+  '@chakra-ui/menu',
+  '@chakra-ui/switch',
+  '@chakra-ui/textarea',
+  '@chakra-ui/system',
+  '@chakra-ui/toast',
+  '@chakra-ui/modal',
+  '@chakra-ui/checkbox',
+  '@chakra-ui/input',
+  '@chakra-ui/select',
+  '@chakra-ui/spinner',
+  '@chakra-ui/table',
+  '@chakra-ui/tabs',
+  '@chakra-ui/tag',
+  '@chakra-ui/tooltip',
+  '@chakra-ui/popover',
+  '@chakra-ui/accordion',
+  '@chakra-ui/avatar',
+  '@chakra-ui/image',
+  '@chakra-ui/skeleton',
+  '@chakra-ui/icon',
+]
+
+chakraSubPackages.forEach(pkg => {
+  jest.mock(pkg, () => {
+    const React = require('react')
+    const createMockComponent = (displayName) => {
+      const Component = ({ children, ...props }) => React.createElement('div', props, children)
+      Component.displayName = displayName
+      return Component
+    }
+    return new Proxy({}, {
+      get: (target, prop) => {
+        if (prop === '__esModule') return true
+        if (prop === 'default') return createMockComponent('Default')
+        // Return hooks that match the @chakra-ui/react mock
+        if (prop === 'useColorMode') return jest.fn(() => ({
+          colorMode: 'dark',
+          setColorMode: jest.fn(),
+          toggleColorMode: jest.fn(),
+        }))
+        if (prop === 'useColorModeValue') return jest.fn((light, dark) => light)
+        if (prop === 'useDisclosure') return jest.fn(() => ({
+          isOpen: false, onOpen: jest.fn(), onClose: jest.fn(), onToggle: jest.fn(), getDisclosureProps: jest.fn(() => ({})), getButtonProps: jest.fn(() => ({})),
+        }))
+        if (prop === 'useToast') return jest.fn(() => jest.fn())
+        if (prop === 'useMediaQuery') return jest.fn(() => [false])
+        if (prop === 'useBreakpointValue') return jest.fn((values) => values?.base)
+        if (prop === 'useStyleConfig') return jest.fn(() => ({}))
+        if (prop === 'useToken') return jest.fn((...args) => args)
+        if (prop === 'forwardRef') return React.forwardRef
+        if (prop === 'chakra') return new Proxy({}, {
+          get: (t, p) => createMockComponent(`chakra.${String(p)}`)
+        })
+        return createMockComponent(String(prop))
+      }
+    })
+  })
+})

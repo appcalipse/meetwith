@@ -19,7 +19,7 @@ export default async function expirePolls(
     } catch (error) {
       Sentry.captureException(error)
       return res.status(500).json({
-        error: (error as Error).message,
+        error: error instanceof Error ? error.message : String(error),
         success: false,
       })
     }

@@ -26,6 +26,7 @@ import * as database from '@/utils/database'
 import { getSuggestedSlots } from '@/utils/api_helper'
 import { scheduleMeeting, selectDefaultProvider } from '@/utils/calendar_manager'
 import { ApiFetchError } from '@/utils/errors'
+import { SchedulingType } from '@/types/Meeting'
 
 describe('/api/server/discord/meet/simple', () => {
   const mockGetAccountFromDiscordId = database.getAccountFromDiscordId as jest.Mock
@@ -159,7 +160,7 @@ describe('/api/server/discord/meet/simple', () => {
       expect(mockSelectDefaultProvider).toHaveBeenCalledWith(['google', 'zoom'])
       expect(mockScheduleMeeting).toHaveBeenCalledWith(
         false,
-        'DISCORD',
+        SchedulingType.DISCORD,
         expect.any(String),
         expect.any(Date),
         expect.any(Date),
@@ -184,7 +185,7 @@ describe('/api/server/discord/meet/simple', () => {
 
       expect(mockScheduleMeeting).toHaveBeenCalledWith(
         false,
-        'DISCORD',
+        SchedulingType.DISCORD,
         expect.any(String),
         expect.any(Date),
         expect.any(Date),
@@ -223,7 +224,7 @@ describe('/api/server/discord/meet/simple', () => {
 
       expect(mockScheduleMeeting).toHaveBeenCalledWith(
         expect.any(Boolean),
-        expect.any(String),
+        SchedulingType.DISCORD,
         expect.any(String),
         expect.any(Date),
         expect.any(Date),
@@ -239,7 +240,7 @@ describe('/api/server/discord/meet/simple', () => {
     })
 
     it('should handle ApiFetchError', async () => {
-      const error = new ApiFetchError('API error', 400)
+      const error = new ApiFetchError(400, 'API error')
       mockGetAccountFromDiscordId.mockResolvedValue(mockScheduler)
       mockGetSuggestedSlots.mockResolvedValue(mockSlots)
       mockScheduleMeeting.mockRejectedValue(error)

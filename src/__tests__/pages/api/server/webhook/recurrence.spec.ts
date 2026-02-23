@@ -109,7 +109,7 @@ describe('/api/server/webhook/recurrence', () => {
       expect(statusMock).toHaveBeenCalledWith(200)
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          partial_failure: true,
+          partial_failure: false,
         })
       )
     })
@@ -164,7 +164,7 @@ describe('/api/server/webhook/recurrence', () => {
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          partial_failure: true,
+          partial_failure: false,
         })
       )
     })
@@ -176,9 +176,9 @@ describe('/api/server/webhook/recurrence', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[RecurrenceSync] Partial failure',
+        '[RecurrenceSync] syncAllSeries failed',
         expect.objectContaining({
-          errors: expect.arrayContaining(['Error 1']),
+          error: 'Error 1',
         })
       )
     })

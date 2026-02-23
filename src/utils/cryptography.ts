@@ -51,10 +51,15 @@ const decryptContent = (signature: string, encodedData: string): string => {
     window.location.assign('/logout')
     return ''
   }
-  const message = CryptoJS.AES.decrypt(encodedData, signature).toString(
-    CryptoJS.enc.Utf8
-  )
-  return message
+  try {
+    const message = CryptoJS.AES.decrypt(encodedData, signature).toString(
+      CryptoJS.enc.Utf8
+    )
+    return message
+  } catch (error) {
+    console.error('Decryption failed:', error)
+    return ''
+  }
 }
 
 const checkSignature = (signature: string, nonce: number): string => {

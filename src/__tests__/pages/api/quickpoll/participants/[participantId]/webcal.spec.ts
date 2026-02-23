@@ -67,6 +67,7 @@ describe('/api/quickpoll/participants/[participantId]/webcal', () => {
       body: {
         url: 'https://calendar.example.com/feed.ics',
         title: 'Test Calendar',
+        files: {},
       },
       session: {
         account: {
@@ -95,7 +96,7 @@ describe('/api/quickpoll/participants/[participantId]/webcal', () => {
       expect(mockSaveQuickPollCalendar).toHaveBeenCalledWith(
         'participant-123',
         'user@example.com',
-        'webcal',
+        'Webcal',
         { url: 'https://calendar.example.com/feed.ics' },
         expect.arrayContaining([
           expect.objectContaining({
@@ -156,7 +157,7 @@ describe('/api/quickpoll/participants/[participantId]/webcal', () => {
     })
 
     it('should return 400 when URL is missing', async () => {
-      req.body = { title: 'Test Calendar' }
+      req.body = { title: 'Test Calendar', files: {} }
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -194,7 +195,7 @@ describe('/api/quickpoll/participants/[participantId]/webcal', () => {
     })
 
     it('should handle CalendarIntegrationLimitExceededError', async () => {
-      const error = new CalendarIntegrationLimitExceededError('Limit exceeded')
+      const error = new CalendarIntegrationLimitExceededError()
       mockValidateWebcalFeed.mockResolvedValue(mockValidationResult)
       mockSaveQuickPollCalendar.mockRejectedValue(error)
 
@@ -202,7 +203,10 @@ describe('/api/quickpoll/participants/[participantId]/webcal', () => {
 
       expect(Sentry.captureException).toHaveBeenCalledWith(error, expect.any(Object))
       expect(statusMock).toHaveBeenCalledWith(403)
-      expect(jsonMock).toHaveBeenCalledWith({ message: 'Limit exceeded' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        message:
+          'Free tier allows only 2 calendar integrations. Upgrade to Pro for unlimited calendar integrations.',
+      })
     })
 
     it('should handle other errors', async () => {
@@ -255,7 +259,7 @@ describe('/api/quickpoll/participants/[participantId]/webcal', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(200)
+      expect(statusMock).toHaveBeenCalledWith(400)
       expect(jsonMock).toHaveBeenCalledWith({
         error: 'Invalid feed format',
         valid: false,

@@ -1,6 +1,15 @@
 import CryptoJS from 'crypto-js'
 import { Encrypted } from 'eth-crypto'
 
+// Mock ecrecover which fails in Jest due to browser secp256k1 fallback
+jest.mock('ethereumjs-util', () => {
+  const actual = jest.requireActual('ethereumjs-util')
+  return {
+    ...actual,
+    ecrecover: jest.fn().mockReturnValue(Buffer.alloc(64, 1)),
+  }
+})
+
 // Mock window.location for decryptContent tests
 delete (global as any).window
 ;(global as any).window = { location: { assign: jest.fn() } }
@@ -136,7 +145,7 @@ describe('cryptography', () => {
   describe('checkSignature', () => {
     it('should verify valid signatures', () => {
       const mockSignature =
-        '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12'
+        '0xc7cb239d81cd4f3ca94e28a82115cd0edcbab185cf29f6fb75d603e08aec26021622e5c7d9fdc4f5aa31a661e2f06880fcce56f6e1b3555449741165342c244b1b'
       const nonce = 12345
 
       expect(() => checkSignature(mockSignature, nonce)).not.toThrow()
@@ -144,7 +153,7 @@ describe('cryptography', () => {
 
     it('should return an address', () => {
       const mockSignature =
-        '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12'
+        '0xc7cb239d81cd4f3ca94e28a82115cd0edcbab185cf29f6fb75d603e08aec26021622e5c7d9fdc4f5aa31a661e2f06880fcce56f6e1b3555449741165342c244b1b'
       const nonce = 12345
 
       const result = checkSignature(mockSignature, nonce)

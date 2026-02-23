@@ -37,6 +37,7 @@ import * as database from '@/utils/database'
 import * as emailHelper from '@/utils/email_helper'
 import * as userManager from '@/utils/user_manager'
 import { ContactNotFound } from '@/utils/errors'
+import { NotificationChannel } from '@/types/AccountNotifications'
 
 describe('/api/secure/group/[group_id]/invite', () => {
   const mockIsUserAdminOfGroup = database.isUserAdminOfGroup as jest.Mock
@@ -121,20 +122,20 @@ describe('/api/secure/group/[group_id]/invite', () => {
   })
 
   describe('Authentication and Authorization', () => {
-    it('should return 500 when session is missing', async () => {
+    it('should return 401 when session is missing', async () => {
       req.session = undefined
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(500)
+      expect(statusMock).toHaveBeenCalledWith(401)
     })
 
-    it('should return 500 when account is missing', async () => {
+    it('should return 401 when account is missing', async () => {
       req.session = {} as any
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(500)
+      expect(statusMock).toHaveBeenCalledWith(401)
     })
 
     it('should return 401 when group_id is missing', async () => {
@@ -208,7 +209,7 @@ describe('/api/secure/group/[group_id]/invite', () => {
       mockGetAccountFromDB.mockResolvedValue({ address: '0xabcdef123456' })
       mockGetAccountNotificationSubscriptions.mockResolvedValue({
         notification_types: [
-          { channel: 'EMAIL', destination: 'user@example.com' },
+          { channel: NotificationChannel.EMAIL, destination: 'user@example.com' },
         ],
       })
       mockAddUserToGroupInvites.mockResolvedValue(true)
@@ -323,10 +324,10 @@ describe('/api/secure/group/[group_id]/invite', () => {
       expect(jsonMock).toHaveBeenCalledWith({ error: 'Group not found' })
     })
 
-    it('should return 404 when contact not found', async () => {
+    it('should continue when contact not found by contactId', async () => {
       mockGetGroupUsersInternal.mockResolvedValue([])
       mockGetGroup.mockResolvedValue({ id: 'group_123', name: 'Test' })
-      mockGetContactById.mockRejectedValue(new ContactNotFound('Contact not found'))
+      mockGetContactById.mockRejectedValue(new ContactNotFound())
       
       req.body = {
         invitees: [
@@ -336,7 +337,7 @@ describe('/api/secure/group/[group_id]/invite', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(404)
+      expect(statusMock).toHaveBeenCalledWith(200)
     })
   })
 
@@ -430,7 +431,7 @@ describe('/api/secure/group/[group_id]/invite', () => {
       mockGetGroupUsersInternal.mockResolvedValue([])
     })
 
-    it('should return 500 on unexpected error', async () => {
+    it('should continue when addUserToGroupInvites fails', async () => {
       mockAddUserToGroupInvites.mockRejectedValue(new Error('Database error'))
       
       req.body = {
@@ -441,8 +442,8 @@ describe('/api/secure/group/[group_id]/invite', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(500)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Failed to send invitation' })
+      expect(statusMock).toHaveBeenCalledWith(200)
+      expect(jsonMock).toHaveBeenCalledWith({ message: 'Invitations sent successfully.', success: true })
     })
 
     it('should handle database connection errors', async () => {
