@@ -61,69 +61,82 @@ describe('provider modules', () => {
   })
 
   describe('module exports', () => {
-    it('AccountProvider should have exports', () => {
+    it('AccountProvider should export AccountContext and AccountProvider', () => {
       const mod = require('@/providers/AccountProvider')
-      expect(mod).toBeDefined()
+      expect(mod.AccountContext).toBeDefined()
+      expect(mod.AccountProvider).toBeDefined()
     })
 
-    it('ContactInvitesProvider should have exports', () => {
-      const mod = require('@/providers/ContactInvitesProvider')
-      expect(mod).toBeDefined()
-    })
-
-    it('MetricStateProvider should have exports', () => {
+    it('MetricStateProvider should export MetricStateContext', () => {
       const mod = require('@/providers/MetricStateProvider')
-      expect(mod).toBeDefined()
+      expect(mod.MetricStateContext).toBeDefined()
+      expect(mod.default).toBeDefined()
     })
 
-    it('OnboardingModalProvider should have exports', () => {
+    it('OnboardingModalProvider should export OnboardingModalContext and OnboardingModalProvider', () => {
       const mod = require('@/providers/OnboardingModalProvider')
-      expect(mod).toBeDefined()
+      expect(mod.OnboardingModalContext).toBeDefined()
+      expect(mod.OnboardingModalProvider).toBeDefined()
     })
 
-    it('OnboardingProvider should have exports', () => {
+    it('OnboardingProvider should export OnboardingContext and OnboardingProvider', () => {
       const mod = require('@/providers/OnboardingProvider')
-      expect(mod).toBeDefined()
+      expect(mod.OnboardingContext).toBeDefined()
+      expect(mod.OnboardingProvider).toBeDefined()
     })
 
-    it('WalletProvider should have exports', () => {
+    it('WalletProvider should export WalletProvider and useWallet', () => {
       const mod = require('@/providers/WalletProvider')
-      expect(mod).toBeDefined()
+      expect(mod.WalletProvider).toBeDefined()
+      expect(mod.useWallet).toBeDefined()
+      expect(typeof mod.useWallet).toBe('function')
     })
 
-    it('CalendarContext should have exports', () => {
+    it('CalendarContext should export CalendarContext, CalendarProvider, and useCalendarContext', () => {
       const mod = require('@/providers/calendar/CalendarContext')
-      expect(mod).toBeDefined()
+      expect(mod.CalendarContext).toBeDefined()
+      expect(mod.CalendarProvider).toBeDefined()
+      expect(mod.useCalendarContext).toBeDefined()
+      expect(typeof mod.useCalendarContext).toBe('function')
     })
 
-    it('QuickPollAvailabilityContext should have exports', () => {
+    it('QuickPollAvailabilityContext should export useQuickPollAvailability and QuickPollAvailabilityProvider', () => {
       const mod = require('@/providers/quickpoll/QuickPollAvailabilityContext')
-      expect(mod).toBeDefined()
+      expect(mod.useQuickPollAvailability).toBeDefined()
+      expect(mod.QuickPollAvailabilityProvider).toBeDefined()
     })
 
-    it('schedule ActionsContext should have exports', () => {
+    it('schedule ActionsContext should export ActionsContext and useScheduleActions', () => {
       const mod = require('@/providers/schedule/ActionsContext')
-      expect(mod).toBeDefined()
+      expect(mod.ActionsContext).toBeDefined()
+      expect(mod.useScheduleActions).toBeDefined()
+      expect(typeof mod.useScheduleActions).toBe('function')
     })
 
-    it('schedule PermissionsContext should have exports', () => {
+    it('schedule PermissionsContext should export useParticipantPermissions and PermissionsProvider', () => {
       const mod = require('@/providers/schedule/PermissionsContext')
-      expect(mod).toBeDefined()
+      expect(mod.useParticipantPermissions).toBeDefined()
+      expect(mod.PermissionsProvider).toBeDefined()
     })
 
-    it('schedule ParticipantsContext should have exports', () => {
+    it('schedule ParticipantsContext should export ParticipantsContext, useParticipants, and ParticipantsProvider', () => {
       const mod = require('@/providers/schedule/ParticipantsContext')
-      expect(mod).toBeDefined()
+      expect(mod.ParticipantsContext).toBeDefined()
+      expect(mod.useParticipants).toBeDefined()
+      expect(mod.ParticipantsProvider).toBeDefined()
     })
 
-    it('schedule NavigationContext should have exports', () => {
+    it('schedule NavigationContext should export useScheduleNavigation, NavigationProvider, and Page enum', () => {
       const mod = require('@/providers/schedule/NavigationContext')
-      expect(mod).toBeDefined()
+      expect(mod.useScheduleNavigation).toBeDefined()
+      expect(mod.NavigationProvider).toBeDefined()
+      expect(mod.Page).toBeDefined()
     })
 
-    it('schedule ScheduleContext should have exports', () => {
+    it('schedule ScheduleContext should export useScheduleState and ScheduleStateProvider', () => {
       const mod = require('@/providers/schedule/ScheduleContext')
-      expect(mod).toBeDefined()
+      expect(mod.useScheduleState).toBeDefined()
+      expect(mod.ScheduleStateProvider).toBeDefined()
     })
   })
 })
