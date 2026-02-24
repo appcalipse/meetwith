@@ -77,7 +77,6 @@ import {
   MeetingDecrypted,
   MeetingInfo,
   SlotInstance,
-  SlotSeries,
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -221,7 +220,7 @@ export const internalFetch = async <T, J = unknown>(
           e.message.includes('Network request failed') ||
           e.message.includes('NetworkError') ||
           e.message.includes('timeout'))) ||
-        (e instanceof ApiFetchError && e.status >= 500))
+        (e instanceof ApiFetchError && e.status > 500))
 
     if (isRetryableError) {
       const delay = Math.max(baseDelay / remainingRetries, 100)
@@ -2827,7 +2826,7 @@ export const getSlotInstanceById = async (
       start: new Date(slot.start),
     }))
   } catch (e) {
-    if (e instanceof ApiFetchError && e.status === 404) {
+    if (e instanceof ApiFetchError && (e.status === 404 || e.status === 500)) {
       return null
     }
     throw e
