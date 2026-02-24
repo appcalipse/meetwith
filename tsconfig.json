@@ -10,6 +10,7 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "node",
+    // Suppress TypeScript's moduleResolution deprecation warnings until we upgrade configuration.
     "ignoreDeprecations": "5.0",
     "resolveJsonModule": true,
     "isolatedModules": true,
