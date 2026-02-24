@@ -97,7 +97,7 @@ const createMockQueryBuilder = () => ({
 })
 
 // Create the mock `from` function that will be shared across all instances
-const mockFromFn = jest.fn((table) => createMockQueryBuilder())
+const mockFromFn: any = jest.fn((table) => createMockQueryBuilder())
 
 // Create the mock supabase client
 const mockSupabaseClient = {
@@ -129,7 +129,7 @@ describe('database.ts - Comprehensive Test Suite', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     // Reset the from mock to return default query builder
-    mockFromFn.mockImplementation((table) => createMockQueryBuilder())
+    mockFromFn.mockImplementation((table: any) => createMockQueryBuilder())
   })
 
   describe('Module Initialization', () => {
@@ -575,7 +575,7 @@ describe('database.ts - Comprehensive Test Suite', () => {
         mockFromFn.mockReturnValue({
           select: jest.fn().mockReturnThis(),
           gt: jest.fn().mockReturnThis(),
-          eq: (field, value) => {
+          eq: (field: any, value: any) => {
             if (field === 'owner_account') {
               return { eq: finalEqMock }
             }
@@ -804,12 +804,12 @@ describe('database.ts - Comprehensive Test Suite', () => {
           config_ipfs_hash: 'hash',
         }
 
-        const queryBuilder = {
+        const queryBuilder: any = {
           update: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
         }
         // Make the query builder thenable (awaitable) to return data
-        queryBuilder.then = jest.fn((resolve) => resolve({ data: [mockSubscription], error: null }))
+        queryBuilder.then = jest.fn((resolve: any) => resolve({ data: [mockSubscription], error: null }))
         
         mockFromFn.mockReturnValue(queryBuilder)
 
@@ -1503,7 +1503,7 @@ describe('Additional Database Coverage Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     // Reset the from mock to return default query builder
-    mockFromFn.mockImplementation((table) => createMockQueryBuilder())
+    mockFromFn.mockImplementation((table: any) => createMockQueryBuilder())
   })
 
   describe('Edge Cases and Error Handling', () => {
@@ -2140,7 +2140,7 @@ describe('Final Coverage Extension Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     // Reset the from mock to return default query builder
-    mockFromFn.mockImplementation((table) => createMockQueryBuilder())
+    mockFromFn.mockImplementation((table: any) => createMockQueryBuilder())
   })
 
   it('should handle group invite with all parameters', async () => {
@@ -2341,7 +2341,7 @@ describe('Final Coverage Extension Tests', () => {
     mockFromFn.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       gt: jest.fn().mockReturnThis(),
-      eq: (field, value) => {
+      eq: (field: any, value: any) => {
         if (field === 'owner_account') {
           return { eq: finalEqMock }
         }
@@ -2616,7 +2616,7 @@ describe('Final Coverage Extension Tests', () => {
         error: null,
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'meetings') {
           return {
             upsert: jest.fn().mockResolvedValue({
@@ -2642,7 +2642,7 @@ describe('Final Coverage Extension Tests', () => {
         error: new Error('Insert failed'),
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'meetings') {
           return { upsert: upsertMock }
         }
@@ -2659,7 +2659,7 @@ describe('Final Coverage Extension Tests', () => {
         error: new Error('Slot insert failed'),
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'meetings') {
           return {
             upsert: jest.fn().mockResolvedValue({ data: [{}], error: null }),
@@ -2689,7 +2689,7 @@ describe('Final Coverage Extension Tests', () => {
         error: null,
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'slots') {
           return { upsert: upsertMock }
         }
@@ -2706,7 +2706,7 @@ describe('Final Coverage Extension Tests', () => {
         error: new Error('Update failed'),
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'slots') {
           return { upsert: upsertMock }
         }
@@ -2729,7 +2729,7 @@ describe('Final Coverage Extension Tests', () => {
         error: null,
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'slot_instance') {
           return { upsert: upsertMock }
         }
@@ -2754,7 +2754,7 @@ describe('Final Coverage Extension Tests', () => {
         error: null,
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'meetings') {
           return {
             select: jest.fn().mockReturnThis(),
@@ -2772,7 +2772,7 @@ describe('Final Coverage Extension Tests', () => {
     it('should delete slots when canceling meeting', async () => {
       const deleteMock = jest.fn().mockReturnThis()
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'slots') {
           return {
             delete: deleteMock,
@@ -2792,7 +2792,7 @@ describe('Final Coverage Extension Tests', () => {
         error: null,
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'meetings') {
           return { upsert: upsertMock }
         }
@@ -2823,7 +2823,7 @@ describe('Final Coverage Extension Tests', () => {
         error: null,
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'meeting_types') {
           return {
             select: jest.fn().mockReturnThis(),
@@ -2844,7 +2844,7 @@ describe('Final Coverage Extension Tests', () => {
         error: null,
       })
 
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'calendar_accounts') {
           return {
             select: jest.fn().mockReturnThis(),
@@ -2881,7 +2881,7 @@ describe('Final Coverage Extension Tests', () => {
     })
 
     it('should return true for valid PIN', async () => {
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'payment_preferences') {
           return {
             select: jest.fn().mockReturnThis(),
@@ -2903,7 +2903,7 @@ describe('Final Coverage Extension Tests', () => {
     })
 
     it('should return false for invalid PIN', async () => {
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'payment_preferences') {
           return {
             select: jest.fn().mockReturnThis(),
@@ -2924,7 +2924,7 @@ describe('Final Coverage Extension Tests', () => {
     })
 
     it('should return false when no PIN hash found', async () => {
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'payment_preferences') {
           return {
             select: jest.fn().mockReturnThis(),
@@ -2943,7 +2943,7 @@ describe('Final Coverage Extension Tests', () => {
     })
 
     it('should return false when PIN hash is null', async () => {
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'payment_preferences') {
           return {
             select: jest.fn().mockReturnThis(),
@@ -2962,7 +2962,7 @@ describe('Final Coverage Extension Tests', () => {
     })
 
     it('should return false on database error', async () => {
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'payment_preferences') {
           return {
             select: jest.fn().mockReturnThis(),
@@ -2981,7 +2981,7 @@ describe('Final Coverage Extension Tests', () => {
     })
 
     it('should handle argon2 verification errors gracefully', async () => {
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'payment_preferences') {
           return {
             select: jest.fn().mockReturnThis(),
@@ -3003,7 +3003,7 @@ describe('Final Coverage Extension Tests', () => {
 
     it('should convert account address to lowercase', async () => {
       const eqMock = jest.fn().mockReturnThis()
-      mockFromFn.mockImplementation((table) => {
+      mockFromFn.mockImplementation((table: any) => {
         if (table === 'payment_preferences') {
           return {
             select: jest.fn().mockReturnThis(),
