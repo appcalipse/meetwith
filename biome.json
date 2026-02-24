@@ -130,6 +130,20 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/__tests__/**",
+        "jest.setup.js"
+      ],
+      "linter": {
+        "rules": {
+          "style": { "noCommonJs": "off" },
+          "suspicious": { "noExplicitAny": "warn" }
+        }
+      }
     }
   ]
 }
