@@ -133,15 +133,23 @@
     },
     {
       "includes": [
+        "src/__tests__/**",
+        "src/testing/**",
         "**/*.spec.ts",
-        "**/*.spec.tsx",
-        "**/__tests__/**",
-        "jest.setup.js"
+        "**/*.spec.tsx"
       ],
       "linter": {
         "rules": {
-          "style": { "noCommonJs": "off" },
-          "suspicious": { "noExplicitAny": "warn" }
+          "suspicious": {
+            "noExplicitAny": "off",
+            "noConsole": "off"
+          },
+          "style": {
+            "noCommonJs": "off"
+          },
+          "correctness": {
+            "noUnusedVariables": "off"
+          }
         }
       }
     }

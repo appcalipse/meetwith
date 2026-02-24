@@ -1,7 +1,8 @@
 import { add, sub } from 'date-fns'
 
 import { Account } from '@/types/Account'
-import { Plan, SupportedChain } from '@/types/Subscription'
+import { Plan } from '@/types/Subscription'
+import { SupportedChain } from '@/types/chains'
 import {
   isProAccount,
   getActiveProSubscription,

@@ -248,9 +248,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const router = useRouter()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const iconColor = useColorModeValue('#181F24', 'white')
-  const chevronColor = useColorModeValue('neutral.700', 'neutral.0')
-  const menuTextColor = useColorModeValue('neutral.800', 'neutral.0')
-  const menuBg = useColorModeValue('neutral.50', 'neutral.450')
+  const _chevronColor = useColorModeValue('neutral.700', 'neutral.0')
+  const _menuTextColor = useColorModeValue('neutral.800', 'neutral.0')
+  const _menuBg = useColorModeValue('neutral.50', 'neutral.450')
 
   // Fetch poll data when in edit mode
   const {
@@ -720,7 +720,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     [isLoading]
   )
 
-  const handleChipClick = useCallback(
+  const _handleChipClick = useCallback(
     (e: React.MouseEvent, permissionValue: string) => {
       e.stopPropagation()
       handleRemovePermission(permissionValue)
@@ -728,7 +728,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     [handleRemovePermission]
   )
 
-  const handleTogglePermission = useCallback(
+  const _handleTogglePermission = useCallback(
     (permissionValue: string) => {
       const isSelected = selectedPermissions?.includes(permissionValue)
       if (isSelected) {

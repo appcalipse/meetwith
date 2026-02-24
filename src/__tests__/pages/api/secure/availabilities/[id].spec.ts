@@ -248,7 +248,7 @@ describe('/api/secure/availabilities/[id]', () => {
       }
       
       mockUpdateAvailabilityBlock.mockRejectedValue(
-        new AvailabilityBlockNotFoundError('Not found')
+        new AvailabilityBlockNotFoundError()
       )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -288,7 +288,7 @@ describe('/api/secure/availabilities/[id]', () => {
 
     it('should return 404 when block not found', async () => {
       mockDeleteAvailabilityBlock.mockRejectedValue(
-        new AvailabilityBlockNotFoundError('Not found')
+        new AvailabilityBlockNotFoundError()
       )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -357,7 +357,7 @@ describe('/api/secure/availabilities/[id]', () => {
       req.body = {}
       
       mockDuplicateAvailabilityBlock.mockRejectedValue(
-        new AvailabilityBlockNotFoundError('Source not found')
+        new AvailabilityBlockNotFoundError()
       )
 
       await handler(req as NextApiRequest, res as NextApiResponse)

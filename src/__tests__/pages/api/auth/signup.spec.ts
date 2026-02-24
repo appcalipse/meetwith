@@ -102,7 +102,7 @@ describe('/api/auth/signup', () => {
         'America/New_York',
         12345
       )
-      expect(req.session.account).toEqual({
+      expect(req.session!.account).toEqual({
         ...mockAccount,
         signature: 'valid-signature',
         preferences: {
@@ -111,7 +111,7 @@ describe('/api/auth/signup', () => {
           timezone: '',
         },
       })
-      expect(req.session.save).toHaveBeenCalled()
+      expect(req.session!.save).toHaveBeenCalled()
       expect(mockCreateVerification).toHaveBeenCalledWith(
         '0x1234567890abcdef',
         expect.stringMatching(/^0x1234567890abcdef-\d+-[a-z0-9]+$/),
@@ -240,7 +240,7 @@ describe('/api/auth/signup', () => {
     it('should handle session save errors', async () => {
       mockCheckSignature.mockReturnValue('0x1234567890abcdef')
       mockInitAccountDBForWallet.mockResolvedValue(mockAccount)
-      req.session.save = jest.fn().mockRejectedValue(new Error('Session save failed'))
+      req.session!.save = jest.fn().mockRejectedValue(new Error('Session save failed'))
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 

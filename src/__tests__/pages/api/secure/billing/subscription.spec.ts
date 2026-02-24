@@ -246,7 +246,7 @@ describe('/api/secure/billing/subscription', () => {
     })
 
     it('should handle case-insensitive account address', async () => {
-      req.session.account.address = '0xABCDEF123456'
+      req.session!.account!.address = '0xABCDEF123456'
 
       mockGetActiveSubscriptionPeriod.mockResolvedValue(mockPeriod)
       mockGetBillingPlanById.mockResolvedValue(mockPlan)

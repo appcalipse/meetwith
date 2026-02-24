@@ -91,7 +91,7 @@ describe('/api/transactions/checkout', () => {
     }
 
     mockStripeCreate = jest.fn().mockResolvedValue({ url: 'https://checkout.stripe.com/session123' })
-    ;(StripeService as jest.Mock).mockImplementation(() => ({
+    ;(StripeService as unknown as jest.Mock).mockImplementation(() => ({
       checkout: {
         sessions: {
           create: mockStripeCreate,

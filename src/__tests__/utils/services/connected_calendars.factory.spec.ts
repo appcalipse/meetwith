@@ -54,7 +54,7 @@ describe('connected_calendars.factory', () => {
       '0xABC',
       'user@caldav.com',
       TimeSlotSource.WEBDAV,
-      { serverUrl: 'https://caldav.example.com', username: 'u', password: 'p' }
+      { serverUrl: 'https://caldav.example.com', username: 'u', password: 'p' } as any
     )
     expect(service).toBeDefined()
   })
@@ -64,7 +64,7 @@ describe('connected_calendars.factory', () => {
       '0xABC',
       'user@icloud.com',
       TimeSlotSource.ICLOUD,
-      { serverUrl: 'https://caldav.icloud.com', username: 'u', password: 'p' }
+      { serverUrl: 'https://caldav.icloud.com', username: 'u', password: 'p' } as any
     )
     expect(service).toBeDefined()
   })

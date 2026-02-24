@@ -119,7 +119,7 @@ describe('/api/group/[group_id]', () => {
   describe('Authorization Errors', () => {
     it('should return 403 when user is not a group member', async () => {
       mockGetGroupName.mockRejectedValue(
-        new NotGroupMemberError('group_123')
+        new NotGroupMemberError()
       )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -131,7 +131,7 @@ describe('/api/group/[group_id]', () => {
     })
 
     it('should handle unauthorized access attempts', async () => {
-      const error = new NotGroupMemberError('private_group')
+      const error = new NotGroupMemberError()
       mockGetGroupName.mockRejectedValue(error)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -144,7 +144,7 @@ describe('/api/group/[group_id]', () => {
   describe('Not Found Errors', () => {
     it('should return 404 when group does not exist', async () => {
       mockGetGroupName.mockRejectedValue(
-        new GroupNotExistsError('nonexistent_group')
+        new GroupNotExistsError()
       )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -189,7 +189,7 @@ describe('/api/group/[group_id]', () => {
   describe('Edge Cases', () => {
     it('should handle empty group_id', async () => {
       req.query = { group_id: '' }
-      mockGetGroupName.mockRejectedValue(new GroupNotExistsError(''))
+      mockGetGroupName.mockRejectedValue(new GroupNotExistsError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 

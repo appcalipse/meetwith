@@ -38,7 +38,7 @@ describe('/api/quickpoll/calendar/google/connect', () => {
       json: jsonMock,
     }
 
-    OAuth2Mock = google.auth.OAuth2 as jest.Mock
+    OAuth2Mock = google.auth.OAuth2 as unknown as jest.Mock
   })
 
   describe('GET method', () => {

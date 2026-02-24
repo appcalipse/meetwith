@@ -104,7 +104,7 @@ export const createSupabaseClientMock = (
   return {
     from: jest.fn((tableName: string) => {
       const fixtureData = tableFixtures[tableName]
-      return createSupabaseMock(tableName, fixtureData)
+      return createSupabaseMock(tableName, fixtureData as Record<string, unknown> | unknown[] | undefined)
     }),
     rpc: jest.fn((functionName: string, params?: unknown) => {
       const fixtureData = rpcFixtures[functionName]

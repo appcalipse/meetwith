@@ -152,7 +152,7 @@ describe('/api/secure/billing/subscribe', () => {
     })
 
     it('should handle lowercase account addresses', async () => {
-      req.session.account.address = '0xABCDEF123456'
+      req.session!.account!.address = '0xABCDEF123456'
 
       mockGetBillingPlanById.mockResolvedValue(mockPlan)
       mockGetBillingPlanProvider.mockResolvedValue('stripe_prod_123')

@@ -247,7 +247,7 @@ describe('/api/secure/meetings/type', () => {
     })
 
     it('should prevent deleting last meeting type', async () => {
-      mockDeleteMeetingType.mockRejectedValue(new LastMeetingTypeError('Cannot delete last type'))
+      mockDeleteMeetingType.mockRejectedValue(new LastMeetingTypeError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 

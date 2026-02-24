@@ -622,7 +622,7 @@ describe('database.ts - Quality Tests', () => {
       const ownAddress = '0x1111111111111111111111111111111111111111'
       const inviteOwner = '0x2222222222222222222222222222222222222222'
       
-      const canAccept = ownAddress !== inviteOwner
+      const canAccept = ownAddress as string !== inviteOwner as string
       expect(canAccept).toBe(true)
     })
 

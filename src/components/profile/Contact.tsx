@@ -70,7 +70,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [selectedContact, setSelectedContact] =
     React.useState<ContactInvite | null>(null)
 
-  const { data: contactsMetadata } = useQuery({
+  const { data: _contactsMetadata } = useQuery({
     queryKey: ['contactsMetadata', currentAccount?.address],
     queryFn: () => getContactsMetadata(),
     enabled: !!currentAccount?.address,

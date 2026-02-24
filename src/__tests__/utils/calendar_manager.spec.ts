@@ -634,7 +634,7 @@ describe('dateToHumanReadable', () => {
   it('should format date to human readable string', () => {
     const date = new Date('2024-01-15T10:30:00Z')
     const timezone = 'America/New_York'
-    const result = dateToHumanReadable(date, timezone)
+    const result = dateToHumanReadable(date, timezone, false)
     expect(result).toBeTruthy()
     expect(typeof result).toBe('string')
   })
@@ -642,7 +642,7 @@ describe('dateToHumanReadable', () => {
   it('should handle different timezones', () => {
     const date = new Date('2024-01-15T10:30:00Z')
     const timezone = 'Europe/London'
-    const result = dateToHumanReadable(date, timezone)
+    const result = dateToHumanReadable(date, timezone, false)
     expect(result).toBeTruthy()
   })
 })
@@ -671,19 +671,19 @@ describe('durationToHumanReadable', () => {
 
 describe('createAlarm', () => {
   it('should create alarm for 15 minutes before', () => {
-    const alarm = createAlarm(MeetingReminders.MINUTES_15)
+    const alarm = createAlarm(MeetingReminders['15_MINUTES_BEFORE'])
     expect(alarm).toBeDefined()
     expect(alarm.trigger).toBeDefined()
   })
 
   it('should create alarm for 1 hour before', () => {
-    const alarm = createAlarm(MeetingReminders.HOUR_1)
+    const alarm = createAlarm(MeetingReminders['1_HOUR_BEFORE'])
     expect(alarm).toBeDefined()
     expect(alarm.trigger).toBeDefined()
   })
 
   it('should create alarm for 1 day before', () => {
-    const alarm = createAlarm(MeetingReminders.DAY_1)
+    const alarm = createAlarm(MeetingReminders['1_DAY_BEFORE'])
     expect(alarm).toBeDefined()
     expect(alarm.trigger).toBeDefined()
   })
@@ -781,7 +781,7 @@ describe('rsvpMeeting', () => {
       .mockResolvedValue(JSON.stringify(mockMeetingInfo))
     jest.spyOn(helper, 'apiUpdateMeeting').mockResolvedValue(mockSlot)
 
-    const result = await rsvpMeeting(meetingId, otherAccount, status)
+    const result = await rsvpMeeting(meetingId, otherAccount, status, undefined as any)
     expect(result).toBeDefined()
   })
 
@@ -841,7 +841,7 @@ describe('rsvpMeeting', () => {
       .mockResolvedValue(JSON.stringify(mockMeetingInfo))
     jest.spyOn(helper, 'apiUpdateMeeting').mockResolvedValue(mockSlot)
 
-    const result = await rsvpMeeting(meetingId, participantAddress, status)
+    const result = await rsvpMeeting(meetingId, participantAddress, status, undefined as any)
     expect(result).toBeDefined()
   })
 })
@@ -1138,7 +1138,7 @@ describe('generateIcs', () => {
         end: endTime,
         meeting_url: 'https://meet.google.com/test',
         participants,
-        reminders: [MeetingReminders.MINUTES_15],
+        reminders: [MeetingReminders['15_MINUTES_BEFORE']],
         meeting_id: randomUUID(),
         created_at: new Date(),
       } as any,
@@ -1407,7 +1407,7 @@ describe('Guest Meeting Functions', () => {
         accountAddress
       )
 
-      const mockMeeting: MeetingDecrypted = {
+      const mockMeeting = {
         id: 'meeting-123',
         meeting_id: randomUUID(),
         account_address: accountAddress,
@@ -1425,7 +1425,7 @@ describe('Guest Meeting Functions', () => {
         created_at: new Date(),
         version: 0,
         recurrence: MeetingRepeat.NO_REPEAT,
-      } as MeetingDecrypted
+      } as any as MeetingDecrypted
 
       jest.spyOn(helper, 'getSlotByMeetingId').mockResolvedValue({
         id: 'meeting-123',
@@ -1686,10 +1686,10 @@ describe('Decryption Functions', () => {
         })
       )
 
-      const result = await decryptMeetingGuest('meeting-123', 'private-key')
+      const result = await decryptMeetingGuest('meeting-123' as any)
 
       expect(result).toBeDefined()
-      expect(result.title).toBe('Guest Meeting')
+      expect(result!.title).toBe('Guest Meeting')
     })
   })
 
@@ -1705,7 +1705,7 @@ describe('Decryption Functions', () => {
         JSON.stringify({ title: 'Decoded' })
       )
 
-      const result = await decodeMeeting('meeting-123', '0x123')
+      const result = await decodeMeeting('meeting-123' as any, '0x123' as any)
 
       expect(result).toBeDefined()
     })

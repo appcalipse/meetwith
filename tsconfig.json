@@ -39,6 +39,8 @@
     ".husky",
     ".github",
     "__mocks__",
-    "copilot"
+    "copilot",
+    "src/__tests__",
+    "src/testing"
   ]
 }

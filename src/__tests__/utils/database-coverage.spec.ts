@@ -353,7 +353,7 @@ import {
   invalidatePreviousVerifications,
   isGroupAdmin,
   isProAccountAsync,
-  isSlotAvailable,
+  isSlotFree as isSlotAvailable,
   isUserContact,
   leaveGroup,
   linkQuickPollParticipantAccount,

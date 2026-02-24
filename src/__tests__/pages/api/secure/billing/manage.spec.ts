@@ -55,7 +55,7 @@ describe('/api/secure/billing/manage', () => {
     statusMock = jest.fn(() => ({ json: jsonMock, send: sendMock }))
     
     mockStripeCreate = jest.fn()
-    ;(StripeService as jest.Mock).mockImplementation(() => ({
+    ;(StripeService as unknown as jest.Mock).mockImplementation(() => ({
       billingPortal: {
         sessions: {
           create: mockStripeCreate,

@@ -312,7 +312,7 @@ describe('/api/secure/group/[group_id]', () => {
     it('should handle empty group_id', async () => {
       req.query = { group_id: '' }
       
-      mockGetGroup.mockRejectedValue(new GroupNotExistsError('Invalid ID'))
+      mockGetGroup.mockRejectedValue(new GroupNotExistsError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 

@@ -87,7 +87,7 @@ describe('/api/transactions/[id]/index', () => {
     })
 
     it('should return 404 when id is null', async () => {
-      req.query = { id: null }
+      req.query = { id: null as any }
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
