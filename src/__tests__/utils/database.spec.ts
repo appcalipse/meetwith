@@ -569,7 +569,6 @@ describe('database.ts - Comprehensive Test Suite', () => {
       })
 
       it('should filter by chain when provided', async () => {
-        const eqMock = jest.fn().mockReturnThis()
         const finalEqMock = jest.fn().mockResolvedValue({ data: [], error: null })
         
         mockFromFn.mockReturnValue({
@@ -871,17 +870,11 @@ describe('database.ts - Comprehensive Test Suite', () => {
 
   describe('Discord Account Functions', () => {
     let getDiscordAccount: any
-    let getDiscordAccountAndInfo: any
-    let getAccountFromDiscordId: any
-    let createOrUpdatesDiscordAccount: any
     let deleteDiscordAccount: any
 
     beforeEach(() => {
       const db = require('@/utils/database')
       getDiscordAccount = db.getDiscordAccount
-      getDiscordAccountAndInfo = db.getDiscordAccountAndInfo
-      getAccountFromDiscordId = db.getAccountFromDiscordId
-      createOrUpdatesDiscordAccount = db.createOrUpdatesDiscordAccount
       deleteDiscordAccount = db.deleteDiscordAccount
     })
 
@@ -966,21 +959,13 @@ describe('database.ts - Comprehensive Test Suite', () => {
   describe('Availability Block Functions', () => {
     let createAvailabilityBlock: any
     let getAvailabilityBlock: any
-    let updateAvailabilityBlock: any
     let deleteAvailabilityBlock: any
-    let duplicateAvailabilityBlock: any
-    let isDefaultAvailabilityBlock: any
-    let getAvailabilityBlocks: any
 
     beforeEach(() => {
       const db = require('@/utils/database')
       createAvailabilityBlock = db.createAvailabilityBlock
       getAvailabilityBlock = db.getAvailabilityBlock
-      updateAvailabilityBlock = db.updateAvailabilityBlock
       deleteAvailabilityBlock = db.deleteAvailabilityBlock
-      duplicateAvailabilityBlock = db.duplicateAvailabilityBlock
-      isDefaultAvailabilityBlock = db.isDefaultAvailabilityBlock
-      getAvailabilityBlocks = db.getAvailabilityBlocks
     })
 
     describe('createAvailabilityBlock', () => {
