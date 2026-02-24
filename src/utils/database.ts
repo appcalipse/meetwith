@@ -127,7 +127,6 @@ import {
   PollStatus,
   PollVisibility,
   QuickPollCalendar,
-  QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
   QuickPollParticipantUpdateFields,
@@ -170,10 +169,7 @@ import {
   OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
-import {
-  mergeWeeklyAvailabilityFromBlocks,
-  mergeWeeklyAvailabilityFromBlocksWithTimezone,
-} from '@/utils/availability.helper'
+import { mergeWeeklyAvailabilityFromBlocksWithTimezone } from '@/utils/availability.helper'
 import {
   MODIFIED_BY_APP_TIMEOUT,
   PaymentNotificationType,
@@ -7560,7 +7556,7 @@ const handleSyncRecurringEvents = async (
         await getConferenceDecryptedMeeting(meetingId)
       if (!meetingInfo || !masterEvent.recurrence) continue
 
-      if (masterEvent.status === 'cancelled') {
+      if (masterEvent.status?.toLowerCase?.() === 'cancelled') {
         await handleCancelOrDeleteSeries(
           calendar.account_address,
           meetingInfo,
@@ -7702,6 +7698,7 @@ const handleSyncEvent = async (
   event: calendar_v3.Schema$Event,
   calendar: ConnectedCalendar
 ) => {
+  console.info('Event Status: ', event.status)
   const meetingId = event?.extendedProperties?.private?.meetingId
   const meetingTypeId = event?.extendedProperties?.private?.meetingTypeId
   const includesParticipants =
@@ -7730,7 +7727,7 @@ const handleSyncEvent = async (
   try {
     // eslint-disable-next-line no-restricted-syntax
     let meeting
-    if (event.status === 'cancelled') {
+    if (event.status?.toLowerCase?.() === 'cancelled') {
       meeting = await handleCancelOrDelete(
         calendar.account_address,
         meetingInfo,
