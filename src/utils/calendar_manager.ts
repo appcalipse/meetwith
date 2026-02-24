@@ -89,6 +89,7 @@ import {
 } from './cryptography'
 import { checkHasSameScheduleTime } from './date_helper'
 import {
+  ApiFetchError,
   DecryptionFailedError,
   GuestListModificationDenied,
   GuestRescheduleForbiddenError,
@@ -215,6 +216,9 @@ const mapRelatedSlots = async (
       }
       accountSlot[(slot?.account_address || slot?.guest_email)!] = slotId
     } catch (_e) {
+      // Rethrow server errors — these indicate a backend outage, not a missing slot.
+      // Callers are expected to catch ApiFetchError(500) and cancel the operation.
+      if (_e instanceof ApiFetchError && _e.status === 500) throw _e
       // some slots might not be found if they belong to guests and were wrongly stored
       try {
         const guestSlot = await getGuestSlotById(slotId)
@@ -258,6 +262,9 @@ const loadMeetingAccountAddresses = async (
       otherSlot?.account_address &&
         slotsAccounts.push(otherSlot?.account_address)
     } catch (_e) {
+      // Rethrow server errors — these indicate a backend outage, not a missing slot.
+      // Callers are expected to catch ApiFetchError(500) and cancel the operation.
+      if (_e instanceof ApiFetchError && _e.status === 500) throw _e
       // some slots might not be found if they belong to guests and were wrongly stored
     }
   }
