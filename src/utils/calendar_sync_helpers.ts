@@ -21,6 +21,7 @@ import {
 import { diff, intersec } from '@utils/collections'
 import { MeetingPermissions } from '@utils/constants/schedule'
 import {
+  ApiFetchError,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
   MeetingDetailsModificationDenied,
@@ -525,6 +526,14 @@ const handleCancelOrDeleteSeries = async (
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
   const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create slots via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping series cancel/delete for meeting ${meetingId}: no active series remain`
+    )
+    return
+  }
   const isSchedulerOrOwner = isAccountSchedulerOrOwner(
     decryptedMeeting.participants,
     currentAccountAddress
@@ -660,6 +669,14 @@ const handleUpdateMeetingSeries = async (
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
   const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create series via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping series update for meeting ${meetingId}: no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
@@ -831,6 +848,13 @@ const handleUpdateMeetingSeriesRsvps = async (
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
   const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  if (series.length === 0) {
+    console.info(
+      `Skipping series RSVP update for meeting ${meetingId}: no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
@@ -980,6 +1004,14 @@ const handleUpdateSingleRecurringInstance = async (
     return
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
   const series = await getEventMasterSeries(meetingId, event.recurringEventId!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create slots via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping recurring instance sync for event ${event.id} (meeting ${meetingId}): no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
@@ -1051,6 +1083,12 @@ const handleUpdateSingleRecurringInstance = async (
     )
   } catch (e) {
     console.error(e)
+    if (e instanceof ApiFetchError && e.status === 500) {
+      console.warn(
+        `Cancelling recurring instance update for event ${event.id} (meeting ${meetingId}): slot instance unavailable`
+      )
+      return
+    }
     if (e instanceof MeetingDetailsModificationDenied) {
       const actor = event.attendees?.find(p => p.self)
 
@@ -1207,6 +1245,14 @@ const handleCancelOrDeleteForRecurringInstance = async (
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
   if (!meetingInfo) return
   const series = await getEventMasterSeries(meetingId, event.recurringEventId!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create slots via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping cancelled recurring instance for event ${event.id} (meeting ${meetingId}): no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )

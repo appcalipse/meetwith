@@ -89,6 +89,7 @@ import {
 } from './cryptography'
 import { checkHasSameScheduleTime } from './date_helper'
 import {
+  ApiFetchError,
   DecryptionFailedError,
   GuestListModificationDenied,
   GuestRescheduleForbiddenError,
@@ -200,6 +201,7 @@ const mapRelatedSlots = async (
   isSlotSeries?: boolean
 ) => {
   const accountSlot: { [account: string]: string } = {}
+
   for (const slotId of meeting.related_slot_ids) {
     try {
       let slot
@@ -214,6 +216,9 @@ const mapRelatedSlots = async (
       }
       accountSlot[(slot?.account_address || slot?.guest_email)!] = slotId
     } catch (_e) {
+      // Rethrow server errors — these indicate a backend outage, not a missing slot.
+      // Callers are expected to catch ApiFetchError(500) and cancel the operation.
+      if (_e instanceof ApiFetchError && _e.status === 500) throw _e
       // some slots might not be found if they belong to guests and were wrongly stored
       try {
         const guestSlot = await getGuestSlotById(slotId)
@@ -257,6 +262,9 @@ const loadMeetingAccountAddresses = async (
       otherSlot?.account_address &&
         slotsAccounts.push(otherSlot?.account_address)
     } catch (_e) {
+      // Rethrow server errors — these indicate a backend outage, not a missing slot.
+      // Callers are expected to catch ApiFetchError(500) and cancel the operation.
+      if (_e instanceof ApiFetchError && _e.status === 500) throw _e
       // some slots might not be found if they belong to guests and were wrongly stored
     }
   }
@@ -766,6 +774,7 @@ const updateMeeting = async (
     existingMeeting!,
     currentAccountAddress
   )
+
   const oldGuests = decryptedMeeting.participants.filter(p => p.guest_email)
 
   const guests = participants
@@ -865,7 +874,7 @@ const updateMeeting = async (
   }
 
   const slotId = decryptedMeeting.id.split('_')[0]
-  invalidateMeetingState(currentAccount, participants)
+  await invalidateMeetingState(currentAccount, participants)
 
   if (decryptedMeeting.user_type === 'guest') {
     const slot: DBSlot = await apiUpdateMeetingAsGuest(slotId, payload)
@@ -1114,7 +1123,7 @@ const updateMeetingInstance = async (
   }
 
   const slot: DBSlot = await apiUpdateMeetingInstance(instanceId, payload)
-  invalidateMeetingState(currentAccount, participants)
+  await invalidateMeetingState(currentAccount, participants)
   return (await decryptMeeting(slot, currentAccount))!
 }
 const deleteMeetingInstance = async (
@@ -1283,7 +1292,7 @@ const deleteMeetingInstance = async (
 
   // Fetch the updated data one last time
   const slot: DBSlot = await apiUpdateMeetingInstance(slotId, payload)
-  invalidateMeetingState(currentAccount, participants)
+  await invalidateMeetingState(currentAccount, participants)
   return (await decryptMeeting(slot, currentAccount))!
 }
 const cancelMeetingSeries = async (
@@ -1780,7 +1789,7 @@ const updateMeetingSeries = async (
     focus_instance_id: currentInstanceId,
   }
   const slot: DBSlot = await apiUpdateMeetingSeries(slotId, payload)
-  invalidateMeetingState(currentAccount, participants)
+  await invalidateMeetingState(currentAccount, participants)
   return (await decryptMeeting(slot, currentAccount))!
 }
 const deleteMeetingSeries = async (
@@ -1916,7 +1925,7 @@ const deleteMeetingSeries = async (
     focus_instance_id: currentInstanceId,
   }
   const slot: DBSlot = await apiUpdateMeetingSeries(slotId, payload)
-  invalidateMeetingState(currentAccount, participants)
+  await invalidateMeetingState(currentAccount, participants)
 
   return (await decryptMeeting(slot, currentAccount))!
 }
@@ -2098,7 +2107,7 @@ const deleteMeeting = async (
 
   // Fetch the updated data one last time
   const slot: DBSlot = await apiUpdateMeeting(slotId, payload)
-  invalidateMeetingState(currentAccount, participants)
+  await invalidateMeetingState(currentAccount, participants)
 
   return slot
 }
@@ -2331,7 +2340,7 @@ const scheduleMeeting = async (
       return meeting
     }
 
-    invalidateMeetingState(currentAccount, participants)
+    await invalidateMeetingState(currentAccount, participants)
 
     return {
       id: slot.id!,
@@ -2411,7 +2420,7 @@ const scheduleRecurringMeeting = async (
     const slot: DBSlot = await apiScheduleMeetingSeries(meeting)
 
     // Invalidate meetings cache and update meetings where required
-    invalidateMeetingState(currentAccount, participants)
+    await invalidateMeetingState(currentAccount, participants)
 
     return {
       id: slot.id!,
@@ -3282,7 +3291,7 @@ const rsvpMeeting = async (
     payload,
     signal
   )
-  invalidateMeetingState(currentAccount, participants)
+  await invalidateMeetingState(currentAccount, participants)
 
   return await decryptMeeting(slot, currentAccount)!
 }
@@ -3411,22 +3420,24 @@ const rsvpMeetingInstance = async (
     payload,
     signal
   )
-  invalidateMeetingState(currentAccount, decryptedMeeting.participants)
+  await invalidateMeetingState(currentAccount, decryptedMeeting.participants)
 
   return await decryptMeeting(dbSlot, currentAccount)!
 }
 
-const invalidateMeetingState = (
+const invalidateMeetingState = async (
   currentAccount?: Account | null,
   participants?: ParticipantInfo[]
 ) => {
-  queryClient.invalidateQueries(
-    QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
-  )
-  queryClient.invalidateQueries(
-    QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
-  )
-  queryClient.invalidateQueries(QueryKeys.calendarEvents())
+  await Promise.all([
+    queryClient.invalidateQueries(
+      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
+    ),
+    await queryClient.invalidateQueries(
+      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
+    ),
+    await queryClient.invalidateQueries(QueryKeys.calendarEvents()),
+  ])
   if (participants) {
     participants.forEach(p => {
       queryClient.invalidateQueries(
