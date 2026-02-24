@@ -64,7 +64,7 @@ describe('zoom.helper', () => {
 
       ;(promises.writeFile as jest.Mock).mockResolvedValue(undefined)
 
-      await saveCredentials(mockCredentials)
+      await saveCredentials(mockCredentials as any)
 
       expect(promises.writeFile).toHaveBeenCalledWith(
         expect.stringContaining('zoom-token.json'),

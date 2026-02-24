@@ -113,7 +113,7 @@ describe('/api/subscriptions/check/[domain]', () => {
     })
 
     it('should handle null domain parameter', async () => {
-      req.query = { domain: null }
+      req.query = { domain: null as any }
       mockGetSubscription.mockResolvedValue(null)
 
       await handler(req as NextApiRequest, res as NextApiResponse)

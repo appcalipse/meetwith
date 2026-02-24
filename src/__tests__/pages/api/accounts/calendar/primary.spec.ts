@@ -71,7 +71,7 @@ describe('/api/accounts/calendar/primary', () => {
     })
 
     it('should handle null targetAccount', async () => {
-      req.query = { targetAccount: null }
+      req.query = { targetAccount: null as any }
       mockGetCalendarPrimaryEmail.mockRejectedValue(new Error('Invalid account'))
 
       await handler(req as NextApiRequest, res as NextApiResponse)

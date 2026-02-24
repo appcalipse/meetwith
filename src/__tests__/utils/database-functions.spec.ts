@@ -3,6 +3,7 @@
  * Testing individual exported functions with proper mocking
  */
 
+export {}
 process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_SUPABASE_KEY = 'test-key'
 process.env.NEXT_PUBLIC_THIRDWEB_ID = 'test-thirdweb-id'

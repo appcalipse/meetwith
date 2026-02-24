@@ -57,7 +57,7 @@ describe('Transaction Helper', () => {
       billing_plan_id: 'plan-123',
       handle: 'myhandle',
       subscription_channel: 'web',
-      subscription_type: SubscriptionType.INDIVIDUAL,
+      subscription_type: 'INDIVIDUAL' as any,
     }
 
     const mockOnrampPayload: WebhookPayload = {
@@ -147,7 +147,7 @@ describe('Transaction Helper', () => {
       expect(database.createSubscriptionPeriod).toHaveBeenCalled()
       expect(result).toMatchObject({
         billing_plan_id: 'plan-123',
-        subscription_type: SubscriptionType.INDIVIDUAL,
+        subscription_type: 'INDIVIDUAL' as any,
       })
     })
 
@@ -216,7 +216,7 @@ describe('Transaction Helper', () => {
       }
 
       await expect(
-        handleCryptoSubscriptionPayment(payloadWithoutHash, mockSubscriptionData)
+        handleCryptoSubscriptionPayment(payloadWithoutHash as any, mockSubscriptionData)
       ).rejects.toThrow('Transaction hash not found in payload')
     })
 
@@ -356,7 +356,7 @@ describe('Transaction Helper', () => {
       }
 
       await handleCryptoSubscriptionPayment(
-        payloadWithMultipleTransactions,
+        payloadWithMultipleTransactions as any,
         mockSubscriptionData
       )
 

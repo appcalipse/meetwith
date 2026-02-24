@@ -228,7 +228,7 @@ describe('duration.helper', () => {
       const end = start.plus({ minutes: 30 })
       const slots = [Interval.fromDateTimes(start, end)]
 
-      const result = buildHourlyTimeRangeLabelRows(slots, 'America/New_York')
+      const result = buildHourlyTimeRangeLabelRows(slots as any, 'America/New_York')
       expect(result[9].heightPx).toBeGreaterThan(0)
     })
   })

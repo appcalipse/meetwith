@@ -8,7 +8,7 @@ import {
 
 // Helper to create GaxiosError-like objects that pass instanceof checks
 function createGaxiosError(message: string, opts: { code?: string; status?: number; statusText?: string } = {}): GaxiosError {
-  const e = new GaxiosError(message, {})
+  const e = new GaxiosError(message, {} as any)
   if (opts.code) e.code = opts.code
   if (opts.status) {
     e.response = { config: {} as any, data: {}, headers: {}, status: opts.status, statusText: opts.statusText || '' } as any

@@ -68,7 +68,7 @@ describe('schedule.helper', () => {
       }
 
       const result = getMergedParticipants(
-        participants,
+        participants as any,
         groups as any,
         groupParticipants
       )
@@ -123,7 +123,7 @@ describe('schedule.helper', () => {
       }
 
       const result = getMergedParticipants(
-        participants,
+        participants as any,
         groups as any,
         groupParticipants
       )

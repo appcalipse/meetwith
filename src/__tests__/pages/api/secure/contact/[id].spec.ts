@@ -213,7 +213,7 @@ describe('/api/secure/contact/[id]', () => {
     })
 
     it('should return 404 when contact not found', async () => {
-      mockGetContactById.mockRejectedValue(new ContactNotFound('Contact not found'))
+      mockGetContactById.mockRejectedValue(new ContactNotFound())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -374,7 +374,7 @@ describe('/api/secure/contact/[id]', () => {
           account_notifications: {
             notification_types: [
               {
-                channel: NotificationChannel.SMS,
+                channel: 'sms' as any,
                 destination: '+1234567890',
                 disabled: false,
               },

@@ -56,7 +56,7 @@ describe('/api/secure/stripe/callback', () => {
     statusMock = jest.fn(() => ({ send: sendMock }))
     
     mockStripeRetrieve = jest.fn()
-    ;(StripeService as jest.Mock).mockImplementation(() => ({
+    ;(StripeService as unknown as jest.Mock).mockImplementation(() => ({
       accounts: {
         retrieve: mockStripeRetrieve,
       },

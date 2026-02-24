@@ -96,13 +96,13 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       const error = new Error('Resend API error')
       mockEmailSend.mockRejectedValueOnce(error)
 
-      const group: Group = {
+      const group = {
         id: randomUUID(),
         name: 'Test Group',
         description: 'Test',
         created_at: new Date(),
         owner_address: 'owner-address',
-      }
+      } as any
 
       const result = await newGroupInviteEmail(
         'test@example.com',
@@ -115,13 +115,13 @@ describe('email_helper quality tests - error handling and edge cases', () => {
     })
 
     it('should use account_address as display name when name is missing', async () => {
-      const group: Group = {
+      const group = {
         id: randomUUID(),
         name: 'Test Group',
         description: 'Test',
         created_at: new Date(),
         owner_address: 'owner-address',
-      }
+      } as any
 
       const result = await newGroupInviteEmail(
         'test@example.com',
@@ -165,13 +165,13 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       const error = new Error('Email send failed')
       mockEmailSend.mockRejectedValueOnce(error)
 
-      const group: Group = {
+      const group = {
         id: randomUUID(),
         name: 'Test Group',
         description: 'Test',
         created_at: new Date(),
         owner_address: 'owner-address',
-      }
+      } as any
 
       const result = await newGroupRejectEmail(
         'test@example.com',
@@ -600,13 +600,13 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       }
       ;(Email as unknown as jest.Mock).mockImplementationOnce(() => mockEmailInstance)
 
-      const group: Group = {
+      const group = {
         id: randomUUID(),
         name: 'Test Group',
         description: 'Test',
         created_at: new Date(),
         owner_address: 'owner',
-      }
+      } as any
 
       await sendInvitationEmail(
         'test@example.com',
