@@ -27,7 +27,6 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const {
     groupParticipants,
-    groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
     addGroup,

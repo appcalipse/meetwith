@@ -37,7 +37,6 @@ const ContactMemberItem: FC<IContactMemberItem> = props => {
     setParticipants,
     groups,
     groupParticipants,
-    groupAvailability,
   } = useParticipants()
   const participantAddressesSet = useMemo(() => {
     return new Set(

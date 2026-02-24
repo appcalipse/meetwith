@@ -601,7 +601,7 @@ const handleCancelOrDeleteSeries = async (
       }
       const slotsToRemove = parsedInfo.payload.slotsToRemove
 
-      const [updatedSeries, insertedSeries] = await Promise.all([
+      const [updatedSeries] = await Promise.all([
         upsertSeries(toUpdate),
         upsertSeries(toInsert),
         slotsToRemove.length > 0
