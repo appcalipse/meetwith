@@ -123,6 +123,7 @@ import {
   PollStatus,
   PollVisibility,
   QuickPollCalendar,
+  QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
   QuickPollParticipantUpdateFields,
