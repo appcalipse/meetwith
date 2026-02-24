@@ -21,6 +21,7 @@ import {
 import { diff, intersec } from '@utils/collections'
 import { MeetingPermissions } from '@utils/constants/schedule'
 import {
+  ApiFetchError,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
   MeetingDetailsModificationDenied,
@@ -1082,6 +1083,12 @@ const handleUpdateSingleRecurringInstance = async (
     )
   } catch (e) {
     console.error(e)
+    if (e instanceof ApiFetchError && e.status === 500) {
+      console.warn(
+        `Cancelling recurring instance update for event ${event.id} (meeting ${meetingId}): slot instance unavailable`
+      )
+      return
+    }
     if (e instanceof MeetingDetailsModificationDenied) {
       const actor = event.attendees?.find(p => p.self)
 
