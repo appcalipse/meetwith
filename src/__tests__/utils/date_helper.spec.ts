@@ -236,7 +236,6 @@ describe('addRecurrence', () => {
     const minDate = new Date('2024-01-05T00:00:00Z')
 
     const result = addRecurrence(start, end, MeetingRepeat.DAILY, minDate)
-    console.log(Intl.DateTimeFormat().resolvedOptions().timeZone)
     expect(result.start.getDate()).toBeGreaterThanOrEqual(5)
     expect(result.start.getHours()).toBe(10)
   })
