@@ -17,7 +17,9 @@
     "test": "NODE_ENV=test jest",
     "test:ci": "NODE_ENV=test doppler run --config tests jest",
     "test:cov": "jest --coverage",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui"
   },
   "dependencies": {
     "@azure/identity": "^4.13.0",
@@ -129,6 +131,7 @@
     "@biomejs/biome": "^2.3.11",
     "@faker-js/faker": "^6.2.0",
     "@peculiar/webcrypto": "^1.4.6",
+    "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",
     "@testing-library/user-event": "^14.5.2",
