@@ -1,5 +1,5 @@
 import { DateTime, Interval } from 'luxon'
-import React, { createContext, ReactNode, useContext, useState } from 'react'
+import React, { createContext, useContext, useState } from 'react'
 
 import {
   doSlotsOverlapOrContain,
@@ -31,10 +31,6 @@ interface AvailabilityTrackerContextType {
 const AvailabilityTrackerContext = createContext<
   AvailabilityTrackerContextType | undefined
 >(undefined)
-
-interface AvailabilityTrackerProviderProps {
-  children: ReactNode
-}
 
 export const AvailabilityTrackerProvider: React.FC<{
   children: React.ReactNode

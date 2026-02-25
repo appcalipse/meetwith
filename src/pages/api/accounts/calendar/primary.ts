@@ -4,7 +4,8 @@ import { getCalendarPrimaryEmail } from '@/utils/sync_helper'
 
 const getAccountUrl = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    const { targetAccount } = req.query
+    const rawTargetAccount = req.query.targetAccount
+    const targetAccount = Array.isArray(rawTargetAccount) ? rawTargetAccount[0] : rawTargetAccount
     try {
       const email = await getCalendarPrimaryEmail(targetAccount as string)
 

@@ -14,7 +14,7 @@ import FiatPaymentVerifying from './FiatPaymentVerifying'
 
 const PaymentComponent = () => {
   const { paymentStep } = useContext(PublicScheduleContext)
-  const { query } = useRouter()
+  const _router = useRouter()
   const renderPage = () => {
     switch (paymentStep) {
       case PaymentStep.CONFIRM_PAYMENT:

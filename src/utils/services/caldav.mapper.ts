@@ -155,14 +155,9 @@ export class WebDAVEventMapper {
   }
 
   private static isAllDayEvent(startDate: Date, endDate: Date): boolean {
-    // Check if the event spans exactly 24 hours or if times are midnight
-    const startHour = startDate.getHours()
-    const startMin = startDate.getMinutes()
-    const endHour = endDate.getHours()
-    const endMin = endDate.getMinutes()
-
-    // If start is 00:00 and end is 00:00 (next day), likely all-day
-    return startHour === 0 && startMin === 0 && endHour === 0 && endMin === 0
+    const diffMs = endDate.getTime() - startDate.getTime()
+    const oneDayMs = 86_400_000
+    return diffMs >= oneDayMs && diffMs % oneDayMs === 0
   }
 
   private static mapAttendees(webdavAttendees: any[]): UnifiedAttendee[] {

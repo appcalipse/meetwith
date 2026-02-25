@@ -1,5 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 /** biome-ignore-all lint/style/noCommonJs: config file */
+process.env.TZ = 'UTC'
+
 const nextJest = require('next/jest')
 
 const createJestConfig = nextJest({
@@ -7,7 +9,15 @@ const createJestConfig = nextJest({
   dir: './',
 })
 
-const esModules = ['@wagmi', 'html-tags'].join('|')
+const esModules = [
+  '@wagmi',
+  'html-tags',
+  '@walletconnect',
+  'viem',
+  '@tanstack',
+  'uint8arrays',
+  '@mdx-js',
+].join('|')
 
 // Add any custom config to be passed to Jest
 
@@ -21,14 +31,35 @@ const customJestConfig = {
   moduleDirectories: ['node_modules', __dirname],
   moduleFileExtensions: ['js', 'jsx', 'tsx', 'ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  collectCoverageFrom: ['./src/**'],
+  testMatch: [
+    '**/__tests__/**/*.(spec|test).(ts|tsx|js|jsx)',
+    '**/*.(spec|test).(ts|tsx|js|jsx)',
+  ],
+  collectCoverageFrom: [
+    './src/utils/**',
+    '!./src/__tests__/**',
+    '!./src/**/*.d.ts',
+    '!./src/utils/services/calendar.service.types.ts',
+    '!./src/instrumentation*.ts',
+    '!./src/testing/**',
+    '!./src/**/*.test.ts',
+    '!./src/**/*.spec.ts',
+    '!./src/**/*.test.tsx',
+    '!./src/**/*.spec.tsx',
+    // Exclude non-testable framework boilerplate and CSS-in-JS
+    '!./src/styles/**',
+    '!./src/pages/**',
+  ],
   verbose: true,
   resolver: `./resolver.js`,
   transform: {
-    '\\.m?[j|t]sx?$': 'jest-esm-transformer',
     '^.+\\.(ts|tsx)?$': 'ts-jest',
   },
   moduleNameMapper: {
+    swr: '<rootDir>/__mocks__/swr.js',
+    '@meta/(.*)': 'src/types/$1',
+    '@utils/(.*)': 'src/utils/$1',
+    '@components/(.*)': 'src/components/$1',
     '@/(.*)': 'src/$1',
     'swiper/react': 'swiper/react/swiper-react.js',
     'swiper/css': '<rootDir>/__mocks__/jestMock.js',
@@ -44,6 +75,14 @@ const customJestConfig = {
   globals: {
     Uint8Array,
     ArrayBuffer,
+  },
+  coverageThreshold: {
+    global: {
+      statements: 60,
+      branches: 60,
+      functions: 60,
+      lines: 60,
+    },
   },
 }
 
