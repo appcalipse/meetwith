@@ -11,7 +11,7 @@ export default class QueryKeys {
   }
 
   static meetingsByAccount(account?: string) {
-    return ['meetingsByAccount', account]
+    return ['meetingsByAccount', account?.toLowerCase()]
   }
 
   static calendarEvents(date?: DateTime) {
