@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { test as authTest } from '../fixtures/auth.fixture'
-import { DEFAULT_MESSAGE } from '../helpers/constants'
+import { test as authTest, expect as authExpect } from '../fixtures/auth.fixture'
 import { SELECTORS } from '../helpers/selectors'
 import { generateTestWallet } from '../helpers/wallet'
 
@@ -109,20 +108,21 @@ test.describe('Signup Flow', () => {
       expect(hasSignIn || hasConnect).toBeTruthy()
     })
   })
+})
 
-  test.describe('Authenticated state', () => {
-    authTest(
-      'should redirect authenticated user to dashboard',
-      async ({ page }) => {
-        await page.goto('/')
+// Authenticated state tests use a separate test instance with storageState
+authTest.describe('Signup Flow — Authenticated state', () => {
+  authTest(
+    'should redirect authenticated user to dashboard',
+    async ({ page }) => {
+      await page.goto('/')
 
-        // Authenticated users should be redirected to meetings dashboard
-        await page.waitForURL('**/dashboard/**', { timeout: 10_000 })
+      // Authenticated users should be redirected to meetings dashboard
+      await page.waitForURL('**/dashboard/**', { timeout: 10_000 })
 
-        await expect(
-          page.locator(SELECTORS.dashboardMeetings)
-        ).toBeVisible({ timeout: 10_000 })
-      }
-    )
-  })
+      await authExpect(
+        page.locator(SELECTORS.dashboardMeetings)
+      ).toBeVisible({ timeout: 10_000 })
+    }
+  )
 })

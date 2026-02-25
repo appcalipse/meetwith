@@ -1,4 +1,4 @@
-import { Page, Route } from '@playwright/test'
+import { Route } from '@playwright/test'
 
 import { test as authTest } from './auth.fixture'
 import {

@@ -51,13 +51,18 @@ test.describe('Edit Meeting Flow', () => {
     })
 
     test('should reject unauthenticated meeting access', async ({
-      request,
+      browser,
     }) => {
-      // Create a fresh unauthenticated context
-      const { request: unauthRequest } = await import('@playwright/test')
-      // This test verifies the middleware protects secure routes
-      // The auth fixture provides authenticated state, so this test
-      // validates that the endpoint exists and responds to auth
+      // Create a fresh browser context without any auth cookies
+      const context = await browser.newContext()
+      const page = await context.newPage()
+      try {
+        const response = await page.request.get('/api/secure/meetings')
+        // The middleware should redirect or return non-200 for unauthenticated requests
+        expect(response.status()).not.toBe(200)
+      } finally {
+        await context.close()
+      }
     })
   })
 
