@@ -17,17 +17,17 @@ jest.mock('@/utils/database', () => ({
   getQuickPollBySlug: jest.fn(),
 }))
 
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 import handler from '@/pages/api/quickpoll/[slug]'
 import { PollStatus } from '@/types/QuickPoll'
-import {
-  QuickPollSlugNotFoundError,
-  QuickPollExpiredError,
-  QuickPollAlreadyCompletedError,
-  QuickPollAlreadyCancelledError,
-} from '@/utils/errors'
-import * as Sentry from '@sentry/nextjs'
 import * as database from '@/utils/database'
+import {
+  QuickPollAlreadyCancelledError,
+  QuickPollAlreadyCompletedError,
+  QuickPollExpiredError,
+  QuickPollSlugNotFoundError,
+} from '@/utils/errors'
 
 describe('/api/quickpoll/[slug]', () => {
   const mockCaptureException = Sentry.captureException as jest.Mock
@@ -40,15 +40,15 @@ describe('/api/quickpoll/[slug]', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     jsonMock = jest.fn()
     statusMock = jest.fn(() => ({ json: jsonMock }))
-    
+
     req = {
       method: 'GET',
       query: { slug: 'test-poll-slug' },
     }
-    
+
     res = {
       status: statusMock,
     }
@@ -107,12 +107,12 @@ describe('/api/quickpoll/[slug]', () => {
           id: 'poll_123',
           slug: 'test-poll-slug',
           title: 'Team Meeting',
-          status: PollStatus.ACTIVE,
+          status: PollStatus.ONGOING,
           expires_at: null,
         },
         participants: [],
       }
-      
+
       mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -129,12 +129,12 @@ describe('/api/quickpoll/[slug]', () => {
           id: 'poll_123',
           slug: 'test-poll-slug',
           title: 'Team Meeting',
-          status: PollStatus.ACTIVE,
+          status: PollStatus.ONGOING,
           expires_at: futureDate.toISOString(),
         },
         participants: [],
       }
-      
+
       mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -151,19 +151,21 @@ describe('/api/quickpoll/[slug]', () => {
         poll: {
           id: 'poll_123',
           slug: 'test-poll-slug',
-          status: PollStatus.ACTIVE,
+          status: PollStatus.ONGOING,
           expires_at: pastDate.toISOString(),
         },
       }
-      
+
       mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(410)
-      expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
-        error: expect.stringContaining('expired'),
-      }))
+      expect(jsonMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.stringContaining('expired'),
+        })
+      )
       expect(mockCaptureException).toHaveBeenCalled()
     })
 
@@ -176,15 +178,17 @@ describe('/api/quickpoll/[slug]', () => {
           expires_at: null,
         },
       }
-      
+
       mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(410)
-      expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
-        error: expect.any(String),
-      }))
+      expect(jsonMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.any(String),
+        })
+      )
     })
 
     it('should return 410 for cancelled poll', async () => {
@@ -196,7 +200,7 @@ describe('/api/quickpoll/[slug]', () => {
           expires_at: null,
         },
       }
-      
+
       mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -215,14 +219,18 @@ describe('/api/quickpoll/[slug]', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(404)
-      expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
-        error: expect.any(String),
-      }))
+      expect(jsonMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.any(String),
+        })
+      )
       expect(mockCaptureException).toHaveBeenCalled()
     })
 
     it('should return 500 for database errors', async () => {
-      mockGetQuickPollBySlug.mockRejectedValue(new Error('Database connection failed'))
+      mockGetQuickPollBySlug.mockRejectedValue(
+        new Error('Database connection failed')
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -251,11 +259,11 @@ describe('/api/quickpoll/[slug]', () => {
         poll: {
           id: 'poll_123',
           slug: 'test-poll-slug',
-          status: PollStatus.ACTIVE,
+          status: PollStatus.ONGOING,
           expires_at: now.toISOString(),
         },
       }
-      
+
       mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -266,37 +274,39 @@ describe('/api/quickpoll/[slug]', () => {
 
     it('should handle special characters in slug', async () => {
       req.query = { slug: 'test-poll-with-special-chars_123' }
-      
+
       const mockPollData = {
         poll: {
           id: 'poll_123',
           slug: 'test-poll-with-special-chars_123',
-          status: PollStatus.ACTIVE,
+          status: PollStatus.ONGOING,
           expires_at: null,
         },
       }
-      
+
       mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockGetQuickPollBySlug).toHaveBeenCalledWith('test-poll-with-special-chars_123')
+      expect(mockGetQuickPollBySlug).toHaveBeenCalledWith(
+        'test-poll-with-special-chars_123'
+      )
       expect(statusMock).toHaveBeenCalledWith(200)
     })
 
     it('should handle very long slugs', async () => {
       const longSlug = 'a'.repeat(200)
       req.query = { slug: longSlug }
-      
+
       const mockPollData = {
         poll: {
           id: 'poll_123',
           slug: longSlug,
-          status: PollStatus.ACTIVE,
+          status: PollStatus.ONGOING,
           expires_at: null,
         },
       }
-      
+
       mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -320,7 +330,7 @@ describe('/api/quickpoll/[slug]', () => {
       const customError = new QuickPollExpiredError()
       mockGetQuickPollBySlug.mockResolvedValue({
         poll: {
-          status: PollStatus.ACTIVE,
+          status: PollStatus.ONGOING,
           expires_at: new Date(Date.now() - 1000).toISOString(),
         },
       })

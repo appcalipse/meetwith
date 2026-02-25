@@ -16,7 +16,7 @@ jest.mock('@/utils/cryptography', () => ({
 }))
 
 jest.mock('@/ironAuth/withSessionApiRoute', () => ({
-  withSessionRoute: jest.fn((handler) => handler),
+  withSessionRoute: jest.fn(handler => handler),
 }))
 
 jest.mock('eth-crypto', () => ({
@@ -27,13 +27,13 @@ jest.mock('@sentry/nextjs', () => ({
   captureException: jest.fn(),
 }))
 
+import * as Sentry from '@sentry/nextjs'
+import EthCrypto from 'eth-crypto'
 import { NextApiRequest, NextApiResponse } from 'next'
 import handler from '@/pages/api/auth/login'
-import * as database from '@/utils/database'
-import * as crypto from '@/utils/cryptography'
-import EthCrypto from 'eth-crypto'
-import * as Sentry from '@sentry/nextjs'
 import { MeetingProvider } from '@/types/Meeting'
+import * as crypto from '@/utils/cryptography'
+import * as database from '@/utils/database'
 
 describe('/api/auth/login', () => {
   const mockGetAccountFromDB = database.getAccountFromDB as jest.Mock
@@ -91,9 +91,12 @@ describe('/api/auth/login', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockGetAccountFromDB).toHaveBeenCalledWith('0x1234567890abcdef', true)
+      expect(mockGetAccountFromDB).toHaveBeenCalledWith(
+        '0x1234567890abcdef',
+        true
+      )
       expect(mockCheckSignature).toHaveBeenCalledWith('valid-signature', 12345)
-      expect(req.session.account).toEqual({
+      expect(req.session!.account).toEqual({
         ...mockAccount,
         signature: 'valid-signature',
         preferences: {
@@ -103,7 +106,7 @@ describe('/api/auth/login', () => {
           timezone: '',
         },
       })
-      expect(req.session.save).toHaveBeenCalled()
+      expect(req.session!.save).toHaveBeenCalled()
       expect(statusMock).toHaveBeenCalledWith(200)
       expect(jsonMock).toHaveBeenCalledWith(mockAccount)
     })
@@ -116,7 +119,7 @@ describe('/api/auth/login', () => {
 
       expect(statusMock).toHaveBeenCalledWith(401)
       expect(sendMock).toHaveBeenCalledWith('Not authorized')
-      expect(req.session.save).not.toHaveBeenCalled()
+      expect(req.session!.save).not.toHaveBeenCalled()
     })
 
     it('should create internal keys for migrated account without pub key', async () => {
@@ -139,7 +142,10 @@ describe('/api/auth/login', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(mockCreateIdentity).toHaveBeenCalled()
-      expect(mockEncryptContent).toHaveBeenCalledWith('valid-signature', 'private-key')
+      expect(mockEncryptContent).toHaveBeenCalledWith(
+        'valid-signature',
+        'private-key'
+      )
       expect(mockSupabase.from).toHaveBeenCalledWith('accounts')
       expect(mockSupabase.upsert).toHaveBeenCalledWith(
         [
@@ -195,7 +201,11 @@ describe('/api/auth/login', () => {
         ...mockAccount,
         preferences: {
           ...mockAccount.preferences,
-          availabilities: new Array(100).fill({ day: 1, start: '09:00', end: '17:00' }),
+          availabilities: new Array(100).fill({
+            day: 1,
+            start: '09:00',
+            end: '17:00',
+          }),
         },
       }
       mockGetAccountFromDB.mockResolvedValue(accountWithLargePrefs)
@@ -203,8 +213,10 @@ describe('/api/auth/login', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(req.session.account.preferences.availabilities).toEqual([])
-      expect(req.session.account.preferences.meetingProviders).toEqual([MeetingProvider.GOOGLE_MEET])
+      expect(req.session!.account!.preferences.availabilities).toEqual([])
+      expect(req.session!.account!.preferences.meetingProviders).toEqual([
+        MeetingProvider.GOOGLE_MEET,
+      ])
     })
 
     it('should handle missing signature', async () => {
@@ -234,7 +246,9 @@ describe('/api/auth/login', () => {
     it('should handle session save errors', async () => {
       mockGetAccountFromDB.mockResolvedValue(mockAccount)
       mockCheckSignature.mockReturnValue('0x1234567890abcdef')
-      req.session.save = jest.fn().mockRejectedValue(new Error('Session save failed'))
+      req.session!.save = jest
+        .fn()
+        .mockRejectedValue(new Error('Session save failed'))
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
