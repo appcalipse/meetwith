@@ -23,7 +23,7 @@ const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 const discordRedirectUrl = `${baseURL}/dashboard/settings/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwith.xyz'
-const MODIFIED_BY_APP_TIMEOUT = 10 // in seconds
+const MODIFIED_BY_APP_TIMEOUT = 20 // in seconds
 const WEBHOOK_URL = `${apiUrl}/server/webhook/calendar/sync`
 
 const EMAIL_CHANGE_TOKEN_EXPIRY = '5m'
@@ -55,6 +55,9 @@ const QUICKPOLL_TITLE_MAX_LENGTH = 200
 const QUICKPOLL_DESCRIPTION_MAX_LENGTH = 1000
 
 const QUICKPOLL_EXPIRY_BUFFER_HOURS = 1 // Minimum hours before expiry
+
+const POLL_AVAILABILITY_MODAL_SHOWN_PREFIX =
+  'quickpoll_availability_modal_shown'
 
 // Event title truncation constants
 
@@ -155,6 +158,7 @@ export {
   VERIFICATION_CODE_TOKEN_EXPIRY,
   WEBHOOK_URL,
   YEAR_DURATION_IN_SECONDS,
+  POLL_AVAILABILITY_MODAL_SHOWN_PREFIX,
 }
 
 export const QUICKPOLL_SIGNIN_CONTEXT_KEY = 'quickpoll_signin_context'

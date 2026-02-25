@@ -2,7 +2,6 @@ import { Client, GraphError } from '@microsoft/microsoft-graph-client'
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials'
 import * as Sentry from '@sentry/nextjs'
 import format from 'date-fns/format'
-import { instance } from 'gaxios'
 import { DateTime } from 'luxon'
 import { RRule, rrulestr, Weekday, WeekdayStr } from 'rrule'
 import { AttendeeStatus, UnifiedEvent } from '@/types/Calendar'
@@ -13,7 +12,7 @@ import {
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
-import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
+import { TimeSlotSource } from '@/types/Meeting'
 import {
   Attendee,
   DaysOfWeek,
@@ -31,7 +30,6 @@ import {
 } from '@/types/ParticipantInfo'
 import {
   DeleteInstanceRequest,
-  MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
@@ -650,8 +648,8 @@ export class Office365CalendarService implements IOffcie365CalendarService {
               participant.status === ParticipationStatus.Accepted
                 ? 'accepted'
                 : participant.status === ParticipationStatus.Rejected
-                  ? 'declined'
-                  : 'notResponded',
+                ? 'declined'
+                : 'notResponded',
             time: new Date().toISOString(),
           },
           type: 'required',

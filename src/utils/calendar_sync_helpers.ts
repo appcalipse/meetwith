@@ -21,6 +21,7 @@ import {
 import { diff, intersec } from '@utils/collections'
 import { MeetingPermissions } from '@utils/constants/schedule'
 import {
+  ApiFetchError,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
   MeetingDetailsModificationDenied,
@@ -229,7 +230,7 @@ const handleUpdateParseMeetingInfo = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
@@ -339,7 +340,7 @@ const handleUpdateRSVPParseMeetingInfo = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     decryptedMeeting?.provider || MeetingProvider.GOOGLE_MEET,
@@ -470,7 +471,7 @@ const handleDeleteMeetingParseInfo = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     decryptedMeeting?.provider || MeetingProvider.GOOGLE_MEET,
@@ -525,6 +526,14 @@ const handleCancelOrDeleteSeries = async (
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
   const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create slots via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping series cancel/delete for meeting ${meetingId}: no active series remain`
+    )
+    return
+  }
   const isSchedulerOrOwner = isAccountSchedulerOrOwner(
     decryptedMeeting.participants,
     currentAccountAddress
@@ -601,7 +610,7 @@ const handleCancelOrDeleteSeries = async (
       }
       const slotsToRemove = parsedInfo.payload.slotsToRemove
 
-      const [updatedSeries] = await Promise.all([
+      const [updatedSeries, _insertedSeries] = await Promise.all([
         upsertSeries(toUpdate),
         upsertSeries(toInsert),
         slotsToRemove.length > 0
@@ -660,6 +669,14 @@ const handleUpdateMeetingSeries = async (
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
   const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create series via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping series update for meeting ${meetingId}: no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
@@ -831,6 +848,13 @@ const handleUpdateMeetingSeriesRsvps = async (
 ) => {
   if (!masterEvent.id || !masterEvent.recurrence) return
   const series = await getEventMasterSeries(meetingId, masterEvent.id!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  if (series.length === 0) {
+    console.info(
+      `Skipping series RSVP update for meeting ${meetingId}: no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
@@ -980,6 +1004,14 @@ const handleUpdateSingleRecurringInstance = async (
     return
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
   const series = await getEventMasterSeries(meetingId, event.recurringEventId!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create slots via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping recurring instance sync for event ${event.id} (meeting ${meetingId}): no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
@@ -1041,7 +1073,7 @@ const handleUpdateSingleRecurringInstance = async (
       meetingInfo,
       participants,
       extractMeetingDescription(event.description || '') || '',
-      event.location || '',
+      meetingInfo.meeting_url || '',
       conferenceMeeting.provider,
       event.summary || '',
       conferenceMeeting.reminders,
@@ -1051,6 +1083,12 @@ const handleUpdateSingleRecurringInstance = async (
     )
   } catch (e) {
     console.error(e)
+    if (e instanceof ApiFetchError && e.status === 500) {
+      console.warn(
+        `Cancelling recurring instance update for event ${event.id} (meeting ${meetingId}): slot instance unavailable`
+      )
+      return
+    }
     if (e instanceof MeetingDetailsModificationDenied) {
       const actor = event.attendees?.find(p => p.self)
 
@@ -1086,7 +1124,7 @@ const handleUpdateSingleRecurringInstance = async (
         if (series) {
           return {
             instances: {
-              account_address: slot.account_address,
+              account_address: slot.account_address ?? null,
               end: new Date(endTime).toISOString(),
               id: series.id + '_' + timeStamp,
               override_meeting_info_encrypted: slot.meeting_info_encrypted,
@@ -1094,6 +1132,7 @@ const handleUpdateSingleRecurringInstance = async (
               start: new Date(startTime).toISOString(),
               status: RecurringStatus.MODIFIED,
               version: (slots[0].version || 0) + 1,
+              guest_email: slot.guest_email ?? null,
             },
           }
         } else {
@@ -1120,7 +1159,7 @@ const handleUpdateSingleRecurringInstance = async (
         if (serie) {
           return {
             instances: {
-              account_address: serie.account_address,
+              account_address: serie.account_address ?? null,
               end: new Date(endTime).toISOString(),
               id: slotId + '_' + timeStamp,
               override_meeting_info_encrypted: null,
@@ -1128,7 +1167,7 @@ const handleUpdateSingleRecurringInstance = async (
               start: new Date(startTime).toISOString(),
               status: RecurringStatus.CANCELLED,
               version: version + 1,
-              guest_email: serie.guest_email,
+              guest_email: serie.guest_email ?? null,
             },
           }
         } else {
@@ -1206,6 +1245,14 @@ const handleCancelOrDeleteForRecurringInstance = async (
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
   if (!meetingInfo) return
   const series = await getEventMasterSeries(meetingId, event.recurringEventId!)
+  // If the meeting has no active series, it was already fully cancelled/deleted.
+  // Processing it would re-create slots via upsert, causing ghost meetings.
+  if (series.length === 0) {
+    console.info(
+      `Skipping cancelled recurring instance for event ${event.id} (meeting ${meetingId}): no active series remain`
+    )
+    return
+  }
   const seriesMap = new Map(
     series.map(serie => [serie.account_address || serie.guest_email, serie])
   )
@@ -1343,9 +1390,9 @@ const handleCancelOrDeleteForRecurringInstance = async (
       async (slot): Promise<TablesUpdate<'slot_instance'>> => {
         const series_id = await getSlotSeriesId(slot.id!)
         return {
-          account_address: slot.account_address,
+          account_address: slot.account_address ?? null,
           end: new Date(endTime).toISOString(),
-          guest_email: slot.guest_email,
+          guest_email: slot.guest_email ?? null,
           id: slot.id + '_' + timeStamp,
           override_meeting_info_encrypted: slot.meeting_info_encrypted,
           series_id,
@@ -1362,9 +1409,9 @@ const handleCancelOrDeleteForRecurringInstance = async (
         const serie = series.find(s => s.id === slotId)
         if (serie) {
           return {
-            account_address: serie.account_address,
+            account_address: serie.account_address ?? null,
             end: new Date(endTime).toISOString(),
-            guest_email: serie.guest_email,
+            guest_email: serie.guest_email ?? null,
             id: slotId + '_' + timeStamp,
             override_meeting_info_encrypted: null,
             series_id: serie?.id,

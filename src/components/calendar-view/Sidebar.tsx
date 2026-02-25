@@ -21,8 +21,8 @@ const Sidebar: React.FC = () => {
     >
       <CalendarPicker />
       <ConnectedCalendar />
-      <UpComingEvents />
       <ConnectCalendarButton />
+      <UpComingEvents />
     </VStack>
   )
 }

@@ -46,7 +46,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      await notifyForOrUpdateNewMeeting(MeetingChangeType.UPDATE, request)
+      await notifyForOrUpdateNewMeeting(
+        request.isDeleteEvent
+          ? MeetingChangeType.EXIT
+          : MeetingChangeType.UPDATE,
+        request
+      )
     } catch (error) {
       Sentry.captureException(error)
     }

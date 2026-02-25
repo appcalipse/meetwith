@@ -11,7 +11,7 @@ import {
 import * as Sentry from '@sentry/nextjs'
 import { chakraComponents, Props, Select } from 'chakra-react-select' // TODO: Move all date logic to luxon
 import { DateTime, Interval } from 'luxon'
-import React, { useCallback, useContext, useEffect } from 'react'
+import React, { useCallback, useContext, useEffect, useMemo } from 'react'
 import { FaArrowLeft, FaCalendar, FaClock, FaGlobe } from 'react-icons/fa'
 
 import Loading from '@/components/Loading' // TODO: create helper function to merge availabilities from availability block
@@ -30,17 +30,19 @@ import {
   TimeZoneOption,
   timeZoneFilter,
 } from '@/utils/constants/select'
-import { getFormattedDateAndDuration, timezones } from '@/utils/date_helper'
+import { getFormattedDateAndDuration, getTimezones } from '@/utils/date_helper'
 import { generateTimeSlots } from '@/utils/slots.helper'
 
-const tzs: TimeZoneOption[] = timezones.map(tz => {
-  return {
-    value: String(tz.tzCode),
-    label: tz.name,
-    searchKeys: tz.countries || [],
-  }
-})
 const SchedulerPicker = () => {
+  const tzs: TimeZoneOption[] = useMemo(
+    () =>
+      getTimezones().map(tz => ({
+        value: String(tz.tzCode),
+        label: tz.name,
+        searchKeys: tz.countries || [],
+      })),
+    []
+  )
   const {
     currentMonth,
     setCurrentMonth,
@@ -89,7 +91,12 @@ const SchedulerPicker = () => {
     if (account?.preferences?.availabilities) {
       getAvailableSlots()
     }
-  }, [account?.preferences?.availabilities, currentMonth, selectedType])
+  }, [
+    account?.preferences?.availabilities,
+    currentMonth,
+    selectedType,
+    timezone.value,
+  ])
   const handleContactCheck = async () => {
     try {
       if (!account?.address) return
@@ -151,7 +158,7 @@ const SchedulerPicker = () => {
         }
 
         return (
-          daySlots.some(available => available.overlaps(slot)) &&
+          daySlots.some(available => available.engulfs(slot)) &&
           !busySlots.some(busy => busy.overlaps(slot))
         )
       })
@@ -164,6 +171,7 @@ const SchedulerPicker = () => {
       selectedType?.duration_minutes,
       selectedType?.min_notice_minutes,
       timezone.value,
+      rescheduleSlot,
     ]
   )
   const _onChange = (newValue: unknown) => {

@@ -125,14 +125,11 @@ export function withFileUpload(
 
       busboy.on('error', err => {
         // CRITICAL: Handle "Unexpected end of form" gracefully
+        console.warn('Busboy: Incomplete multipart stream, using partial data')
         if (
           err instanceof Error &&
           err.message.includes('Unexpected end of form')
         ) {
-          console.warn(
-            'Busboy: Incomplete multipart stream, using partial data'
-          )
-
           // If we got at least some fields, use them
           if (Object.keys(fields).length > 0 || Object.keys(files).length > 0) {
             req.body = {

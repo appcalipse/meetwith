@@ -99,6 +99,14 @@ const newTheme = {
     800: '#153e75',
     900: '#1a365d',
   },
+  breakpoints: {
+    sm: '30em',
+    md: '48em',
+    lg: '62em',
+    xl: '80em',
+    desktopLg: '88.125em',
+    '2xl': '96em',
+  },
   colors,
   components: {
     Button: {
@@ -307,6 +315,10 @@ const newTheme = {
       'warning-text': {
         _dark: 'orange.700',
         default: 'orange.700',
+      },
+      'text-base': {
+        _dark: 'white',
+        default: 'gray.700',
       },
     },
   },

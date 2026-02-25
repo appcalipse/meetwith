@@ -410,9 +410,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
           status: participant.status,
           type: participant.type,
         }))
-      const actorStatus = existingEvent?.attendees?.find(
-        attendee => attendee.self
-      )?.responseStatus
       let changeUrl = `${appUrl}/dashboard/schedule?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.UPDATE_MEETING}`
       if (meetingDetails.ical_uid) {
         changeUrl += `&icalUid=${meetingDetails.ical_uid}`
@@ -490,7 +487,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
         const attendees = await this.buildAttendeesListForUpdate(
           meetingDetails.participants,
           calendarOwnerAccountAddress,
-          actorStatus || undefined,
           guest
         )
 
@@ -1147,7 +1143,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
   private async buildAttendeesListForUpdate(
     participants: ParticipantInfo[],
     calendarOwnerAccountAddress: string,
-    actorStatus?: string,
     guestParticipant?: ParticipantInfo
   ): Promise<calendar_v3.Schema$EventAttendee[]> {
     const addedEmails = new Set<string>()
@@ -1187,10 +1182,7 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             ParticipantType.Scheduler,
           ].includes(participant.type),
           responseStatus:
-            calendarOwnerAccountAddress === participant.account_address &&
-            actorStatus
-              ? actorStatus
-              : participant.status === ParticipationStatus.Accepted
+            participant.status === ParticipationStatus.Accepted
               ? 'accepted'
               : participant.status === ParticipationStatus.Rejected
               ? 'declined'
@@ -1432,7 +1424,6 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       const attendees = await this.buildAttendeesListForUpdate(
         meetingDetails.participants,
         calendarOwnerAccountAddress,
-        undefined,
         guest
       )
 

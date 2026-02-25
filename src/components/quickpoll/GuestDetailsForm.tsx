@@ -23,7 +23,10 @@ import {
   getPollParticipantById,
   updateGuestParticipantDetails,
 } from '@/utils/api_helper'
-import { saveGuestPollDetails } from '@/utils/storage'
+import {
+  saveGuestPollDetails,
+  saveQuickPollSignInContext,
+} from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { isValidEmail } from '@/utils/validations'
 
@@ -162,12 +165,22 @@ const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     }
   }
 
+  const openAuthForPoll = () => {
+    saveQuickPollSignInContext({
+      pollSlug: pollData.poll.slug,
+      pollId: pollData.poll.id,
+      pollTitle: pollData.poll.title,
+      returnUrl: window.location.href,
+    })
+    openConnection(`/poll/${pollData.poll.slug}`)
+  }
+
   const handleSignIn = () => {
-    openConnection()
+    openAuthForPoll()
   }
 
   const handleSignUp = () => {
-    openConnection()
+    openAuthForPoll()
   }
 
   const handleBack = () => {

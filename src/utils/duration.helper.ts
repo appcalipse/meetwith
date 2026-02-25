@@ -78,29 +78,6 @@ export const isValidDurationOption = (inputValue: string): boolean => {
   return parseDurationInput(inputValue) !== null
 }
 
-/** Add minutes to HH:MM time. Caps at 24:00. */
-export const addMinutesToTime = (time: string, minutes: number): string => {
-  const [h, m] = time.split(':').map(Number)
-  const total = h * 60 + m + minutes
-  if (total >= 24 * 60) return '24:00'
-  const nh = Math.floor(total / 60)
-  const nm = total % 60
-  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
-}
-
-/** Subtract minutes from HH:MM time. Floors at 00:00. */
-export const subtractMinutesFromTime = (
-  time: string,
-  minutes: number
-): string => {
-  const [h, m] = time.split(':').map(Number)
-  const total = h * 60 + m - minutes
-  if (total <= 0) return '00:00'
-  const nh = Math.floor(total / 60)
-  const nm = total % 60
-  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
-}
-
 /** Compare HH:MM times. Returns < 0 if a < b, 0 if equal, > 0 if a > b. */
 export const compareTimes = (a: string, b: string): number => {
   const [ah, am] = a.split(':').map(Number)

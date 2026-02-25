@@ -75,7 +75,7 @@ export const DeleteEventDialog: React.FC<DeleteMeetingDialogProps> = ({
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
-      await deleteCalendarEvent(event.calendarId, event.id)
+      await deleteCalendarEvent(event.calendarId, event.sourceEventId)
       afterCancel && afterCancel()
       onClose()
     } catch (error: unknown) {

@@ -45,7 +45,10 @@ import {
   TimeZoneOption,
   timeZoneFilter,
 } from '@/utils/constants/select'
-import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
+import {
+  getTimezones,
+  parseMonthAvailabilitiesToDate,
+} from '@/utils/date_helper'
 import {
   buildHourlyTimeRangeLabelRows,
   calculateEffectiveDuration,
@@ -94,12 +97,12 @@ const GUIDES = [
     description: 'Everyone is available',
   },
   {
-    color: getBgColor(State.SOME_AVAILABLE),
-    description: 'Some are available',
-  },
-  {
     color: getBgColor(State.MOST_AVAILABLE),
     description: 'Most are available',
+  },
+  {
+    color: getBgColor(State.SOME_AVAILABLE),
+    description: 'Some are available',
   },
   {
     color: getBgColor(State.NONE_AVAILABLE),
@@ -552,7 +555,7 @@ export function SchedulePickTime({
 
   const tzOptions = useMemo(
     () =>
-      timezones.map(tz => ({
+      getTimezones().map(tz => ({
         value: tz.tzCode,
         label: tz.name,
         searchKeys: tz.countries,

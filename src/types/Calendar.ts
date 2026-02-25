@@ -155,7 +155,12 @@ export interface CalendarEvents {
 export type DashBoardMwwEvents = (ExtendedDBSlot | ExtendedSlotInstance) & {
   decrypted: MeetingDecrypted
 }
-
+export type DashboardEvent = DashBoardMwwEvents | UnifiedEvent
+export const isDashboardMwwEvent = (
+  event: DashboardEvent
+): event is DashBoardMwwEvents => {
+  return 'decrypted' in event
+}
 export interface ExtendedCalendarEvents {
   mwwEvents: Array<DashBoardMwwEvents>
   calendarEvents: Array<UnifiedEvent>

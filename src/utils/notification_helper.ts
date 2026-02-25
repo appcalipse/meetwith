@@ -38,6 +38,7 @@ import {
   newGroupInviteEmail,
   newGroupRejectEmail,
   newMeetingEmail,
+  participantLeftMeetingEmail,
   updateMeetingEmail,
 } from './email_helper'
 import { dmAccount } from './services/discord.helper'
@@ -58,7 +59,10 @@ export interface ParticipantInfoForInviteNotification
 }
 type EmailNotificationRequest =
   | {
-      changeType: MeetingChangeType.CREATE | MeetingChangeType.UPDATE
+      changeType:
+        | MeetingChangeType.CREATE
+        | MeetingChangeType.UPDATE
+        | MeetingChangeType.EXIT
       meetingDetails: MeetingCreationSyncRequest
     }
   | {
@@ -127,7 +131,10 @@ export const notifyForMeetingCancellation = async (
 }
 
 export const notifyForOrUpdateNewMeeting = async (
-  meetingChangeType: MeetingChangeType.CREATE | MeetingChangeType.UPDATE,
+  meetingChangeType:
+    | MeetingChangeType.CREATE
+    | MeetingChangeType.EXIT
+    | MeetingChangeType.UPDATE,
   meetingDetails: MeetingCreationSyncRequest
 ): Promise<void> => {
   const participantsInfo = await setupParticipants(meetingDetails.participants)
@@ -172,9 +179,6 @@ const workNotifications = async (
   try {
     for (let i = 0; i < participantsInfo.length; i++) {
       const participant = participantsInfo[i]
-      if (participant.mappingType === ParticipantMappingType.ADD) {
-        request.changeType = MeetingChangeType.CREATE
-      }
       if (participant.guest_email) {
         promises.push(
           emailQueue.add(() => getEmailNotification(request, participant))
@@ -296,17 +300,20 @@ const getEmailNotification = async (
     )[0]!.destination
   const participantActing = request.meetingDetails.participantActing
 
-  const changeType = request.changeType
+  let changeType = request.changeType
+  if (participant.mappingType === ParticipantMappingType.ADD) {
+    changeType = MeetingChangeType.CREATE
+  }
   switch (changeType) {
     case MeetingChangeType.CREATE:
-      return newMeetingEmail(
-        toEmail,
-        participant.type,
-        participant.slot_id!,
-        request.meetingDetails,
-        participant.account_address
-      )
+      if (request.changeType === MeetingChangeType.DELETE) {
+        return Promise.resolve(false)
+      }
+      return newMeetingEmail(toEmail, participant, request.meetingDetails)
     case MeetingChangeType.DELETE:
+      if (request.changeType !== MeetingChangeType.DELETE) {
+        return Promise.resolve(false)
+      }
       const displayName = getParticipantActingDisplayName(
         participantActing,
         participant
@@ -315,17 +322,34 @@ const getEmailNotification = async (
         displayName,
         toEmail,
         request.meetingDetails,
-        participant.account_address
+        participant
       )
     case MeetingChangeType.UPDATE:
+      if (request.changeType === MeetingChangeType.DELETE) {
+        return Promise.resolve(false)
+      }
       return updateMeetingEmail(
         toEmail,
         getParticipantActingDisplayName(participantActing, participant),
-        participant.type,
-        participant.meeting_id,
+        participant,
+        request.meetingDetails
+      )
+
+    case MeetingChangeType.EXIT:
+      if (request.changeType !== MeetingChangeType.EXIT) {
+        return Promise.resolve(false)
+      }
+      const leftDisplayName = getParticipantActingDisplayName(
+        participantActing,
+        participant
+      )
+      return participantLeftMeetingEmail(
+        leftDisplayName,
+        toEmail,
         request.meetingDetails,
         participant.account_address
       )
+
     default:
   }
   return Promise.resolve(false)
@@ -339,7 +363,11 @@ const getNotificationMessage = async (
   const end = new Date(request.meetingDetails.end)
   const accountForDiscord = await getAccountFromDB(participant.account_address!)
   if (isProAccount(accountForDiscord)) {
-    const changeType = request.changeType
+    let changeType = request.changeType
+
+    if (participant.mappingType === ParticipantMappingType.ADD) {
+      changeType = MeetingChangeType.CREATE
+    }
 
     const isSchedulerOrOwner = [
       ParticipantType.Scheduler,
@@ -350,7 +378,10 @@ const getNotificationMessage = async (
     let actor
     switch (changeType) {
       case MeetingChangeType.CREATE:
-        const meetingPermissions = request.meetingDetails.meetingPermissions
+        const meetingPermissions =
+          request.changeType === MeetingChangeType.DELETE
+            ? undefined
+            : request.meetingDetails.meetingPermissions
         const canSeeGuestList =
           meetingPermissions === undefined ||
           !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
@@ -360,7 +391,9 @@ const getNotificationMessage = async (
           participant.timezone,
           true
         )} - ${getAllParticipantsDisplayName(
-          request.meetingDetails.participants,
+          request.changeType === MeetingChangeType.DELETE
+            ? []
+            : request.meetingDetails.participants,
           participant.account_address,
           canSeeGuestList
         )}`
@@ -377,7 +410,10 @@ const getNotificationMessage = async (
           true
         )} has been canceled by ${actor}.`
       case MeetingChangeType.UPDATE:
-        if (!request.meetingDetails.changes?.dateChange) {
+        if (
+          request.changeType === MeetingChangeType.DELETE ||
+          !request.meetingDetails.changes?.dateChange
+        ) {
           return ''
         }
         actor = getParticipantActingDisplayName(
@@ -421,6 +457,17 @@ const getNotificationMessage = async (
           }
         }
         return message
+      case MeetingChangeType.EXIT:
+        actor = getParticipantActingDisplayName(
+          request.meetingDetails.participantActing,
+          participant
+        )
+        return `${actor} is no longer attending the meeting at ${dateToHumanReadable(
+          start,
+          participant.timezone,
+          true
+        )}.`
+
       default:
         return ''
     }

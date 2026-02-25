@@ -1,4 +1,4 @@
-DROP FUNCTION get_meeting_series_without_instances(
+DROP FUNCTION IF EXISTS get_meeting_series_without_instances(
     p_account_address text,
     p_time_min timestamptz,
     p_time_max timestamptz

@@ -2,22 +2,34 @@ import { Box, DarkMode, useColorMode } from '@chakra-ui/react'
 import { getIronSession } from 'iron-session'
 import type { NextPage } from 'next'
 import dynamic from 'next/dynamic'
+import NextHead from 'next/head'
 import { useEffect } from 'react'
 
-import Loading from '@/components/Loading'
 import { sessionOptions } from '@/middleware'
 import redirectTo from '@/utils/redirect'
 
-import Faq from '../components/landing/FAQ'
-import { Features } from '../components/landing/Features'
 import Hero from '../components/landing/Hero'
-import { Pricing } from '../components/landing/Pricing'
-import Why from '../components/landing/Why'
+
+const Why = dynamic(() => import('../components/landing/Why'), { ssr: true })
+const Features = dynamic(
+  () =>
+    import('../components/landing/Features').then(mod => ({
+      default: mod.Features,
+    })),
+  { ssr: true }
+)
+const Pricing = dynamic(
+  () =>
+    import('../components/landing/Pricing').then(mod => ({
+      default: mod.Pricing,
+    })),
+  { ssr: true }
+)
+const Faq = dynamic(() => import('../components/landing/FAQ'), { ssr: true })
 
 const ProAccessPopUp = dynamic(
   () => import('@/components/landing/ProAccessPopUp'),
   {
-    loading: () => <Loading />,
     ssr: false,
   }
 )
@@ -33,6 +45,15 @@ const Home: NextPage = () => {
 
   return (
     <main data-testid="main-container">
+      <NextHead>
+        <link
+          rel="preload"
+          href="/assets/product-ui.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+        />
+      </NextHead>
       <DarkMode>
         <Box bg={'neutral.900'} fontWeight={500} pb={36}>
           <Hero />

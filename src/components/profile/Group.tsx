@@ -54,6 +54,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const canCreateGroup = hasProAccess
 
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
+  const [isGroupsEmpty, setIsGroupsEmpty] = useState<boolean | null>(null)
   const router = useRouter()
   const { join, intent, groupId, email, type } = useRouter().query
   const {
@@ -103,6 +104,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     const group = await getGroupExternal(group_id)
     setInviteGroupData(group)
     setInviteDataIsLoading(false)
+  }
+
+  const handleUpgradeClick = () => {
+    router.push('/dashboard/settings/subscriptions')
   }
 
   useEffect(() => {
@@ -264,7 +269,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         </HStack>
 
         {/* Limit text when free user cannot create groups */}
-        {!canCreateGroup && currentAccount && (
+        {!canCreateGroup && currentAccount && isGroupsEmpty === false && (
           <HStack mb={4}>
             <Text fontSize="14px" color="neutral.400" lineHeight="1.4">
               Upgrade to create and schedule with groups.{' '}
@@ -290,6 +295,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               currentAccount={currentAccount}
               search={debouncedValue}
               ref={groupRef}
+              onEmptyStateChange={setIsGroupsEmpty}
+              canCreateGroup={canCreateGroup}
+              trialEligible={trialEligible}
+              onUpgradeClick={handleUpgradeClick}
             />
           </TabPanel>
           <TabPanel p={0}>

@@ -32,17 +32,17 @@ const GroupParticipantsItem: FC<IGroupParticipantsItem> = props => {
     addGroup,
     removeGroup,
     participants,
-    groups: allGroups,
+    group,
   } = useParticipants()
   const allGroupParticipants = groupParticipants[props.groupId] || []
 
   const participantAddressesSet = useMemo(() => {
     return new Set(
-      getMergedParticipants(participants, allGroups, groupParticipants)
+      getMergedParticipants(participants, groupParticipants, group)
         .map(user => user.account_address)
         .filter(Boolean)
     )
-  }, [participants, allGroups, groupParticipants])
+  }, [participants, group, groupParticipants])
 
   const isMemberAlreadyAdded = useCallback(() => {
     return participantAddressesSet.has(props.address)

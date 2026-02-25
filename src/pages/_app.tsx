@@ -7,23 +7,28 @@ import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
+import dynamic from 'next/dynamic'
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
 import * as React from 'react'
 import { ThirdwebProvider } from 'thirdweb/react'
 
 import { Head } from '@/components/Head'
-import { ConnectModal } from '@/components/nav/ConnectModal'
 import RedirectHandler from '@/components/redirect'
 import RedirectNotifier from '@/components/redirect/RedirectNotifier'
 import { BaseLayout } from '@/layouts/Base'
 import { AccountProvider } from '@/providers/AccountProvider'
 import { OnboardingModalProvider } from '@/providers/OnboardingModalProvider'
 import { validateAuthenticationApp } from '@/session/core'
-import { Account } from '@/types/Account'
+import type { Account } from '@/types/Account'
 import { initAnalytics, pageView } from '@/utils/analytics'
 import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
+
+const ConnectModal = dynamic(
+  () => import('@/components/nav/ConnectModal').then(mod => mod.ConnectModal),
+  { ssr: false }
+)
 
 interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
@@ -112,12 +117,8 @@ MyApp.getInitialProps = async (appContext: AppContext) => {
     // only force check on the client side if we have an account and we came from the backend
     const checkAuthOnClient = !!currentAccount && !!appContext.ctx.req
 
-    return { ...appProps, checkAuthOnClient, consentCookie, currentAccount }
-  } catch (_e) {
-    if (appContext.ctx.res) {
-      appContext.ctx.res.writeHead(302, { Location: '/error' })
-      appContext.ctx.res.end()
-    }
+    return { ...appProps, consentCookie, currentAccount, checkAuthOnClient }
+  } catch (e) {
     return {}
   }
 }

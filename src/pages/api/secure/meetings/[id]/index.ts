@@ -5,6 +5,7 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { DBSlot } from '@/types/Meeting'
 import { MeetingCancelRequest, MeetingUpdateRequest } from '@/types/Requests'
 import {
+  deleteConferenceMeetingFromDb,
   deleteMeetingFromDB,
   getAccountFromDB,
   getMeetingFromDB,
@@ -97,7 +98,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const participantActing = getParticipantBaseInfoFromAccount(
       await getAccountFromDB(req.session.account!.address)
     )
-
     try {
       await deleteMeetingFromDB(
         participantActing,

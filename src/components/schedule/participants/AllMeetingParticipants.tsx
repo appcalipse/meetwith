@@ -11,18 +11,21 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 
 const AllMeetingParticipants = () => {
   const {
-    groups,
+    group,
     participants,
     setParticipants,
     groupParticipants,
     setGroupAvailability,
     setGroupParticipants,
   } = useParticipants()
+
   const allParticipants = getMergedParticipants(
     participants,
-    groups,
-    groupParticipants
-  )
+    groupParticipants,
+    group
+  ).filter(p => {
+    return !p.isHidden
+  })
   const onParticipantsChange = useCallback(
     (_participants: Array<ParticipantInfo>) => {
       const participantsDiff = allParticipants.find(

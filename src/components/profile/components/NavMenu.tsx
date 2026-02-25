@@ -27,11 +27,11 @@ import {
   FaWallet,
 } from 'react-icons/fa'
 import { FaUserGroup, FaUsers } from 'react-icons/fa6'
+import { RiContactsBook2Fill } from 'react-icons/ri'
 import {
   TbLayoutSidebarLeftExpand,
   TbLayoutSidebarRightExpand,
 } from 'react-icons/tb'
-
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
@@ -47,7 +47,6 @@ import {
 } from '@/utils/storage'
 import { getActiveProSubscription } from '@/utils/subscription_manager'
 import { getAccountDisplayName } from '@/utils/user_manager'
-
 import { ThemeSwitcher } from '../../ThemeSwitcher'
 import { Avatar } from './Avatar'
 import { CopyLinkButton } from './CopyLinkButton'
@@ -68,7 +67,6 @@ interface LinkItemProps {
   isBeta?: boolean
   isDisabled?: boolean
 }
-
 export const NavMenu: React.FC<{
   currentSection?: EditMode
   isMenuOpen?: boolean
@@ -105,7 +103,7 @@ export const NavMenu: React.FC<{
       },
       {
         name: 'My Contacts',
-        icon: FaUserGroup,
+        icon: RiContactsBook2Fill,
         mode: EditMode.CONTACTS,
         badge: contactsRequestCount,
         isBeta: true,
@@ -136,102 +134,6 @@ export const NavMenu: React.FC<{
     ]
     return tabs.filter(item => !item.isDisabled)
   }, [currentAccount, groupInvitesCount, contactsRequestCount])
-  const handleEmptyGroupCheck = async () => {
-    const emptyGroups = await getGroupsEmpty()
-    emptyGroups?.forEach((data, index) => {
-      if (!toast.isActive(data.id)) {
-        toast({
-          id: data.id,
-          containerStyle: {
-            position: 'fixed',
-            insetInline: '0px',
-            marginInline: 'auto',
-            marginTop: `${(index + 1) * 10}px`,
-            transform: `scaleX(${1 - 0.01 * index})`,
-          },
-          render: props => (
-            <ActionToast
-              title="Invite Members"
-              description={`Your group ${data.name} is feeling like a party with just you - let’s invite your buddies to join the fun!`}
-              action={() => {
-                props.onClose()
-                router.push(`/dashboard/groups?invite=${data.id}`)
-              }}
-              cta="Invite"
-              close={props.onClose}
-            />
-          ),
-          status: 'success',
-          duration: 30000,
-          position: 'top',
-          isClosable: true,
-        })
-      }
-    })
-  }
-  const handleGroupInvites = async () => {
-    if (!currentAccount?.address) return
-    const invitedGroups = await getGroupsInvites()
-    invitedGroups?.forEach((data, index) => {
-      if (!toast.isActive(data.id)) {
-        toast({
-          id: data.id,
-          containerStyle: {
-            position: 'fixed',
-            insetInline: '0px',
-            marginInline: 'auto',
-            marginTop: `${(index + 1) * 10}px`,
-            transform: `scaleX(${1 - 0.01 * index})`,
-          },
-          render: props => (
-            <ActionToast
-              title="Group invite received"
-              description={`You have been invited to join ${data.name}!`}
-              action={() => {
-                props.onClose()
-                router.push(`/dashboard/groups?join=${data.id}`)
-              }}
-              cta="Join Group"
-              close={props.onClose}
-            />
-          ),
-          status: 'success',
-          duration: 30000,
-          position: 'top',
-          isClosable: true,
-        })
-      }
-    })
-  }
-
-  useEffect(() => {
-    if (!currentAccount) return
-    void handleGroupInvites()
-    const lastNotificationTime = getNotificationTime(currentAccount?.address)
-
-    if (
-      lastNotificationTime === null ||
-      (lastNotificationTime.lookups === MAX_DAILY_NOTIFICATIONS_LOOKUPS &&
-        DateTime.fromMillis(lastNotificationTime.date).hasSame(
-          DateTime.now(),
-          'day'
-        ))
-    ) {
-      return
-    }
-    void handleEmptyGroupCheck()
-    if (
-      lastNotificationTime.lookups === MAX_DAILY_NOTIFICATIONS_LOOKUPS ||
-      !DateTime.fromMillis(lastNotificationTime.date).hasSame(
-        DateTime.now(),
-        'day'
-      )
-    ) {
-      saveNotificationTime(currentAccount?.address)
-    } else {
-      incrementNotificationLookup(currentAccount?.address)
-    }
-  }, [currentAccount?.address])
 
   if (!currentAccount) return null
 

@@ -1,7 +1,7 @@
 import { addDays } from 'date-fns'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { MeetingProvider, SchedulingType } from '@/types/Meeting'
+import { SchedulingType } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { DiscordMeetingRequest } from '@/types/Requests'
 import { getSuggestedSlots } from '@/utils/api_helper'
@@ -10,6 +10,7 @@ import {
   selectDefaultProvider,
 } from '@/utils/calendar_manager'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import { getAccountFromDiscordId } from '@/utils/database'
 import { ApiFetchError } from '@/utils/errors'
 import { findStartDateForNotBefore } from '@/utils/time.helper'
@@ -113,7 +114,12 @@ export default async function simpleDiscordMeet(
         undefined,
         undefined,
         title,
-        reminder ? [reminder] : []
+        reminder ? [reminder] : [],
+        [
+          MeetingPermissions.SEE_GUEST_LIST,
+          MeetingPermissions.EDIT_MEETING,
+          MeetingPermissions.INVITE_GUESTS,
+        ]
       )
 
       return res.status(200).json(meeting)

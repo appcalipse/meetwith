@@ -35,16 +35,16 @@ const ContactMemberItem: FC<IContactMemberItem> = props => {
     setGroupParticipants,
     participants,
     setParticipants,
-    groups,
+    group,
     groupParticipants,
   } = useParticipants()
   const participantAddressesSet = useMemo(() => {
     return new Set(
-      getMergedParticipants(participants, groups, groupParticipants)
+      getMergedParticipants(participants, groupParticipants, group)
         .map(user => user.account_address)
         .filter(Boolean)
     )
-  }, [participants, groups, groupParticipants])
+  }, [participants, group, groupParticipants])
 
   const isContactAlreadyAdded = useCallback(() => {
     return participantAddressesSet.has(props.address)

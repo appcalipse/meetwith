@@ -13,6 +13,7 @@ import { Frequency, Options, RRule, rrulestr } from 'rrule'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability } from '@/types/Account'
+import { isCalendarEvent, UnifiedEvent, WithInterval } from '@/types/Calendar'
 import { MeetingReminders, RecurringStatus } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import {
@@ -77,7 +78,6 @@ import {
   scheduleMeetingFromServer,
   syncMeeting,
 } from '@/utils/api_helper'
-
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { NO_MEETING_TYPE, SessionType } from './constants/meeting-types'
@@ -89,6 +89,7 @@ import {
 } from './cryptography'
 import { checkHasSameScheduleTime } from './date_helper'
 import {
+  ApiFetchError,
   DecryptionFailedError,
   GuestListModificationDenied,
   GuestRescheduleForbiddenError,
@@ -200,6 +201,7 @@ const mapRelatedSlots = async (
   isSlotSeries?: boolean
 ) => {
   const accountSlot: { [account: string]: string } = {}
+
   for (const slotId of meeting.related_slot_ids) {
     try {
       let slot
@@ -214,6 +216,9 @@ const mapRelatedSlots = async (
       }
       accountSlot[(slot?.account_address || slot?.guest_email)!] = slotId
     } catch (_e) {
+      // Rethrow server errors — these indicate a backend outage, not a missing slot.
+      // Callers are expected to catch ApiFetchError(500) and cancel the operation.
+      if (_e instanceof ApiFetchError && _e.status === 500) throw _e
       // some slots might not be found if they belong to guests and were wrongly stored
       try {
         const guestSlot = await getGuestSlotById(slotId)
@@ -222,6 +227,13 @@ const mapRelatedSlots = async (
         }
       } catch (_e) {}
     }
+  }
+  if (
+    meeting?.id &&
+    currentAccountAddress &&
+    !accountSlot[currentAccountAddress]
+  ) {
+    accountSlot[currentAccountAddress] = meeting.id
   }
   return accountSlot
 }
@@ -250,6 +262,9 @@ const loadMeetingAccountAddresses = async (
       otherSlot?.account_address &&
         slotsAccounts.push(otherSlot?.account_address)
     } catch (_e) {
+      // Rethrow server errors — these indicate a backend outage, not a missing slot.
+      // Callers are expected to catch ApiFetchError(500) and cancel the operation.
+      if (_e instanceof ApiFetchError && _e.status === 500) throw _e
       // some slots might not be found if they belong to guests and were wrongly stored
     }
   }
@@ -361,17 +376,22 @@ const buildMeetingData = async (
     .map(it => it.slot_id!)
     .filter((val): val is string => val !== undefined)
 
+  const actorTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const participantsMappings = []
 
   for (const participant of sanitizedParticipants) {
+    const currentAccount = allAccounts.find(
+      account =>
+        account.address.toLowerCase() ===
+        participant.account_address?.toLowerCase()
+    )
+    const isScheduler = participant.type === ParticipantType.Scheduler
+
     // we use participant key if it is an actual participant, otherwise, it is a
     // guest and have not a PK yet, so we encode data using our pk.
     const encodingKey =
-      allAccounts.find(
-        account =>
-          account.address.toLowerCase() ===
-          participant.account_address?.toLowerCase()
-      )?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
+      currentAccount?.internal_pub_key ||
+      process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
 
     const privateInfoComplete = JSON.stringify({
       ...privateInfo,
@@ -397,10 +417,12 @@ const buildMeetingData = async (
       slot_id: participant.slot_id,
       status:
         participant.status ||
-        (participant.type === ParticipantType.Scheduler
+        (isScheduler
           ? ParticipationStatus.Accepted
           : ParticipationStatus.Pending),
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timeZone: isScheduler
+        ? actorTimezone // schedulers should keep the timezone they scheduled from
+        : currentAccount?.preferences?.timezone || actorTimezone,
       type: participant.type,
     }
 
@@ -805,6 +827,22 @@ const updateMeeting = async (
     await Promise.all(promises)
   }
   const participantData = await handleParticipants(participants, currentAccount)
+  const meeting_url =
+    meetingUrl ||
+    (
+      await generateMeetingUrl({
+        accounts: participantData.allAccounts,
+        content: content,
+        end: endTime,
+        meeting_id: rootMeetingId,
+        meetingProvider,
+        meetingReminders,
+        meetingRepeat: MeetingRepeat.NO_REPEAT,
+        participants_mapping: participantData.sanitizedParticipants,
+        start: startTime,
+        title: meetingTitle || 'No Title',
+      })
+    ).url
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     meetingTypeId,
@@ -813,12 +851,12 @@ const updateMeeting = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
     content,
-    meetingUrl,
+    meeting_url,
     rootMeetingId,
     meetingTitle,
     meetingReminders,
@@ -836,6 +874,8 @@ const updateMeeting = async (
   }
 
   const slotId = decryptedMeeting.id.split('_')[0]
+  await invalidateMeetingState(currentAccount, participants)
+
   if (decryptedMeeting.user_type === 'guest') {
     const slot: DBSlot = await apiUpdateMeetingAsGuest(slotId, payload)
     return {
@@ -1036,6 +1076,22 @@ const updateMeetingInstance = async (
   const rootMeetingId = existingMeeting?.meeting_id
 
   const participantData = await handleParticipants(participants, currentAccount)
+  const meeting_url =
+    meetingUrl ||
+    (
+      await generateMeetingUrl({
+        accounts: participantData.allAccounts,
+        content: content,
+        end: endTime,
+        meeting_id: rootMeetingId,
+        meetingProvider,
+        meetingReminders,
+        meetingRepeat: MeetingRepeat.NO_REPEAT,
+        participants_mapping: participantData.sanitizedParticipants,
+        start: startTime,
+        title: meetingTitle || 'No Title',
+      })
+    ).url
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     NO_MEETING_TYPE,
@@ -1044,12 +1100,12 @@ const updateMeetingInstance = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
     content,
-    meetingUrl,
+    meeting_url,
     rootMeetingId,
     meetingTitle,
     meetingReminders,
@@ -1067,6 +1123,7 @@ const updateMeetingInstance = async (
   }
 
   const slot: DBSlot = await apiUpdateMeetingInstance(instanceId, payload)
+  await invalidateMeetingState(currentAccount, participants)
   return (await decryptMeeting(slot, currentAccount))!
 }
 const deleteMeetingInstance = async (
@@ -1211,7 +1268,7 @@ const deleteMeetingInstance = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     existingMeeting?.provider || MeetingProvider.GOOGLE_MEET,
@@ -1230,11 +1287,13 @@ const deleteMeetingInstance = async (
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
     version: existingMeeting.version + 1,
+    isDeleteUpdate: true,
   }
   const slotId = existingMeeting.id.split('_')[0]
 
   // Fetch the updated data one last time
   const slot: DBSlot = await apiUpdateMeetingInstance(slotId, payload)
+  await invalidateMeetingState(currentAccount, participants)
   return (await decryptMeeting(slot, currentAccount))!
 }
 const cancelMeetingSeries = async (
@@ -1448,7 +1507,7 @@ const updateMeetingConferenceGuest = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
@@ -1709,7 +1768,7 @@ const updateMeetingSeries = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingProvider,
@@ -1731,6 +1790,7 @@ const updateMeetingSeries = async (
     focus_instance_id: currentInstanceId,
   }
   const slot: DBSlot = await apiUpdateMeetingSeries(slotId, payload)
+  await invalidateMeetingState(currentAccount, participants)
   return (await decryptMeeting(slot, currentAccount))!
 }
 const deleteMeetingSeries = async (
@@ -1844,7 +1904,7 @@ const deleteMeetingSeries = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     meetingInfo.provider || MeetingProvider.GOOGLE_MEET,
@@ -1864,8 +1924,12 @@ const deleteMeetingSeries = async (
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
     focus_instance_id: currentInstanceId,
+    isDeleteUpdate: true,
+    calendar_organizer_address: scheduler?.account_address,
   }
   const slot: DBSlot = await apiUpdateMeetingSeries(slotId, payload)
+  await invalidateMeetingState(currentAccount, participants)
+
   return (await decryptMeeting(slot, currentAccount))!
 }
 
@@ -2022,7 +2086,7 @@ const deleteMeeting = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     existingMeeting?.provider || MeetingProvider.GOOGLE_MEET,
@@ -2041,11 +2105,14 @@ const deleteMeeting = async (
       .filter((it): it is string => it !== undefined),
     version: existingMeeting.version + 1,
     calendar_organizer_address: scheduler?.account_address,
+    isDeleteUpdate: true,
   }
   const slotId = decryptedMeeting.id.split('_')[0]
 
   // Fetch the updated data one last time
   const slot: DBSlot = await apiUpdateMeeting(slotId, payload)
+  await invalidateMeetingState(currentAccount, participants)
+
   return slot
 }
 
@@ -2277,24 +2344,8 @@ const scheduleMeeting = async (
       return meeting
     }
 
-    // Invalidate meetings cache and update meetings where required
-    queryClient.invalidateQueries(
-      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
-    )
-    queryClient.invalidateQueries(
-      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
-    )
+    await invalidateMeetingState(currentAccount, participants)
 
-    participants.forEach(p => {
-      queryClient.invalidateQueries(
-        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
-      )
-      queryClient.invalidateQueries(
-        QueryKeys.busySlots({
-          id: p.account_address?.toLowerCase(),
-        })
-      )
-    })
     return {
       id: slot.id!,
       ...meeting,
@@ -2373,23 +2424,8 @@ const scheduleRecurringMeeting = async (
     const slot: DBSlot = await apiScheduleMeetingSeries(meeting)
 
     // Invalidate meetings cache and update meetings where required
-    queryClient.invalidateQueries(
-      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
-    )
-    queryClient.invalidateQueries(
-      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
-    )
+    await invalidateMeetingState(currentAccount, participants)
 
-    participants.forEach(p => {
-      queryClient.invalidateQueries(
-        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
-      )
-      queryClient.invalidateQueries(
-        QueryKeys.busySlots({
-          id: p.account_address?.toLowerCase(),
-        })
-      )
-    })
     return {
       id: slot.id!,
       ...meeting,
@@ -3123,7 +3159,9 @@ const meetWithSeriesPreprocessors = (
             'minutes'
           )
           .toObject().minutes || 0
-      const ghostEndTime = ghostStartTime.plus({ minutes: difference })
+      const ghostEndTime = ghostStartTime.plus({
+        minutes: Math.abs(difference),
+      })
 
       // Check if an instance already exists for this occurrence
       const instanceExists = slotInstances.some(
@@ -3134,10 +3172,10 @@ const meetWithSeriesPreprocessors = (
       )
       if (!instanceExists) {
         const slotInstance: SlotInstance = {
-          end: ghostEndTime.toJSDate(),
           id: `${slotSerie.id}_${ghostStartTime.toJSDate().getTime()}`, // Unique ID for the ghost instance
           series_id: slotSerie.id!,
           start: ghostStartTime.toJSDate(),
+          end: ghostEndTime.toJSDate(),
           status: RecurringStatus.CONFIRMED,
           meeting_info_encrypted: slotSerie.meeting_info_encrypted,
           slot_id: slotSerie.id || '',
@@ -3231,7 +3269,7 @@ const rsvpMeeting = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     decryptedMeeting.provider || MeetingProvider.GOOGLE_MEET,
@@ -3249,13 +3287,16 @@ const rsvpMeeting = async (
     guestsToRemove: [],
     ignoreOwnerAvailability: true,
     slotsToRemove: [],
-    version: decryptedMeeting.version + 1,
+    version: decryptedMeeting.version,
+    isRsvpUpdate: true,
   }
   const slot: DBSlot = await apiUpdateMeeting(
     decryptedMeeting.id,
     payload,
     signal
   )
+  await invalidateMeetingState(currentAccount, participants)
+
   return await decryptMeeting(slot, currentAccount)!
 }
 const rsvpMeetingInstance = async (
@@ -3355,7 +3396,7 @@ const rsvpMeetingInstance = async (
     participantData.sanitizedParticipants,
     participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<Record<string, string>>((acc, it) => {
-      acc[it] = accountSlotMap[it] || it
+      acc[it] = accountSlotMap[it]
       return acc
     }, {}),
     decryptedMeeting.provider || MeetingProvider.GOOGLE_MEET,
@@ -3374,7 +3415,8 @@ const rsvpMeetingInstance = async (
     guestsToRemove: [],
     ignoreOwnerAvailability: true,
     slotsToRemove: [],
-    version: decryptedMeeting.version + 1,
+    version: decryptedMeeting.version,
+    isRsvpUpdate: true,
   }
 
   const dbSlot: DBSlot = await apiUpdateMeetingInstance(
@@ -3382,9 +3424,57 @@ const rsvpMeetingInstance = async (
     payload,
     signal
   )
+  await invalidateMeetingState(currentAccount, decryptedMeeting.participants)
+
   return await decryptMeeting(dbSlot, currentAccount)!
 }
 
+const invalidateMeetingState = async (
+  currentAccount?: Account | null,
+  participants?: ParticipantInfo[]
+) => {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: QueryKeys.meetingsByAccount(currentAccount?.address),
+      refetchType: 'all',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: QueryKeys.calendarEvents(),
+      refetchType: 'all',
+    }),
+    queryClient.invalidateQueries(
+      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
+    ),
+  ])
+  if (participants) {
+    await Promise.all(
+      participants.flatMap(p => [
+        queryClient.invalidateQueries(
+          QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
+        ),
+        queryClient.invalidateQueries(
+          QueryKeys.busySlots({
+            id: p.account_address?.toLowerCase(),
+          })
+        ),
+      ])
+    )
+  }
+}
+const getActor = (
+  slot: WithInterval<UnifiedEvent<DateTime> | MeetingDecrypted<DateTime>>,
+  currentAccount: Account
+) => {
+  if (isCalendarEvent(slot)) {
+    return slot.attendees?.find(
+      attendee => attendee.email === slot.accountEmail
+    )
+  } else {
+    return slot.participants.find(
+      participant => participant.account_address === currentAccount?.address
+    )
+  }
+}
 export {
   allSlots,
   buildMeetingData,
@@ -3411,6 +3501,7 @@ export {
   generateOffice365CalendarUrl,
   getAccountCalendarUrl,
   getAccountDomainUrl,
+  getActor,
   getMeetingRepeatFromRule,
   googleUrlParsedDate,
   handleParticipants,

@@ -18,14 +18,18 @@ import { mergeLuxonIntervals } from './quickpoll_helper'
 
 export const getMergedParticipants = (
   participants: Array<Participant>,
-  groups: Array<GetGroupsFullResponse>,
   groupParticipants: Record<string, Array<string> | undefined>,
+  activeGroup?: GetGroupsFullResponse,
   accountAddress?: string
 ) => {
-  const seenAddresses = new Set<string>()
+  const seenIdentifiers = new Set<string>()
   const allParticipants: Array<ParticipantInfo> = []
 
-  const groupsMap = new Map(groups.map(g => [g.id, g]))
+  const groupsMap = new Map(
+    [activeGroup]
+      .filter((g): g is GetGroupsFullResponse => Boolean(g))
+      .map(g => [g.id, g])
+  )
 
   for (const participant of participants) {
     if (isGroupParticipant(participant)) {
@@ -38,11 +42,11 @@ export const getMergedParticipants = (
       const membersMap = new Map(group.members?.map(m => [m.address, m]) || [])
 
       for (const memberAddress of groupMembers) {
-        if (seenAddresses.has(memberAddress)) continue
+        if (seenIdentifiers.has(memberAddress.toLowerCase())) continue
 
         const groupMember = membersMap.get(memberAddress)
         if (groupMember?.address) {
-          seenAddresses.add(memberAddress)
+          seenIdentifiers.add(memberAddress.toLowerCase())
           allParticipants.push({
             account_address: groupMember.address,
             meeting_id: '',
@@ -53,16 +57,27 @@ export const getMergedParticipants = (
         }
       }
     } else {
-      if (!seenAddresses.has(participant.account_address || '')) {
-        seenAddresses.add(participant.account_address || '')
+      const identifier = (
+        participant.account_address ||
+        participant.guest_email ||
+        ''
+      ).toLowerCase()
+
+      if (identifier && !seenIdentifiers.has(identifier)) {
+        seenIdentifiers.add(identifier)
         allParticipants.push(participant)
       }
     }
   }
 
-  return accountAddress
-    ? allParticipants.filter(val => val.account_address !== accountAddress)
-    : allParticipants
+  if (accountAddress) {
+    const addr = accountAddress.toLowerCase()
+    return allParticipants.filter(
+      p => (p.account_address || '').toLowerCase() !== addr
+    )
+  }
+
+  return allParticipants
 }
 
 export const parseAccounts = async (

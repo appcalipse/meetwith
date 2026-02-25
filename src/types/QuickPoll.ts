@@ -1,4 +1,5 @@
 import { Auth } from 'googleapis'
+import { DateTime } from 'luxon'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { CaldavCredentials } from '@/utils/services/caldav.service'
 import { O365AuthCredentials } from '@/utils/services/office365.credential'
@@ -76,6 +77,15 @@ export interface QuickPollParticipant {
   available_slots: AvailabilitySlot[]
   timezone?: string
   participant_type: QuickPollParticipantType
+  availability_block_ids?: string[]
+  availability_block_titles?: string[]
+  has_block_based_availability?: boolean
+}
+
+export interface QuickPollJoinContext {
+  pollId: string
+  pollSlug: string
+  pollTitle: string
 }
 
 export interface QuickPollCalendar {
@@ -97,9 +107,31 @@ export interface QuickPollWithParticipants extends QuickPoll {
   host_address?: string
 }
 
+export interface QuickPollListItem extends Omit<QuickPoll, 'participants'> {
+  quick_poll_participants: QuickPollParticipant[]
+  participant_count: number
+  host_name?: string
+  host_address?: string
+  user_participant_type?: QuickPollParticipantType
+  user_status?: string
+  user_availability_block_ids?: string[]
+  user_availability_block_titles?: string[]
+  user_available_slots?: QuickPollParticipant['available_slots']
+  user_timezone?: string
+}
+
 export interface QuickPollParticipantWithAccount extends QuickPollParticipant {
   account_name?: string
   account_avatar?: string
+}
+
+// Poll-specific availability: either selected block IDs or custom schedule
+export interface PollCustomAvailability {
+  timezone: string
+  weekly_availability: Array<{
+    weekday: number
+    ranges: Array<{ start: string; end: string }>
+  }>
 }
 
 // Request interfaces
@@ -118,6 +150,10 @@ export interface CreateQuickPollRequest {
     participant_type: QuickPollParticipantType
     timezone?: string
   }[]
+  /** When set, owner's availability is derived from these blocks (merged). Ignored if custom_availability is set. */
+  availability_block_ids?: string[]
+  /** When set, owner's availability uses this config instead of blocks. */
+  custom_availability?: PollCustomAvailability
 }
 
 export interface UpdateQuickPollRequest {
@@ -133,6 +169,8 @@ export interface UpdateQuickPollRequest {
     toAdd?: AddParticipantData[]
     toRemove?: string[]
   }
+  availability_block_ids?: string[]
+  custom_availability?: PollCustomAvailability
 }
 
 export interface AddParticipantRequest {
@@ -159,9 +197,14 @@ export interface QuickPollParticipantUpdateFields {
   participant_type?: QuickPollParticipantType
 }
 
+export interface UpdateQuickPollParticipantAvailabilityOptions {
+  availability_block_ids?: string[] | null
+}
+
 export interface UpdateParticipantAvailabilityRequest {
   available_slots: AvailabilitySlot[]
   timezone?: string
+  availability_block_ids?: string[] | null
 }
 
 export interface SaveParticipantCalendarRequest {
@@ -194,7 +237,7 @@ export interface OAuthConnectQuery {
 
 // Response interfaces
 export interface QuickPollListResponse {
-  polls: QuickPollWithParticipants[]
+  polls: QuickPollListItem[]
   total_count: number
   has_more: boolean
   isPro?: boolean
@@ -242,3 +285,10 @@ export interface QuickPollSignInContext {
   returnUrl: string
   timestamp: number
 }
+
+export type PollDateRange = {
+  pollStart: DateTime
+  pollEnd: DateTime
+}
+
+export type MonthOption = { value: string; label: string }

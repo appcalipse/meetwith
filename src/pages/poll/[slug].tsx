@@ -1,6 +1,7 @@
 import { Box } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
+import { useEffect } from 'react'
 
 import CustomError from '@/components/CustomError'
 import CustomLoading from '@/components/CustomLoading'
@@ -14,19 +15,25 @@ import { NavigationProvider } from '@/providers/schedule/NavigationContext'
 import { ParticipantsProvider } from '@/providers/schedule/ParticipantsContext'
 import { PermissionsProvider } from '@/providers/schedule/PermissionsContext'
 import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
-import {
-  QuickPollBySlugResponse,
-  QuickPollParticipantType,
-} from '@/types/QuickPoll'
+import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import { getQuickPollBySlug } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { ApiFetchError } from '@/utils/errors'
 import { isJson } from '@/utils/generic_utils'
+import { getQuickPollSignInContext } from '@/utils/storage'
 
 const PollPage = () => {
   const router = useRouter()
   const { slug, tab, participantId } = router.query
   const currentAccount = useAccountContext()
+
+  useEffect(() => {
+    if (!currentAccount?.address || typeof slug !== 'string' || !router.isReady)
+      return
+    const context = getQuickPollSignInContext()
+    if (!context || context.pollSlug !== slug) return
+    // No-op: stay on poll page.
+  }, [currentAccount?.address, slug, router.isReady])
 
   let initialPage = QuickPollPage.AVAILABILITY
   if (tab === 'guest-details') {

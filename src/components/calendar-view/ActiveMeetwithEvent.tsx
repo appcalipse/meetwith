@@ -42,7 +42,7 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
-import { rsvpMeeting } from '@/utils/calendar_manager'
+import { getActor, rsvpMeeting } from '@/utils/calendar_manager'
 import { MeetingAction } from '@/utils/constants/meeting'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
@@ -68,7 +68,6 @@ import { InputTimePicker } from '../input-time-picker'
 import RichTextEditor from '../profile/components/RichTextEditor'
 import { DeleteMeetingDialog } from '../schedule/delete-dialog'
 import ScheduleParticipantsSchedulerModal from '../schedule/ScheduleParticipantsSchedulerModal'
-import { getActor } from './EventDetailsPopOver'
 import MeetingMenu from './MeetingMenu'
 import ParticipantsControl from './ParticipantsControl'
 
@@ -220,13 +219,9 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
     })
     try {
       if (!isCalendarEvent(slot)) {
-        await rsvpMeeting(
-          slot.id,
-          currentAccount.address,
-          status,
-          abortController.signal
-        )
-        // Success: update global cache
+        // Optimistic cache update before API call so that
+        // decryptedMeeting (derived from selectedSlot) stays fresh
+        // when the user clicks "Update Meeting".
         queryClient.setQueryData<CalendarEventsData>(
           createEventsQueryKey(currentDate),
           old => {
@@ -246,6 +241,12 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
               }),
             }
           }
+        )
+        await rsvpMeeting(
+          slot.id,
+          currentAccount.address,
+          status,
+          abortController.signal
         )
       } else {
         const attendeeStatus = mapParticipationStatusToAttendeeStatus(status)
@@ -301,6 +302,32 @@ const ActiveMeetwithEvent: React.FC<ActiveMeetwithEventProps> = ({
             : prev
         }
       })
+      // Revert optimistic cache update
+      if (!isCalendarEvent(slot)) {
+        queryClient.setQueryData<CalendarEventsData>(
+          createEventsQueryKey(currentDate),
+          old => {
+            if (!old?.mwwEvents) return old
+            return {
+              ...old,
+              mwwEvents: old.mwwEvents.map((event: MeetingDecrypted) => {
+                if (event.id !== slot.id) return event
+                return {
+                  ...event,
+                  participants: event.participants.map(p =>
+                    p.account_address === currentAccount?.address
+                      ? {
+                          ...p,
+                          status: previousStatus as ParticipationStatus,
+                        }
+                      : p
+                  ),
+                }
+              }),
+            }
+          }
+        )
+      }
     }
   }
   const _onChange = (newValue: RSVPOption) => {

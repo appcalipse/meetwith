@@ -12,28 +12,30 @@ import {
 import { colord } from 'colord'
 import { DateTime } from 'luxon'
 import * as React from 'react'
-import { FaExpand, FaX } from 'react-icons/fa6'
+import { FaExpand } from 'react-icons/fa6'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import {
   CalendarEventsData,
-  createEventsQueryKey,
   useCalendarContext,
 } from '@/providers/calendar/CalendarContext'
 import {
   isCalendarEvent,
   isDeclined,
   isPendingAction,
+  UnifiedAttendee,
   UnifiedEvent,
   WithInterval,
 } from '@/types/Calendar'
 import { MeetingDecrypted } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { getActor } from '@/utils/calendar_manager'
 import {
   generateBorderColor,
   getDesignSystemTextColor,
 } from '@/utils/color-utils'
+import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
-
 import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import { DeleteEventDialog } from '../schedule/delete-event-dialog'
 import EventDetailsPopOver from './EventDetailsPopOver'
@@ -61,17 +63,10 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
     onOpen: onDeleteEventOpen,
     onClose: onDeleteEventClose,
   } = useDisclosure()
-  const actor = React.useMemo(() => {
-    if (isCalendarEvent(event)) {
-      return event.attendees?.find(
-        attendee => attendee.email === event.accountEmail
-      )
-    } else {
-      return event.participants.find(
-        participant => participant.account_address === currentAccount?.address
-      )
-    }
-  }, [event, currentAccount])
+  const [actor, setActor] = React.useState<
+    UnifiedAttendee | ParticipantInfo | undefined
+  >(getActor(event, currentAccount!))
+
   const isDeclinedStatus = isDeclined(actor?.status)
   const handleOpenDeleteDialog = () => {
     if (isCalendarEvent(event)) {
@@ -108,25 +103,25 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
     const isCalEvent = isCalendarEvent(event)
 
     queryClient.setQueriesData<CalendarEventsData>(
-      { queryKey: ['calendar-events'] },
+      { queryKey: [QueryKeys.calendarEvents()] },
       old => {
         if (!old) return old
 
         return {
           calendarEvents: isCalEvent
-            ? (old.calendarEvents?.filter(
+            ? old.calendarEvents?.filter(
                 e => e.sourceEventId !== event.sourceEventId
-              ) ?? [])
-            : (old.calendarEvents ?? []),
+              ) ?? []
+            : old.calendarEvents ?? [],
           mwwEvents: !isCalEvent
-            ? (old.mwwEvents?.filter(e => e.id !== event.id) ?? [])
-            : (old.mwwEvents ?? []),
+            ? old.mwwEvents?.filter(e => e.id !== event.id) ?? []
+            : old.mwwEvents ?? [],
         }
       }
     )
     close()
 
-    queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
+    queryClient.invalidateQueries({ queryKey: [QueryKeys.calendarEvents()] })
   }
 
   return (
@@ -231,6 +226,8 @@ const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
                 onSelectEvent={() => handleSelectEvent(onClose)}
                 onClose={onClose}
                 onCancelOpen={handleOpenDeleteDialog}
+                actor={actor}
+                setActor={setActor}
               />
             </PopoverBody>
           </PopoverContent>

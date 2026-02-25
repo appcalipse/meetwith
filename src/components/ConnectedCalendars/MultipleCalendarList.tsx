@@ -1,10 +1,12 @@
 import {
   Box,
   Checkbox,
+  Divider,
   Flex,
   HStack,
   Spinner,
   Switch,
+  Tag,
   Text,
   useColorModeValue,
   VStack,
@@ -12,6 +14,7 @@ import {
 import React from 'react'
 
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
+import InfoTooltip from '../profile/components/Tooltip'
 
 export interface MultipleCalendarListProps {
   calendars: (CalendarSyncInfo & { loading: boolean })[]
@@ -54,86 +57,129 @@ const MultipleCalendarList: React.FC<MultipleCalendarListProps> = props => {
     props.updateCalendars(calendars, index)
   }
 
+  const writableCalendars = props.calendars.filter(c => !c.isReadOnly)
+  const readOnlyCalendars = props.calendars.filter(c => c.isReadOnly)
+
+  const renderCalendarRow = (
+    calendar: CalendarSyncInfo & { loading: boolean },
+    index: number,
+    totalInSection: number,
+    showSyncControl: boolean
+  ) => (
+    <Flex
+      key={calendar.calendarId}
+      flexDirection={{ base: 'column', md: 'row' }}
+      borderBottom={index !== totalInSection - 1 ? '1px solid' : ''}
+      borderBottomColor={borderColor}
+      py={3}
+      mt={[0, '0rem !important']}
+      width="100%"
+      position="relative"
+    >
+      <Checkbox
+        flex={1}
+        colorScheme="primary"
+        isChecked={calendar.enabled}
+        onChange={() => toggleCalendar(calendar)}
+        mb={{ base: 4, md: 0 }}
+      >
+        <HStack>
+          <Text flex={1} whiteSpace="nowrap">
+            {calendar.name}
+          </Text>
+          <Box
+            w="20px"
+            height="20px"
+            border="1px solid gray"
+            borderRadius="4px"
+            bgColor={calendar.color || 'white'}
+          />
+        </HStack>
+      </Checkbox>
+
+      {showSyncControl && (
+        <Flex
+          justifyContent={{ base: 'flex-end', md: 'flex-start' }}
+          alignItems="center"
+          direction={{ base: 'row-reverse', md: 'row' }}
+          pl={{ base: 0, md: 4 }}
+        >
+          <Text
+            fontSize="sm"
+            mr={{ base: 0, md: 4 }}
+            align={{ base: 'left', md: 'end' }}
+          >
+            Add new Meetwith meetings to this calendar
+          </Text>
+          <Switch
+            size="md"
+            colorScheme="primary"
+            mr="4"
+            isChecked={calendar.enabled && calendar.sync}
+            onChange={() => toggleAddMeetingsToCalendar(calendar)}
+            isDisabled={!calendar.enabled || calendar.loading}
+          />
+        </Flex>
+      )}
+
+      {!!calendar.loading && (
+        <Flex
+          position="absolute"
+          top={0}
+          left={0}
+          w="100%"
+          h="100%"
+          bgColor={loaderColor}
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Spinner />
+        </Flex>
+      )}
+    </Flex>
+  )
+
   return (
     <Box pl={{ base: 0, md: 20 }}>
       <VStack width="100%" flexWrap="wrap" alignItems="flex-start">
         <HStack width="100%">
-          <Text fontWeight={'bold'}>Available calendars</Text>
+          <Text fontWeight="bold">Available calendars</Text>
         </HStack>
-        {props.calendars.map((calendar, index) => (
-          <Flex
-            key={index}
-            flexDirection={{ base: 'column', md: 'row' }}
-            borderBottom={
-              index !== props.calendars.length - 1 ? '1px solid' : ''
-            }
-            borderBottomColor={borderColor}
-            py={3}
-            mt={[0, '0rem !important']}
-            width="100%"
-            position="relative"
-          >
-            <Checkbox
-              flex={1}
-              colorScheme="primary"
-              isChecked={calendar.enabled}
-              onChange={() => toggleCalendar(calendar)}
-              mb={{ base: 4, md: 0 }}
-            >
-              <HStack>
-                <Text flex={1} whiteSpace="nowrap">
-                  {calendar.name}
-                </Text>
-                <Box
-                  w="20px"
-                  height="20px"
-                  border="1px solid gray"
-                  borderRadius="4px"
-                  bgColor={calendar.color || 'white'}
-                />
-              </HStack>
-            </Checkbox>
 
-            <Flex
-              justifyContent={{ base: 'flex-end', md: 'flex-start' }}
-              alignItems="center"
-              direction={{ base: 'row-reverse', md: 'row' }}
-              pl={{ base: 0, md: 4 }}
-            >
-              <Text
-                fontSize="sm"
-                mr={{ base: 0, md: 4 }}
-                align={{ base: 'left', md: 'end' }}
-              >
-                Add new Meetwith meetings to this calendar
-              </Text>
-              <Switch
-                size="md"
-                colorScheme="primary"
-                mr="4"
-                isChecked={calendar.enabled && calendar.sync}
-                onChange={() => toggleAddMeetingsToCalendar(calendar)}
-                isDisabled={
-                  !calendar.enabled || calendar.loading || calendar.isReadOnly
-                }
-              />
-            </Flex>
-            {!!calendar.loading && (
-              <Flex
-                position="absolute"
-                top={0}
-                left={0}
-                w="100%"
-                h="100%"
-                bgColor={loaderColor}
+        {writableCalendars.map((calendar, index) =>
+          renderCalendarRow(calendar, index, writableCalendars.length, true)
+        )}
+
+        {readOnlyCalendars.length > 0 && (
+          <>
+            <HStack width="100%" gap={0} mt={4} mb={1} alignItems="center">
+              <Divider flex={1} borderColor="border-subtle" />
+              <Tag
+                size="sm"
+                bg="border-subtle"
+                whiteSpace="nowrap"
+                color="text-base"
+                px={3}
+                py={1.5}
                 alignItems="center"
-                justifyContent="center"
+                rounded="full"
               >
-                <Spinner />
-              </Flex>
+                Read-only
+                <InfoTooltip text="Used for availability checks only" mb={0} />
+              </Tag>
+              <Divider flex={1} borderColor="border-subtle" />
+            </HStack>
+
+            {readOnlyCalendars.map((calendar, index) =>
+              renderCalendarRow(
+                calendar,
+                index,
+                readOnlyCalendars.length,
+                false
+              )
             )}
-          </Flex>
-        ))}
+          </>
+        )}
       </VStack>
     </Box>
   )

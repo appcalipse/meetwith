@@ -17,6 +17,7 @@ import {
   GateConditionNotValidError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  MeetingNotFoundError,
   MeetingSessionNotFoundError,
   TimeNotAvailableError,
   TransactionIsRequired,
@@ -30,6 +31,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const meeting = await getSlotInstance(identifier)
       return res.status(200).json(meeting)
     } catch (error) {
+      if (error instanceof MeetingNotFoundError) {
+        return res.status(404).json({ error: 'Meeting not found' })
+      }
       console.error(error)
       res.status(500).json({ error: 'Unknown error occurred' })
     }
@@ -49,8 +53,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const meetingResult: DBSlot = await updateMeetingInstance(
         getParticipantBaseInfoFromAccount(account),
-        meeting,
-        identifier
+        meeting
       )
       return res.status(200).json(meetingResult)
     } catch (e) {

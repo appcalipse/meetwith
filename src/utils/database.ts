@@ -53,7 +53,10 @@ import {
   NotificationChannel,
   VerificationChannel,
 } from '@/types/AccountNotifications'
-import { AvailabilityBlock } from '@/types/availability'
+import {
+  AvailabilityBlock,
+  AvailabilityBlockDetailForMerge,
+} from '@/types/availability'
 import {
   BillingEmailAccountInfo,
   PaymentProvider as BillingPaymentProvider,
@@ -120,13 +123,14 @@ import {
   AddParticipantData,
   AvailabilitySlot,
   CreateQuickPollRequest,
+  PollCustomAvailability,
   PollStatus,
   PollVisibility,
   QuickPollCalendar,
-  QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
   QuickPollParticipantUpdateFields,
+  UpdateQuickPollParticipantAvailabilityOptions,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
@@ -165,6 +169,7 @@ import {
   OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
+import { mergeWeeklyAvailabilityFromBlocksWithTimezone } from '@/utils/availability.helper'
 import {
   MODIFIED_BY_APP_TIMEOUT,
   PaymentNotificationType,
@@ -1303,12 +1308,16 @@ const getSlotsForAccountWithConference = async (
   const conferenceDataMap = await getMultipleConferenceIdsDataBySlotId(
     slots?.map(slot => slot.id).filter(id => id) as string[]
   )
-  for (const slot of slots) {
-    if (!slot.id) continue
+  const slotsWithMeetings = (slots || []).map(slot => {
+    if (!slot.id) return slot
     const conferenceMeeting = conferenceDataMap.get(slot.id)
-    slot.meeting_id = conferenceMeeting?.id
-  }
-  return [...(slots || []), ...(slotInstances || []), ...(slotSeries || [])]
+    return { ...slot, meeting_id: conferenceMeeting?.id }
+  })
+  return [
+    ...(slotsWithMeetings || []),
+    ...(slotInstances || []),
+    ...(slotSeries || []),
+  ]
 }
 
 const getSlotsForAccountMinimal = async (
@@ -1463,7 +1472,9 @@ const syncAllSeries = async () => {
       const newInstances = ghostStartTimes.map(ghostStartRaw => {
         const ghostStartDate = DateTime.fromJSDate(ghostStartRaw)
         const startDateTime = ghostStartDate.set(templateTime)
-        const endDateTime = startDateTime.plus({ minutes: duration_minutes })
+        const endDateTime = startDateTime.plus({
+          minutes: Math.abs(duration_minutes),
+        })
 
         const startMillis = startDateTime.toMillis()
         const startISO = startDateTime.toISO()
@@ -1593,7 +1604,7 @@ const isSlotAvailable = async (
     }
     const minTime = meetingType.min_notice_minutes
     if (meetingType?.plan) {
-      if (meeting_id) {
+      if (meeting_id && !txHash) {
         const meetingSession = await getMeetingSessionByMeetingId(
           meeting_id,
           meetingTypeId
@@ -1775,27 +1786,19 @@ const getMultipleConferenceIdsDataBySlotId = async (
   if (slotIds.length === 0) {
     return new Map()
   }
-  const { data, error } = await db.supabase.rpc<ConferenceMeeting>(
-    'get_meeting_id_by_slot_ids',
-    {
-      slot_ids: slotIds, // This should be a proper JavaScript array
-    }
-  )
+  const { data, error } = await db.supabase.rpc<{
+    id: string
+    slot_id: string
+  }>('get_meeting_id_by_slot_ids', {
+    slot_ids: slotIds, // This should be a proper JavaScript array
+  })
   if (error) {
     throw new Error(error.message)
   }
 
-  const slotToMeetingMap = new Map<string, Pick<ConferenceMeeting, 'id'>>()
-
-  data?.forEach(meeting => {
-    if (meeting.slots && Array.isArray(meeting.slots)) {
-      meeting.slots.forEach(slotId => {
-        if (slotIds.includes(slotId)) {
-          slotToMeetingMap.set(slotId, meeting)
-        }
-      })
-    }
-  })
+  const slotToMeetingMap = new Map<string, Pick<ConferenceMeeting, 'id'>>(
+    data.map(({ id, slot_id }) => [slot_id, { id }])
+  )
 
   return slotToMeetingMap
 }
@@ -2163,6 +2166,13 @@ const deleteMeetingFromDB = async (
   title?: string,
   ical_uid?: string
 ) => {
+  if (guestsToRemove.length > 0) {
+    slotIds = slotIds.concat(
+      guestsToRemove
+        .map(guest => guest.slot_id)
+        .filter((id): id is string => !!id)
+    )
+  }
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
   const instanceIds = slotIds.filter(id => id.includes('_'))
@@ -2578,6 +2588,8 @@ const updateRecurringMeeting = async (
     timezone,
     title: meetingUpdateRequest.title,
     ical_uid: existingSerie.ical_uid,
+    isDeleteEvent: meetingUpdateRequest.isDeleteUpdate,
+    calendar_organizer_address: meetingUpdateRequest.calendar_organizer_address,
   }
 
   // Doing notifications and syncs asynchronously
@@ -3477,6 +3489,17 @@ const saveConferenceMeetingToDB = async (
   }
   throw new Error(error.message)
 }
+const deleteConferenceMeetingFromDb = async (meeting_id: string) => {
+  const { error } = await db.supabase
+    .from('meetings')
+    .delete()
+    .eq('id', meeting_id)
+
+  if (!error) {
+    return true
+  }
+  throw new Error(error.message)
+}
 
 const getConnectedCalendars = async (
   address: string,
@@ -4285,7 +4308,7 @@ const parseParticipantSlots = async (
             new Date(meetingUpdateRequest.start),
             new Date(meetingUpdateRequest.end),
             meetingUpdateRequest.meetingTypeId,
-            undefined,
+            meetingUpdateRequest.txHash,
             meetingUpdateRequest.meeting_id
           ))
 
@@ -4305,16 +4328,18 @@ const parseParticipantSlots = async (
             await getTypeMeetingAvailabilityTypeFromDB(
               meetingUpdateRequest.meetingTypeId
             )
-          isTimeAvailable = () =>
-            ownerAccount &&
-            accountAvailabilities?.some(availability =>
-              isTimeInsideAvailabilities(
-                new Date(meetingUpdateRequest.start),
-                new Date(meetingUpdateRequest.end),
-                availability?.weekly_availability || [],
-                availability?.timezone
+          if (accountAvailabilities && accountAvailabilities.length > 0) {
+            isTimeAvailable = () =>
+              ownerAccount &&
+              accountAvailabilities.some(availability =>
+                isTimeInsideAvailabilities(
+                  new Date(meetingUpdateRequest.start),
+                  new Date(meetingUpdateRequest.end),
+                  availability?.weekly_availability || [],
+                  availability?.timezone
+                )
               )
-            )
+          }
         }
 
         if (
@@ -4394,21 +4419,34 @@ const updateMeeting = async (
   const { meetingResponse, slots, index, changingTime, timezone } =
     await parseParticipantSlots(participantActing, meetingUpdateRequest)
 
-  // one last check to make sure that the version did not change
-  const everySlotId = meetingUpdateRequest.participants_mapping
-    .filter(it => it.slot_id)
-    .map(it => it.slot_id?.split('_')[0]) as string[]
-  const everySlot = await getMeetingsFromDB(everySlotId)
+  // rsvp updates should ignore versions as the updates is made from the latest version of an event
+  if (!meetingUpdateRequest.isRsvpUpdate) {
+    // one last check to make sure that the version did not change
+    const everySlotId = meetingUpdateRequest.participants_mapping
+      .filter(it => it.slot_id)
+      .map(it => it.slot_id?.split('_')[0]) as string[]
+    const everySlot = await getMeetingsFromDB(everySlotId)
 
-  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
-    throw new MeetingChangeConflictError()
+    if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
+      throw new MeetingChangeConflictError()
+  }
   // there is no support from supabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts
   const slotInstances = slots.filter(slot => slot.id && slot.id.includes('_'))
   const slotsFiltered = slots.filter(slot => slot.id && !slot.id.includes('_'))
-  const query = await db.supabase.from('slots').upsert(
-    slotsFiltered.map(slot => ({ ...slot, id: slot.id })),
+  const query = await db.supabase.from<Tables<'slots'>>('slots').upsert(
+    slotsFiltered.map(slot => ({
+      id: slot.id,
+      account_address: slot.account_address ?? null,
+      end: slot.end,
+      guest_email: slot.guest_email ?? null,
+      meeting_info_encrypted: slot.meeting_info_encrypted,
+      recurrence: slot.recurrence,
+      role: slot.role ?? null,
+      start: slot.start,
+      version: slot.version,
+    })),
     { onConflict: 'id' }
   )
 
@@ -4424,10 +4462,10 @@ const updateMeeting = async (
       const seriesId = seriesInstance?.id
       if (seriesId) {
         slotInstanceToInsert.push({
-          account_address: slot.account_address,
+          account_address: slot.account_address ?? null,
           created_at: slot.created_at,
           end: slot.end,
-          guest_email: slot.guest_email,
+          guest_email: slot.guest_email ?? null,
           id: slot.id,
           override_meeting_info_encrypted: slot.meeting_info_encrypted,
           series_id: seriesId,
@@ -4521,6 +4559,7 @@ const updateMeeting = async (
     timezone,
     title: meetingUpdateRequest.title,
     calendar_organizer_address: meetingUpdateRequest.calendar_organizer_address,
+    isDeleteEvent: meetingUpdateRequest.isDeleteUpdate,
   }
 
   // Doing notifications and syncs asynchronously
@@ -4563,8 +4602,7 @@ const getSeriesIdMapping = async (slot_id: string[]) => {
 }
 const updateMeetingInstance = async (
   participantActing: ParticipantBaseInfo,
-  meetingUpdateRequest: MeetingInstanceUpdateRequest,
-  identifier: string
+  meetingUpdateRequest: MeetingInstanceUpdateRequest
 ): Promise<DBSlot> => {
   const {
     meetingResponse,
@@ -4584,10 +4622,10 @@ const updateMeetingInstance = async (
     const seriesId = seriesInstance?.id
     if (seriesId) {
       slotInstances.push({
-        account_address: slot.account_address,
+        account_address: slot.account_address ?? null,
         created_at: slot.created_at,
         end: slot.end,
-        guest_email: slot.guest_email,
+        guest_email: slot.guest_email ?? null,
         id: slot.id,
         override_meeting_info_encrypted: slot.meeting_info_encrypted,
         series_id: seriesId,
@@ -4598,10 +4636,10 @@ const updateMeetingInstance = async (
     } else {
       // meeting never had a series so we create a slot for this new participant
       slots.push({
-        account_address: slot.account_address,
+        account_address: slot.account_address ?? null,
         created_at: slot.created_at,
         end: slot.end,
-        guest_email: slot.guest_email,
+        guest_email: slot.guest_email ?? null,
         id: slot.id.split('_')[0],
         meeting_info_encrypted: slot.meeting_info_encrypted,
         role: slot.role || ParticipantType.Invitee,
@@ -4615,8 +4653,18 @@ const updateMeetingInstance = async (
     .from('slot_instance')
     .upsert(slotInstances, { onConflict: 'id' })
   if (slots.length > 0) {
-    await db.supabase.from('slots').upsert(
-      slots.map(slot => ({ ...slot, id: slot.id.split('_')[0] })),
+    await db.supabase.from<Tables<'slots'>>('slots').upsert(
+      slots.map(slot => ({
+        id: slot.id.split('_')[0],
+        account_address: slot.account_address ?? null,
+        end: slot.end,
+        guest_email: slot.guest_email ?? null,
+        meeting_info_encrypted: slot.meeting_info_encrypted,
+        recurrence: slot.recurrence,
+        role: slot.role ?? null,
+        start: slot.start,
+        version: slot.version,
+      })),
       { onConflict: 'id' }
     )
   }
@@ -4660,6 +4708,7 @@ const updateMeetingInstance = async (
       timezone,
       title: meetingUpdateRequest.title,
       ical_uid: slotSerie?.ical_uid,
+      isDeleteEvent: meetingUpdateRequest.isDeleteUpdate,
     }
     // Doing notifications and syncs asynchronously
     fetch(`${apiUrl}/server/meetings/instance/syncAndNotify`, {
@@ -6766,6 +6815,10 @@ const getTransactionsById = async (id: string) => {
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     throw new Error(error.message)
   }
   return data
@@ -6778,6 +6831,10 @@ const getTransactionsStatusById = async (id: string) => {
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     throw new Error(error.message)
   }
   return data?.status
@@ -7111,7 +7168,7 @@ const getMeetingSessionByMeetingId = async (
   const { data: meetingSession, error } = await db.supabase
     .from('meeting_sessions')
     .select('*')
-    .eq('id', meeting_id)
+    .eq('meeting_id', meeting_id)
     .eq('meeting_type_id', meeting_type_id)
     .maybeSingle()
   if (error) {
@@ -7256,9 +7313,6 @@ const handleWebhookEvent = async (
   resourceId: string,
   resourceState: ResourceState
 ): Promise<boolean> => {
-  console.trace(
-    `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
-  )
   const { data } = await db.supabase
     .from<
       Tables<'calendar_webhooks'> & {
@@ -7275,10 +7329,12 @@ const handleWebhookEvent = async (
     .eq('resource_id', resourceId)
     .maybeSingle()
   if (!data) {
-    throw new Error(
-      `No webhook found for channel: ${channelId}, resource: ${resourceId}`
-    )
+    // return okay so google doesn't keep polling us
+    return true
   }
+  console.trace(
+    `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
+  )
   const calendar: ConnectedCalendar = data?.connected_calendar
   if (!calendar) return false
   const start = DateTime.now()
@@ -7296,12 +7352,13 @@ const handleWebhookEvent = async (
       start.toISO(),
       end.toISO()
     )
-    // eslint-disable-next-line no-restricted-syntax
+
     if (syncToken)
       await updateResourcesSyncToken(channelId, resourceId, syncToken)
     return true
   }
   let allEvents: calendar_v3.Schema$Event[] = []
+  let newSyncToken: string | null | undefined
   try {
     const { events, nextSyncToken } = await integration.listEvents(
       data.calendar_id,
@@ -7309,6 +7366,7 @@ const handleWebhookEvent = async (
     )
 
     allEvents = events
+    newSyncToken = nextSyncToken
     if (nextSyncToken)
       await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
   } catch (error) {
@@ -7375,6 +7433,16 @@ const handleWebhookEvent = async (
         )
       )
   )
+  if (newSyncToken) {
+    // we need to sync all updates right after we're done processing them
+    const { nextSyncToken } = await integration.listEvents(
+      data.calendar_id,
+      newSyncToken
+    )
+
+    if (nextSyncToken)
+      await updateResourcesSyncToken(channelId, resourceId, nextSyncToken)
+  }
   return actions.length > 0
 }
 
@@ -7491,8 +7559,8 @@ const handleSyncRecurringEvents = async (
       const { meetingInfo, conferenceMeeting } =
         await getConferenceDecryptedMeeting(meetingId)
       if (!meetingInfo || !masterEvent.recurrence) continue
-      // simply process meetingd
-      if (masterEvent.status === 'cancelled') {
+
+      if (masterEvent.status?.toLowerCase?.() === 'cancelled') {
         await handleCancelOrDeleteSeries(
           calendar.account_address,
           meetingInfo,
@@ -7517,7 +7585,7 @@ const handleSyncRecurringEvents = async (
           meetingInfo,
           parsedParticipants,
           extractMeetingDescription(masterEvent.description || '') || '',
-          masterEvent.location || '',
+          meetingInfo.meeting_url,
           conferenceMeeting.provider,
           masterEvent.summary || '',
           conferenceMeeting.reminders,
@@ -7611,12 +7679,14 @@ const getConferenceDecryptedMeeting = async (meetingId: string) => {
   if (!conferenceMeeting || conferenceMeeting.version !== MeetingVersion.V3)
     return {
       conferenceMeeting,
+      hasActiveSlots: false,
       meetingInfo: null,
     }
   const meetingInfo = await decryptConferenceMeeting(conferenceMeeting)
   if (!meetingInfo)
     return {
       conferenceMeeting,
+      hasActiveSlots: false,
       meetingInfo: null,
     }
   const { data } = await db.supabase
@@ -7625,12 +7695,14 @@ const getConferenceDecryptedMeeting = async (meetingId: string) => {
     .in('id', conferenceMeeting.slots)
     .limit(1)
   meetingInfo.version = data?.[0]?.version || 0
-  return { conferenceMeeting, meetingInfo }
+  const hasActiveSlots = (data?.length ?? 0) > 0
+  return { conferenceMeeting, hasActiveSlots, meetingInfo }
 }
 const handleSyncEvent = async (
   event: calendar_v3.Schema$Event,
   calendar: ConnectedCalendar
 ) => {
+  console.info('Event Status: ', event.status)
   const meetingId = event?.extendedProperties?.private?.meetingId
   const meetingTypeId = event?.extendedProperties?.private?.meetingTypeId
   const includesParticipants =
@@ -7644,14 +7716,22 @@ const handleSyncEvent = async (
     console.warn(`Skipping event ${event.id} due to only scheduler attendee`)
     return
   }
-  const { meetingInfo, conferenceMeeting } =
+  const { meetingInfo, conferenceMeeting, hasActiveSlots } =
     await getConferenceDecryptedMeeting(meetingId)
   if (!meetingInfo) return
   if (!event.start?.dateTime || !event.end?.dateTime) return
+  // If the meeting has no active slots, it was already fully cancelled/deleted.
+  // Processing it again would re-create slots via upsert, causing ghost meetings.
+  if (!hasActiveSlots) {
+    console.info(
+      `Skipping sync for event ${event.id} (meeting ${meetingId}): no active slots remain`
+    )
+    return
+  }
   try {
     // eslint-disable-next-line no-restricted-syntax
     let meeting
-    if (event.status === 'cancelled') {
+    if (event.status?.toLowerCase?.() === 'cancelled') {
       meeting = await handleCancelOrDelete(
         calendar.account_address,
         meetingInfo,
@@ -7673,7 +7753,7 @@ const handleSyncEvent = async (
         meetingInfo,
         parsedParticipants,
         extractMeetingDescription(event.description || '') || '',
-        event.location || '',
+        meetingInfo.meeting_url || '',
         conferenceMeeting.provider,
         event.summary || '',
         conferenceMeeting.reminders,
@@ -7981,7 +8061,6 @@ const verifyUserPin = async (
   pin: string
 ): Promise<boolean> => {
   try {
-    // Get raw data including pin_hash for verification
     const { data, error } = await db.supabase
       .from('payment_preferences')
       .select('pin_hash')
@@ -7989,8 +8068,12 @@ const verifyUserPin = async (
       .maybeSingle()
 
     if (error) {
-      console.error('Error fetching PIN for verification:', error)
-      return false
+      if (error.code === 'PGRST116') {
+        // No rows returned - no pin set
+        return false
+      }
+      Sentry.captureException(error)
+      throw new Error('Could not verify pin')
     }
 
     if (!data?.pin_hash) {
@@ -8168,6 +8251,10 @@ const checkPollSlugExists = async (slug: string): Promise<boolean> => {
       .maybeSingle()
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned
+        return false
+      }
       throw error
     }
 
@@ -8321,6 +8408,56 @@ const countScheduledQuickPollsThisMonth = async (
   return count || 0
 }
 
+/**
+ * Resolves poll availability from custom config or availability block IDs.
+ */
+const resolvePollAvailabilityFromRequest = async (
+  ownerAddress: string | null,
+  customAvailability: PollCustomAvailability | null | undefined,
+  availabilityBlockIds: string[] | null | undefined
+): Promise<{ slots: AvailabilitySlot[]; timezone: string }> => {
+  if (customAvailability) {
+    const custom = customAvailability
+    const slots = (custom.weekly_availability || []).map(day => ({
+      ranges: day.ranges || [],
+      weekday: day.weekday,
+    }))
+    return { slots, timezone: custom.timezone }
+  }
+  if (availabilityBlockIds && availabilityBlockIds.length > 0 && ownerAddress) {
+    const { data: blocks } = await db.supabase
+      .from('availabilities')
+      .select('id, title, timezone, weekly_availability')
+      .eq('account_owner_address', ownerAddress.toLowerCase())
+      .in('id', availabilityBlockIds)
+
+    if (blocks && blocks.length > 0) {
+      const asAvailabilityBlocks: AvailabilityBlock[] = blocks.map(
+        (b: {
+          id: string
+          title: string
+          timezone: string
+          weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+        }) => ({
+          id: b.id,
+          title: b.title,
+          timezone: b.timezone,
+          isDefault: false,
+          weekly_availability: b.weekly_availability || [],
+        })
+      )
+      const merged =
+        mergeWeeklyAvailabilityFromBlocksWithTimezone(asAvailabilityBlocks)
+      const slots = merged.map(day => ({
+        ranges: day.ranges || [],
+        weekday: day.weekday,
+      }))
+      return { slots, timezone: asAvailabilityBlocks[0].timezone }
+    }
+  }
+  return { slots: [], timezone: '' }
+}
+
 const createQuickPoll = async (
   owner_address: string,
   pollData: CreateQuickPollRequest
@@ -8356,24 +8493,57 @@ const createQuickPoll = async (
       owner_address
     )
 
-    // Get owner's availability
     let ownerAvailableSlots: AvailabilitySlot[] = []
-    try {
-      const availabilityId = await getDefaultAvailabilityBlockId(owner_address)
-      if (availabilityId) {
-        const { data: availability } = await db.supabase
-          .from('availabilities')
-          .select('weekly_availability')
-          .eq('id', availabilityId)
-          .maybeSingle()
+    let ownerTimezone = ownerAccount.preferences?.timezone || 'UTC'
+    const ownerBlockIds =
+      pollData.availability_block_ids?.length && !pollData.custom_availability
+        ? pollData.availability_block_ids
+        : null
 
-        if (availability?.weekly_availability) {
-          ownerAvailableSlots = availability.weekly_availability.map(
-            (day: AvailabilitySlot) => ({
-              ranges: day.ranges || [],
-              weekday: day.weekday,
-            })
+    try {
+      if (ownerBlockIds) {
+        ownerAvailableSlots = []
+        const { data: firstBlock } = await db.supabase
+          .from('availabilities')
+          .select('timezone')
+          .eq('account_owner_address', owner_address.toLowerCase())
+          .in('id', ownerBlockIds)
+          .limit(1)
+          .maybeSingle()
+        if (firstBlock?.timezone) ownerTimezone = firstBlock.timezone
+      } else {
+        const resolved = await resolvePollAvailabilityFromRequest(
+          owner_address,
+          pollData.custom_availability,
+          pollData.availability_block_ids
+        )
+        if (resolved.slots.length > 0) {
+          ownerAvailableSlots = resolved.slots
+          ownerTimezone = resolved.timezone
+        }
+        if (ownerAvailableSlots.length === 0 && !ownerBlockIds) {
+          const availabilityId = await getDefaultAvailabilityBlockId(
+            owner_address
           )
+          if (availabilityId) {
+            const { data: availability } = await db.supabase
+              .from('availabilities')
+              .select('weekly_availability, timezone')
+              .eq('id', availabilityId)
+              .maybeSingle()
+
+            if (availability?.weekly_availability) {
+              ownerAvailableSlots = availability.weekly_availability.map(
+                (day: AvailabilitySlot) => ({
+                  ranges: day.ranges || [],
+                  weekday: day.weekday,
+                })
+              )
+              if (availability.timezone) {
+                ownerTimezone = availability.timezone
+              }
+            }
+          }
         }
       }
     } catch (error) {
@@ -8382,23 +8552,21 @@ const createQuickPoll = async (
 
     const ownerParticipant = {
       account_address: owner_address,
-      available_slots: ownerAvailableSlots,
+      available_slots: ownerBlockIds ? [] : ownerAvailableSlots,
       guest_email: ownerEmail || '',
       guest_name: ownerAccount.preferences?.name || '',
       participant_type: QuickPollParticipantType.SCHEDULER,
       poll_id: poll.id,
       status: QuickPollParticipantStatus.ACCEPTED,
-      timezone: ownerAccount.preferences?.timezone || 'UTC',
+      timezone: ownerTimezone,
     }
 
     const invitees = await Promise.all(
       (pollData.participants || []).map(async p => {
         let timezone = 'UTC'
         let email = ''
-        let availableSlots: AvailabilitySlot[] = []
         let participantStatus = QuickPollParticipantStatus.PENDING
 
-        // For account owners, fetch their timezone and availability from account preferences
         if (p.account_address) {
           try {
             const participantAccount = await getAccountFromDB(p.account_address)
@@ -8407,43 +8575,19 @@ const createQuickPoll = async (
             )
             timezone = participantAccount.preferences?.timezone || 'UTC'
             participantStatus = QuickPollParticipantStatus.ACCEPTED
-
-            // Get the user's default availability block
-            const availabilityId = await getDefaultAvailabilityBlockId(
-              p.account_address
-            )
-            if (availabilityId) {
-              const { data: availability } = await db.supabase
-                .from('availabilities')
-                .select('weekly_availability')
-                .eq('id', availabilityId)
-                .maybeSingle()
-
-              if (availability?.weekly_availability) {
-                // Convert weekly availability to poll format
-                availableSlots = availability.weekly_availability.map(
-                  (day: AvailabilitySlot) => ({
-                    ranges: day.ranges || [],
-                    weekday: day.weekday,
-                  })
-                )
-              }
-            }
           } catch (error) {
             console.warn(
-              `Could not fetch timezone/availability for ${p.account_address}:`,
+              `Could not fetch timezone for ${p.account_address}:`,
               error
             )
           }
         } else if (p.guest_email) {
-          // For guest participants, use the provided email directly
           email = p.guest_email
-          participantStatus = QuickPollParticipantStatus.PENDING
         }
 
         return {
           account_address: p.account_address,
-          available_slots: availableSlots,
+          available_slots: [] as AvailabilitySlot[],
           guest_email: email || '',
           guest_name: p.name || '',
           participant_type: QuickPollParticipantType.INVITEE,
@@ -8456,11 +8600,36 @@ const createQuickPoll = async (
 
     const participantsToAdd = [ownerParticipant, ...invitees]
 
-    const { error: participantsError } = await db.supabase
-      .from('quick_poll_participants')
-      .insert(participantsToAdd)
+    const { data: insertedParticipants, error: participantsError } =
+      await db.supabase
+        .from('quick_poll_participants')
+        .insert(participantsToAdd)
+        .select('id, participant_type')
 
     if (participantsError) throw participantsError
+
+    if (ownerBlockIds && insertedParticipants?.length) {
+      const schedulerRow = insertedParticipants.find(
+        (r: { participant_type: string }) =>
+          r.participant_type === QuickPollParticipantType.SCHEDULER
+      )
+      if (schedulerRow?.id) {
+        const { error: availError } = await db.supabase
+          .from('quick_poll_availabilities')
+          .insert(
+            ownerBlockIds.map((availability_id: string) => ({
+              participant_id: schedulerRow.id,
+              availability_id,
+            }))
+          )
+        if (availError) {
+          console.warn(
+            'Could not insert quick_poll_availabilities:',
+            availError
+          )
+        }
+      }
+    }
 
     // Send invitation emails and notifications to all participants (excluding the host)
     const inviterName =
@@ -8548,22 +8717,61 @@ const createQuickPoll = async (
   }
 }
 
+const buildBlocksByParticipant = (
+  rows:
+    | (Pick<
+        Tables<'quick_poll_availabilities'>,
+        'participant_id' | 'availability_id'
+      > & {
+        availabilities: Pick<
+          Tables<'availabilities'>,
+          'id' | 'title' | 'timezone' | 'weekly_availability'
+        > | null
+      })[]
+    | null
+): Map<string, AvailabilityBlockDetailForMerge[]> => {
+  const map = new Map<string, AvailabilityBlockDetailForMerge[]>()
+  if (!rows?.length) return map
+  for (const row of rows) {
+    const avail = row.availabilities
+    if (!avail?.id) continue
+    const list = map.get(row.participant_id) ?? []
+    list.push({
+      id: avail.id,
+      title: (avail.title ?? '').trim() || '',
+      timezone: avail.timezone ?? 'UTC',
+      // Supabase types weekly_availability as Json; DB stores DayAvailability[]
+      weekly_availability: Array.isArray(avail.weekly_availability)
+        ? (avail.weekly_availability as unknown as Array<{
+            weekday: number
+            ranges: TimeRange[]
+          }>)
+        : [],
+    })
+    map.set(row.participant_id, list)
+  }
+  return map
+}
+
 const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
   try {
-    // Get the poll
     const { data: poll, error: pollError } = await db.supabase
       .from('quick_polls')
       .select('*')
       .eq('id', pollId)
       .maybeSingle()
 
-    if (pollError) throw pollError
+    if (pollError) {
+      if (pollError.code === 'PGRST116') {
+        throw new QuickPollNotFoundError(pollId)
+      }
+      throw pollError
+    }
     if (!poll) {
       throw new QuickPollNotFoundError(pollId)
     }
 
-    // Get participants with account information
-    const { data: participants, error: participantsError } = await db.supabase
+    const participantsPromise = db.supabase
       .from('quick_poll_participants')
       .select(
         `
@@ -8582,7 +8790,21 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
       .neq('status', QuickPollParticipantStatus.PENDING)
       .order('created_at', { ascending: true })
 
+    const availabilitiesPromise = db.supabase
+      .from('quick_poll_availabilities')
+      .select(
+        'participant_id, availability_id, availabilities(id, title, timezone, weekly_availability), quick_poll_participants!inner(poll_id)'
+      )
+      .eq('quick_poll_participants.poll_id', pollId)
+
+    const [
+      { data: participants, error: participantsError },
+      { data: pollAvailRows },
+    ] = await Promise.all([participantsPromise, availabilitiesPromise])
+
     if (participantsError) throw participantsError
+
+    const blocksByParticipant = buildBlocksByParticipant(pollAvailRows)
 
     // Get host information
     const hostParticipant = participants.find(
@@ -8623,11 +8845,47 @@ const getQuickPollById = async (pollId: string, requestingAddress?: string) => {
         host_address: hostAddress,
         host_name: hostName,
         participant_count: participants.length,
-        participants: participants.map(p => ({
-          ...p,
-          account_name:
-            p.accounts?.account_preferences?.[0]?.name || p.guest_name,
-        })),
+        participants: participants.map(p => {
+          const blocks = blocksByParticipant.get(p.id)
+          const base = {
+            ...p,
+            account_name:
+              p.accounts?.account_preferences?.[0]?.name || p.guest_name,
+          }
+          if (blocks && blocks.length > 0) {
+            const asAvailabilityBlocks: AvailabilityBlock[] = blocks.map(
+              (b): AvailabilityBlock => ({
+                id: b.id,
+                title: b.title,
+                timezone: b.timezone,
+                isDefault: false,
+                weekly_availability: b.weekly_availability,
+              })
+            )
+            const resolvedSlots = mergeWeeklyAvailabilityFromBlocksWithTimezone(
+              asAvailabilityBlocks
+            ).map(day => ({
+              weekday: day.weekday,
+              ranges: day.ranges || [],
+            }))
+            return {
+              ...base,
+              availability_block_ids: blocks.map(b => b.id),
+              availability_block_titles: blocks.map(b => b.title),
+              available_slots: resolvedSlots,
+              timezone: blocks[0].timezone,
+              has_block_based_availability: true,
+            }
+          }
+          return {
+            ...base,
+            availability_block_ids: undefined,
+            availability_block_titles: undefined,
+            available_slots: (p.available_slots as AvailabilitySlot[]) || [],
+            timezone: p.timezone,
+            has_block_based_availability: false,
+          }
+        }),
       },
     }
   } catch (error) {
@@ -8647,7 +8905,12 @@ const getQuickPollBySlug = async (slug: string, requestingAddress?: string) => {
       .eq('slug', slug)
       .maybeSingle()
 
-    if (pollError) throw pollError
+    if (pollError) {
+      if (pollError.code === 'PGRST116') {
+        throw new QuickPollSlugNotFoundError(slug)
+      }
+      throw pollError
+    }
     if (!poll) {
       throw new QuickPollSlugNotFoundError(slug)
     }
@@ -8692,19 +8955,26 @@ const getQuickPollsForAccount = async (
 
     const pollIds = userParticipations.map(p => p.poll_id)
 
-    // Now get all polls with all their participants
+    // Now get all polls with all their participants and block-based availability
     let query = db.supabase
       .from('quick_polls')
       .select(
         `
         *,
         quick_poll_participants (
+          id,
           participant_type,
           status,
           account_address,
           guest_name,
+          available_slots,
+          timezone,
           accounts:account_address (
             account_preferences (name)
+          ),
+          quick_poll_availabilities (
+            availability_id,
+            availabilities (id, title)
           )
         )
       `
@@ -8750,28 +9020,61 @@ const getQuickPollsForAccount = async (
 
     if (countError) throw countError
 
-    // Process the results
     const processedPolls = polls.map(poll => {
-      // Find the requesting user's participation details
-      const userParticipating = poll.quick_poll_participants.find(
-        (p: QuickPollParticipant) => p.account_address === accountAddress
+      // Query includes nested quick_poll_availabilities and accounts; base Tables<> doesn't
+      const participants =
+        poll.quick_poll_participants as (Tables<'quick_poll_participants'> & {
+          quick_poll_availabilities?: (Pick<
+            Tables<'quick_poll_availabilities'>,
+            'availability_id'
+          > & {
+            availabilities: Pick<
+              Tables<'availabilities'>,
+              'id' | 'title'
+            > | null
+          })[]
+        })[]
+      const currentUserParticipant = participants.find(
+        p => p.account_address === accountAddress
       )
+      const blockRows =
+        currentUserParticipant?.quick_poll_availabilities?.filter(
+          r => r.availabilities?.id
+        ) ?? []
+      const isBlockBased = blockRows.length > 0
 
-      // Find the host (scheduler)
-      const host = poll.quick_poll_participants.find(
-        (p: QuickPollParticipant) =>
-          p.participant_type === QuickPollParticipantType.SCHEDULER
+      const host = participants.find(
+        p => p.participant_type === QuickPollParticipantType.SCHEDULER
       )
+      const hostWithAccount = host as typeof host & {
+        accounts?: { account_preferences?: { name?: string }[] }
+      }
 
       return {
         ...poll,
-        host_address: host?.account_address || '',
+        host_address: host?.account_address ?? '',
         host_name:
-          host?.accounts?.account_preferences?.name ||
-          host?.guest_name ||
+          hostWithAccount?.accounts?.account_preferences?.[0]?.name ??
+          host?.guest_name ??
           'Unknown',
-        user_participant_type: userParticipating?.participant_type,
-        user_status: userParticipating?.status,
+        user_participant_type: currentUserParticipant?.participant_type,
+        user_status: currentUserParticipant?.status,
+        ...(isBlockBased
+          ? {
+              user_availability_block_ids: blockRows.map(
+                r => r.availability_id
+              ),
+              user_availability_block_titles: blockRows.map(
+                r => r.availabilities?.title ?? ''
+              ),
+            }
+          : {
+              user_available_slots:
+                (currentUserParticipant?.available_slots as
+                  | AvailabilitySlot[]
+                  | undefined) ?? [],
+              user_timezone: currentUserParticipant?.timezone,
+            }),
       }
     })
 
@@ -8818,15 +9121,18 @@ const updateQuickPoll = async (
       participant?.participant_type === QuickPollParticipantType.SCHEDULER
     const hasInvitePermission =
       poll.permissions?.includes(MeetingPermissions.INVITE_GUESTS) || false
+    const hasSchedulePermission =
+      poll.permissions?.includes(MeetingPermissions.SCHEDULE_MEETING) ?? false
+    const canUpdateStatusAsParticipant = !!participant && hasSchedulePermission
 
     const { participants: participantUpdates, ...otherUpdates } = updates
     const hasOtherUpdates = Object.keys(otherUpdates).length > 0
 
-    if (hasOtherUpdates && !isScheduler) {
+    if (hasOtherUpdates && !isScheduler && !canUpdateStatusAsParticipant) {
       throw new QuickPollUnauthorizedError('You cannot edit this poll')
     }
 
-    if (!isScheduler) {
+    if (!isScheduler && !canUpdateStatusAsParticipant) {
       if (!participantUpdates || !hasInvitePermission || !participant) {
         throw new QuickPollUnauthorizedError('You cannot edit this poll')
       }
@@ -8843,7 +9149,59 @@ const updateQuickPoll = async (
       await updateQuickPollParticipants(pollId, participantUpdates)
     }
 
-    const { participants: _, ...pollUpdates } = updates
+    const {
+      participants: _,
+      availability_block_ids: availBlockIds,
+      custom_availability: customAvail,
+      ...pollUpdates
+    } = updates
+
+    if (
+      isScheduler &&
+      (availBlockIds !== undefined || customAvail !== undefined)
+    ) {
+      const { data: schedulerParticipant } = await db.supabase
+        .from('quick_poll_participants')
+        .select('id')
+        .eq('poll_id', pollId)
+        .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+        .maybeSingle()
+
+      if (schedulerParticipant?.id) {
+        try {
+          const hasBlocks =
+            availBlockIds && availBlockIds.length > 0 && !customAvail
+          if (hasBlocks) {
+            await updateQuickPollParticipantAvailability(
+              schedulerParticipant.id,
+              [],
+              undefined,
+              { availability_block_ids: availBlockIds }
+            )
+          } else {
+            const resolved = await resolvePollAvailabilityFromRequest(
+              ownerAddress ?? null,
+              customAvail,
+              undefined
+            )
+            const defaultTimezone = ownerAddress
+              ? (await getAccountFromDB(ownerAddress)).preferences?.timezone ||
+                'UTC'
+              : 'UTC'
+            const newSlots = resolved.slots
+            const newTimezone =
+              resolved.slots.length > 0 ? resolved.timezone : defaultTimezone
+            await updateQuickPollParticipantAvailability(
+              schedulerParticipant.id,
+              newSlots,
+              newTimezone
+            )
+          }
+        } catch (availError) {
+          console.warn('Could not update poll availability:', availError)
+        }
+      }
+    }
 
     const { data: updatedPoll, error } = await db.supabase
       .from('quick_polls')
@@ -9291,8 +9649,7 @@ const addQuickPollParticipant = async (
       )
     }
 
-    // For account owners, fetch their weekly availability
-    let availableSlots: AvailabilitySlot[] = []
+    const availableSlots: AvailabilitySlot[] = []
     let timezone = 'UTC'
 
     if (participantData.account_address) {
@@ -9301,31 +9658,9 @@ const addQuickPollParticipant = async (
           participantData.account_address
         )
         timezone = participantAccount.preferences?.timezone || 'UTC'
-
-        // Get the user's default availability block
-        const availabilityId = await getDefaultAvailabilityBlockId(
-          participantData.account_address
-        )
-        if (availabilityId) {
-          const { data: availability } = await db.supabase
-            .from('availabilities')
-            .select('weekly_availability')
-            .eq('id', availabilityId)
-            .maybeSingle()
-
-          if (availability?.weekly_availability) {
-            // Convert weekly availability to poll format
-            availableSlots = availability.weekly_availability.map(
-              (day: AvailabilitySlot) => ({
-                ranges: day.ranges || [],
-                weekday: day.weekday,
-              })
-            )
-          }
-        }
       } catch (error) {
         console.warn(
-          `Could not fetch timezone/availability for ${participantData.account_address}:`,
+          `Could not fetch timezone for ${participantData.account_address}:`,
           error
         )
       }
@@ -9427,17 +9762,75 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
 const updateQuickPollParticipantAvailability = async (
   participantId: string,
   availableSlots: AvailabilitySlot[],
-  timezone?: string
+  timezone?: string,
+  options?: UpdateQuickPollParticipantAvailabilityOptions
 ) => {
   try {
+    const { data: existingParticipant, error: fetchError } = await db.supabase
+      .from('quick_poll_participants')
+      .select('id, account_address')
+      .eq('id', participantId)
+      .maybeSingle()
+
+    if (fetchError || !existingParticipant) {
+      throw new QuickPollParticipantNotFoundError(participantId)
+    }
+
+    const rawBlockIds = options?.availability_block_ids?.filter(Boolean)
+    const isBlockBased = Array.isArray(rawBlockIds) && rawBlockIds.length > 0
+
+    if (isBlockBased && rawBlockIds) {
+      await db.supabase
+        .from('quick_poll_availabilities')
+        .delete()
+        .eq('participant_id', participantId)
+
+      await db.supabase.from('quick_poll_availabilities').insert(
+        rawBlockIds.map((availability_id: string) => ({
+          participant_id: participantId,
+          availability_id,
+        }))
+      )
+
+      let blockTimezone = timezone ?? 'UTC'
+      if (existingParticipant.account_address) {
+        const { data: firstBlock } = await db.supabase
+          .from('availabilities')
+          .select('timezone')
+          .eq('account_owner_address', existingParticipant.account_address)
+          .in('id', rawBlockIds)
+          .limit(1)
+          .maybeSingle()
+        if (firstBlock?.timezone) blockTimezone = firstBlock.timezone
+      }
+
+      const { data: participant, error } = await db.supabase
+        .from('quick_poll_participants')
+        .update({
+          available_slots: [],
+          timezone: blockTimezone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', participantId)
+        .select()
+        .maybeSingle()
+
+      if (error) throw error
+      if (!participant)
+        throw new QuickPollParticipantNotFoundError(participantId)
+      return participant
+    }
+
+    await db.supabase
+      .from('quick_poll_availabilities')
+      .delete()
+      .eq('participant_id', participantId)
+
     const updates: Record<string, unknown> = {
       available_slots: availableSlots,
       updated_at: new Date().toISOString(),
     }
-
-    if (timezone) {
-      updates.timezone = timezone
-    }
+    if (timezone) updates.timezone = timezone
 
     const { data: participant, error } = await db.supabase
       .from('quick_poll_participants')
@@ -9547,7 +9940,12 @@ const getQuickPollParticipantById = async (participantId: string) => {
       .eq('id', participantId)
       .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null
+      }
+      throw error
+    }
     if (!participant) {
       throw new QuickPollParticipantNotFoundError(participantId)
     }
@@ -9577,7 +9975,7 @@ const getQuickPollParticipantByIdentifier = async (
 
     if (error) {
       if (error.code === 'PGRST116') {
-        throw new QuickPollParticipantNotFoundError(identifier)
+        return null
       }
       throw error
     }
@@ -9692,6 +10090,10 @@ const getPaymentAccountByProviderId = async (
     .eq('provider', provider)
     .maybeSingle()
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     throw new Error('Could not fetch payment account')
   }
   return payment_account
@@ -9778,6 +10180,10 @@ const getBillingPlanById = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new BillingPlanFetchError(planId, error.message)
   }
@@ -9830,6 +10236,10 @@ const getBillingPlanProvider = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new BillingPlanProviderFetchError(planId, provider, error.message)
   }
@@ -9850,6 +10260,10 @@ const getBillingPlanIdFromStripeProduct = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new BillingPlanFromStripeProductError(stripeProductId, error.message)
   }
@@ -9904,6 +10318,10 @@ const getStripeSubscriptionByAccount = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new StripeSubscriptionFetchError(accountAddress, error.message)
   }
@@ -9922,6 +10340,10 @@ const getStripeSubscriptionById = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new StripeSubscriptionFetchError(stripeSubscriptionId, error.message)
   }
@@ -9976,7 +10398,9 @@ const linkTransactionToStripeSubscription = async (
     .maybeSingle()
 
   if (checkError) {
-    Sentry.captureException(checkError)
+    if (checkError.code !== 'PGRST116') {
+      Sentry.captureException(checkError)
+    }
   }
 
   if (existingLink) {
@@ -10017,7 +10441,9 @@ const findTransactionByProviderReference = async (
     .maybeSingle()
 
   if (error) {
-    Sentry.captureException(error)
+    if (error.code !== 'PGRST116') {
+      Sentry.captureException(error)
+    }
     return null
   }
 
@@ -10113,6 +10539,10 @@ const getActiveSubscriptionPeriod = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new SubscriptionPeriodFetchError(accountAddress, error.message)
   }
@@ -10409,6 +10839,10 @@ const findSubscriptionPeriodByPlanAndExpiry = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new SubscriptionPeriodFindError(error.message)
   }
@@ -10432,6 +10866,10 @@ const findRecentSubscriptionPeriodByPlan = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new SubscriptionPeriodFindError(error.message)
   }
@@ -10455,7 +10893,11 @@ const findExistingSubscriptionPeriod = async (
       .eq('transaction_id', transactionId)
       .maybeSingle()
 
-    if (!txError && byTransaction) {
+    if (txError && txError.code !== 'PGRST116') {
+      Sentry.captureException(txError)
+    }
+
+    if (byTransaction) {
       return byTransaction
     }
   }
@@ -10478,6 +10920,10 @@ const findExistingSubscriptionPeriod = async (
     .maybeSingle()
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
     Sentry.captureException(error)
     throw new SubscriptionPeriodFindError(error.message)
   }
@@ -10493,10 +10939,11 @@ const getSlotInstance = async (slotInstanceId: string) => {
   if (error) {
     throw new Error('Could not fetch slot instance')
   }
-  if (!slotInstance) {
-    throw new Error('Slot instance not found')
+  const data = Array.isArray(slotInstance) ? slotInstance[0] : slotInstance
+  if (!data) {
+    throw new MeetingNotFoundError(slotInstanceId)
   }
-  return Array.isArray(slotInstance) ? slotInstance[0] : slotInstance
+  return data
 }
 const syncConnectedCalendars = async (accountAddress: string) => {
   const calendars = await getConnectedCalendars(accountAddress, {
@@ -10525,6 +10972,7 @@ const syncConnectedCalendars = async (accountAddress: string) => {
               color: refreshedCal.color ?? existingCal.color,
               isReadOnly: refreshedCal.isReadOnly ?? existingCal.isReadOnly,
               name: refreshedCal.name,
+              sync: refreshedCal.isReadOnly ? false : existingCal.sync,
             }
           }
           return existingCal
@@ -10607,6 +11055,7 @@ export {
   createTgConnection,
   createVerification,
   deleteAllTgConnections,
+  deleteConferenceMeetingFromDb,
   deleteGateCondition,
   deleteGroup,
   deleteIcsFile,

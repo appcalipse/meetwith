@@ -77,7 +77,6 @@ import {
   MeetingDecrypted,
   MeetingInfo,
   SlotInstance,
-  SlotSeries,
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -93,6 +92,8 @@ import {
   QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
+  UpdateParticipantAvailabilityRequest,
+  UpdateQuickPollParticipantAvailabilityOptions,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
 import {
@@ -219,7 +220,7 @@ export const internalFetch = async <T, J = unknown>(
           e.message.includes('Network request failed') ||
           e.message.includes('NetworkError') ||
           e.message.includes('timeout'))) ||
-        (e instanceof ApiFetchError && e.status >= 500))
+        (e instanceof ApiFetchError && e.status > 500))
 
     if (isRetryableError) {
       const delay = Math.max(baseDelay / remainingRetries, 100)
@@ -354,9 +355,7 @@ export const saveAvatar = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
@@ -371,9 +370,7 @@ export const saveBanner = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
@@ -1100,9 +1097,7 @@ export const uploadGroupAvatar = async (
     'POST',
     formData,
     {},
-    {
-      'Content-Type': 'multipart/form-data',
-    },
+    undefined,
     true
   )
   return response
@@ -2517,15 +2512,20 @@ export const cancelQuickPoll = async (
 export const updatePollParticipantAvailability = async (
   participantId: string,
   availableSlots: AvailabilitySlot[],
-  timezone?: string
+  timezone?: string,
+  options?: UpdateQuickPollParticipantAvailabilityOptions
 ) => {
+  const body: UpdateParticipantAvailabilityRequest = {
+    available_slots: availableSlots,
+    timezone,
+  }
+  if (options?.availability_block_ids !== undefined) {
+    body.availability_block_ids = options.availability_block_ids
+  }
   return await internalFetch(
     `/quickpoll/participants/${participantId}/availability`,
     'PATCH',
-    {
-      available_slots: availableSlots,
-      timezone,
-    }
+    body
   )
 }
 
@@ -2826,7 +2826,7 @@ export const getSlotInstanceById = async (
       start: new Date(slot.start),
     }))
   } catch (e) {
-    if (e instanceof ApiFetchError && e.status === 404) {
+    if (e instanceof ApiFetchError && (e.status === 404 || e.status === 500)) {
       return null
     }
     throw e
@@ -2927,19 +2927,20 @@ export const parsedDecryptedParticipants = async (
   )
 }
 
-export const addUserToPollAfterSignup = async (
-  accountAddress: string,
+export const joinQuickPollAsParticipant = async (
   pollId: string,
   notificationEmail?: string,
   displayName?: string
-): Promise<{ participant: QuickPollParticipant }> => {
-  return await internalFetch<{ participant: QuickPollParticipant }>(
-    `/secure/quickpoll/${pollId}/join`,
-    'POST',
-    {
-      account_address: accountAddress,
-      notification_email: notificationEmail,
-      display_name: displayName,
-    }
-  )
+): Promise<{ participant: QuickPollParticipant; alreadyInPoll: boolean }> => {
+  const data = await internalFetch<{
+    participant: QuickPollParticipant
+    already_in_poll: boolean
+  }>(`/secure/quickpoll/${pollId}/join`, 'POST', {
+    notification_email: notificationEmail,
+    display_name: displayName,
+  })
+  return {
+    participant: data.participant,
+    alreadyInPoll: data.already_in_poll,
+  }
 }

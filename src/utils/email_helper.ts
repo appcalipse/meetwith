@@ -11,7 +11,7 @@ import {
   BillingEmailPlan,
   PaymentProvider,
 } from '@/types/Billing'
-import { EditMode, Intents, SettingsSection } from '@/types/Dashboard'
+import { Intents, SettingsSection } from '@/types/Dashboard'
 import { Group } from '@/types/Group'
 import { MeetingChangeType } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
@@ -20,7 +20,10 @@ import {
   MeetingCreationSyncRequest,
 } from '@/types/Requests'
 import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
-import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
+import {
+  ParticipantInfoForInviteNotification,
+  ParticipantInfoForNotification,
+} from '@/utils/notification_helper'
 
 import {
   dateToHumanReadable,
@@ -36,6 +39,7 @@ import {
   formatDaysRemainingForEmail,
   getDisplayNameForEmail,
 } from './email_utils'
+import { canAccountAccessPermission } from './generic_utils'
 import { generateIcsServer } from './services/calendar.backend.helper'
 import { getCalendars } from './sync_helper'
 import { getAllParticipantsDisplayName } from './user_manager'
@@ -205,19 +209,19 @@ export const newGroupRejectEmail = async (
 }
 export const newMeetingEmail = async (
   toEmail: string,
-  participantType: ParticipantType,
-  slot_id: string,
-  meetingDetails: MeetingCreationSyncRequest,
-  destinationAccountAddress?: string
+  participant: ParticipantInfoForNotification,
+  meetingDetails: MeetingCreationSyncRequest
 ): Promise<boolean> => {
   const participants = meetingDetails.participants
+  const participantType = participant.type
+  const destinationAccountAddress = participant.account_address
   const email = new Email()
   const title = meetingDetails.title
   const description = meetingDetails.content
   const meetingUrl = meetingDetails.meeting_url
   const start = new Date(meetingDetails.start)
   const end = new Date(meetingDetails.end)
-  const timezone = meetingDetails.timezone
+  const timezone = participant.timezone
   const meeting_id = meetingDetails.meeting_id
   const meetingPermissions = meetingDetails.meetingPermissions
   const meetingTypeId = meetingDetails.meeting_type_id
@@ -352,15 +356,16 @@ export const cancelledMeetingEmail = async (
   currentActorDisplayName: string,
   toEmail: string,
   meetingDetails: MeetingCancelSyncRequest,
-  destinationAccountAddress: string | undefined
+  participant: ParticipantInfoForNotification
 ): Promise<boolean> => {
+  const destinationAccountAddress = participant.account_address
   const start = new Date(meetingDetails.start)
   const end = new Date(meetingDetails.end)
   const title = meetingDetails.title
   const reason = meetingDetails.reason
 
   const created_at = new Date(meetingDetails.created_at)
-  const timezone = meetingDetails.timezone
+  const timezone = participant.timezone
   const meeting_id = meetingDetails.meeting_id
 
   const email = new Email()
@@ -442,22 +447,80 @@ export const cancelledMeetingEmail = async (
   return true
 }
 
+export const participantLeftMeetingEmail = async (
+  leftParticipantDisplayName: string,
+  toEmail: string,
+  meetingDetails: MeetingCreationSyncRequest,
+  destinationAccountAddress: string | undefined
+): Promise<boolean> => {
+  const start = new Date(meetingDetails.start)
+  const end = new Date(meetingDetails.end)
+  const title = meetingDetails.title
+  const timezone = meetingDetails.timezone
+  const canSeeParticipant = canAccountAccessPermission(
+    meetingDetails.meetingPermissions,
+    meetingDetails.participants,
+    destinationAccountAddress,
+    [(MeetingPermissions.SEE_GUEST_LIST, MeetingPermissions.EDIT_MEETING)]
+  )
+  if (!canSeeParticipant) {
+    return true
+  }
+  const email = new Email()
+  const locals = {
+    leftParticipantDisplayName,
+    meeting: {
+      duration: durationToHumanReadable(differenceInMinutes(end, start)),
+      start: dateToHumanReadable(start, timezone, true),
+      title,
+    },
+  }
+
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'meeting_participant_left')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    html: rendered.html!,
+    subject: rendered.subject!,
+    text: rendered.text,
+    to: toEmail,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'meeting',
+        value: 'participant_left',
+      },
+    ],
+  }
+
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+
+  return true
+}
+
 export const updateMeetingEmail = async (
   toEmail: string,
   currentActorDisplayName: string,
-  participantType: ParticipantType,
-  slot_id: string,
-  meetingDetails: MeetingCreationSyncRequest,
-  destinationAccountAddress?: string
+  participant: ParticipantInfoForNotification,
+  meetingDetails: MeetingCreationSyncRequest
 ): Promise<boolean> => {
   const participants = meetingDetails.participants
+  const participantType = participant.type
+  const destinationAccountAddress = participant.account_address
   const title = meetingDetails.title
   const description = meetingDetails.content
   const meetingUrl = meetingDetails.meeting_url
   const start = new Date(meetingDetails.start)
   const end = new Date(meetingDetails.end)
   const meeting_id = meetingDetails.meeting_id
-  const timezone = meetingDetails.timezone
+  const timezone = participant.timezone
   const meetingPermissions = meetingDetails.meetingPermissions
   const meetingTypeId = meetingDetails.meeting_type_id
   const changes = meetingDetails.changes
@@ -890,7 +953,7 @@ export const sendSubscriptionConfirmationEmail = async (
     periodEnd,
     periodStart,
     planName: billingPlan.name,
-    price: isTrial ? 0 : (transaction?.amount ?? billingPlan.price),
+    price: isTrial ? 0 : transaction?.amount ?? billingPlan.price,
     provider,
   }
 

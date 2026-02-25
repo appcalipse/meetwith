@@ -25,6 +25,7 @@ import { Account } from '@/types/Account'
 import {
   AttendeeStatus,
   DashBoardMwwEvents,
+  DashboardEvent,
   ExtendedCalendarEvents,
   UnifiedEvent,
 } from '@/types/Calendar'
@@ -52,8 +53,7 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
-import { getSignature } from '@/utils/storage'
-
+import QueryKeys from '@/utils/query_keys'
 import { useCancelDialog } from '../schedule/cancel.dialog.hook'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 import CalendarEventCard from './CalendarEventCard'
@@ -62,7 +62,6 @@ import MeetingCard from './MeetingCard'
 interface MeetingBaseProps {
   currentAccount: Account
 }
-type DashboardEvent = DashBoardMwwEvents | UnifiedEvent
 
 const isCalendarEvent = (event: DashboardEvent): event is UnifiedEvent => {
   return 'calendarId' in event
@@ -86,7 +85,7 @@ const createMeetingsQueryConfig = ({
   ExtendedCalendarEvents,
   QueryKey
 > => ({
-  queryKey: ['meetings', currentAccount.address],
+  queryKey: QueryKeys.meetingsByAccount(currentAccount.address),
   queryFn: async ({ pageParam: offset = 0 }) => {
     const meetings = await getCalendarEvents(
       timeWindow.start.plus({ weeks: offset }),
@@ -124,12 +123,14 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
     isFetchingNextPage,
     isLoading,
     isError,
+    isRefetching,
   } = useInfiniteQuery<ExtendedCalendarEvents>(queryConfig)
+  const dataIsLoading = isLoading || isRefetching
 
   const updateAttendeeStatus = useCallback(
     (eventId: string, accountEmail: string, status: AttendeeStatus) => {
       queryClient.setQueriesData<InfiniteData<ExtendedCalendarEvents>>(
-        { queryKey: ['meetings', currentAccount.address] },
+        { queryKey: QueryKeys.meetingsByAccount(currentAccount.address) },
         old => {
           if (!old?.pages) return old
 
@@ -170,7 +171,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   const updateParticipationStatus = useCallback(
     (eventId: string, accountAddress: string, status: ParticipationStatus) => {
       queryClient.setQueriesData<InfiniteData<ExtendedCalendarEvents>>(
-        { queryKey: ['meetings', currentAccount.address] },
+        { queryKey: QueryKeys.meetingsByAccount(currentAccount.address) },
         old => {
           if (!old?.pages) return old
 
@@ -211,7 +212,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   const removeEventFromCache = useCallback(
     (eventId: string) => {
       queryClient.setQueriesData<InfiniteData<ExtendedCalendarEvents>>(
-        { queryKey: ['meetings', currentAccount.address] },
+        { queryKey: QueryKeys.meetingsByAccount(currentAccount.address) },
         old => {
           if (!old?.pages) return old
 
@@ -241,7 +242,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
     [queryClient, currentAccount.address]
   )
   useEffect(() => {
-    if (hasNextPage && !isFetchingNextPage && !isLoading) {
+    if (hasNextPage && !isFetchingNextPage && !dataIsLoading) {
       const prefetch = () => {
         void queryClient.prefetchInfiniteQuery(queryConfig)
       }
@@ -254,7 +255,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
         return () => clearTimeout(timer)
       }
     }
-  }, [hasNextPage, isFetchingNextPage, isLoading, queryClient])
+  }, [hasNextPage, isFetchingNextPage, dataIsLoading, queryClient])
   const meetings: DashboardEvent[] = useMemo(() => {
     if (!data) return []
     const now = DateTime.now()
@@ -265,7 +266,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
         start: new Date(event.start),
         end: new Date(event.end),
       }))
-      .filter(event => DateTime.fromJSDate(event.start) >= now) // ← Add this
+      .filter(event => DateTime.fromJSDate(event.start) >= now)
       .sort((a, b) => a.start.getTime() - b.start.getTime())
 
     return allEvents
@@ -292,7 +293,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
 
     if (meeting || removedSlots) {
       await queryClient.invalidateQueries({
-        queryKey: ['meetings', currentAccount.address],
+        queryKey: QueryKeys.meetingsByAccount(currentAccount.address),
       })
 
       if (skipToast) return
@@ -482,8 +483,14 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
       }
     }
   }
+
   useEffect(() => {
-    if (isLoading || !hasNextPage || !loadMoreRef.current || isFetchingNextPage)
+    if (
+      dataIsLoading ||
+      !hasNextPage ||
+      !loadMoreRef.current ||
+      isFetchingNextPage
+    )
       return
 
     const observer = new IntersectionObserver(
@@ -503,7 +510,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
     observer.observe(loadMoreRef.current)
 
     return () => observer.disconnect()
-  }, [hasNextPage, isLoading, isFetchingNextPage, loadMoreRef.current])
+  }, [hasNextPage, dataIsLoading, isFetchingNextPage, loadMoreRef.current])
 
   const context = {
     handleDelete,
@@ -511,8 +518,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
     handleCancel: () => {},
   }
   let content: ReactNode
-
-  if (isLoading) {
+  if (dataIsLoading) {
     content = (
       <VStack alignItems="center" mb={8}>
         <Image src="/assets/schedule.svg" height="200px" alt="Loading..." />

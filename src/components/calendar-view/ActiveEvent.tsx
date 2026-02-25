@@ -1,16 +1,3 @@
-import { ALL } from 'node:dns'
-import {
-  Box,
-  Drawer,
-  DrawerBody,
-  DrawerContent,
-  Portal,
-  useDisclosure,
-  useToast,
-} from '@chakra-ui/react'
-import { addMinutes } from 'date-fns'
-import { DateTime } from 'luxon'
-import * as React from 'react'
 import useAccountContext from '@/hooks/useAccountContext'
 import {
   CalendarEventsData,
@@ -24,7 +11,6 @@ import { useParticipantPermissions } from '@/providers/schedule/PermissionsConte
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import {
   isCalendarEvent,
-  isCalendarEventWithoutDateTime,
   mapAttendeeStatusToParticipationStatus,
 } from '@/types/Calendar'
 import { MeetingDecrypted, MeetingProvider } from '@/types/Meeting'
@@ -63,15 +49,26 @@ import {
   ZoomServiceUnavailable,
 } from '@/utils/errors'
 import { canAccountAccessPermission } from '@/utils/generic_utils'
+import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
-import ConfirmEditModeModal from '../schedule/ConfirmEditMode'
+import {
+  Box,
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  Portal,
+  useDisclosure,
+  useToast,
+} from '@chakra-ui/react'
+import { addMinutes } from 'date-fns'
+import * as React from 'react'
 import { CancelMeetingDialog } from '../schedule/cancel-dialog'
+import ConfirmEditModeModal from '../schedule/ConfirmEditMode'
 import { DeleteEventDialog } from '../schedule/delete-event-dialog'
 import InviteParticipants from '../schedule/participants/InviteParticipants'
 import ScheduleTimeDiscover from '../schedule/ScheduleTimeDiscover'
-import ActiveCalendarEvent from './ActiveCalendarEvent'
 import ActiveMeetwithEvent from './ActiveMeetwithEvent'
 
 const ActiveEvent: React.FC = () => {
@@ -130,6 +127,36 @@ const ActiveEvent: React.FC = () => {
       end: selectedSlot.end.toJSDate(),
     }
   }, [selectedSlot])
+
+  /**
+   * Reads the freshest participant list for the current MWW event from
+   * the React Query cache.  This is necessary because `decryptedMeeting`
+   * is derived from `selectedSlot`, which is a snapshot captured when
+   * the user clicked "Edit".  Any RSVP changes made after that (in
+   * EventDetailsPopOver or ActiveMeetwithEvent's own dropdown) update
+   * the cache but NOT `selectedSlot`, so `decryptedMeeting.participants`
+   * can become stale.
+   */
+  const getFreshDecryptedMeeting = React.useCallback(():
+    | MeetingDecrypted
+    | undefined => {
+    if (!decryptedMeeting || !selectedSlot || isCalendarEvent(selectedSlot)) {
+      return decryptedMeeting
+    }
+    const cachedData = queryClient.getQueryData<CalendarEventsData>(
+      createEventsQueryKey(currentDate)
+    )
+    const freshEvent = cachedData?.mwwEvents?.find(
+      e => e.id === selectedSlot.id
+    )
+    if (freshEvent) {
+      return {
+        ...decryptedMeeting,
+        participants: freshEvent.participants,
+      }
+    }
+    return decryptedMeeting
+  }, [decryptedMeeting, selectedSlot, currentDate])
   const {
     setGroupParticipants,
     setGroupAvailability,
@@ -138,7 +165,7 @@ const ActiveEvent: React.FC = () => {
     participants,
     groupParticipants,
     groupAvailability,
-    groups,
+    group,
   } = useParticipants()
   const { setInviteModalOpen, inviteModalOpen } = useScheduleNavigation()
   const { setCanEditMeetingDetails, setCanEditMeetingParticipants } =
@@ -415,26 +442,26 @@ const ActiveEvent: React.FC = () => {
       if (operation === 'delete') {
         // For deletions, optimistically remove from cache
         queryClient.setQueriesData<CalendarEventsData>(
-          { queryKey: ['calendar-events'] },
+          { queryKey: [QueryKeys.calendarEvents()] },
           old => {
             if (!old) return old
 
             return {
               calendarEvents: isCalEvent
-                ? (old.calendarEvents?.filter(
+                ? old.calendarEvents?.filter(
                     e => e.sourceEventId !== selectedSlot.sourceEventId
-                  ) ?? [])
-                : (old.calendarEvents ?? []),
+                  ) ?? []
+                : old.calendarEvents ?? [],
               mwwEvents: !isCalEvent
-                ? (old.mwwEvents?.filter(e => e.id !== selectedSlot.id) ?? [])
-                : (old.mwwEvents ?? []),
+                ? old.mwwEvents?.filter(e => e.id !== selectedSlot.id) ?? []
+                : old.mwwEvents ?? [],
             }
           }
         )
       } else {
         // For updates, invalidate cache to refetch updated data
         await queryClient.invalidateQueries({
-          queryKey: ['calendar-events'],
+          queryKey: [QueryKeys.calendarEvents()],
         })
       }
 
@@ -453,7 +480,8 @@ const ActiveEvent: React.FC = () => {
 
       setIsScheduling(true)
       if (!isCalendarEvent(selectedSlot)) {
-        if (!decryptedMeeting) {
+        const freshMeeting = getFreshDecryptedMeeting()
+        if (!freshMeeting) {
           setIsScheduling(false)
           return
         }
@@ -476,8 +504,8 @@ const ActiveEvent: React.FC = () => {
               .concat(selectedSlot?.participants || [])
         const allParticipants = getMergedParticipants(
           actualParticipants,
-          groups,
-          groupParticipants
+          groupParticipants,
+          group
         ).map(val => ({
           ...val,
           type: meetingOwners.some(
@@ -531,7 +559,7 @@ const ActiveEvent: React.FC = () => {
               currentAccount!.address,
               start,
               end,
-              decryptedMeeting!,
+              freshMeeting,
               getSignature(currentAccount!.address) || '',
               _participants.valid,
               content,
@@ -564,7 +592,7 @@ const ActiveEvent: React.FC = () => {
             NO_MEETING_TYPE,
             start,
             end,
-            decryptedMeeting,
+            freshMeeting,
             getSignature(currentAccount.address) || '',
             _participants.valid,
             content,
@@ -747,12 +775,12 @@ const ActiveEvent: React.FC = () => {
     isScheduling,
     selectedSlot,
     currentAccount,
-    decryptedMeeting,
+    getFreshDecryptedMeeting,
     pickedTime,
     duration,
     duration,
     participants,
-    groups,
+    group,
     groupParticipants,
     meetingOwners,
     content,

@@ -155,7 +155,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     addGroup,
     groupAvailability,
     groupParticipants,
-    groups,
+    group,
     meetingOwners,
     participants,
     setGroupAvailability,
@@ -163,6 +163,8 @@ const ScheduleMain: FC<IInitialProps> = ({
     setGroupParticipants,
     setMeetingOwners,
     setParticipants,
+    setGroup,
+    setIsGroupPrefetching,
   } = useParticipants()
   const { currentPage, handlePageSwitch, setInviteModalOpen, inviteModalOpen } =
     useScheduleNavigation()
@@ -184,12 +186,18 @@ const ScheduleMain: FC<IInitialProps> = ({
   const handleGroupPrefetch = async () => {
     if (!groupId) return
     try {
+      setIsGroupPrefetching(true)
       const [group, fetchedGroupMembers, groupMembersAvailabilitiesData] =
         await Promise.all([
           getGroup(groupId),
           getGroupsMembers(groupId),
           getGroupMembersAvailabilities(groupId),
         ])
+
+      setGroup({
+        ...group,
+        members: fetchedGroupMembers.filter(member => !!member.address),
+      })
       const actualMembers = fetchedGroupMembers
         .filter(val => !val.invitePending)
         .filter(val => !!val.address)
@@ -217,6 +225,8 @@ const ScheduleMain: FC<IInitialProps> = ({
       }
     } catch (error: unknown) {
       handleApiError('Error prefetching group.', error)
+    } finally {
+      setIsGroupPrefetching(false)
     }
   }
   const handleContactPrefetch = async () => {
@@ -260,24 +270,32 @@ const ScheduleMain: FC<IInitialProps> = ({
         setSelectedPermissions(poll.poll.permissions as MeetingPermissions[])
       }
 
+      const currentAddress = currentAccount?.address?.toLowerCase()
       const pollParticipants: ParticipantInfo[] = poll.poll.participants.map(
-        participant => ({
-          account_address: participant.account_address || '',
-          name: participant.guest_name || participant.guest_email || 'Unknown',
-          status:
-            participant.status === QuickPollParticipantStatus.ACCEPTED
-              ? ParticipationStatus.Accepted
-              : ParticipationStatus.Pending,
-          type:
-            participant.participant_type === QuickPollParticipantType.SCHEDULER
+        participant => {
+          const isCurrentUser =
+            !!currentAddress &&
+            (participant.account_address?.toLowerCase() === currentAddress ||
+              participant.guest_email?.toLowerCase() === currentAddress)
+          return {
+            account_address: participant.account_address || '',
+            name:
+              participant.guest_name || participant.guest_email || 'Unknown',
+            status:
+              participant.status === QuickPollParticipantStatus.ACCEPTED
+                ? ParticipationStatus.Accepted
+                : ParticipationStatus.Pending,
+            type: isCurrentUser
               ? ParticipantType.Scheduler
               : ParticipantType.Invitee,
-          slot_id: '',
-          meeting_id: '',
-        })
+            slot_id: '',
+            meeting_id: '',
+          }
+        }
       )
 
       setParticipants(pollParticipants)
+      setIsScheduler(true)
     } catch (error: unknown) {
       handleApiError('Error prefetching poll.', error)
     }
@@ -392,35 +410,27 @@ const ScheduleMain: FC<IInitialProps> = ({
           MeetingPermissions.SEE_GUEST_LIST
         )
         if (!canViewParticipants) {
-          const schedulerParticipant = participants.find(
-            p => p.type === ParticipantType.Scheduler
-          )
-          const actorParticipant = participants.find(
-            p => p.account_address === currentAccount?.address
-          )
-          const othersCount = participants.length - 2 // exclude scheduler and self
-          const allParticipants = []
-          if (actorParticipant) {
-            allParticipants.push(actorParticipant)
-          }
-          if (schedulerParticipant) {
-            allParticipants.push(schedulerParticipant)
-          }
-          if (othersCount > 0) {
-            allParticipants.push({
-              name: `+${othersCount} other participant${
-                othersCount > 1 ? 's' : ''
-              }`,
-              meeting_id: '',
-              status: ParticipationStatus.Accepted,
-              type: ParticipantType.Invitee,
-              slot_id: '',
-              isHidden: true,
+          setParticipants(
+            participants.map(p => {
+              delete p.isHidden
+              if (
+                p.type === ParticipantType.Scheduler ||
+                p.account_address === currentAccount?.address
+              ) {
+                return p
+              } else {
+                return {
+                  ...p,
+                  isHidden: true,
+                }
+              }
             })
-          }
-
-          setParticipants(allParticipants)
+          )
+        } else {
+          setParticipants(participants.map(({ isHidden, ...rest }) => rest))
         }
+      } else {
+        setParticipants(participants.map(({ isHidden, ...rest }) => rest))
       }
       setMeetingUrl(decryptedMeeting.meeting_url)
       const meetingOwners = decryptedMeeting.participants?.filter(
@@ -472,7 +482,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     if (pollId) {
       promises.push(handlePollPrefetch())
     }
-    if (meetingId || conferenceId) {
+    if (meetingId || conferenceId || seriesId) {
       promises.push(handleFetchMeetingInformation())
     }
     if (promises.length === 0) {
@@ -497,6 +507,7 @@ const ScheduleMain: FC<IInitialProps> = ({
     meetingId,
     conferenceId,
     currentAccount?.address,
+    seriesId,
   ])
 
   useEffect(() => {
@@ -784,16 +795,29 @@ const ScheduleMain: FC<IInitialProps> = ({
             .concat(decryptedMeeting?.participants || [])
       const allParticipants = getMergedParticipants(
         actualParticipants,
-        groups,
-        groupParticipants
-      ).map(val => ({
-        ...val,
-        type: meetingOwners.some(
-          owner => owner.account_address === val.account_address
-        )
-          ? ParticipantType.Owner
-          : val.type,
-      }))
+        groupParticipants,
+        group
+      )
+        // we first need to remove all the owners
+        .map(participant => {
+          return {
+            ...participant,
+            type:
+              participant.type === ParticipantType.Owner
+                ? ParticipantType.Invitee
+                : participant.type,
+          }
+        })
+        .map(val => {
+          if (
+            meetingOwners.some(
+              owner => owner.account_address === val.account_address
+            )
+          ) {
+            return { ...val, type: ParticipantType.Owner }
+          }
+          return val
+        })
       const _participants = await parseAccounts(allParticipants)
 
       if (_participants.invalid.length > 0) {
@@ -1050,8 +1074,6 @@ const ScheduleMain: FC<IInitialProps> = ({
         handleApiError('Error scheduling meeting', e as Error)
       }
     } finally {
-      queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
-      queryClient.invalidateQueries({ queryKey: ['meeting'] })
       setIsScheduling(false)
     }
   }
