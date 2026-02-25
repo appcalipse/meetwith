@@ -543,6 +543,24 @@ export const mergeWeeklyAvailabilityFromBlocks = (
   return sortAvailabilitiesByWeekday(result)
 }
 
+/**
+ * Merge multiple weekly availability configs into one (union of ranges per weekday).
+ * Use when combining e.g. custom schedule + selected blocks.
+ */
+export function mergeWeeklyAvailabilities(
+  ...configs: Array<Array<{ weekday: number; ranges: TimeRange[] }>>
+): Array<{ weekday: number; ranges: TimeRange[] }> {
+  if (configs.length === 0) return []
+  const fakeBlocks: AvailabilityBlock[] = configs.map((wa, i) => ({
+    id: `merge-${i}`,
+    title: '',
+    timezone: 'UTC',
+    isDefault: false,
+    weekly_availability: wa,
+  }))
+  return mergeWeeklyAvailabilityFromBlocks(fakeBlocks)
+}
+
 export const convertPollResultToAvailabilitySlots = (
   result:
     | { type: 'blocks'; blockIds: string[] }

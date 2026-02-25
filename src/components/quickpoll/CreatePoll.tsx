@@ -1056,7 +1056,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           {/* Availability */}
           <FormControl>
             <FormLabel htmlFor="availability">
-              Availability{' '}
+              Your Availability{' '}
               <InfoTooltip text="Availability block(s) used for this poll. Click the pencil to choose or customize." />
             </FormLabel>
             <HStack
