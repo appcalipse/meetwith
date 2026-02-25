@@ -4,13 +4,6 @@ import { DateTime, Settings } from 'luxon'
 // Setup Luxon for tests
 Settings.defaultLocale = 'en-US'
 
-// Mock timezone-soft module
-jest.mock('timezone-soft', () => {
-  return jest.fn((tzCode: string) => {
-    return [{ iana: tzCode }]
-  })
-})
-
 import { MeetingRepeat } from '@/types/Meeting'
 
 import {
@@ -24,9 +17,10 @@ import {
   formatPollSingleDate,
   formatWithOrdinal,
   getFormattedDateAndDuration,
-  timezones,
+  getTimezones,
 } from '@/utils/date_helper'
 
+const timezones = getTimezones()
 const TEST_INTERVALS = [
   {
     end: '24:00',

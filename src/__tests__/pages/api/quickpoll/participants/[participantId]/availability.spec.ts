@@ -15,8 +15,8 @@ jest.mock('@sentry/nextjs', () => ({
   captureException: jest.fn(),
 }))
 
-import { NextApiRequest, NextApiResponse } from 'next'
 import * as Sentry from '@sentry/nextjs'
+import { NextApiRequest, NextApiResponse } from 'next'
 import handler from '@/pages/api/quickpoll/participants/[participantId]/availability'
 import * as database from '@/utils/database'
 
@@ -61,14 +61,17 @@ describe('/api/quickpoll/participants/[participantId]/availability', () => {
 
   describe('PUT /api/quickpoll/participants/[participantId]/availability', () => {
     it('should update participant availability successfully', async () => {
-      mockUpdateQuickPollParticipantAvailability.mockResolvedValue(mockParticipant)
+      mockUpdateQuickPollParticipantAvailability.mockResolvedValue(
+        mockParticipant
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(mockUpdateQuickPollParticipantAvailability).toHaveBeenCalledWith(
         'participant-123',
         ['2024-01-01T10:00:00Z', '2024-01-01T11:00:00Z'],
-        'America/New_York'
+        'America/New_York',
+        undefined
       )
       expect(statusMock).toHaveBeenCalledWith(200)
       expect(jsonMock).toHaveBeenCalledWith(mockParticipant)
@@ -80,7 +83,9 @@ describe('/api/quickpoll/participants/[participantId]/availability', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(400)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Participant ID is required' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'Participant ID is required',
+      })
       expect(mockUpdateQuickPollParticipantAvailability).not.toHaveBeenCalled()
     })
 
@@ -91,7 +96,8 @@ describe('/api/quickpoll/participants/[participantId]/availability', () => {
 
       expect(statusMock).toHaveBeenCalledWith(400)
       expect(jsonMock).toHaveBeenCalledWith({
-        error: 'Available slots must be provided as an array',
+        error:
+          'Either available_slots or availability_block_ids must be provided',
       })
       expect(mockUpdateQuickPollParticipantAvailability).not.toHaveBeenCalled()
     })
@@ -103,7 +109,8 @@ describe('/api/quickpoll/participants/[participantId]/availability', () => {
 
       expect(statusMock).toHaveBeenCalledWith(400)
       expect(jsonMock).toHaveBeenCalledWith({
-        error: 'Available slots must be provided as an array',
+        error:
+          'Either available_slots or availability_block_ids must be provided',
       })
       expect(mockUpdateQuickPollParticipantAvailability).not.toHaveBeenCalled()
     })
@@ -120,25 +127,32 @@ describe('/api/quickpoll/participants/[participantId]/availability', () => {
     })
 
     it('should handle non-Error exceptions', async () => {
-      mockUpdateQuickPollParticipantAvailability.mockRejectedValue('string error')
+      mockUpdateQuickPollParticipantAvailability.mockRejectedValue(
+        'string error'
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(500)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'An unexpected error occurred' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'An unexpected error occurred',
+      })
     })
 
     it('should work without timezone', async () => {
       req.body = {
         available_slots: ['2024-01-01T10:00:00Z'],
       }
-      mockUpdateQuickPollParticipantAvailability.mockResolvedValue(mockParticipant)
+      mockUpdateQuickPollParticipantAvailability.mockResolvedValue(
+        mockParticipant
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(mockUpdateQuickPollParticipantAvailability).toHaveBeenCalledWith(
         'participant-123',
         ['2024-01-01T10:00:00Z'],
+        undefined,
         undefined
       )
       expect(statusMock).toHaveBeenCalledWith(200)
@@ -148,14 +162,17 @@ describe('/api/quickpoll/participants/[participantId]/availability', () => {
   describe('PATCH /api/quickpoll/participants/[participantId]/availability', () => {
     it('should update participant availability with PATCH method', async () => {
       req.method = 'PATCH'
-      mockUpdateQuickPollParticipantAvailability.mockResolvedValue(mockParticipant)
+      mockUpdateQuickPollParticipantAvailability.mockResolvedValue(
+        mockParticipant
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(mockUpdateQuickPollParticipantAvailability).toHaveBeenCalledWith(
         'participant-123',
         ['2024-01-01T10:00:00Z', '2024-01-01T11:00:00Z'],
-        'America/New_York'
+        'America/New_York',
+        undefined
       )
       expect(statusMock).toHaveBeenCalledWith(200)
       expect(jsonMock).toHaveBeenCalledWith(mockParticipant)

@@ -1,7 +1,6 @@
 import { DateTime, Interval } from 'luxon'
 
 import {
-  addMinutesToTime,
   buildHourlyTimeRangeLabelRows,
   calculateEffectiveDuration,
   compareTimes,
@@ -11,7 +10,6 @@ import {
   isValidDurationOption,
   LabelRow,
   parseDurationInput,
-  subtractMinutesFromTime,
 } from '@/utils/duration.helper'
 
 describe('duration.helper', () => {
@@ -112,52 +110,6 @@ describe('duration.helper', () => {
     })
   })
 
-  describe('addMinutesToTime', () => {
-    it('should add minutes correctly', () => {
-      expect(addMinutesToTime('10:00', 30)).toBe('10:30')
-      expect(addMinutesToTime('09:45', 30)).toBe('10:15')
-      expect(addMinutesToTime('23:30', 15)).toBe('23:45')
-    })
-
-    it('should handle hour transitions', () => {
-      expect(addMinutesToTime('10:50', 20)).toBe('11:10')
-      expect(addMinutesToTime('23:50', 20)).toBe('24:00')
-    })
-
-    it('should cap at 24:00', () => {
-      expect(addMinutesToTime('23:00', 120)).toBe('24:00')
-      expect(addMinutesToTime('20:00', 300)).toBe('24:00')
-    })
-
-    it('should pad with zeros', () => {
-      expect(addMinutesToTime('09:05', 5)).toBe('09:10')
-      expect(addMinutesToTime('00:00', 30)).toBe('00:30')
-    })
-  })
-
-  describe('subtractMinutesFromTime', () => {
-    it('should subtract minutes correctly', () => {
-      expect(subtractMinutesFromTime('10:30', 30)).toBe('10:00')
-      expect(subtractMinutesFromTime('10:15', 30)).toBe('09:45')
-      expect(subtractMinutesFromTime('23:45', 15)).toBe('23:30')
-    })
-
-    it('should handle hour transitions', () => {
-      expect(subtractMinutesFromTime('11:10', 20)).toBe('10:50')
-      expect(subtractMinutesFromTime('01:10', 20)).toBe('00:50')
-    })
-
-    it('should floor at 00:00', () => {
-      expect(subtractMinutesFromTime('01:00', 120)).toBe('00:00')
-      expect(subtractMinutesFromTime('05:00', 500)).toBe('00:00')
-    })
-
-    it('should pad with zeros', () => {
-      expect(subtractMinutesFromTime('09:10', 5)).toBe('09:05')
-      expect(subtractMinutesFromTime('01:00', 30)).toBe('00:30')
-    })
-  })
-
   describe('compareTimes', () => {
     it('should return negative when a < b', () => {
       expect(compareTimes('09:00', '10:00')).toBeLessThan(0)
@@ -228,7 +180,10 @@ describe('duration.helper', () => {
       const end = start.plus({ minutes: 30 })
       const slots = [Interval.fromDateTimes(start, end)]
 
-      const result = buildHourlyTimeRangeLabelRows(slots as any, 'America/New_York')
+      const result = buildHourlyTimeRangeLabelRows(
+        slots as any,
+        'America/New_York'
+      )
       expect(result[9].heightPx).toBeGreaterThan(0)
     })
   })

@@ -1,19 +1,22 @@
 import * as Sentry from '@sentry/nextjs'
-import { Account } from '@/types/Account'
-import { TimeSlotSource } from '@/types/Meeting'
+import {
+  mockMeetingCreationSyncRequest,
+  mockRequestParticipantMapping,
+} from '@/testing/mocks'
+import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import {
   DeleteInstanceRequest,
   MeetingCreationSyncRequest,
   MeetingInstanceCreationSyncRequest,
 } from '@/types/Requests'
-import {
-  getCalendars,
-  getCalendarPrimaryEmail,
-  ExternalCalendarSync,
-} from '@/utils/sync_helper'
 import * as database from '@/utils/database'
 import * as connectedCalendarsFactory from '@/utils/services/connected_calendars.factory'
+import {
+  ExternalCalendarSync,
+  getCalendarPrimaryEmail,
+  getCalendars,
+} from '@/utils/sync_helper'
 
 jest.mock('@sentry/nextjs')
 jest.mock('@/utils/database')
@@ -53,10 +56,9 @@ describe('sync_helper', () => {
     it('should get connected calendars for account', async () => {
       const calendars = await getCalendars(mockAccount)
 
-      expect(database.getConnectedCalendars).toHaveBeenCalledWith(
-        mockAccount,
-        { syncOnly: true }
-      )
+      expect(database.getConnectedCalendars).toHaveBeenCalledWith(mockAccount, {
+        syncOnly: true,
+      })
       expect(calendars).toEqual(mockCalendars)
     })
 
@@ -428,38 +430,36 @@ describe('sync_helper', () => {
   })
 
   describe('ExternalCalendarSync.create - comprehensive', () => {
-    const createMockMeetingDetails = (): MeetingCreationSyncRequest => ({
-      meeting_id: 'meeting-123',
-      start: new Date('2024-01-15T10:00:00Z'),
-      end: new Date('2024-01-15T11:00:00Z'),
-      created_at: new Date('2024-01-10T10:00:00Z'),
-      timezone: 'America/New_York',
-      meeting_type_id: 'meeting-type-1',
-      meeting_url: 'https://meet.example.com/123',
-      title: 'Test Meeting',
-      content: 'Meeting description',
-      meetingProvider: 'zoom' as any,
-      meetingReminders: [],
-      meetingPermissions: [],
-      rrule: [],
-      participantActing: {
-        account_address: mockAccount,
-        name: 'Test User',
-        timeZone: 'America/New_York',
-      },
-      participants: [
-        {
+    const createMockMeetingDetails = (): MeetingCreationSyncRequest =>
+      mockMeetingCreationSyncRequest({
+        meeting_id: 'meeting-123',
+        start: new Date('2024-01-15T10:00:00Z'),
+        end: new Date('2024-01-15T11:00:00Z'),
+        created_at: new Date('2024-01-10T10:00:00Z'),
+        timezone: 'America/New_York',
+        meeting_type_id: 'meeting-type-1',
+        meeting_url: 'https://meet.example.com/123',
+        title: 'Test Meeting',
+        content: 'Meeting description',
+        meetingProvider: MeetingProvider.ZOOM,
+        meetingReminders: [],
+        meetingPermissions: [],
+        rrule: [],
+        participantActing: {
           account_address: mockAccount,
-          meeting_id: 'meeting-123',
-          type: ParticipantType.Scheduler,
-          privateInfo: {} as any,
-          privateInfoHash: 'hash123',
-          timeZone: 'America/New_York',
-          name: 'Scheduler',
-          status: ParticipationStatus.Accepted,
+          name: 'Test User',
         },
-      ],
-    })
+        participants: [
+          mockRequestParticipantMapping({
+            account_address: mockAccount,
+            meeting_id: 'meeting-123',
+            type: ParticipantType.Scheduler,
+            timeZone: 'America/New_York',
+            name: 'Scheduler',
+            status: ParticipationStatus.Accepted,
+          }),
+        ],
+      })
 
     beforeEach(() => {
       jest.clearAllMocks()
@@ -649,9 +649,7 @@ describe('sync_helper', () => {
       ;(database.getConnectedCalendars as jest.Mock)
         .mockResolvedValueOnce(mockCalendars)
         .mockResolvedValueOnce(participantCalendars)
-      ;(
-        connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock
-      )
+      ;(connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock)
         .mockReturnValueOnce(schedulerMockIntegration)
         .mockReturnValueOnce(participantMockIntegration)
 
@@ -831,38 +829,36 @@ describe('sync_helper', () => {
   })
 
   describe('ExternalCalendarSync.update - comprehensive', () => {
-    const createMockMeetingDetails = (): MeetingCreationSyncRequest => ({
-      meeting_id: 'meeting-123',
-      start: new Date('2024-01-15T10:00:00Z'),
-      end: new Date('2024-01-15T11:00:00Z'),
-      created_at: new Date('2024-01-10T10:00:00Z'),
-      timezone: 'America/New_York',
-      meeting_type_id: 'meeting-type-1',
-      meeting_url: 'https://meet.example.com/123',
-      title: 'Updated Meeting',
-      content: 'Updated description',
-      meetingProvider: 'zoom' as any,
-      meetingReminders: [],
-      meetingPermissions: [],
-      rrule: [],
-      participantActing: {
-        account_address: mockAccount,
-        name: 'Test User',
-        timeZone: 'America/New_York',
-      },
-      participants: [
-        {
+    const createMockMeetingDetails = (): MeetingCreationSyncRequest =>
+      mockMeetingCreationSyncRequest({
+        meeting_id: 'meeting-123',
+        start: new Date('2024-01-15T10:00:00Z'),
+        end: new Date('2024-01-15T11:00:00Z'),
+        created_at: new Date('2024-01-10T10:00:00Z'),
+        timezone: 'America/New_York',
+        meeting_type_id: 'meeting-type-1',
+        meeting_url: 'https://meet.example.com/123',
+        title: 'Updated Meeting',
+        content: 'Updated description',
+        meetingProvider: MeetingProvider.ZOOM,
+        meetingReminders: [],
+        meetingPermissions: [],
+        rrule: [],
+        participantActing: {
           account_address: mockAccount,
-          meeting_id: 'meeting-123',
-          type: ParticipantType.Scheduler,
-          privateInfo: {} as any,
-          privateInfoHash: 'hash123',
-          timeZone: 'America/New_York',
-          name: 'Scheduler',
-          status: ParticipationStatus.Accepted,
+          name: 'Test User',
         },
-      ],
-    })
+        participants: [
+          mockRequestParticipantMapping({
+            account_address: mockAccount,
+            meeting_id: 'meeting-123',
+            type: ParticipantType.Scheduler,
+            timeZone: 'America/New_York',
+            name: 'Scheduler',
+            status: ParticipationStatus.Accepted,
+          }),
+        ],
+      })
 
     beforeEach(() => {
       jest.clearAllMocks()
@@ -973,9 +969,7 @@ describe('sync_helper', () => {
       ;(database.getConnectedCalendars as jest.Mock)
         .mockResolvedValueOnce(mockCalendars)
         .mockResolvedValueOnce(participantCalendars)
-      ;(
-        connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock
-      )
+      ;(connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock)
         .mockReturnValueOnce(schedulerMockIntegration)
         .mockReturnValueOnce(participantMockIntegration)
 
@@ -1018,9 +1012,7 @@ describe('sync_helper', () => {
       ;(database.getConnectedCalendars as jest.Mock)
         .mockResolvedValueOnce(mockCalendars)
         .mockResolvedValueOnce(participantCalendars)
-      ;(
-        connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock
-      )
+      ;(connectedCalendarsFactory.getConnectedCalendarIntegration as jest.Mock)
         .mockReturnValueOnce(schedulerMockIntegration)
         .mockReturnValueOnce(participantMockIntegration)
 
@@ -1349,37 +1341,36 @@ describe('sync_helper', () => {
   describe('ExternalCalendarSync.updateInstance - comprehensive', () => {
     const createMockInstanceDetails =
       (): MeetingInstanceCreationSyncRequest => ({
-        meeting_id: 'meeting-123',
-        start: new Date('2024-01-15T10:00:00Z'),
-        end: new Date('2024-01-15T11:00:00Z'),
-        created_at: new Date('2024-01-10T10:00:00Z'),
-        timezone: 'America/New_York',
-        meeting_type_id: 'meeting-type-1',
-        meeting_url: 'https://meet.example.com/123',
-        title: 'Updated Instance',
-        content: 'Updated instance description',
-        meetingProvider: 'zoom' as any,
-        meetingReminders: [],
-        meetingPermissions: [],
-        rrule: [],
-        original_start_time: new Date('2024-01-15T10:00:00Z'),
-        participantActing: {
-          account_address: mockAccount,
-          name: 'Test User',
-          timeZone: 'America/New_York',
-        },
-        participants: [
-          {
+        ...mockMeetingCreationSyncRequest({
+          meeting_id: 'meeting-123',
+          start: new Date('2024-01-15T10:00:00Z'),
+          end: new Date('2024-01-15T11:00:00Z'),
+          created_at: new Date('2024-01-10T10:00:00Z'),
+          timezone: 'America/New_York',
+          meeting_type_id: 'meeting-type-1',
+          meeting_url: 'https://meet.example.com/123',
+          title: 'Updated Instance',
+          content: 'Updated instance description',
+          meetingProvider: MeetingProvider.ZOOM,
+          meetingReminders: [],
+          meetingPermissions: [],
+          rrule: [],
+          participantActing: {
             account_address: mockAccount,
-            meeting_id: 'meeting-123',
-            type: ParticipantType.Scheduler,
-            privateInfo: {} as any,
-            privateInfoHash: 'hash123',
-            timeZone: 'America/New_York',
-            name: 'Scheduler',
-            status: ParticipationStatus.Accepted,
+            name: 'Test User',
           },
-        ],
+          participants: [
+            mockRequestParticipantMapping({
+              account_address: mockAccount,
+              meeting_id: 'meeting-123',
+              type: ParticipantType.Scheduler,
+              timeZone: 'America/New_York',
+              name: 'Scheduler',
+              status: ParticipationStatus.Accepted,
+            }),
+          ],
+        }),
+        original_start_time: new Date('2024-01-15T10:00:00Z'),
       })
 
     beforeEach(() => {
@@ -1513,9 +1504,7 @@ describe('sync_helper', () => {
 
   describe('delete', () => {
     const createMockDeleteRequest = () => ({
-      organizer_address: mockAccount,
       meeting_id: 'meeting-123',
-      meeting_type_id: 'type-123',
       externalEventId: 'ext-event-123',
     })
 
@@ -1561,11 +1550,9 @@ describe('sync_helper', () => {
 
   describe('deleteInstance', () => {
     const createMockDeleteInstanceRequest = (): DeleteInstanceRequest => ({
-      organizer_address: mockAccount,
       meeting_id: 'meeting-123',
-      meeting_type_id: 'type-123',
-      externalEventId: 'ext-event-123',
-      instanceDate: new Date('2024-01-15T10:00:00Z'),
+      start: '2024-01-15T10:00:00Z',
+      ical_uid: 'uid-ext-event-123',
     })
 
     it('should delete instance from connected calendars', async () => {
@@ -1580,6 +1567,7 @@ describe('sync_helper', () => {
       ).mockReturnValue(mockIntegration)
 
       await ExternalCalendarSync.deleteInstance(
+        mockAccount,
         createMockDeleteInstanceRequest()
       )
 
@@ -1600,6 +1588,7 @@ describe('sync_helper', () => {
       ).mockReturnValue(mockIntegration)
 
       await ExternalCalendarSync.deleteInstance(
+        mockAccount,
         createMockDeleteInstanceRequest()
       )
 
@@ -1611,6 +1600,7 @@ describe('sync_helper', () => {
 
       // Should not throw
       await ExternalCalendarSync.deleteInstance(
+        mockAccount,
         createMockDeleteInstanceRequest()
       )
     })

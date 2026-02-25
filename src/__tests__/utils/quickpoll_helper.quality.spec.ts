@@ -1,30 +1,28 @@
 import { DateTime, Interval } from 'luxon'
-import {
-  generatePollSlug,
-  mergeTimeRanges,
-  convertSelectedSlotsToAvailabilitySlots,
-  computeBaseAvailability,
-  computeAvailabilityWithOverrides,
-  generateQuickPollBestSlots,
-  subtractBusyTimesFromBlocks,
-  subtractRemovalIntervals,
-  generateFullDayBlocks,
-  clipIntervalsToBounds,
-  getMonthRange,
-  convertBusySlotsToIntervals,
-  computeAvailabilitySlotsWithOverrides,
-  doSlotsOverlapOrContain,
-  convertAvailabilityToSelectedSlots,
-  mergeLuxonIntervals,
-  mergeAvailabilitySlots,
-  convertAvailabilitySlotRangesToIntervals,
-  extractOverrideIntervals,
-  processPollParticipantAvailabilities,
-  createMockMeetingMembers,
-} from '@/utils/quickpoll_helper'
 import { AvailabilitySlot, QuickPollParticipantType } from '@/types/QuickPoll'
 import { MeetingPermissions } from '@/utils/constants/schedule'
-import { generateTimeSlots } from '@/utils/slots.helper'
+import {
+  clipIntervalsToBounds,
+  computeAvailabilitySlotsWithOverrides,
+  computeAvailabilityWithOverrides,
+  computeBaseAvailability,
+  convertAvailabilitySlotRangesToIntervals,
+  convertAvailabilityToSelectedSlots,
+  convertBusySlotsToIntervals,
+  convertSelectedSlotsToAvailabilitySlots,
+  createMockMeetingMembers,
+  doSlotsOverlapOrContain,
+  extractOverrideIntervals,
+  generateFullDayBlocks,
+  generatePollSlug,
+  getMonthRange,
+  mergeAvailabilitySlots,
+  mergeLuxonIntervals,
+  mergeTimeRanges,
+  processPollParticipantAvailabilities,
+  subtractBusyTimesFromBlocks,
+  subtractRemovalIntervals,
+} from '@/utils/quickpoll_helper'
 
 jest.mock('@/utils/slots.helper', () => ({
   generateTimeSlots: jest.fn(() => []),
@@ -507,7 +505,7 @@ describe('quickpoll_helper - Quality Tests', () => {
         timezone
       )
       expect(result.length).toBeGreaterThan(0)
-      const hasRemovals = result.some((slot) => slot.overrides?.removals)
+      const hasRemovals = result.some(slot => slot.overrides?.removals)
       expect(hasRemovals).toBe(true)
     })
 
@@ -591,43 +589,6 @@ describe('quickpoll_helper - Quality Tests', () => {
         timezone
       )
       expect(result.length).toBeGreaterThan(0)
-    })
-  })
-
-  describe('generateQuickPollBestSlots', () => {
-    const timezone = 'UTC'
-    const startDate = new Date('2024-01-15T00:00:00Z')
-    const endDate = new Date('2024-01-20T23:59:59Z')
-    const duration = 30
-
-    it('should return empty when no participants', () => {
-      ;(generateTimeSlots as jest.Mock).mockReturnValue([])
-      const result = generateQuickPollBestSlots(
-        startDate,
-        endDate,
-        duration,
-        timezone,
-        new Map()
-      )
-      expect(result).toEqual([])
-    })
-
-    it('should call generateTimeSlots with correct params', () => {
-      const participantAvailabilities = new Map()
-      generateQuickPollBestSlots(
-        startDate,
-        endDate,
-        duration,
-        timezone,
-        participantAvailabilities
-      )
-      expect(generateTimeSlots).toHaveBeenCalledWith(
-        startDate,
-        duration,
-        true,
-        timezone,
-        endDate
-      )
     })
   })
 
@@ -1135,7 +1096,7 @@ describe('quickpoll_helper - Quality Tests', () => {
       const result = mergeAvailabilitySlots(slots1, slots2)
       expect(result.length).toBeGreaterThan(0)
       // The function merges ranges for the same date
-      const slot = result.find((s) => s.date === '2024-01-15')
+      const slot = result.find(s => s.date === '2024-01-15')
       expect(slot).toBeDefined()
       expect(slot?.ranges.length).toBeGreaterThan(0)
     })
@@ -1320,7 +1281,7 @@ describe('quickpoll_helper - Quality Tests', () => {
         },
       }
       const groupAvailability = {
-        'slot1': ['test@example.com'],
+        slot1: ['test@example.com'],
       }
       const result = processPollParticipantAvailabilities(
         pollData as any,
@@ -1357,7 +1318,7 @@ describe('quickpoll_helper - Quality Tests', () => {
         },
       }
       const groupAvailability = {
-        'slot1': ['test@example.com'],
+        slot1: ['test@example.com'],
       }
       const result = processPollParticipantAvailabilities(
         pollData as any,
@@ -1391,7 +1352,7 @@ describe('quickpoll_helper - Quality Tests', () => {
             {
               id: 'p2',
               guest_email: 'guest@example.com',
-              participant_type: QuickPollParticipantType.GUEST,
+              participant_type: QuickPollParticipantType.INVITEE,
               poll_id: 'poll1',
               created_at: '2024-01-01',
               status: 'pending' as any,
@@ -1422,7 +1383,7 @@ describe('quickpoll_helper - Quality Tests', () => {
             {
               id: 'p2',
               guest_email: 'guest@example.com',
-              participant_type: QuickPollParticipantType.GUEST,
+              participant_type: QuickPollParticipantType.INVITEE,
               poll_id: 'poll1',
               created_at: '2024-01-01',
               status: 'pending' as any,
@@ -1454,7 +1415,7 @@ describe('quickpoll_helper - Quality Tests', () => {
             {
               id: 'p2',
               guest_email: 'guest@example.com',
-              participant_type: QuickPollParticipantType.GUEST,
+              participant_type: QuickPollParticipantType.INVITEE,
               account_address: '0xguest',
               poll_id: 'poll1',
               created_at: '2024-01-01',
@@ -1491,7 +1452,7 @@ describe('quickpoll_helper - Quality Tests', () => {
             {
               id: 'p2',
               guest_email: 'current@example.com',
-              participant_type: QuickPollParticipantType.GUEST,
+              participant_type: QuickPollParticipantType.INVITEE,
               poll_id: 'poll1',
               created_at: '2024-01-01',
               status: 'pending' as any,
@@ -1530,7 +1491,7 @@ describe('quickpoll_helper - Quality Tests', () => {
               id: 'p1',
               guest_email: 'test@example.com',
               account_address: 'test@example.com',
-              participant_type: QuickPollParticipantType.GUEST,
+              participant_type: QuickPollParticipantType.INVITEE,
               poll_id: 'poll1',
               created_at: '2024-01-01',
               status: 'pending' as any,
@@ -1559,7 +1520,7 @@ describe('quickpoll_helper - Quality Tests', () => {
               id: 'p1',
               guest_email: 'guest@example.com',
               guest_name: 'Guest Name',
-              participant_type: QuickPollParticipantType.GUEST,
+              participant_type: QuickPollParticipantType.INVITEE,
               poll_id: 'poll1',
               created_at: '2024-01-01',
               status: 'pending' as any,

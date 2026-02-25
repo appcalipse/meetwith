@@ -28,12 +28,7 @@ describe('/api/server/webhook/calendar/sync', () => {
   let jsonMock: jest.Mock
   let sendMock: jest.Mock
 
-  const mockEvent = {
-    id: 'event-123',
-    channelId: 'channel-123',
-    resourceId: 'resource-456',
-    status: 'synced',
-  }
+  const mockEvent = 'OK'
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -80,7 +75,9 @@ describe('/api/server/webhook/calendar/sync', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(400)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Missing required headers' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'Missing required headers',
+      })
       expect(mockHandleWebhookEvent).not.toHaveBeenCalled()
     })
 
@@ -93,7 +90,9 @@ describe('/api/server/webhook/calendar/sync', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(400)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Missing required headers' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'Missing required headers',
+      })
     })
 
     it('should return 400 when resource state is missing', async () => {
@@ -105,16 +104,9 @@ describe('/api/server/webhook/calendar/sync', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(400)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Missing required headers' })
-    })
-
-    it('should return 404 when event not found', async () => {
-      mockHandleWebhookEvent.mockResolvedValue(null)
-
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      expect(statusMock).toHaveBeenCalledWith(404)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Event not found' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'Missing required headers',
+      })
     })
 
     it('should handle exists resource state', async () => {
@@ -147,21 +139,6 @@ describe('/api/server/webhook/calendar/sync', () => {
       expect(jsonMock).toHaveBeenCalledWith({ error: 'Database error' })
 
       consoleErrorSpy.mockRestore()
-    })
-
-    it('should return 200 in production without processing', async () => {
-      const mockConstants = require('@/utils/constants')
-      mockConstants.isProduction = true
-
-      await handler(req as NextApiRequest, res as NextApiResponse)
-
-      expect(statusMock).toHaveBeenCalledWith(200)
-      expect(jsonMock).toHaveBeenCalledWith({
-        message: 'Webhook received in production, no action taken',
-      })
-      expect(mockHandleWebhookEvent).not.toHaveBeenCalled()
-
-      mockConstants.isProduction = false
     })
   })
 

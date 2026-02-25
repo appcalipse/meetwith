@@ -18,38 +18,43 @@ jest.mock('@/utils/user_manager', () => ({
 
 jest.mock('@/utils/validations', () => ({
   isValidEmail: jest.fn(),
+  isValidUrl: jest.fn().mockReturnValue(true),
 }))
 
 jest.mock('@/ironAuth/withSessionApiRoute', () => ({
-  withSessionRoute: jest.fn((handler) => handler),
+  withSessionRoute: jest.fn(handler => handler),
 }))
 
 jest.mock('@sentry/nextjs', () => ({
   captureException: jest.fn(),
 }))
 
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 import handler from '@/pages/api/secure/meetings/index'
+import { NotificationChannel } from '@/types/AccountNotifications'
 import * as database from '@/utils/database'
-import * as userManager from '@/utils/user_manager'
-import * as validations from '@/utils/validations'
-import * as Sentry from '@sentry/nextjs'
-import { 
-  TimeNotAvailableError,
-  MeetingCreationError,
-  GateConditionNotValidError,
+import {
   AllMeetingSlotsUsedError,
+  GateConditionNotValidError,
+  MeetingCreationError,
+  TimeNotAvailableError,
   TransactionIsRequired,
 } from '@/utils/errors'
-import { NotificationChannel } from '@/types/AccountNotifications'
+import * as userManager from '@/utils/user_manager'
+import * as validations from '@/utils/validations'
 
 describe('/api/secure/meetings/index', () => {
   const mockGetAccountFromDB = database.getAccountFromDB as jest.Mock
-  const mockGetAccountNotificationSubscriptions = database.getAccountNotificationSubscriptions as jest.Mock
-  const mockSetAccountNotificationSubscriptions = database.setAccountNotificationSubscriptions as jest.Mock
+  const mockGetAccountNotificationSubscriptions =
+    database.getAccountNotificationSubscriptions as jest.Mock
+  const mockSetAccountNotificationSubscriptions =
+    database.setAccountNotificationSubscriptions as jest.Mock
   const mockSaveMeeting = database.saveMeeting as jest.Mock
-  const mockGetParticipantBaseInfoFromAccount = userManager.getParticipantBaseInfoFromAccount as jest.Mock
+  const mockGetParticipantBaseInfoFromAccount =
+    userManager.getParticipantBaseInfoFromAccount as jest.Mock
   const mockIsValidEmail = validations.isValidEmail as jest.Mock
+  const mockIsValidUrl = validations.isValidUrl as jest.Mock
 
   let req: Partial<NextApiRequest>
   let res: Partial<NextApiResponse>
@@ -82,6 +87,7 @@ describe('/api/secure/meetings/index', () => {
     start_time: '2024-02-01T10:00:00Z',
     end_time: '2024-02-01T11:00:00Z',
     title: 'Test Meeting',
+    meeting_url: 'https://meet.google.com/ttt-tttt-ttt',
   }
 
   const mockMeetingResult = {
@@ -125,7 +131,10 @@ describe('/api/secure/meetings/index', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(mockGetAccountFromDB).toHaveBeenCalledWith('0x1234567890abcdef')
-      expect(mockSaveMeeting).toHaveBeenCalledWith(mockParticipant, mockMeetingRequest)
+      expect(mockSaveMeeting).toHaveBeenCalledWith(
+        mockParticipant,
+        mockMeetingRequest
+      )
       expect(statusMock).toHaveBeenCalledWith(200)
       expect(jsonMock).toHaveBeenCalledWith(mockMeetingResult)
     })
@@ -144,7 +153,9 @@ describe('/api/secure/meetings/index', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(403)
-      expect(sendMock).toHaveBeenCalledWith("You can't schedule a meeting for someone else")
+      expect(sendMock).toHaveBeenCalledWith(
+        "You can't schedule a meeting for someone else"
+      )
     })
 
     it('should add email notification subscription if valid email provided', async () => {
@@ -196,8 +207,10 @@ describe('/api/secure/meetings/index', () => {
       mockGetAccountFromDB.mockResolvedValue(mockAccount)
       mockGetParticipantBaseInfoFromAccount.mockReturnValue(mockParticipant)
       mockIsValidEmail.mockReturnValue(true)
-      mockGetAccountNotificationSubscriptions.mockResolvedValue({ notification_types: [] })
-      mockSaveMeeting.mockRejectedValue(new TimeNotAvailableError('Time not available'))
+      mockGetAccountNotificationSubscriptions.mockResolvedValue({
+        notification_types: [],
+      })
+      mockSaveMeeting.mockRejectedValue(new TimeNotAvailableError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -208,8 +221,10 @@ describe('/api/secure/meetings/index', () => {
       mockGetAccountFromDB.mockResolvedValue(mockAccount)
       mockGetParticipantBaseInfoFromAccount.mockReturnValue(mockParticipant)
       mockIsValidEmail.mockReturnValue(true)
-      mockGetAccountNotificationSubscriptions.mockResolvedValue({ notification_types: [] })
-      mockSaveMeeting.mockRejectedValue(new MeetingCreationError('Creation failed'))
+      mockGetAccountNotificationSubscriptions.mockResolvedValue({
+        notification_types: [],
+      })
+      mockSaveMeeting.mockRejectedValue(new MeetingCreationError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -220,8 +235,10 @@ describe('/api/secure/meetings/index', () => {
       mockGetAccountFromDB.mockResolvedValue(mockAccount)
       mockGetParticipantBaseInfoFromAccount.mockReturnValue(mockParticipant)
       mockIsValidEmail.mockReturnValue(true)
-      mockGetAccountNotificationSubscriptions.mockResolvedValue({ notification_types: [] })
-      mockSaveMeeting.mockRejectedValue(new GateConditionNotValidError('Gate condition not met'))
+      mockGetAccountNotificationSubscriptions.mockResolvedValue({
+        notification_types: [],
+      })
+      mockSaveMeeting.mockRejectedValue(new GateConditionNotValidError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -232,8 +249,10 @@ describe('/api/secure/meetings/index', () => {
       mockGetAccountFromDB.mockResolvedValue(mockAccount)
       mockGetParticipantBaseInfoFromAccount.mockReturnValue(mockParticipant)
       mockIsValidEmail.mockReturnValue(true)
-      mockGetAccountNotificationSubscriptions.mockResolvedValue({ notification_types: [] })
-      mockSaveMeeting.mockRejectedValue(new AllMeetingSlotsUsedError('All slots used'))
+      mockGetAccountNotificationSubscriptions.mockResolvedValue({
+        notification_types: [],
+      })
+      mockSaveMeeting.mockRejectedValue(new AllMeetingSlotsUsedError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -244,8 +263,10 @@ describe('/api/secure/meetings/index', () => {
       mockGetAccountFromDB.mockResolvedValue(mockAccount)
       mockGetParticipantBaseInfoFromAccount.mockReturnValue(mockParticipant)
       mockIsValidEmail.mockReturnValue(true)
-      mockGetAccountNotificationSubscriptions.mockResolvedValue({ notification_types: [] })
-      mockSaveMeeting.mockRejectedValue(new TransactionIsRequired('Transaction required'))
+      mockGetAccountNotificationSubscriptions.mockResolvedValue({
+        notification_types: [],
+      })
+      mockSaveMeeting.mockRejectedValue(new TransactionIsRequired())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -257,7 +278,9 @@ describe('/api/secure/meetings/index', () => {
       mockGetAccountFromDB.mockResolvedValue(mockAccount)
       mockGetParticipantBaseInfoFromAccount.mockReturnValue(mockParticipant)
       mockIsValidEmail.mockReturnValue(true)
-      mockGetAccountNotificationSubscriptions.mockResolvedValue({ notification_types: [] })
+      mockGetAccountNotificationSubscriptions.mockResolvedValue({
+        notification_types: [],
+      })
       mockSaveMeeting.mockRejectedValue(genericError)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -303,7 +326,9 @@ describe('/api/secure/meetings/index', () => {
       mockGetAccountFromDB.mockResolvedValue(mockAccount)
       mockGetParticipantBaseInfoFromAccount.mockReturnValue(mockParticipant)
       mockIsValidEmail.mockReturnValue(true)
-      mockGetAccountNotificationSubscriptions.mockRejectedValue(new Error('DB error'))
+      mockGetAccountNotificationSubscriptions.mockRejectedValue(
+        new Error('DB error')
+      )
       mockSaveMeeting.mockResolvedValue(mockMeetingResult)
 
       await handler(req as NextApiRequest, res as NextApiResponse)

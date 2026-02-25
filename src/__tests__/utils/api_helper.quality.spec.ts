@@ -1,20 +1,20 @@
 import * as Sentry from '@sentry/nextjs'
-import { 
-  internalFetch, 
-  scheduleMeeting, 
-  cancelMeeting, 
+import {
+  cancelMeeting,
   getAccount,
-  saveAccountChanges 
+  internalFetch,
+  saveAccountChanges,
+  scheduleMeeting,
 } from '@/utils/api_helper'
-import { 
-  ApiFetchError,
-  TimeNotAvailableError,
-  AllMeetingSlotsUsedError,
+import {
   AccountNotFoundError,
-  ServiceUnavailableError,
-  TransactionIsRequired,
+  AllMeetingSlotsUsedError,
+  ApiFetchError,
+  GateConditionNotValidError,
   MeetingCreationError,
-  GateConditionNotValidError
+  ServiceUnavailableError,
+  TimeNotAvailableError,
+  TransactionIsRequired,
 } from '@/utils/errors'
 import { queryClient } from '@/utils/react_query'
 
@@ -40,59 +40,77 @@ describe('api_helper - internalFetch retry logic', () => {
 
   describe('retry on 5xx errors', () => {
     it('retries on 500 error up to 3 times and succeeds', async () => {
-      (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ 
-          status: 500, 
-          ok: false, 
-          text: async () => 'Server error' 
+      ;(global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          status: 501,
+          ok: false,
+          text: async () => 'Not Implemented',
         })
-        .mockResolvedValueOnce({ 
-          status: 500, 
-          ok: false, 
-          text: async () => 'Server error' 
+        .mockResolvedValueOnce({
+          status: 501,
+          ok: false,
+          text: async () => 'Not Implemented',
         })
-        .mockResolvedValueOnce({ 
-          status: 200, 
-          ok: true, 
-          json: async () => ({ success: true }) 
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => ({ success: true }),
         })
 
-      const result = await internalFetch('/test', 'GET', {}, {}, {}, false, true, 3)
+      const result = await internalFetch(
+        '/test',
+        'GET',
+        {},
+        {},
+        {},
+        false,
+        true,
+        3
+      )
 
       expect(global.fetch).toHaveBeenCalledTimes(3)
       expect(result).toEqual({ success: true })
     })
 
     it('retries on 502 Bad Gateway error', async () => {
-      (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ 
-          status: 502, 
-          ok: false, 
-          text: async () => 'Bad Gateway' 
+      ;(global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          status: 502,
+          ok: false,
+          text: async () => 'Bad Gateway',
         })
-        .mockResolvedValueOnce({ 
-          status: 200, 
-          ok: true, 
-          json: async () => ({ data: 'ok' }) 
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => ({ data: 'ok' }),
         })
 
-      const result = await internalFetch('/test', 'GET', {}, {}, {}, false, true, 3)
+      const result = await internalFetch(
+        '/test',
+        'GET',
+        {},
+        {},
+        {},
+        false,
+        true,
+        3
+      )
 
       expect(global.fetch).toHaveBeenCalledTimes(2)
       expect(result).toEqual({ data: 'ok' })
     })
 
     it('retries on 503 Service Unavailable error', async () => {
-      (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ 
-          status: 503, 
-          ok: false, 
-          text: async () => 'Service Unavailable' 
+      ;(global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          status: 503,
+          ok: false,
+          text: async () => 'Service Unavailable',
         })
-        .mockResolvedValueOnce({ 
-          status: 200, 
-          ok: true, 
-          json: async () => ({ status: 'available' }) 
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => ({ status: 'available' }),
         })
 
       const result = await internalFetch('/test', 'GET')
@@ -101,11 +119,11 @@ describe('api_helper - internalFetch retry logic', () => {
       expect(result).toEqual({ status: 'available' })
     })
 
-    it('throws error when max retries exhausted on 500 errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 500, 
-        ok: false, 
-        text: async () => 'Server error' 
+    it('throws error when max retries exhausted on 501 errors', async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 501,
+        ok: false,
+        text: async () => 'Not Implemented',
       })
 
       await expect(
@@ -116,10 +134,10 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('handles 504 Gateway Timeout and throws ServiceUnavailableError', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 504, 
-        ok: false, 
-        text: async () => 'Gateway Timeout' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 504,
+        ok: false,
+        text: async () => 'Gateway Timeout',
       })
 
       await expect(
@@ -132,12 +150,12 @@ describe('api_helper - internalFetch retry logic', () => {
 
   describe('retry on network errors', () => {
     it('retries on "Failed to fetch" network error', async () => {
-      (global.fetch as jest.Mock)
+      ;(global.fetch as jest.Mock)
         .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-        .mockResolvedValueOnce({ 
-          status: 200, 
-          ok: true, 
-          json: async () => ({ success: true }) 
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => ({ success: true }),
         })
 
       const result = await internalFetch('/test', 'GET')
@@ -147,12 +165,12 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('retries on "Network request failed" error', async () => {
-      (global.fetch as jest.Mock)
+      ;(global.fetch as jest.Mock)
         .mockRejectedValueOnce(new TypeError('Network request failed'))
-        .mockResolvedValueOnce({ 
-          status: 200, 
-          ok: true, 
-          json: async () => ({ data: 'success' }) 
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => ({ data: 'success' }),
         })
 
       const result = await internalFetch('/test', 'GET')
@@ -162,12 +180,14 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('retries on NetworkError', async () => {
-      (global.fetch as jest.Mock)
-        .mockRejectedValueOnce(new TypeError('NetworkError when attempting to fetch resource'))
-        .mockResolvedValueOnce({ 
-          status: 200, 
-          ok: true, 
-          json: async () => ({ result: 'ok' }) 
+      ;(global.fetch as jest.Mock)
+        .mockRejectedValueOnce(
+          new TypeError('NetworkError when attempting to fetch resource')
+        )
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => ({ result: 'ok' }),
         })
 
       const result = await internalFetch('/test', 'GET')
@@ -177,12 +197,12 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('retries on timeout error', async () => {
-      (global.fetch as jest.Mock)
+      ;(global.fetch as jest.Mock)
         .mockRejectedValueOnce(new TypeError('timeout'))
-        .mockResolvedValueOnce({ 
-          status: 200, 
-          ok: true, 
-          json: async () => ({ completed: true }) 
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => ({ completed: true }),
         })
 
       const result = await internalFetch('/test', 'GET')
@@ -192,7 +212,9 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('throws error when max retries exhausted on network errors', async () => {
-      (global.fetch as jest.Mock).mockRejectedValue(new TypeError('Failed to fetch'))
+      ;(global.fetch as jest.Mock).mockRejectedValue(
+        new TypeError('Failed to fetch')
+      )
 
       await expect(
         internalFetch('/test', 'GET', {}, {}, {}, false, true, 3)
@@ -204,10 +226,10 @@ describe('api_helper - internalFetch retry logic', () => {
 
   describe('does NOT retry on 4xx errors', () => {
     it('does not retry on 400 Bad Request error', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 400, 
-        ok: false, 
-        text: async () => 'Bad Request' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 400,
+        ok: false,
+        text: async () => 'Bad Request',
       })
 
       await expect(
@@ -218,85 +240,77 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('does not retry on 401 Unauthorized error', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 401, 
-        ok: false, 
-        text: async () => 'Unauthorized' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 401,
+        ok: false,
+        text: async () => 'Unauthorized',
       })
 
-      await expect(
-        internalFetch('/test', 'GET')
-      ).rejects.toThrow(ApiFetchError)
+      await expect(internalFetch('/test', 'GET')).rejects.toThrow(ApiFetchError)
 
       expect(global.fetch).toHaveBeenCalledTimes(1)
     })
 
     it('does not retry on 404 Not Found error', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 404, 
-        ok: false, 
-        text: async () => 'Not Found' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 404,
+        ok: false,
+        text: async () => 'Not Found',
       })
 
-      await expect(
-        internalFetch('/test', 'GET')
-      ).rejects.toThrow(ApiFetchError)
+      await expect(internalFetch('/test', 'GET')).rejects.toThrow(ApiFetchError)
 
       expect(global.fetch).toHaveBeenCalledTimes(1)
     })
 
     it('does not retry on 409 Conflict error', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 409, 
-        ok: false, 
-        text: async () => 'Conflict' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 409,
+        ok: false,
+        text: async () => 'Conflict',
       })
 
-      await expect(
-        internalFetch('/test', 'GET')
-      ).rejects.toThrow(ApiFetchError)
+      await expect(internalFetch('/test', 'GET')).rejects.toThrow(ApiFetchError)
 
       expect(global.fetch).toHaveBeenCalledTimes(1)
     })
 
     it('does not retry on 429 Too Many Requests error', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 429, 
-        ok: false, 
-        text: async () => 'Too Many Requests' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 429,
+        ok: false,
+        text: async () => 'Too Many Requests',
       })
 
-      await expect(
-        internalFetch('/test', 'GET')
-      ).rejects.toThrow(ApiFetchError)
+      await expect(internalFetch('/test', 'GET')).rejects.toThrow(ApiFetchError)
 
       expect(global.fetch).toHaveBeenCalledTimes(1)
     })
 
     it('does not send 404 errors on /accounts to Sentry', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 404, 
-        ok: false, 
-        text: async () => 'Not Found' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 404,
+        ok: false,
+        text: async () => 'Not Found',
       })
 
-      await expect(
-        internalFetch('/accounts/testuser', 'GET')
-      ).rejects.toThrow(ApiFetchError)
+      await expect(internalFetch('/accounts/testuser', 'GET')).rejects.toThrow(
+        ApiFetchError
+      )
 
       expect(Sentry.captureException).not.toHaveBeenCalled()
     })
 
     it('sends 404 errors on non-/accounts paths to Sentry', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 404, 
-        ok: false, 
-        text: async () => 'Not Found' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 404,
+        ok: false,
+        text: async () => 'Not Found',
       })
 
-      await expect(
-        internalFetch('/meetings/123', 'GET')
-      ).rejects.toThrow(ApiFetchError)
+      await expect(internalFetch('/meetings/123', 'GET')).rejects.toThrow(
+        ApiFetchError
+      )
 
       expect(Sentry.captureException).toHaveBeenCalled()
     })
@@ -304,10 +318,10 @@ describe('api_helper - internalFetch retry logic', () => {
 
   describe('retry behavior settings', () => {
     it('does not retry when withRetry is false', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 500, 
-        ok: false, 
-        text: async () => 'Server error' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 500,
+        ok: false,
+        text: async () => 'Server error',
       })
 
       await expect(
@@ -318,10 +332,10 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('respects custom remainingRetries parameter', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 500, 
-        ok: false, 
-        text: async () => 'Server error' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 501,
+        ok: false,
+        text: async () => 'Not Implemented',
       })
 
       await expect(
@@ -332,15 +346,13 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('uses default remainingRetries of 3', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 500, 
-        ok: false, 
-        text: async () => 'Server error' 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 501,
+        ok: false,
+        text: async () => 'Not Implemented',
       })
 
-      await expect(
-        internalFetch('/test', 'GET')
-      ).rejects.toThrow(ApiFetchError)
+      await expect(internalFetch('/test', 'GET')).rejects.toThrow(ApiFetchError)
 
       expect(global.fetch).toHaveBeenCalledTimes(4) // initial + 3 retries
     })
@@ -348,10 +360,10 @@ describe('api_helper - internalFetch retry logic', () => {
 
   describe('request construction', () => {
     it('sends JSON request with correct headers', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 200, 
-        ok: true, 
-        json: async () => ({ success: true }) 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ success: true }),
       })
 
       const body = { name: 'test' }
@@ -370,15 +382,15 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('sends FormData request without Content-Type header', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 200, 
-        ok: true, 
-        json: async () => ({ success: true }) 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ success: true }),
       })
 
       const formData = new FormData()
       formData.append('file', 'test')
-      
+
       await internalFetch('/upload', 'POST', formData, {}, {}, true)
 
       expect(global.fetch).toHaveBeenCalledWith(
@@ -394,10 +406,10 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('includes custom headers', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 200, 
-        ok: true, 
-        json: async () => ({ success: true }) 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ success: true }),
       })
 
       const customHeaders = { Authorization: 'Bearer token123' }
@@ -412,10 +424,10 @@ describe('api_helper - internalFetch retry logic', () => {
     })
 
     it('includes request options', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ 
-        status: 200, 
-        ok: true, 
-        json: async () => ({ success: true }) 
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ success: true }),
       })
 
       const signal = new AbortController().signal
@@ -444,10 +456,10 @@ describe('api_helper - scheduleMeeting', () => {
       end_time: '2024-01-01T11:00:00Z',
     } as any
 
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 200, 
-      ok: true, 
-      json: async () => mockSlot 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => mockSlot,
     })
 
     const meeting = {
@@ -469,10 +481,10 @@ describe('api_helper - scheduleMeeting', () => {
   })
 
   it('throws TimeNotAvailableError on 409 status', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 409, 
-      ok: false, 
-      text: async () => 'Time not available' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 409,
+      ok: false,
+      text: async () => 'Time not available',
     })
 
     const meeting = {
@@ -481,14 +493,16 @@ describe('api_helper - scheduleMeeting', () => {
       title: 'Test Meeting',
     } as any
 
-    await expect(scheduleMeeting(meeting)).rejects.toThrow(TimeNotAvailableError)
+    await expect(scheduleMeeting(meeting)).rejects.toThrow(
+      TimeNotAvailableError
+    )
   })
 
   it('throws AllMeetingSlotsUsedError on 402 status', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 402, 
-      ok: false, 
-      text: async () => 'All meeting slots used' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 402,
+      ok: false,
+      text: async () => 'All meeting slots used',
     })
 
     const meeting = {
@@ -497,14 +511,16 @@ describe('api_helper - scheduleMeeting', () => {
       title: 'Test Meeting',
     } as any
 
-    await expect(scheduleMeeting(meeting)).rejects.toThrow(AllMeetingSlotsUsedError)
+    await expect(scheduleMeeting(meeting)).rejects.toThrow(
+      AllMeetingSlotsUsedError
+    )
   })
 
   it('throws TransactionIsRequired on 400 status', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 400, 
-      ok: false, 
-      text: async () => 'Transaction required' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 400,
+      ok: false,
+      text: async () => 'Transaction required',
     })
 
     const meeting = {
@@ -513,14 +529,16 @@ describe('api_helper - scheduleMeeting', () => {
       title: 'Test Meeting',
     } as any
 
-    await expect(scheduleMeeting(meeting)).rejects.toThrow(TransactionIsRequired)
+    await expect(scheduleMeeting(meeting)).rejects.toThrow(
+      TransactionIsRequired
+    )
   })
 
   it('throws MeetingCreationError on 412 status', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 412, 
-      ok: false, 
-      text: async () => 'Precondition failed' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 412,
+      ok: false,
+      text: async () => 'Precondition failed',
     })
 
     const meeting = {
@@ -533,10 +551,10 @@ describe('api_helper - scheduleMeeting', () => {
   })
 
   it('throws GateConditionNotValidError on 403 status', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 403, 
-      ok: false, 
-      text: async () => 'Gate condition not valid' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 403,
+      ok: false,
+      text: async () => 'Gate condition not valid',
     })
 
     const meeting = {
@@ -545,25 +563,27 @@ describe('api_helper - scheduleMeeting', () => {
       title: 'Test Meeting',
     } as any
 
-    await expect(scheduleMeeting(meeting)).rejects.toThrow(GateConditionNotValidError)
+    await expect(scheduleMeeting(meeting)).rejects.toThrow(
+      GateConditionNotValidError
+    )
   })
 
-  it('retries on 500 error and succeeds', async () => {
+  it('retries on 501 error and succeeds', async () => {
     const mockSlot = {
       id: 'slot123',
       start_time: '2024-01-01T10:00:00Z',
     } as any
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ 
-        status: 500, 
-        ok: false, 
-        text: async () => 'Server error' 
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        status: 501,
+        ok: false,
+        text: async () => 'Not Implemented',
       })
-      .mockResolvedValueOnce({ 
-        status: 200, 
-        ok: true, 
-        json: async () => mockSlot 
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: async () => mockSlot,
       })
 
     const meeting = {
@@ -588,10 +608,10 @@ describe('api_helper - cancelMeeting', () => {
   it('successfully cancels a meeting', async () => {
     const mockResponse = { removed: ['event1', 'event2'] } as any
 
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 200, 
-      ok: true, 
-      json: async () => mockResponse 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => mockResponse,
     })
 
     const meeting = {
@@ -612,10 +632,10 @@ describe('api_helper - cancelMeeting', () => {
   })
 
   it('throws TimeNotAvailableError on 409 status', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 409, 
-      ok: false, 
-      text: async () => 'Conflict' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 409,
+      ok: false,
+      text: async () => 'Conflict',
     })
 
     const meeting = {
@@ -624,16 +644,16 @@ describe('api_helper - cancelMeeting', () => {
       start_time: '2024-01-01T10:00:00Z',
     } as any
 
-    await expect(
-      cancelMeeting(meeting, 'America/New_York')
-    ).rejects.toThrow(TimeNotAvailableError)
+    await expect(cancelMeeting(meeting, 'America/New_York')).rejects.toThrow(
+      TimeNotAvailableError
+    )
   })
 
   it('throws MeetingCreationError on 412 status', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 412, 
-      ok: false, 
-      text: async () => 'Precondition failed' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 412,
+      ok: false,
+      text: async () => 'Precondition failed',
     })
 
     const meeting = {
@@ -642,18 +662,18 @@ describe('api_helper - cancelMeeting', () => {
       start_time: '2024-01-01T10:00:00Z',
     } as any
 
-    await expect(
-      cancelMeeting(meeting, 'America/New_York')
-    ).rejects.toThrow(MeetingCreationError)
+    await expect(cancelMeeting(meeting, 'America/New_York')).rejects.toThrow(
+      MeetingCreationError
+    )
   })
 
   it('includes timezone in request body', async () => {
     const mockResponse = { removed: [] } as any
 
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 200, 
-      ok: true, 
-      json: async () => mockResponse 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => mockResponse,
     })
 
     const meeting = {
@@ -675,12 +695,12 @@ describe('api_helper - cancelMeeting', () => {
   it('retries on network error and succeeds', async () => {
     const mockResponse = { removed: ['event1'] } as any
 
-    (global.fetch as jest.Mock)
+    ;(global.fetch as jest.Mock)
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockResolvedValueOnce({ 
-        status: 200, 
-        ok: true, 
-        json: async () => mockResponse 
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: async () => mockResponse,
       })
 
     const meeting = {
@@ -709,10 +729,10 @@ describe('api_helper - getAccount', () => {
       bio: 'Test bio',
     } as any
 
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 200, 
-      ok: true, 
-      json: async () => mockAccount 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => mockAccount,
     })
 
     const result = await getAccount('user@example.com')
@@ -725,10 +745,10 @@ describe('api_helper - getAccount', () => {
   })
 
   it('throws AccountNotFoundError on 404 status', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 404, 
-      ok: false, 
-      text: async () => 'Not Found' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 404,
+      ok: false,
+      text: async () => 'Not Found',
     })
 
     await expect(getAccount('nonexistent@example.com')).rejects.toThrow(
@@ -737,10 +757,10 @@ describe('api_helper - getAccount', () => {
   })
 
   it('throws AccountNotFoundError when response is null', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 200, 
-      ok: true, 
-      json: async () => null 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => null,
     })
 
     await expect(getAccount('user@example.com')).rejects.toThrow(
@@ -748,22 +768,22 @@ describe('api_helper - getAccount', () => {
     )
   })
 
-  it('retries on 500 error and succeeds', async () => {
+  it('retries on 501 error and succeeds', async () => {
     const mockAccount = {
       address: 'user@example.com',
       name: 'Test User',
     } as any
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ 
-        status: 500, 
-        ok: false, 
-        text: async () => 'Server error' 
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        status: 501,
+        ok: false,
+        text: async () => 'Not Implemented',
       })
-      .mockResolvedValueOnce({ 
-        status: 200, 
-        ok: true, 
-        json: async () => mockAccount 
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: async () => mockAccount,
       })
 
     const result = await getAccount('user@example.com')
@@ -773,10 +793,10 @@ describe('api_helper - getAccount', () => {
   })
 
   it('propagates other errors', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 401, 
-      ok: false, 
-      text: async () => 'Unauthorized' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 401,
+      ok: false,
+      text: async () => 'Unauthorized',
     })
 
     await expect(getAccount('user@example.com')).rejects.toThrow(ApiFetchError)
@@ -797,10 +817,10 @@ describe('api_helper - saveAccountChanges', () => {
       bio: 'Updated bio',
     } as any
 
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 200, 
-      ok: true, 
-      json: async () => mockAccount 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => mockAccount,
     })
 
     const result = await saveAccountChanges(mockAccount)
@@ -821,10 +841,10 @@ describe('api_helper - saveAccountChanges', () => {
       name: 'Updated User',
     } as any
 
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 200, 
-      ok: true, 
-      json: async () => mockAccount 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => mockAccount,
     })
 
     await saveAccountChanges(mockAccount)
@@ -833,10 +853,10 @@ describe('api_helper - saveAccountChanges', () => {
   })
 
   it('throws error on validation failure', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 400, 
-      ok: false, 
-      text: async () => 'Validation error' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 400,
+      ok: false,
+      text: async () => 'Validation error',
     })
 
     const account = {
@@ -853,16 +873,16 @@ describe('api_helper - saveAccountChanges', () => {
       name: 'Updated User',
     } as any
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ 
-        status: 503, 
-        ok: false, 
-        text: async () => 'Service Unavailable' 
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        status: 503,
+        ok: false,
+        text: async () => 'Service Unavailable',
       })
-      .mockResolvedValueOnce({ 
-        status: 200, 
-        ok: true, 
-        json: async () => mockAccount 
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: async () => mockAccount,
       })
 
     const result = await saveAccountChanges(mockAccount)
@@ -872,10 +892,10 @@ describe('api_helper - saveAccountChanges', () => {
   })
 
   it('does not retry on 400 validation errors', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 400, 
-      ok: false, 
-      text: async () => 'Bad Request' 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 400,
+      ok: false,
+      text: async () => 'Bad Request',
     })
 
     const account = {
@@ -893,18 +913,16 @@ describe('api_helper - saveAccountChanges', () => {
       name: 'Test User',
     } as any
 
-    (global.fetch as jest.Mock).mockResolvedValue({ 
-      status: 200, 
-      ok: true, 
-      json: async () => mockAccount 
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => mockAccount,
     })
 
     await saveAccountChanges(mockAccount)
 
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.stringMatching(/user@example\.com/)
-      ])
+      expect.arrayContaining([expect.stringMatching(/user@example\.com/)])
     )
   })
 })

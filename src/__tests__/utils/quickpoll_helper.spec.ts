@@ -1,32 +1,20 @@
 import { DateTime, Interval } from 'luxon'
-import { Account } from '@/types/Account'
+import { AvailabilitySlot, QuickPollParticipantType } from '@/types/QuickPoll'
 import {
-  AvailabilitySlot,
-  QuickPollParticipant,
-  QuickPollParticipantType,
-} from '@/types/QuickPoll'
-import {
-  generatePollSlug,
-  mergeTimeRanges,
-  convertSelectedSlotsToAvailabilitySlots,
+  clipIntervalsToBounds,
   computeBaseAvailability,
-  computeAvailabilityWithOverrides,
-  generateQuickPollBestSlots,
+  convertBusySlotsToIntervals,
+  convertSelectedSlotsToAvailabilitySlots,
+  createMockMeetingMembers,
+  doSlotsOverlapOrContain,
+  generateFullDayBlocks,
+  generatePollSlug,
+  getMonthRange,
+  mergeAvailabilitySlots,
+  mergeLuxonIntervals,
+  mergeTimeRanges,
   subtractBusyTimesFromBlocks,
   subtractRemovalIntervals,
-  generateFullDayBlocks,
-  clipIntervalsToBounds,
-  getMonthRange,
-  convertBusySlotsToIntervals,
-  computeAvailabilitySlotsWithOverrides,
-  doSlotsOverlapOrContain,
-  convertAvailabilityToSelectedSlots,
-  mergeLuxonIntervals,
-  mergeAvailabilitySlots,
-  convertAvailabilitySlotRangesToIntervals,
-  extractOverrideIntervals,
-  processPollParticipantAvailabilities,
-  createMockMeetingMembers,
 } from '@/utils/quickpoll_helper'
 
 jest.mock('@/utils/slots.helper', () => ({
@@ -349,7 +337,7 @@ describe('quickpoll_helper', () => {
         },
       ]
 
-      const merged = mergeAvailabilitySlots(slots)
+      const merged = mergeAvailabilitySlots(slots, slots)
       const mondaySlots = merged.filter(s => s.weekday === 1)
       expect(mondaySlots.length).toBeGreaterThan(0)
     })
@@ -366,13 +354,13 @@ describe('quickpoll_helper', () => {
         },
       ]
 
-      const merged = mergeAvailabilitySlots(slots)
+      const merged = mergeAvailabilitySlots(slots, slots)
       const weekdays = new Set(merged.map(s => s.weekday))
       expect(weekdays.size).toBe(2)
     })
 
     it('should handle empty array', () => {
-      const merged = mergeAvailabilitySlots([])
+      const merged = mergeAvailabilitySlots([], [])
       expect(merged).toEqual([])
     })
   })
@@ -493,13 +481,13 @@ describe('quickpoll_helper', () => {
         },
       ]
 
-      const intervals = convertBusySlotsToIntervals(busySlots, 'UTC')
+      const intervals = convertBusySlotsToIntervals(busySlots)
       expect(intervals).toHaveLength(1)
       expect(intervals[0]).toBeInstanceOf(Interval)
     })
 
     it('should handle empty array', () => {
-      const intervals = convertBusySlotsToIntervals([], 'UTC')
+      const intervals = convertBusySlotsToIntervals([])
       expect(intervals).toEqual([])
     })
 
@@ -511,11 +499,8 @@ describe('quickpoll_helper', () => {
         },
       ]
 
-      const intervalsUTC = convertBusySlotsToIntervals(busySlots, 'UTC')
-      const intervalsET = convertBusySlotsToIntervals(
-        busySlots,
-        'America/New_York'
-      )
+      const intervalsUTC = convertBusySlotsToIntervals(busySlots)
+      const intervalsET = convertBusySlotsToIntervals(busySlots)
 
       expect(intervalsUTC).toHaveLength(1)
       expect(intervalsET).toHaveLength(1)
@@ -652,7 +637,7 @@ describe('quickpoll_helper', () => {
               participant_id: '1',
               poll_id: 'poll-123',
               account_address: '0x123',
-              participant_type: QuickPollParticipantType.ORGANIZER,
+              participant_type: QuickPollParticipantType.SCHEDULER,
               timezone: 'UTC',
               created_at: new Date().toISOString(),
             },
@@ -674,7 +659,7 @@ describe('quickpoll_helper', () => {
               poll_id: 'poll-123',
               guest_email: 'guest@example.com',
               guest_name: 'Guest User',
-              participant_type: QuickPollParticipantType.PARTICIPANT,
+              participant_type: QuickPollParticipantType.INVITEE,
               timezone: 'UTC',
               created_at: new Date().toISOString(),
             },

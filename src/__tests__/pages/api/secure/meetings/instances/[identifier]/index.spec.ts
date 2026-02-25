@@ -20,33 +20,34 @@ jest.mock('@/utils/user_manager', () => ({
 }))
 
 jest.mock('@/ironAuth/withSessionApiRoute', () => ({
-  withSessionRoute: jest.fn((handler) => handler),
+  withSessionRoute: jest.fn(handler => handler),
 }))
 
 jest.mock('@sentry/node', () => ({
   captureException: jest.fn(),
 }))
 
+import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 import handler from '@/pages/api/secure/meetings/instances/[identifier]/index'
 import * as database from '@/utils/database'
-import * as userManager from '@/utils/user_manager'
 import {
-  TimeNotAvailableError,
-  MeetingCreationError,
-  MeetingChangeConflictError,
   GateConditionNotValidError,
+  MeetingChangeConflictError,
+  MeetingCreationError,
   MeetingSessionNotFoundError,
+  TimeNotAvailableError,
   TransactionIsRequired,
 } from '@/utils/errors'
-import * as Sentry from '@sentry/node'
+import * as userManager from '@/utils/user_manager'
 
 describe('/api/secure/meetings/instances/[identifier]', () => {
   const mockGetSlotInstance = database.getSlotInstance as jest.Mock
   const mockGetAccountFromDB = database.getAccountFromDB as jest.Mock
   const mockUpdateMeetingInstance = database.updateMeetingInstance as jest.Mock
   const mockDeleteMeetingFromDB = database.deleteMeetingFromDB as jest.Mock
-  const mockGetParticipantBaseInfoFromAccount = userManager.getParticipantBaseInfoFromAccount as jest.Mock
+  const mockGetParticipantBaseInfoFromAccount =
+    userManager.getParticipantBaseInfoFromAccount as jest.Mock
   const mockSentry = Sentry.captureException as jest.Mock
 
   let req: Partial<NextApiRequest>
@@ -57,11 +58,11 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     jsonMock = jest.fn()
     sendMock = jest.fn()
     statusMock = jest.fn(() => ({ json: jsonMock, send: sendMock }))
-    
+
     req = {
       method: 'GET',
       query: { identifier: 'instance_123' },
@@ -72,11 +73,11 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
         },
       } as any,
     }
-    
+
     res = {
       status: statusMock,
     }
-    
+
     mockGetParticipantBaseInfoFromAccount.mockReturnValue({
       address: '0x1234567890abcdef',
       name: 'Test User',
@@ -120,7 +121,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
         end_time: '2024-01-15T11:00:00Z',
         account_address: '0x1234567890abcdef',
       }
-      
+
       mockGetSlotInstance.mockResolvedValue(mockInstance)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -140,7 +141,9 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
     })
 
     it('should handle database errors gracefully', async () => {
-      mockGetSlotInstance.mockRejectedValue(new Error('Database connection failed'))
+      mockGetSlotInstance.mockRejectedValue(
+        new Error('Database connection failed')
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -171,13 +174,13 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
         id: 'instance_123',
         account_address: '0x1234567890abcdef',
       }
-      
+
       const mockUpdatedInstance = {
         id: 'instance_123',
         title: 'Updated Meeting',
         start_time: '2024-01-15T14:00:00Z',
       }
-      
+
       mockGetSlotInstance.mockResolvedValue(mockExistingInstance)
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockUpdateMeetingInstance.mockResolvedValue(mockUpdatedInstance)
@@ -187,8 +190,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
       expect(mockGetSlotInstance).toHaveBeenCalledWith('instance_123')
       expect(mockUpdateMeetingInstance).toHaveBeenCalledWith(
         expect.any(Object),
-        req.body,
-        'instance_123'
+        req.body
       )
       expect(statusMock).toHaveBeenCalledWith(200)
       expect(jsonMock).toHaveBeenCalledWith(mockUpdatedInstance)
@@ -199,19 +201,23 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
         id: 'instance_123',
         account_address: '0xdifferentuser',
       }
-      
+
       mockGetSlotInstance.mockResolvedValue(mockExistingInstance)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(403)
-      expect(sendMock).toHaveBeenCalledWith("You can't edit a meeting that is not yours")
+      expect(sendMock).toHaveBeenCalledWith(
+        "You can't edit a meeting that is not yours"
+      )
     })
 
     it('should return 409 for time not available error', async () => {
-      mockGetSlotInstance.mockResolvedValue({ account_address: '0x1234567890abcdef' })
+      mockGetSlotInstance.mockResolvedValue({
+        account_address: '0x1234567890abcdef',
+      })
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockUpdateMeetingInstance.mockRejectedValue(new TimeNotAvailableError('Time conflict'))
+      mockUpdateMeetingInstance.mockRejectedValue(new TimeNotAvailableError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -219,9 +225,11 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
     })
 
     it('should return 412 for meeting creation error', async () => {
-      mockGetSlotInstance.mockResolvedValue({ account_address: '0x1234567890abcdef' })
+      mockGetSlotInstance.mockResolvedValue({
+        account_address: '0x1234567890abcdef',
+      })
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockUpdateMeetingInstance.mockRejectedValue(new MeetingCreationError('Creation failed'))
+      mockUpdateMeetingInstance.mockRejectedValue(new MeetingCreationError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -229,9 +237,13 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
     })
 
     it('should return 417 for meeting change conflict error', async () => {
-      mockGetSlotInstance.mockResolvedValue({ account_address: '0x1234567890abcdef' })
+      mockGetSlotInstance.mockResolvedValue({
+        account_address: '0x1234567890abcdef',
+      })
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockUpdateMeetingInstance.mockRejectedValue(new MeetingChangeConflictError('Conflict'))
+      mockUpdateMeetingInstance.mockRejectedValue(
+        new MeetingChangeConflictError()
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -239,9 +251,13 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
     })
 
     it('should return 405 for gate condition error', async () => {
-      mockGetSlotInstance.mockResolvedValue({ account_address: '0x1234567890abcdef' })
+      mockGetSlotInstance.mockResolvedValue({
+        account_address: '0x1234567890abcdef',
+      })
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockUpdateMeetingInstance.mockRejectedValue(new GateConditionNotValidError('Gate failed'))
+      mockUpdateMeetingInstance.mockRejectedValue(
+        new GateConditionNotValidError()
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -249,20 +265,28 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
     })
 
     it('should return 404 for meeting session not found', async () => {
-      mockGetSlotInstance.mockResolvedValue({ account_address: '0x1234567890abcdef' })
+      mockGetSlotInstance.mockResolvedValue({
+        account_address: '0x1234567890abcdef',
+      })
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockUpdateMeetingInstance.mockRejectedValue(new MeetingSessionNotFoundError('meeting_123'))
+      mockUpdateMeetingInstance.mockRejectedValue(
+        new MeetingSessionNotFoundError('meeting_123')
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(404)
-      expect(sendMock).toHaveBeenCalledWith('Meeting session not found for id: meeting_123')
+      expect(sendMock).toHaveBeenCalledWith(
+        'Meeting session not found for id: meeting_123'
+      )
     })
 
     it('should return 400 for transaction required error', async () => {
-      mockGetSlotInstance.mockResolvedValue({ account_address: '0x1234567890abcdef' })
+      mockGetSlotInstance.mockResolvedValue({
+        account_address: '0x1234567890abcdef',
+      })
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockUpdateMeetingInstance.mockRejectedValue(new TransactionIsRequired('Payment needed'))
+      mockUpdateMeetingInstance.mockRejectedValue(new TransactionIsRequired())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -270,7 +294,9 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
     })
 
     it('should return 500 and capture exception for unknown errors', async () => {
-      mockGetSlotInstance.mockResolvedValue({ account_address: '0x1234567890abcdef' })
+      mockGetSlotInstance.mockResolvedValue({
+        account_address: '0x1234567890abcdef',
+      })
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockUpdateMeetingInstance.mockRejectedValue(new Error('Unknown error'))
 
@@ -315,7 +341,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
         },
         currentTimezone: 'America/New_York',
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockDeleteMeetingFromDB.mockResolvedValue(true)
 
@@ -347,7 +373,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
         },
         currentTimezone: 'UTC',
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockDeleteMeetingFromDB.mockResolvedValue(true)
 
@@ -369,7 +395,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
 
     it('should return 409 for time not available error', async () => {
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockDeleteMeetingFromDB.mockRejectedValue(new TimeNotAvailableError('Time conflict'))
+      mockDeleteMeetingFromDB.mockRejectedValue(new TimeNotAvailableError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -378,7 +404,9 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
 
     it('should return 417 for change conflict error', async () => {
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockDeleteMeetingFromDB.mockRejectedValue(new MeetingChangeConflictError('Conflict'))
+      mockDeleteMeetingFromDB.mockRejectedValue(
+        new MeetingChangeConflictError()
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -387,7 +415,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
 
     it('should return 412 for meeting creation error', async () => {
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockDeleteMeetingFromDB.mockRejectedValue(new MeetingCreationError('Creation failed'))
+      mockDeleteMeetingFromDB.mockRejectedValue(new MeetingCreationError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -396,7 +424,9 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
 
     it('should return 403 for gate condition error', async () => {
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
-      mockDeleteMeetingFromDB.mockRejectedValue(new GateConditionNotValidError('Gate failed'))
+      mockDeleteMeetingFromDB.mockRejectedValue(
+        new GateConditionNotValidError()
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -417,7 +447,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
   describe('Edge Cases', () => {
     it('should handle empty identifier string', async () => {
       req.query = { identifier: '' }
-      
+
       mockGetSlotInstance.mockResolvedValue({ id: '' })
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -427,7 +457,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
 
     it('should handle identifier as array', async () => {
       req.query = { identifier: ['id1', 'id2'] }
-      
+
       mockGetSlotInstance.mockResolvedValue({ id: 'id1' })
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -441,7 +471,9 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
       req.body = {}
 
       // Should fail when trying to access account.address
-      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
+      await expect(
+        handler(req as NextApiRequest, res as NextApiResponse)
+      ).rejects.toThrow()
     })
 
     it('should handle instance with complex data', async () => {
@@ -458,7 +490,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
         ],
         location: 'Room 123 <Building A>',
       }
-      
+
       mockGetSlotInstance.mockResolvedValue(complexInstance)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -476,7 +508,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
         },
         currentTimezone: 'Asia/Tokyo',
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockDeleteMeetingFromDB.mockResolvedValue(true)
 

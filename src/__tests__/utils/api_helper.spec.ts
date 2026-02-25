@@ -42,92 +42,108 @@ jest.mock('@/utils/token.gate.service', () => ({
 }))
 
 import * as Sentry from '@sentry/nextjs'
-import { queryClient } from '@/utils/react_query'
-
 import {
-  internalFetch,
-  getAccount,
-  getOwnAccount,
-  getAccountByDomain,
-  getExistingAccountsSimple,
-  getExistingAccounts,
-  saveAccountChanges,
-  saveAvatar,
-  saveBanner,
-  scheduleMeetingFromServer,
-  getFullAccountInfo,
-  scheduleMeeting,
-  scheduleMeetingSeries,
-  scheduleMeetingAsGuest,
-  updateMeetingAsGuest,
+  apiCancelMeetingSeries,
   apiUpdateMeeting,
   apiUpdateMeetingInstance,
   apiUpdateMeetingSeries,
+  cancelCryptoSubscription,
   cancelMeeting,
-  apiCancelMeetingSeries,
-  cancelMeetingInstance,
   cancelMeetingGuest,
-  isSlotFreeApiCall,
-  saveMeetingType,
-  updateMeetingType,
-  removeMeetingType,
-  getMeetings,
-  getBusySlots,
+  cancelMeetingInstance,
+  createHuddleRoom,
+  createZoomMeeting,
+  deleteConnectedCalendar,
+  deleteDiscordIntegration,
+  deleteGroup,
+  duplicateAvailabilityBlock,
+  editGroup,
   fetchBusySlotsForMultipleAccounts,
   fetchBusySlotsRawForMultipleAccounts,
   fetchBusySlotsRawForQuickPollParticipants,
-  getMeetingsForDashboard,
-  syncMeeting,
+  generateDiscordAccount,
+  getAccount,
+  getAccountByDomain,
+  getBillingPlans,
+  getBusySlots,
+  getExistingAccounts,
+  getExistingAccountsSimple,
+  getFullAccountInfo,
+  getGateCondition,
+  getGroup,
+  getGroupMemberAvailabilities,
+  getGroupsEmpty,
   getGroupsFull,
   getGroupsFullWithMetadata,
-  getGroupsEmpty,
-  getGroupsInvites,
-  getGroupsMembers,
-  updateGroupRole,
+  getMeetings,
+  getMeetingTypesForAvailabilityBlock,
+  getOwnAccount,
+  getSubscriptionHistory,
+  getWalletPOAPs,
+  internalFetch,
+  isSlotFreeApiCall,
   joinGroup,
-  rejectGroup,
   leaveGroup,
   removeGroupMember,
-  editGroup,
-  uploadGroupAvatar,
-  getGroupMemberAvailabilities,
-  updateGroupMemberAvailabilities,
-  getGroupMembersAvailabilities,
-  deleteGroup,
-  getGroup,
-  deleteConnectedCalendar,
-  updateConnectedCalendar,
-  syncSubscriptions,
-  getSubscriptionHistory,
-  getBillingPlans,
+  removeMeetingType,
+  saveAccountChanges,
+  saveAvatar,
+  saveBanner,
+  saveMeetingType,
+  scheduleMeeting,
+  scheduleMeetingAsGuest,
+  scheduleMeetingFromServer,
+  scheduleMeetingSeries,
   subscribeToBillingPlan,
-  cancelCryptoSubscription,
-  duplicateAvailabilityBlock,
-  getMeetingTypesForAvailabilityBlock,
-  getGateCondition,
-  getWalletPOAPs,
-  createHuddleRoom,
-  createZoomMeeting,
+  syncMeeting,
+  syncSubscriptions,
+  updateConnectedCalendar,
+  updateMeetingAsGuest,
+  updateMeetingType,
+  uploadGroupAvatar,
   validateWebdav,
-  generateDiscordAccount,
-  deleteDiscordIntegration,
 } from '@/utils/api_helper'
+import { apiUrl } from '@/utils/constants'
 
 import {
   AccountNotFoundError,
   AllMeetingSlotsUsedError,
   ApiFetchError,
-  TimeNotAvailableError,
-  MeetingCreationError,
   GateConditionNotValidError,
-  TransactionIsRequired,
-  ServiceUnavailableError,
+  MeetingCreationError,
   MeetingNotFoundError,
-  MeetingChangeConflictError,
+  ServiceUnavailableError,
+  TimeNotAvailableError,
+  TransactionIsRequired,
 } from '@/utils/errors'
+import { queryClient } from '@/utils/react_query'
 
-import { apiUrl } from '@/utils/constants'
+const accountAddress = faker.datatype.uuid()
+const account = mockAccount(
+  'd96dd87a62d050242b799888740739bdbaacdd18e57f059803ed41e27b1898448d95a7fac66d17c06309719f6a2729cbdda2646d391385817b6a6ce8dd834fef',
+  accountAddress
+)
 
+const otherAddress = faker.datatype.uuid()
+
+const mockedMeetingInfo: MeetingInfo = mockMeetingInfo([
+  {
+    account_address: accountAddress,
+    meeting_id: randomUUID(),
+    slot_id: randomUUID(),
+    status: ParticipationStatus.Accepted,
+    type: ParticipantType.Scheduler,
+  },
+  {
+    account_address: otherAddress,
+    meeting_id: randomUUID(),
+    slot_id: randomUUID(),
+    status: ParticipationStatus.Accepted,
+    type: ParticipantType.Owner,
+  },
+])
+
+const mockQuickPollParticipant = mockAddQuickPollParticipant(accountAddress)
 describe('api_helper.ts', () => {
   let originalFetch: typeof global.fetch
   const mockCaptureException = Sentry.captureException as jest.Mock
@@ -148,7 +164,6 @@ describe('api_helper.ts', () => {
   })
 
   describe('internalFetch', () => {
-
     it('should make a successful GET request', async () => {
       const mockData = { id: 1, name: 'test' }
       global.fetch = jest.fn().mockResolvedValue({
@@ -195,13 +210,20 @@ describe('api_helper.ts', () => {
       const mockData = { url: 'http://example.com/image.jpg' }
       const formData = new FormData()
       formData.append('file', 'test')
-      
+
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
         json: async () => mockData,
       })
 
-      const result = await internalFetch('/upload', 'POST', formData, {}, {}, true)
+      const result = await internalFetch(
+        '/upload',
+        'POST',
+        formData,
+        {},
+        {},
+        true
+      )
 
       expect(global.fetch).toHaveBeenCalledWith(
         `${apiUrl}/upload`,
@@ -237,28 +259,25 @@ describe('api_helper.ts', () => {
       expect(result).toEqual({ success: true })
     })
 
-    it('should retry on 500 error', async () => {
-      global.fetch = jest
-        .fn()
-        .mockResolvedValueOnce({
-          status: 500,
-          text: async () => 'Server Error',
-        })
-        .mockResolvedValueOnce({
-          status: 200,
-          json: async () => ({ success: true }),
-        })
+    it('should not retry on 500 error', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        status: 500,
+        text: async () => 'Server Error',
+      })
 
-      const result = await internalFetch('/test')
+      await expect(internalFetch('/test')).rejects.toThrow(ApiFetchError)
 
-      expect(global.fetch).toHaveBeenCalledTimes(2)
-      expect(result).toEqual({ success: true })
+      expect(global.fetch).toHaveBeenCalledTimes(1)
     })
 
     it('should not retry when withRetry is false', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+      global.fetch = jest
+        .fn()
+        .mockRejectedValue(new TypeError('Failed to fetch'))
 
-      await expect(internalFetch('/test', 'GET', null, {}, {}, false, false)).rejects.toThrow()
+      await expect(
+        internalFetch('/test', 'GET', null, {}, {}, false, false)
+      ).rejects.toThrow()
 
       expect(global.fetch).toHaveBeenCalledTimes(1)
     })
@@ -269,7 +288,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Gateway Timeout',
       })
 
-      await expect(internalFetch('/test')).rejects.toThrow(ServiceUnavailableError)
+      await expect(internalFetch('/test')).rejects.toThrow(
+        ServiceUnavailableError
+      )
       expect(mockCaptureException).toHaveBeenCalled()
     })
 
@@ -348,7 +369,11 @@ describe('api_helper.ts', () => {
 
   describe('getOwnAccount', () => {
     it('should fetch own account', async () => {
-      const mockAccount = { address: '0x123', name: 'My Account', email: 'test@example.com' }
+      const mockAccount = {
+        address: '0x123',
+        name: 'My Account',
+        email: 'test@example.com',
+      }
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
         json: async () => mockAccount,
@@ -492,7 +517,7 @@ describe('api_helper.ts', () => {
         json: async () => mockSlot,
       })
 
-      const meeting = { 
+      const meeting = {
         scheduler_address: '0x123',
         start_time: '2024-01-01T10:00:00Z',
         duration: 30,
@@ -547,7 +572,11 @@ describe('api_helper.ts', () => {
 
   describe('getFullAccountInfo', () => {
     it('should fetch full account info from server', async () => {
-      const mockAccount = { address: '0x123', name: 'Test', email: 'test@example.com' }
+      const mockAccount = {
+        address: '0x123',
+        name: 'Test',
+        email: 'test@example.com',
+      }
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
         json: async () => mockAccount,
@@ -572,7 +601,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Not Found',
       })
 
-      await expect(getFullAccountInfo('0x123')).rejects.toThrow(AccountNotFoundError)
+      await expect(getFullAccountInfo('0x123')).rejects.toThrow(
+        AccountNotFoundError
+      )
     })
   })
 
@@ -595,7 +626,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Payment Required',
       })
 
-      await expect(scheduleMeeting({} as any)).rejects.toThrow(AllMeetingSlotsUsedError)
+      await expect(scheduleMeeting({} as any)).rejects.toThrow(
+        AllMeetingSlotsUsedError
+      )
     })
 
     it('should throw TransactionIsRequired on 400', async () => {
@@ -604,7 +637,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Bad Request',
       })
 
-      await expect(scheduleMeeting({} as any)).rejects.toThrow(TransactionIsRequired)
+      await expect(scheduleMeeting({} as any)).rejects.toThrow(
+        TransactionIsRequired
+      )
     })
 
     it('should throw TimeNotAvailableError on 409', async () => {
@@ -613,7 +648,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Conflict',
       })
 
-      await expect(scheduleMeeting({} as any)).rejects.toThrow(TimeNotAvailableError)
+      await expect(scheduleMeeting({} as any)).rejects.toThrow(
+        TimeNotAvailableError
+      )
     })
 
     it('should throw MeetingCreationError on 412', async () => {
@@ -622,7 +659,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Precondition Failed',
       })
 
-      await expect(scheduleMeeting({} as any)).rejects.toThrow(MeetingCreationError)
+      await expect(scheduleMeeting({} as any)).rejects.toThrow(
+        MeetingCreationError
+      )
     })
 
     it('should throw GateConditionNotValidError on 403', async () => {
@@ -631,7 +670,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Forbidden',
       })
 
-      await expect(scheduleMeeting({} as any)).rejects.toThrow(GateConditionNotValidError)
+      await expect(scheduleMeeting({} as any)).rejects.toThrow(
+        GateConditionNotValidError
+      )
     })
   })
 
@@ -658,7 +699,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Payment Required',
       })
 
-      await expect(scheduleMeetingSeries({} as any)).rejects.toThrow(AllMeetingSlotsUsedError)
+      await expect(scheduleMeetingSeries({} as any)).rejects.toThrow(
+        AllMeetingSlotsUsedError
+      )
     })
   })
 
@@ -699,7 +742,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Not Found',
       })
 
-      await expect(updateMeetingAsGuest('slot_123', {} as any)).rejects.toThrow(MeetingNotFoundError)
+      await expect(updateMeetingAsGuest('slot_123', {} as any)).rejects.toThrow(
+        MeetingNotFoundError
+      )
     })
 
     it('should throw TimeNotAvailableError on 409', async () => {
@@ -708,7 +753,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Conflict',
       })
 
-      await expect(updateMeetingAsGuest('slot_123', {} as any)).rejects.toThrow(TimeNotAvailableError)
+      await expect(updateMeetingAsGuest('slot_123', {} as any)).rejects.toThrow(
+        TimeNotAvailableError
+      )
     })
   })
 
@@ -735,7 +782,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Not Found',
       })
 
-      await expect(apiUpdateMeeting('slot_123', {} as any)).rejects.toThrow(MeetingNotFoundError)
+      await expect(apiUpdateMeeting('slot_123', {} as any)).rejects.toThrow(
+        MeetingNotFoundError
+      )
     })
   })
 
@@ -795,7 +844,9 @@ describe('api_helper.ts', () => {
         text: async () => 'Conflict',
       })
 
-      await expect(cancelMeeting({ id: 'meeting_123' } as any, 'America/New_York')).rejects.toThrow(TimeNotAvailableError)
+      await expect(
+        cancelMeeting({ id: 'meeting_123' } as any, 'America/New_York')
+      ).rejects.toThrow(TimeNotAvailableError)
     })
   })
 
@@ -807,7 +858,11 @@ describe('api_helper.ts', () => {
         json: async () => mockResponse,
       })
 
-      const result = await apiCancelMeetingSeries({} as any)
+      const result = await apiCancelMeetingSeries(
+        randomUUID(),
+        mockedMeetingInfo,
+        'Africa/Lagos'
+      )
 
       expect(result).toEqual(mockResponse)
     })
@@ -821,7 +876,7 @@ describe('api_helper.ts', () => {
         json: async () => mockResponse,
       })
 
-      const result = await cancelMeetingInstance({} as any)
+      const result = await cancelMeetingInstance({} as any, 'Africa/Lagos')
 
       expect(result).toEqual(mockResponse)
     })
@@ -936,8 +991,16 @@ describe('api_helper.ts', () => {
   describe('getMeetings', () => {
     it('should fetch meetings', async () => {
       const mockMeetings = [
-        { id: 'meeting_1', start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z' },
-        { id: 'meeting_2', start: '2024-01-02T10:00:00Z', end: '2024-01-02T11:00:00Z' },
+        {
+          id: 'meeting_1',
+          start: '2024-01-01T10:00:00Z',
+          end: '2024-01-01T11:00:00Z',
+        },
+        {
+          id: 'meeting_2',
+          start: '2024-01-02T10:00:00Z',
+          end: '2024-01-02T11:00:00Z',
+        },
       ]
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
@@ -974,8 +1037,16 @@ describe('api_helper.ts', () => {
   describe('fetchBusySlotsForMultipleAccounts', () => {
     it('should fetch busy slots for multiple accounts', async () => {
       const mockSlots = [
-        { start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z', address: '0x123' },
-        { start: '2024-01-01T14:00:00Z', end: '2024-01-01T15:00:00Z', address: '0x456' },
+        {
+          start: '2024-01-01T10:00:00Z',
+          end: '2024-01-01T11:00:00Z',
+          address: '0x123',
+        },
+        {
+          start: '2024-01-01T14:00:00Z',
+          end: '2024-01-01T15:00:00Z',
+          address: '0x456',
+        },
       ]
       global.fetch = jest.fn().mockResolvedValue({
         status: 200,
@@ -1216,7 +1287,7 @@ describe('api_helper.ts', () => {
           json: async () => mockResponse,
         })
 
-        const result = await addQuickPollParticipant('poll_123', {} as any)
+        const result = await addQuickPollParticipant(mockQuickPollParticipant)
 
         expect(result).toEqual(mockResponse)
       })
@@ -1230,7 +1301,7 @@ describe('api_helper.ts', () => {
           json: async () => mockResponse,
         })
 
-        const result = await cancelQuickPoll('poll_123', {} as any)
+        const result = await cancelQuickPoll('poll_123')
 
         expect(result).toEqual(mockResponse)
       })
@@ -1274,7 +1345,10 @@ describe('api_helper.ts', () => {
           json: async () => mockPrefs,
         })
 
-        const result = await updatePaymentPreferences({} as any)
+        const result = await updatePaymentPreferences(
+          accountAddress,
+          mockPaymentPreferences()
+        )
 
         expect(result).toEqual(mockPrefs)
       })
@@ -1393,13 +1467,22 @@ describe('api_helper.ts', () => {
 
     describe('signup', () => {
       it('should signup successfully', async () => {
-        const mockAccount = { address: '0x123', name: 'New User', jti: 'jwt_123' }
+        const mockAccount = {
+          address: '0x123',
+          name: 'New User',
+          jti: 'jwt_123',
+        }
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
           json: async () => mockAccount,
         })
 
-        const result = await signup('0x123', 'signature', 'America/New_York', 12345)
+        const result = await signup(
+          '0x123',
+          'signature',
+          'America/New_York',
+          12345
+        )
 
         expect(result).toEqual(mockAccount)
         expect(global.fetch).toHaveBeenCalledWith(
@@ -1487,7 +1570,7 @@ describe('api_helper.ts', () => {
           json: async () => mockTypes,
         })
 
-        const result = await getMeetingTypes('0x123')
+        const result = await getMeetingTypes()
 
         expect(result).toEqual(mockTypes)
       })
@@ -1531,7 +1614,9 @@ describe('api_helper.ts', () => {
           json: async () => mockNotifications,
         })
 
-        const result = await setNotificationSubscriptions({ email: false } as any)
+        const result = await setNotificationSubscriptions({
+          email: false,
+        } as any)
 
         expect(result).toEqual(mockNotifications)
       })
@@ -1632,8 +1717,16 @@ describe('api_helper.ts', () => {
       it('should fetch busy slots for multiple accounts', async () => {
         const mockAccounts = ['0x123', '0x456']
         const mockSlots = [
-          { start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z', address: '0x123' },
-          { start: '2024-01-02T10:00:00Z', end: '2024-01-02T11:00:00Z', address: '0x456' },
+          {
+            start: '2024-01-01T10:00:00Z',
+            end: '2024-01-01T11:00:00Z',
+            address: '0x123',
+          },
+          {
+            start: '2024-01-02T10:00:00Z',
+            end: '2024-01-02T11:00:00Z',
+            address: '0x456',
+          },
         ]
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
@@ -1678,8 +1771,16 @@ describe('api_helper.ts', () => {
           { account_address: '0x456' },
         ]
         const mockSlots = [
-          { start: '2024-01-01T10:00:00Z', end: '2024-01-01T11:00:00Z', address: '0x123' },
-          { start: '2024-01-02T10:00:00Z', end: '2024-01-02T11:00:00Z', address: '0x456' },
+          {
+            start: '2024-01-01T10:00:00Z',
+            end: '2024-01-01T11:00:00Z',
+            address: '0x123',
+          },
+          {
+            start: '2024-01-02T10:00:00Z',
+            end: '2024-01-02T11:00:00Z',
+            address: '0x456',
+          },
         ]
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
@@ -1744,7 +1845,13 @@ describe('api_helper.ts', () => {
           json: async () => ({ success: true }),
         })
 
-        const result = await editGroup('group-123', 'Updated Group', undefined, undefined, 'New description')
+        const result = await editGroup(
+          'group-123',
+          'Updated Group',
+          undefined,
+          undefined,
+          'New description'
+        )
 
         expect(result).toBe(true)
         expect(global.fetch).toHaveBeenCalledWith(
@@ -1761,12 +1868,14 @@ describe('api_helper.ts', () => {
         const mockFile = new File(['test'], 'avatar.png', {
           type: 'image/png',
         })
+        const mockFormData = new FormData()
+        mockFormData.append('file', mockFile)
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
           json: async () => ({ url: 'https://example.com/avatar.png' }),
         })
 
-        const result = await uploadGroupAvatar('group-123', mockFile)
+        const result = await uploadGroupAvatar('group-123', mockFormData)
 
         expect(result).toEqual({ url: 'https://example.com/avatar.png' })
         expect(global.fetch).toHaveBeenCalledWith(
@@ -1778,15 +1887,16 @@ describe('api_helper.ts', () => {
 
     describe('getGroupMemberAvailabilities', () => {
       it('should fetch member availabilities for a group', async () => {
-        const mockAvailabilities = [
-          { member_address: '0x123', blocks: [] },
-        ]
+        const mockAvailabilities = [{ member_address: '0x123', blocks: [] }]
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
           json: async () => mockAvailabilities,
         })
 
-        const result = await getGroupMemberAvailabilities('group-123')
+        const result = await getGroupMemberAvailabilities(
+          'group-123',
+          accountAddress
+        )
 
         expect(result).toEqual(mockAvailabilities)
       })
@@ -1816,7 +1926,9 @@ describe('api_helper.ts', () => {
         })
 
         // syncMeeting swallows errors - should not throw
-        await expect(syncMeeting({ id: 'meeting-123' } as any, 'slot-123')).resolves.toBeUndefined()
+        await expect(
+          syncMeeting({ id: 'meeting-123' } as any, 'slot-123')
+        ).resolves.toBeUndefined()
       })
     })
 
@@ -1827,7 +1939,10 @@ describe('api_helper.ts', () => {
           json: async () => ({ success: true }),
         })
 
-        const result = await deleteConnectedCalendar('calendar-123')
+        const result = await deleteConnectedCalendar(
+          'calendar-123',
+          TimeSlotSource.GOOGLE
+        )
 
         expect(result).toEqual({ success: true })
         expect(queryClient.invalidateQueries).toHaveBeenCalled()
@@ -1846,7 +1961,11 @@ describe('api_helper.ts', () => {
           json: async () => calendarData,
         })
 
-        const result = await updateConnectedCalendar(calendarData as any)
+        const result = await updateConnectedCalendar(
+          randomUUID(),
+          TimeSlotSource.GOOGLE,
+          []
+        )
 
         expect(result).toEqual(calendarData)
         expect(queryClient.invalidateQueries).toHaveBeenCalled()
@@ -1960,7 +2079,10 @@ describe('api_helper.ts', () => {
           json: async () => mockBlock,
         })
 
-        const result = await duplicateAvailabilityBlock({ id: 'block-123', modifiedData: {} } as any)
+        const result = await duplicateAvailabilityBlock({
+          id: 'block-123',
+          modifiedData: {},
+        } as any)
 
         expect(result).toEqual(mockBlock)
         expect(global.fetch).toHaveBeenCalledWith(
@@ -1972,9 +2094,7 @@ describe('api_helper.ts', () => {
 
     describe('getMeetingTypesForAvailabilityBlock', () => {
       it('should fetch meeting types using an availability block', async () => {
-        const mockMeetingTypes = [
-          { id: 'type-1', name: 'Meeting Type 1' },
-        ]
+        const mockMeetingTypes = [{ id: 'type-1', name: 'Meeting Type 1' }]
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
           json: async () => mockMeetingTypes,
@@ -2007,9 +2127,7 @@ describe('api_helper.ts', () => {
 
     describe('getWalletPOAPs', () => {
       it('should fetch POAPs for wallet', async () => {
-        const mockPOAPs = [
-          { event: { id: 1, name: 'POAP Event' } },
-        ]
+        const mockPOAPs = [{ event: { id: 1, name: 'POAP Event' } }]
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
           json: async () => mockPOAPs,
@@ -2023,7 +2141,10 @@ describe('api_helper.ts', () => {
 
     describe('createHuddleRoom', () => {
       it('should create a Huddle room', async () => {
-        const mockRoom = { roomId: 'room-123', url: 'https://huddle.com/room-123' }
+        const mockRoom = {
+          roomId: 'room-123',
+          url: 'https://huddle.com/room-123',
+        }
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
           json: async () => mockRoom,
@@ -2062,11 +2183,11 @@ describe('api_helper.ts', () => {
           json: async () => ({ valid: true }),
         })
 
-        const result = await validateWebdav({
-          url: 'https://example.com/dav',
-          username: 'user',
-          password: 'pass',
-        })
+        const result = await validateWebdav(
+          'https://example.com/dav',
+          'user',
+          'pass'
+        )
 
         expect(result).toEqual({ valid: true })
       })
@@ -2078,11 +2199,7 @@ describe('api_helper.ts', () => {
         })
 
         await expect(
-          validateWebdav({
-            url: 'https://example.com/dav',
-            username: 'user',
-            password: 'wrong',
-          })
+          validateWebdav('https://example.com/dav', 'user', 'wrong')
         ).rejects.toThrow()
       })
     })
@@ -2100,7 +2217,7 @@ describe('api_helper.ts', () => {
           json: async () => mockAccount,
         })
 
-        const result = await generateDiscordAccount()
+        const result = await generateDiscordAccount(randomUUID())
 
         expect(result).toEqual(mockAccount)
       })
@@ -2162,53 +2279,54 @@ describe('api_helper.ts', () => {
   })
 })
 
+import faker from '@faker-js/faker'
+import { randomUUID } from 'crypto'
 // Import additional functions for extended tests
 import {
-  getSlotsByIds,
-  getMeetingGuest,
-  guestMeetingCancel,
-  getNotificationSubscriptions,
-  setNotificationSubscriptions,
-  getGoogleAuthConnectUrl,
-  getOffice365ConnectUrl,
-  addOrUpdateICloud,
-  addOrUpdateWebdav,
-  login,
-  signup,
-  listConnectedCalendars,
-  searchForAccounts,
-  sendContactListInvite,
-  addGroupMemberToContact,
-  getContacts,
-  getContactsLean,
-  getContactInviteRequests,
+  mockAccount,
+  mockAddQuickPollParticipant,
+  mockMeetingInfo,
+  mockPaymentPreferences,
+} from '@/testing/mocks'
+import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
+import {
   acceptContactInvite,
-  rejectContactInvite,
-  getContactById,
-  removeContact,
-  getAvailabilityBlocks,
-  createAvailabilityBlock,
-  getAvailabilityBlock,
-  updateAvailabilityBlock,
-  deleteAvailabilityBlock,
-  getMeetingTypes,
-  getMeetingType,
-  createCryptoTransaction,
-  getPaymentPreferences,
-  updatePaymentPreferences,
-  verifyPin,
-  sendResetPinLink,
-  sendEnablePinLink,
-  getCoinConfig,
-  getUserLocale,
-  createQuickPoll,
-  getQuickPollById,
-  updateQuickPoll,
-  deleteQuickPoll,
+  addOrUpdateICloud,
   addQuickPollParticipant,
   cancelQuickPoll,
-  getStripeOnboardingLink,
+  createAvailabilityBlock,
+  createCryptoTransaction,
+  createQuickPoll,
+  deleteAvailabilityBlock,
+  deleteQuickPoll,
   generateCheckoutLink,
+  getAvailabilityBlocks,
+  getCoinConfig,
+  getContacts,
+  getGoogleAuthConnectUrl,
+  getMeetingType,
+  getMeetingTypes,
+  getNotificationSubscriptions,
+  getOffice365ConnectUrl,
+  getPaymentPreferences,
+  getQuickPollById,
+  getStripeOnboardingLink,
+  getUserLocale,
+  listConnectedCalendars,
+  login,
+  rejectContactInvite,
+  removeContact,
+  searchForAccounts,
+  sendContactListInvite,
+  sendEnablePinLink,
+  sendResetPinLink,
+  setNotificationSubscriptions,
+  signup,
   subscribeWithCoupon,
+  updateAvailabilityBlock,
   updateCustomSubscriptionDomain,
+  updatePaymentPreferences,
+  updateQuickPoll,
+  verifyPin,
 } from '@/utils/api_helper'
+import { MeetingInfo, TimeSlotSource } from '../../types/Meeting'
