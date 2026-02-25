@@ -68,6 +68,7 @@ const customJestConfig = {
     'swiper/css/pagination': '<rootDir>/__mocks__/jestMock.js',
     'react-intersection-observer': '<rootDir>/__mocks__/intersection.js',
     'html-tags': '<rootDir>/__mocks__/htmlTags.js',
+    ws: '<rootDir>/__mocks__/ws.js',
   },
   testTimeout: 30000,
   preset: 'ts-jest/presets/default-esm',
