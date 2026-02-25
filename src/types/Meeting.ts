@@ -228,6 +228,7 @@ export enum MeetingChangeType {
   CREATE,
   UPDATE,
   DELETE,
+  EXIT,
 }
 export enum GroupNotificationType {
   INVITE,
