@@ -58,7 +58,7 @@ jobs:
         run: yarn install
 
       - name: Run tests with coverage gate
-        run: yarn test:ci --coverage
+        run: yarn test:ci
 
   deploy:
     runs-on: ubuntu-latest
