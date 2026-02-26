@@ -18,7 +18,7 @@ async function globalTeardown() {
         }
       }
     } catch {
-      // Ignore parse errors
+      console.log('[E2E Teardown] Failed to parse test data file')
     }
   }
 

@@ -828,7 +828,7 @@ export function SchedulePickTime({
           <Button
             isLoading={isBestSlotLoading}
             colorScheme="primary"
-            data-testid="jump-to-best-slot"
+            data-testid="jump-to-best-slot-mobile"
             onClick={handleJumpToBestSlot}
           >
             Jump to Best Slot

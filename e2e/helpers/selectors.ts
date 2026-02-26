@@ -32,6 +32,7 @@ export const SELECTORS = {
 
   // Schedule grid selectors
   jumpToBestSlot: '[data-testid="jump-to-best-slot"]',
+  jumpToBestSlotMobile: '[data-testid="jump-to-best-slot-mobile"]',
   gridForwardBtn: '[data-testid="grid-forward-btn"]',
   gridBackBtn: '[data-testid="grid-back-btn"]',
   scheduleGrid: '[data-testid="schedule-grid"]',

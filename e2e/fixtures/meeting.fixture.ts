@@ -29,6 +29,19 @@ interface MeetingFixtureParams {
 }
 
 /**
+ * Simple string hash function for creating private info hashes.
+ */
+function simpleHash(str: string): string {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = (hash << 5) - hash + char
+    hash |= 0
+  }
+  return hash.toString(16)
+}
+
+/**
  * Build encrypted participant mapping for the meeting creation API.
  */
 async function buildParticipantMapping(
@@ -50,16 +63,6 @@ async function buildParticipantMapping(
     publicKey,
     privateInfoComplete
   )
-
-  const simpleHash = (str: string) => {
-    let hash = 0
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i)
-      hash = (hash << 5) - hash + char
-      hash |= 0
-    }
-    return hash.toString(16)
-  }
 
   return {
     account_address: accountAddress,
@@ -122,9 +125,8 @@ async function createMeetingViaAPI(
   const slotId = uuidv4()
   const allSlotIds = [slotId]
 
-  // Schedule meeting 1 hour from now
-  const start = new Date()
-  start.setHours(start.getHours() + 1)
+  // Schedule meeting 2 hours from now to avoid edge cases near midnight
+  const start = new Date(Date.now() + 2 * 60 * 60_000)
   start.setMinutes(0, 0, 0)
   const end = new Date(start.getTime() + durationMinutes * 60_000)
 
