@@ -15,7 +15,7 @@
     "postinstall": "patch-package",
     "postbuild": "next-sitemap",
     "test": "NODE_ENV=test jest",
-    "test:ci": "NODE_ENV=test doppler run --config tests jest --coverage",
+    "test:ci": "NODE_ENV=test doppler run --config tests -- jest --coverage",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch"
   },
