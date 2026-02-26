@@ -31,7 +31,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const now = new Date()
       const expiresAt = new Date(result.poll.expires_at)
 
-      if (now > expiresAt) {
+      if (now >= expiresAt) {
         throw new QuickPollExpiredError()
       }
     }

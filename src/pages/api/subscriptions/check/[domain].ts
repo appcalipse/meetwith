@@ -5,7 +5,9 @@ import { getSubscription } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    const subscription = await getSubscription(req.query.domain as string)
+    const rawDomain = req.query.domain
+    const domain = Array.isArray(rawDomain) ? rawDomain[0] : rawDomain
+    const subscription = await getSubscription(domain as string)
     if (subscription) {
       return res.status(200).json(subscription)
     }

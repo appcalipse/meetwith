@@ -710,34 +710,6 @@ export const computeAvailabilityWithOverrides = (
   return result
 }
 
-export const generateQuickPollBestSlots = (
-  startDate: Date,
-  endDate: Date,
-  duration: number,
-  timezone: string,
-  participantAvailabilities: Map<string, Interval[]>
-): Interval<true>[] => {
-  const allSlots = generateTimeSlots(
-    startDate,
-    duration || 30,
-    true,
-    timezone,
-    endDate
-  ).filter(slot => slot.isValid)
-
-  const now = DateTime.now().setZone(timezone)
-  const participantIntervals = Array.from(participantAvailabilities.values())
-
-  return allSlots
-    .filter(slot => slot.start >= now)
-    .filter(slot => {
-      return participantIntervals.every(intervals =>
-        intervals.some(availability => availability.overlaps(slot))
-      )
-    })
-    .slice(0, 10)
-}
-
 /**
  * Subtracts busy time intervals from availability blocks.
  * Splits blocks around busy times to return only free periods.
