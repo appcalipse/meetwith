@@ -1,6 +1,9 @@
 import { test, expect } from '../fixtures/auth.fixture'
 import { waitForMeetingsPage, waitForSchedulePage } from '../helpers/selectors'
 
+// Valid UUID format that does not exist in the DB — used for "not found" tests
+const NON_EXISTENT_UUID = '00000000-0000-4000-8000-000000000000'
+
 test.describe('Edit Meeting Flow', () => {
   test('should load meetings dashboard', async ({ page }) => {
     await page.goto('/dashboard/meetings')
@@ -13,7 +16,7 @@ test.describe('Edit Meeting Flow', () => {
   }) => {
     // Navigate to schedule page with a meetingId to test edit mode
     // Using a non-existent ID should show an error or empty state
-    await page.goto('/dashboard/schedule?meetingId=non-existent-id')
+    await page.goto(`/dashboard/schedule?meetingId=${NON_EXISTENT_UUID}`)
 
     // The page should still load without crashing — use route-specific anchor
     await waitForSchedulePage(page)
@@ -116,10 +119,21 @@ test.describe('Edit Meeting Flow', () => {
   })
 
   test.describe('Negative cases', () => {
-    test('should handle invalid meeting update data', async ({ request }) => {
-      // Try to update with invalid data
+    test('should return 400 for malformed meeting ID', async ({ request }) => {
       const response = await request.post(
-        '/api/secure/meetings/non-existent-id',
+        '/api/secure/meetings/not-a-valid-uuid',
+        {
+          data: {},
+        }
+      )
+
+      expect(response.status()).toBe(400)
+    })
+
+    test('should handle non-existent meeting update', async ({ request }) => {
+      // Use a valid UUID that does not exist in the DB
+      const response = await request.post(
+        `/api/secure/meetings/${NON_EXISTENT_UUID}`,
         {
           data: {},
         }
@@ -135,7 +149,7 @@ test.describe('Edit Meeting Flow', () => {
         await route.abort('connectionrefused')
       })
 
-      await page.goto('/dashboard/schedule?meetingId=test-id')
+      await page.goto(`/dashboard/schedule?meetingId=${NON_EXISTENT_UUID}`)
 
       // Page should still be visible (graceful error handling) — use route-specific anchor
       await waitForSchedulePage(page)
