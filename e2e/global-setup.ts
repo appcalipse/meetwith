@@ -6,22 +6,17 @@ import path from 'path'
 import { AUTH_STATE_PATH, TEST_DATA_PATH } from './helpers/constants'
 import { createTestWallet, generateTestWallet } from './helpers/wallet'
 
-async function globalSetup() {
-  const baseURL = process.env.BASE_URL || 'http://localhost:3000'
-
-  // Create or use a deterministic test wallet
-  const wallet = process.env.TEST_WALLET_PRIVATE_KEY
-    ? createTestWallet(process.env.TEST_WALLET_PRIVATE_KEY)
-    : generateTestWallet()
-
-  console.log(
-    `[E2E Setup] Using test wallet: ${wallet.address}, ${wallet.privateKey}`
-  )
-
+/**
+ * Authenticate a wallet via signup (or login if already registered).
+ * Returns the request context with the session cookie.
+ */
+async function authenticateWallet(
+  wallet: ReturnType<typeof createTestWallet>,
+  baseURL: string
+) {
   const nonce = Date.now()
   const signature = await wallet.signMessage(nonce)
 
-  // Create a request context with extended timeout
   const requestContext = await request.newContext({ baseURL, timeout: 60_000 })
 
   try {
@@ -38,10 +33,9 @@ async function globalSetup() {
     if (response.status() !== 200) {
       // If signup fails (account may already exist), try login
       console.log(
-        `[E2E Setup] Signup returned ${response.status()}, attempting login...`
+        `[E2E Setup] Signup returned ${response.status()} for ${wallet.address}, attempting login...`
       )
 
-      // Fetch nonce from DB
       const nonceResponse = await requestContext.get(
         `/api/auth/signature/${wallet.address}`
       )
@@ -69,6 +63,29 @@ async function globalSetup() {
       }
     }
 
+    return requestContext
+  } catch (error) {
+    await requestContext.dispose()
+    throw error
+  }
+}
+
+async function globalSetup() {
+  const baseURL = process.env.BASE_URL || 'http://localhost:3000'
+
+  // Create or use a deterministic test wallet (primary)
+  const wallet = process.env.TEST_WALLET_PRIVATE_KEY
+    ? createTestWallet(process.env.TEST_WALLET_PRIVATE_KEY)
+    : generateTestWallet()
+
+  console.log(
+    `[E2E Setup] Using test wallet: ${wallet.address}, ${wallet.privateKey}`
+  )
+
+  // Authenticate primary wallet
+  const requestContext = await authenticateWallet(wallet, baseURL)
+
+  try {
     // Save storage state (cookies) for authenticated tests
     const authDir = path.dirname(AUTH_STATE_PATH)
     if (!fs.existsSync(authDir)) {
@@ -78,11 +95,40 @@ async function globalSetup() {
     await requestContext.storageState({ path: AUTH_STATE_PATH })
 
     // Save test data for cross-test reference
-    const testData = {
+    const testData: Record<string, unknown> = {
       walletAddress: wallet.address,
       privateKey: wallet.privateKey,
       createdAt: new Date().toISOString(),
+      participants: [] as Array<{ address: string; privateKey: string }>,
     }
+
+    // Register participant wallets if private keys are provided
+    const participantKeys = [
+      process.env.TEST_PARTICIPANT_1_PRIVATE_KEY,
+      process.env.TEST_PARTICIPANT_2_PRIVATE_KEY,
+    ].filter(Boolean) as string[]
+
+    const participants: Array<{ address: string; privateKey: string }> = []
+
+    for (const pk of participantKeys) {
+      const participantWallet = createTestWallet(pk)
+      console.log(
+        `[E2E Setup] Registering participant wallet: ${participantWallet.address}`
+      )
+
+      const participantCtx = await authenticateWallet(
+        participantWallet,
+        baseURL
+      )
+      await participantCtx.dispose()
+
+      participants.push({
+        address: participantWallet.address,
+        privateKey: participantWallet.privateKey,
+      })
+    }
+
+    testData.participants = participants
     fs.writeFileSync(TEST_DATA_PATH, JSON.stringify(testData, null, 2))
 
     console.log('[E2E Setup] Auth state saved successfully')

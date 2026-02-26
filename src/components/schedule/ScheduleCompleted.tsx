@@ -11,7 +11,7 @@ const ScheduleCompleted = () => {
   const { intent } = router.query
   const { title, pickedTime, timezone } = useScheduleState()
   return (
-    <VStack maxW={{ base: '300px', md: '400px' }} w="fit-content" m="auto">
+    <VStack maxW={{ base: '300px', md: '400px' }} w="fit-content" m="auto" data-testid="schedule-completed">
       <Box display="flex" justifyContent="center" width="full" mb="32px">
         <Image
           src="/assets/schedule_success.svg"
@@ -60,6 +60,7 @@ const ScheduleCompleted = () => {
       <Button
         onClick={() => router.push(`/dashboard/${EditMode.MEETINGS}`)}
         colorScheme="primary"
+        data-testid="view-meetings-btn"
         size="md"
         height="48px"
         borderRadius="8px"
