@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
+import { validate as uuidValidate } from 'uuid'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { DBSlot } from '@/types/Meeting'
@@ -82,6 +83,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const slotId = req.query.id as string
     if (!slotId) {
       return res.status(400).send('Required parameter not provided')
+    }
+    if (!uuidValidate(slotId)) {
+      return res.status(400).send('Invalid meeting ID format')
     }
 
     const request = req.body as MeetingCancelRequest

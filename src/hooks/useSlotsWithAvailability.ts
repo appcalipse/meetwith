@@ -154,9 +154,10 @@ const useSlotsWithAvailability = (
             const isBusy = hasOverlap(slot, busyLookup)
             const hasAvailability = isEngulfed(slot, availableLookup)
 
-            const isUserAvailable = ignoreBusyOverlaps
-              ? hasAvailability
-              : !isBusy && hasAvailability
+            const isUserAvailable =
+              (ignoreBusyOverlaps
+                ? hasAvailability
+                : !isBusy && hasAvailability) && isAfterNow
             if (isUserAvailable) {
               numberOfAvailable++
             }

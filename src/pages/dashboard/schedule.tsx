@@ -29,25 +29,27 @@ const Schedule: NextPage<IInitialProps> = ({
   seriesId,
 }) => {
   return (
-    <ScheduleStateProvider>
-      <ParticipantsProvider>
-        <AvailabilityTrackerProvider>
-          <NavigationProvider>
-            <PermissionsProvider>
-              <ScheduleMain
-                conferenceId={conferenceId}
-                contactId={contactId}
-                groupId={groupId}
-                intent={intent}
-                meetingId={meetingId}
-                pollId={pollId}
-                seriesId={seriesId}
-              />
-            </PermissionsProvider>
-          </NavigationProvider>
-        </AvailabilityTrackerProvider>
-      </ParticipantsProvider>
-    </ScheduleStateProvider>
+    <div data-testid="dashboard-schedule">
+      <ScheduleStateProvider>
+        <ParticipantsProvider>
+          <AvailabilityTrackerProvider>
+            <NavigationProvider>
+              <PermissionsProvider>
+                <ScheduleMain
+                  conferenceId={conferenceId}
+                  contactId={contactId}
+                  groupId={groupId}
+                  intent={intent}
+                  meetingId={meetingId}
+                  pollId={pollId}
+                  seriesId={seriesId}
+                />
+              </PermissionsProvider>
+            </NavigationProvider>
+          </AvailabilityTrackerProvider>
+        </ParticipantsProvider>
+      </ScheduleStateProvider>
+    </div>
   )
 }
 

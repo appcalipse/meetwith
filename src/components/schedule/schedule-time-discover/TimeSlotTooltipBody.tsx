@@ -1,8 +1,7 @@
+import { Interval } from 'luxon'
 import React from 'react'
-
 import { TimeSlot } from '@/types/Meeting'
 import { ActiveAvailabilityBlock } from '@/types/schedule'
-
 import { TimeSlotTooltipContent } from './TimeSlotTooltipContent'
 
 interface TimeSlotTooltipBodyProps {
@@ -12,6 +11,7 @@ interface TimeSlotTooltipBodyProps {
   currentUserEvent?: TimeSlot | null
   eventUrl?: string | null
   activeAvailabilityBlocks?: ActiveAvailabilityBlock[]
+  slot: Interval<true>
 }
 
 const TimeSlotTooltipBody: React.FC<TimeSlotTooltipBodyProps> = ({
@@ -21,6 +21,7 @@ const TimeSlotTooltipBody: React.FC<TimeSlotTooltipBodyProps> = ({
   currentUserEvent,
   eventUrl,
   activeAvailabilityBlocks,
+  slot,
 }) => {
   // Separate current user from other participants
   const currentUserState = userStates?.find(userState => {
@@ -41,6 +42,7 @@ const TimeSlotTooltipBody: React.FC<TimeSlotTooltipBodyProps> = ({
       eventUrl={eventUrl}
       otherUserStates={otherUserStates}
       activeAvailabilityBlocks={activeAvailabilityBlocks}
+      slot={slot}
     />
   )
 }
