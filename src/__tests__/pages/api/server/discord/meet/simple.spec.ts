@@ -22,14 +22,19 @@ jest.mock('@/utils/calendar_manager', () => ({
 
 import { NextApiRequest, NextApiResponse } from 'next'
 import handler from '@/pages/api/server/discord/meet/simple'
-import * as database from '@/utils/database'
-import { getSuggestedSlots } from '@/utils/api_helper'
-import { scheduleMeeting, selectDefaultProvider } from '@/utils/calendar_manager'
-import { ApiFetchError } from '@/utils/errors'
 import { SchedulingType } from '@/types/Meeting'
+import { getSuggestedSlots } from '@/utils/api_helper'
+import {
+  scheduleMeeting,
+  selectDefaultProvider,
+} from '@/utils/calendar_manager'
+import { MeetingPermissions } from '@/utils/constants/schedule'
+import * as database from '@/utils/database'
+import { ApiFetchError } from '@/utils/errors'
 
 describe('/api/server/discord/meet/simple', () => {
-  const mockGetAccountFromDiscordId = database.getAccountFromDiscordId as jest.Mock
+  const mockGetAccountFromDiscordId =
+    database.getAccountFromDiscordId as jest.Mock
   const mockGetSuggestedSlots = getSuggestedSlots as jest.Mock
   const mockScheduleMeeting = scheduleMeeting as jest.Mock
   const mockSelectDefaultProvider = selectDefaultProvider as jest.Mock
@@ -102,7 +107,9 @@ describe('/api/server/discord/meet/simple', () => {
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockGetAccountFromDiscordId).toHaveBeenCalledWith('scheduler-discord-id')
+      expect(mockGetAccountFromDiscordId).toHaveBeenCalledWith(
+        'scheduler-discord-id'
+      )
       expect(mockGetSuggestedSlots).toHaveBeenCalledWith(
         ['0x123', '0x456'],
         expect.any(Date),
@@ -171,7 +178,12 @@ describe('/api/server/discord/meet/simple', () => {
         undefined,
         undefined,
         'Test Meeting',
-        []
+        [],
+        [
+          MeetingPermissions.SEE_GUEST_LIST,
+          MeetingPermissions.EDIT_MEETING,
+          MeetingPermissions.INVITE_GUESTS,
+        ]
       )
     })
 
@@ -196,7 +208,12 @@ describe('/api/server/discord/meet/simple', () => {
         undefined,
         undefined,
         expect.any(String),
-        []
+        [],
+        [
+          MeetingPermissions.SEE_GUEST_LIST,
+          MeetingPermissions.EDIT_MEETING,
+          MeetingPermissions.INVITE_GUESTS,
+        ]
       )
     })
 
@@ -235,7 +252,12 @@ describe('/api/server/discord/meet/simple', () => {
         undefined,
         undefined,
         expect.any(String),
-        [15]
+        [15],
+        [
+          MeetingPermissions.SEE_GUEST_LIST,
+          MeetingPermissions.EDIT_MEETING,
+          MeetingPermissions.INVITE_GUESTS,
+        ]
       )
     })
 

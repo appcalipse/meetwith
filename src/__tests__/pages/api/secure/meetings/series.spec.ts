@@ -18,30 +18,31 @@ jest.mock('@/utils/user_manager', () => ({
 }))
 
 jest.mock('@/ironAuth/withSessionApiRoute', () => ({
-  withSessionRoute: jest.fn((handler) => handler),
+  withSessionRoute: jest.fn(handler => handler),
 }))
 
 jest.mock('@sentry/nextjs', () => ({
   captureException: jest.fn(),
 }))
 
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 import handler from '@/pages/api/secure/meetings/series'
 import * as database from '@/utils/database'
-import * as userManager from '@/utils/user_manager'
 import {
-  TimeNotAvailableError,
-  MeetingCreationError,
-  GateConditionNotValidError,
   AllMeetingSlotsUsedError,
+  GateConditionNotValidError,
+  MeetingCreationError,
+  TimeNotAvailableError,
   TransactionIsRequired,
 } from '@/utils/errors'
-import * as Sentry from '@sentry/nextjs'
+import * as userManager from '@/utils/user_manager'
 
 describe('/api/secure/meetings/series', () => {
   const mockGetAccountFromDB = database.getAccountFromDB as jest.Mock
   const mockSaveRecurringMeetings = database.saveRecurringMeetings as jest.Mock
-  const mockGetParticipantBaseInfoFromAccount = userManager.getParticipantBaseInfoFromAccount as jest.Mock
+  const mockGetParticipantBaseInfoFromAccount =
+    userManager.getParticipantBaseInfoFromAccount as jest.Mock
   const mockSentry = Sentry.captureException as jest.Mock
 
   let req: Partial<NextApiRequest>
@@ -52,11 +53,11 @@ describe('/api/secure/meetings/series', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     jsonMock = jest.fn()
     sendMock = jest.fn()
     statusMock = jest.fn(() => ({ json: jsonMock, send: sendMock }))
-    
+
     req = {
       method: 'POST',
       session: {
@@ -66,9 +67,7 @@ describe('/api/secure/meetings/series', () => {
         },
       } as any,
       body: {
-        participants_mapping: [
-          { account_address: '0x1234567890abcdef' },
-        ],
+        participants_mapping: [{ account_address: '0x1234567890abcdef' }],
         recurrence: {
           frequency: 'weekly',
           interval: 1,
@@ -76,11 +75,11 @@ describe('/api/secure/meetings/series', () => {
         },
       },
     }
-    
+
     res = {
       status: statusMock,
     }
-    
+
     mockGetParticipantBaseInfoFromAccount.mockReturnValue({
       address: '0x1234567890abcdef',
       name: 'Test User',
@@ -128,7 +127,7 @@ describe('/api/secure/meetings/series', () => {
         address: '0x1234567890abcdef',
         name: 'Test User',
       }
-      
+
       const mockMeetingResult = {
         id: 'series_123',
         title: 'Weekly Standup',
@@ -138,7 +137,7 @@ describe('/api/secure/meetings/series', () => {
           count: 5,
         },
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue(mockAccount)
       mockSaveRecurringMeetings.mockResolvedValue(mockMeetingResult)
 
@@ -152,16 +151,14 @@ describe('/api/secure/meetings/series', () => {
 
     it('should handle daily recurrence', async () => {
       req.body = {
-        participants_mapping: [
-          { account_address: '0x1234567890abcdef' },
-        ],
+        participants_mapping: [{ account_address: '0x1234567890abcdef' }],
         recurrence: {
           frequency: 'daily',
           interval: 1,
           count: 10,
         },
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockSaveRecurringMeetings.mockResolvedValue({ id: 'daily_series' })
 
@@ -172,16 +169,14 @@ describe('/api/secure/meetings/series', () => {
 
     it('should handle monthly recurrence', async () => {
       req.body = {
-        participants_mapping: [
-          { account_address: '0x1234567890abcdef' },
-        ],
+        participants_mapping: [{ account_address: '0x1234567890abcdef' }],
         recurrence: {
           frequency: 'monthly',
           interval: 1,
           count: 12,
         },
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockSaveRecurringMeetings.mockResolvedValue({ id: 'monthly_series' })
 
@@ -192,16 +187,14 @@ describe('/api/secure/meetings/series', () => {
 
     it('should handle recurrence with until date', async () => {
       req.body = {
-        participants_mapping: [
-          { account_address: '0x1234567890abcdef' },
-        ],
+        participants_mapping: [{ account_address: '0x1234567890abcdef' }],
         recurrence: {
           frequency: 'weekly',
           interval: 2,
           until: '2024-12-31',
         },
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockSaveRecurringMeetings.mockResolvedValue({ id: 'until_series' })
 
@@ -218,7 +211,7 @@ describe('/api/secure/meetings/series', () => {
           { account_address: '0xotheruser' }, // Not the current user
         ],
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({
         address: '0x1234567890abcdef',
       })
@@ -226,14 +219,16 @@ describe('/api/secure/meetings/series', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(403)
-      expect(sendMock).toHaveBeenCalledWith("You can't schedule a meeting for someone else")
+      expect(sendMock).toHaveBeenCalledWith(
+        "You can't schedule a meeting for someone else"
+      )
     })
 
     it('should return 403 when participant list is empty', async () => {
       req.body = {
         participants_mapping: [],
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({
         address: '0x1234567890abcdef',
       })
@@ -250,7 +245,7 @@ describe('/api/secure/meetings/series', () => {
           { account_address: '0xotheruser' },
         ],
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockSaveRecurringMeetings.mockResolvedValue({ id: 'multi_series' })
 
@@ -266,7 +261,7 @@ describe('/api/secure/meetings/series', () => {
     })
 
     it('should return 409 for time not available error', async () => {
-      mockSaveRecurringMeetings.mockRejectedValue(new TimeNotAvailableError('Time slot taken'))
+      mockSaveRecurringMeetings.mockRejectedValue(new TimeNotAvailableError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -274,7 +269,7 @@ describe('/api/secure/meetings/series', () => {
     })
 
     it('should return 412 for meeting creation error', async () => {
-      mockSaveRecurringMeetings.mockRejectedValue(new MeetingCreationError('Creation failed'))
+      mockSaveRecurringMeetings.mockRejectedValue(new MeetingCreationError())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -282,7 +277,9 @@ describe('/api/secure/meetings/series', () => {
     })
 
     it('should return 403 for gate condition error', async () => {
-      mockSaveRecurringMeetings.mockRejectedValue(new GateConditionNotValidError('Gate failed'))
+      mockSaveRecurringMeetings.mockRejectedValue(
+        new GateConditionNotValidError()
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -290,7 +287,9 @@ describe('/api/secure/meetings/series', () => {
     })
 
     it('should return 402 for all meeting slots used error', async () => {
-      mockSaveRecurringMeetings.mockRejectedValue(new AllMeetingSlotsUsedError('No slots available'))
+      mockSaveRecurringMeetings.mockRejectedValue(
+        new AllMeetingSlotsUsedError()
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -298,7 +297,7 @@ describe('/api/secure/meetings/series', () => {
     })
 
     it('should return 400 for transaction required error', async () => {
-      mockSaveRecurringMeetings.mockRejectedValue(new TransactionIsRequired('Payment needed'))
+      mockSaveRecurringMeetings.mockRejectedValue(new TransactionIsRequired())
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -327,7 +326,9 @@ describe('/api/secure/meetings/series', () => {
     it('should handle account fetch errors', async () => {
       mockGetAccountFromDB.mockRejectedValue(new Error('Account not found'))
 
-      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow('Account not found')
+      await expect(
+        handler(req as NextApiRequest, res as NextApiResponse)
+      ).rejects.toThrow('Account not found')
     })
   })
 
@@ -338,7 +339,7 @@ describe('/api/secure/meetings/series', () => {
           { account_address: '0x1234567890ABCDEF' }, // Different casing of same address
         ],
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({
         address: '0x1234567890abcdef',
       })
@@ -354,14 +355,14 @@ describe('/api/secure/meetings/series', () => {
       req.session = undefined
 
       // Should fail when trying to access account.address
-      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow()
+      await expect(
+        handler(req as NextApiRequest, res as NextApiResponse)
+      ).rejects.toThrow()
     })
 
     it('should handle complex recurrence patterns', async () => {
       req.body = {
-        participants_mapping: [
-          { account_address: '0x1234567890abcdef' },
-        ],
+        participants_mapping: [{ account_address: '0x1234567890abcdef' }],
         recurrence: {
           frequency: 'weekly',
           interval: 2,
@@ -369,7 +370,7 @@ describe('/api/secure/meetings/series', () => {
           byweekday: ['MO', 'WE', 'FR'],
         },
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockSaveRecurringMeetings.mockResolvedValue({ id: 'complex_series' })
 
@@ -380,12 +381,10 @@ describe('/api/secure/meetings/series', () => {
 
     it('should handle missing recurrence field', async () => {
       req.body = {
-        participants_mapping: [
-          { account_address: '0x1234567890abcdef' },
-        ],
+        participants_mapping: [{ account_address: '0x1234567890abcdef' }],
         // No recurrence field
       }
-      
+
       mockGetAccountFromDB.mockResolvedValue({ address: '0x1234567890abcdef' })
       mockSaveRecurringMeetings.mockResolvedValue({ id: 'single_meeting' })
 

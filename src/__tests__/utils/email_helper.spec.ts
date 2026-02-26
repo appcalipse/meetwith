@@ -2,69 +2,74 @@ import faker from '@faker-js/faker'
 import { randomUUID } from 'crypto'
 
 import {
+  mockBillingEmailAccountInfo,
+  mockBillingEmailPeriod,
+  mockBillingEmailPlan,
+  mockGroup,
+  mockInvoiceMetadata,
+  mockMeetingCancelSyncRequest,
+  mockMeetingCreationSyncRequest,
+  mockParticipantInfoForInviteNotification,
+  mockParticipantInfoForNotification,
+  mockReceiptMetadata,
+  mockRequestParticipantMapping,
+} from '@/testing/mocks'
+import { PaymentProvider } from '@/types/Billing'
+import { MeetingProvider } from '@/types/Meeting'
+import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
+import * as calendarManager from '@/utils/calendar_manager'
+import * as database from '@/utils/database'
+import {
+  cancelledMeetingEmail,
   newGroupInviteEmail,
-  sendPollInviteEmail,
   newGroupRejectEmail,
   newMeetingEmail,
-  cancelledMeetingEmail,
-  updateMeetingEmail,
-  sendInvitationEmail,
+  sendChangeEmailEmail,
   sendContactInvitationEmail,
+  sendCryptoDebitEmail,
+  sendCryptoExpiryReminderEmail,
+  sendEmailChangeSuccessEmail,
+  sendEnablePinEmail,
+  sendInvitationEmail,
+  sendInvoiceEmail,
+  sendPinResetSuccessEmail,
+  sendPollInviteEmail,
   sendReceiptEmail,
-  sendSubscriptionConfirmationEmailForAccount,
-  sendSubscriptionConfirmationEmail,
-  sendSubscriptionCancelledEmailForAccount,
+  sendResetPinEmail,
+  sendSessionBookingIncomeEmail,
   sendSubscriptionCancelledEmail,
+  sendSubscriptionConfirmationEmail,
   sendSubscriptionExpiredEmail,
   sendSubscriptionRenewalDueEmail,
-  sendCryptoExpiryReminderEmail,
-  sendInvoiceEmail,
-  sendResetPinEmail,
-  sendChangeEmailEmail,
-  sendPinResetSuccessEmail,
-  sendEnablePinEmail,
   sendVerificationCodeEmail,
-  sendCryptoDebitEmail,
-  sendSessionBookingIncomeEmail,
-  sendEmailChangeSuccessEmail,
+  updateMeetingEmail,
 } from '@/utils/email_helper'
-import { Group } from '@/types/Group'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
-import { MeetingProvider } from '@/types/Meeting'
-import { PaymentProvider } from '@/types/Billing'
-import * as database from '@/utils/database'
-import * as calendarManager from '@/utils/calendar_manager'
+import * as calendarBackendHelper from '@/utils/services/calendar.backend.helper'
 import * as syncHelper from '@/utils/sync_helper'
 
 jest.mock('@/utils/database')
 jest.mock('@/utils/calendar_manager')
 jest.mock('@/utils/sync_helper')
+jest.mock('@/utils/services/calendar.backend.helper')
 jest.mock('resend')
 jest.mock('email-templates')
 jest.mock('puppeteer')
 
 describe('email_helper - newGroupInviteEmail', () => {
   it('should send group invite email successfully', async () => {
-    const participant = {
+    const participant = mockParticipantInfoForInviteNotification({
       name: 'Test User',
-      account_address: faker.datatype.uuid(),
-    }
+      account_address: faker.finance.ethereumAddress(),
+    })
 
-    const group: Group = {
-      id: randomUUID(),
+    const group = mockGroup({
       name: 'Test Group',
       description: 'Test Description',
-      created_at: new Date(),
-      owner_address: faker.datatype.uuid(),
-    }
+    })
 
     const result = await newGroupInviteEmail(
       'test@example.com',
-      participant as any,
+      participant,
       group
     )
 
@@ -72,44 +77,29 @@ describe('email_helper - newGroupInviteEmail', () => {
   })
 
   it('should handle email sending errors gracefully', async () => {
-    const participant = {
+    const participant = mockParticipantInfoForInviteNotification({
       name: 'Test User',
-      account_address: faker.datatype.uuid(),
-    }
+      account_address: faker.finance.ethereumAddress(),
+    })
 
-    const group: Group = {
-      id: randomUUID(),
+    const group = mockGroup({
       name: 'Test Group',
       description: 'Test Description',
-      created_at: new Date(),
-      owner_address: faker.datatype.uuid(),
-    }
+    })
 
     await expect(
-      newGroupInviteEmail('invalid-email', participant as any, group)
+      newGroupInviteEmail('invalid-email', participant, group)
     ).resolves.toBeDefined()
   })
 })
 
 describe('email_helper - sendPollInviteEmail', () => {
   it('should send poll invite email', async () => {
-    const participants = [
-      {
-        name: 'Participant 1',
-        account_address: faker.datatype.uuid(),
-      },
-      {
-        name: 'Participant 2',
-        guest_email: 'participant2@example.com',
-      },
-    ]
-
     const result = await sendPollInviteEmail(
       'host@example.com',
       'Test Host',
-      participants as any,
-      randomUUID(),
-      'Test Poll'
+      'Test Poll',
+      randomUUID()
     )
 
     expect(typeof result).toBe('boolean')
@@ -118,22 +108,19 @@ describe('email_helper - sendPollInviteEmail', () => {
 
 describe('email_helper - newGroupRejectEmail', () => {
   it('should send group rejection email', async () => {
-    const participant = {
+    const participant = mockParticipantInfoForInviteNotification({
       name: 'Test User',
-      account_address: faker.datatype.uuid(),
-    }
+      account_address: faker.finance.ethereumAddress(),
+    })
 
-    const group: Group = {
-      id: randomUUID(),
+    const group = mockGroup({
       name: 'Test Group',
       description: 'Test Description',
-      created_at: new Date(),
-      owner_address: faker.datatype.uuid(),
-    }
+    })
 
     const result = await newGroupRejectEmail(
       'owner@example.com',
-      participant as any,
+      participant,
       group
     )
 
@@ -143,34 +130,33 @@ describe('email_helper - newGroupRejectEmail', () => {
 
 describe('email_helper - newMeetingEmail', () => {
   it('should send new meeting notification email', async () => {
-    const slot_id = randomUUID()
-    const participants: ParticipantInfo[] = [
-      {
-        account_address: faker.datatype.uuid(),
-        meeting_id: randomUUID(),
-        slot_id: slot_id,
-        status: ParticipationStatus.Accepted,
+    const meeting_id = randomUUID()
+    const participants = [
+      mockRequestParticipantMapping({
+        meeting_id,
+        account_address: faker.finance.ethereumAddress(),
         type: ParticipantType.Owner,
+        status: ParticipationStatus.Accepted,
         name: 'Owner User',
-      },
-      {
-        account_address: faker.datatype.uuid(),
-        meeting_id: randomUUID(),
-        slot_id: slot_id,
-        status: ParticipationStatus.Pending,
+      }),
+      mockRequestParticipantMapping({
+        meeting_id,
+        account_address: faker.finance.ethereumAddress(),
         type: ParticipantType.Scheduler,
+        status: ParticipationStatus.Pending,
         name: 'Scheduler User',
-      },
+      }),
     ]
 
-    jest.spyOn(calendarManager, 'generateIcs').mockResolvedValue({
+    jest.spyOn(calendarBackendHelper, 'generateIcsServer').mockResolvedValue({
       error: undefined,
       value: 'ICS_CONTENT',
-    } as any)
+      attendees: [],
+    })
 
-    jest.spyOn(database, 'getOwnerPublicUrlServer').mockResolvedValue(
-      'https://meetwith.com/user123'
-    )
+    jest
+      .spyOn(database, 'getOwnerPublicUrlServer')
+      .mockResolvedValue('https://meetwith.com/user123')
 
     jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([
       {
@@ -183,47 +169,53 @@ describe('email_helper - newMeetingEmail', () => {
       },
     ] as any)
 
-    const meetingDetails = {
-      start: new Date(),
-      end: new Date(Date.now() + 3600000),
+    const meetingDetails = mockMeetingCreationSyncRequest({
+      meeting_id,
       participants,
       meeting_url: 'https://meet.google.com/test',
       content: 'Test meeting content',
       title: 'Test Meeting',
-      meeting_id: randomUUID(),
-      iana_timezone: 'UTC',
-      provider: MeetingProvider.GOOGLE_MEET,
+      timezone: 'UTC',
+      meetingProvider: MeetingProvider.GOOGLE_MEET,
       rrule: [],
-    }
+    })
+
+    const participant = mockParticipantInfoForNotification({
+      account_address: participants[1].account_address,
+      meeting_id,
+      type: ParticipantType.Scheduler,
+      status: ParticipationStatus.Pending,
+      timezone: 'UTC',
+      name: 'Scheduler User',
+    })
 
     const result = await newMeetingEmail(
       'test@example.com',
-      ParticipantType.Scheduler,
-      slot_id,
-      meetingDetails as any,
-      faker.datatype.uuid()
+      participant,
+      meetingDetails
     )
 
     expect(typeof result).toBe('boolean')
   })
 
   it('should handle meeting email with guest participants', async () => {
-    const slot_id = randomUUID()
-    const participants: ParticipantInfo[] = [
-      {
+    const meeting_id = randomUUID()
+    const participants = [
+      mockRequestParticipantMapping({
+        meeting_id,
+        account_address: undefined,
         guest_email: 'guest@example.com',
-        meeting_id: randomUUID(),
-        slot_id: slot_id,
-        status: ParticipationStatus.Pending,
         type: ParticipantType.Scheduler,
+        status: ParticipationStatus.Pending,
         name: 'Guest User',
-      },
+      }),
     ]
 
-    jest.spyOn(calendarManager, 'generateIcs').mockResolvedValue({
+    jest.spyOn(calendarBackendHelper, 'generateIcsServer').mockResolvedValue({
       error: undefined,
       value: 'ICS_CONTENT',
-    } as any)
+      attendees: [],
+    })
 
     jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([
       {
@@ -236,25 +228,31 @@ describe('email_helper - newMeetingEmail', () => {
       },
     ] as any)
 
-    const meetingDetails = {
-      start: new Date(),
-      end: new Date(Date.now() + 3600000),
+    const meetingDetails = mockMeetingCreationSyncRequest({
+      meeting_id,
       participants,
       meeting_url: 'https://meet.google.com/test',
       content: 'Test meeting',
       title: 'Guest Meeting',
-      meeting_id: randomUUID(),
-      iana_timezone: 'UTC',
-      provider: MeetingProvider.GOOGLE_MEET,
+      timezone: 'UTC',
+      meetingProvider: MeetingProvider.GOOGLE_MEET,
       rrule: [],
-    }
+    })
+
+    const participant = mockParticipantInfoForNotification({
+      account_address: undefined,
+      guest_email: 'guest@example.com',
+      meeting_id,
+      type: ParticipantType.Scheduler,
+      status: ParticipationStatus.Pending,
+      timezone: 'UTC',
+      name: 'Guest User',
+    })
 
     const result = await newMeetingEmail(
       'guest@example.com',
-      ParticipantType.Scheduler,
-      slot_id,
-      meetingDetails as any,
-      undefined
+      participant,
+      meetingDetails
     )
 
     expect(typeof result).toBe('boolean')
@@ -263,30 +261,33 @@ describe('email_helper - newMeetingEmail', () => {
 
 describe('email_helper - cancelledMeetingEmail', () => {
   it('should send meeting cancellation email', async () => {
-    const participants: ParticipantInfo[] = [
-      {
-        account_address: faker.datatype.uuid(),
-        meeting_id: randomUUID(),
-        slot_id: randomUUID(),
-        status: ParticipationStatus.Accepted,
-        type: ParticipantType.Owner,
-        name: 'Owner User',
-      },
-    ]
+    jest.spyOn(calendarManager, 'generateIcs').mockResolvedValue({
+      error: undefined,
+      value: 'ICS_CONTENT',
+    } as any)
+
+    const meeting_id = randomUUID()
+    const meetingDetails = mockMeetingCancelSyncRequest({
+      meeting_id,
+      title: 'Cancelled Meeting',
+      reason: 'Meeting cancelled',
+      timezone: 'UTC',
+    })
+
+    const participant = mockParticipantInfoForNotification({
+      account_address: faker.finance.ethereumAddress(),
+      meeting_id,
+      type: ParticipantType.Owner,
+      status: ParticipationStatus.Accepted,
+      timezone: 'UTC',
+      name: 'Owner User',
+    })
 
     const result = await cancelledMeetingEmail(
-      {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        participants,
-        meeting_url: 'https://meet.google.com/test',
-        content: 'Meeting cancelled',
-        title: 'Cancelled Meeting',
-        meeting_id: randomUUID(),
-        iana_timezone: 'UTC',
-      } as any,
+      'Current User',
       'test@example.com',
-      faker.datatype.uuid()
+      meetingDetails,
+      participant
     )
 
     expect(typeof result).toBe('boolean')
@@ -295,42 +296,48 @@ describe('email_helper - cancelledMeetingEmail', () => {
 
 describe('email_helper - updateMeetingEmail', () => {
   it('should send meeting update email', async () => {
-    const slot_id = randomUUID()
-    const participants: ParticipantInfo[] = [
-      {
-        account_address: faker.datatype.uuid(),
-        meeting_id: randomUUID(),
-        slot_id: slot_id,
-        status: ParticipationStatus.Accepted,
+    const meeting_id = randomUUID()
+    const participants = [
+      mockRequestParticipantMapping({
+        meeting_id,
+        account_address: faker.finance.ethereumAddress(),
         type: ParticipantType.Owner,
+        status: ParticipationStatus.Accepted,
         name: 'Owner User',
-      },
+      }),
     ]
 
-    jest.spyOn(calendarManager, 'generateIcs').mockResolvedValue({
+    jest.spyOn(calendarBackendHelper, 'generateIcsServer').mockResolvedValue({
       error: undefined,
       value: 'ICS_CONTENT',
-    } as any)
+      attendees: [],
+    })
+    jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([])
 
-    const meetingDetails = {
-      start: new Date(),
-      end: new Date(Date.now() + 3600000),
+    const meetingDetails = mockMeetingCreationSyncRequest({
+      meeting_id,
       participants,
       meeting_url: 'https://meet.google.com/test',
       content: 'Updated meeting',
       title: 'Updated Meeting',
-      meeting_id: randomUUID(),
-      iana_timezone: 'UTC',
-      provider: MeetingProvider.GOOGLE_MEET,
-    }
+      timezone: 'UTC',
+      meetingProvider: MeetingProvider.GOOGLE_MEET,
+    })
+
+    const participant = mockParticipantInfoForNotification({
+      account_address: participants[0].account_address,
+      meeting_id,
+      type: ParticipantType.Owner,
+      status: ParticipationStatus.Accepted,
+      timezone: 'UTC',
+      name: 'Owner User',
+    })
 
     const result = await updateMeetingEmail(
       'test@example.com',
       'Current User',
-      ParticipantType.Owner,
-      slot_id,
-      meetingDetails as any,
-      faker.datatype.uuid()
+      participant,
+      meetingDetails
     )
 
     expect(typeof result).toBe('boolean')
@@ -339,13 +346,10 @@ describe('email_helper - updateMeetingEmail', () => {
 
 describe('email_helper - sendInvitationEmail', () => {
   it('should send invitation email', async () => {
-    const group: Group = {
-      id: randomUUID(),
+    const group = mockGroup({
       name: 'Test Group',
       description: 'Test Description',
-      created_at: new Date(),
-      owner_address: faker.datatype.uuid(),
-    }
+    })
 
     const result = await sendInvitationEmail(
       'invitee@example.com',
@@ -360,13 +364,10 @@ describe('email_helper - sendInvitationEmail', () => {
   })
 
   it('should handle missing inviter name', async () => {
-    const group: Group = {
-      id: randomUUID(),
+    const group = mockGroup({
       name: 'Test Group',
       description: 'Test Description',
-      created_at: new Date(),
-      owner_address: faker.datatype.uuid(),
-    }
+    })
 
     const result = await sendInvitationEmail(
       'invitee@example.com',
@@ -396,18 +397,9 @@ describe('email_helper - sendContactInvitationEmail', () => {
 
 describe('email_helper - sendReceiptEmail', () => {
   it('should send payment receipt email', async () => {
-    const receipt = {
-      id: randomUUID(),
-      amount: 5000,
-      currency: 'USD',
-      created: Date.now(),
-      description: 'Payment for meeting',
-    }
+    const receipt = mockReceiptMetadata()
 
-    const result = await sendReceiptEmail(
-      'user@example.com',
-      receipt as any
-    )
+    const result = await sendReceiptEmail('user@example.com', receipt)
 
     expect(result).toBeUndefined()
   })
@@ -415,27 +407,17 @@ describe('email_helper - sendReceiptEmail', () => {
 
 describe('email_helper - sendSubscriptionConfirmationEmail', () => {
   it('should send subscription confirmation email for Stripe', async () => {
-    const plan = {
-      name: 'Pro Plan',
-      price: 29.99,
-      currency: 'USD',
-      interval: 'month',
-    }
-
-    const account = {
+    const plan = mockBillingEmailPlan({ name: 'Pro Plan', price: 29.99 })
+    const account = mockBillingEmailAccountInfo({
       email: 'user@example.com',
       displayName: 'Test User',
-    }
-
-    const period = {
-      registered_at: new Date(),
-      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
-    }
+    })
+    const period = mockBillingEmailPeriod()
 
     const result = await sendSubscriptionConfirmationEmail(
-      account as any,
-      period as any,
-      plan as any,
+      account,
+      period,
+      plan,
       PaymentProvider.STRIPE
     )
 
@@ -443,27 +425,17 @@ describe('email_helper - sendSubscriptionConfirmationEmail', () => {
   })
 
   it('should send subscription confirmation email for Crypto', async () => {
-    const plan = {
-      name: 'Pro Plan',
-      price: 29.99,
-      currency: 'USD',
-      interval: 'month',
-    }
-
-    const account = {
+    const plan = mockBillingEmailPlan({ name: 'Pro Plan', price: 29.99 })
+    const account = mockBillingEmailAccountInfo({
       email: 'user@example.com',
       displayName: 'Test User',
-    }
-
-    const period = {
-      registered_at: new Date(),
-      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
-    }
+    })
+    const period = mockBillingEmailPeriod()
 
     const result = await sendSubscriptionConfirmationEmail(
-      account as any,
-      period as any,
-      plan as any,
+      account,
+      period,
+      plan,
       PaymentProvider.CRYPTO
     )
 
@@ -473,27 +445,17 @@ describe('email_helper - sendSubscriptionConfirmationEmail', () => {
 
 describe('email_helper - sendSubscriptionCancelledEmail', () => {
   it('should send subscription cancelled email', async () => {
-    const plan = {
-      name: 'Pro Plan',
-      price: 29.99,
-      currency: 'USD',
-      interval: 'month',
-    }
-
-    const account = {
+    const plan = mockBillingEmailPlan({ name: 'Pro Plan', price: 29.99 })
+    const account = mockBillingEmailAccountInfo({
       email: 'user@example.com',
       displayName: 'Test User',
-    }
-
-    const period = {
-      registered_at: new Date(),
-      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
-    }
+    })
+    const period = mockBillingEmailPeriod()
 
     const result = await sendSubscriptionCancelledEmail(
-      account as any,
-      period as any,
-      plan as any,
+      account,
+      period,
+      plan,
       PaymentProvider.STRIPE
     )
 
@@ -503,28 +465,14 @@ describe('email_helper - sendSubscriptionCancelledEmail', () => {
 
 describe('email_helper - sendSubscriptionExpiredEmail', () => {
   it('should send subscription expired email', async () => {
-    const plan = {
-      name: 'Pro Plan',
-      price: 29.99,
-      currency: 'USD',
-      interval: 'month',
-    }
-
-    const account = {
+    const plan = mockBillingEmailPlan({ name: 'Pro Plan', price: 29.99 })
+    const account = mockBillingEmailAccountInfo({
       email: 'user@example.com',
       displayName: 'Test User',
-    }
+    })
+    const period = mockBillingEmailPeriod()
 
-    const period = {
-      registered_at: new Date(),
-      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
-    }
-
-    const result = await sendSubscriptionExpiredEmail(
-      account as any,
-      period as any,
-      plan as any
-    )
+    const result = await sendSubscriptionExpiredEmail(account, period, plan)
 
     expect(result).toBeUndefined()
   })
@@ -532,27 +480,17 @@ describe('email_helper - sendSubscriptionExpiredEmail', () => {
 
 describe('email_helper - sendSubscriptionRenewalDueEmail', () => {
   it('should send subscription renewal due email', async () => {
-    const plan = {
-      name: 'Pro Plan',
-      price: 29.99,
-      currency: 'USD',
-      interval: 'month',
-    }
-
-    const account = {
+    const plan = mockBillingEmailPlan({ name: 'Pro Plan', price: 29.99 })
+    const account = mockBillingEmailAccountInfo({
       email: 'user@example.com',
       displayName: 'Test User',
-    }
-
-    const period = {
-      registered_at: new Date(),
-      expiry_time: new Date(Date.now() + 30 * 24 * 3600000),
-    }
+    })
+    const period = mockBillingEmailPeriod()
 
     const result = await sendSubscriptionRenewalDueEmail(
-      account as any,
-      period as any,
-      plan as any,
+      account,
+      period,
+      plan,
       7
     )
 
@@ -562,29 +500,16 @@ describe('email_helper - sendSubscriptionRenewalDueEmail', () => {
 
 describe('email_helper - sendCryptoExpiryReminderEmail', () => {
   it('should send crypto expiry reminder email', async () => {
-    const account = {
+    const account = mockBillingEmailAccountInfo({
       email: 'user@example.com',
       displayName: 'Test User',
-    }
-
-    const plan = {
-      name: 'Pro Plan',
-      price: 29.99,
-      currency: 'USD',
-      interval: 'month',
-    }
-
-    const period = {
-      registered_at: new Date(),
+    })
+    const plan = mockBillingEmailPlan({ name: 'Pro Plan', price: 29.99 })
+    const period = mockBillingEmailPeriod({
       expiry_time: new Date(Date.now() + 7 * 24 * 3600000),
-    }
+    })
 
-    const result = await sendCryptoExpiryReminderEmail(
-      account as any,
-      period as any,
-      plan as any,
-      7
-    )
+    const result = await sendCryptoExpiryReminderEmail(account, period, plan, 7)
 
     expect(result).toBeUndefined()
   })
@@ -592,13 +517,9 @@ describe('email_helper - sendCryptoExpiryReminderEmail', () => {
 
 describe('email_helper - sendInvoiceEmail', () => {
   it('should send invoice email', async () => {
-    const invoice = {
-      id: randomUUID(),
-      amount_due: 5000,
-      currency: 'USD',
-      created: Date.now(),
-      invoice_pdf: 'https://example.com/invoice.pdf',
-    }
+    const invoice = mockInvoiceMetadata({
+      url: 'https://example.com/invoice.pdf',
+    })
 
     jest.spyOn(database, 'getBillingEmailAccountInfo').mockResolvedValue({
       name: 'Test User',
@@ -609,7 +530,7 @@ describe('email_helper - sendInvoiceEmail', () => {
     const result = await sendInvoiceEmail(
       'user@example.com',
       'Test User',
-      invoice as any
+      invoice
     )
 
     expect(result).toBeUndefined()
@@ -640,9 +561,7 @@ describe('email_helper - sendChangeEmailEmail', () => {
 
 describe('email_helper - sendPinResetSuccessEmail', () => {
   it('should send PIN reset success email', async () => {
-    const result = await sendPinResetSuccessEmail(
-      'user@example.com'
-    )
+    const result = await sendPinResetSuccessEmail('user@example.com')
 
     expect(typeof result).toBe('boolean')
   })
@@ -661,10 +580,7 @@ describe('email_helper - sendEnablePinEmail', () => {
 
 describe('email_helper - sendVerificationCodeEmail', () => {
   it('should send verification code email', async () => {
-    const result = await sendVerificationCodeEmail(
-      'user@example.com',
-      '123456'
-    )
+    const result = await sendVerificationCodeEmail('user@example.com', '123456')
 
     expect(typeof result).toBe('boolean')
   })
@@ -672,17 +588,14 @@ describe('email_helper - sendVerificationCodeEmail', () => {
 
 describe('email_helper - sendCryptoDebitEmail', () => {
   it('should send crypto debit notification email', async () => {
-    const result = await sendCryptoDebitEmail(
-      'user@example.com',
-      {
-        amount: 0.5,
-        currency: 'ETH',
-        recipientName: 'Recipient User',
-        transactionId: faker.datatype.uuid(),
-        transactionDate: new Date().toISOString(),
-        userName: 'Test User',
-      }
-    )
+    const result = await sendCryptoDebitEmail('user@example.com', {
+      amount: 0.5,
+      currency: 'ETH',
+      recipientName: 'Recipient User',
+      transactionId: faker.datatype.uuid(),
+      transactionDate: new Date().toISOString(),
+      userName: 'Test User',
+    })
 
     expect(typeof result).toBe('boolean')
   })
@@ -690,17 +603,14 @@ describe('email_helper - sendCryptoDebitEmail', () => {
 
 describe('email_helper - sendSessionBookingIncomeEmail', () => {
   it('should send session booking income email', async () => {
-    const result = await sendSessionBookingIncomeEmail(
-      'user@example.com',
-      {
-        amount: 50.0,
-        currency: 'USD',
-        senderName: 'Sender User',
-        transactionId: faker.datatype.uuid(),
-        transactionDate: new Date().toISOString(),
-        userName: 'Test User',
-      }
-    )
+    const result = await sendSessionBookingIncomeEmail('user@example.com', {
+      amount: 50.0,
+      currency: 'USD',
+      senderName: 'Sender User',
+      transactionId: faker.datatype.uuid(),
+      transactionDate: new Date().toISOString(),
+      userName: 'Test User',
+    })
 
     expect(typeof result).toBe('boolean')
   })

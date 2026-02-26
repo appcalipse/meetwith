@@ -19,7 +19,7 @@ import {
   TransactionIsRequired,
 } from '@/utils/errors'
 import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
-import { isValidEmail } from '@/utils/validations'
+import { isValidEmail, isValidUrl } from '@/utils/validations'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   const account_address = req.session.account!.address
@@ -27,7 +27,29 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
   return handleMeetingSchedule(account_address, meeting, req, res)
 }
+const updateEmailNotifications = async (
+  email: string,
+  account_address: string
+) => {
+  try {
+    const subs = await getAccountNotificationSubscriptions(account_address)
 
+    const existingEmailNotification = subs.notification_types.find(
+      type => type.channel === NotificationChannel.EMAIL
+    )
+
+    if (!existingEmailNotification && isValidEmail(email)) {
+      subs.notification_types.push({
+        channel: NotificationChannel.EMAIL,
+        destination: email,
+        disabled: false,
+      })
+      await setAccountNotificationSubscriptions(account_address, subs)
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
 export const handleMeetingSchedule = async (
   account_address: string,
   meeting: MeetingCreationRequest,
@@ -35,7 +57,7 @@ export const handleMeetingSchedule = async (
   res: NextApiResponse
 ) => {
   if (req.method === 'POST') {
-    if (!meeting.meeting_url) {
+    if (!meeting.meeting_url || !isValidUrl(meeting.meeting_url)) {
       return res.status(400).send('Meeting URL is required')
     }
     const account = await getAccountFromDB(account_address)
@@ -54,30 +76,16 @@ export const handleMeetingSchedule = async (
     const participantActing = getParticipantBaseInfoFromAccount(
       await getAccountFromDB(account_address)
     )
-
-    const updateEmailNotifications = async (email: string) => {
-      try {
-        const subs = await getAccountNotificationSubscriptions(account_address)
-
-        const existingEmailNotification = subs.notification_types.find(
-          type => type.channel === NotificationChannel.EMAIL
+    try {
+      if (isValidEmail(meeting.emailToSendReminders)) {
+        await updateEmailNotifications(
+          meeting.emailToSendReminders!,
+          account_address
         )
-
-        if (!existingEmailNotification && isValidEmail(email)) {
-          subs.notification_types.push({
-            channel: NotificationChannel.EMAIL,
-            destination: email,
-            disabled: false,
-          })
-          await setAccountNotificationSubscriptions(account_address, subs)
-        }
-      } catch (e) {
-        console.error(e)
       }
+    } catch (e) {
+      console.error('failed update account email', e)
     }
-    if (isValidEmail(meeting.emailToSendReminders))
-      await updateEmailNotifications(meeting.emailToSendReminders!)
-
     try {
       const meetingResult: DBSlot = await saveMeeting(
         participantActing,

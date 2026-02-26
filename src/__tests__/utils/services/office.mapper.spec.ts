@@ -1,16 +1,8 @@
 import { Frequency } from 'rrule'
-import {
-  AttendeeStatus,
-  EventStatus,
-  UnifiedAttendee,
-  UnifiedEvent,
-} from '@/types/Calendar'
-import {
-  DateTimeTimeZone,
-  ItemBody,
-  MicrosoftGraphEvent,
-} from '@/types/Office365'
+import { mockUnifiedAttendee, mockUnifiedEvent } from '@/testing/mocks'
+import { AttendeeStatus, EventStatus } from '@/types/Calendar'
 import { TimeSlotSource } from '@/types/Meeting'
+import { MicrosoftGraphEvent } from '@/types/Office365'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { Office365EventMapper } from '@/utils/services/office.mapper'
 
@@ -28,6 +20,7 @@ describe('Office365EventMapper', () => {
         end: { dateTime: '2024-01-01T11:00:00', timeZone: 'UTC' },
         lastModifiedDateTime: '2024-01-01T09:00:00Z',
         isAllDay: false,
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -52,6 +45,7 @@ describe('Office365EventMapper', () => {
         start: { dateTime: '2024-01-01T00:00:00', timeZone: 'UTC' },
         end: { dateTime: '2024-01-02T00:00:00', timeZone: 'UTC' },
         isAllDay: true,
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -72,6 +66,7 @@ describe('Office365EventMapper', () => {
         start: { dateTime: '2024-01-01T10:00:00', timeZone: 'UTC' },
         end: { dateTime: '2024-01-01T11:00:00', timeZone: 'UTC' },
         isAllDay: false,
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -110,6 +105,7 @@ describe('Office365EventMapper', () => {
             status: { response: 'declined' },
           },
         ],
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -119,13 +115,15 @@ describe('Office365EventMapper', () => {
         mockAccountEmail
       )
 
-      expect(result.attendees).toHaveLength(2)
-      expect(result.attendees[0].email).toBe('attendee1@example.com')
-      expect(result.attendees[0].name).toBe('Attendee One')
-      expect(result.attendees[0].status).toBe(AttendeeStatus.ACCEPTED)
-      expect(result.attendees[0].isOrganizer).toBe(true)
-      expect(result.attendees[1].status).toBe(AttendeeStatus.DECLINED)
-      expect(result.attendees[1].isOrganizer).toBe(false)
+      const attendees = result.attendees ?? []
+
+      expect(attendees).toHaveLength(2)
+      expect(attendees[0].email).toBe('attendee1@example.com')
+      expect(attendees[0].name).toBe('Attendee One')
+      expect(attendees[0].status).toBe(AttendeeStatus.ACCEPTED)
+      expect(attendees[0].isOrganizer).toBe(true)
+      expect(attendees[1].status).toBe(AttendeeStatus.DECLINED)
+      expect(attendees[1].isOrganizer).toBe(false)
     })
 
     it('should set organizer permissions correctly', async () => {
@@ -140,6 +138,7 @@ describe('Office365EventMapper', () => {
             name: 'Test User',
           },
         },
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -166,6 +165,7 @@ describe('Office365EventMapper', () => {
             name: 'Other User',
           },
         },
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -175,7 +175,9 @@ describe('Office365EventMapper', () => {
         mockAccountEmail
       )
 
-      expect(result.permissions).not.toContain(MeetingPermissions.SEE_GUEST_LIST)
+      expect(result.permissions).not.toContain(
+        MeetingPermissions.SEE_GUEST_LIST
+      )
     })
 
     it('should extract meeting URL from onlineMeeting', async () => {
@@ -187,6 +189,7 @@ describe('Office365EventMapper', () => {
         onlineMeeting: {
           joinUrl: 'https://teams.microsoft.com/meet/abc123',
         },
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -206,6 +209,7 @@ describe('Office365EventMapper', () => {
         end: { dateTime: '2024-01-01T11:00:00', timeZone: 'UTC' },
         isAllDay: false,
         onlineMeetingUrl: 'https://teams.microsoft.com/meet/xyz789',
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -227,6 +231,7 @@ describe('Office365EventMapper', () => {
         location: {
           displayName: 'https://zoom.us/j/123456789',
         },
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -246,6 +251,7 @@ describe('Office365EventMapper', () => {
         end: { dateTime: '2024-01-01T11:00:00', timeZone: 'UTC' },
         isAllDay: false,
         isCancelled: true,
+        singleValueExtendedProperties: [],
       }
 
       const declinedEvent: MicrosoftGraphEvent = {
@@ -254,6 +260,7 @@ describe('Office365EventMapper', () => {
         end: { dateTime: '2024-01-01T11:00:00', timeZone: 'UTC' },
         isAllDay: false,
         responseStatus: { response: 'declined' },
+        singleValueExtendedProperties: [],
       }
 
       const tentativeEvent: MicrosoftGraphEvent = {
@@ -262,6 +269,7 @@ describe('Office365EventMapper', () => {
         end: { dateTime: '2024-01-01T11:00:00', timeZone: 'UTC' },
         isAllDay: false,
         responseStatus: { response: 'tentativelyAccepted' },
+        singleValueExtendedProperties: [],
       }
 
       expect(
@@ -315,6 +323,7 @@ describe('Office365EventMapper', () => {
             startDate: '2024-01-01',
           },
         },
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -347,6 +356,7 @@ describe('Office365EventMapper', () => {
             startDate: '2024-01-01',
           },
         },
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -372,6 +382,7 @@ describe('Office365EventMapper', () => {
         showAs: 'busy',
         isReminderOn: true,
         reminderMinutesBeforeStart: 15,
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -385,7 +396,9 @@ describe('Office365EventMapper', () => {
       expect(result.providerData?.office365?.sensitivity).toBe('private')
       expect(result.providerData?.office365?.showAs).toBe('busy')
       expect(result.providerData?.office365?.isReminderOn).toBe(true)
-      expect(result.providerData?.office365?.reminderMinutesBeforeStart).toBe(15)
+      expect(result.providerData?.office365?.reminderMinutesBeforeStart).toBe(
+        15
+      )
     })
 
     it('should handle attendee status mapping', async () => {
@@ -416,6 +429,7 @@ describe('Office365EventMapper', () => {
             status: { response: 'none' },
           },
         ],
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -425,10 +439,12 @@ describe('Office365EventMapper', () => {
         mockAccountEmail
       )
 
-      expect(result.attendees[0].status).toBe(AttendeeStatus.ACCEPTED)
-      expect(result.attendees[1].status).toBe(AttendeeStatus.DECLINED)
-      expect(result.attendees[2].status).toBe(AttendeeStatus.TENTATIVE)
-      expect(result.attendees[3].status).toBe(AttendeeStatus.NEEDS_ACTION)
+      const attendees = result.attendees ?? []
+
+      expect(attendees[0].status).toBe(AttendeeStatus.ACCEPTED)
+      expect(attendees[1].status).toBe(AttendeeStatus.DECLINED)
+      expect(attendees[2].status).toBe(AttendeeStatus.TENTATIVE)
+      expect(attendees[3].status).toBe(AttendeeStatus.NEEDS_ACTION)
     })
 
     it('should handle organizer attendee status', async () => {
@@ -439,11 +455,15 @@ describe('Office365EventMapper', () => {
         isAllDay: false,
         attendees: [
           {
-            emailAddress: { address: 'organizer@example.com', name: 'Organizer' },
+            emailAddress: {
+              address: 'organizer@example.com',
+              name: 'Organizer',
+            },
             type: 'required',
             status: { response: 'organizer' },
           },
         ],
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -453,7 +473,9 @@ describe('Office365EventMapper', () => {
         mockAccountEmail
       )
 
-      expect(result.attendees[0].status).toBe(AttendeeStatus.ACCEPTED)
+      const attendees = result.attendees ?? []
+
+      expect(attendees[0].status).toBe(AttendeeStatus.ACCEPTED)
     })
 
     it('should handle empty attendees array', async () => {
@@ -463,6 +485,7 @@ describe('Office365EventMapper', () => {
         end: { dateTime: '2024-01-01T11:00:00', timeZone: 'UTC' },
         isAllDay: false,
         attendees: [],
+        singleValueExtendedProperties: [],
       }
 
       const result = await Office365EventMapper.toUnified(
@@ -478,23 +501,20 @@ describe('Office365EventMapper', () => {
 
   describe('fromUnified', () => {
     it('should convert unified event back to Office365 format', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'office-event-123',
         title: 'Test Meeting',
+        description: null,
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.OFFICE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
-      }
+      })
 
       const result = Office365EventMapper.fromUnified(unifiedEvent)
 
@@ -506,10 +526,11 @@ describe('Office365EventMapper', () => {
     })
 
     it('should convert all-day events correctly', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'office-event-123',
         title: 'All Day Event',
+        description: null,
         start: new Date('2024-01-01T00:00:00Z'),
         end: new Date('2024-01-02T00:00:00Z'),
         isAllDay: true,
@@ -519,10 +540,7 @@ describe('Office365EventMapper', () => {
         source: TimeSlotSource.OFFICE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
-      }
+      })
 
       const result = Office365EventMapper.fromUnified(unifiedEvent)
 
@@ -532,43 +550,56 @@ describe('Office365EventMapper', () => {
     })
 
     it('should convert attendees correctly', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'office-event-123',
         title: 'Meeting with Attendees',
+        description: null,
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.OFFICE,
         status: EventStatus.CONFIRMED,
         attendees: [
-          {
+          mockUnifiedAttendee({
             email: 'attendee1@example.com',
             name: 'Attendee One',
             status: AttendeeStatus.ACCEPTED,
             isOrganizer: true,
-            providerData: { office365: {} },
-          },
-          {
+            providerData: {
+              office365: {
+                emailAddress: {
+                  address: 'attendee1@example.com',
+                  name: 'Attendee One',
+                },
+              },
+            },
+          }),
+          mockUnifiedAttendee({
             email: 'attendee2@example.com',
             name: 'Attendee Two',
             status: AttendeeStatus.TENTATIVE,
             isOrganizer: false,
-            providerData: { office365: {} },
-          },
+            providerData: {
+              office365: {
+                emailAddress: {
+                  address: 'attendee2@example.com',
+                  name: 'Attendee Two',
+                },
+              },
+            },
+          }),
         ],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
-      }
+      })
 
       const result = Office365EventMapper.fromUnified(unifiedEvent)
 
       expect(result.attendees).toHaveLength(2)
-      expect(result.attendees?.[0].emailAddress.address).toBe('attendee1@example.com')
+      expect(result.attendees?.[0].emailAddress.address).toBe(
+        'attendee1@example.com'
+      )
       expect(result.attendees?.[0].emailAddress.name).toBe('Attendee One')
       expect(result.attendees?.[0].status?.response).toBe('accepted')
       expect(result.attendees?.[0].type).toBe('required')
@@ -577,22 +608,19 @@ describe('Office365EventMapper', () => {
     })
 
     it('should preserve Office365 provider data', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'office-event-123',
         title: 'Test Meeting',
+        description: null,
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.OFFICE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
         providerData: {
           office365: {
             importance: 'high',
@@ -601,7 +629,7 @@ describe('Office365EventMapper', () => {
             reminderMinutesBeforeStart: 30,
           },
         },
-      }
+      })
 
       const result = Office365EventMapper.fromUnified(unifiedEvent)
 
@@ -612,99 +640,77 @@ describe('Office365EventMapper', () => {
     })
 
     it('should map unified attendee status to Office365 status', () => {
-      const baseEvent: Partial<UnifiedEvent> = {
+      const baseEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'office-event-123',
         title: 'Test',
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.OFFICE,
         status: EventStatus.CONFIRMED,
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
-      }
+      })
+
+      const makeOfficeAttendee = (status: AttendeeStatus) =>
+        mockUnifiedAttendee({
+          email: 'test@example.com',
+          name: 'Test',
+          status,
+          isOrganizer: false,
+          providerData: {
+            office365: {
+              emailAddress: {
+                address: 'test@example.com',
+                name: 'Test',
+              },
+            },
+          },
+        })
 
       const accepted = Office365EventMapper.fromUnified({
         ...baseEvent,
-        attendees: [
-          {
-            email: 'test@example.com',
-            name: 'Test',
-            status: AttendeeStatus.ACCEPTED,
-            isOrganizer: false,
-            providerData: { office365: {} },
-          },
-        ],
-      } as UnifiedEvent)
+        attendees: [makeOfficeAttendee(AttendeeStatus.ACCEPTED)],
+      })
       expect(accepted.attendees?.[0].status?.response).toBe('accepted')
 
       const declined = Office365EventMapper.fromUnified({
         ...baseEvent,
-        attendees: [
-          {
-            email: 'test@example.com',
-            name: 'Test',
-            status: AttendeeStatus.DECLINED,
-            isOrganizer: false,
-            providerData: { office365: {} },
-          },
-        ],
-      } as UnifiedEvent)
+        attendees: [makeOfficeAttendee(AttendeeStatus.DECLINED)],
+      })
       expect(declined.attendees?.[0].status?.response).toBe('declined')
 
       const tentative = Office365EventMapper.fromUnified({
         ...baseEvent,
-        attendees: [
-          {
-            email: 'test@example.com',
-            name: 'Test',
-            status: AttendeeStatus.TENTATIVE,
-            isOrganizer: false,
-            providerData: { office365: {} },
-          },
-        ],
-      } as UnifiedEvent)
-      expect(tentative.attendees?.[0].status?.response).toBe('tentativelyAccepted')
+        attendees: [makeOfficeAttendee(AttendeeStatus.TENTATIVE)],
+      })
+      expect(tentative.attendees?.[0].status?.response).toBe(
+        'tentativelyAccepted'
+      )
 
       const needsAction = Office365EventMapper.fromUnified({
         ...baseEvent,
-        attendees: [
-          {
-            email: 'test@example.com',
-            name: 'Test',
-            status: AttendeeStatus.NEEDS_ACTION,
-            isOrganizer: false,
-            providerData: { office365: {} },
-          },
-        ],
-      } as UnifiedEvent)
+        attendees: [makeOfficeAttendee(AttendeeStatus.NEEDS_ACTION)],
+      })
       expect(needsAction.attendees?.[0].status?.response).toBe('none')
     })
 
     it('should handle empty description', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'office-event-123',
         title: 'Test Meeting',
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.OFFICE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
         description: '',
-      }
+      })
 
       const result = Office365EventMapper.fromUnified(unifiedEvent)
 
@@ -712,60 +718,65 @@ describe('Office365EventMapper', () => {
     })
 
     it('should set location from meeting_url', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'office-event-123',
         title: 'Test Meeting',
+        description: null,
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.OFFICE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
         meeting_url: 'https://teams.microsoft.com/meet/abc123',
-      }
+      })
 
       const result = Office365EventMapper.fromUnified(unifiedEvent)
 
-      expect(result.location?.displayName).toBe('https://teams.microsoft.com/meet/abc123')
+      expect(result.location?.displayName).toBe(
+        'https://teams.microsoft.com/meet/abc123'
+      )
     })
 
     it('should handle attendee without name', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'office-event-123',
         title: 'Meeting',
+        description: null,
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.OFFICE,
         status: EventStatus.CONFIRMED,
         attendees: [
-          {
+          mockUnifiedAttendee({
             email: 'attendee@example.com',
             name: null,
             status: AttendeeStatus.ACCEPTED,
             isOrganizer: false,
-            providerData: { office365: {} },
-          },
+            providerData: {
+              office365: {
+                emailAddress: {
+                  address: 'attendee@example.com',
+                  name: 'Attendee',
+                },
+              },
+            },
+          }),
         ],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
-      }
+      })
 
       const result = Office365EventMapper.fromUnified(unifiedEvent)
 
-      expect(result.attendees?.[0].emailAddress.address).toBe('attendee@example.com')
+      expect(result.attendees?.[0].emailAddress.address).toBe(
+        'attendee@example.com'
+      )
       expect(result.attendees?.[0].emailAddress.name).toBe('')
     })
   })

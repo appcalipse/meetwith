@@ -2,18 +2,21 @@ import faker from '@faker-js/faker'
 import { randomUUID } from 'crypto'
 import * as uuid from 'uuid'
 
-import { Account } from '@/types/Account'
 import {
+  mockAccount,
+  mockMeetingDecrypted,
+  mockMeetingInfo,
+} from '@/testing/mocks'
+import { Account } from '@/types/Account'
+import { MeetingReminders } from '@/types/common'
+import {
+  DBSlot,
+  MeetingChangeType,
   MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
   TimeSlotSource,
-  DBSlot,
-  SlotInstance,
-  SlotSeries,
-  MeetingChangeType,
-  MeetingDecrypted,
 } from '@/types/Meeting'
 import {
   ParticipantInfo,
@@ -22,40 +25,39 @@ import {
 } from '@/types/ParticipantInfo'
 import * as helper from '@/utils/api_helper'
 import {
-  sanitizeParticipants,
-  scheduleMeeting,
   cancelMeeting,
-  updateMeeting,
-  dateToHumanReadable,
-  durationToHumanReadable,
-  generateIcs,
-  generateDefaultMeetingType,
-  generateDefaultAvailabilities,
-  createAlarm,
-  participantStatusToICSStatus,
-  rsvpMeeting,
-  deleteMeeting,
-  scheduleRecurringMeeting,
-  updateMeetingSeries,
-  deleteMeetingSeries,
   cancelMeetingGuest,
-  updateMeetingAsGuest,
-  generateGoogleCalendarUrl,
-  generateOffice365CalendarUrl,
+  createAlarm,
+  dateToHumanReadable,
   dateToLocalizedRange,
+  decodeMeeting,
   decryptMeeting,
   decryptMeetingGuest,
-  decodeMeeting,
+  deleteMeeting,
+  deleteMeetingSeries,
+  durationToHumanReadable,
+  generateDefaultAvailabilities,
+  generateDefaultMeetingType,
+  generateGoogleCalendarUrl,
+  generateIcs,
+  generateOffice365CalendarUrl,
   getMeetingRepeatFromRule,
+  getOwnerPublicUrl,
   handleRRULEForMeeting,
   isDiffRRULE,
-  getOwnerPublicUrl,
   loadMeetingAccountAddresses,
+  participantStatusToICSStatus,
+  rsvpMeeting,
+  sanitizeParticipants,
+  scheduleMeeting,
+  scheduleRecurringMeeting,
+  updateMeeting,
+  updateMeetingAsGuest,
+  updateMeetingSeries,
 } from '@/utils/calendar_manager'
 import * as crypto from '@/utils/cryptography'
+import { MeetingWithYourselfError, TimeNotAvailableError } from '@/utils/errors'
 import * as storage from '@/utils/storage'
-import { MeetingWithYourselfError, TimeNotAvailableError, DecryptionFailedError } from '@/utils/errors'
-import { MeetingReminders } from '@/types/common'
 
 jest.mock('@/utils/api_helper')
 jest.mock('@/utils/database')
@@ -90,28 +92,6 @@ jest.mock('eth-crypto', () => ({
 }))
 
 class NoErrorThrownError extends Error {}
-
-const mockAccount = (internal_pub_key: string, address: string): Account => {
-  return {
-    address: address || faker.finance.bitcoinAddress(),
-    created_at: faker.date.past(),
-    encoded_signature: faker.datatype.string(),
-    id: faker.datatype.uuid(),
-    internal_pub_key: internal_pub_key || faker.finance.bitcoinAddress(),
-    is_invited: faker.datatype.boolean(),
-    nonce: faker.datatype.number(),
-    payment_preferences: null,
-    preferences: {
-      availabilities: [],
-      description: faker.datatype.string(),
-      meetingProviders: [MeetingProvider.GOOGLE_MEET],
-      name: faker.name.firstName(),
-      socialLinks: [],
-      timezone: faker.address.timeZone(),
-    },
-    subscriptions: [],
-  }
-}
 
 const getError = async <TError>(call: () => unknown): Promise<TError> => {
   try {
@@ -286,15 +266,7 @@ describe('calendar manager', () => {
     }
     jest.spyOn(helper, 'scheduleMeeting').mockResolvedValue(data)
 
-    const mockedContent: MeetingInfo = {
-      change_history_paths: [],
-      created_at: new Date(),
-      meeting_id: randomUUID(),
-      meeting_url: '',
-      participants: participants,
-      related_slot_ids: [],
-      rrule: [],
-    }
+    const mockedContent: MeetingInfo = mockMeetingInfo(participants)
     jest
       .spyOn(crypto, 'getContentFromEncrypted')
       .mockImplementation(async () => JSON.stringify(mockedContent))
@@ -371,15 +343,9 @@ describe('calendar manager', () => {
         type: ParticipantType.Owner,
       },
     ]
-    const mockedContent: MeetingInfo = {
-      change_history_paths: [],
-      created_at: new Date(),
-      meeting_id: randomUUID(),
-      meeting_url: '',
-      participants: JSON.parse(JSON.stringify(participants)),
-      related_slot_ids: [],
-      rrule: [],
-    }
+    const mockedContent: MeetingInfo = mockMeetingInfo(
+      JSON.parse(JSON.stringify(participants))
+    )
 
     jest
       .spyOn(crypto, 'getContentFromEncrypted')
@@ -743,9 +709,8 @@ describe('rsvpMeeting', () => {
       version: 0,
     }
 
-    const mockMeetingInfo: MeetingInfo = {
-      meeting_id: meetingId,
-      participants: [
+    const mockedMeetingInfo: MeetingInfo = mockMeetingInfo(
+      [
         {
           account_address: accountAddress,
           meeting_id: meetingId,
@@ -761,27 +726,31 @@ describe('rsvpMeeting', () => {
           type: ParticipantType.Scheduler,
         },
       ],
-      created_at: new Date(),
-      meeting_url: '',
-      change_history_paths: [],
-      related_slot_ids: [meetingId],
-      rrule: [],
-    }
+      meetingId,
+      [meetingId]
+    )
 
     jest.spyOn(helper, 'getMeeting').mockResolvedValue(mockSlot)
     jest.spyOn(helper, 'getAccount').mockResolvedValue({
       address: otherAccount,
     } as Account)
-    jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([
-      { address: accountAddress } as Account,
-      { address: otherAccount } as Account,
-    ])
+    jest
+      .spyOn(helper, 'getExistingAccounts')
+      .mockResolvedValue([
+        { address: accountAddress } as Account,
+        { address: otherAccount } as Account,
+      ])
     jest
       .spyOn(crypto, 'getContentFromEncrypted')
-      .mockResolvedValue(JSON.stringify(mockMeetingInfo))
+      .mockResolvedValue(JSON.stringify(mockedMeetingInfo))
     jest.spyOn(helper, 'apiUpdateMeeting').mockResolvedValue(mockSlot)
 
-    const result = await rsvpMeeting(meetingId, otherAccount, status, undefined as any)
+    const result = await rsvpMeeting(
+      meetingId,
+      otherAccount,
+      status,
+      undefined as any
+    )
     expect(result).toBeDefined()
   })
 
@@ -803,9 +772,8 @@ describe('rsvpMeeting', () => {
       version: 0,
     }
 
-    const mockMeetingInfo: MeetingInfo = {
-      meeting_id: meetingId,
-      participants: [
+    const mockedMeetingInfo: MeetingInfo = mockMeetingInfo(
+      [
         {
           account_address: accountAddress,
           meeting_id: meetingId,
@@ -821,27 +789,31 @@ describe('rsvpMeeting', () => {
           type: ParticipantType.Scheduler,
         },
       ],
-      created_at: new Date(),
-      meeting_url: '',
-      change_history_paths: [],
-      related_slot_ids: [meetingId],
-      rrule: [],
-    }
+      meetingId,
+      [meetingId]
+    )
 
     jest.spyOn(helper, 'getMeeting').mockResolvedValue(mockSlot)
     jest.spyOn(helper, 'getAccount').mockResolvedValue({
       address: participantAddress,
     } as Account)
-    jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([
-      { address: accountAddress } as Account,
-      { address: participantAddress } as Account,
-    ])
+    jest
+      .spyOn(helper, 'getExistingAccounts')
+      .mockResolvedValue([
+        { address: accountAddress } as Account,
+        { address: participantAddress } as Account,
+      ])
     jest
       .spyOn(crypto, 'getContentFromEncrypted')
-      .mockResolvedValue(JSON.stringify(mockMeetingInfo))
+      .mockResolvedValue(JSON.stringify(mockedMeetingInfo))
     jest.spyOn(helper, 'apiUpdateMeeting').mockResolvedValue(mockSlot)
 
-    const result = await rsvpMeeting(meetingId, participantAddress, status, undefined as any)
+    const result = await rsvpMeeting(
+      meetingId,
+      participantAddress,
+      status,
+      undefined as any
+    )
     expect(result).toBeDefined()
   })
 })
@@ -863,23 +835,21 @@ describe('cancelMeeting', () => {
       version: 0,
     }
 
-    const mockMeetingInfo: MeetingInfo & { id: string; version: number } = {
+    const mockedMeetingInfo: MeetingInfo & { id: string; version: number } = {
+      ...mockMeetingInfo(
+        [
+          {
+            account_address: accountAddress,
+            meeting_id: meetingId,
+            slot_id: meetingId,
+            status: ParticipationStatus.Accepted,
+            type: ParticipantType.Owner,
+          },
+        ],
+        meetingId,
+        [meetingId]
+      ),
       id: meetingId,
-      meeting_id: meetingId,
-      participants: [
-        {
-          account_address: accountAddress,
-          meeting_id: meetingId,
-          slot_id: meetingId,
-          status: ParticipationStatus.Accepted,
-          type: ParticipantType.Owner,
-        },
-      ],
-      created_at: new Date(),
-      meeting_url: '',
-      change_history_paths: [],
-      related_slot_ids: [meetingId],
-      rrule: [],
       version: 0,
     }
 
@@ -889,17 +859,19 @@ describe('cancelMeeting', () => {
       internal_pub_key: 'test_key',
     } as Account)
     jest.spyOn(storage, 'getSignature').mockReturnValue('test_signature')
-    
-    jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([
-      { address: accountAddress, internal_pub_key: 'test_key' } as Account,
-    ])
+
+    jest
+      .spyOn(helper, 'getExistingAccounts')
+      .mockResolvedValue([
+        { address: accountAddress, internal_pub_key: 'test_key' } as Account,
+      ])
     jest
       .spyOn(crypto, 'getContentFromEncrypted')
-      .mockResolvedValue(JSON.stringify(mockMeetingInfo))
+      .mockResolvedValue(JSON.stringify(mockedMeetingInfo))
     jest.spyOn(helper, 'cancelMeeting').mockResolvedValue({ removed: [] })
 
     await expect(
-      cancelMeeting(accountAddress, mockMeetingInfo as any)
+      cancelMeeting(accountAddress, mockedMeetingInfo as any)
     ).resolves.not.toThrow()
   })
 })
@@ -923,37 +895,35 @@ describe('deleteMeeting', () => {
       version: 0,
     }
 
-    const mockMeetingInfo: MeetingInfo & { id: string; version: number } = {
+    const mockedMeetingInfo: MeetingInfo & { id: string; version: number } = {
+      ...mockMeetingInfo(
+        [
+          {
+            account_address: accountAddress,
+            meeting_id: meetingId,
+            slot_id: meetingId,
+            status: ParticipationStatus.Accepted,
+            type: ParticipantType.Owner,
+          },
+          {
+            account_address: schedulerAddress,
+            meeting_id: meetingId,
+            slot_id: randomUUID(),
+            status: ParticipationStatus.Accepted,
+            type: ParticipantType.Scheduler,
+          },
+          {
+            account_address: otherAddress,
+            meeting_id: meetingId,
+            slot_id: randomUUID(),
+            status: ParticipationStatus.Accepted,
+            type: ParticipantType.Invitee,
+          },
+        ],
+        meetingId,
+        [meetingId]
+      ),
       id: meetingId,
-      meeting_id: meetingId,
-      participants: [
-        {
-          account_address: accountAddress,
-          meeting_id: meetingId,
-          slot_id: meetingId,
-          status: ParticipationStatus.Accepted,
-          type: ParticipantType.Owner,
-        },
-        {
-          account_address: schedulerAddress,
-          meeting_id: meetingId,
-          slot_id: randomUUID(),
-          status: ParticipationStatus.Accepted,
-          type: ParticipantType.Scheduler,
-        },
-        {
-          account_address: otherAddress,
-          meeting_id: meetingId,
-          slot_id: randomUUID(),
-          status: ParticipationStatus.Accepted,
-          type: ParticipantType.Invitee,
-        },
-      ],
-      created_at: new Date(),
-      meeting_url: '',
-      change_history_paths: [],
-      related_slot_ids: [meetingId],
-      rrule: [],
       version: 0,
     }
 
@@ -963,19 +933,26 @@ describe('deleteMeeting', () => {
       internal_pub_key: 'test_key',
     } as Account)
     jest.spyOn(storage, 'getSignature').mockReturnValue('test_signature')
-    
-    jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([
-      { address: accountAddress, internal_pub_key: 'test_key' } as Account,
-      { address: schedulerAddress, internal_pub_key: 'test_key2' } as Account,
-      { address: otherAddress, internal_pub_key: 'test_key3' } as Account,
-    ])
+
+    jest
+      .spyOn(helper, 'getExistingAccounts')
+      .mockResolvedValue([
+        { address: accountAddress, internal_pub_key: 'test_key' } as Account,
+        { address: schedulerAddress, internal_pub_key: 'test_key2' } as Account,
+        { address: otherAddress, internal_pub_key: 'test_key3' } as Account,
+      ])
     jest
       .spyOn(crypto, 'getContentFromEncrypted')
-      .mockResolvedValue(JSON.stringify(mockMeetingInfo))
+      .mockResolvedValue(JSON.stringify(mockedMeetingInfo))
     jest.spyOn(helper, 'apiUpdateMeeting').mockResolvedValue(mockSlot)
 
     await expect(
-      deleteMeeting(true, accountAddress, 'meeting-type-1', mockMeetingInfo as any)
+      deleteMeeting(
+        true,
+        accountAddress,
+        'meeting-type-1',
+        mockedMeetingInfo as any
+      )
     ).resolves.not.toThrow()
   })
 })
@@ -986,25 +963,7 @@ describe('updateMeeting', () => {
     const schedulerAccount = faker.datatype.uuid()
     const ownerAccount = faker.datatype.uuid()
 
-    const mockAccount: Account = {
-      address: schedulerAccount,
-      created_at: new Date(),
-      encoded_signature: faker.datatype.string(),
-      id: faker.datatype.uuid(),
-      internal_pub_key: faker.finance.bitcoinAddress(),
-      is_invited: false,
-      nonce: 0,
-      payment_preferences: null,
-      preferences: {
-        availabilities: [],
-        description: '',
-        meetingProviders: [MeetingProvider.GOOGLE_MEET],
-        name: 'Test User',
-        socialLinks: [],
-        timezone: 'UTC',
-      },
-      subscriptions: [],
-    }
+    const mockedAccount: Account = mockAccount(undefined, schedulerAccount)
 
     const mockSlot: DBSlot = {
       id: meetingId,
@@ -1018,34 +977,31 @@ describe('updateMeeting', () => {
       version: 0,
     }
 
-    const mockMeetingInfo: MeetingInfo & {
+    const mockedMeetingInfo: MeetingInfo & {
       id: string
       version: number
     } = {
+      ...mockMeetingInfo(
+        [
+          {
+            account_address: schedulerAccount,
+            meeting_id: meetingId,
+            slot_id: randomUUID(),
+            status: ParticipationStatus.Accepted,
+            type: ParticipantType.Scheduler,
+          },
+          {
+            account_address: ownerAccount,
+            meeting_id: meetingId,
+            slot_id: meetingId,
+            status: ParticipationStatus.Accepted,
+            type: ParticipantType.Owner,
+          },
+        ],
+        meetingId,
+        [meetingId]
+      ),
       id: meetingId,
-      meeting_id: meetingId,
-      participants: [
-        {
-          account_address: schedulerAccount,
-          meeting_id: meetingId,
-          slot_id: randomUUID(),
-          status: ParticipationStatus.Accepted,
-          type: ParticipantType.Scheduler,
-        },
-        {
-          account_address: ownerAccount,
-          meeting_id: meetingId,
-          slot_id: meetingId,
-          status: ParticipationStatus.Accepted,
-          type: ParticipantType.Owner,
-        },
-      ],
-      created_at: new Date(),
-      meeting_url: 'https://meet.google.com/test',
-      change_history_paths: [],
-      related_slot_ids: [meetingId],
-      rrule: [],
-      content: 'Test meeting',
       version: 0,
     }
 
@@ -1053,14 +1009,16 @@ describe('updateMeeting', () => {
     const newEndTime = new Date(Date.now() + 90000000)
 
     jest.spyOn(helper, 'getMeeting').mockResolvedValue(mockSlot)
-    jest.spyOn(helper, 'getAccount').mockResolvedValue(mockAccount)
-    jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([
-      mockAccount,
-      { address: ownerAccount, internal_pub_key: 'test_key2' } as Account,
-    ])
+    jest.spyOn(helper, 'getAccount').mockResolvedValue(mockedAccount)
+    jest
+      .spyOn(helper, 'getExistingAccounts')
+      .mockResolvedValue([
+        mockedAccount,
+        { address: ownerAccount, internal_pub_key: 'test_key2' } as Account,
+      ])
     jest
       .spyOn(crypto, 'getContentFromEncrypted')
-      .mockResolvedValue(JSON.stringify(mockMeetingInfo))
+      .mockResolvedValue(JSON.stringify(mockedMeetingInfo))
     jest.spyOn(helper, 'isSlotFreeApiCall').mockResolvedValue({ isFree: true })
     jest.spyOn(helper, 'apiUpdateMeeting').mockResolvedValue({
       ...mockSlot,
@@ -1075,9 +1033,9 @@ describe('updateMeeting', () => {
       faker.datatype.uuid(),
       newStartTime,
       newEndTime,
-      mockMeetingInfo as any,
+      mockedMeetingInfo as any,
       'test_signature',
-      mockMeetingInfo.participants,
+      mockedMeetingInfo.participants,
       'Updated meeting content',
       'https://meet.google.com/updated',
       MeetingProvider.GOOGLE_MEET
@@ -1176,10 +1134,12 @@ describe('Recurring Meeting Functions', () => {
         },
       ]
 
-      jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([
-        schedulerAccount,
-        mockAccount('test_key', targetAccount),
-      ])
+      jest
+        .spyOn(helper, 'getExistingAccounts')
+        .mockResolvedValue([
+          schedulerAccount,
+          mockAccount('test_key', targetAccount),
+        ])
       jest.spyOn(helper, 'scheduleMeetingSeries').mockResolvedValue({
         meeting_id: 'series-123',
         slot_id: 'slot-123',
@@ -1224,10 +1184,12 @@ describe('Recurring Meeting Functions', () => {
         },
       ]
 
-      jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([schedulerAccount])
-      jest.spyOn(helper, 'scheduleMeetingSeries').mockRejectedValue(
-        new Error('Creation failed')
-      )
+      jest
+        .spyOn(helper, 'getExistingAccounts')
+        .mockResolvedValue([schedulerAccount])
+      jest
+        .spyOn(helper, 'scheduleMeetingSeries')
+        .mockRejectedValue(new Error('Creation failed'))
 
       await expect(
         scheduleRecurringMeeting(
@@ -1254,29 +1216,22 @@ describe('Recurring Meeting Functions', () => {
       const otherAddress = faker.datatype.uuid()
       const otherAccount = mockAccount('test_key2', otherAddress)
 
-      const mockMeetingInfo: MeetingInfo = {
-        meeting_id: randomUUID(),
-        participants: [
-          {
-            account_address: accountAddress,
-            meeting_id: randomUUID(),
-            slot_id: randomUUID(),
-            status: ParticipationStatus.Accepted,
-            type: ParticipantType.Scheduler,
-          },
-          {
-            account_address: otherAddress,
-            meeting_id: randomUUID(),
-            slot_id: randomUUID(),
-            status: ParticipationStatus.Accepted,
-            type: ParticipantType.Owner,
-          },
-        ],
-        related_slot_ids: [],
-        rrule: [],
-        created_at: new Date(),
-        meeting_url: '',
-      }
+      const mockedMeetingInfo: MeetingInfo = mockMeetingInfo([
+        {
+          account_address: accountAddress,
+          meeting_id: randomUUID(),
+          slot_id: randomUUID(),
+          status: ParticipationStatus.Accepted,
+          type: ParticipantType.Scheduler,
+        },
+        {
+          account_address: otherAddress,
+          meeting_id: randomUUID(),
+          slot_id: randomUUID(),
+          status: ParticipationStatus.Accepted,
+          type: ParticipantType.Owner,
+        },
+      ])
 
       jest.spyOn(helper, 'getSlotSeries').mockResolvedValue({
         id: 'series-123',
@@ -1286,14 +1241,13 @@ describe('Recurring Meeting Functions', () => {
         template_end: new Date('2024-01-15T11:00:00Z'),
       } as any)
       jest.spyOn(helper, 'getAccount').mockResolvedValue(account)
-      jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([
-        account,
-        otherAccount,
-      ])
-      
-      jest.spyOn(crypto, 'getContentFromEncrypted').mockResolvedValue(
-        JSON.stringify(mockMeetingInfo)
-      )
+      jest
+        .spyOn(helper, 'getExistingAccounts')
+        .mockResolvedValue([account, otherAccount])
+
+      jest
+        .spyOn(crypto, 'getContentFromEncrypted')
+        .mockResolvedValue(JSON.stringify(mockedMeetingInfo))
       jest.spyOn(helper, 'apiUpdateMeetingSeries').mockResolvedValue({
         success: true,
       } as any)
@@ -1304,7 +1258,7 @@ describe('Recurring Meeting Functions', () => {
         new Date('2024-01-15T10:00:00Z'),
         new Date('2024-01-15T11:00:00Z'),
         'signature',
-        mockMeetingInfo.participants,
+        mockedMeetingInfo.participants,
         'Updated content',
         'https://meet.example.com',
         MeetingProvider.HUDDLE
@@ -1328,37 +1282,29 @@ describe('Recurring Meeting Functions', () => {
       const thirdAddress = faker.datatype.uuid()
       const thirdAccount = mockAccount('test_key3', thirdAddress)
 
-      const mockMeetingInfo: MeetingInfo = {
-        meeting_id: randomUUID(),
-        participants: [
-          {
-            account_address: accountAddress,
-            meeting_id: randomUUID(),
-            slot_id: randomUUID(),
-            status: ParticipationStatus.Accepted,
-            type: ParticipantType.Owner,
-          },
-          {
-            account_address: otherAddress,
-            meeting_id: randomUUID(),
-            slot_id: randomUUID(),
-            status: ParticipationStatus.Accepted,
-            type: ParticipantType.Scheduler,
-          },
-          {
-            account_address: thirdAddress,
-            meeting_id: randomUUID(),
-            slot_id: randomUUID(),
-            status: ParticipationStatus.Accepted,
-            type: ParticipantType.Invitee,
-          },
-        ],
-        related_slot_ids: [],
-        rrule: [],
-        created_at: new Date(),
-        meeting_url: '',
-      }
-
+      const mockedMeetingInfo: MeetingInfo = mockMeetingInfo([
+        {
+          account_address: accountAddress,
+          meeting_id: randomUUID(),
+          slot_id: randomUUID(),
+          status: ParticipationStatus.Accepted,
+          type: ParticipantType.Owner,
+        },
+        {
+          account_address: otherAddress,
+          meeting_id: randomUUID(),
+          slot_id: randomUUID(),
+          status: ParticipationStatus.Accepted,
+          type: ParticipantType.Scheduler,
+        },
+        {
+          account_address: thirdAddress,
+          meeting_id: randomUUID(),
+          slot_id: randomUUID(),
+          status: ParticipationStatus.Accepted,
+          type: ParticipantType.Invitee,
+        },
+      ])
       jest.spyOn(helper, 'getSlotSeries').mockResolvedValue({
         id: 'series-123',
         account_address: accountAddress,
@@ -1372,15 +1318,13 @@ describe('Recurring Meeting Functions', () => {
       } as any)
       jest.spyOn(helper, 'getAccount').mockResolvedValue(account)
       jest.spyOn(storage, 'getSignature').mockReturnValue('test_signature')
-      jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([
-        account,
-        otherAccount,
-        thirdAccount,
-      ])
-      
-      jest.spyOn(crypto, 'getContentFromEncrypted').mockResolvedValue(
-        JSON.stringify(mockMeetingInfo)
-      )
+      jest
+        .spyOn(helper, 'getExistingAccounts')
+        .mockResolvedValue([account, otherAccount, thirdAccount])
+
+      jest
+        .spyOn(crypto, 'getContentFromEncrypted')
+        .mockResolvedValue(JSON.stringify(mockedMeetingInfo))
       jest.spyOn(helper, 'apiUpdateMeetingSeries').mockResolvedValue({
         id: 'series-123',
         account_address: accountAddress,
@@ -1407,26 +1351,7 @@ describe('Guest Meeting Functions', () => {
         accountAddress
       )
 
-      const mockMeeting = {
-        id: 'meeting-123',
-        meeting_id: randomUUID(),
-        account_address: accountAddress,
-        participants: [
-          {
-            account_address: accountAddress,
-            slot_id: 'meeting-123',
-            status: ParticipationStatus.Accepted,
-            type: ParticipantType.Owner,
-          } as ParticipantInfo,
-        ],
-        related_slot_ids: [],
-        start: new Date(),
-        end: new Date(),
-        created_at: new Date(),
-        version: 0,
-        recurrence: MeetingRepeat.NO_REPEAT,
-      } as any as MeetingDecrypted
-
+      const mockMeeting = mockMeetingDecrypted(accountAddress)
       jest.spyOn(helper, 'getSlotByMeetingId').mockResolvedValue({
         id: 'meeting-123',
         meeting_id: mockMeeting.meeting_id,
@@ -1501,7 +1426,10 @@ describe('Guest Meeting Functions', () => {
       ])
       jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([
         { address: ownerAddress, internal_pub_key: 'test_key1' } as Account,
-        { address: schedulerAddress, internal_pub_key: 'test_key2' } as Account,
+        {
+          address: schedulerAddress,
+          internal_pub_key: 'test_key2',
+        } as Account,
       ])
       jest.spyOn(helper, 'generateMeetingUrl').mockResolvedValue({
         url: 'https://meet.example.com',
@@ -1679,7 +1607,9 @@ describe('Decryption Functions', () => {
         encrypted_meeting: 'encrypted-data',
       }
 
-      jest.spyOn(helper, 'getMeetingGuest').mockResolvedValue(mockGuestSlot as any)
+      jest
+        .spyOn(helper, 'getMeetingGuest')
+        .mockResolvedValue(mockGuestSlot as any)
       jest.spyOn(crypto, 'getContentFromEncryptedPublic').mockResolvedValue(
         JSON.stringify({
           title: 'Guest Meeting',
@@ -1701,9 +1631,9 @@ describe('Decryption Functions', () => {
       }
 
       jest.spyOn(helper, 'getMeeting').mockResolvedValue(mockSlot as any)
-      jest.spyOn(crypto, 'getContentFromEncrypted').mockResolvedValue(
-        JSON.stringify({ title: 'Decoded' })
-      )
+      jest
+        .spyOn(crypto, 'getContentFromEncrypted')
+        .mockResolvedValue(JSON.stringify({ title: 'Decoded' }))
 
       const result = await decodeMeeting('meeting-123' as any, '0x123' as any)
 
@@ -1717,7 +1647,9 @@ describe('RRULE and Recurrence Functions', () => {
     it('should parse RRULE to MeetingRepeat object', () => {
       const rruleString = 'FREQ=WEEKLY;COUNT=10;BYDAY=MO,WE,FR'
       const { RRule } = require('rrule')
-      const rule = RRule.fromString(`DTSTART:20240115T100000Z\nRRULE:${rruleString}`)
+      const rule = RRule.fromString(
+        `DTSTART:20240115T100000Z\nRRULE:${rruleString}`
+      )
 
       const result = getMeetingRepeatFromRule(rule)
 
@@ -1728,7 +1660,9 @@ describe('RRULE and Recurrence Functions', () => {
     it('should handle daily recurrence', () => {
       const rruleString = 'FREQ=DAILY;COUNT=5'
       const { RRule } = require('rrule')
-      const rule = RRule.fromString(`DTSTART:20240115T100000Z\nRRULE:${rruleString}`)
+      const rule = RRule.fromString(
+        `DTSTART:20240115T100000Z\nRRULE:${rruleString}`
+      )
 
       const result = getMeetingRepeatFromRule(rule)
 
@@ -1738,7 +1672,9 @@ describe('RRULE and Recurrence Functions', () => {
     it('should handle monthly recurrence', () => {
       const rruleString = 'FREQ=MONTHLY;COUNT=12'
       const { RRule } = require('rrule')
-      const rule = RRule.fromString(`DTSTART:20240115T100000Z\nRRULE:${rruleString}`)
+      const rule = RRule.fromString(
+        `DTSTART:20240115T100000Z\nRRULE:${rruleString}`
+      )
 
       const result = getMeetingRepeatFromRule(rule)
 
@@ -1748,7 +1684,10 @@ describe('RRULE and Recurrence Functions', () => {
 
   describe('handleRRULEForMeeting', () => {
     it('should convert MeetingRepeat to RRULE array', () => {
-      const result = handleRRULEForMeeting(MeetingRepeat.WEEKLY, new Date('2024-01-15'))
+      const result = handleRRULEForMeeting(
+        MeetingRepeat.WEEKLY,
+        new Date('2024-01-15')
+      )
 
       expect(result).toBeDefined()
       expect(Array.isArray(result)).toBe(true)
@@ -1796,23 +1735,22 @@ describe('Utility Functions', () => {
 
   describe('loadMeetingAccountAddresses', () => {
     it('should load account addresses from meeting participants', async () => {
-      const mockMeeting: MeetingInfo = {
-        meeting_id: randomUUID(),
-        participants: [
-          { account_address: '0x123', status: ParticipationStatus.Accepted, type: ParticipantType.Owner } as ParticipantInfo,
-          { account_address: '0x456', status: ParticipationStatus.Pending, type: ParticipantType.Scheduler } as ParticipantInfo,
-        ],
-        related_slot_ids: [],
-        rrule: [],
-        created_at: new Date(),
-        meeting_url: '',
-      }
-
-      const result = await loadMeetingAccountAddresses(mockMeeting)
+      const mockedMeeting: MeetingInfo = mockMeetingInfo([
+        {
+          account_address: '0x123',
+          status: ParticipationStatus.Accepted,
+          type: ParticipantType.Owner,
+        } as ParticipantInfo,
+        {
+          account_address: '0x456',
+          status: ParticipationStatus.Pending,
+          type: ParticipantType.Scheduler,
+        } as ParticipantInfo,
+      ])
+      const result = await loadMeetingAccountAddresses(mockedMeeting)
 
       expect(result).toBeDefined()
       expect(Array.isArray(result)).toBe(true)
     })
   })
 })
-

@@ -1,12 +1,7 @@
 import { calendar_v3 } from 'googleapis'
 import { Frequency } from 'rrule'
-import {
-  AttendeeStatus,
-  DayOfWeek,
-  EventStatus,
-  UnifiedAttendee,
-  UnifiedEvent,
-} from '@/types/Calendar'
+import { mockUnifiedAttendee, mockUnifiedEvent } from '@/testing/mocks'
+import { AttendeeStatus, EventStatus } from '@/types/Calendar'
 import { TimeSlotSource } from '@/types/Meeting'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { GoogleEventMapper } from '@/utils/services/google.mapper'
@@ -108,12 +103,14 @@ describe('GoogleEventMapper', () => {
         mockAccountEmail
       )
 
-      expect(result.attendees).toHaveLength(2)
-      expect(result.attendees[0].email).toBe('attendee1@example.com')
-      expect(result.attendees[0].name).toBe('Attendee One')
-      expect(result.attendees[0].status).toBe(AttendeeStatus.ACCEPTED)
-      expect(result.attendees[0].isOrganizer).toBe(true)
-      expect(result.attendees[1].status).toBe(AttendeeStatus.DECLINED)
+      const attendees = result.attendees ?? []
+
+      expect(attendees).toHaveLength(2)
+      expect(attendees[0].email).toBe('attendee1@example.com')
+      expect(attendees[0].name).toBe('Attendee One')
+      expect(attendees[0].status).toBe(AttendeeStatus.ACCEPTED)
+      expect(attendees[0].isOrganizer).toBe(true)
+      expect(attendees[1].status).toBe(AttendeeStatus.DECLINED)
     })
 
     it('should set organizer permissions correctly', () => {
@@ -331,23 +328,20 @@ describe('GoogleEventMapper', () => {
 
   describe('fromUnified', () => {
     it('should convert unified event back to Google format', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'google-event-123',
         title: 'Test Meeting',
+        description: null,
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.GOOGLE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
-      }
+      })
 
       const result = GoogleEventMapper.fromUnified(unifiedEvent)
 
@@ -359,10 +353,11 @@ describe('GoogleEventMapper', () => {
     })
 
     it('should convert all-day events correctly', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'google-event-123',
         title: 'All Day Event',
+        description: null,
         start: new Date('2024-01-01T00:00:00Z'),
         end: new Date('2024-01-02T00:00:00Z'),
         isAllDay: true,
@@ -372,10 +367,7 @@ describe('GoogleEventMapper', () => {
         source: TimeSlotSource.GOOGLE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
-      }
+      })
 
       const result = GoogleEventMapper.fromUnified(unifiedEvent)
 
@@ -385,38 +377,35 @@ describe('GoogleEventMapper', () => {
     })
 
     it('should convert attendees correctly', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'google-event-123',
         title: 'Meeting with Attendees',
+        description: null,
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.GOOGLE,
         status: EventStatus.CONFIRMED,
         attendees: [
-          {
+          mockUnifiedAttendee({
             email: 'attendee1@example.com',
             name: 'Attendee One',
             status: AttendeeStatus.ACCEPTED,
             isOrganizer: true,
-            providerData: { google: {} },
-          },
-          {
+            providerData: { google: { resource: false } },
+          }),
+          mockUnifiedAttendee({
             email: 'attendee2@example.com',
             name: 'Attendee Two',
             status: AttendeeStatus.TENTATIVE,
             isOrganizer: false,
-            providerData: { google: {} },
-          },
+            providerData: { google: { resource: false } },
+          }),
         ],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
-      }
+      })
 
       const result = GoogleEventMapper.fromUnified(unifiedEvent)
 
@@ -429,22 +418,19 @@ describe('GoogleEventMapper', () => {
     })
 
     it('should preserve Google provider data', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'google-event-123',
         title: 'Test Meeting',
+        description: null,
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.GOOGLE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
         providerData: {
           google: {
             colorId: '7',
@@ -452,7 +438,7 @@ describe('GoogleEventMapper', () => {
             guestsCanModify: true,
           },
         },
-      }
+      })
 
       const result = GoogleEventMapper.fromUnified(unifiedEvent)
 
@@ -462,61 +448,53 @@ describe('GoogleEventMapper', () => {
     })
 
     it('should map unified status to Google status', () => {
-      const baseEvent: Partial<UnifiedEvent> = {
+      const baseEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'google-event-123',
         title: 'Test',
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.GOOGLE,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
-      }
+      })
 
       const confirmed = GoogleEventMapper.fromUnified({
         ...baseEvent,
         status: EventStatus.CONFIRMED,
-      } as UnifiedEvent)
+      })
       expect(confirmed.status).toBe('confirmed')
 
       const tentative = GoogleEventMapper.fromUnified({
         ...baseEvent,
         status: EventStatus.TENTATIVE,
-      } as UnifiedEvent)
+      })
       expect(tentative.status).toBe('tentative')
 
       const cancelled = GoogleEventMapper.fromUnified({
         ...baseEvent,
         status: EventStatus.CANCELLED,
-      } as UnifiedEvent)
+      })
       expect(cancelled.status).toBe('cancelled')
     })
 
     it('should handle empty description', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'google-event-123',
         title: 'Test Meeting',
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.GOOGLE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
         description: undefined,
-      }
+      })
 
       const result = GoogleEventMapper.fromUnified(unifiedEvent)
 
@@ -524,24 +502,21 @@ describe('GoogleEventMapper', () => {
     })
 
     it('should set location from meeting_url', () => {
-      const unifiedEvent: UnifiedEvent = {
+      const unifiedEvent = mockUnifiedEvent({
         id: 'unified-123',
         sourceEventId: 'google-event-123',
         title: 'Test Meeting',
+        description: null,
         start: new Date('2024-01-01T10:00:00Z'),
         end: new Date('2024-01-01T11:00:00Z'),
-        isAllDay: false,
         calendarId: mockCalendarId,
         calendarName: mockCalendarName,
         accountEmail: mockAccountEmail,
         source: TimeSlotSource.GOOGLE,
         status: EventStatus.CONFIRMED,
         attendees: [],
-        permissions: [],
-        lastModified: new Date(),
-        isReadOnlyCalendar: false,
         meeting_url: 'https://zoom.us/j/123456789',
-      }
+      })
 
       const result = GoogleEventMapper.fromUnified(unifiedEvent)
 

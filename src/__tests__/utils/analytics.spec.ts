@@ -1,5 +1,18 @@
-import posthog from 'posthog-js'
-import { initAnalytics, logEvent, pageView } from '@/utils/analytics'
+import type posthogType from 'posthog-js'
+
+type InitAnalytics = (shouldInitialize: boolean) => Promise<void>
+type LogEvent = (eventName: string, properties?: object) => void
+type PageView = (path: string) => void
+
+let posthog: typeof posthogType
+let initAnalytics: InitAnalytics
+let logEvent: LogEvent
+let pageView: PageView
+
+const loadAnalytics = () => {
+  posthog = require('posthog-js')
+  ;({ initAnalytics, logEvent, pageView } = require('@/utils/analytics'))
+}
 
 jest.mock('posthog-js', () => ({
   init: jest.fn(),
@@ -12,22 +25,41 @@ jest.mock('@/utils/constants', () => ({
 
 describe('analytics', () => {
   const originalEnv = process.env
+  let originalRequestIdleCallback: any
 
   beforeEach(() => {
-    jest.clearAllMocks()
     process.env = {
       ...originalEnv,
       NEXT_PUBLIC_POSTHOG_KEY: 'test-posthog-key',
     }
+
+    // Mock requestIdleCallback directly on the existing window object
+    // instead of replacing global.window (which breaks in jsdom)
+    originalRequestIdleCallback = (window as any).requestIdleCallback
+    ;(window as any).requestIdleCallback = (cb: () => void) => cb()
+
+    jest.resetModules()
+    // Re-register the constants mock after resetModules to prevent
+    // jest.doMock leakage from the "should respect isProduction flag" test
+    jest.doMock('@/utils/constants', () => ({
+      isProduction: true,
+    }))
+    loadAnalytics()
+    jest.clearAllMocks()
   })
 
   afterEach(() => {
     process.env = originalEnv
+    if (originalRequestIdleCallback === undefined) {
+      delete (window as any).requestIdleCallback
+    } else {
+      ;(window as any).requestIdleCallback = originalRequestIdleCallback
+    }
   })
 
   describe('initAnalytics', () => {
     it('should initialize posthog with correct config', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       expect(posthog.init).toHaveBeenCalledWith(
         'test-posthog-key',
@@ -43,16 +75,18 @@ describe('analytics', () => {
     })
 
     it('should configure session recording', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const callArgs = (posthog.init as jest.Mock).mock.calls[0][1]
       expect(callArgs.session_recording).toBeDefined()
       expect(callArgs.session_recording.recordBody).toBe(true)
-      expect(callArgs.session_recording.maskCapturedNetworkRequestFn).toBeDefined()
+      expect(
+        callArgs.session_recording.maskCapturedNetworkRequestFn
+      ).toBeDefined()
     })
 
     it('should mask signatures in network requests', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const callArgs = (posthog.init as jest.Mock).mock.calls[0][1]
       const maskFn = callArgs.session_recording.maskCapturedNetworkRequestFn
@@ -71,7 +105,7 @@ describe('analytics', () => {
     })
 
     it('should handle multiple signatures in response', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const callArgs = (posthog.init as jest.Mock).mock.calls[0][1]
       const maskFn = callArgs.session_recording.maskCapturedNetworkRequestFn
@@ -93,7 +127,7 @@ describe('analytics', () => {
     })
 
     it('should handle null response body', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const callArgs = (posthog.init as jest.Mock).mock.calls[0][1]
       const maskFn = callArgs.session_recording.maskCapturedNetworkRequestFn
@@ -108,7 +142,7 @@ describe('analytics', () => {
     })
 
     it('should handle undefined response body', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const callArgs = (posthog.init as jest.Mock).mock.calls[0][1]
       const maskFn = callArgs.session_recording.maskCapturedNetworkRequestFn
@@ -123,7 +157,7 @@ describe('analytics', () => {
     })
 
     it('should preserve response body without signatures', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const callArgs = (posthog.init as jest.Mock).mock.calls[0][1]
       const maskFn = callArgs.session_recording.maskCapturedNetworkRequestFn
@@ -250,9 +284,8 @@ describe('analytics', () => {
         isProduction: false,
       }))
 
-      const { logEvent: devLogEvent } = require('@/utils/analytics')
-
-      devLogEvent('test_event')
+      loadAnalytics()
+      logEvent('test_event')
 
       // In development, events should not be captured
       expect(posthog.capture).not.toHaveBeenCalled()
@@ -261,24 +294,31 @@ describe('analytics', () => {
     it('should capture events in production', () => {
       logEvent('production_event')
 
-      expect(posthog.capture).toHaveBeenCalledWith('production_event', undefined)
+      expect(posthog.capture).toHaveBeenCalledWith(
+        'production_event',
+        undefined
+      )
     })
   })
 
   describe('initialization edge cases', () => {
     it('should handle missing PostHog key', async () => {
       process.env.NEXT_PUBLIC_POSTHOG_KEY = undefined
+      // Need to reload the module so it picks up the undefined key
+      jest.resetModules()
+      jest.doMock('@/utils/constants', () => ({
+        isProduction: true,
+      }))
+      loadAnalytics()
+      jest.clearAllMocks()
 
-      await initAnalytics()
+      await initAnalytics(false)
 
-      expect(posthog.init).toHaveBeenCalledWith(
-        undefined,
-        expect.any(Object)
-      )
+      expect(posthog.init).toHaveBeenCalledWith(undefined, expect.any(Object))
     })
 
     it('should initialize with default configurations', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const config = (posthog.init as jest.Mock).mock.calls[0][1]
 
@@ -337,7 +377,7 @@ describe('analytics', () => {
 
   describe('session recording masking', () => {
     it('should mask signature with spaces in JSON', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const callArgs = (posthog.init as jest.Mock).mock.calls[0][1]
       const maskFn = callArgs.session_recording.maskCapturedNetworkRequestFn
@@ -353,7 +393,7 @@ describe('analytics', () => {
     })
 
     it('should mask signature without spaces in JSON', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const callArgs = (posthog.init as jest.Mock).mock.calls[0][1]
       const maskFn = callArgs.session_recording.maskCapturedNetworkRequestFn
@@ -369,7 +409,7 @@ describe('analytics', () => {
     })
 
     it('should handle response body with escaped quotes', async () => {
-      await initAnalytics()
+      await initAnalytics(false)
 
       const callArgs = (posthog.init as jest.Mock).mock.calls[0][1]
       const maskFn = callArgs.session_recording.maskCapturedNetworkRequestFn

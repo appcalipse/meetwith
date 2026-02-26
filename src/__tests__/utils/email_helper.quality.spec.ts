@@ -1,47 +1,56 @@
 import * as Sentry from '@sentry/nextjs'
 import { randomUUID } from 'crypto'
 import Email from 'email-templates'
-import { Resend } from 'resend'
 
 import {
-  newGroupInviteEmail,
-  sendPollInviteEmail,
-  newGroupRejectEmail,
-  newMeetingEmail,
-  cancelledMeetingEmail,
-  updateMeetingEmail,
-  sendInvitationEmail,
-  sendContactInvitationEmail,
-  sendReceiptEmail,
-  sendSubscriptionConfirmationEmailForAccount,
-  sendSubscriptionConfirmationEmail,
-  sendSubscriptionCancelledEmailForAccount,
-  sendSubscriptionCancelledEmail,
-  sendSubscriptionExpiredEmail,
-  sendSubscriptionRenewalDueEmail,
-  sendCryptoExpiryReminderEmail,
-  sendInvoiceEmail,
-  sendResetPinEmail,
-  sendChangeEmailEmail,
-  sendPinResetSuccessEmail,
-  sendEnablePinEmail,
-  sendVerificationCodeEmail,
-  sendCryptoDebitEmail,
-  sendSessionBookingIncomeEmail,
-  sendEmailChangeSuccessEmail,
-} from '@/utils/email_helper'
-import { Group } from '@/types/Group'
+  mockMeetingCancelSyncRequest,
+  mockMeetingCreationSyncRequest,
+  mockParticipantInfoForNotification,
+  mockRequestParticipantMapping,
+} from '@/testing/mocks'
+import { PaymentProvider } from '@/types/Billing'
+import { MeetingProvider } from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
-import { MeetingProvider } from '@/types/Meeting'
-import { PaymentProvider } from '@/types/Billing'
-import * as database from '@/utils/database'
-import * as syncHelper from '@/utils/sync_helper'
-import * as calendarBackendHelper from '@/utils/services/calendar.backend.helper'
+import {
+  MeetingCancelSyncRequest,
+  MeetingCreationSyncRequest,
+  RequestParticipantMapping,
+} from '@/types/Requests'
 import * as calendarManager from '@/utils/calendar_manager'
+import * as database from '@/utils/database'
+import {
+  cancelledMeetingEmail,
+  newGroupInviteEmail,
+  newGroupRejectEmail,
+  newMeetingEmail,
+  sendChangeEmailEmail,
+  sendContactInvitationEmail,
+  sendCryptoDebitEmail,
+  sendCryptoExpiryReminderEmail,
+  sendEmailChangeSuccessEmail,
+  sendEnablePinEmail,
+  sendInvitationEmail,
+  sendInvoiceEmail,
+  sendPinResetSuccessEmail,
+  sendPollInviteEmail,
+  sendReceiptEmail,
+  sendResetPinEmail,
+  sendSessionBookingIncomeEmail,
+  sendSubscriptionCancelledEmail,
+  sendSubscriptionCancelledEmailForAccount,
+  sendSubscriptionConfirmationEmail,
+  sendSubscriptionConfirmationEmailForAccount,
+  sendSubscriptionExpiredEmail,
+  sendSubscriptionRenewalDueEmail,
+  sendVerificationCodeEmail,
+  updateMeetingEmail,
+} from '@/utils/email_helper'
+import * as calendarBackendHelper from '@/utils/services/calendar.backend.helper'
+import * as syncHelper from '@/utils/sync_helper'
 
 // Mock email send function
 const mockEmailSend = jest.fn()
@@ -77,7 +86,7 @@ describe('email_helper quality tests - error handling and edge cases', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockEmailSend.mockResolvedValue({ id: 'email-123' })
-    
+
     // Default mock for Email templates
     const mockEmailInstance = {
       renderAll: jest.fn().mockResolvedValue({
@@ -87,7 +96,7 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       }),
       render: jest.fn().mockResolvedValue('<html>Test</html>'),
     }
-    
+
     ;(Email as unknown as jest.Mock).mockImplementation(() => mockEmailInstance)
   })
 
@@ -212,26 +221,23 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       } as any)
       jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([])
 
-      const meetingDetails = {
+      const meetingDetails = mockMeetingCreationSyncRequest({
+        participants: baseParticipants.map(mockRequestParticipantMapping),
         start: new Date(),
         end: new Date(Date.now() + 3600000),
-        participants: baseParticipants,
         meeting_url: 'https://meet.example.com/test',
         content: 'Meeting content',
         title: 'Test Meeting',
         meeting_id: 'meeting-123',
         timezone: 'America/New_York',
-        provider: MeetingProvider.GOOGLE_MEET,
-      }
+        meetingProvider: MeetingProvider.GOOGLE_MEET,
+      })
 
       const result = await newMeetingEmail(
         'test@example.com',
-        ParticipantType.Owner,
-        'slot-123',
-        meetingDetails as any,
-        'owner-address'
+        mockParticipantInfoForNotification(),
+        meetingDetails
       )
-
       expect(result).toBe(false)
       expect(Sentry.captureException).toHaveBeenCalledWith(error)
     })
@@ -242,9 +248,9 @@ describe('email_helper quality tests - error handling and edge cases', () => {
         value: 'ICS_CONTENT',
       } as any)
       jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([])
-      jest.spyOn(database, 'getOwnerPublicUrlServer').mockResolvedValue(
-        'https://meetwith.com/owner'
-      )
+      jest
+        .spyOn(database, 'getOwnerPublicUrlServer')
+        .mockResolvedValue('https://meetwith.com/owner')
 
       const guestParticipants: ParticipantInfo[] = [
         {
@@ -265,27 +271,27 @@ describe('email_helper quality tests - error handling and edge cases', () => {
         },
       ]
 
-      const meetingDetails = {
+      const meetingDetails = mockMeetingCreationSyncRequest({
+        participants: guestParticipants.map(mockRequestParticipantMapping),
         start: new Date(),
         end: new Date(Date.now() + 3600000),
-        participants: guestParticipants,
         meeting_url: 'https://meet.example.com/test',
         content: 'Meeting content',
         title: 'Guest Meeting',
         meeting_id: 'meeting-123',
         timezone: 'America/New_York',
-        provider: MeetingProvider.GOOGLE_MEET,
+        meetingProvider: MeetingProvider.GOOGLE_MEET,
         meeting_type_id: 'type-123',
-      }
-
-      const result = await newMeetingEmail(
-        'guest@example.com',
-        ParticipantType.Scheduler,
-        'slot-123',
-        meetingDetails as any,
-        undefined
+      })
+      const participant = mockParticipantInfoForNotification(
+        guestParticipants[0]
       )
-
+      participant.account_address = undefined
+      const result = await newMeetingEmail(
+        'test@example.com',
+        participant,
+        meetingDetails
+      )
       expect(result).toBe(true)
       expect(database.getOwnerPublicUrlServer).toHaveBeenCalledWith(
         'owner-address',
@@ -318,27 +324,23 @@ describe('email_helper quality tests - error handling and edge cases', () => {
           name: 'Scheduler',
         },
       ]
-
-      const meetingDetails = {
+      const meetingDetails = mockMeetingCreationSyncRequest({
+        participants: guestOwnerParticipants.map(mockRequestParticipantMapping),
         start: new Date(),
         end: new Date(Date.now() + 3600000),
-        participants: guestOwnerParticipants,
         meeting_url: 'https://meet.example.com/test',
         content: 'Meeting content',
         title: 'Guest Meeting',
         meeting_id: 'meeting-123',
         timezone: 'UTC',
-        provider: MeetingProvider.ZOOM,
-      }
+        meetingProvider: MeetingProvider.ZOOM,
+      })
 
       const result = await newMeetingEmail(
-        'owner@example.com',
-        ParticipantType.Owner,
-        'slot-123',
-        meetingDetails as any,
-        undefined
+        'test@example.com',
+        mockParticipantInfoForNotification(),
+        meetingDetails
       )
-
       expect(result).toBe(true)
     })
 
@@ -356,29 +358,23 @@ describe('email_helper quality tests - error handling and edge cases', () => {
         },
       ] as any)
 
-      const meetingDetails = {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        participants: baseParticipants,
-        meeting_url: 'https://meet.example.com/test',
-        content: 'Meeting content',
-        title: 'Test Meeting',
-        meeting_id: 'meeting-123',
-        timezone: 'UTC',
-        provider: MeetingProvider.GOOGLE_MEET,
+      const meetingDetails = mockMeetingCreationSyncRequest({
         meeting_type_id: 'type-123',
-      }
+      })
 
       const result = await newMeetingEmail(
         'test@example.com',
-        ParticipantType.Owner,
-        'slot-123',
-        meetingDetails as any,
-        'owner-address'
+        mockParticipantInfoForNotification({
+          account_address: 'owner-address',
+        }),
+        meetingDetails
       )
 
       expect(result).toBe(true)
-      expect(syncHelper.getCalendars).toHaveBeenCalledWith('owner-address', 'type-123')
+      expect(syncHelper.getCalendars).toHaveBeenCalledWith(
+        'owner-address',
+        'type-123'
+      )
     })
 
     it('should handle email send errors gracefully', async () => {
@@ -390,24 +386,12 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       } as any)
       jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([])
 
-      const meetingDetails = {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        participants: baseParticipants,
-        meeting_url: 'https://meet.example.com/test',
-        content: 'Meeting content',
-        title: 'Test Meeting',
-        meeting_id: 'meeting-123',
-        timezone: 'UTC',
-        provider: MeetingProvider.GOOGLE_MEET,
-      }
+      const meetingDetails = mockMeetingCreationSyncRequest()
 
       const result = await newMeetingEmail(
         'test@example.com',
-        ParticipantType.Owner,
-        'slot-123',
-        meetingDetails as any,
-        'owner-address'
+        mockParticipantInfoForNotification(),
+        meetingDetails
       )
 
       expect(result).toBe(true)
@@ -422,22 +406,14 @@ describe('email_helper quality tests - error handling and edge cases', () => {
         error,
         value: '',
       } as any)
-
-      const meetingDetails = {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        title: 'Cancelled Meeting',
-        reason: 'Conflict',
-        created_at: new Date(),
-        timezone: 'UTC',
-        meeting_id: 'meeting-123',
-      }
+      const meetingDetails: MeetingCancelSyncRequest =
+        mockMeetingCancelSyncRequest()
 
       const result = await cancelledMeetingEmail(
         'Canceller',
         'test@example.com',
-        meetingDetails as any,
-        'account-address'
+        meetingDetails,
+        mockParticipantInfoForNotification()
       )
 
       expect(result).toBe(false)
@@ -452,21 +428,14 @@ describe('email_helper quality tests - error handling and edge cases', () => {
         value: 'ICS_CONTENT',
       } as any)
 
-      const meetingDetails = {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        title: 'Cancelled Meeting',
-        reason: 'Conflict',
-        created_at: new Date(),
-        timezone: 'UTC',
-        meeting_id: 'meeting-123',
-      }
+      const meetingDetails: MeetingCancelSyncRequest =
+        mockMeetingCancelSyncRequest()
 
       const result = await cancelledMeetingEmail(
         'Canceller',
         'test@example.com',
-        meetingDetails as any,
-        'account-address'
+        meetingDetails,
+        mockParticipantInfoForNotification()
       )
 
       expect(result).toBe(true)
@@ -475,38 +444,18 @@ describe('email_helper quality tests - error handling and edge cases', () => {
   })
 
   describe('updateMeetingEmail - edge cases', () => {
-    const baseParticipants: ParticipantInfo[] = [
-      {
-        account_address: 'owner-address',
-        meeting_id: 'meeting-123',
-        slot_id: 'slot-123',
-        status: ParticipationStatus.Accepted,
-        type: ParticipantType.Owner,
-        name: 'Owner',
-      },
+    const baseParticipants: RequestParticipantMapping[] = [
+      mockRequestParticipantMapping(),
     ]
 
     it('should return true early if no date change', async () => {
-      const meetingDetails = {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        participants: baseParticipants,
-        meeting_url: 'https://meet.example.com/test',
-        content: 'Meeting content',
-        title: 'Test Meeting',
-        meeting_id: 'meeting-123',
-        timezone: 'UTC',
-        provider: MeetingProvider.GOOGLE_MEET,
-        changes: {},
-      }
+      const meetingDetails = mockMeetingCreationSyncRequest()
 
       const result = await updateMeetingEmail(
         'test@example.com',
         'Updater',
-        ParticipantType.Owner,
-        'slot-123',
-        meetingDetails as any,
-        'owner-address'
+        mockParticipantInfoForNotification(),
+        meetingDetails
       )
 
       expect(result).toBe(true)
@@ -520,31 +469,14 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       } as any)
       jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([])
 
-      const meetingDetails = {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        participants: baseParticipants,
-        meeting_url: 'https://meet.example.com/test',
-        content: 'Meeting content',
-        title: 'Test Meeting',
-        meeting_id: 'meeting-123',
-        timezone: 'UTC',
-        provider: MeetingProvider.GOOGLE_MEET,
-        changes: {
-          dateChange: {
-            oldStart: new Date(Date.now() - 86400000),
-            oldEnd: new Date(Date.now() - 82800000),
-          },
-        },
-      }
+      const meetingDetails: MeetingCreationSyncRequest =
+        mockMeetingCreationSyncRequest()
 
       const result = await updateMeetingEmail(
         'test@example.com',
         'Updater',
-        ParticipantType.Owner,
-        'slot-123',
-        meetingDetails as any,
-        'owner-address'
+        mockParticipantInfoForNotification(),
+        meetingDetails
       )
 
       expect(result).toBe(false)
@@ -560,31 +492,14 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       } as any)
       jest.spyOn(syncHelper, 'getCalendars').mockResolvedValue([])
 
-      const meetingDetails = {
-        start: new Date(),
-        end: new Date(Date.now() + 3600000),
-        participants: baseParticipants,
-        meeting_url: 'https://meet.example.com/test',
-        content: 'Meeting content',
-        title: 'Test Meeting',
-        meeting_id: 'meeting-123',
-        timezone: 'UTC',
-        provider: MeetingProvider.GOOGLE_MEET,
-        changes: {
-          dateChange: {
-            oldStart: new Date(Date.now() - 86400000),
-            oldEnd: new Date(Date.now() - 82800000),
-          },
-        },
-      }
+      const meetingDetails: MeetingCreationSyncRequest =
+        mockMeetingCreationSyncRequest()
 
       const result = await updateMeetingEmail(
         'test@example.com',
         'Updater',
-        ParticipantType.Owner,
-        'slot-123',
-        meetingDetails as any,
-        'owner-address'
+        mockParticipantInfoForNotification(),
+        meetingDetails
       )
 
       expect(result).toBe(true)
@@ -598,7 +513,9 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       const mockEmailInstance = {
         render: jest.fn().mockRejectedValueOnce(error),
       }
-      ;(Email as unknown as jest.Mock).mockImplementationOnce(() => mockEmailInstance)
+      ;(Email as unknown as jest.Mock).mockImplementationOnce(
+        () => mockEmailInstance
+      )
 
       const group = {
         id: randomUUID(),
@@ -732,7 +649,9 @@ describe('email_helper quality tests - error handling and edge cases', () => {
 
     it('should handle errors gracefully', async () => {
       const error = new Error('Database error')
-      jest.spyOn(database, 'getBillingEmailAccountInfo').mockRejectedValue(error)
+      jest
+        .spyOn(database, 'getBillingEmailAccountInfo')
+        .mockRejectedValue(error)
 
       await sendSubscriptionConfirmationEmailForAccount(
         'account-address',
@@ -797,7 +716,9 @@ describe('email_helper quality tests - error handling and edge cases', () => {
 
     it('should handle errors gracefully', async () => {
       const error = new Error('Database error')
-      jest.spyOn(database, 'getBillingEmailAccountInfo').mockRejectedValue(error)
+      jest
+        .spyOn(database, 'getBillingEmailAccountInfo')
+        .mockRejectedValue(error)
 
       await sendSubscriptionCancelledEmailForAccount(
         'account-address',
@@ -882,7 +803,11 @@ describe('email_helper quality tests - error handling and edge cases', () => {
         currency: 'USD',
       }
 
-      await sendInvoiceEmail('test@example.com', 'Test User', invoiceMetadata as any)
+      await sendInvoiceEmail(
+        'test@example.com',
+        'Test User',
+        invoiceMetadata as any
+      )
 
       expect(mockEmailSend).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -901,7 +826,9 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       const error = new Error('Invoice generation failed')
       mockEmailSend.mockRejectedValueOnce(error)
 
-      await sendInvoiceEmail('test@example.com', 'Test User', { plan: 'Pro' } as any)
+      await sendInvoiceEmail('test@example.com', 'Test User', {
+        plan: 'Pro',
+      } as any)
 
       expect(Sentry.captureException).toHaveBeenCalledWith(error)
     })
@@ -912,7 +839,10 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       const error = new Error('Email send failed')
       mockEmailSend.mockRejectedValueOnce(error)
 
-      const result = await sendResetPinEmail('test@example.com', 'https://reset.link')
+      const result = await sendResetPinEmail(
+        'test@example.com',
+        'https://reset.link'
+      )
 
       expect(result).toBe(true)
       expect(Sentry.captureException).toHaveBeenCalledWith(error)
@@ -924,7 +854,10 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       const error = new Error('Email send failed')
       mockEmailSend.mockRejectedValueOnce(error)
 
-      const result = await sendChangeEmailEmail('test@example.com', 'https://change.link')
+      const result = await sendChangeEmailEmail(
+        'test@example.com',
+        'https://change.link'
+      )
 
       expect(result).toBe(true)
       expect(Sentry.captureException).toHaveBeenCalledWith(error)
@@ -948,7 +881,10 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       const error = new Error('Email send failed')
       mockEmailSend.mockRejectedValueOnce(error)
 
-      const result = await sendEnablePinEmail('test@example.com', 'https://enable.link')
+      const result = await sendEnablePinEmail(
+        'test@example.com',
+        'https://enable.link'
+      )
 
       expect(result).toBe(true)
       expect(Sentry.captureException).toHaveBeenCalledWith(error)
@@ -960,7 +896,10 @@ describe('email_helper quality tests - error handling and edge cases', () => {
       const error = new Error('Email send failed')
       mockEmailSend.mockRejectedValueOnce(error)
 
-      const result = await sendVerificationCodeEmail('test@example.com', '123456')
+      const result = await sendVerificationCodeEmail(
+        'test@example.com',
+        '123456'
+      )
 
       expect(result).toBe(true)
       expect(Sentry.captureException).toHaveBeenCalledWith(error)
