@@ -1,12 +1,11 @@
 import { test, expect } from '../fixtures/auth.fixture'
+import { waitForMeetingsPage, waitForSchedulePage } from '../helpers/selectors'
 
 test.describe('Edit Meeting Flow', () => {
   test('should load meetings dashboard', async ({ page }) => {
     await page.goto('/dashboard/meetings')
 
-    await expect(page.locator('[data-testid="dashboard-meetings"]')).toBeVisible({
-      timeout: 10_000,
-    })
+    await waitForMeetingsPage(page)
   })
 
   test('should load schedule page with meetingId query param', async ({
@@ -16,11 +15,8 @@ test.describe('Edit Meeting Flow', () => {
     // Using a non-existent ID should show an error or empty state
     await page.goto('/dashboard/schedule?meetingId=non-existent-id')
 
-    await page.waitForLoadState('networkidle')
-
-    // The page should still load without crashing
-    const mainContent = page.locator('main').or(page.locator('[role="main"]'))
-    await expect(mainContent.first()).toBeVisible({ timeout: 15_000 })
+    // The page should still load without crashing — use route-specific anchor
+    await waitForSchedulePage(page)
   })
 
   test('should navigate between schedule and meetings pages', async ({
@@ -28,19 +24,15 @@ test.describe('Edit Meeting Flow', () => {
   }) => {
     // Go to meetings page
     await page.goto('/dashboard/meetings')
-    await expect(page.locator('[data-testid="dashboard-meetings"]')).toBeVisible({
-      timeout: 10_000,
-    })
+    await waitForMeetingsPage(page)
 
     // Navigate to schedule page
     await page.goto('/dashboard/schedule')
-    await page.waitForLoadState('networkidle')
+    await waitForSchedulePage(page)
 
     // Navigate back to meetings
     await page.goto('/dashboard/meetings')
-    await expect(page.locator('[data-testid="dashboard-meetings"]')).toBeVisible({
-      timeout: 10_000,
-    })
+    await waitForMeetingsPage(page)
   })
 
   test.describe('API-level meeting operations', () => {
@@ -117,7 +109,7 @@ test.describe('Edit Meeting Flow', () => {
       )
 
       await page.goto('/dashboard/schedule')
-      await page.waitForLoadState('networkidle')
+      await waitForSchedulePage(page)
 
       // Calendar mocks are in place for the edit flow
     })
@@ -144,11 +136,9 @@ test.describe('Edit Meeting Flow', () => {
       })
 
       await page.goto('/dashboard/schedule?meetingId=test-id')
-      await page.waitForLoadState('networkidle')
 
-      // Page should still be visible (graceful error handling)
-      const mainContent = page.locator('main').or(page.locator('[role="main"]'))
-      await expect(mainContent.first()).toBeVisible({ timeout: 15_000 })
+      // Page should still be visible (graceful error handling) — use route-specific anchor
+      await waitForSchedulePage(page)
     })
   })
 })

@@ -1,34 +1,24 @@
 import { test, expect } from '../fixtures/auth.fixture'
+import { waitForMeetingsPage, waitForSchedulePage } from '../helpers/selectors'
 
 test.describe('Schedule Meeting Flow', () => {
   test('should load the schedule page', async ({ page }) => {
     await page.goto('/dashboard/schedule')
 
-    // The schedule page should load with the scheduling UI
-    // ScheduleTimeDiscover component has tab panels
-    await expect(page.getByRole('heading', { level: 2 }).first()).toBeVisible({
-      timeout: 15_000,
-    })
+    await waitForSchedulePage(page)
   })
 
   test('should display the time picker panel by default', async ({ page }) => {
     await page.goto('/dashboard/schedule')
 
-    // Wait for the schedule page to load
-    await page.waitForLoadState('networkidle')
-
-    // The first panel (SCHEDULE_TIME) should be visible
-    // Look for date/time related UI elements
-    const scheduleContent = page.locator('main').or(page.locator('[role="main"]'))
-    await expect(scheduleContent.first()).toBeVisible({ timeout: 15_000 })
+    // The schedule container should be visible with route-specific testid
+    await waitForSchedulePage(page)
   })
 
   test('should navigate to meetings list', async ({ page }) => {
     await page.goto('/dashboard/meetings')
 
-    await expect(page.locator('[data-testid="dashboard-meetings"]')).toBeVisible({
-      timeout: 10_000,
-    })
+    await waitForMeetingsPage(page)
   })
 
   test('should create a meeting via API', async ({ request }) => {
@@ -66,7 +56,7 @@ test.describe('Schedule Meeting Flow', () => {
       )
 
       await page.goto('/dashboard/schedule')
-      await page.waitForLoadState('networkidle')
+      await waitForSchedulePage(page)
 
       // Calendar interception is set up and ready for use
       // Full scheduling flow depends on availability configuration
