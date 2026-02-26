@@ -1,32 +1,23 @@
 name: Playwright E2E Tests
 
-on:
-  pull_request:
-    branches: [develop]
-  push:
-    branches: [develop]
+on: [pull_request, push]
 
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     strategy:
       matrix:
         node-version: [20.17.0]
 
     env:
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_TEST }}
       NODE_OPTIONS: --experimental-fetch
-      TEST_WALLET_PRIVATE_KEY: ${{ secrets.TEST_WALLET_PRIVATE_KEY }}
-      IRON_COOKIE_PASSWORD: ${{ secrets.IRON_COOKIE_PASSWORD }}
-      SERVER_SECRET: ${{ secrets.SERVER_SECRET }}
-      NEXT_SUPABASE_URL: ${{ secrets.NEXT_SUPABASE_URL }}
-      NEXT_SUPABASE_KEY: ${{ secrets.NEXT_SUPABASE_KEY }}
-      NEXT_PUBLIC_SERVER_PUB_KEY: ${{ secrets.NEXT_PUBLIC_SERVER_PUB_KEY }}
-      NEXT_SERVER_PVT_KEY: ${{ secrets.NEXT_SERVER_PVT_KEY }}
-      NEXT_PUBLIC_HOSTED_AT: http://localhost:3000
 
     steps:
+      - name: Install Doppler
+        run: curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sudo sh
+
       - uses: actions/checkout@v3
 
       - name: Install Node.js ${{ matrix.node-version }}
@@ -61,7 +52,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: yarn test:e2e
+        run: yarn test:e2e:ci
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v3
