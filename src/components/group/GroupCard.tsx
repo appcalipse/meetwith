@@ -216,29 +216,39 @@ const GroupCard: React.FC<IGroupCard> = props => {
               {displayAvailabilities && displayAvailabilities.length > 0 && (
                 <HStack gap={2} flexWrap="wrap">
                   {displayAvailabilities.slice(0, 2).map(block => (
-                    <Badge
+                    <Tooltip
                       key={block.id}
-                      bg="bg-surface-tertiary-2"
-                      color="text-primary"
-                      borderRadius={6}
-                      fontSize="xs"
-                      px={2}
-                      py={0.5}
+                      label="Availability block used for this group"
+                      placement="top"
                     >
-                      {block.title}
-                    </Badge>
+                      <Badge
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        {block.title}
+                      </Badge>
+                    </Tooltip>
                   ))}
                   {displayAvailabilities.length > 2 && (
-                    <Badge
-                      bg="bg-surface-tertiary-2"
-                      color="text-primary"
-                      borderRadius={6}
-                      fontSize="xs"
-                      px={2}
-                      py={0.5}
+                    <Tooltip
+                      label="Availability block used for this group"
+                      placement="top"
                     >
-                      +{displayAvailabilities.length - 2} more
-                    </Badge>
+                      <Badge
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        +{displayAvailabilities.length - 2} more
+                      </Badge>
+                    </Tooltip>
                   )}
                 </HStack>
               )}
@@ -342,29 +352,39 @@ const GroupCard: React.FC<IGroupCard> = props => {
               {displayAvailabilities && displayAvailabilities.length > 0 && (
                 <HStack gap={2} flexWrap="wrap" width="100%">
                   {displayAvailabilities.slice(0, 2).map(block => (
-                    <Badge
+                    <Tooltip
                       key={block.id}
-                      bg="bg-surface-tertiary-2"
-                      color="text-primary"
-                      borderRadius={6}
-                      fontSize="xs"
-                      px={2}
-                      py={0.5}
+                      label="Availability block used for this group"
+                      placement="top"
                     >
-                      {block.title}
-                    </Badge>
+                      <Badge
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        {block.title}
+                      </Badge>
+                    </Tooltip>
                   ))}
                   {displayAvailabilities.length > 2 && (
-                    <Badge
-                      bg="bg-surface-tertiary-2"
-                      color="text-primary"
-                      borderRadius={6}
-                      fontSize="xs"
-                      px={2}
-                      py={0.5}
+                    <Tooltip
+                      label="Availability block used for this group"
+                      placement="top"
                     >
-                      +{displayAvailabilities.length - 2} more
-                    </Badge>
+                      <Badge
+                        bg="bg-surface-tertiary-2"
+                        color="text-primary"
+                        borderRadius={6}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                      >
+                        +{displayAvailabilities.length - 2} more
+                      </Badge>
+                    </Tooltip>
                   )}
                 </HStack>
               )}

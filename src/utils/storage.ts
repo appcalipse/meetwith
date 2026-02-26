@@ -1,5 +1,9 @@
 import { GuestPollDetails, QuickPollSignInContext } from '@/types/QuickPoll'
-import { CONTEXT_EXPIRY_MS, QUICKPOLL_SIGNIN_CONTEXT_KEY } from './constants'
+import {
+  CONTEXT_EXPIRY_MS,
+  POLL_AVAILABILITY_MODAL_SHOWN_PREFIX,
+  QUICKPOLL_SIGNIN_CONTEXT_KEY,
+} from './constants'
 
 const SIGNATURE_KEY = 'current_user_sig'
 const SCHEDULES = 'meetings_scheduled'
@@ -181,4 +185,27 @@ export const getQuickPollSignInContext = (): QuickPollSignInContext | null => {
 
 export const clearQuickPollSignInContext = () => {
   localStorage.removeItem(QUICKPOLL_SIGNIN_CONTEXT_KEY)
+}
+
+export const hasPollAvailabilityModalBeenShown = (
+  pollId: string,
+  participantId: string
+): boolean => {
+  if (typeof window === 'undefined') return false
+  return (
+    localStorage.getItem(
+      `${POLL_AVAILABILITY_MODAL_SHOWN_PREFIX}:${pollId}:${participantId}`
+    ) === '1'
+  )
+}
+
+export const markPollAvailabilityModalAsShown = (
+  pollId: string,
+  participantId: string
+): void => {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(
+    `${POLL_AVAILABILITY_MODAL_SHOWN_PREFIX}:${pollId}:${participantId}`,
+    '1'
+  )
 }
