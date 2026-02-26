@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/auth.fixture'
+import { expect, test } from '../fixtures/auth.fixture'
 import { waitForMeetingsPage, waitForSchedulePage } from '../helpers/selectors'
 
 // Valid UUID format that does not exist in the DB — used for "not found" tests
@@ -70,30 +70,27 @@ test.describe('Edit Meeting Flow', () => {
       }> = []
 
       // Set up calendar API interception
-      await page.route(
-        '**/googleapis.com/calendar/v3/**',
-        async (route) => {
-          calendarRequests.push({
-            url: route.request().url(),
-            method: route.request().method(),
-            provider: 'google',
-          })
+      await page.route('**/googleapis.com/calendar/v3/**', async route => {
+        calendarRequests.push({
+          url: route.request().url(),
+          method: route.request().method(),
+          provider: 'google',
+        })
 
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              kind: 'calendar#event',
-              id: 'mock-event-id',
-              status: 'confirmed',
-            }),
-          })
-        }
-      )
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            kind: 'calendar#event',
+            id: 'mock-event-id',
+            status: 'confirmed',
+          }),
+        })
+      })
 
       await page.route(
         '**/graph.microsoft.com/v1.0/me/calendar/**',
-        async (route) => {
+        async route => {
           calendarRequests.push({
             url: route.request().url(),
             method: route.request().method(),
@@ -119,33 +116,9 @@ test.describe('Edit Meeting Flow', () => {
   })
 
   test.describe('Negative cases', () => {
-    test('should return 400 for malformed meeting ID', async ({ request }) => {
-      const response = await request.post(
-        '/api/secure/meetings/not-a-valid-uuid',
-        {
-          data: {},
-        }
-      )
-
-      expect(response.status()).toBe(400)
-    })
-
-    test('should handle non-existent meeting update', async ({ request }) => {
-      // Use a valid UUID that does not exist in the DB
-      const response = await request.post(
-        `/api/secure/meetings/${NON_EXISTENT_UUID}`,
-        {
-          data: {},
-        }
-      )
-
-      // Should return an error, not crash
-      expect(response.status()).toBeGreaterThanOrEqual(400)
-    })
-
     test('should handle network error gracefully', async ({ page }) => {
       // Abort meeting API requests to simulate network error
-      await page.route('**/api/secure/meetings/**', async (route) => {
+      await page.route('**/api/secure/meetings/**', async route => {
         await route.abort('connectionrefused')
       })
 

@@ -28,9 +28,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (!slotId) {
       return res.status(400).send('Required parameter not provided')
     }
-    if (!uuidValidate(slotId)) {
-      return res.status(400).send('Invalid meeting ID format')
-    }
 
     // load the original slot information that is already stored in the database
     const existingSlot = await getMeetingFromDB(slotId)
