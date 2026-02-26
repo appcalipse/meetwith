@@ -116,6 +116,19 @@ test.describe('Edit Meeting Flow', () => {
   })
 
   test.describe('Negative cases', () => {
+    test('should handle non-existent meeting update', async ({ request }) => {
+      // Use a valid UUID that does not exist in the DB
+      const response = await request.post(
+        `/api/secure/meetings/${NON_EXISTENT_UUID}`,
+        {
+          data: {},
+        }
+      )
+
+      // Should return an error, not crash
+      expect(response.status()).toBeGreaterThanOrEqual(400)
+    })
+
     test('should handle network error gracefully', async ({ page }) => {
       // Abort meeting API requests to simulate network error
       await page.route('**/api/secure/meetings/**', async route => {
