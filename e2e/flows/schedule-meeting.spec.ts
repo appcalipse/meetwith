@@ -38,8 +38,8 @@ test.describe('Schedule Meeting Flow', () => {
       await expect(forwardBtn).toBeVisible()
       await forwardBtn.click()
 
-      // Wait for grid to update — day headers should change
-      await page.waitForTimeout(500)
+      // Wait for the day header text to change (deterministic wait)
+      await expect(firstDayHeader).not.toHaveText(initialText || '', { timeout: 5_000 })
       const updatedText = await firstDayHeader.textContent()
       expect(updatedText).not.toBe(initialText)
 
@@ -48,9 +48,8 @@ test.describe('Schedule Meeting Flow', () => {
       await expect(backBtn).toBeVisible()
       await backBtn.click()
 
-      await page.waitForTimeout(500)
-      const restoredText = await firstDayHeader.textContent()
-      expect(restoredText).toBe(initialText)
+      // Wait for the day header text to revert back
+      await expect(firstDayHeader).toHaveText(initialText || '', { timeout: 5_000 })
     })
   })
 
