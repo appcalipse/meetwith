@@ -20,12 +20,12 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'yarn dev',
+    command: 'yarn build && yarn start',
     port: 3000,
     reuseExistingServer: !process.env.CI,
     stderr: 'pipe',
     stdout: 'pipe',
-    timeout: 120_000,
+    timeout: 600_000,
   },
   workers: process.env.CI ? 1 : undefined,
 })
