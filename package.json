@@ -18,8 +18,9 @@
     "test:ci": "NODE_ENV=test doppler run --config tests -- jest --coverage",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch",
-    "test:e2e": "npx playwright test",
-    "test:e2e:ui": "npx playwright test --ui"
+    "test:e2e": "playwright test",
+    "test:e2e:ci": "NODE_ENV=test doppler run --config tests -- playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@azure/identity": "^4.13.0",
@@ -160,6 +161,7 @@
     "jest-when": "^3.5.1",
     "lint-staged": "^12.3.1",
     "next-sitemap": "^3.1.11",
+    "playwright": "^1.58.2",
     "prettier": "^2.5.0",
     "ts-jest": "^29.1.0",
     "typescript": "^5.3.2"
