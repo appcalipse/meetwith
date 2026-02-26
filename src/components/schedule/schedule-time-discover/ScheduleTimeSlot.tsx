@@ -82,7 +82,11 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
   const eventUrl = slotData.eventUrl
 
   return (
-    <Tooltip.Root key={slot.start.toISOTime()} onOpenChange={setIsTooltipOpen}>
+    <Tooltip.Root
+      data-testid={`schedule-time-slot-${slot.start.toISOTime()}`}
+      key={slot.start.toISOTime()}
+      onOpenChange={setIsTooltipOpen}
+    >
       <Tooltip.Trigger asChild>
         <Button
           bg={getBgColor(state)}
