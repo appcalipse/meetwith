@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noConsole: For tracing */
 import fs from 'fs'
 
 import { AUTH_STATE_PATH, TEST_DATA_PATH } from './helpers/constants'

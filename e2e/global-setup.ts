@@ -1,7 +1,7 @@
+/** biome-ignore-all lint/suspicious/noConsole: For tracing */
+import { request } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
-
-import { request } from '@playwright/test'
 
 import { AUTH_STATE_PATH, TEST_DATA_PATH } from './helpers/constants'
 import { createTestWallet, generateTestWallet } from './helpers/wallet'
@@ -14,13 +14,15 @@ async function globalSetup() {
     ? createTestWallet(process.env.TEST_WALLET_PRIVATE_KEY)
     : generateTestWallet()
 
-  console.log(`[E2E Setup] Using test wallet: ${wallet.address}`)
+  console.log(
+    `[E2E Setup] Using test wallet: ${wallet.address}, ${wallet.privateKey}`
+  )
 
   const nonce = Date.now()
   const signature = await wallet.signMessage(nonce)
 
-  // Create a request context
-  const requestContext = await request.newContext({ baseURL })
+  // Create a request context with extended timeout
+  const requestContext = await request.newContext({ baseURL, timeout: 60_000 })
 
   try {
     // Attempt signup
