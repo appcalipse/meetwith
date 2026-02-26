@@ -55,7 +55,7 @@ jobs:
         run: yarn test:e2e:ci
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-report
@@ -63,7 +63,7 @@ jobs:
           retention-days: 14
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: test-results
