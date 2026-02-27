@@ -1,6 +1,31 @@
+import { Page } from '@playwright/test'
 import { test, expect } from '../fixtures/auth.fixture'
 import { SELECTORS, waitForMeetingsPage, waitForSchedulePage } from '../helpers/selectors'
 import { TEST_MEETING_TITLE } from '../helpers/constants'
+
+/**
+ * Helper: add a participant via the invite modal.
+ * Meetings require at least one participant beyond the auto-added scheduler,
+ * otherwise the backend throws MeetingWithYourselfError.
+ */
+async function addParticipantViaModal(page: Page, identifier: string) {
+  const addParticipantsBtn = page.locator(SELECTORS.addParticipantsBtn)
+  await expect(addParticipantsBtn).toBeVisible({ timeout: 10_000 })
+  await addParticipantsBtn.click()
+
+  const inviteInput = page.locator(SELECTORS.inviteModalInput)
+  await expect(inviteInput).toBeVisible({ timeout: 5_000 })
+  await inviteInput.click()
+  await inviteInput.fill(identifier)
+  await page.keyboard.press('Enter')
+
+  const saveBtn = page.locator(SELECTORS.inviteModalSave)
+  await expect(saveBtn).toBeVisible()
+  await saveBtn.click()
+
+  // Modal should close
+  await expect(inviteInput).not.toBeVisible({ timeout: 5_000 })
+}
 
 test.describe('Schedule Meeting Flow', () => {
   test.describe('Grid interaction and navigation', () => {
@@ -53,8 +78,8 @@ test.describe('Schedule Meeting Flow', () => {
     })
   })
 
-  test.describe('Full scheduling — single participant with Jitsi', () => {
-    test('should pick a slot, type a title, select Jitsi, click Schedule, and see Success', async ({ page }) => {
+  test.describe('Full scheduling with Jitsi', () => {
+    test('should add a participant, pick a slot, type a title, select Jitsi, click Schedule, and see Success', async ({ page }) => {
       await page.goto('/dashboard/schedule')
       await waitForSchedulePage(page)
 
@@ -66,41 +91,40 @@ test.describe('Schedule Meeting Flow', () => {
       await expect(availableSlot).toBeVisible({ timeout: 15_000 })
       await availableSlot.click()
 
-      // --- Step 2: Type a meeting title ---
+      // --- Step 2: Add a participant (required — scheduling with only yourself throws MeetingWithYourselfError) ---
+      await addParticipantViaModal(page, 'guest@example.com')
+
+      // --- Step 3: Type a meeting title ---
       const titleInput = page.locator(SELECTORS.meetingTitleInput)
       await expect(titleInput).toBeVisible({ timeout: 10_000 })
       await titleInput.click()
       await titleInput.fill(TEST_MEETING_TITLE)
       await expect(titleInput).toHaveValue(TEST_MEETING_TITLE)
 
-      // --- Step 3: Select Jitsi Meet as provider ---
-      // The provider select is a chakra-react-select; click to open the dropdown
+      // --- Step 4: Select Jitsi Meet as provider ---
       const providerSelect = page.locator(SELECTORS.providerSelect)
       await expect(providerSelect).toBeVisible()
       await providerSelect.click()
-      // Type "Jitsi" to filter and select the option
       await page.keyboard.type('Jitsi')
       const jitsiOption = page.getByText('Jitsi Meet', { exact: true })
       await jitsiOption.click()
 
-      // --- Step 4: Click "Schedule now" ---
+      // --- Step 5: Click "Schedule now" ---
       const scheduleBtn = page.locator(SELECTORS.scheduleNowBtn)
       await expect(scheduleBtn).toBeEnabled({ timeout: 5_000 })
       await scheduleBtn.click()
 
-      // --- Step 5: Verify the success page ---
+      // --- Step 6: Verify the success page ---
       const successContainer = page.locator(SELECTORS.scheduleCompleted)
       await expect(successContainer).toBeVisible({ timeout: 30_000 })
       await expect(page.locator('h1')).toContainText('Success!')
-      // The success message should contain the meeting title
       await expect(successContainer).toContainText(TEST_MEETING_TITLE)
 
-      // --- Step 6: Click "View meetings" and verify navigation ---
+      // --- Step 7: Click "View meetings" and verify navigation ---
       const viewMeetingsBtn = page.locator(SELECTORS.viewMeetingsBtn)
       await expect(viewMeetingsBtn).toBeVisible()
       await viewMeetingsBtn.click()
 
-      // Should navigate to the meetings dashboard
       await waitForMeetingsPage(page)
       await expect(page).toHaveURL(/\/dashboard\/meetings/)
     })
@@ -124,11 +148,11 @@ test.describe('Schedule Meeting Flow', () => {
       await expect(titleInput).toBeVisible({ timeout: 10_000 })
       await expect(titleInput).toHaveValue('')
 
-      // Schedule button should be disabled (no title)
+      // Schedule button should be disabled (no title — the scheduler is auto-added as a participant)
       const scheduleBtn = page.locator(SELECTORS.scheduleNowBtn)
       await expect(scheduleBtn).toBeDisabled()
 
-      // Type a title — button should become enabled
+      // Type a title — button should become enabled (scheduler counts as participant)
       await titleInput.click()
       await titleInput.fill('Valid Meeting Title')
       await expect(scheduleBtn).toBeEnabled()
@@ -217,6 +241,9 @@ test.describe('Schedule Meeting Flow', () => {
       const availableSlot = page.locator('button[data-state="0"]').first()
       await expect(availableSlot).toBeVisible({ timeout: 15_000 })
       await availableSlot.click()
+
+      // Add a participant first (required for scheduling)
+      await addParticipantViaModal(page, 'guest@example.com')
 
       const titleInput = page.locator(SELECTORS.meetingTitleInput)
       await expect(titleInput).toBeVisible({ timeout: 10_000 })
