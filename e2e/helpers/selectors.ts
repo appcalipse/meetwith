@@ -35,6 +35,7 @@ export const SELECTORS = {
   jumpToBestSlotMobile: '[data-testid="jump-to-best-slot-mobile"]',
   gridForwardBtn: '[data-testid="grid-forward-btn"]',
   gridBackBtn: '[data-testid="grid-back-btn"]',
+  dayHeaders: '[data-testid="day-headers"]',
   scheduleGrid: '[data-testid="schedule-grid"]',
 } as const
 

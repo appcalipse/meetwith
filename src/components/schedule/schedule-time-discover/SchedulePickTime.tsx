@@ -968,6 +968,7 @@ export function SchedulePickTime({
               />
             </HStack>
             <HStack
+              data-testid="day-headers"
               w="100%"
               justify={{ md: 'space-between' }}
               gap={{ base: 1, md: 6 }}

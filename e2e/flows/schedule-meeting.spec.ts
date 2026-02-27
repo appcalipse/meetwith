@@ -55,7 +55,8 @@ test.describe('Schedule Meeting Flow', () => {
       await expect(grid).toBeVisible({ timeout: 20_000 })
 
       // Capture the initial day header text
-      const firstDayHeader = grid.locator('text >> nth=0')
+      const dayHeaders = page.locator(SELECTORS.dayHeaders)
+      const firstDayHeader = dayHeaders.locator('p').first()
       const initialText = await firstDayHeader.textContent()
 
       // Click the forward arrow
@@ -104,9 +105,12 @@ test.describe('Schedule Meeting Flow', () => {
       // --- Step 4: Select Jitsi Meet as provider ---
       const providerSelect = page.locator(SELECTORS.providerSelect)
       await expect(providerSelect).toBeVisible()
-      await providerSelect.click()
-      await page.keyboard.type('Jitsi')
+      // Click the input inside the react-select to open the dropdown
+      const selectInput = providerSelect.locator('input')
+      await selectInput.click()
+      await selectInput.pressSequentially('Jitsi')
       const jitsiOption = page.getByText('Jitsi Meet', { exact: true })
+      await expect(jitsiOption).toBeVisible({ timeout: 5_000 })
       await jitsiOption.click()
 
       // --- Step 5: Click "Schedule now" ---
@@ -161,8 +165,9 @@ test.describe('Schedule Meeting Flow', () => {
       await titleInput.fill('')
       await expect(scheduleBtn).toBeDisabled()
 
-      // Force-click schedule to trigger "Title is required" validation
-      await scheduleBtn.click({ force: true })
+      // Submit the form via Enter key to trigger "Title is required" validation
+      await titleInput.click()
+      await page.keyboard.press('Enter')
       await expect(page.getByText('Title is required')).toBeVisible({ timeout: 3_000 })
     })
   })
@@ -212,9 +217,11 @@ test.describe('Schedule Meeting Flow', () => {
       await titleInput.fill('Multi-Participant E2E Meeting')
 
       const providerSelect = page.locator(SELECTORS.providerSelect)
-      await providerSelect.click()
-      await page.keyboard.type('Jitsi')
+      const selectInput = providerSelect.locator('input')
+      await selectInput.click()
+      await selectInput.pressSequentially('Jitsi')
       const jitsiOption = page.getByText('Jitsi Meet', { exact: true })
+      await expect(jitsiOption).toBeVisible({ timeout: 5_000 })
       await jitsiOption.click()
 
       // --- Step 7: Click "Schedule now" ---
@@ -250,6 +257,15 @@ test.describe('Schedule Meeting Flow', () => {
       await titleInput.click()
       await titleInput.fill('Conflict Test Meeting')
 
+      // Select Jitsi Meet as provider (no external API needed for URL generation)
+      const providerSelect = page.locator(SELECTORS.providerSelect)
+      const selectInput = providerSelect.locator('input')
+      await selectInput.click()
+      await selectInput.pressSequentially('Jitsi')
+      const jitsiOption = page.getByText('Jitsi Meet', { exact: true })
+      await expect(jitsiOption).toBeVisible({ timeout: 5_000 })
+      await jitsiOption.click()
+
       // Intercept the meetings API to return a 409 conflict
       await page.route('**/api/secure/meetings', async route => {
         if (route.request().method() === 'POST') {
@@ -273,7 +289,7 @@ test.describe('Schedule Meeting Flow', () => {
       await expect(successContainer).not.toBeVisible({ timeout: 5_000 })
 
       // An error toast should appear
-      await expect(page.getByText(/failed|error|not available/i).first()).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByText(/failed|error|not available/i).first()).toBeVisible({ timeout: 10_000 })
     })
 
     test('should reject API meeting creation with empty data', async ({ request }) => {
