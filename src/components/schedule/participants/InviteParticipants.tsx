@@ -553,6 +553,7 @@ const InviteParticipants: FC<IProps> = ({
                   <Box w="100%" maxW="100%">
                     <ChipInput
                       currentItems={standAloneParticipants}
+                      inputProps={{ 'data-testid': 'invite-modal-input' } as never}
                       placeholder="Enter email, wallet address or ENS of user"
                       onChange={onParticipantsChange}
                       renderItem={renderParticipantItem}
@@ -566,6 +567,7 @@ const InviteParticipants: FC<IProps> = ({
                   </FormHelperText>
                 </FormControl>
                 <Button
+                  data-testid="invite-modal-save"
                   mt={6}
                   w="fit-content"
                   colorScheme="primary"

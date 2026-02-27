@@ -482,6 +482,7 @@ const ScheduleBase = () => {
                       <ChipInput
                         addDisabled={!canManageParticipants}
                         currentItems={displayParticipants}
+                        inputProps={{ 'data-testid': 'participant-chip-input' } as never}
                         isReadOnly={!canManageParticipants}
                         onChange={handleChipInputChange}
                         placeholder="Add participants"
@@ -518,6 +519,7 @@ const ScheduleBase = () => {
                     bg="primary.200"
                     borderRadius="6px"
                     color="neutral.900"
+                    data-testid="add-participants-btn"
                     icon={<IoPersonAddOutline size={20} />}
                     isDisabled={!canManageParticipants}
                     onClick={handleParticipantsClick}
@@ -600,6 +602,7 @@ const ScheduleBase = () => {
                       color: 'neutral.400',
                     }}
                     borderColor="neutral.400"
+                    data-testid="meeting-title-input"
                     errorBorderColor="red.500"
                     isInvalid={!isTitleValid}
                     onChange={e => {
@@ -635,6 +638,7 @@ const ScheduleBase = () => {
                 w="100%"
               >
                 <FormLabel>Location</FormLabel>
+                <Box data-testid="provider-select">
                 <Select<Option<MeetingProvider>>
                   chakraStyles={{
                     container: provided => ({
@@ -660,6 +664,7 @@ const ScheduleBase = () => {
                   options={meetingProviders}
                   value={meetingProviderValue}
                 />
+                </Box>
                 {meetingProvider === MeetingProvider.CUSTOM && (
                   <Input
                     isDisabled={isScheduling}
@@ -880,6 +885,7 @@ const ScheduleBase = () => {
               <HStack flexWrap="wrap" w="100%">
                 <Button
                   colorScheme="primary"
+                  data-testid="schedule-now-btn"
                   flex={1}
                   flexBasis="50%"
                   h={'auto'}
