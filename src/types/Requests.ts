@@ -39,6 +39,7 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
   calendar_id?: string | null
   calendar_organizer_address?: string
   isRsvpUpdate?: boolean
+  isDeleteUpdate?: boolean
 }
 export interface MeetingSeriesUpdateRequest extends MeetingUpdateRequest {
   /**
@@ -131,6 +132,7 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   rrule: Array<string>
   ical_uid?: string
   calendar_organizer_address?: string
+  isDeleteEvent?: boolean
 }
 export interface MeetingInstanceCreationSyncRequest
   extends MeetingCreationSyncRequest {

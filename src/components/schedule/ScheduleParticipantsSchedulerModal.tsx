@@ -18,6 +18,7 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import { MeetingDecrypted } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 interface IProps {
@@ -32,9 +33,22 @@ const ScheduleParticipantsSchedulerModal: FC<IProps> = props => {
   const [scheduler, setScheduler] = useState<ParticipantInfo | undefined>(
     undefined
   )
+  const { showErrorToast } = useToastHelpers()
+  const [isDeleting, setIsDeleting] = useState(false)
+
   const handleSave = async () => {
-    await handleDelete(scheduler, props.decryptedMeeting)
-    props.onClose()
+    setIsDeleting(true)
+    try {
+      await handleDelete(scheduler, props.decryptedMeeting)
+      props.onClose()
+    } catch (error: unknown) {
+      showErrorToast(
+        'Something went wrong deleting your meeting',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
+    } finally {
+      setIsDeleting(false)
+    }
   }
   const handleSchedulerChange = (identifier: string) => {
     const newScheduler = props.participants.find(scheduler => {
@@ -92,7 +106,7 @@ const ScheduleParticipantsSchedulerModal: FC<IProps> = props => {
                   {props.participants
                     .filter(
                       participant =>
-                        participant.account_address !== currentAccount
+                        participant.account_address !== currentAccount?.address
                     )
                     .map(participant => (
                       <HStack
@@ -156,6 +170,7 @@ const ScheduleParticipantsSchedulerModal: FC<IProps> = props => {
                   opacity: 0.75,
                 }}
                 disabled={!scheduler}
+                isLoading={isDeleting}
               >
                 Delete Meeting
               </Button>
