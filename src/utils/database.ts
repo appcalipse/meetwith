@@ -171,6 +171,10 @@ import {
 } from '@/types/Transactions'
 import { mergeWeeklyAvailabilityFromBlocksWithTimezone } from '@/utils/availability.helper'
 import {
+  mergeWeeklyAvailabilityFromBlocks,
+  mergeWeeklyAvailabilityFromBlocksWithTimezone,
+} from '@/utils/availability.helper'
+import {
   MODIFIED_BY_APP_TIMEOUT,
   PaymentNotificationType,
   QUICKPOLL_DEFAULT_LIMIT,

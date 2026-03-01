@@ -28,6 +28,7 @@ import {
   getBrowserTimezone,
   getDefaultScheduleAvailability,
   initializeEmptyAvailabilities,
+  mergeWeeklyAvailabilities,
   mergeWeeklyAvailabilityFromBlocksWithTimezone,
   sortAvailabilitiesByWeekday,
 } from '@/utils/availability.helper'
@@ -162,9 +163,21 @@ export function PollAvailabilityModal({
     }
     const blocks = availableBlocks.filter(b => ids.includes(b.id))
     if (blocks.length > 0) {
-      setIsCustomFromEdit(false)
-      setTimezone(blocks[0].timezone)
-      setAvailabilities(mergeWeeklyAvailabilityFromBlocksWithTimezone(blocks))
+      if (isCustomFromEdit) {
+        const blocksSchedule = mergeWeeklyAvailabilityFromBlocksWithTimezone(
+          blocks,
+          timezone
+        )
+        setAvailabilities(prev =>
+          mergeWeeklyAvailabilities(prev, blocksSchedule)
+        )
+        setIsCustomFromEdit(true)
+      } else {
+        // No custom: treat selected blocks as individual blocks only
+        setIsCustomFromEdit(false)
+        setTimezone(blocks[0].timezone)
+        setAvailabilities(mergeWeeklyAvailabilityFromBlocksWithTimezone(blocks))
+      }
     }
   }
 
