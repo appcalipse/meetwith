@@ -7,10 +7,10 @@ test.describe('Edit Meeting Flow', () => {
   test.describe('Update an existing meeting', () => {
     test('should load a meeting in edit mode, change the title, and update', async ({ page, createMeeting }) => {
       // Create a meeting via API so we have something to edit
-      const { meetingId } = await createMeeting({ title: 'Original Title' })
+      const { slotId } = await createMeeting({ title: 'Original Title' })
 
       // Navigate to schedule page in UPDATE mode
-      await page.goto(`/dashboard/schedule?meetingId=${meetingId}&intent=UPDATE_MEETING`)
+      await page.goto(`/dashboard/schedule?meetingId=${slotId}&intent=UPDATE_MEETING`)
       await waitForSchedulePage(page)
 
       // The details form should be pre-populated (edit mode opens SCHEDULE_DETAILS directly)
@@ -48,9 +48,9 @@ test.describe('Edit Meeting Flow', () => {
     })
 
     test('should allow picking a new time slot during meeting update', async ({ page, createMeeting }) => {
-      const { meetingId } = await createMeeting({ title: 'Reschedule Me' })
+      const { slotId } = await createMeeting({ title: 'Reschedule Me' })
 
-      await page.goto(`/dashboard/schedule?meetingId=${meetingId}&intent=UPDATE_MEETING`)
+      await page.goto(`/dashboard/schedule?meetingId=${slotId}&intent=UPDATE_MEETING`)
       await waitForSchedulePage(page)
 
       // Wait for the details form to load
@@ -79,9 +79,9 @@ test.describe('Edit Meeting Flow', () => {
 
   test.describe('Cancel an existing meeting', () => {
     test('should open cancel dialog and confirm cancellation', async ({ page, createMeeting }) => {
-      const { meetingId } = await createMeeting({ title: 'Cancel Me' })
+      const { slotId } = await createMeeting({ title: 'Cancel Me' })
 
-      await page.goto(`/dashboard/schedule?meetingId=${meetingId}&intent=UPDATE_MEETING`)
+      await page.goto(`/dashboard/schedule?meetingId=${slotId}&intent=UPDATE_MEETING`)
       await waitForSchedulePage(page)
 
       // Wait for the form to load

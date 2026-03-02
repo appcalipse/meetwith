@@ -8,12 +8,16 @@ import { createTestWallet, generateTestWallet } from './helpers/wallet'
 
 /**
  * Authenticate a wallet via signup (or login if already registered).
- * Returns the request context with the session cookie.
+ * Returns the request context with the session cookie and the signature
+ * used for authentication (needed for localStorage injection).
  */
 async function authenticateWallet(
   wallet: ReturnType<typeof createTestWallet>,
   baseURL: string
-) {
+): Promise<{
+  requestContext: import('@playwright/test').APIRequestContext
+  signature: string
+}> {
   const nonce = Date.now()
   const signature = await wallet.signMessage(nonce)
 
@@ -61,9 +65,11 @@ async function authenticateWallet(
           `Login also failed: ${loginResponse.status()} ${await loginResponse.text()}`
         )
       }
+
+      return { requestContext, signature: loginSignature }
     }
 
-    return requestContext
+    return { requestContext, signature }
   } catch (error) {
     await requestContext.dispose()
     throw error
@@ -83,7 +89,7 @@ async function globalSetup() {
   )
 
   // Authenticate primary wallet
-  const requestContext = await authenticateWallet(wallet, baseURL)
+  const { requestContext, signature } = await authenticateWallet(wallet, baseURL)
 
   try {
     // Save storage state (cookies) for authenticated tests
@@ -93,6 +99,30 @@ async function globalSetup() {
     }
 
     await requestContext.storageState({ path: AUTH_STATE_PATH })
+
+    // Inject the wallet signature into localStorage in the saved storage state.
+    // The app's decryptContent() reads this via getSignature(address) to decrypt
+    // meeting data. Without it, the app redirects to /logout.
+    const storageState = JSON.parse(fs.readFileSync(AUTH_STATE_PATH, 'utf-8'))
+    const origin = baseURL
+    const lsEntry = {
+      name: `current_user_sig:${wallet.address.toLowerCase()}`,
+      value: signature,
+    }
+    const existingOrigin = storageState.origins?.find(
+      (o: { origin: string }) => o.origin === origin
+    )
+    if (existingOrigin) {
+      existingOrigin.localStorage = existingOrigin.localStorage || []
+      existingOrigin.localStorage.push(lsEntry)
+    } else {
+      storageState.origins = storageState.origins || []
+      storageState.origins.push({
+        origin,
+        localStorage: [lsEntry],
+      })
+    }
+    fs.writeFileSync(AUTH_STATE_PATH, JSON.stringify(storageState, null, 2))
 
     // Save test data for cross-test reference
     const testData: Record<string, unknown> = {
@@ -116,7 +146,7 @@ async function globalSetup() {
         `[E2E Setup] Registering participant wallet: ${participantWallet.address}`
       )
 
-      const participantCtx = await authenticateWallet(
+      const { requestContext: participantCtx } = await authenticateWallet(
         participantWallet,
         baseURL
       )
