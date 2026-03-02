@@ -1,9 +1,25 @@
-import { encryptWithPublicKey, Encrypted } from 'eth-crypto'
+import { Encrypted, encryptWithPublicKey } from 'eth-crypto'
 import fs from 'fs'
 import { v4 as uuidv4 } from 'uuid'
-
-import { test as authTest } from './auth.fixture'
+import { Account } from '../../src/types/Account'
+import {
+  MeetingInfo,
+  MeetingProvider,
+  MeetingRepeat,
+  ParticipantMappingType,
+  SchedulingType,
+} from '../../src/types/Meeting'
+import {
+  ParticipantType,
+  ParticipationStatus,
+} from '../../src/types/ParticipantInfo'
+import {
+  MeetingCreationRequest,
+  RequestParticipantMapping,
+} from '../../src/types/Requests'
+import { MeetingPermissions } from '../../src/utils/constants/schedule'
 import { TEST_DATA_PATH } from '../helpers/constants'
+import { test as authTest } from './auth.fixture'
 
 interface ParticipantData {
   address: string
@@ -16,15 +32,11 @@ interface TestData {
   participants: ParticipantData[]
 }
 
-interface ExistingAccount {
-  address: string
-  internal_pub_key: string
-  [key: string]: unknown
-}
+interface ExistingAccount extends Account {}
 
 interface MeetingFixtureParams {
   title?: string
-  provider?: string
+  provider?: MeetingProvider
   durationMinutes?: number
 }
 
@@ -50,10 +62,10 @@ async function buildParticipantMapping(
   meetingId: string,
   slotId: string,
   allSlotIds: string[],
-  privateInfo: Record<string, unknown>,
-  type: string,
+  privateInfo: MeetingInfo,
+  type: ParticipantType,
   timezone: string
-): Promise<Record<string, unknown>> {
+): Promise<RequestParticipantMapping> {
   const privateInfoComplete = JSON.stringify({
     ...privateInfo,
     related_slot_ids: allSlotIds.filter(id => id !== slotId),
@@ -71,10 +83,13 @@ async function buildParticipantMapping(
     privateInfo: encrypted,
     privateInfoHash: simpleHash(privateInfoComplete),
     slot_id: slotId,
-    status: type === 'scheduler' ? 'Accepted' : 'Pending',
+    status:
+      type === 'scheduler'
+        ? ParticipationStatus.Accepted
+        : ParticipationStatus.Pending,
     timeZone: timezone,
     type,
-    mappingType: 'ADD',
+    mappingType: ParticipantMappingType.ADD,
   }
 }
 
@@ -87,7 +102,7 @@ async function createMeetingViaAPI(
 ) {
   const {
     title = 'E2E Test Meeting',
-    provider = 'jitsi-meet',
+    provider = MeetingProvider.JITSI_MEET,
     durationMinutes = 30,
   } = params
 
@@ -96,11 +111,15 @@ async function createMeetingViaAPI(
     fs.readFileSync(TEST_DATA_PATH, 'utf-8')
   )
   const schedulerAddress = testData.walletAddress
+  const allAddresses = [
+    schedulerAddress,
+    ...testData.participants.map(p => p.address),
+  ]
 
-  // Fetch scheduler's existing account to get their public key
+  // Fetch existing accounts for all participants to get their public keys
   const existingResponse = await request.post('/api/accounts/existing', {
     data: {
-      addresses: [schedulerAddress],
+      addresses: allAddresses,
       fullInformation: true,
     },
   })
@@ -123,7 +142,6 @@ async function createMeetingViaAPI(
 
   const meetingId = uuidv4()
   const slotId = uuidv4()
-  const allSlotIds = [slotId]
 
   // Schedule meeting 2 hours from now to avoid edge cases near midnight
   const start = new Date(Date.now() + 2 * 60 * 60_000)
@@ -135,22 +153,48 @@ async function createMeetingViaAPI(
       ? `https://meet.jit.si/meetwith-${meetingId}`
       : `https://meet.example.com/${meetingId}`
 
-  const privateInfo = {
+  // Define all participants
+  const participantsList = [
+    {
+      account_address: schedulerAddress,
+      type: ParticipantType.Scheduler,
+      slot_id: slotId,
+      status: ParticipationStatus.Accepted,
+      name: schedulerAccount?.preferences?.name,
+    },
+    ...testData.participants.map(p => {
+      const account = existingAccounts.find(
+        a => a.address.toLowerCase() === p.address.toLowerCase()
+      )
+      return {
+        account_address: p.address,
+        type: ParticipantType.Invitee,
+        slot_id: uuidv4(),
+        status: ParticipationStatus.Pending,
+        name: account?.preferences?.name,
+      }
+    }),
+  ]
+
+  const allSlotIds = participantsList.map(p => p.slot_id)
+
+  const privateInfo: MeetingInfo = {
     change_history_paths: [],
     content: '',
-    created_at: new Date().toISOString(),
     meeting_id: meetingId,
     meeting_url: meetingUrl,
-    participants: [
-      {
-        account_address: schedulerAddress,
-        slot_id: slotId,
-        type: 'scheduler',
-      },
+    created_at: new Date(),
+    participants: participantsList.map(p => ({
+      ...p,
+      meeting_id: meetingId,
+    })),
+    permissions: [
+      MeetingPermissions.SEE_GUEST_LIST,
+      MeetingPermissions.INVITE_GUESTS,
+      MeetingPermissions.EDIT_MEETING,
     ],
-    permissions: [],
     provider,
-    recurrence: 'no-repeat',
+    recurrence: MeetingRepeat['NO_REPEAT'],
     related_slot_ids: [],
     reminders: [],
     title,
@@ -160,16 +204,28 @@ async function createMeetingViaAPI(
   const serverPubKey =
     process.env.NEXT_PUBLIC_SERVER_PUB_KEY || schedulerAccount.internal_pub_key
 
-  // Build participant mapping for the scheduler
-  const participantMapping = await buildParticipantMapping(
-    schedulerAddress,
-    schedulerAccount.internal_pub_key,
-    meetingId,
-    slotId,
-    allSlotIds,
-    privateInfo,
-    'scheduler',
-    'UTC'
+  // Build participant mappings for all participants
+  const participantMappings = await Promise.all(
+    participantsList.map(async p => {
+      const account = existingAccounts.find(
+        a => a.address.toLowerCase() === p.account_address.toLowerCase()
+      )
+      if (!account?.internal_pub_key) {
+        throw new Error(
+          `Account not found or missing public key: ${p.account_address}`
+        )
+      }
+      return buildParticipantMapping(
+        p.account_address,
+        account.internal_pub_key,
+        meetingId,
+        p.slot_id,
+        allSlotIds,
+        privateInfo,
+        p.type,
+        'UTC'
+      )
+    })
   )
 
   // Build encrypted metadata for the conference meeting
@@ -182,25 +238,29 @@ async function createMeetingViaAPI(
     basePrivateInfoComplete
   )
 
-  const meetingRequest = {
-    type: 'CUSTOM',
-    participants_mapping: [participantMapping],
+  const meetingRequest: MeetingCreationRequest = {
+    participants_mapping: participantMappings,
     meetingTypeId: '',
-    start: start.toISOString(),
-    end: end.toISOString(),
+    start: start,
+    end: end,
     meetingProvider: provider,
     content: '',
     title,
     meeting_url: meetingUrl,
     meeting_id: meetingId,
     meetingReminders: [],
-    meetingRepeat: 'no-repeat',
+    meetingRepeat: MeetingRepeat['NO_REPEAT'],
     allSlotIds,
-    meetingPermissions: [],
+    meetingPermissions: [
+      MeetingPermissions.SEE_GUEST_LIST,
+      MeetingPermissions.INVITE_GUESTS,
+      MeetingPermissions.EDIT_MEETING,
+    ],
     ignoreOwnerAvailability: false,
     encrypted_metadata: encryptedMetadata,
     rrule: [],
     version: 1,
+    type: SchedulingType.REGULAR,
   }
 
   const response = await request.post('/api/secure/meetings', {
