@@ -174,7 +174,8 @@ export const ParticipantsProvider: React.FC<ParticipantsProviderProps> = ({
   const fetchContacts = async () => {
     setIsContactsPrefetching(true)
     try {
-      const newContacts = await getContactsLean()
+      // TODO: maker this an infinite querry via react query
+      const newContacts = await getContactsLean(100)
       setContacts(newContacts)
     } catch (error) {
       handleApiError('Error fetching groups.', error)
