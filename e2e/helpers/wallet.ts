@@ -1,6 +1,5 @@
 import { ethers } from 'ethers'
-
-import { DEFAULT_MESSAGE } from './constants'
+import { DEFAULT_MESSAGE } from '../../src/utils/constants'
 
 export interface TestWallet {
   address: string
