@@ -71,7 +71,7 @@ async function buildParticipantMapping(
     privateInfo: encrypted,
     privateInfoHash: simpleHash(privateInfoComplete),
     slot_id: slotId,
-    status: type === 'SCHEDULER' ? 'Accepted' : 'Pending',
+    status: type === 'scheduler' ? 'Accepted' : 'Pending',
     timeZone: timezone,
     type,
     mappingType: 'ADD',
@@ -87,7 +87,7 @@ async function createMeetingViaAPI(
 ) {
   const {
     title = 'E2E Test Meeting',
-    provider = 'JITSI',
+    provider = 'jitsi-meet',
     durationMinutes = 30,
   } = params
 
@@ -131,7 +131,7 @@ async function createMeetingViaAPI(
   const end = new Date(start.getTime() + durationMinutes * 60_000)
 
   const meetingUrl =
-    provider === 'JITSI'
+    provider === 'jitsi-meet'
       ? `https://meet.jit.si/meetwith-${meetingId}`
       : `https://meet.example.com/${meetingId}`
 
@@ -145,7 +145,7 @@ async function createMeetingViaAPI(
       {
         account_address: schedulerAddress,
         slot_id: slotId,
-        type: 'SCHEDULER',
+        type: 'scheduler',
       },
     ],
     permissions: [],
@@ -168,7 +168,7 @@ async function createMeetingViaAPI(
     slotId,
     allSlotIds,
     privateInfo,
-    'SCHEDULER',
+    'scheduler',
     'UTC'
   )
 

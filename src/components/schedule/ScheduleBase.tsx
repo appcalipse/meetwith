@@ -373,6 +373,20 @@ const ScheduleBase = () => {
 
   return (
     <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+      <input
+        type="submit"
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{
+          position: 'absolute',
+          width: 0,
+          height: 0,
+          padding: 0,
+          margin: 0,
+          border: 'none',
+          overflow: 'hidden',
+        }}
+      />
       <Box w="100%">
         <DiscoverATimeInfoModal
           isOpen={openWhatIsThis}
