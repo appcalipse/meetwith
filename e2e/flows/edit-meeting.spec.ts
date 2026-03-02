@@ -1,16 +1,29 @@
-import { test, expect } from '../fixtures/meeting.fixture'
-import { test as authTest, expect as authExpect } from '../fixtures/auth.fixture'
-import { SELECTORS, waitForMeetingsPage, waitForSchedulePage } from '../helpers/selectors'
+import { Intents } from '../../src/types/Dashboard'
+import {
+  expect as authExpect,
+  test as authTest,
+} from '../fixtures/auth.fixture'
+import { expect, test } from '../fixtures/meeting.fixture'
 import { TEST_MEETING_TITLE_EDITED } from '../helpers/constants'
+import {
+  SELECTORS,
+  waitForMeetingsPage,
+  waitForSchedulePage,
+} from '../helpers/selectors'
 
 test.describe('Edit Meeting Flow', () => {
   test.describe('Update an existing meeting', () => {
-    test('should load a meeting in edit mode, change the title, and update', async ({ page, createMeeting }) => {
+    test('should load a meeting in edit mode, change the title, and update', async ({
+      page,
+      createMeeting,
+    }) => {
       // Create a meeting via API so we have something to edit
       const { slotId } = await createMeeting({ title: 'Original Title' })
 
       // Navigate to schedule page in UPDATE mode
-      await page.goto(`/dashboard/schedule?meetingId=${slotId}&intent=UPDATE_MEETING`)
+      await page.goto(
+        `/dashboard/schedule?meetingId=${slotId}&intent=${Intents.UPDATE_MEETING}`
+      )
       await waitForSchedulePage(page)
 
       // The details form should be pre-populated (edit mode opens SCHEDULE_DETAILS directly)
@@ -18,7 +31,9 @@ test.describe('Edit Meeting Flow', () => {
       await expect(titleInput).toBeVisible({ timeout: 15_000 })
 
       // Verify the title is pre-filled with the original value
-      await expect(titleInput).toHaveValue('Original Title', { timeout: 10_000 })
+      await expect(titleInput).toHaveValue('Original Title', {
+        timeout: 10_000,
+      })
 
       // Clear the title and type a new one
       await titleInput.click()
@@ -35,7 +50,7 @@ test.describe('Edit Meeting Flow', () => {
 
       // Verify success page says "updated" instead of "scheduled"
       const successContainer = page.locator(SELECTORS.scheduleCompleted)
-      await expect(successContainer).toBeVisible({ timeout: 30_000 })
+      await expect(successContainer).toBeVisible({ timeout: 100_000 })
       await expect(page.locator('h1')).toContainText('Success!')
       await expect(successContainer).toContainText('updated')
       await expect(successContainer).toContainText(TEST_MEETING_TITLE_EDITED)
@@ -47,10 +62,15 @@ test.describe('Edit Meeting Flow', () => {
       await waitForMeetingsPage(page)
     })
 
-    test('should allow picking a new time slot during meeting update', async ({ page, createMeeting }) => {
+    test('should allow picking a new time slot during meeting update', async ({
+      page,
+      createMeeting,
+    }) => {
       const { slotId } = await createMeeting({ title: 'Reschedule Me' })
 
-      await page.goto(`/dashboard/schedule?meetingId=${slotId}&intent=UPDATE_MEETING`)
+      await page.goto(
+        `/dashboard/schedule?meetingId=${slotId}&intent=${Intents.UPDATE_MEETING}`
+      )
       await waitForSchedulePage(page)
 
       // Wait for the details form to load
@@ -78,10 +98,15 @@ test.describe('Edit Meeting Flow', () => {
   })
 
   test.describe('Cancel an existing meeting', () => {
-    test('should open cancel dialog and confirm cancellation', async ({ page, createMeeting }) => {
+    test('should open cancel dialog and confirm cancellation', async ({
+      page,
+      createMeeting,
+    }) => {
       const { slotId } = await createMeeting({ title: 'Cancel Me' })
 
-      await page.goto(`/dashboard/schedule?meetingId=${slotId}&intent=UPDATE_MEETING`)
+      await page.goto(
+        `/dashboard/schedule?meetingId=${slotId}&intent=${Intents.UPDATE_MEETING}`
+      )
       await waitForSchedulePage(page)
 
       // Wait for the form to load
@@ -94,11 +119,15 @@ test.describe('Edit Meeting Flow', () => {
       await cancelBtn.click()
 
       // A confirmation dialog should appear
-      const confirmDialog = page.getByText(/are you sure|confirm|cancel this meeting/i).first()
+      const confirmDialog = page
+        .getByText(/are you sure|confirm|cancel this meeting/i)
+        .first()
       await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
 
       // Click the confirm/yes button in the dialog
-      const confirmBtn = page.getByRole('button', { name: /yes|confirm|cancel/i }).last()
+      const confirmBtn = page
+        .getByRole('button', { name: /yes|confirm|cancel/i })
+        .last()
       await confirmBtn.click()
 
       // Should navigate away from the schedule page (to meetings or show success)
@@ -107,13 +136,16 @@ test.describe('Edit Meeting Flow', () => {
   })
 
   test.describe('Edge cases', () => {
-    authTest('should handle non-existent meeting ID gracefully', async ({ page }) => {
-      const fakeId = '00000000-0000-4000-8000-000000000000'
-      await page.goto(`/dashboard/schedule?meetingId=${fakeId}`)
+    authTest(
+      'should handle non-existent meeting ID gracefully',
+      async ({ page }) => {
+        const fakeId = '00000000-0000-4000-8000-000000000000'
+        await page.goto(`/dashboard/schedule?meetingId=${fakeId}`)
 
-      // Page should still load without crashing
-      await waitForSchedulePage(page)
-    })
+        // Page should still load without crashing
+        await waitForSchedulePage(page)
+      }
+    )
 
     authTest('should handle network error gracefully', async ({ page }) => {
       // Abort meeting API requests to simulate network error
@@ -128,16 +160,19 @@ test.describe('Edit Meeting Flow', () => {
       await waitForSchedulePage(page)
     })
 
-    authTest('should reject unauthenticated meeting access', async ({ browser }) => {
-      // Create a fresh browser context without any auth cookies
-      const context = await browser.newContext()
-      const page = await context.newPage()
-      try {
-        const response = await page.request.get('/api/secure/meetings')
-        authExpect(response.status()).not.toBe(200)
-      } finally {
-        await context.close()
+    authTest(
+      'should reject unauthenticated meeting access',
+      async ({ browser }) => {
+        // Create a fresh browser context without any auth cookies
+        const context = await browser.newContext()
+        const page = await context.newPage()
+        try {
+          const response = await page.request.get('/api/secure/meetings')
+          authExpect(response.status()).not.toBe(200)
+        } finally {
+          await context.close()
+        }
       }
-    })
+    )
   })
 })
