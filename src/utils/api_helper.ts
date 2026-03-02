@@ -1302,6 +1302,16 @@ export const setNotificationSubscriptions = async (
   )) as AccountNotifications
 }
 
+export const acceptTerms = async (
+  accepted: boolean,
+  email?: string
+): Promise<void> => {
+  await internalFetch('/secure/preferences/terms', 'POST', {
+    accepted,
+    ...(email && { email }),
+  })
+}
+
 export const getGoogleAuthConnectUrl = async (state?: string | null) => {
   return await internalFetch<ConnectResponse>(
     `/secure/calendar_integrations/google/connect${
