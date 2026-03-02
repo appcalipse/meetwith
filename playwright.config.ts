@@ -5,6 +5,7 @@ export default defineConfig({
   fullyParallel: true,
   globalSetup: './e2e/global-setup.ts',
   globalTeardown: './e2e/global-teardown.ts',
+  globalTimeout: 600_000,
   projects: [
     {
       name: 'chromium',
@@ -20,12 +21,12 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'yarn build && yarn start',
+    command: 'next build && next start',
     port: 3000,
     reuseExistingServer: !process.env.CI,
     stderr: 'pipe',
     stdout: 'pipe',
-    timeout: 600_000,
+    timeout: 1_000_000,
   },
   workers: process.env.CI ? 1 : undefined,
 })
