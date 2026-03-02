@@ -18,36 +18,14 @@ async function authenticateWallet(
   requestContext: import('@playwright/test').APIRequestContext
   signature: string
 }> {
-  const nonce = Date.now()
-  const signature = await wallet.signMessage(nonce)
-
   const requestContext = await request.newContext({ baseURL, timeout: 60_000 })
 
   try {
-    // Attempt signup
-    const response = await requestContext.post('/api/auth/signup', {
-      data: {
-        address: wallet.address,
-        signature,
-        nonce,
-        timezone: 'UTC',
-      },
-    })
-
-    if (response.status() !== 200) {
-      // If signup fails (account may already exist), try login
-      console.log(
-        `[E2E Setup] Signup returned ${response.status()} for ${wallet.address}, attempting login...`
-      )
-
-      const nonceResponse = await requestContext.get(
-        `/api/auth/signature/${wallet.address}`
-      )
-      if (nonceResponse.status() !== 200) {
-        throw new Error(
-          `Failed to fetch nonce for login: ${await nonceResponse.text()}`
-        )
-      }
+    // Attempt login first
+    const nonceResponse = await requestContext.get(
+      `/api/auth/signature/${wallet.address}`
+    )
+    if (nonceResponse.status() === 200) {
       const { nonce: dbNonce } = (await nonceResponse.json()) as {
         nonce: number
       }
@@ -55,18 +33,37 @@ async function authenticateWallet(
 
       const loginResponse = await requestContext.post('/api/auth/login', {
         data: {
-          identifier: wallet.address,
+          identifier: wallet.address.toLowerCase(),
           signature: loginSignature,
         },
       })
 
-      if (loginResponse.status() !== 200) {
-        throw new Error(
-          `Login also failed: ${loginResponse.status()} ${await loginResponse.text()}`
-        )
+      if (loginResponse.status() === 200) {
+        return { requestContext, signature: loginSignature }
       }
+    }
 
-      return { requestContext, signature: loginSignature }
+    // If login fails or nonce fetch failed, attempt signup
+    console.log(
+      `[E2E Setup] Login failed for ${wallet.address}, attempting signup...`
+    )
+
+    const nonce = Date.now()
+    const signature = await wallet.signMessage(nonce)
+
+    const response = await requestContext.post('/api/auth/signup', {
+      data: {
+        address: wallet.address.toLowerCase(),
+        signature,
+        nonce,
+        timezone: 'UTC',
+      },
+    })
+
+    if (response.status() !== 200) {
+      throw new Error(
+        `Signup also failed: ${response.status()} ${await response.text()}`
+      )
     }
 
     return { requestContext, signature }
@@ -89,7 +86,10 @@ async function globalSetup() {
   )
 
   // Authenticate primary wallet
-  const { requestContext, signature } = await authenticateWallet(wallet, baseURL)
+  const { requestContext, signature } = await authenticateWallet(
+    wallet,
+    baseURL
+  )
 
   try {
     // Save storage state (cookies) for authenticated tests
@@ -126,7 +126,7 @@ async function globalSetup() {
 
     // Save test data for cross-test reference
     const testData: Record<string, unknown> = {
-      walletAddress: wallet.address,
+      walletAddress: wallet.address.toLowerCase(),
       privateKey: wallet.privateKey,
       createdAt: new Date().toISOString(),
       participants: [] as Array<{ address: string; privateKey: string }>,
@@ -134,10 +134,10 @@ async function globalSetup() {
 
     // Register participant wallets if private keys are provided
     const participantKeys = [
-      process.env.TEST_PARTICIPANT_1_PRIVATE_KEY,
-      process.env.TEST_PARTICIPANT_2_PRIVATE_KEY,
+      process.env.TEST_PARTICIPANT_1_PRIVATE_KEY, // b7f66c9deb6adc3203c2095e7442e9fe166fd313726d1a89cc6a02443e4101bc
+      process.env.TEST_PARTICIPANT_2_PRIVATE_KEY, // 693a997c15bab4c116e7b88b006b89f31e62fe1e02cff804ae1fe4dd4506153b
     ].filter(Boolean) as string[]
-
+    console.log(participantKeys)
     const participants: Array<{ address: string; privateKey: string }> = []
 
     for (const pk of participantKeys) {
@@ -153,7 +153,7 @@ async function globalSetup() {
       await participantCtx.dispose()
 
       participants.push({
-        address: participantWallet.address,
+        address: participantWallet.address.toLowerCase(),
         privateKey: participantWallet.privateKey,
       })
     }
