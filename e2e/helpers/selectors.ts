@@ -37,6 +37,7 @@ export const SELECTORS = {
   gridBackBtn: '[data-testid="grid-back-btn"]',
   dayHeaders: '[data-testid="day-headers"]',
   scheduleGrid: '[data-testid="schedule-grid"]',
+  goToGrid: '[data-testid="pick-new-time"]',
 } as const
 
 /**
