@@ -45,7 +45,6 @@ import { getCalendars } from './sync_helper'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = process.env.FROM_MAIL!
-const RESEND_NEWSLETTER_SEGMENT_ID = process.env.RESEND_NEWSLETTER_SEGMENT_ID
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
@@ -56,32 +55,33 @@ const defaultResendOptions = {
 }
 
 /**
- * Add a contact to the Resend newsletter audience. Used when users accept terms.
+ * Add a contact to the given Resend audience IDs (segments). Used when users accept terms.
  */
-export const addContactToResendNewsletter = async (
+export const addContactToResendSegments = async (
   email: string,
-  firstName?: string | null
+  firstName: string | undefined,
+  segmentIds: string[]
 ): Promise<void> => {
-  if (!RESEND_NEWSLETTER_SEGMENT_ID) {
-    throw new Error('RESEND_NEWSLETTER_SEGMENT_ID is not configured')
-  }
+  if (segmentIds.length === 0) return
 
-  const { data, error } = await resend.contacts.create({
-    audienceId: RESEND_NEWSLETTER_SEGMENT_ID,
-    email,
-    firstName: firstName || undefined,
-    unsubscribed: false,
-  })
+  for (const audienceId of segmentIds) {
+    const { data, error } = await resend.contacts.create({
+      audienceId,
+      email,
+      firstName: firstName || undefined,
+      unsubscribed: false,
+    })
 
-  if (error) {
-    const err = new Error(error.message || 'Resend contact create failed')
-    Sentry.captureException(err)
-    throw err
-  }
-  if (!data?.id) {
-    const err = new Error('Resend contact create returned no id')
-    Sentry.captureException(err)
-    throw err
+    if (error) {
+      const err = new Error(error.message || 'Resend contact create failed')
+      Sentry.captureException(err)
+      throw err
+    }
+    if (!data?.id) {
+      const err = new Error('Resend contact create returned no id')
+      Sentry.captureException(err)
+      throw err
+    }
   }
 }
 
