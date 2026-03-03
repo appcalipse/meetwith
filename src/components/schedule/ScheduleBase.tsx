@@ -59,8 +59,8 @@ import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
-import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
-import { isGroupParticipant, Participant } from '@/types/schedule'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { Participant } from '@/types/schedule'
 import { MeetingAction } from '@/utils/constants/meeting'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
@@ -496,7 +496,9 @@ const ScheduleBase = () => {
                       <ChipInput
                         addDisabled={!canManageParticipants}
                         currentItems={displayParticipants}
-                        inputProps={{ 'data-testid': 'participant-chip-input' } as never}
+                        inputProps={
+                          { 'data-testid': 'participant-chip-input' } as never
+                        }
                         isReadOnly={!canManageParticipants}
                         onChange={handleChipInputChange}
                         placeholder="Add participants"
@@ -587,6 +589,7 @@ const ScheduleBase = () => {
                       bg: 'primary.300',
                     }}
                     aria-label="Edit date and time"
+                    data-testid="pick-new-time"
                     bg="primary.200"
                     borderRadius="6px"
                     color="neutral.900"
@@ -653,31 +656,31 @@ const ScheduleBase = () => {
               >
                 <FormLabel>Location</FormLabel>
                 <Box data-testid="provider-select">
-                <Select<Option<MeetingProvider>>
-                  chakraStyles={{
-                    container: provided => ({
-                      ...provided,
-                      border: '1px solid',
-                      borderTopColor: 'currentColor',
-                      borderLeftColor: 'currentColor',
-                      borderRightColor: 'currentColor',
-                      borderBottomColor: 'currentColor',
-                      borderColor: 'inherit',
-                      borderRadius: 'md',
-                      maxW: '100%',
-                      display: 'block',
-                    }),
-                  }}
-                  className="noLeftBorder timezone-select"
-                  colorScheme="primary"
-                  components={getCustomSelectComponents<
-                    Option<MeetingProvider>,
-                    false
-                  >()}
-                  onChange={newValue => _onChangeProvider(newValue)}
-                  options={meetingProviders}
-                  value={meetingProviderValue}
-                />
+                  <Select<Option<MeetingProvider>>
+                    chakraStyles={{
+                      container: provided => ({
+                        ...provided,
+                        border: '1px solid',
+                        borderTopColor: 'currentColor',
+                        borderLeftColor: 'currentColor',
+                        borderRightColor: 'currentColor',
+                        borderBottomColor: 'currentColor',
+                        borderColor: 'inherit',
+                        borderRadius: 'md',
+                        maxW: '100%',
+                        display: 'block',
+                      }),
+                    }}
+                    className="noLeftBorder timezone-select"
+                    colorScheme="primary"
+                    components={getCustomSelectComponents<
+                      Option<MeetingProvider>,
+                      false
+                    >()}
+                    onChange={newValue => _onChangeProvider(newValue)}
+                    options={meetingProviders}
+                    value={meetingProviderValue}
+                  />
                 </Box>
                 {meetingProvider === MeetingProvider.CUSTOM && (
                   <Input
