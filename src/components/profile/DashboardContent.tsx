@@ -1,19 +1,25 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
+import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
-
+import type { PrivacyPolicyModalProps } from '@/components/privacy/PrivacyPolicyModal'
 import NotFound from '@/pages/404'
 import { AccountContext } from '@/providers/AccountProvider'
 import MetricStateProvider from '@/providers/MetricStateProvider'
 import { WalletProvider } from '@/providers/WalletProvider'
 import { EditMode, SettingsSection } from '@/types/Dashboard'
-
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
 import QuickPoll from '../quickpoll/QuickPoll'
 import RedirectHandler from '../redirect'
 import Clientboard from './Clientboard'
 import Contact from './Contact'
+
+const PrivacyPolicyModal = dynamic<PrivacyPolicyModalProps>(
+  () => import('@/components/privacy/PrivacyPolicyModal'),
+  { ssr: false }
+)
+
 import { NavMenu } from './components/NavMenu'
 import Group from './Group'
 import MeetingSettings from './MeetingSettings'
@@ -76,8 +82,11 @@ const DashboardContent: React.FC<{
     }
   }
 
+  const showPrivacyModal = currentAccount?.preferences?.terms_accepted === null
+
   return currentAccount ? (
     <MetricStateProvider currentAccount={currentAccount}>
+      {showPrivacyModal && <PrivacyPolicyModal isOpen />}
       <HStack
         alignItems="start"
         width="100%"

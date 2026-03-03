@@ -18,10 +18,6 @@ const DiscordOnboardingModal = dynamic(
   () => import('@/components/onboarding/DiscordOnboardingModal'),
   { ssr: false }
 )
-const PrivacyPolicyModal = dynamic(
-  () => import('@/components/privacy/PrivacyPolicyModal'),
-  { ssr: false }
-)
 
 import customTheme from '@/styles/theme'
 import {
@@ -98,7 +94,6 @@ export const BaseLayout: React.FC<{
           </Box>
           <OnboardingModal />
           <DiscordOnboardingModal />
-          <PrivacyPolicyModal />
         </CookiesProvider>
       </ChakraMDXProvider>
     </ChakraProvider>

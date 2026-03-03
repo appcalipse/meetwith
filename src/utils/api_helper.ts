@@ -1302,13 +1302,25 @@ export const setNotificationSubscriptions = async (
   )) as AccountNotifications
 }
 
+export type AcceptTermsSegments = {
+  productUpdates?: boolean
+  tipsAndEducation?: boolean
+  researchAndFeedbackRequests?: boolean
+}
+
 export const acceptTerms = async (
   accepted: boolean,
-  email?: string
+  email?: string,
+  segments?: AcceptTermsSegments
 ): Promise<void> => {
   await internalFetch('/secure/preferences/terms', 'POST', {
     accepted,
     ...(email && { email }),
+    ...(segments && {
+      productUpdates: segments.productUpdates,
+      tipsAndEducation: segments.tipsAndEducation,
+      researchAndFeedbackRequests: segments.researchAndFeedbackRequests,
+    }),
   })
 }
 
