@@ -78,7 +78,7 @@ test.describe('Edit Meeting Flow', () => {
       await expect(titleInput).toBeVisible({ timeout: 15_000 })
 
       // Click "Back" to go to the time picker
-      const backLink = page.getByText('Back').first()
+      const backLink = page.locator(SELECTORS.goToGrid)
       await expect(backLink).toBeVisible()
       await backLink.click()
 
