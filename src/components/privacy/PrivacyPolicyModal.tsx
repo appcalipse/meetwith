@@ -15,13 +15,11 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
-import { useRouter } from 'next/router'
-import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { FiArrowRight } from 'react-icons/fi'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { acceptTerms } from '@/utils/api_helper'
-import { DASHBOARD_ROUTE_PREFIX } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
 import { ApiFetchError } from '@/utils/errors'
 import QueryKeys from '@/utils/query_keys'
@@ -29,8 +27,6 @@ import { queryClient } from '@/utils/react_query'
 import { useToastHelpers } from '@/utils/toasts'
 
 import { PrivacyPolicyContent } from './PrivacyPolicyContent'
-
-const SCROLL_THRESHOLD = 24
 
 const isEmailRequiredError = (e: unknown): boolean => {
   if (e instanceof ApiFetchError && e.status === 400) {
@@ -44,49 +40,53 @@ const isEmailRequiredError = (e: unknown): boolean => {
   return false
 }
 
-const PrivacyPolicyModal = () => {
-  const router = useRouter()
+export interface PrivacyPolicyModalProps {
+  isOpen: boolean
+}
+
+const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
   const { showSuccessToast } = useToastHelpers()
   const { currentAccount, updateUser } = useContext(AccountContext)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false)
-  const [productUpdates, setProductUpdates] = useState(false)
-  const [tipsAndEducation, setTipsAndEducation] = useState(false)
-  const [accountNotifications, setAccountNotifications] = useState(false)
+  const [productUpdates, setProductUpdates] = useState(true)
+  const [tipsAndEducation, setTipsAndEducation] = useState(true)
+  const [researchAndFeedbackRequests, setResearchAndFeedbackRequests] =
+    useState(true)
   const [showEmailSection, setShowEmailSection] = useState(false)
   const [email, setEmail] = useState('')
 
-  const isDashboardPage = router.pathname.startsWith(DASHBOARD_ROUTE_PREFIX)
-  const showModal =
-    isDashboardPage &&
-    !!currentAccount?.address &&
-    currentAccount?.preferences?.terms_accepted === null
-
-  const allChecked = productUpdates && tipsAndEducation && accountNotifications
-  const canAgree = hasScrolledToEnd && allChecked
-
-  const checkScrolledToEnd = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const { scrollTop, clientHeight, scrollHeight } = el
-    const atEnd = scrollHeight - scrollTop - clientHeight <= SCROLL_THRESHOLD
-    if (atEnd) setHasScrolledToEnd(true)
-  }, [])
+  const canAgree = hasScrolledToEnd
 
   useEffect(() => {
-    if (!showModal) return
-    const t = setTimeout(checkScrolledToEnd, 100)
-    return () => clearTimeout(t)
-  }, [showModal, checkScrolledToEnd])
+    if (!isOpen || !scrollRef.current || !sentinelRef.current) return
+    const root = scrollRef.current
+    const sentinel = sentinelRef.current
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setHasScrolledToEnd(true)
+      },
+      { root, rootMargin: '0px', threshold: 0 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [isOpen])
 
   const mutation = useMutation({
     mutationFn: ({
       accepted,
       email: emailArg,
+      segments,
     }: {
       accepted: boolean
       email?: string
-    }) => acceptTerms(accepted, emailArg),
+      segments?: {
+        productUpdates: boolean
+        tipsAndEducation: boolean
+        researchAndFeedbackRequests: boolean
+      }
+    }) => acceptTerms(accepted, emailArg, segments),
     onSuccess: async () => {
       showSuccessToast(
         'Preferences saved',
@@ -106,21 +106,27 @@ const PrivacyPolicyModal = () => {
     },
   })
 
+  const segments = {
+    productUpdates,
+    tipsAndEducation,
+    researchAndFeedbackRequests,
+  }
+
   const handleDecline = () => {
     mutation.mutate({ accepted: false })
   }
 
   const handleAgree = () => {
     if (!canAgree || mutation.isLoading) return
-    mutation.mutate({ accepted: true })
+    mutation.mutate({ accepted: true, segments })
   }
 
   const handleSubscribe = () => {
     if (!email.trim() || mutation.isLoading) return
-    mutation.mutate({ accepted: true, email: email.trim() })
+    mutation.mutate({ accepted: true, email: email.trim(), segments })
   }
 
-  if (!showModal) return null
+  if (!isOpen) return null
 
   return (
     <Modal isOpen onClose={() => {}} isCentered size="xl">
@@ -174,7 +180,6 @@ const PrivacyPolicyModal = () => {
         >
           <Box
             ref={scrollRef}
-            onScroll={checkScrolledToEnd}
             flex="1"
             overflowY="auto"
             px={{ base: 4, md: 6 }}
@@ -197,7 +202,7 @@ const PrivacyPolicyModal = () => {
           >
             <PrivacyPolicyContent />
 
-            <VStack align="stretch" spacing={3} pt={2} pb={4}>
+            <VStack align="stretch" spacing={6} pt={2} pb={4}>
               <Checkbox
                 colorScheme="orange"
                 isChecked={productUpdates}
@@ -218,16 +223,20 @@ const PrivacyPolicyModal = () => {
                   Tips and educational content
                 </Text>
               </Checkbox>
-              <Checkbox
-                colorScheme="orange"
-                isChecked={accountNotifications}
-                onChange={e => setAccountNotifications(e.target.checked)}
-                color="text-primary"
-              >
-                <Text color="text-primary" fontSize="sm">
-                  Account notifications
-                </Text>
-              </Checkbox>
+              <Box ref={sentinelRef}>
+                <Checkbox
+                  colorScheme="orange"
+                  isChecked={researchAndFeedbackRequests}
+                  onChange={e =>
+                    setResearchAndFeedbackRequests(e.target.checked)
+                  }
+                  color="text-primary"
+                >
+                  <Text color="text-primary" fontSize="sm">
+                    Research and feedback requests
+                  </Text>
+                </Checkbox>
+              </Box>
             </VStack>
 
             {showEmailSection && (

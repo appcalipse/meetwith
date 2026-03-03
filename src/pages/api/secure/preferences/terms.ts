@@ -10,10 +10,40 @@ import {
   setAccountNotificationSubscriptions,
   updateTermsAccepted,
 } from '@/utils/database'
-import { addContactToResendNewsletter } from '@/utils/email_helper'
+import { addContactToResendSegments } from '@/utils/email_helper'
 import { isValidEmail } from '@/utils/validations'
 
-type Body = { accepted: boolean; email?: string }
+const RESEND_SEGMENT_PRODUCT_UPDATES =
+  process.env.RESEND_SEGMENT_PRODUCT_UPDATES ?? ''
+const RESEND_SEGMENT_TIPS_AND_EDUCATION =
+  process.env.RESEND_SEGMENT_TIPS_AND_EDUCATION ?? ''
+const RESEND_SEGMENT_RESEARCH_AND_FEEDBACK =
+  process.env.RESEND_SEGMENT_RESEARCH_AND_FEEDBACK ?? ''
+
+type Body = {
+  accepted: boolean
+  email?: string
+  productUpdates?: boolean
+  tipsAndEducation?: boolean
+  researchAndFeedbackRequests?: boolean
+}
+
+function getSegmentIds(body: Body): string[] {
+  const ids: string[] = []
+  if (body.productUpdates && RESEND_SEGMENT_PRODUCT_UPDATES) {
+    ids.push(RESEND_SEGMENT_PRODUCT_UPDATES)
+  }
+  if (body.tipsAndEducation && RESEND_SEGMENT_TIPS_AND_EDUCATION) {
+    ids.push(RESEND_SEGMENT_TIPS_AND_EDUCATION)
+  }
+  if (
+    body.researchAndFeedbackRequests &&
+    RESEND_SEGMENT_RESEARCH_AND_FEEDBACK
+  ) {
+    ids.push(RESEND_SEGMENT_RESEARCH_AND_FEEDBACK)
+  }
+  return ids
+}
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -32,6 +62,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       await updateTermsAccepted(account_address, false)
       return res.status(200).json({ ok: true })
     } catch (e) {
+      console.error('Failed to update terms_accepted to false', e)
       Sentry.captureException(e)
       return res.status(500).json({ error: 'Failed to update preferences' })
     }
@@ -44,21 +75,29 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   ])
 
   const firstName = preferences?.name ?? undefined
+  const segmentIds = getSegmentIds(body)
 
   if (accountEmail) {
-    try {
-      await addContactToResendNewsletter(accountEmail, firstName)
-    } catch (e) {
-      Sentry.captureException(e)
-      return res.status(503).json({
-        error:
-          "We couldn't add you to updates right now. Please try again in a moment.",
-      })
+    if (segmentIds.length > 0) {
+      try {
+        await addContactToResendSegments(accountEmail, firstName, segmentIds)
+      } catch (e) {
+        console.error('Failed to add existing email to Resend segments', e)
+        Sentry.captureException(e)
+        return res.status(503).json({
+          error:
+            "We couldn't add you to updates right now. Please try again in a moment.",
+        })
+      }
     }
     try {
       await updateTermsAccepted(address, true)
       return res.status(200).json({ ok: true })
     } catch (e) {
+      console.error(
+        'Failed to update terms_accepted to true (existing email path)',
+        e
+      )
       Sentry.captureException(e)
       return res.status(500).json({ error: 'Failed to update preferences' })
     }
@@ -72,14 +111,17 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     })
   }
 
-  try {
-    await addContactToResendNewsletter(providedEmail, firstName)
-  } catch (e) {
-    Sentry.captureException(e)
-    return res.status(503).json({
-      error:
-        "We couldn't add you to updates right now. Please try again in a moment.",
-    })
+  if (segmentIds.length > 0) {
+    try {
+      await addContactToResendSegments(providedEmail, firstName, segmentIds)
+    } catch (e) {
+      console.error('Failed to add provided email to Resend segments', e)
+      Sentry.captureException(e)
+      return res.status(503).json({
+        error:
+          "We couldn't add you to updates right now. Please try again in a moment.",
+      })
+    }
   }
 
   try {
@@ -101,6 +143,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     await updateTermsAccepted(address, true)
     return res.status(200).json({ ok: true })
   } catch (e) {
+    console.error('Failed to persist notification email or terms_accepted', e)
     Sentry.captureException(e)
     return res.status(500).json({ error: 'Failed to update preferences' })
   }
