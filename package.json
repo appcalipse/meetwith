@@ -20,7 +20,7 @@
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
     "test:e2e:ci": "NODE_ENV=test doppler run --config tests -- playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "NODE_ENV=test doppler run --config tests -- playwright test --ui"
   },
   "dependencies": {
     "@azure/identity": "^4.13.0",
