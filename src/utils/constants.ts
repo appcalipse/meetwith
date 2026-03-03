@@ -56,6 +56,9 @@ const QUICKPOLL_DESCRIPTION_MAX_LENGTH = 1000
 
 const QUICKPOLL_EXPIRY_BUFFER_HOURS = 1 // Minimum hours before expiry
 
+const POLL_AVAILABILITY_MODAL_SHOWN_PREFIX =
+  'quickpoll_availability_modal_shown'
+
 // Event title truncation constants
 
 const DASHBOARD_ROUTE_PREFIX = '/dashboard'
@@ -155,6 +158,7 @@ export {
   VERIFICATION_CODE_TOKEN_EXPIRY,
   WEBHOOK_URL,
   YEAR_DURATION_IN_SECONDS,
+  POLL_AVAILABILITY_MODAL_SHOWN_PREFIX,
 }
 
 export const QUICKPOLL_SIGNIN_CONTEXT_KEY = 'quickpoll_signin_context'

@@ -170,17 +170,27 @@ const CalendarAddIcon = (props: React.ComponentProps<typeof Icon>) => (
   </Icon>
 )
 
+export type ChooseAvailabilityMethodVariant = 'guest' | 'logged-in'
+
 interface ChooseAvailabilityMethodModalProps {
   isOpen: boolean
   onClose: () => void
   onSelectManual: () => void
   onSelectImport: () => void
+  variant?: ChooseAvailabilityMethodVariant
   children: React.ReactNode // The trigger element
 }
 
 const ChooseAvailabilityMethodModal: React.FC<
   ChooseAvailabilityMethodModalProps
-> = ({ isOpen, onClose, onSelectManual, onSelectImport, children }) => {
+> = ({
+  isOpen,
+  onClose,
+  onSelectManual,
+  onSelectImport,
+  variant = 'guest',
+  children,
+}) => {
   // Use semantic tokens for colors
   const bgColor = 'bg-surface'
   const borderColor = 'border-default'
@@ -283,7 +293,7 @@ const ChooseAvailabilityMethodModal: React.FC<
                 >
                   <CalendarAddIcon w="44px" h="44px" color={iconColor} />
                 </Box>
-                <VStack spacing={0}>
+                {variant === 'logged-in' ? (
                   <Text
                     fontSize="12.8px"
                     fontWeight="500"
@@ -291,18 +301,30 @@ const ChooseAvailabilityMethodModal: React.FC<
                     textAlign="center"
                     lineHeight="1.2"
                   >
-                    Import from Calendar
+                    Import from account
                   </Text>
-                  <Text
-                    fontSize="10.2px"
-                    fontWeight="400"
-                    color={textColor}
-                    textAlign="center"
-                    opacity={0.8}
-                  >
-                    (Sign in/Sign up)
-                  </Text>
-                </VStack>
+                ) : (
+                  <VStack spacing={0}>
+                    <Text
+                      fontSize="12.8px"
+                      fontWeight="500"
+                      color={textColor}
+                      textAlign="center"
+                      lineHeight="1.2"
+                    >
+                      Import from Calendar
+                    </Text>
+                    <Text
+                      fontSize="10.2px"
+                      fontWeight="400"
+                      color={textColor}
+                      textAlign="center"
+                      opacity={0.8}
+                    >
+                      (Sign in/Sign up)
+                    </Text>
+                  </VStack>
+                )}
               </VStack>
             </HStack>
           </VStack>

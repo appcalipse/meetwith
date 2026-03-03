@@ -1,6 +1,18 @@
 import { UseMutationResult } from '@tanstack/react-query'
 import { DayAvailability, MeetingType, TimeRange } from './Account'
 
+export interface AvailabilityBlockDetailForMerge {
+  id: string
+  title: string
+  timezone: string
+  weekly_availability: DayAvailability[]
+}
+
+export interface AvailabilitySlotDisplay {
+  weekday: number
+  ranges: Array<{ start: string; end: string }>
+}
+
 export interface AvailabilityBlock {
   id: string
   title: string

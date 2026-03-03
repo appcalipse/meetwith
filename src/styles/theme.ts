@@ -99,6 +99,14 @@ const newTheme = {
     800: '#153e75',
     900: '#1a365d',
   },
+  breakpoints: {
+    sm: '30em',
+    md: '48em',
+    lg: '62em',
+    xl: '80em',
+    desktopLg: '88.125em',
+    '2xl': '96em',
+  },
   colors,
   components: {
     Button: {

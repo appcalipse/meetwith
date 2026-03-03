@@ -20,7 +20,7 @@ import { Select, SingleValue } from 'chakra-react-select'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useMemo, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
 import { MdShare } from 'react-icons/md'
@@ -143,6 +143,21 @@ interface QuickPollPickAvailabilityProps {
   isEditingAvailability?: boolean
   isSavingAvailability?: boolean
   isRefreshingAvailabilities?: boolean
+  onJoinAndImportFromAccount?: () => void
+  onJoinAndStartManualEdit?: () => void
+  /** When true, user is in "Add manually" flow (not in poll yet); join on Save */
+  isPendingManualJoinForLoggedInUser?: boolean
+  /** When isPendingManualJoinForLoggedInUser: true if at least one slot selected (enables Save) */
+  hasManualAvailabilityChange?: boolean
+}
+
+function getSelectedSlotsSignature(
+  slots: Array<{ start: DateTime; end: DateTime; date: string }>
+): string {
+  return slots
+    .map(s => `${s.date}:${s.start.toISO()}-${s.end.toISO()}`)
+    .sort()
+    .join('|')
 }
 
 export function QuickPollPickAvailability({
@@ -154,6 +169,10 @@ export function QuickPollPickAvailability({
   isEditingAvailability,
   isSavingAvailability,
   isRefreshingAvailabilities,
+  onJoinAndImportFromAccount,
+  onJoinAndStartManualEdit,
+  isPendingManualJoinForLoggedInUser,
+  hasManualAvailabilityChange,
 }: QuickPollPickAvailabilityProps) {
   const _router = useRouter()
   const {
@@ -169,7 +188,8 @@ export function QuickPollPickAvailability({
   const { isUpdatingMeeting } = useParticipantPermissions()
   const currentAccount = useAccountContext()
   const { currentGuestEmail, currentParticipantId } = useQuickPollAvailability()
-  const { loadSlots } = useAvailabilityTracker()
+  const { loadSlots, selectedSlots } = useAvailabilityTracker()
+  const initialSlotsSignatureRef = useRef<string | null>(null)
   const { openConnection } = useContext(OnboardingModalContext)
   const [showMethodModal, setShowMethodModal] = useState(false)
 
@@ -193,6 +213,18 @@ export function QuickPollPickAvailability({
         false)
     )
   }, [pollData?.poll, isHost])
+
+  const isLoggedInAndNotInPoll = useMemo(
+    () =>
+      !!currentAccount &&
+      !!pollData &&
+      !pollData.poll.participants.some(
+        p =>
+          p.account_address?.toLowerCase() ===
+          currentAccount.address.toLowerCase()
+      ),
+    [currentAccount, pollData]
+  )
 
   // Get current participant
   const currentParticipant = useMemo(() => {
@@ -547,6 +579,41 @@ export function QuickPollPickAvailability({
     return hasAvailability ? 'Edit availability' : 'Add Availability'
   }
 
+  useEffect(() => {
+    if (!isEditingAvailability || isPendingManualJoinForLoggedInUser) {
+      initialSlotsSignatureRef.current = null
+      return
+    }
+    if (hasLoadedInitialSlots && initialSlotsSignatureRef.current === null) {
+      initialSlotsSignatureRef.current =
+        getSelectedSlotsSignature(selectedSlots)
+    }
+  }, [
+    isEditingAvailability,
+    isPendingManualJoinForLoggedInUser,
+    hasLoadedInitialSlots,
+    selectedSlots,
+  ])
+
+  const hasAvailabilityChange = useMemo(() => {
+    if (!isEditingAvailability) return false
+    if (isPendingManualJoinForLoggedInUser)
+      return hasManualAvailabilityChange === true
+    if (initialSlotsSignatureRef.current === null) return false
+    return (
+      getSelectedSlotsSignature(selectedSlots) !==
+      initialSlotsSignatureRef.current
+    )
+  }, [
+    isEditingAvailability,
+    isPendingManualJoinForLoggedInUser,
+    hasManualAvailabilityChange,
+    selectedSlots,
+  ])
+
+  const isSaveAvailabilityDisabled =
+    isEditingAvailability && !hasAvailabilityChange
+
   const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
     tzOptions.filter(val => val.value === timezone)[0] || tzOptions[0]
   )
@@ -647,25 +714,51 @@ export function QuickPollPickAvailability({
 
         if (accountAddresses.length > 0) {
           quickPollAccountDetails = await getExistingAccounts(accountAddresses)
+        }
 
-          quickPollAccountDetails.forEach(account => {
-            const identifier = account.address?.toLowerCase()
-            if (!identifier) return
+        // Use poll-specific availability when present; otherwise fall back to account default
+        pollData.poll.participants.forEach(participant => {
+          const identifier = (
+            participant.account_address || participant.guest_email
+          )?.toLowerCase()
+          if (!identifier) return
 
-            const defaultAvailability = mergeLuxonIntervals(
+          let defaultAvailability: Interval[] = []
+          if (
+            participant.available_slots &&
+            participant.available_slots.length > 0 &&
+            participant.timezone
+          ) {
+            defaultAvailability = mergeLuxonIntervals(
               parseMonthAvailabilitiesToDate(
-                account.preferences?.availabilities || [],
+                participant.available_slots,
                 monthStartDate,
                 monthEndDate,
-                account.preferences?.timezone || timezone
+                participant.timezone
               )
             )
-
-            if (defaultAvailability.length > 0) {
-              defaultAvailabilityMap.set(identifier, defaultAvailability)
+          }
+          if (defaultAvailability.length === 0 && participant.account_address) {
+            const account = quickPollAccountDetails.find(
+              a =>
+                a.address?.toLowerCase() ===
+                participant.account_address?.toLowerCase()
+            )
+            if (account?.preferences?.availabilities?.length) {
+              defaultAvailability = mergeLuxonIntervals(
+                parseMonthAvailabilitiesToDate(
+                  account.preferences.availabilities,
+                  monthStartDate,
+                  monthEndDate,
+                  account.preferences?.timezone || timezone
+                )
+              )
             }
-          })
-        }
+          }
+          if (defaultAvailability.length > 0) {
+            defaultAvailabilityMap.set(identifier, defaultAvailability)
+          }
+        })
 
         const visibleParticipants = Array.from(
           new Set(Object.values(filteredGroupAvailability).flat())
@@ -1145,30 +1238,40 @@ export function QuickPollPickAvailability({
   }
 
   const handleAvailabilityButtonClick = () => {
-    if (currentAccount || isEditingAvailability) {
+    // Logged-in and in poll, or already editing: save/cancel flow
+    if ((currentAccount && !isLoggedInAndNotInPoll) || isEditingAvailability) {
       onSaveAvailability?.()
     } else {
+      // Guest or logged-in not in poll: show method modal
       setShowMethodModal(true)
     }
   }
 
   const handleSelectManual = () => {
     setShowMethodModal(false)
-    onSaveAvailability?.()
+    if (isLoggedInAndNotInPoll && onJoinAndStartManualEdit) {
+      onJoinAndStartManualEdit()
+    } else {
+      onSaveAvailability?.()
+    }
   }
 
   const handleSelectImport = () => {
     setShowMethodModal(false)
     if (!pollData?.poll) return
 
-    saveQuickPollSignInContext({
-      pollSlug: pollData.poll.slug,
-      pollId: pollData.poll.id,
-      pollTitle: pollData.poll.title,
-      returnUrl: window.location.href,
-    })
-
-    openConnection(`/poll/${pollData.poll.slug}`)
+    if (isLoggedInAndNotInPoll && onJoinAndImportFromAccount) {
+      onJoinAndImportFromAccount()
+    } else {
+      // Guest: save context and open sign-in/sign-up
+      saveQuickPollSignInContext({
+        pollSlug: pollData.poll.slug,
+        pollId: pollData.poll.id,
+        pollTitle: pollData.poll.title,
+        returnUrl: window.location.href,
+      })
+      openConnection(`/poll/${pollData.poll.slug}`)
+    }
   }
 
   return (
@@ -1223,6 +1326,7 @@ export function QuickPollPickAvailability({
                 onClose={() => setShowMethodModal(false)}
                 onSelectManual={handleSelectManual}
                 onSelectImport={handleSelectImport}
+                variant={isLoggedInAndNotInPoll ? 'logged-in' : 'guest'}
               >
                 <Button
                   colorScheme="primary"
@@ -1235,7 +1339,9 @@ export function QuickPollPickAvailability({
                   width="230px"
                   isLoading={isSavingAvailability}
                   loadingText="Saving..."
-                  isDisabled={isSavingAvailability}
+                  isDisabled={
+                    isSavingAvailability || isSaveAvailabilityDisabled
+                  }
                 >
                   {getAvailabilityButtonText()}
                 </Button>
@@ -1364,6 +1470,7 @@ export function QuickPollPickAvailability({
                 onClose={() => setShowMethodModal(false)}
                 onSelectManual={handleSelectManual}
                 onSelectImport={handleSelectImport}
+                variant={isLoggedInAndNotInPoll ? 'logged-in' : 'guest'}
               >
                 <Button
                   colorScheme="primary"
@@ -1376,7 +1483,9 @@ export function QuickPollPickAvailability({
                   onClick={handleAvailabilityButtonClick}
                   isLoading={isSavingAvailability}
                   loadingText="Saving..."
-                  isDisabled={isSavingAvailability}
+                  isDisabled={
+                    isSavingAvailability || isSaveAvailabilityDisabled
+                  }
                 >
                   {getAvailabilityButtonText()}
                 </Button>
@@ -1554,11 +1663,115 @@ export function QuickPollPickAvailability({
             </HStack>
 
             {/* Desktop Date Navigation */}
+            <VStack
+              w="100%"
+              align="stretch"
+              gap={3}
+              display={{ base: 'none', md: 'flex', desktopLg: 'none' }}
+            >
+              <HStack w="100%" justify="space-between">
+                <HStack spacing={4}>
+                  <IconButton
+                    aria-label={'left-icon'}
+                    icon={<FaChevronLeft />}
+                    onClick={handleScheduledTimeBack}
+                    isDisabled={isBackDisabled}
+                    gap={0}
+                  />
+                  {canScheduleFromPoll && isSchedulingIntent && (
+                    <Button
+                      colorScheme="primary"
+                      onClick={handleJumpToBestSlot}
+                      display={{ lg: 'block', base: 'none' }}
+                      isLoading={isBestSlotLoading}
+                    >
+                      Jump to Best Slot
+                    </Button>
+                  )}
+                </HStack>
+                <IconButton
+                  aria-label={'right-icon'}
+                  icon={<FaChevronRight />}
+                  onClick={handleScheduledTimeNext}
+                  isDisabled={isNextDisabled}
+                  bg="bg-surface-tertiary"
+                  _hover={{ bg: 'bg-surface-tertiary' }}
+                />
+              </HStack>
+              <Box maxW="400px" mx="auto" textAlign="center">
+                <Heading fontSize="20px" fontWeight={700}>
+                  Select all the time slots that work for you
+                </Heading>
+                <Text fontSize="12px">
+                  Click on each cell to mark when you&apos;re available, so the
+                  host can easily find the best time for everyone.
+                </Text>
+              </Box>
+              <HStack w="100%" justify="center" gap={0}>
+                <Grid
+                  gridTemplateColumns="1fr 1fr"
+                  justifyContent="space-between"
+                  w="fit-content"
+                  gap={2}
+                >
+                  {GUIDES.map((guide, index) => (
+                    <HStack key={index} gap={2}>
+                      <Box w={5} h={5} bg={guide.color} borderRadius={4} />
+                      <Text
+                        fontSize={{ base: 'small', md: 'medium' }}
+                        color="text-primary"
+                      >
+                        {guide.description.split(' ')[0]}
+                      </Text>
+                    </HStack>
+                  ))}
+                </Grid>
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <InfoIcon cursor="pointer" />
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content style={{ zIndex: 1000 }} sideOffset={6}>
+                      <Box
+                        p={2}
+                        borderRadius={4}
+                        boxShadow="md"
+                        py={3}
+                        px={4}
+                        bg="bg-surface-tertiary-2"
+                        rounded="10px"
+                      >
+                        <VStack w="fit-content" gap={1} align="flex-start">
+                          {GUIDES.map((guide, index) => (
+                            <HStack key={index} gap={2}>
+                              <Box
+                                w={5}
+                                h={5}
+                                bg={guide.color}
+                                borderRadius={4}
+                              />
+                              <Text
+                                fontSize={{ base: 'small', md: 'medium' }}
+                                color="text-primary"
+                              >
+                                {guide.description}
+                              </Text>
+                            </HStack>
+                          ))}
+                        </VStack>
+                      </Box>
+                      <Tooltip.Arrow color="#323F4B" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              </HStack>
+            </VStack>
+
             <HStack
               w="100%"
               justify="flex-start"
               position="relative"
-              display={{ base: 'none', md: 'flex' }}
+              display={{ base: 'none', desktopLg: 'flex' }}
             >
               <HStack spacing={4}>
                 <IconButton
