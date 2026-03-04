@@ -213,9 +213,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
           tipsAndEducation,
           researchAndFeedbackRequests: researchAndFeedback,
         })
-        queryClient.invalidateQueries({
-          queryKey: ['notificationSegments', email],
-        })
       }
 
       logEvent('Set notifications', {
