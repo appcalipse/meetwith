@@ -25,6 +25,7 @@ import { ApiFetchError } from '@/utils/errors'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { useToastHelpers } from '@/utils/toasts'
+import { isValidEmail } from '@/utils/validations'
 
 import { PrivacyPolicyContent } from './PrivacyPolicyContent'
 
@@ -122,9 +123,12 @@ const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
   }
 
   const handleSubscribe = () => {
-    if (!email.trim() || mutation.isLoading) return
-    mutation.mutate({ accepted: true, email: email.trim(), segments })
+    const trimmed = email.trim()
+    if (!trimmed || !isValidEmail(trimmed) || mutation.isLoading) return
+    mutation.mutate({ accepted: true, email: trimmed, segments })
   }
+
+  const emailInvalid = email.trim().length > 0 && !isValidEmail(email.trim())
 
   if (!isOpen) return null
 
@@ -260,7 +264,9 @@ const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     bg="bg-surface-secondary"
-                    borderColor="border-wallet-subtle"
+                    borderColor={
+                      emailInvalid ? 'red.400' : 'border-wallet-subtle'
+                    }
                     color="text-primary"
                     _placeholder={{
                       color: 'text-tertiary',
@@ -268,6 +274,8 @@ const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
                     }}
                     size="md"
                     w={{ base: 'full', md: '42.5%' }}
+                    isInvalid={emailInvalid}
+                    type="email"
                   />
                   <Button
                     bg="primary.400"
@@ -276,7 +284,9 @@ const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
                     rightIcon={<FiArrowRight />}
                     onClick={handleSubscribe}
                     isLoading={mutation.isLoading}
-                    isDisabled={!email.trim() || mutation.isLoading}
+                    isDisabled={
+                      !email.trim() || emailInvalid || mutation.isLoading
+                    }
                     transition="background 0.2s ease"
                     w={{ base: 'full', md: 'auto' }}
                     fontSize={{ base: '14px', md: '16px' }}
