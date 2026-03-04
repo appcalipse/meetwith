@@ -4,7 +4,7 @@ import Email from 'email-templates'
 import path from 'path'
 import puppeteer from 'puppeteer'
 import { CreateEmailOptions, Resend } from 'resend'
-
+import { NotificationSegments } from '@/types/AccountNotifications'
 import {
   BillingEmailAccountInfo,
   BillingEmailPeriod,
@@ -24,13 +24,12 @@ import {
   ParticipantInfoForInviteNotification,
   ParticipantInfoForNotification,
 } from '@/utils/notification_helper'
-
 import {
   dateToHumanReadable,
   durationToHumanReadable,
   generateIcs,
 } from './calendar_manager'
-import { appUrl } from './constants'
+import { appUrl, RESEND_RATE_LIMIT_DELAY_MS } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
 import { getBillingEmailAccountInfo, getOwnerPublicUrlServer } from './database'
@@ -53,6 +52,13 @@ const defaultResendOptions = {
     'List-Unsubscribe': `<${appUrl}/dashboard/settings/${SettingsSection.NOTIFICATIONS}>`,
   },
 }
+
+const RESEND_SEGMENT_PRODUCT_UPDATES =
+  process.env.RESEND_SEGMENT_PRODUCT_UPDATES ?? ''
+const RESEND_SEGMENT_TIPS_AND_EDUCATION =
+  process.env.RESEND_SEGMENT_TIPS_AND_EDUCATION ?? ''
+const RESEND_SEGMENT_RESEARCH_AND_FEEDBACK =
+  process.env.RESEND_SEGMENT_RESEARCH_AND_FEEDBACK ?? ''
 
 /**
  * Add a contact to the given Resend audience IDs (segments). Used when users accept terms.
@@ -82,6 +88,51 @@ export const addContactToResendSegments = async (
       Sentry.captureException(err)
       throw err
     }
+  }
+}
+
+/**
+ * Check which Resend notification segments the email belongs to.
+ * Runs sequentially with a delay between calls to stay under Resend's 2 req/s rate limit.
+ */
+export const getNotificationSegmentMembership = async (
+  email: string
+): Promise<NotificationSegments> => {
+  const sleep = (ms: number) =>
+    new Promise<void>(resolve => setTimeout(resolve, ms))
+
+  const check = async (audienceId: string): Promise<boolean> => {
+    if (!audienceId) return false
+    const { data } = await resend.contacts.get({ audienceId, email })
+    return !!data?.id
+  }
+
+  const productUpdates = await check(RESEND_SEGMENT_PRODUCT_UPDATES)
+  await sleep(RESEND_RATE_LIMIT_DELAY_MS)
+
+  const tipsAndEducation = await check(RESEND_SEGMENT_TIPS_AND_EDUCATION)
+  await sleep(RESEND_RATE_LIMIT_DELAY_MS)
+
+  const researchAndFeedbackRequests = await check(
+    RESEND_SEGMENT_RESEARCH_AND_FEEDBACK
+  )
+
+  return { productUpdates, tipsAndEducation, researchAndFeedbackRequests }
+}
+
+/**
+ * Remove a contact from a Resend audience (segment).
+ */
+export const removeContactFromResendSegment = async (
+  email: string,
+  audienceId: string
+): Promise<void> => {
+  if (!audienceId) return
+  const { error } = await resend.contacts.remove({ email, audienceId })
+  if (error) {
+    const err = new Error(error.message || 'Resend contact remove failed')
+    Sentry.captureException(err)
+    throw err
   }
 }
 
