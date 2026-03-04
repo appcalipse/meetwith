@@ -23,8 +23,6 @@ import handler from '@/pages/api/quickpoll/[slug]'
 import { PollStatus } from '@/types/QuickPoll'
 import * as database from '@/utils/database'
 import {
-  QuickPollAlreadyCancelledError,
-  QuickPollAlreadyCompletedError,
   QuickPollExpiredError,
   QuickPollSlugNotFoundError,
 } from '@/utils/errors'
@@ -196,7 +194,7 @@ describe('/api/quickpoll/[slug]', () => {
         poll: {
           id: 'poll_123',
           slug: 'test-poll-slug',
-          status: PollStatus.CANCELLED,
+          status: PollStatus.COMPLETED,
           expires_at: null,
         },
       }
