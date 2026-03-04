@@ -18,7 +18,10 @@ import {
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
-import { AccountNotifications } from '@/types/AccountNotifications'
+import {
+  AccountNotifications,
+  NotificationSegments,
+} from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
   CancelSubscriptionResponse,
@@ -1322,6 +1325,24 @@ export const acceptTerms = async (
       researchAndFeedbackRequests: segments.researchAndFeedbackRequests,
     }),
   })
+}
+
+export const getNotificationSegments =
+  async (): Promise<NotificationSegments> => {
+    return (await internalFetch(
+      '/secure/preferences/notification-segments',
+      'GET'
+    )) as NotificationSegments
+  }
+
+export const saveNotificationSegments = async (
+  segments: NotificationSegments
+): Promise<NotificationSegments> => {
+  return (await internalFetch(
+    '/secure/preferences/notification-segments',
+    'POST',
+    segments
+  )) as NotificationSegments
 }
 
 export const getGoogleAuthConnectUrl = async (state?: string | null) => {
