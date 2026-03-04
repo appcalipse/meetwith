@@ -136,6 +136,89 @@ export const removeContactFromResendSegment = async (
   }
 }
 
+const sleep = (ms: number) =>
+  new Promise<void>(resolve => setTimeout(resolve, ms))
+
+/**
+ * Sync Resend segment membership for an email to the desired state.
+ */
+export const syncResendSegmentsForEmail = async (
+  email: string,
+  next: NotificationSegments
+): Promise<void> => {
+  const current = await getNotificationSegmentMembership(email)
+  const firstName = undefined
+
+  await sleep(RESEND_RATE_LIMIT_DELAY_MS)
+
+  const productWillBeAdded =
+    next.productUpdates &&
+    !current.productUpdates &&
+    !!RESEND_SEGMENT_PRODUCT_UPDATES
+
+  const productWillBeRemoved =
+    !next.productUpdates &&
+    current.productUpdates &&
+    !!RESEND_SEGMENT_PRODUCT_UPDATES
+
+  const tipsWillBeAdded =
+    next.tipsAndEducation &&
+    !current.tipsAndEducation &&
+    !!RESEND_SEGMENT_TIPS_AND_EDUCATION
+
+  const tipsWillBeRemoved =
+    !next.tipsAndEducation &&
+    current.tipsAndEducation &&
+    !!RESEND_SEGMENT_TIPS_AND_EDUCATION
+
+  const researchWillBeAdded =
+    next.researchAndFeedbackRequests &&
+    !current.researchAndFeedbackRequests &&
+    !!RESEND_SEGMENT_RESEARCH_AND_FEEDBACK
+
+  const researchWillBeRemoved =
+    !next.researchAndFeedbackRequests &&
+    current.researchAndFeedbackRequests &&
+    !!RESEND_SEGMENT_RESEARCH_AND_FEEDBACK
+
+  if (productWillBeAdded) {
+    await addContactToResendSegments(email, firstName, [
+      RESEND_SEGMENT_PRODUCT_UPDATES,
+    ])
+  }
+  if (productWillBeRemoved) {
+    await removeContactFromResendSegment(email, RESEND_SEGMENT_PRODUCT_UPDATES)
+  }
+
+  await sleep(RESEND_RATE_LIMIT_DELAY_MS)
+
+  if (tipsWillBeAdded) {
+    await addContactToResendSegments(email, firstName, [
+      RESEND_SEGMENT_TIPS_AND_EDUCATION,
+    ])
+  }
+  if (tipsWillBeRemoved) {
+    await removeContactFromResendSegment(
+      email,
+      RESEND_SEGMENT_TIPS_AND_EDUCATION
+    )
+  }
+
+  await sleep(RESEND_RATE_LIMIT_DELAY_MS)
+
+  if (researchWillBeAdded) {
+    await addContactToResendSegments(email, firstName, [
+      RESEND_SEGMENT_RESEARCH_AND_FEEDBACK,
+    ])
+  }
+  if (researchWillBeRemoved) {
+    await removeContactFromResendSegment(
+      email,
+      RESEND_SEGMENT_RESEARCH_AND_FEEDBACK
+    )
+  }
+}
+
 // Helper function to generate change URL for meeting emails
 const generateChangeUrl = async (
   destinationAccountAddress: string | undefined,
