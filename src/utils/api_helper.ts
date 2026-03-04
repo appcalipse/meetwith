@@ -18,7 +18,10 @@ import {
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
-import { AccountNotifications } from '@/types/AccountNotifications'
+import {
+  AccountNotifications,
+  NotificationSegments,
+} from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
   CancelSubscriptionResponse,
@@ -1300,6 +1303,46 @@ export const setNotificationSubscriptions = async (
     'POST',
     notifications
   )) as AccountNotifications
+}
+
+export type AcceptTermsSegments = {
+  productUpdates?: boolean
+  tipsAndEducation?: boolean
+  researchAndFeedbackRequests?: boolean
+}
+
+export const acceptTerms = async (
+  accepted: boolean,
+  email?: string,
+  segments?: AcceptTermsSegments
+): Promise<void> => {
+  await internalFetch('/secure/preferences/terms', 'POST', {
+    accepted,
+    ...(email && { email }),
+    ...(segments && {
+      productUpdates: segments.productUpdates,
+      tipsAndEducation: segments.tipsAndEducation,
+      researchAndFeedbackRequests: segments.researchAndFeedbackRequests,
+    }),
+  })
+}
+
+export const getNotificationSegments =
+  async (): Promise<NotificationSegments> => {
+    return (await internalFetch(
+      '/secure/preferences/notification-segments',
+      'GET'
+    )) as NotificationSegments
+  }
+
+export const saveNotificationSegments = async (
+  segments: NotificationSegments
+): Promise<NotificationSegments> => {
+  return (await internalFetch(
+    '/secure/preferences/notification-segments',
+    'POST',
+    segments
+  )) as NotificationSegments
 }
 
 export const getGoogleAuthConnectUrl = async (state?: string | null) => {

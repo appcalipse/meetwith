@@ -11,6 +11,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
 import ChangeEmailModal from '@/components/profile/components/ChangeEmailModal'
@@ -28,12 +29,15 @@ import {
 } from '../../types/AccountNotifications'
 import { logEvent } from '../../utils/analytics'
 import {
+  getNotificationSegments,
   getNotificationSubscriptions,
+  saveNotificationSegments,
   sendChangeEmailLink,
   setNotificationSubscriptions,
 } from '../../utils/api_helper'
 import { isValidEmail } from '../../utils/validations'
 import DiscordNotificationConfig from './DiscordNotificationConfig'
+import NotificationTypesSection from './NotificationTypesSection'
 import TelegramNotificationConfig from './TelegramNotificationConfig'
 
 const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
@@ -59,7 +63,25 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   const [isMagicLinkModalOpen, setIsMagicLinkModalOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
+  const [productUpdates, setProductUpdates] = useState(true)
+  const [tipsAndEducation, setTipsAndEducation] = useState(true)
+  const [researchAndFeedback, setResearchAndFeedback] = useState(false)
+
   const { showSuccessToast, showErrorToast } = useToastHelpers()
+  const queryClient = useQueryClient()
+  const segmentsQuery = useQuery({
+    queryKey: ['notificationSegments', email],
+    queryFn: getNotificationSegments,
+    enabled: !!email,
+  })
+
+  useEffect(() => {
+    if (segmentsQuery.data) {
+      setProductUpdates(segmentsQuery.data.productUpdates)
+      setTipsAndEducation(segmentsQuery.data.tipsAndEducation)
+      setResearchAndFeedback(segmentsQuery.data.researchAndFeedbackRequests)
+    }
+  }, [segmentsQuery.data])
 
   useEffect(() => {
     setLoadingInitialInfo(true)
@@ -136,64 +158,77 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
   const updateNotifications = async () => {
     setLoading(true)
-    const subs = await getNotificationSubscriptions()
+    try {
+      const subs = await getNotificationSubscriptions()
 
-    // Handle Email notifications
-    if (emailNotifications) {
-      if (!isValidEmail(email)) {
-        showErrorToast(
-          'Invalid Email Format',
-          'The provided email seems invalid. Please check.'
+      // Handle Email notifications
+      if (emailNotifications) {
+        if (!isValidEmail(email)) {
+          showErrorToast(
+            'Invalid Email Format',
+            'The provided email seems invalid. Please check.'
+          )
+          setLoading(false)
+          return
+        }
+        subs.notification_types = subs.notification_types.filter(
+          sub => sub.channel !== NotificationChannel.EMAIL
         )
-        setLoading(false)
-        return
+        subs.notification_types.push({
+          channel: NotificationChannel.EMAIL,
+          destination: email,
+          disabled: false,
+        })
+      } else {
+        subs.notification_types = subs.notification_types.filter(
+          sub => sub.channel !== NotificationChannel.EMAIL
+        )
       }
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.EMAIL
-      )
-      subs.notification_types.push({
-        channel: NotificationChannel.EMAIL,
-        destination: email,
-        disabled: false,
+
+      // Handle Discord notifications
+      if (discordNotificationConfig) {
+        subs.notification_types = subs.notification_types.filter(
+          sub => sub.channel !== NotificationChannel.DISCORD
+        )
+        subs.notification_types.push(discordNotificationConfig)
+      } else {
+        subs.notification_types = subs.notification_types.filter(
+          sub => sub.channel !== NotificationChannel.DISCORD
+        )
+      }
+
+      // Handle Telegram notifications
+      if (telegramNotification) {
+        subs.notification_types = subs.notification_types.filter(
+          sub => sub.channel !== NotificationChannel.TELEGRAM
+        )
+        subs.notification_types.push(telegramNotification)
+      }
+
+      await setNotificationSubscriptions(subs)
+
+      if (email) {
+        await saveNotificationSegments({
+          productUpdates,
+          tipsAndEducation,
+          researchAndFeedbackRequests: researchAndFeedback,
+        })
+      }
+
+      logEvent('Set notifications', {
+        channels: subs.notification_types.map(sub => sub.channel),
       })
-    } else {
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.EMAIL
+
+      showSuccessToast(
+        'Notification Preferences Updated',
+        'Your notification preferences have been saved successfully'
       )
+    } catch (e: unknown) {
+      handleApiError('Update failed', e)
+    } finally {
+      setLoading(false)
+      setIsEditingEmail(false)
     }
-
-    // Handle Discord notifications
-    if (discordNotificationConfig) {
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.DISCORD
-      )
-      subs.notification_types.push(discordNotificationConfig)
-    } else {
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.DISCORD
-      )
-    }
-
-    // Handle Telegram notifications
-    if (telegramNotification) {
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.TELEGRAM
-      )
-      subs.notification_types.push(telegramNotification)
-    }
-
-    await setNotificationSubscriptions(subs)
-
-    logEvent('Set notifications', {
-      channels: subs.notification_types.map(sub => sub.channel),
-    })
-
-    setLoading(false)
-    setIsEditingEmail(false)
-    showSuccessToast(
-      'Notification Preferences Updated',
-      'Your notification preferences have been saved successfully'
-    )
   }
 
   const handleChangeEmail = () => {
@@ -325,6 +360,20 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
               onTelegramNotificationChange={onTelegramNotificationChange}
             />
           </Box>
+
+          {/* Notification types */}
+          <NotificationTypesSection
+            hasEmail={!!email}
+            isLoading={segmentsQuery.isLoading}
+            isError={segmentsQuery.isError}
+            segments={segmentsQuery.data}
+            productUpdates={productUpdates}
+            tipsAndEducation={tipsAndEducation}
+            researchAndFeedback={researchAndFeedback}
+            onProductUpdatesChange={setProductUpdates}
+            onTipsAndEducationChange={setTipsAndEducation}
+            onResearchAndFeedbackChange={setResearchAndFeedback}
+          />
 
           <Button
             isLoading={_loading}
