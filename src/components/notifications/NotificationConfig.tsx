@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   FormControl,
   FormLabel,
   Heading,
@@ -38,6 +37,7 @@ import {
 } from '../../utils/api_helper'
 import { isValidEmail } from '../../utils/validations'
 import DiscordNotificationConfig from './DiscordNotificationConfig'
+import NotificationTypesSection from './NotificationTypesSection'
 import TelegramNotificationConfig from './TelegramNotificationConfig'
 
 const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
@@ -362,63 +362,18 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
           </Box>
 
           {/* Notification types */}
-          <Box>
-            <Heading fontSize="2xl" mb={6}>
-              Notification types
-            </Heading>
-            {(() => {
-              if (!email) {
-                return (
-                  <Text>
-                    Add an email in the section above to manage notification
-                    types.
-                  </Text>
-                )
-              }
-              if (segmentsQuery.isLoading) {
-                return (
-                  <HStack>
-                    <Spinner size="sm" />
-                    <Text>Loading notification types…</Text>
-                  </HStack>
-                )
-              }
-              if (segmentsQuery.isError) {
-                return (
-                  <Text color="text-secondary">
-                    There was an error loading your notification preferences.
-                    Please try again.
-                  </Text>
-                )
-              }
-              if (!segmentsQuery.data) return null
-              return (
-                <VStack align="stretch" spacing={6}>
-                  <Checkbox
-                    colorScheme="primary"
-                    isChecked={productUpdates}
-                    onChange={e => setProductUpdates(e.target.checked)}
-                  >
-                    Product updates and announcements
-                  </Checkbox>
-                  <Checkbox
-                    colorScheme="primary"
-                    isChecked={tipsAndEducation}
-                    onChange={e => setTipsAndEducation(e.target.checked)}
-                  >
-                    Tips and educational content
-                  </Checkbox>
-                  <Checkbox
-                    colorScheme="primary"
-                    isChecked={researchAndFeedback}
-                    onChange={e => setResearchAndFeedback(e.target.checked)}
-                  >
-                    Research and feedback requests
-                  </Checkbox>
-                </VStack>
-              )
-            })()}
-          </Box>
+          <NotificationTypesSection
+            hasEmail={!!email}
+            isLoading={segmentsQuery.isLoading}
+            isError={segmentsQuery.isError}
+            segments={segmentsQuery.data}
+            productUpdates={productUpdates}
+            tipsAndEducation={tipsAndEducation}
+            researchAndFeedback={researchAndFeedback}
+            onProductUpdatesChange={setProductUpdates}
+            onTipsAndEducationChange={setTipsAndEducation}
+            onResearchAndFeedbackChange={setResearchAndFeedback}
+          />
 
           <Button
             isLoading={_loading}
