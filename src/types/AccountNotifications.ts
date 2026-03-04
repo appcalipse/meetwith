@@ -33,3 +33,9 @@ export interface Verification {
   code_hash: string
   channel: VerificationChannel
 }
+
+export interface NotificationSegments {
+  productUpdates: boolean
+  tipsAndEducation: boolean
+  researchAndFeedbackRequests: boolean
+}
