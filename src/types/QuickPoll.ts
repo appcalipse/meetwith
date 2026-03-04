@@ -9,7 +9,7 @@ import { CalendarSyncInfo } from './CalendarConnections'
 export enum PollStatus {
   ONGOING = 'ongoing',
   COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
+  CLOSED = 'closed',
   EXPIRED = 'expired',
 }
 

@@ -36,7 +36,7 @@ const PastPolls = ({ searchQuery = '' }: PastPollsProps) => {
         (currentPage - 1) * QUICKPOLL_DEFAULT_LIMIT,
         debouncedSearchQuery,
         PollStatus.COMPLETED,
-        PollStatus.CANCELLED,
+        PollStatus.CLOSED,
         PollStatus.EXPIRED
       ),
     onError: (err: unknown) => {

@@ -9706,7 +9706,7 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
       throw new QuickPollNotFoundError(pollId)
     }
 
-    if (poll.status === PollStatus.CANCELLED) {
+    if (poll.status === PollStatus.CLOSED) {
       throw new QuickPollAlreadyCancelledError()
     }
 
@@ -9734,7 +9734,7 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
       .from('quick_polls')
       .update({
         expires_at: new Date().toISOString(),
-        status: PollStatus.CANCELLED,
+        status: PollStatus.CLOSED,
         updated_at: new Date().toISOString(),
       })
       .eq('id', pollId)
