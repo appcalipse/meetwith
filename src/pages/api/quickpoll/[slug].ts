@@ -40,7 +40,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new QuickPollAlreadyCompletedError()
     }
 
-    if (result.poll.status === PollStatus.CANCELLED) {
+    if (result.poll.status === PollStatus.CLOSED) {
       throw new QuickPollAlreadyCancelledError()
     }
 
