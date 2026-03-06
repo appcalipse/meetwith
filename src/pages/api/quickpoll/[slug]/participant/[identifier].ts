@@ -14,9 +14,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const slug = query.slug as string
-  const identifier = decodeURIComponent(query.identifier as string)
+  const rawIdentifier = query.identifier as string
 
-  if (!slug || !identifier) {
+  if (!slug || !rawIdentifier) {
+    return res
+      .status(400)
+      .json({ error: 'Poll slug and identifier are required' })
+  }
+
+  const identifier = decodeURIComponent(rawIdentifier)
+
+  if (!identifier) {
     return res
       .status(400)
       .json({ error: 'Poll slug and identifier are required' })

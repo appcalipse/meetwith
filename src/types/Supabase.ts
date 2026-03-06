@@ -54,6 +54,7 @@ export type Database = {
           name: string | null
           owner_account_address: string
           socialLinks: Json[]
+          terms_accepted: boolean | null
         }
         Insert: {
           availaibility_id?: string | null
@@ -68,6 +69,7 @@ export type Database = {
           name?: string | null
           owner_account_address: string
           socialLinks: Json[]
+          terms_accepted?: boolean | null
         }
         Update: {
           availaibility_id?: string | null
@@ -82,6 +84,7 @@ export type Database = {
           name?: string | null
           owner_account_address?: string
           socialLinks?: Json[]
+          terms_accepted?: boolean | null
         }
         Relationships: [
           {

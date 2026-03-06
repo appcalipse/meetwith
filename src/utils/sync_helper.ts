@@ -310,7 +310,7 @@ const syncUpdatedEventWithCalendar = async (
             participantPromises.push(
               new Promise<void>(async resolve => {
                 try {
-                  integration.updateEvent(
+                  await integration.updateEvent(
                     targetAccount,
                     meetingDetails,
                     innerCalendar.calendarId

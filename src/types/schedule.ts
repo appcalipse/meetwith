@@ -1,3 +1,4 @@
+import { Interval } from 'luxon'
 import { TimeSlot } from './Meeting'
 import { ParticipantInfo } from './ParticipantInfo'
 
@@ -26,4 +27,5 @@ export interface TimeSlotTooltipContentProps {
   eventUrl?: string | null
   otherUserStates: Array<{ state: boolean; displayName: string }>
   activeAvailabilityBlocks?: ActiveAvailabilityBlock[]
+  slot: Interval<true>
 }

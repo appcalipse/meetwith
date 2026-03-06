@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "5.0",
     "target": "es2020",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -36,6 +37,8 @@
     ".husky",
     ".github",
     "__mocks__",
-    "copilot"
+    "copilot",
+    "src/__tests__",
+    "src/testing"
   ]
 }

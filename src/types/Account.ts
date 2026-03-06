@@ -125,6 +125,7 @@ export interface AccountPreferences {
   meetingProviders: Array<MeetingProvider>
   banner_url?: string
   banner_setting?: BannerSetting
+  terms_accepted?: boolean | null
 }
 
 export interface PaymentPreferences {

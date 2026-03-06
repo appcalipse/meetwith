@@ -59,8 +59,8 @@ import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
-import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
-import { isGroupParticipant, Participant } from '@/types/schedule'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { Participant } from '@/types/schedule'
 import { MeetingAction } from '@/utils/constants/meeting'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
@@ -373,6 +373,20 @@ const ScheduleBase = () => {
 
   return (
     <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+      <input
+        type="submit"
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{
+          position: 'absolute',
+          width: 0,
+          height: 0,
+          padding: 0,
+          margin: 0,
+          border: 'none',
+          overflow: 'hidden',
+        }}
+      />
       <Box w="100%">
         <DiscoverATimeInfoModal
           isOpen={openWhatIsThis}
@@ -482,6 +496,9 @@ const ScheduleBase = () => {
                       <ChipInput
                         addDisabled={!canManageParticipants}
                         currentItems={displayParticipants}
+                        inputProps={
+                          { 'data-testid': 'participant-chip-input' } as never
+                        }
                         isReadOnly={!canManageParticipants}
                         onChange={handleChipInputChange}
                         placeholder="Add participants"
@@ -518,6 +535,7 @@ const ScheduleBase = () => {
                     bg="primary.200"
                     borderRadius="6px"
                     color="neutral.900"
+                    data-testid="add-participants-btn"
                     icon={<IoPersonAddOutline size={20} />}
                     isDisabled={!canManageParticipants}
                     onClick={handleParticipantsClick}
@@ -571,6 +589,7 @@ const ScheduleBase = () => {
                       bg: 'primary.300',
                     }}
                     aria-label="Edit date and time"
+                    data-testid="pick-new-time"
                     bg="primary.200"
                     borderRadius="6px"
                     color="neutral.900"
@@ -600,6 +619,7 @@ const ScheduleBase = () => {
                       color: 'neutral.400',
                     }}
                     borderColor="neutral.400"
+                    data-testid="meeting-title-input"
                     errorBorderColor="red.500"
                     isInvalid={!isTitleValid}
                     onChange={e => {
@@ -635,31 +655,33 @@ const ScheduleBase = () => {
                 w="100%"
               >
                 <FormLabel>Location</FormLabel>
-                <Select<Option<MeetingProvider>>
-                  chakraStyles={{
-                    container: provided => ({
-                      ...provided,
-                      border: '1px solid',
-                      borderTopColor: 'currentColor',
-                      borderLeftColor: 'currentColor',
-                      borderRightColor: 'currentColor',
-                      borderBottomColor: 'currentColor',
-                      borderColor: 'inherit',
-                      borderRadius: 'md',
-                      maxW: '100%',
-                      display: 'block',
-                    }),
-                  }}
-                  className="noLeftBorder timezone-select"
-                  colorScheme="primary"
-                  components={getCustomSelectComponents<
-                    Option<MeetingProvider>,
-                    false
-                  >()}
-                  onChange={newValue => _onChangeProvider(newValue)}
-                  options={meetingProviders}
-                  value={meetingProviderValue}
-                />
+                <Box data-testid="provider-select">
+                  <Select<Option<MeetingProvider>>
+                    chakraStyles={{
+                      container: provided => ({
+                        ...provided,
+                        border: '1px solid',
+                        borderTopColor: 'currentColor',
+                        borderLeftColor: 'currentColor',
+                        borderRightColor: 'currentColor',
+                        borderBottomColor: 'currentColor',
+                        borderColor: 'inherit',
+                        borderRadius: 'md',
+                        maxW: '100%',
+                        display: 'block',
+                      }),
+                    }}
+                    className="noLeftBorder timezone-select"
+                    colorScheme="primary"
+                    components={getCustomSelectComponents<
+                      Option<MeetingProvider>,
+                      false
+                    >()}
+                    onChange={newValue => _onChangeProvider(newValue)}
+                    options={meetingProviders}
+                    value={meetingProviderValue}
+                  />
+                </Box>
                 {meetingProvider === MeetingProvider.CUSTOM && (
                   <Input
                     isDisabled={isScheduling}
@@ -880,6 +902,7 @@ const ScheduleBase = () => {
               <HStack flexWrap="wrap" w="100%">
                 <Button
                   colorScheme="primary"
+                  data-testid="schedule-now-btn"
                   flex={1}
                   flexBasis="50%"
                   h={'auto'}

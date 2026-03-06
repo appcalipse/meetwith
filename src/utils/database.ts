@@ -678,6 +678,21 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
   return account
 }
 
+const updateTermsAccepted = async (
+  owner_account_address: string,
+  accepted: boolean
+): Promise<void> => {
+  const { error } = await db.supabase
+    .from<Tables<'account_preferences'>>('account_preferences')
+    .update({ terms_accepted: accepted })
+    .eq('owner_account_address', owner_account_address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error("Couldn't update terms acceptance")
+  }
+}
+
 const updatePreferenceAvatar = async (
   address: string,
   filename: string,
@@ -11227,6 +11242,7 @@ export {
   updateSubscriptionPeriodDomain,
   updateSubscriptionPeriodStatus,
   updateSubscriptionPeriodTransaction,
+  updateTermsAccepted,
   uploadIcsFile,
   upsertGateCondition,
   upsertSeries,

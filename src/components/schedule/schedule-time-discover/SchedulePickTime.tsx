@@ -828,6 +828,7 @@ export function SchedulePickTime({
           <Button
             isLoading={isBestSlotLoading}
             colorScheme="primary"
+            data-testid="jump-to-best-slot-mobile"
             onClick={handleJumpToBestSlot}
           >
             Jump to Best Slot
@@ -855,6 +856,7 @@ export function SchedulePickTime({
               <HStack spacing={4}>
                 <IconButton
                   aria-label={'left-icon'}
+                  data-testid="grid-back-btn"
                   icon={<FaChevronLeft />}
                   onClick={handleScheduledTimeBack}
                   isDisabled={isBackDisabled}
@@ -863,6 +865,7 @@ export function SchedulePickTime({
               </HStack>
               <Button
                 colorScheme="primary"
+                data-testid="jump-to-best-slot"
                 onClick={handleJumpToBestSlot}
                 display={{ lg: 'flex', base: 'none' }}
                 cursor={'pointer'}
@@ -954,7 +957,8 @@ export function SchedulePickTime({
                 </Tooltip.Root>
               </HStack>
               <IconButton
-                aria-label={'left-icon'}
+                aria-label={'right-icon'}
+                data-testid="grid-forward-btn"
                 icon={<FaChevronRight />}
                 onClick={handleScheduledTimeNext}
                 position="sticky"
@@ -964,6 +968,7 @@ export function SchedulePickTime({
               />
             </HStack>
             <HStack
+              data-testid="day-headers"
               w="100%"
               justify={{ md: 'space-between' }}
               gap={{ base: 1, md: 6 }}
@@ -1035,6 +1040,7 @@ export function SchedulePickTime({
             </VStack>
           ) : (
             <HStack
+              data-testid="schedule-grid"
               w="100%"
               justify={{ md: 'space-between' }}
               gap={{ base: 1, md: 6 }}
