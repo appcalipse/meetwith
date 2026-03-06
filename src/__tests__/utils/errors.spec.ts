@@ -1,114 +1,114 @@
 import {
-  TimeNotAvailableError,
   AccountNotFoundError,
-  InvalidSessionError,
-  MeetingNotFoundError,
-  MeetingWithYourselfError,
-  MeetingCreationError,
-  MultipleSchedulersError,
-  NotGroupMemberError,
   AdminBelowOneError,
-  IsGroupMemberError,
+  AllMeetingSlotsUsedError,
   AlreadyGroupMemberError,
-  NotGroupAdminError,
-  BadRequestError,
-  GroupNotExistsError,
-  IsGroupAdminError,
-  UnauthorizedError,
-  GateInUseError,
   ApiFetchError,
-  GateConditionNotValidError,
-  MeetingChangeConflictError,
-  MeetingCancelConflictError,
-  MeetingCancelForbiddenError,
-  InvalidURL,
-  Huddle01ServiceUnavailable,
-  GoogleServiceUnavailable,
-  ZoomServiceUnavailable,
-  GroupCreationError,
-  UserInvitationError,
-  UrlCreationError,
+  AvailabilityBlockNotFoundError,
+  BadRequestError,
+  BillingPeriodsFetchError,
+  BillingPlanFetchError,
+  BillingPlanFromStripeProductError,
+  BillingPlanNotFoundError,
+  BillingPlanProviderFetchError,
+  BillingPlanProvidersFetchError,
+  BillingPlansFetchError,
+  CalendarIntegrationLimitExceededError,
+  CalendarSyncLimitExceededError,
+  CantInviteYourself,
+  ChainNotFound,
+  ContactAlreadyExists,
+  ContactInviteAlreadySent,
+  ContactInviteNotForAccount,
+  ContactInviteNotFound,
+  ContactNotFound,
+  CouponAlreadyUsed,
   CouponExpired,
   CouponNotValid,
-  CouponAlreadyUsed,
-  NoActiveSubscription,
-  SubscriptionNotCustom,
-  SubscriptionDomainUpdateNotAllowed,
-  MissingSubscriptionMetadataError,
-  BillingPlanNotFoundError,
-  BillingPlansFetchError,
-  BillingPlanFetchError,
-  BillingPlanProvidersFetchError,
-  BillingPlanProviderFetchError,
-  BillingPlanFromStripeProductError,
-  StripeSubscriptionCreationError,
-  StripeSubscriptionFetchError,
-  StripeSubscriptionUpdateError,
-  StripeSubscriptionTransactionLinkError,
-  SubscriptionTransactionCreationError,
-  SubscriptionPeriodCreationError,
-  SubscriptionPeriodFetchError,
-  SubscriptionHistoryCheckError,
-  SubscriptionPeriodsFetchError,
-  SubscriptionHistoryFetchError,
-  BillingPeriodsFetchError,
-  SubscriptionPeriodsExpirationError,
-  SubscriptionPeriodStatusUpdateError,
-  SubscriptionPeriodTransactionUpdateError,
-  SubscriptionPeriodFindError,
-  ContactAlreadyExists,
-  ContactNotFound,
-  ContactInviteNotFound,
-  ContactInviteNotForAccount,
-  OwnInviteError,
-  ContactInviteAlreadySent,
-  CantInviteYourself,
-  MemberDoesNotExist,
-  PermissionDenied,
-  GuestListModificationDenied,
-  MeetingDetailsModificationDenied,
-  AvailabilityBlockNotFoundError,
+  DecryptionFailedError,
   DefaultAvailabilityBlockError,
-  InvalidAvailabilityBlockError,
-  LastMeetingTypeError,
-  MeetingTypeLimitExceededError,
-  PaidMeetingTypeNotAllowedError,
-  SchedulingGroupLimitExceededError,
-  CalendarIntegrationLimitExceededError,
-  QuickPollLimitExceededError,
-  QuickPollSchedulingLimitExceededError,
-  CalendarSyncLimitExceededError,
-  TransactionCouldBeNotFoundError,
-  ChainNotFound,
-  MeetingTypeNotFound,
-  InValidGuests,
-  TransactionIsRequired,
-  TransactionNotFoundError,
-  AllMeetingSlotsUsedError,
-  MeetingSlugAlreadyExists,
-  UploadError,
+  GateConditionNotValidError,
+  GateInUseError,
+  GoogleServiceUnavailable,
+  GroupCreationError,
+  GroupNotExistsError,
+  GuestListModificationDenied,
   GuestRescheduleForbiddenError,
+  Huddle01ServiceUnavailable,
+  InValidGuests,
+  InvalidAvailabilityBlockError,
+  InvalidSessionError,
+  InvalidURL,
+  IsGroupAdminError,
+  IsGroupMemberError,
+  LastMeetingTypeError,
+  MeetingCancelConflictError,
+  MeetingCancelForbiddenError,
+  MeetingChangeConflictError,
+  MeetingCreationError,
+  MeetingDetailsModificationDenied,
+  MeetingNotFoundError,
   MeetingSessionNotFoundError,
-  ServiceUnavailableError,
-  QuickPollNotFoundError,
-  QuickPollSlugNotFoundError,
-  QuickPollUnauthorizedError,
+  MeetingSlugAlreadyExists,
+  MeetingTypeLimitExceededError,
+  MeetingTypeNotFound,
+  MeetingWithYourselfError,
+  MemberDoesNotExist,
+  MissingSubscriptionMetadataError,
+  MultipleSchedulersError,
+  NoActiveSubscription,
+  NotGroupAdminError,
+  NotGroupMemberError,
+  OwnInviteError,
+  PaidMeetingTypeNotAllowedError,
+  PermissionDenied,
+  QuickPollAlreadyClosedError,
+  QuickPollAlreadyCompletedError,
+  QuickPollCloseError,
   QuickPollCreationError,
-  QuickPollUpdateError,
-  QuickPollCancellationError,
   QuickPollDeletionError,
-  QuickPollParticipantNotFoundError,
+  QuickPollExpiredError,
+  QuickPollLimitExceededError,
+  QuickPollNotFoundError,
   QuickPollParticipantCreationError,
+  QuickPollParticipantNotFoundError,
   QuickPollParticipantUpdateError,
-  QuickPollSlugGenerationError,
-  QuickPollValidationError,
   QuickPollPermissionDeniedError,
   QuickPollPrivatePollAccessDeniedError,
-  QuickPollExpiredError,
-  QuickPollAlreadyCancelledError,
-  QuickPollAlreadyCompletedError,
-  DecryptionFailedError,
-} from '@/utils/errors'
+  QuickPollSchedulingLimitExceededError,
+  QuickPollSlugGenerationError,
+  QuickPollSlugNotFoundError,
+  QuickPollUnauthorizedError,
+  QuickPollUpdateError,
+  QuickPollValidationError,
+  SchedulingGroupLimitExceededError,
+  ServiceUnavailableError,
+  StripeSubscriptionCreationError,
+  StripeSubscriptionFetchError,
+  StripeSubscriptionTransactionLinkError,
+  StripeSubscriptionUpdateError,
+  SubscriptionDomainUpdateNotAllowed,
+  SubscriptionHistoryCheckError,
+  SubscriptionHistoryFetchError,
+  SubscriptionNotCustom,
+  SubscriptionPeriodCreationError,
+  SubscriptionPeriodFetchError,
+  SubscriptionPeriodFindError,
+  SubscriptionPeriodStatusUpdateError,
+  SubscriptionPeriodsExpirationError,
+  SubscriptionPeriodsFetchError,
+  SubscriptionPeriodTransactionUpdateError,
+  SubscriptionTransactionCreationError,
+  TimeNotAvailableError,
+  TransactionCouldBeNotFoundError,
+  TransactionIsRequired,
+  TransactionNotFoundError,
+  UnauthorizedError,
+  UploadError,
+  UrlCreationError,
+  UserInvitationError,
+  ZoomServiceUnavailable,
+} from '../../utils/errors'
 
 describe('Error Classes', () => {
   describe('TimeNotAvailableError', () => {
@@ -274,7 +274,9 @@ describe('Error Classes', () => {
       const error = new TransactionCouldBeNotFoundError(
         '0x1234567890abcdef1234567890abcdef12345678'
       )
-      expect(error.message).toContain('0x1234567890abcdef1234567890abcdef12345678')
+      expect(error.message).toContain(
+        '0x1234567890abcdef1234567890abcdef12345678'
+      )
     })
   })
 
@@ -451,8 +453,8 @@ describe('Error Classes', () => {
       },
       { class: QuickPollExpiredError, name: 'QuickPollExpiredError' },
       {
-        class: QuickPollAlreadyCancelledError,
-        name: 'QuickPollAlreadyCancelledError',
+        class: QuickPollAlreadyClosedError,
+        name: 'QuickPollAlreadyClosedError',
       },
       {
         class: QuickPollAlreadyCompletedError,
@@ -461,12 +463,15 @@ describe('Error Classes', () => {
       { class: DecryptionFailedError, name: 'DecryptionFailedError' },
     ]
 
-    it.each(simpleErrors)('should create $name correctly', ({ class: ErrorClass, name }) => {
-      const error = new ErrorClass()
-      expect(error).toBeInstanceOf(Error)
-      expect(error.name).toBe(name)
-      expect(error.message).toBeDefined()
-    })
+    it.each(simpleErrors)(
+      'should create $name correctly',
+      ({ class: ErrorClass, name }) => {
+        const error = new ErrorClass()
+        expect(error).toBeInstanceOf(Error)
+        expect(error.name).toBe(name)
+        expect(error.message).toBeDefined()
+      }
+    )
   })
 
   describe('InvalidURL', () => {
@@ -482,7 +487,7 @@ describe('Error Classes', () => {
     it('should create StripeSubscriptionCreationError', () => {
       const error = new StripeSubscriptionCreationError()
       expect(error.message).toBe('Failed to create Stripe subscription')
-      
+
       const customError = new StripeSubscriptionCreationError('Custom message')
       expect(customError.message).toBe('Custom message')
     })
@@ -501,7 +506,9 @@ describe('Error Classes', () => {
       const error = new TransactionNotFoundError(
         '0x1234567890abcdef1234567890abcdef12345678'
       )
-      expect(error.message).toContain('0x1234567890abcdef1234567890abcdef12345678')
+      expect(error.message).toContain(
+        '0x1234567890abcdef1234567890abcdef12345678'
+      )
     })
   })
 })
