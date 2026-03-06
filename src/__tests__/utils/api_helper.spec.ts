@@ -1293,15 +1293,15 @@ describe('api_helper.ts', () => {
       })
     })
 
-    describe('cancelQuickPoll', () => {
-      it('should cancel a quick poll', async () => {
+    describe('closeQuickPoll', () => {
+      it('should close a quick poll', async () => {
         const mockResponse = { success: true }
         global.fetch = jest.fn().mockResolvedValue({
           status: 200,
           json: async () => mockResponse,
         })
 
-        const result = await cancelQuickPoll('poll_123')
+        const result = await closeQuickPoll('poll_123')
 
         expect(result).toEqual(mockResponse)
       })
@@ -2293,7 +2293,7 @@ import {
   acceptContactInvite,
   addOrUpdateICloud,
   addQuickPollParticipant,
-  cancelQuickPoll,
+  closeQuickPoll,
   createAvailabilityBlock,
   createCryptoTransaction,
   createQuickPoll,
