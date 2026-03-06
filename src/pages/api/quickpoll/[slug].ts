@@ -4,7 +4,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { PollStatus } from '@/types/QuickPoll'
 import { getQuickPollBySlug } from '@/utils/database'
 import {
-  QuickPollAlreadyCancelledError,
+  QuickPollAlreadyClosedError,
   QuickPollAlreadyCompletedError,
   QuickPollExpiredError,
   QuickPollSlugNotFoundError,
@@ -41,7 +41,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (result.poll.status === PollStatus.CLOSED) {
-      throw new QuickPollAlreadyCancelledError()
+      throw new QuickPollAlreadyClosedError()
     }
 
     return res.status(200).json(result)
@@ -60,7 +60,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(410).json({ error: error.message })
     }
 
-    if (error instanceof QuickPollAlreadyCancelledError) {
+    if (error instanceof QuickPollAlreadyClosedError) {
       return res.status(410).json({ error: error.message })
     }
 
