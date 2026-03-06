@@ -69,7 +69,7 @@ import {
 } from '@/types/QuickPoll'
 import { isGroupParticipant } from '@/types/schedule'
 import {
-  cancelQuickPoll,
+  closeQuickPoll,
   createQuickPoll,
   getQuickPollBySlug,
   updateQuickPoll,
@@ -139,9 +139,9 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   } = useDisclosure()
 
   const {
-    isOpen: isCancelModalOpen,
-    onOpen: openCancelModal,
-    onClose: closeCancelModal,
+    isOpen: isCloseModalOpen,
+    onOpen: openCloseModal,
+    onClose: closeCloseModal,
   } = useDisclosure()
 
   const {
@@ -523,26 +523,23 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     },
   })
 
-  const cancelPollMutation = useMutation({
+  const closePollMutation = useMutation({
     mutationFn: () => {
       if (!pollData) throw new Error('Poll data not available')
       const pollResponse = pollData as QuickPollBySlugResponse
-      return cancelQuickPoll(pollResponse.poll.id)
+      return closeQuickPoll(pollResponse.poll.id)
     },
     onSuccess: () => {
-      showSuccessToast(
-        'Poll Cancelled Successfully',
-        'The poll has been cancelled.'
-      )
+      showSuccessToast('Poll Closed Successfully', 'The poll has been closed.')
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['quickpolls-check'] })
       void fetchPollCounts()
-      closeCancelModal()
+      closeCloseModal()
       router.push('/dashboard/quickpoll')
     },
     onError: error => {
-      handleApiError('Failed to cancel poll', error)
+      handleApiError('Failed to close poll', error)
     },
   })
 
@@ -638,8 +635,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     }
   }
 
-  const handleCancelPoll = () => {
-    cancelPollMutation.mutate()
+  const handleClosePoll = () => {
+    closePollMutation.mutate()
   }
 
   const handleBackToPolls = () => {
@@ -822,7 +819,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const isLoading =
     createPollMutation.isLoading ||
     updatePollMutation.isLoading ||
-    cancelPollMutation.isLoading
+    closePollMutation.isLoading
 
   // Show loading when fetching poll data in edit mode
   if (isEditMode && isPollLoading) {
@@ -1344,10 +1341,10 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 bg="red.600"
                 color="neutral.0"
                 _hover={{ bg: 'red.600' }}
-                onClick={openCancelModal}
+                onClick={openCloseModal}
                 isDisabled={isLoading}
               >
-                Cancel Poll
+                Close Poll
               </Button>
             </HStack>
           ) : (
@@ -1406,11 +1403,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
           }}
         />
 
-        {/* Cancel Poll Confirmation Modal */}
+        {/* Close Poll Confirmation Modal */}
         {isEditMode && (
           <Modal
-            onClose={closeCancelModal}
-            isOpen={isCancelModalOpen}
+            onClose={closeCloseModal}
+            isOpen={isCloseModalOpen}
             blockScrollOnMount={false}
             size="lg"
             isCentered
@@ -1435,21 +1432,21 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 alignItems="center"
               >
                 <Heading size="md" color="text-primary">
-                  Cancel Poll
+                  Close Poll
                 </Heading>
                 <ModalCloseButton color="text-primary" />
               </ModalHeader>
               <ModalBody p="0" mt="6">
                 <VStack gap={6}>
                   <Text size="base" color="text-primary">
-                    Are you sure you want to cancel this poll? This action
-                    cannot be undone.
+                    Are you sure you want to close this poll? You would have to
+                    reopen it to make it available for participants again.
                   </Text>
                   <HStack ml="auto" w="fit-content" mt="6" gap="4">
                     <Button
-                      onClick={closeCancelModal}
+                      onClick={closeCloseModal}
                       colorScheme="neutral"
-                      isDisabled={cancelPollMutation.isLoading}
+                      isDisabled={closePollMutation.isLoading}
                       bg="transparent"
                       color="primary.200"
                       _hover={{ bg: 'transparent' }}
@@ -1462,13 +1459,13 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                       bg="red.600"
                       color="neutral.0"
                       _hover={{ bg: 'red.700' }}
-                      isLoading={cancelPollMutation.isLoading}
-                      loadingText="Cancelling poll..."
-                      onClick={handleCancelPoll}
+                      isLoading={closePollMutation.isLoading}
+                      loadingText="Closing poll..."
+                      onClick={handleClosePoll}
                       colorScheme="red"
-                      isDisabled={cancelPollMutation.isLoading}
+                      isDisabled={closePollMutation.isLoading}
                     >
-                      Cancel Poll
+                      Close Poll
                     </Button>
                   </HStack>
                 </VStack>

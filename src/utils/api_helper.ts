@@ -87,7 +87,7 @@ import { PaymentAccountStatus } from '@/types/PaymentAccount'
 import {
   AddParticipantRequest,
   AvailabilitySlot,
-  CancelQuickPollResponse,
+  CloseQuickPollResponse,
   CreateQuickPollRequest,
   PollStatus,
   QuickPollBusyParticipant,
@@ -2546,9 +2546,9 @@ export const getQuickPollBySlug = async (slug: string) => {
   return await internalFetch(`/quickpoll/${slug}`)
 }
 
-export const cancelQuickPoll = async (
+export const closeQuickPoll = async (
   pollId: string
-): Promise<CancelQuickPollResponse> => {
+): Promise<CloseQuickPollResponse> => {
   return await internalFetch(`/secure/quickpoll/${pollId}`, 'PATCH')
 }
 
