@@ -76,7 +76,7 @@ const PollCard = ({
 
   const isPastPoll =
     poll.status === PollStatus.COMPLETED ||
-    poll.status === PollStatus.CANCELLED ||
+    poll.status === PollStatus.CLOSED ||
     poll.status === PollStatus.EXPIRED ||
     pollIsExpired
 
@@ -145,7 +145,7 @@ const PollCard = ({
     switch (status) {
       case PollStatus.ONGOING:
         return { bg: 'green.100', color: 'green.700' }
-      case PollStatus.CANCELLED:
+      case PollStatus.CLOSED:
         return { bg: 'red.100', color: 'red.400' }
       case PollStatus.COMPLETED:
         return { bg: 'blue.100', color: 'blue.700' }
