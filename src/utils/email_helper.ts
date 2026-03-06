@@ -39,6 +39,7 @@ import {
   formatDaysRemainingForEmail,
   getDisplayNameForEmail,
 } from './email_utils'
+import { canAccountAccessPermission } from './generic_utils'
 import { generateIcsServer } from './services/calendar.backend.helper'
 import { getCalendars } from './sync_helper'
 import { getAllParticipantsDisplayName } from './user_manager'
@@ -432,6 +433,64 @@ export const cancelledMeetingEmail = async (
       {
         name: 'meeting',
         value: 'cancelled',
+      },
+    ],
+  }
+
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+
+  return true
+}
+
+export const participantLeftMeetingEmail = async (
+  leftParticipantDisplayName: string,
+  toEmail: string,
+  meetingDetails: MeetingCreationSyncRequest,
+  destinationAccountAddress: string | undefined
+): Promise<boolean> => {
+  const start = new Date(meetingDetails.start)
+  const end = new Date(meetingDetails.end)
+  const title = meetingDetails.title
+  const timezone = meetingDetails.timezone
+  const canSeeParticipant = canAccountAccessPermission(
+    meetingDetails.meetingPermissions,
+    meetingDetails.participants,
+    destinationAccountAddress,
+    [(MeetingPermissions.SEE_GUEST_LIST, MeetingPermissions.EDIT_MEETING)]
+  )
+  if (!canSeeParticipant) {
+    return true
+  }
+  const email = new Email()
+  const locals = {
+    leftParticipantDisplayName,
+    meeting: {
+      duration: durationToHumanReadable(differenceInMinutes(end, start)),
+      start: dateToHumanReadable(start, timezone, true),
+      title,
+    },
+  }
+
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'meeting_participant_left')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    html: rendered.html!,
+    subject: rendered.subject!,
+    text: rendered.text,
+    to: toEmail,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'meeting',
+        value: 'participant_left',
       },
     ],
   }

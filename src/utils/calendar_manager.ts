@@ -1287,6 +1287,7 @@ const deleteMeetingInstance = async (
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
     version: existingMeeting.version + 1,
+    isDeleteUpdate: true,
   }
   const slotId = existingMeeting.id.split('_')[0]
 
@@ -1923,6 +1924,8 @@ const deleteMeetingSeries = async (
       .map(it => accountSlotMap[it])
       .filter((it): it is string => it !== undefined),
     focus_instance_id: currentInstanceId,
+    isDeleteUpdate: true,
+    calendar_organizer_address: scheduler?.account_address,
   }
   const slot: DBSlot = await apiUpdateMeetingSeries(slotId, payload)
   await invalidateMeetingState(currentAccount, participants)
@@ -2102,6 +2105,7 @@ const deleteMeeting = async (
       .filter((it): it is string => it !== undefined),
     version: existingMeeting.version + 1,
     calendar_organizer_address: scheduler?.account_address,
+    isDeleteUpdate: true,
   }
   const slotId = decryptedMeeting.id.split('_')[0]
 
@@ -3430,25 +3434,31 @@ const invalidateMeetingState = async (
   participants?: ParticipantInfo[]
 ) => {
   await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: QueryKeys.meetingsByAccount(currentAccount?.address),
+      refetchType: 'all',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: QueryKeys.calendarEvents(),
+      refetchType: 'all',
+    }),
     queryClient.invalidateQueries(
-      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
-    ),
-    await queryClient.invalidateQueries(
       QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
     ),
-    await queryClient.invalidateQueries(QueryKeys.calendarEvents()),
   ])
   if (participants) {
-    participants.forEach(p => {
-      queryClient.invalidateQueries(
-        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
-      )
-      queryClient.invalidateQueries(
-        QueryKeys.busySlots({
-          id: p.account_address?.toLowerCase(),
-        })
-      )
-    })
+    await Promise.all(
+      participants.flatMap(p => [
+        queryClient.invalidateQueries(
+          QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
+        ),
+        queryClient.invalidateQueries(
+          QueryKeys.busySlots({
+            id: p.account_address?.toLowerCase(),
+          })
+        ),
+      ])
+    )
   }
 }
 const getActor = (
