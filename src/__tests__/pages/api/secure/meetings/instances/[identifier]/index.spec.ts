@@ -486,7 +486,7 @@ describe('/api/secure/meetings/instances/[identifier]', () => {
         account_address: '0x1234567890abcdef',
         participants: [
           { address: '0xuser1', name: "O'Brien" },
-          { guest_email: 'guest@example.com' },
+          { guest_email: 'fumudukus@gmail.com' },
         ],
         location: 'Room 123 <Building A>',
       }

@@ -31,7 +31,7 @@ describe('/api/transactions/invoice', () => {
 
   const mockInvoiceRequest = {
     meeting_type_id: 'meeting-type-123',
-    guest_email: 'guest@example.com',
+    guest_email: 'fumudukus@gmail.com',
     guest_name: 'Guest User',
     payment_method: 'credit_card',
     url: 'https://example.com/meeting',
@@ -72,10 +72,10 @@ describe('/api/transactions/invoice', () => {
 
       expect(mockGetMeetingTypeFromDB).toHaveBeenCalledWith('meeting-type-123')
       expect(mockSendInvoiceEmail).toHaveBeenCalledWith(
-        'guest@example.com',
+        'fumudukus@gmail.com',
         'Guest User',
         {
-          email_address: 'guest@example.com',
+          email_address: 'fumudukus@gmail.com',
           full_name: 'Guest User',
           number_of_sessions: '2',
           payment_method: 'credit_card',
@@ -105,7 +105,9 @@ describe('/api/transactions/invoice', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(500)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Error sending transaction invoice' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'Error sending transaction invoice',
+      })
     })
 
     it('should calculate total amount correctly', async () => {
@@ -188,7 +190,12 @@ describe('/api/transactions/invoice', () => {
     })
 
     it('should handle different payment methods', async () => {
-      const paymentMethods = ['credit_card', 'bank_transfer', 'crypto', 'paypal']
+      const paymentMethods = [
+        'credit_card',
+        'bank_transfer',
+        'crypto',
+        'paypal',
+      ]
 
       for (const method of paymentMethods) {
         jest.clearAllMocks()
@@ -226,7 +233,9 @@ describe('/api/transactions/invoice', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(500)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Error sending transaction invoice' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'Error sending transaction invoice',
+      })
     })
   })
 

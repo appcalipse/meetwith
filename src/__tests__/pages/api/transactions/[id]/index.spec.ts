@@ -34,7 +34,7 @@ describe('/api/transactions/[id]/index', () => {
     amount: 100,
     status: 'completed',
     meeting_type_id: 'meeting-type-123',
-    guest_email: 'guest@example.com',
+    guest_email: 'fumudukus@gmail.com',
     created_at: new Date('2024-01-01'),
   }
 
@@ -67,7 +67,9 @@ describe('/api/transactions/[id]/index', () => {
     })
 
     it('should return 404 when transaction not found', async () => {
-      mockGetTransactionsById.mockRejectedValue(new Error('Transaction not found'))
+      mockGetTransactionsById.mockRejectedValue(
+        new Error('Transaction not found')
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 

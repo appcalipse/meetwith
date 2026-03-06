@@ -31,9 +31,12 @@ import * as database from '@/utils/database'
 import { StripeService } from '@/utils/services/stripe.service'
 
 describe('/api/transactions/checkout', () => {
-  const mockGetMeetingTypeFromDBLean = database.getMeetingTypeFromDBLean as jest.Mock
-  const mockGetActivePaymentAccount = database.getActivePaymentAccount as jest.Mock
-  const mockCreateCheckOutTransaction = database.createCheckOutTransaction as jest.Mock
+  const mockGetMeetingTypeFromDBLean =
+    database.getMeetingTypeFromDBLean as jest.Mock
+  const mockGetActivePaymentAccount =
+    database.getActivePaymentAccount as jest.Mock
+  const mockCreateCheckOutTransaction =
+    database.createCheckOutTransaction as jest.Mock
   const mockGetAccountAvatarUrl = database.getAccountAvatarUrl as jest.Mock
 
   let req: Partial<NextApiRequest>
@@ -46,7 +49,7 @@ describe('/api/transactions/checkout', () => {
   const mockCheckoutRequest = {
     meeting_type_id: 'meeting-type-123',
     guest_address: '0x456',
-    guest_email: 'guest@example.com',
+    guest_email: 'fumudukus@gmail.com',
     guest_name: 'Guest User',
     redirectUrl: 'https://example.com/callback',
     amount: 100,
@@ -90,7 +93,9 @@ describe('/api/transactions/checkout', () => {
       status: statusMock,
     }
 
-    mockStripeCreate = jest.fn().mockResolvedValue({ url: 'https://checkout.stripe.com/session123' })
+    mockStripeCreate = jest
+      .fn()
+      .mockResolvedValue({ url: 'https://checkout.stripe.com/session123' })
     ;(StripeService as unknown as jest.Mock).mockImplementation(() => ({
       checkout: {
         sessions: {
@@ -105,15 +110,23 @@ describe('/api/transactions/checkout', () => {
       mockGetMeetingTypeFromDBLean.mockResolvedValue(mockMeetingType)
       mockGetActivePaymentAccount.mockResolvedValue(mockPaymentAccount)
       mockCreateCheckOutTransaction.mockResolvedValue(mockTransaction)
-      mockGetAccountAvatarUrl.mockResolvedValue('https://example.com/avatar.png')
+      mockGetAccountAvatarUrl.mockResolvedValue(
+        'https://example.com/avatar.png'
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockGetMeetingTypeFromDBLean).toHaveBeenCalledWith('meeting-type-123')
+      expect(mockGetMeetingTypeFromDBLean).toHaveBeenCalledWith(
+        'meeting-type-123'
+      )
       expect(mockGetActivePaymentAccount).toHaveBeenCalledWith('0x123')
-      expect(mockCreateCheckOutTransaction).toHaveBeenCalledWith(mockCheckoutRequest)
+      expect(mockCreateCheckOutTransaction).toHaveBeenCalledWith(
+        mockCheckoutRequest
+      )
       expect(statusMock).toHaveBeenCalledWith(200)
-      expect(jsonMock).toHaveBeenCalledWith({ url: 'https://checkout.stripe.com/session123' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        url: 'https://checkout.stripe.com/session123',
+      })
     })
 
     it('should return 404 when meeting type not found', async () => {
@@ -164,14 +177,18 @@ describe('/api/transactions/checkout', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(500)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Could not create transaction' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'Could not create transaction',
+      })
     })
 
     it('should create stripe session with correct metadata', async () => {
       mockGetMeetingTypeFromDBLean.mockResolvedValue(mockMeetingType)
       mockGetActivePaymentAccount.mockResolvedValue(mockPaymentAccount)
       mockCreateCheckOutTransaction.mockResolvedValue(mockTransaction)
-      mockGetAccountAvatarUrl.mockResolvedValue('https://example.com/avatar.png')
+      mockGetAccountAvatarUrl.mockResolvedValue(
+        'https://example.com/avatar.png'
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -180,7 +197,7 @@ describe('/api/transactions/checkout', () => {
           metadata: expect.objectContaining({
             environment: 'test',
             guest_address: '0x456',
-            guest_email: 'guest@example.com',
+            guest_email: 'fumudukus@gmail.com',
             guest_name: 'Guest User',
             meeting_type_id: 'meeting-type-123',
             transaction_id: 'tx-123',
@@ -243,7 +260,9 @@ describe('/api/transactions/checkout', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(statusMock).toHaveBeenCalledWith(500)
-      expect(jsonMock).toHaveBeenCalledWith({ error: 'Error sending transaction invoice' })
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'Error sending transaction invoice',
+      })
       expect(console.error).toHaveBeenCalled()
     })
 
@@ -284,7 +303,9 @@ describe('/api/transactions/checkout', () => {
 
       expect(mockStripeCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          success_url: expect.stringContaining('transaction_id=tx-123&checkoutState=success'),
+          success_url: expect.stringContaining(
+            'transaction_id=tx-123&checkoutState=success'
+          ),
           cancel_url: expect.stringContaining('checkoutState=cancelled'),
         }),
         expect.any(Object)

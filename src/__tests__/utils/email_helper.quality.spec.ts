@@ -254,7 +254,7 @@ describe('email_helper quality tests - error handling and edge cases', () => {
 
       const guestParticipants: ParticipantInfo[] = [
         {
-          guest_email: 'guest@example.com',
+          guest_email: 'fumudukus@gmail.com',
           meeting_id: 'meeting-123',
           slot_id: 'slot-123',
           status: ParticipationStatus.Accepted,

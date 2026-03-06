@@ -263,7 +263,7 @@ describe('notification_helper', () => {
         ...mockMeetingRequest,
         participants: [
           mockRequestParticipantMapping({
-            guest_email: 'guest@example.com',
+            guest_email: 'fumudukus@gmail.com',
             meeting_id: 'meeting-123',
             name: 'Guest',
             type: ParticipantType.Invitee,

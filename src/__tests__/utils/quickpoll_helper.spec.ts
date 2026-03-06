@@ -657,7 +657,7 @@ describe('quickpoll_helper', () => {
             {
               participant_id: '1',
               poll_id: 'poll-123',
-              guest_email: 'guest@example.com',
+              guest_email: 'fumudukus@gmail.com',
               guest_name: 'Guest User',
               participant_type: QuickPollParticipantType.INVITEE,
               timezone: 'UTC',

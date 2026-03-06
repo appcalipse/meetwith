@@ -1,7 +1,11 @@
 import { Page } from '@playwright/test'
-import { test, expect } from '../fixtures/auth.fixture'
-import { SELECTORS, waitForMeetingsPage, waitForSchedulePage } from '../helpers/selectors'
+import { expect, test } from '../fixtures/auth.fixture'
 import { TEST_MEETING_TITLE } from '../helpers/constants'
+import {
+  SELECTORS,
+  waitForMeetingsPage,
+  waitForSchedulePage,
+} from '../helpers/selectors'
 
 /**
  * Helper: add a participant via the invite modal.
@@ -29,7 +33,9 @@ async function addParticipantViaModal(page: Page, identifier: string) {
 
 test.describe('Schedule Meeting Flow', () => {
   test.describe('Grid interaction and navigation', () => {
-    test('should click a green time slot and land on the details form', async ({ page }) => {
+    test('should click a green time slot and land on the details form', async ({
+      page,
+    }) => {
       await page.goto('/dashboard/schedule')
       await waitForSchedulePage(page)
 
@@ -47,7 +53,9 @@ test.describe('Schedule Meeting Flow', () => {
       await expect(titleInput).toBeVisible({ timeout: 10_000 })
     })
 
-    test('should navigate grid forward and back with arrow buttons', async ({ page }) => {
+    test('should navigate grid forward and back with arrow buttons', async ({
+      page,
+    }) => {
       await page.goto('/dashboard/schedule')
       await waitForSchedulePage(page)
 
@@ -65,7 +73,9 @@ test.describe('Schedule Meeting Flow', () => {
       await forwardBtn.click()
 
       // Wait for the day header text to change (deterministic wait)
-      await expect(firstDayHeader).not.toHaveText(initialText || '', { timeout: 5_000 })
+      await expect(firstDayHeader).not.toHaveText(initialText || '', {
+        timeout: 5_000,
+      })
       const updatedText = await firstDayHeader.textContent()
       expect(updatedText).not.toBe(initialText)
 
@@ -75,12 +85,16 @@ test.describe('Schedule Meeting Flow', () => {
       await backBtn.click()
 
       // Wait for the day header text to revert back
-      await expect(firstDayHeader).toHaveText(initialText || '', { timeout: 5_000 })
+      await expect(firstDayHeader).toHaveText(initialText || '', {
+        timeout: 5_000,
+      })
     })
   })
 
   test.describe('Full scheduling with Jitsi', () => {
-    test('should add a participant, pick a slot, type a title, select Jitsi, click Schedule, and see Success', async ({ page }) => {
+    test('should add a participant, pick a slot, type a title, select Jitsi, click Schedule, and see Success', async ({
+      page,
+    }) => {
       await page.goto('/dashboard/schedule')
       await waitForSchedulePage(page)
 
@@ -93,7 +107,7 @@ test.describe('Schedule Meeting Flow', () => {
       await availableSlot.click()
 
       // --- Step 2: Add a participant (required — scheduling with only yourself throws MeetingWithYourselfError) ---
-      await addParticipantViaModal(page, 'guest@example.com')
+      await addParticipantViaModal(page, 'fumudukus@gmail.com')
 
       // --- Step 3: Type a meeting title ---
       const titleInput = page.locator(SELECTORS.meetingTitleInput)
@@ -135,7 +149,9 @@ test.describe('Schedule Meeting Flow', () => {
   })
 
   test.describe('Schedule button validation', () => {
-    test('should disable Schedule button when title is empty and enable after typing', async ({ page }) => {
+    test('should disable Schedule button when title is empty and enable after typing', async ({
+      page,
+    }) => {
       await page.goto('/dashboard/schedule')
       await waitForSchedulePage(page)
 
@@ -168,12 +184,16 @@ test.describe('Schedule Meeting Flow', () => {
       // Submit the form via Enter key to trigger "Title is required" validation
       await titleInput.click()
       await page.keyboard.press('Enter')
-      await expect(page.getByText('Title is required')).toBeVisible({ timeout: 3_000 })
+      await expect(page.getByText('Title is required')).toBeVisible({
+        timeout: 3_000,
+      })
     })
   })
 
   test.describe('Multi-participant scheduling', () => {
-    test('should open invite modal, type addresses, save, and complete scheduling', async ({ page }) => {
+    test('should open invite modal, type addresses, save, and complete scheduling', async ({
+      page,
+    }) => {
       await page.goto('/dashboard/schedule')
       await waitForSchedulePage(page)
 
@@ -199,7 +219,7 @@ test.describe('Schedule Meeting Flow', () => {
 
       // --- Step 4: Type a guest email and press Enter ---
       await inviteInput.click()
-      await inviteInput.fill('guest@example.com')
+      await inviteInput.fill('fumudukus@gmail.com')
       await page.keyboard.press('Enter')
 
       // --- Step 5: Click "Save Changes" to close the modal ---
@@ -233,12 +253,16 @@ test.describe('Schedule Meeting Flow', () => {
       const successContainer = page.locator(SELECTORS.scheduleCompleted)
       await expect(successContainer).toBeVisible({ timeout: 30_000 })
       await expect(page.locator('h1')).toContainText('Success!')
-      await expect(successContainer).toContainText('Multi-Participant E2E Meeting')
+      await expect(successContainer).toContainText(
+        'Multi-Participant E2E Meeting'
+      )
     })
   })
 
   test.describe('Error handling', () => {
-    test('should show error when scheduling API returns 409 conflict', async ({ page }) => {
+    test('should show error when scheduling API returns 409 conflict', async ({
+      page,
+    }) => {
       await page.goto('/dashboard/schedule')
       await waitForSchedulePage(page)
 
@@ -250,7 +274,7 @@ test.describe('Schedule Meeting Flow', () => {
       await availableSlot.click()
 
       // Add a participant first (required for scheduling)
-      await addParticipantViaModal(page, 'guest@example.com')
+      await addParticipantViaModal(page, 'fumudukus@gmail.com')
 
       const titleInput = page.locator(SELECTORS.meetingTitleInput)
       await expect(titleInput).toBeVisible({ timeout: 10_000 })
@@ -289,10 +313,14 @@ test.describe('Schedule Meeting Flow', () => {
       await expect(successContainer).not.toBeVisible({ timeout: 5_000 })
 
       // An error toast should appear
-      await expect(page.getByText(/failed|error|not available/i).first()).toBeVisible({ timeout: 10_000 })
+      await expect(
+        page.getByText(/failed|error|not available/i).first()
+      ).toBeVisible({ timeout: 10_000 })
     })
 
-    test('should reject API meeting creation with empty data', async ({ request }) => {
+    test('should reject API meeting creation with empty data', async ({
+      request,
+    }) => {
       const response = await request.post('/api/secure/meetings', {
         data: {},
       })

@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Encrypted } from 'eth-crypto'
 
 import { Account, DayAvailability } from '@/types/Account'
+import { MeetingReminders } from '@/types/common'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -19,32 +20,31 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import * as apiHelper from '@/utils/api_helper'
-import { MeetingReminders } from '@/types/common'
 
 import {
-  sanitizeParticipants,
-  decryptConferenceMeeting,
-  decodeMeeting,
-  generateEmptyAvailabilities,
-  generateDefaultMeetingType,
-  decryptMeeting,
-  durationToHumanReadable,
+  createAlarm,
   dateToHumanReadable,
   dateToLocalizedRange,
-  generateDefaultAvailabilities,
+  decodeMeeting,
+  decryptConferenceMeeting,
+  decryptMeeting,
   defaultTimeRange,
-  getCalendarRegularUrl,
-  getOwnerPublicUrl,
-  googleUrlParsedDate,
-  outLookUrlParsedDate,
+  durationToHumanReadable,
+  generateDefaultAvailabilities,
+  generateDefaultMeetingType,
+  generateEmptyAvailabilities,
   generateGoogleCalendarUrl,
   generateOffice365CalendarUrl,
-  selectDefaultProvider,
-  createAlarm,
-  participantStatusToICSStatus,
+  getCalendarRegularUrl,
+  getMeetingRepeatFromRule,
+  getOwnerPublicUrl,
+  googleUrlParsedDate,
   handleRRULEForMeeting,
   isDiffRRULE,
-  getMeetingRepeatFromRule,
+  outLookUrlParsedDate,
+  participantStatusToICSStatus,
+  sanitizeParticipants,
+  selectDefaultProvider,
 } from '@/utils/calendar_manager'
 import { SessionType } from '@/utils/constants/meeting-types'
 import * as cryptography from '@/utils/cryptography'
@@ -402,7 +402,12 @@ describe('calendar_manager - Quality Tests', () => {
     }
 
     it('successfully decrypts valid conference meeting', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         encrypted_metadata: encryptedData,
@@ -411,9 +416,9 @@ describe('calendar_manager - Quality Tests', () => {
         start: '2024-01-01T10:00:00Z',
       }
 
-      ;(cryptography.getContentFromEncryptedPublic as jest.Mock).mockResolvedValue(
-        JSON.stringify(mockMeetingInfo)
-      )
+      ;(
+        cryptography.getContentFromEncryptedPublic as jest.Mock
+      ).mockResolvedValue(JSON.stringify(mockMeetingInfo))
 
       const result = await decryptConferenceMeeting(meeting as any)
 
@@ -443,7 +448,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('returns null when decryption fails', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         encrypted_metadata: encryptedData,
@@ -452,7 +462,9 @@ describe('calendar_manager - Quality Tests', () => {
         start: '2024-01-01T10:00:00Z',
       }
 
-      ;(cryptography.getContentFromEncryptedPublic as jest.Mock).mockResolvedValue(null)
+      ;(
+        cryptography.getContentFromEncryptedPublic as jest.Mock
+      ).mockResolvedValue(null)
 
       const result = await decryptConferenceMeeting(meeting as any)
 
@@ -460,7 +472,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('returns null when decryption returns empty string', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         encrypted_metadata: encryptedData,
@@ -469,7 +486,9 @@ describe('calendar_manager - Quality Tests', () => {
         start: '2024-01-01T10:00:00Z',
       }
 
-      ;(cryptography.getContentFromEncryptedPublic as jest.Mock).mockResolvedValue('')
+      ;(
+        cryptography.getContentFromEncryptedPublic as jest.Mock
+      ).mockResolvedValue('')
 
       const result = await decryptConferenceMeeting(meeting as any)
 
@@ -477,7 +496,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('handles malformed JSON data gracefully', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         encrypted_metadata: encryptedData,
@@ -486,13 +510,20 @@ describe('calendar_manager - Quality Tests', () => {
         start: '2024-01-01T10:00:00Z',
       }
 
-      ;(cryptography.getContentFromEncryptedPublic as jest.Mock).mockResolvedValue('invalid json {')
+      ;(
+        cryptography.getContentFromEncryptedPublic as jest.Mock
+      ).mockResolvedValue('invalid json {')
 
       await expect(decryptConferenceMeeting(meeting as any)).rejects.toThrow()
     })
 
     it('correctly maps all meeting fields', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const participants: ParticipantInfo[] = [
         {
           account_address: '0xABC123',
@@ -502,7 +533,7 @@ describe('calendar_manager - Quality Tests', () => {
           type: ParticipantType.Owner,
         },
       ]
-      
+
       const detailedMeetingInfo = {
         ...mockMeetingInfo,
         participants,
@@ -517,9 +548,9 @@ describe('calendar_manager - Quality Tests', () => {
         start: '2024-01-01T10:00:00Z',
       }
 
-      ;(cryptography.getContentFromEncryptedPublic as jest.Mock).mockResolvedValue(
-        JSON.stringify(detailedMeetingInfo)
-      )
+      ;(
+        cryptography.getContentFromEncryptedPublic as jest.Mock
+      ).mockResolvedValue(JSON.stringify(detailedMeetingInfo))
 
       const result = await decryptConferenceMeeting(meeting as any)
 
@@ -567,7 +598,12 @@ describe('calendar_manager - Quality Tests', () => {
     }
 
     it('successfully decodes meeting with encrypted metadata', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const dbSlot = {
         created_at: '2024-01-01T10:00:00Z',
         end: '2024-01-01T11:00:00Z',
@@ -609,7 +645,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('returns null when decryption fails', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const dbSlot = {
         created_at: '2024-01-01T10:00:00Z',
         end: '2024-01-01T11:00:00Z',
@@ -628,7 +669,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('handles decryption errors gracefully', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const dbSlot = {
         created_at: '2024-01-01T10:00:00Z',
         end: '2024-01-01T11:00:00Z',
@@ -639,7 +685,9 @@ describe('calendar_manager - Quality Tests', () => {
       }
 
       ;(storage.getSignature as jest.Mock).mockReturnValue('test-signature')
-      ;(cryptography.getContentFromEncrypted as jest.Mock).mockResolvedValue('invalid json')
+      ;(cryptography.getContentFromEncrypted as jest.Mock).mockResolvedValue(
+        'invalid json'
+      )
 
       await expect(decodeMeeting(dbSlot as any, mockAccount)).rejects.toThrow()
     })
@@ -648,20 +696,20 @@ describe('calendar_manager - Quality Tests', () => {
   describe('generateEmptyAvailabilities', () => {
     it('generates 7 days of availabilities', () => {
       const result = generateEmptyAvailabilities()
-      
+
       expect(result).toHaveLength(7)
     })
 
     it('generates availabilities for all weekdays (0-6)', () => {
       const result = generateEmptyAvailabilities()
-      
+
       const weekdays = result.map(a => a.weekday)
       expect(weekdays).toEqual([0, 1, 2, 3, 4, 5, 6])
     })
 
     it('sets default time range (09:00-18:00) for all days', () => {
       const result = generateEmptyAvailabilities()
-      
+
       result.forEach(availability => {
         expect(availability.ranges).toHaveLength(1)
         expect(availability.ranges[0].start).toBe('09:00')
@@ -671,7 +719,7 @@ describe('calendar_manager - Quality Tests', () => {
 
     it('returns correct structure for DayAvailability type', () => {
       const result = generateEmptyAvailabilities()
-      
+
       result.forEach(availability => {
         expect(availability).toHaveProperty('weekday')
         expect(availability).toHaveProperty('ranges')
@@ -682,7 +730,7 @@ describe('calendar_manager - Quality Tests', () => {
 
     it('each range has start and end properties', () => {
       const result = generateEmptyAvailabilities()
-      
+
       result.forEach(availability => {
         availability.ranges.forEach(range => {
           expect(range).toHaveProperty('start')
@@ -698,42 +746,42 @@ describe('calendar_manager - Quality Tests', () => {
     it('generates meeting type with default 30 minute duration', () => {
       const ownerAddress = '0xABC123'
       const result = generateDefaultMeetingType(ownerAddress)
-      
+
       expect(result.duration_minutes).toBe(30)
     })
 
     it('sets account_owner_address correctly', () => {
       const ownerAddress = '0xABC123'
       const result = generateDefaultMeetingType(ownerAddress)
-      
+
       expect(result.account_owner_address).toBe(ownerAddress)
     })
 
     it('sets default meeting title', () => {
       const ownerAddress = '0xABC123'
       const result = generateDefaultMeetingType(ownerAddress)
-      
+
       expect(result.title).toBe('30 minutes meeting')
     })
 
     it('sets minimum notice to 60 minutes', () => {
       const ownerAddress = '0xABC123'
       const result = generateDefaultMeetingType(ownerAddress)
-      
+
       expect(result.min_notice_minutes).toBe(60)
     })
 
     it('sets session type to FREE', () => {
       const ownerAddress = '0xABC123'
       const result = generateDefaultMeetingType(ownerAddress)
-      
+
       expect(result.type).toBe(SessionType.FREE)
     })
 
     it('generates slug from title', () => {
       const ownerAddress = '0xABC123'
       const result = generateDefaultMeetingType(ownerAddress)
-      
+
       expect(result.slug).toBeDefined()
       expect(typeof result.slug).toBe('string')
       expect(result.slug.length).toBeGreaterThan(0)
@@ -741,7 +789,7 @@ describe('calendar_manager - Quality Tests', () => {
 
     it('handles different address formats', () => {
       const addresses = ['0xABC123', '0x123456789', 'address-test']
-      
+
       addresses.forEach(address => {
         const result = generateDefaultMeetingType(address)
         expect(result.account_owner_address).toBe(address)
@@ -752,7 +800,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('generates consistent meeting type structure', () => {
       const ownerAddress = '0xABC123'
       const result = generateDefaultMeetingType(ownerAddress)
-      
+
       expect(result).toHaveProperty('account_owner_address')
       expect(result).toHaveProperty('duration_minutes')
       expect(result).toHaveProperty('min_notice_minutes')
@@ -800,7 +848,12 @@ describe('calendar_manager - Quality Tests', () => {
     }
 
     it('successfully decrypts meeting with valid data', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         end: '2024-01-01T11:00:00Z',
@@ -824,7 +877,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('returns null when decryption fails', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         end: '2024-01-01T11:00:00Z',
@@ -835,7 +893,9 @@ describe('calendar_manager - Quality Tests', () => {
       }
 
       ;(storage.getSignature as jest.Mock).mockReturnValue('test-signature')
-      ;(cryptography.getContentFromEncrypted as jest.Mock).mockResolvedValue(null)
+      ;(cryptography.getContentFromEncrypted as jest.Mock).mockResolvedValue(
+        null
+      )
 
       const result = await decryptMeeting(meeting as any, mockAccount)
 
@@ -843,7 +903,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('uses provided signature instead of fetching from storage', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         end: '2024-01-01T11:00:00Z',
@@ -868,7 +933,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('converts start and end to Date objects', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         end: '2024-01-01T11:00:00Z',
@@ -892,7 +962,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('handles meeting with participants correctly', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const participants: ParticipantInfo[] = [
         {
           account_address: '0xDEF456',
@@ -929,7 +1004,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('syncs meeting when conferenceData slots mismatch participants', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const participants: ParticipantInfo[] = [
         {
           account_address: '0xDEF456',
@@ -976,10 +1056,10 @@ describe('calendar_manager - Quality Tests', () => {
 
       // syncMeeting is called with the filtered meeting info
       expect(apiHelper.syncMeeting).toHaveBeenCalledWith(
-        expect.objectContaining({ 
+        expect.objectContaining({
           participants: expect.arrayContaining([
-            expect.objectContaining({ slot_id: 'slot1' })
-          ])
+            expect.objectContaining({ slot_id: 'slot1' }),
+          ]),
         }),
         'slot123'
       )
@@ -990,7 +1070,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('does not sync when conferenceData version is V1', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const participants: ParticipantInfo[] = [
         {
           account_address: '0xDEF456',
@@ -1039,7 +1124,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('handles meeting with series_id for SlotInstance', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         end: '2024-01-01T11:00:00Z',
@@ -1061,7 +1151,12 @@ describe('calendar_manager - Quality Tests', () => {
     })
 
     it('sets series_id to null for regular DBSlot without series_id', async () => {
-      const encryptedData = { iv: 'test-iv', ephemPublicKey: 'test-key', ciphertext: 'test-cipher', mac: 'test-mac' } as Encrypted
+      const encryptedData = {
+        iv: 'test-iv',
+        ephemPublicKey: 'test-key',
+        ciphertext: 'test-cipher',
+        mac: 'test-mac',
+      } as Encrypted
       const meeting = {
         created_at: '2024-01-01T10:00:00Z',
         end: '2024-01-01T11:00:00Z',
@@ -1121,7 +1216,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('formats date without timezone', () => {
       const date = new Date('2024-01-15T10:30:00Z')
       const result = dateToHumanReadable(date, 'America/New_York', false)
-      
+
       expect(result).toBeDefined()
       expect(result).not.toContain('(America/New_York)')
     })
@@ -1129,7 +1224,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('formats date with timezone when requested', () => {
       const date = new Date('2024-01-15T10:30:00Z')
       const result = dateToHumanReadable(date, 'America/New_York', true)
-      
+
       expect(result).toBeDefined()
       expect(result).toContain('(America/New_York)')
     })
@@ -1138,7 +1233,7 @@ describe('calendar_manager - Quality Tests', () => {
       const date = new Date('2024-01-15T10:30:00Z')
       const resultNY = dateToHumanReadable(date, 'America/New_York', true)
       const resultUTC = dateToHumanReadable(date, 'UTC', true)
-      
+
       expect(resultNY).toContain('(America/New_York)')
       expect(resultUTC).toContain('(UTC)')
     })
@@ -1149,7 +1244,7 @@ describe('calendar_manager - Quality Tests', () => {
         new Date('2024-06-15T12:00:00Z'),
         new Date('2024-12-31T23:59:59Z'),
       ]
-      
+
       dates.forEach(date => {
         const result = dateToHumanReadable(date, 'UTC', false)
         expect(result).toBeDefined()
@@ -1163,7 +1258,7 @@ describe('calendar_manager - Quality Tests', () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const end = new Date('2024-01-15T11:00:00Z')
       const result = dateToLocalizedRange(start, end, 'America/New_York', false)
-      
+
       expect(result).toBeDefined()
       expect(result).not.toContain('(America/New_York)')
     })
@@ -1172,7 +1267,7 @@ describe('calendar_manager - Quality Tests', () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const end = new Date('2024-01-15T11:00:00Z')
       const result = dateToLocalizedRange(start, end, 'America/New_York', true)
-      
+
       expect(result).toBeDefined()
       expect(result).toContain('(America/New_York)')
     })
@@ -1180,10 +1275,15 @@ describe('calendar_manager - Quality Tests', () => {
     it('formats date range with different timezones', () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const end = new Date('2024-01-15T11:00:00Z')
-      
-      const resultNY = dateToLocalizedRange(start, end, 'America/New_York', true)
+
+      const resultNY = dateToLocalizedRange(
+        start,
+        end,
+        'America/New_York',
+        true
+      )
       const resultUTC = dateToLocalizedRange(start, end, 'UTC', true)
-      
+
       expect(resultNY).toContain('(America/New_York)')
       expect(resultUTC).toContain('(UTC)')
       expect(resultNY).not.toEqual(resultUTC)
@@ -1192,7 +1292,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('handles same start and end dates', () => {
       const date = new Date('2024-01-15T10:00:00Z')
       const result = dateToLocalizedRange(date, date, 'UTC', false)
-      
+
       expect(result).toBeDefined()
     })
 
@@ -1200,7 +1300,7 @@ describe('calendar_manager - Quality Tests', () => {
       const start = new Date('2024-01-15T23:00:00Z')
       const end = new Date('2024-01-16T01:00:00Z')
       const result = dateToLocalizedRange(start, end, 'UTC', false)
-      
+
       expect(result).toBeDefined()
       expect(result.length).toBeGreaterThan(0)
     })
@@ -1209,30 +1309,30 @@ describe('calendar_manager - Quality Tests', () => {
   describe('generateDefaultAvailabilities', () => {
     it('generates 7 days of availabilities', () => {
       const result = generateDefaultAvailabilities()
-      
+
       expect(result).toHaveLength(7)
     })
 
     it('generates availabilities for all weekdays (0-6)', () => {
       const result = generateDefaultAvailabilities()
-      
+
       const weekdays = result.map(a => a.weekday)
       expect(weekdays).toEqual([0, 1, 2, 3, 4, 5, 6])
     })
 
     it('sets empty ranges for Sunday (0) and Saturday (6)', () => {
       const result = generateDefaultAvailabilities()
-      
+
       expect(result[0].weekday).toBe(0) // Sunday
       expect(result[0].ranges).toEqual([])
-      
+
       expect(result[6].weekday).toBe(6) // Saturday
       expect(result[6].ranges).toEqual([])
     })
 
     it('sets default time range (09:00-18:00) for weekdays (1-5)', () => {
       const result = generateDefaultAvailabilities()
-      
+
       for (let i = 1; i <= 5; i++) {
         expect(result[i].weekday).toBe(i)
         expect(result[i].ranges).toHaveLength(1)
@@ -1243,7 +1343,7 @@ describe('calendar_manager - Quality Tests', () => {
 
     it('returns correct structure for DayAvailability type', () => {
       const result = generateDefaultAvailabilities()
-      
+
       result.forEach(availability => {
         expect(availability).toHaveProperty('weekday')
         expect(availability).toHaveProperty('ranges')
@@ -1267,13 +1367,13 @@ describe('calendar_manager - Quality Tests', () => {
     it('returns consistent time range on multiple calls', () => {
       const result1 = defaultTimeRange()
       const result2 = defaultTimeRange()
-      
+
       expect(result1).toEqual(result2)
     })
 
     it('returns object with start and end properties', () => {
       const result = defaultTimeRange()
-      
+
       expect(result).toHaveProperty('start')
       expect(result).toHaveProperty('end')
       expect(typeof result.start).toBe('string')
@@ -1285,7 +1385,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('generates correct URL for account address', () => {
       const address = '0xABC123'
       const result = getCalendarRegularUrl(address)
-      
+
       expect(result).toContain('/address/')
       expect(result).toContain(address)
     })
@@ -1293,13 +1393,13 @@ describe('calendar_manager - Quality Tests', () => {
     it('includes app URL in the result', () => {
       const address = '0xABC123'
       const result = getCalendarRegularUrl(address)
-      
+
       expect(result).toMatch(/^https?:\/\//)
     })
 
     it('handles different address formats', () => {
       const addresses = ['0xABC123', '0x123456789', 'test-address']
-      
+
       addresses.forEach(address => {
         const result = getCalendarRegularUrl(address)
         expect(result).toContain(address)
@@ -1341,7 +1441,9 @@ describe('calendar_manager - Quality Tests', () => {
     it('returns fallback URL when account not found', async () => {
       const ownerAddress = '0xABC123'
 
-      ;(apiHelper.getAccount as jest.Mock).mockRejectedValue(new Error('Not found'))
+      ;(apiHelper.getAccount as jest.Mock).mockRejectedValue(
+        new Error('Not found')
+      )
 
       const result = await getOwnerPublicUrl(ownerAddress)
 
@@ -1352,7 +1454,9 @@ describe('calendar_manager - Quality Tests', () => {
     it('handles error gracefully and returns address URL', async () => {
       const ownerAddress = '0xABC123'
 
-      ;(apiHelper.getAccount as jest.Mock).mockRejectedValue(new Error('Network error'))
+      ;(apiHelper.getAccount as jest.Mock).mockRejectedValue(
+        new Error('Network error')
+      )
 
       const result = await getOwnerPublicUrl(ownerAddress)
 
@@ -1365,7 +1469,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('formats date in correct Google Calendar format', () => {
       const date = new Date('2024-01-15T10:30:00Z')
       const result = googleUrlParsedDate(date)
-      
+
       expect(result).toMatch(/^\d{8}T\d{6}Z$/)
     })
 
@@ -1375,7 +1479,7 @@ describe('calendar_manager - Quality Tests', () => {
         new Date('2024-06-15T12:00:00Z'),
         new Date('2024-12-31T23:59:59Z'),
       ]
-      
+
       dates.forEach(date => {
         const result = googleUrlParsedDate(date)
         expect(result).toMatch(/^\d{8}T\d{6}Z$/)
@@ -1387,7 +1491,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('pads single digit values correctly', () => {
       const date = new Date('2024-01-05T09:05:03Z')
       const result = googleUrlParsedDate(date)
-      
+
       expect(result).toContain('20240105')
     })
   })
@@ -1396,7 +1500,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('formats date in correct Outlook format', () => {
       const date = new Date('2024-01-15T10:30:00Z')
       const result = outLookUrlParsedDate(date)
-      
+
       expect(result).toMatch(/^\d{4}-\d{2}-\d{2}:\d{2}:\d{2}:\d{2}Z$/)
     })
 
@@ -1406,7 +1510,7 @@ describe('calendar_manager - Quality Tests', () => {
         new Date('2024-06-15T12:00:00Z'),
         new Date('2024-12-31T23:59:59Z'),
       ]
-      
+
       dates.forEach(date => {
         const result = outLookUrlParsedDate(date)
         expect(result).toMatch(/^\d{4}-\d{2}-\d{2}:\d{2}:\d{2}:\d{2}Z$/)
@@ -1416,7 +1520,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('includes colons and hyphens in format', () => {
       const date = new Date('2024-01-15T10:30:00Z')
       const result = outLookUrlParsedDate(date)
-      
+
       expect(result).toContain('-')
       expect(result).toContain(':')
       expect(result).toContain('Z')
@@ -1425,26 +1529,30 @@ describe('calendar_manager - Quality Tests', () => {
 
   describe('generateGoogleCalendarUrl', () => {
     beforeEach(() => {
-      ;(apiHelper.getAccountPrimaryCalendarEmail as jest.Mock).mockResolvedValue('test@example.com')
+      ;(
+        apiHelper.getAccountPrimaryCalendarEmail as jest.Mock
+      ).mockResolvedValue('test@example.com')
     })
 
     it('generates base URL for Google Calendar', async () => {
       const result = await generateGoogleCalendarUrl('meeting123', '0xABC')
-      
-      expect(result).toContain('https://calendar.google.com/calendar/r/eventedit')
+
+      expect(result).toContain(
+        'https://calendar.google.com/calendar/r/eventedit'
+      )
     })
 
     it('includes start and end dates when provided', async () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const end = new Date('2024-01-15T11:00:00Z')
-      
+
       const result = await generateGoogleCalendarUrl(
         'meeting123',
         '0xABC',
         start,
         end
       )
-      
+
       expect(result).toContain('dates=')
     })
 
@@ -1456,7 +1564,7 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         'Test Meeting'
       )
-      
+
       expect(result).toContain('text=Test Meeting')
     })
 
@@ -1471,7 +1579,7 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         'America/New_York'
       )
-      
+
       expect(result).toContain('ctz=America/New_York')
     })
 
@@ -1489,7 +1597,7 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         MeetingRepeat.WEEKLY
       )
-      
+
       expect(result).toContain('recur=')
       expect(result).toContain('FREQ=WEEKLY')
     })
@@ -1508,7 +1616,7 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         MeetingRepeat.MONTHLY
       )
-      
+
       expect(result).toContain('recur=')
       expect(result).toContain('FREQ=MONTHLY')
     })
@@ -1535,7 +1643,7 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         participants
       )
-      
+
       expect(result).toContain('to=')
       expect(apiHelper.getAccountPrimaryCalendarEmail).toHaveBeenCalled()
     })
@@ -1569,7 +1677,7 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         participants
       )
-      
+
       expect(result).toContain('to=test@example.com')
       expect(apiHelper.getAccountPrimaryCalendarEmail).toHaveBeenCalledTimes(1)
     })
@@ -1577,7 +1685,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('uses guest email when participant has no account_address', async () => {
       const participants: ParticipantInfo[] = [
         {
-          guest_email: 'guest@example.com',
+          guest_email: 'fumudukus@gmail.com',
           meeting_id: 'meeting123',
           slot_id: 'slot1',
           status: ParticipationStatus.Accepted,
@@ -1596,44 +1704,48 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         participants
       )
-      
-      expect(result).toContain('to=guest@example.com')
+
+      expect(result).toContain('to=fumudukus@gmail.com')
     })
   })
 
   describe('generateOffice365CalendarUrl', () => {
     beforeEach(() => {
-      ;(apiHelper.getAccountPrimaryCalendarEmail as jest.Mock).mockResolvedValue('test@example.com')
+      ;(
+        apiHelper.getAccountPrimaryCalendarEmail as jest.Mock
+      ).mockResolvedValue('test@example.com')
     })
 
     it('generates base URL for Office 365 Calendar', async () => {
       const result = await generateOffice365CalendarUrl('meeting123', '0xABC')
-      
-      expect(result).toContain('https://outlook.office.com/calendar/deeplink/compose')
+
+      expect(result).toContain(
+        'https://outlook.office.com/calendar/deeplink/compose'
+      )
     })
 
     it('includes start date when provided', async () => {
       const start = new Date('2024-01-15T10:00:00Z')
-      
+
       const result = await generateOffice365CalendarUrl(
         'meeting123',
         '0xABC',
         start
       )
-      
+
       expect(result).toContain('startdt=')
     })
 
     it('includes end date when provided', async () => {
       const end = new Date('2024-01-15T11:00:00Z')
-      
+
       const result = await generateOffice365CalendarUrl(
         'meeting123',
         '0xABC',
         undefined,
         end
       )
-      
+
       expect(result).toContain('enddt=')
     })
 
@@ -1645,7 +1757,7 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         'Test Meeting'
       )
-      
+
       expect(result).toContain('subject=Test Meeting')
     })
 
@@ -1671,14 +1783,14 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         participants
       )
-      
+
       expect(result).toContain('to=')
     })
 
     it('uses guest email for participants', async () => {
       const participants: ParticipantInfo[] = [
         {
-          guest_email: 'guest@example.com',
+          guest_email: 'fumudukus@gmail.com',
           meeting_id: 'meeting123',
           slot_id: 'slot1',
           status: ParticipationStatus.Accepted,
@@ -1697,8 +1809,8 @@ describe('calendar_manager - Quality Tests', () => {
         undefined,
         participants
       )
-      
-      expect(result).toContain('to=guest@example.com')
+
+      expect(result).toContain('to=fumudukus@gmail.com')
     })
   })
 
@@ -1706,40 +1818,40 @@ describe('calendar_manager - Quality Tests', () => {
     it('selects Google Meet when available', () => {
       const providers = [MeetingProvider.GOOGLE_MEET, MeetingProvider.ZOOM]
       const result = selectDefaultProvider(providers)
-      
+
       expect(result).toBe(MeetingProvider.GOOGLE_MEET)
     })
 
     it('selects Zoom when Google Meet not available', () => {
       const providers = [MeetingProvider.ZOOM, MeetingProvider.CUSTOM]
       const result = selectDefaultProvider(providers)
-      
+
       expect(result).toBe(MeetingProvider.ZOOM)
     })
 
     it('selects Jitsi when Google Meet and Zoom not available', () => {
       const providers = [MeetingProvider.JITSI_MEET]
       const result = selectDefaultProvider(providers)
-      
+
       expect(result).toBe(MeetingProvider.JITSI_MEET)
     })
 
     it('selects Huddle as default fallback', () => {
       const providers = [MeetingProvider.CUSTOM]
       const result = selectDefaultProvider(providers)
-      
+
       expect(result).toBe(MeetingProvider.HUDDLE)
     })
 
     it('handles empty provider list', () => {
       const result = selectDefaultProvider([])
-      
+
       expect(result).toBe(MeetingProvider.HUDDLE)
     })
 
     it('handles undefined provider list', () => {
       const result = selectDefaultProvider(undefined)
-      
+
       expect(result).toBe(MeetingProvider.HUDDLE)
     })
 
@@ -1751,7 +1863,7 @@ describe('calendar_manager - Quality Tests', () => {
         MeetingProvider.GOOGLE_MEET,
       ]
       const result = selectDefaultProvider(providers)
-      
+
       expect(result).toBe(MeetingProvider.GOOGLE_MEET)
     })
   })
@@ -1759,7 +1871,7 @@ describe('calendar_manager - Quality Tests', () => {
   describe('createAlarm', () => {
     it('creates 15 minute reminder', () => {
       const alarm = createAlarm(MeetingReminders['15_MINUTES_BEFORE'])
-      
+
       expect(alarm.action).toBe('display')
       expect(alarm.description).toBe('Reminder')
       expect(alarm.trigger).toEqual({ before: true, minutes: 15 })
@@ -1767,31 +1879,31 @@ describe('calendar_manager - Quality Tests', () => {
 
     it('creates 30 minute reminder', () => {
       const alarm = createAlarm(MeetingReminders['30_MINUTES_BEFORE'])
-      
+
       expect(alarm.trigger).toEqual({ before: true, minutes: 30 })
     })
 
     it('creates 1 hour reminder', () => {
       const alarm = createAlarm(MeetingReminders['1_HOUR_BEFORE'])
-      
+
       expect(alarm.trigger).toEqual({ before: true, hours: 1 })
     })
 
     it('creates 1 day reminder', () => {
       const alarm = createAlarm(MeetingReminders['1_DAY_BEFORE'])
-      
+
       expect(alarm.trigger).toEqual({ before: true, days: 1 })
     })
 
     it('creates 1 week reminder', () => {
       const alarm = createAlarm(MeetingReminders['1_WEEK_BEFORE'])
-      
+
       expect(alarm.trigger).toEqual({ before: true, weeks: 1 })
     })
 
     it('creates 10 minute reminder as default', () => {
       const alarm = createAlarm(MeetingReminders['10_MINUTES_BEFORE'])
-      
+
       expect(alarm.trigger).toEqual({ before: true, minutes: 10 })
     })
 
@@ -1804,7 +1916,7 @@ describe('calendar_manager - Quality Tests', () => {
         MeetingReminders['1_DAY_BEFORE'],
         MeetingReminders['1_WEEK_BEFORE'],
       ]
-      
+
       reminders.forEach(reminder => {
         const alarm = createAlarm(reminder)
         expect(alarm.action).toBe('display')
@@ -1842,7 +1954,7 @@ describe('calendar_manager - Quality Tests', () => {
         ParticipationStatus.Pending,
         ParticipationStatus.Pending,
       ]
-      
+
       statuses.forEach(status => {
         const result = participantStatusToICSStatus(status)
         expect(result).toBeDefined()
@@ -1855,14 +1967,14 @@ describe('calendar_manager - Quality Tests', () => {
     it('returns empty array for NO_REPEAT', () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const result = handleRRULEForMeeting(MeetingRepeat.NO_REPEAT, start)
-      
+
       expect(result).toEqual([])
     })
 
     it('generates RRULE for DAILY recurrence', () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const result = handleRRULEForMeeting(MeetingRepeat.DAILY, start)
-      
+
       expect(result).toBeDefined()
       expect(Array.isArray(result)).toBe(true)
       expect(result.length).toBeGreaterThan(0)
@@ -1872,7 +1984,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('generates RRULE for WEEKLY recurrence', () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const result = handleRRULEForMeeting(MeetingRepeat.WEEKLY, start)
-      
+
       expect(result).toBeDefined()
       expect(result.join('')).toContain('FREQ=WEEKLY')
     })
@@ -1880,7 +1992,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('generates RRULE for MONTHLY recurrence', () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const result = handleRRULEForMeeting(MeetingRepeat.MONTHLY, start)
-      
+
       expect(result).toBeDefined()
       expect(result.join('')).toContain('FREQ=MONTHLY')
     })
@@ -1888,7 +2000,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('handles Monday for monthly recurrence', () => {
       const start = new Date('2024-01-15T10:00:00Z') // This is a Monday
       const result = handleRRULEForMeeting(MeetingRepeat.MONTHLY, start)
-      
+
       expect(result.join('')).toContain('BYDAY=MO')
     })
 
@@ -1900,7 +2012,7 @@ describe('calendar_manager - Quality Tests', () => {
         new Date('2024-01-18T10:00:00Z'), // Thursday
         new Date('2024-01-19T10:00:00Z'), // Friday
       ]
-      
+
       dates.forEach(date => {
         const result = handleRRULEForMeeting(MeetingRepeat.MONTHLY, date)
         expect(result).toBeDefined()
@@ -1911,7 +2023,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('filters out DTSTART from RRULE', () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const result = handleRRULEForMeeting(MeetingRepeat.DAILY, start)
-      
+
       const hasDateStart = result.some(line => line.startsWith('DTSTART:'))
       expect(hasDateStart).toBe(false)
     })
@@ -1919,7 +2031,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('generates valid RRULE format', () => {
       const start = new Date('2024-01-15T10:00:00Z')
       const result = handleRRULEForMeeting(MeetingRepeat.WEEKLY, start)
-      
+
       expect(result).toBeDefined()
       result.forEach(line => {
         expect(typeof line).toBe('string')
@@ -1931,7 +2043,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('returns false for identical RRULEs', () => {
       const rrule1 = ['RRULE:FREQ=DAILY;INTERVAL=1']
       const rrule2 = ['RRULE:FREQ=DAILY;INTERVAL=1']
-      
+
       const result = isDiffRRULE(rrule1, rrule2)
       expect(result).toBe(false)
     })
@@ -1939,7 +2051,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('returns true for different RRULEs', () => {
       const rrule1 = ['RRULE:FREQ=DAILY;INTERVAL=1']
       const rrule2 = ['RRULE:FREQ=WEEKLY;INTERVAL=1']
-      
+
       const result = isDiffRRULE(rrule1, rrule2)
       expect(result).toBe(true)
     })
@@ -1947,7 +2059,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('returns true for different array lengths', () => {
       const rrule1 = ['RRULE:FREQ=DAILY;INTERVAL=1']
       const rrule2 = ['RRULE:FREQ=DAILY;INTERVAL=1', 'EXTRA']
-      
+
       const result = isDiffRRULE(rrule1, rrule2)
       expect(result).toBe(true)
     })
@@ -1960,7 +2072,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('handles whitespace correctly (trims)', () => {
       const rrule1 = ['RRULE:FREQ=DAILY;INTERVAL=1']
       const rrule2 = [' RRULE:FREQ=DAILY;INTERVAL=1 ']
-      
+
       const result = isDiffRRULE(rrule1, rrule2)
       expect(result).toBe(false)
     })
@@ -1968,7 +2080,7 @@ describe('calendar_manager - Quality Tests', () => {
     it('returns true for different rules in multi-line arrays', () => {
       const rrule1 = ['RRULE:FREQ=DAILY;INTERVAL=1', 'LINE2']
       const rrule2 = ['RRULE:FREQ=DAILY;INTERVAL=1', 'DIFFERENT']
-      
+
       const result = isDiffRRULE(rrule1, rrule2)
       expect(result).toBe(true)
     })
@@ -1998,7 +2110,7 @@ describe('calendar_manager - Quality Tests', () => {
           freq: 0, // Unknown frequency
         },
       } as any
-      
+
       const result = getMeetingRepeatFromRule(mockRule)
       expect(result).toBe(MeetingRepeat.NO_REPEAT)
     })

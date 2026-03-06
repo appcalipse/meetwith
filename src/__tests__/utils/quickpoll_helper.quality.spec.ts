@@ -1351,7 +1351,7 @@ describe('quickpoll_helper - Quality Tests', () => {
             },
             {
               id: 'p2',
-              guest_email: 'guest@example.com',
+              guest_email: 'fumudukus@gmail.com',
               participant_type: QuickPollParticipantType.INVITEE,
               poll_id: 'poll1',
               created_at: '2024-01-01',
@@ -1382,7 +1382,7 @@ describe('quickpoll_helper - Quality Tests', () => {
             },
             {
               id: 'p2',
-              guest_email: 'guest@example.com',
+              guest_email: 'fumudukus@gmail.com',
               participant_type: QuickPollParticipantType.INVITEE,
               poll_id: 'poll1',
               created_at: '2024-01-01',
@@ -1414,7 +1414,7 @@ describe('quickpoll_helper - Quality Tests', () => {
             },
             {
               id: 'p2',
-              guest_email: 'guest@example.com',
+              guest_email: 'fumudukus@gmail.com',
               participant_type: QuickPollParticipantType.INVITEE,
               account_address: '0xguest',
               poll_id: 'poll1',
@@ -1518,7 +1518,7 @@ describe('quickpoll_helper - Quality Tests', () => {
           participants: [
             {
               id: 'p1',
-              guest_email: 'guest@example.com',
+              guest_email: 'fumudukus@gmail.com',
               guest_name: 'Guest Name',
               participant_type: QuickPollParticipantType.INVITEE,
               poll_id: 'poll1',

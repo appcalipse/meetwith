@@ -204,7 +204,7 @@ describe('email_helper - newMeetingEmail', () => {
       mockRequestParticipantMapping({
         meeting_id,
         account_address: undefined,
-        guest_email: 'guest@example.com',
+        guest_email: 'fumudukus@gmail.com',
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Pending,
         name: 'Guest User',
@@ -241,7 +241,7 @@ describe('email_helper - newMeetingEmail', () => {
 
     const participant = mockParticipantInfoForNotification({
       account_address: undefined,
-      guest_email: 'guest@example.com',
+      guest_email: 'fumudukus@gmail.com',
       meeting_id,
       type: ParticipantType.Scheduler,
       status: ParticipationStatus.Pending,
@@ -250,7 +250,7 @@ describe('email_helper - newMeetingEmail', () => {
     })
 
     const result = await newMeetingEmail(
-      'guest@example.com',
+      'fumudukus@gmail.com',
       participant,
       meetingDetails
     )
