@@ -11,6 +11,7 @@ export enum PollStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
   EXPIRED = 'expired',
+  CLOSED = 'closed',
 }
 
 export enum PollVisibility {
@@ -251,7 +252,7 @@ export interface QuickPollResponse {
   can_edit: boolean
 }
 
-export interface CancelQuickPollResponse {
+export interface CloseQuickPollResponse {
   success: boolean
   poll: QuickPoll
 }
