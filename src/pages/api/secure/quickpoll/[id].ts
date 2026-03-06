@@ -12,16 +12,16 @@ import {
   QUICKPOLL_MIN_DURATION_MINUTES,
 } from '@/utils/constants'
 import {
-  cancelQuickPoll,
+  closeQuickPoll,
   deleteQuickPoll,
   getQuickPollById,
   getQuickPollParticipants,
   updateQuickPoll,
 } from '@/utils/database'
 import {
-  QuickPollAlreadyCancelledError,
+  QuickPollAlreadyClosedError,
   QuickPollAlreadyCompletedError,
-  QuickPollCancellationError,
+  QuickPollCloseError,
   QuickPollDeletionError,
   QuickPollNotFoundError,
   QuickPollParticipantCreationError,
@@ -149,10 +149,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (method === 'PATCH') {
-      const cancelledPoll = await cancelQuickPoll(pollId, address)
+      const closedPoll = await closeQuickPoll(pollId, address)
 
       return res.status(200).json({
-        poll: cancelledPoll,
+        poll: closedPoll,
         success: true,
       })
     }
@@ -174,14 +174,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (
       error instanceof QuickPollUpdateError ||
       error instanceof QuickPollDeletionError ||
-      error instanceof QuickPollCancellationError ||
+      error instanceof QuickPollCloseError ||
       error instanceof QuickPollParticipantCreationError
     ) {
       return res.status(500).json({ error: error.message })
     }
 
     if (
-      error instanceof QuickPollAlreadyCancelledError ||
+      error instanceof QuickPollAlreadyClosedError ||
       error instanceof QuickPollAlreadyCompletedError
     ) {
       return res.status(409).json({ error: error.message })

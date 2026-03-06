@@ -226,9 +226,9 @@ import {
   NotGroupAdminError,
   NotGroupMemberError,
   OwnInviteError,
-  QuickPollAlreadyCancelledError,
+  QuickPollAlreadyClosedError,
   QuickPollAlreadyCompletedError,
-  QuickPollCancellationError,
+  QuickPollCloseError,
   QuickPollCreationError,
   QuickPollDeletionError,
   QuickPollNotFoundError,
@@ -9708,7 +9708,7 @@ const addQuickPollParticipant = async (
   }
 }
 
-const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
+const closeQuickPoll = async (pollId: string, ownerAddress: string) => {
   try {
     const { data: poll, error: pollError } = await db.supabase
       .from('quick_polls')
@@ -9722,7 +9722,7 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
     }
 
     if (poll.status === PollStatus.CLOSED) {
-      throw new QuickPollAlreadyCancelledError()
+      throw new QuickPollAlreadyClosedError()
     }
 
     if (poll.status === PollStatus.COMPLETED) {
@@ -9740,7 +9740,7 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
 
     if (participantError || !participant) {
       throw new QuickPollUnauthorizedError(
-        'Only the poll creator can cancel this poll'
+        'Only the poll creator can close this poll'
       )
     }
 
@@ -9763,12 +9763,12 @@ const cancelQuickPoll = async (pollId: string, ownerAddress: string) => {
     if (
       error instanceof QuickPollNotFoundError ||
       error instanceof QuickPollUnauthorizedError ||
-      error instanceof QuickPollAlreadyCancelledError ||
+      error instanceof QuickPollAlreadyClosedError ||
       error instanceof QuickPollAlreadyCompletedError
     ) {
       throw error
     }
-    throw new QuickPollCancellationError(
+    throw new QuickPollCloseError(
       error instanceof Error ? error.message : 'Unknown error'
     )
   }
@@ -11042,7 +11042,7 @@ export {
   addQuickPollParticipant,
   addUserToGroup,
   bulkUpdateSlotSeriesConfirmedSlots,
-  cancelQuickPoll,
+  closeQuickPoll,
   changeGroupRole,
   checkContactExists,
   cleanupExpiredVerifications,

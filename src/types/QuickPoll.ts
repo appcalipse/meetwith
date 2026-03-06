@@ -251,7 +251,7 @@ export interface QuickPollResponse {
   can_edit: boolean
 }
 
-export interface CancelQuickPollResponse {
+export interface CloseQuickPollResponse {
   success: boolean
   poll: QuickPoll
 }

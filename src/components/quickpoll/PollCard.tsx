@@ -63,7 +63,7 @@ const PollCard = ({
   const { fetchPollCounts } = useContext(MetricStateContext)
   const currentAccount = useAccountContext()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false)
+  const [isReopenModalOpen, setIsReopenModalOpen] = useState(false)
 
   // Determine if user is host based on participant type
   const isHost =
@@ -107,8 +107,8 @@ const PollCard = ({
     },
   })
 
-  // Restore poll mutation
-  const restorePollMutation = useMutation({
+  // Reopen poll mutation
+  const reopenPollMutation = useMutation({
     mutationFn: () => {
       const now = new Date()
       const fourteenDaysFromNow = new Date(
@@ -127,16 +127,16 @@ const PollCard = ({
     },
     onSuccess: () => {
       showSuccessToast(
-        'Poll restored successfully',
-        'The poll has been restored and is now active for 14 days'
+        'Poll reopened successfully',
+        'The poll has been reopened and is now active for 14 days'
       )
-      setIsRestoreModalOpen(false)
+      setIsReopenModalOpen(false)
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
       void fetchPollCounts()
     },
     onError: error => {
-      handleApiError('Failed to restore poll', error)
+      handleApiError('Failed to reopen poll', error)
     },
   })
 
@@ -204,8 +204,8 @@ const PollCard = ({
     deletePollMutation.mutate()
   }
 
-  const handleRestorePoll = () => {
-    restorePollMutation.mutate()
+  const handleReopenPoll = () => {
+    reopenPollMutation.mutate()
   }
 
   return (
@@ -308,9 +308,9 @@ const PollCard = ({
                                 bg="menu-bg"
                                 color="green.400"
                                 _hover={{ bg: 'menu-item-hover' }}
-                                onClick={() => setIsRestoreModalOpen(true)}
+                                onClick={() => setIsReopenModalOpen(true)}
                               >
-                                Restore Poll
+                                Reopen Poll
                               </MenuItem>
                               <MenuItem
                                 icon={<FiTrash2 size={16} />}
@@ -555,9 +555,9 @@ const PollCard = ({
                             bg="menu-bg"
                             color="green.400"
                             _hover={{ bg: 'menu-item-hover' }}
-                            onClick={() => setIsRestoreModalOpen(true)}
+                            onClick={() => setIsReopenModalOpen(true)}
                           >
-                            Restore Poll
+                            Reopen Poll
                           </MenuItem>
                           <MenuItem
                             icon={<FiTrash2 size={16} />}
@@ -817,10 +817,10 @@ const PollCard = ({
         </ModalContent>
       </Modal>
 
-      {/* Restore Poll Confirmation Modal */}
+      {/* Reopen Poll Confirmation Modal */}
       <Modal
-        onClose={() => setIsRestoreModalOpen(false)}
-        isOpen={isRestoreModalOpen}
+        onClose={() => setIsReopenModalOpen(false)}
+        isOpen={isReopenModalOpen}
         blockScrollOnMount={false}
         size="lg"
         isCentered
@@ -843,22 +843,22 @@ const PollCard = ({
             alignItems="center"
           >
             <Heading size="md" color="text-primary">
-              Restore Poll
+              Reopen Poll
             </Heading>
             <ModalCloseButton color="text-primary" />
           </ModalHeader>
           <ModalBody p="0" mt="6">
             <VStack gap={6}>
               <Text size="base" color="text-primary">
-                This poll will be restored for poll participation. It will have
-                an expiry of 14 days from now, and participants will be able to
-                respond to the poll again.
+                This poll will be reopened for participation. It will have an
+                expiry of 14 days from now, and participants will be able to
+                respond again.
               </Text>
               <HStack ml="auto" w="fit-content" mt="6" gap="4">
                 <Button
-                  onClick={() => setIsRestoreModalOpen(false)}
+                  onClick={() => setIsReopenModalOpen(false)}
                   colorScheme="neutral"
-                  isDisabled={restorePollMutation.isLoading}
+                  isDisabled={reopenPollMutation.isLoading}
                   bg="transparent"
                   color="primary.200"
                   _hover={{ bg: 'transparent' }}
@@ -871,13 +871,13 @@ const PollCard = ({
                   bg="green.600"
                   _hover={{ bg: 'green.600' }}
                   color="white"
-                  isLoading={restorePollMutation.isLoading}
-                  loadingText="Restoring poll..."
-                  onClick={handleRestorePoll}
+                  isLoading={reopenPollMutation.isLoading}
+                  loadingText="Reopening poll..."
+                  onClick={handleReopenPoll}
                   colorScheme="green"
-                  isDisabled={restorePollMutation.isLoading}
+                  isDisabled={reopenPollMutation.isLoading}
                 >
-                  Restore Poll
+                  Reopen Poll
                 </Button>
               </HStack>
             </VStack>

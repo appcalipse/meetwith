@@ -755,10 +755,10 @@ export class QuickPollUpdateError extends Error {
   }
 }
 
-export class QuickPollCancellationError extends Error {
-  constructor(message = 'Error cancelling quick poll') {
+export class QuickPollCloseError extends Error {
+  constructor(message = 'Error closing quick poll') {
     super(message)
-    this.name = 'QuickPollCancellationError'
+    this.name = 'QuickPollCloseError'
   }
 }
 
@@ -825,10 +825,10 @@ export class QuickPollExpiredError extends Error {
   }
 }
 
-export class QuickPollAlreadyCancelledError extends Error {
+export class QuickPollAlreadyClosedError extends Error {
   constructor() {
-    super('This poll has already been cancelled')
-    this.name = 'QuickPollAlreadyCancelledError'
+    super('This poll has already been closed')
+    this.name = 'QuickPollAlreadyClosedError'
   }
 }
 
