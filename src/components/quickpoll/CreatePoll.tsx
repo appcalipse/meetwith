@@ -151,6 +151,12 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   } = useDisclosure()
 
   const {
+    isOpen: isAvailabilityModalOpen,
+    onOpen: openAvailabilityModal,
+    onClose: closeAvailabilityModal,
+  } = useDisclosure()
+
+  const {
     participants,
     setParticipants,
     groupAvailability,

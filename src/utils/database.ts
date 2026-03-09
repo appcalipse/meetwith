@@ -127,7 +127,6 @@ import {
   PollStatus,
   PollVisibility,
   QuickPollCalendar,
-  QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
   QuickPollParticipantUpdateFields,
@@ -170,6 +169,11 @@ import {
   OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
+import { mergeWeeklyAvailabilityFromBlocksWithTimezone } from '@/utils/availability.helper'
+import {
+  mergeWeeklyAvailabilityFromBlocks,
+  mergeWeeklyAvailabilityFromBlocksWithTimezone,
+} from '@/utils/availability.helper'
 import {
   mergeWeeklyAvailabilityFromBlocks,
   mergeWeeklyAvailabilityFromBlocksWithTimezone,
@@ -2592,6 +2596,8 @@ const updateRecurringMeeting = async (
     timezone,
     title: meetingUpdateRequest.title,
     ical_uid: existingSerie.ical_uid,
+    isDeleteEvent: meetingUpdateRequest.isDeleteUpdate,
+    calendar_organizer_address: meetingUpdateRequest.calendar_organizer_address,
   }
 
   // Doing notifications and syncs asynchronously
@@ -4561,6 +4567,7 @@ const updateMeeting = async (
     timezone,
     title: meetingUpdateRequest.title,
     calendar_organizer_address: meetingUpdateRequest.calendar_organizer_address,
+    isDeleteEvent: meetingUpdateRequest.isDeleteUpdate,
   }
 
   // Doing notifications and syncs asynchronously
@@ -4709,6 +4716,7 @@ const updateMeetingInstance = async (
       timezone,
       title: meetingUpdateRequest.title,
       ical_uid: slotSerie?.ical_uid,
+      isDeleteEvent: meetingUpdateRequest.isDeleteUpdate,
     }
     // Doing notifications and syncs asynchronously
     fetch(`${apiUrl}/server/meetings/instance/syncAndNotify`, {

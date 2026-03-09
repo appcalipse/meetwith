@@ -38,6 +38,7 @@ import {
   newGroupInviteEmail,
   newGroupRejectEmail,
   newMeetingEmail,
+  participantLeftMeetingEmail,
   updateMeetingEmail,
 } from './email_helper'
 import { dmAccount } from './services/discord.helper'
@@ -58,7 +59,10 @@ export interface ParticipantInfoForInviteNotification
 }
 type EmailNotificationRequest =
   | {
-      changeType: MeetingChangeType.CREATE | MeetingChangeType.UPDATE
+      changeType:
+        | MeetingChangeType.CREATE
+        | MeetingChangeType.UPDATE
+        | MeetingChangeType.EXIT
       meetingDetails: MeetingCreationSyncRequest
     }
   | {
@@ -127,7 +131,10 @@ export const notifyForMeetingCancellation = async (
 }
 
 export const notifyForOrUpdateNewMeeting = async (
-  meetingChangeType: MeetingChangeType.CREATE | MeetingChangeType.UPDATE,
+  meetingChangeType:
+    | MeetingChangeType.CREATE
+    | MeetingChangeType.EXIT
+    | MeetingChangeType.UPDATE,
   meetingDetails: MeetingCreationSyncRequest
 ): Promise<void> => {
   const participantsInfo = await setupParticipants(meetingDetails.participants)
@@ -327,6 +334,22 @@ const getEmailNotification = async (
         participant,
         request.meetingDetails
       )
+
+    case MeetingChangeType.EXIT:
+      if (request.changeType !== MeetingChangeType.EXIT) {
+        return Promise.resolve(false)
+      }
+      const leftDisplayName = getParticipantActingDisplayName(
+        participantActing,
+        participant
+      )
+      return participantLeftMeetingEmail(
+        leftDisplayName,
+        toEmail,
+        request.meetingDetails,
+        participant.account_address
+      )
+
     default:
   }
   return Promise.resolve(false)
@@ -434,6 +457,17 @@ const getNotificationMessage = async (
           }
         }
         return message
+      case MeetingChangeType.EXIT:
+        actor = getParticipantActingDisplayName(
+          request.meetingDetails.participantActing,
+          participant
+        )
+        return `${actor} is no longer attending the meeting at ${dateToHumanReadable(
+          start,
+          participant.timezone,
+          true
+        )}.`
+
       default:
         return ''
     }
