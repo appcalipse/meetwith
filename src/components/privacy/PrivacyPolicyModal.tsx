@@ -61,17 +61,49 @@ const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
   const canAgree = hasScrolledToEnd
 
   useEffect(() => {
-    if (!isOpen || !scrollRef.current || !sentinelRef.current) return
-    const root = scrollRef.current
-    const sentinel = sentinelRef.current
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setHasScrolledToEnd(true)
-      },
-      { root, rootMargin: '0px', threshold: 0 }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
+    if (!isOpen) return
+
+    setHasScrolledToEnd(false)
+
+    let observer: IntersectionObserver | null = null
+    let frameId = 0
+
+    const attachObserver = () => {
+      const root = scrollRef.current
+      const sentinel = sentinelRef.current
+
+      if (!root || !sentinel) {
+        frameId = window.requestAnimationFrame(attachObserver)
+        return
+      }
+
+      const markIfScrolledToBottom = () => {
+        const nearBottom =
+          root.scrollTop + root.clientHeight >= root.scrollHeight - 2
+        if (nearBottom) setHasScrolledToEnd(true)
+      }
+
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setHasScrolledToEnd(true)
+        },
+        { root, rootMargin: '0px', threshold: 0 }
+      )
+
+      observer.observe(sentinel)
+      root.addEventListener('scroll', markIfScrolledToBottom, { passive: true })
+      markIfScrolledToBottom()
+
+      return () => root.removeEventListener('scroll', markIfScrolledToBottom)
+    }
+
+    const cleanupScrollListener = attachObserver()
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      observer?.disconnect()
+      cleanupScrollListener?.()
+    }
   }, [isOpen])
 
   const mutation = useMutation({
@@ -227,20 +259,16 @@ const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
                   Tips and educational content
                 </Text>
               </Checkbox>
-              <Box ref={sentinelRef}>
-                <Checkbox
-                  colorScheme="orange"
-                  isChecked={researchAndFeedbackRequests}
-                  onChange={e =>
-                    setResearchAndFeedbackRequests(e.target.checked)
-                  }
-                  color="text-primary"
-                >
-                  <Text color="text-primary" fontSize="sm">
-                    Research and feedback requests
-                  </Text>
-                </Checkbox>
-              </Box>
+              <Checkbox
+                colorScheme="orange"
+                isChecked={researchAndFeedbackRequests}
+                onChange={e => setResearchAndFeedbackRequests(e.target.checked)}
+                color="text-primary"
+              >
+                <Text color="text-primary" fontSize="sm">
+                  Research and feedback requests
+                </Text>
+              </Checkbox>
             </VStack>
 
             {showEmailSection && (
@@ -296,6 +324,7 @@ const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
                 </Flex>
               </Box>
             )}
+            <Box ref={sentinelRef} aria-hidden="true" h="1px" />
           </Box>
 
           {!showEmailSection && (
