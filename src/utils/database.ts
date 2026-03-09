@@ -169,15 +169,12 @@ import {
   OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
-import { mergeWeeklyAvailabilityFromBlocksWithTimezone } from '@/utils/availability.helper'
+
 import {
   mergeWeeklyAvailabilityFromBlocks,
   mergeWeeklyAvailabilityFromBlocksWithTimezone,
 } from '@/utils/availability.helper'
-import {
-  mergeWeeklyAvailabilityFromBlocks,
-  mergeWeeklyAvailabilityFromBlocksWithTimezone,
-} from '@/utils/availability.helper'
+
 import {
   MODIFIED_BY_APP_TIMEOUT,
   PaymentNotificationType,
