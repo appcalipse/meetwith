@@ -14,8 +14,10 @@ import { logEvent } from '@utils/analytics'
 import {
   createTelegramHash,
   deleteDiscordIntegration,
+  deleteMeetingProvider,
   disconnectStripeAccount,
   generateDashboardLink,
+  getGoogleMeetAuthUrl,
   getNotificationSubscriptions,
   getPendingTgConnection,
   getStripeOnboardingLink,
@@ -57,6 +59,8 @@ const getContent = (connect_account: ConnectedAccount) => {
       return 'Connect your Discord to enable notifications and Discord bot commands'
     case ConnectedAccount.TELEGRAM:
       return 'Connect to receive notifications for your meetings.'
+    case ConnectedAccount.GOOGLE_MEET:
+      return 'Connect your Google Meet account to enable gated meeting entry.'
     default:
       return null
   }
@@ -109,6 +113,13 @@ const AccountCard: FC<IProps> = props => {
         await disconnectStripeAccount()
       },
       errorMessage: 'Failed to disconnect Stripe account',
+      logEvent: true,
+    },
+    [ConnectedAccount.GOOGLE_MEET]: {
+      handler: async () => {
+        await deleteMeetingProvider(ConnectedAccount.GOOGLE_MEET)
+      },
+      errorMessage: 'Failed to disconnect Google Meet account',
       logEvent: true,
     },
   }
@@ -190,6 +201,14 @@ const AccountCard: FC<IProps> = props => {
       errorMessage: 'Stripe Connection error, Please retry',
       logEvent: true,
       disableSuccessAction: true,
+    },
+    [ConnectedAccount.GOOGLE_MEET]: {
+      handler: async () => {
+        const { url } = await getGoogleMeetAuthUrl()
+        window.open(url, '_self')
+      },
+      errorMessage: 'Google Meet Connection error, Please retry',
+      logEvent: true,
     },
   }
   const handleUpdateDetails = async () => {
@@ -381,7 +400,7 @@ const AccountCard: FC<IProps> = props => {
             fontWeight={700}
             textTransform="capitalize"
           >
-            {`Connect ${props.account}`}
+            {`Connect ${props.account.replaceAll('-', ' ')}`}
           </Button>
         )}
         {isPaymentAccount(props) &&
