@@ -26,6 +26,10 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
       <meta property="og:type" content="website" key="og:type" />
       <meta property="og:title" content={title} key="og:title" />
       <meta
+        name="zoom-domain-verification"
+        content="ZOOM_verify_0c9439c4d2b34543b28d9ee096e015b6"
+      />
+      <meta
         property="og:description"
         content={description}
         key="og:description"
