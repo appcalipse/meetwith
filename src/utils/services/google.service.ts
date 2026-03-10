@@ -10,7 +10,7 @@ import {
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
-import { TimeSlotSource } from '@/types/Meeting'
+import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -298,6 +298,10 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
                 .replaceAll('T', '') || // for recurring meetings we remove the ical_uid underscores
               meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
             location: meetingDetails.meeting_url,
+            hangoutLink:
+              meetingDetails.meetingProvider === MeetingProvider.GOOGLE_MEET
+                ? meetingDetails.meeting_url
+                : undefined,
             reminders: {
               overrides: [{ method: 'popup', minutes: 10 }],
               useDefault: false,
