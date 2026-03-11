@@ -1603,6 +1603,25 @@ export const deleteDiscordIntegration = async (): Promise<void> => {
   return await internalFetch(`/secure/discord`, 'DELETE')
 }
 
+export const deleteMeetingProvider = async (
+  provider: string
+): Promise<void> => {
+  return await internalFetch(
+    `/secure/accounts/meeting-provider?provider=${provider}`,
+    'DELETE'
+  )
+}
+
+export const getGoogleMeetAuthUrl = async (
+  state?: string
+): Promise<{ url: string }> => {
+  return await internalFetch(
+    `/secure/calendar_integrations/google/meet/connect${
+      state ? `?state=${state}` : ''
+    }`
+  )
+}
+
 export const getGateCondition = async (
   id: string
 ): Promise<GateConditionObject | null> => {
@@ -1771,9 +1790,18 @@ export const createHuddleRoom = async (
     throw e
   }
 }
-export const createGoogleRoom = async (): Promise<{ url: string }> => {
+export const createGoogleRoom = async (
+  meeting: UrlCreationRequest,
+  headers: HeadersInit = {}
+): Promise<{ url: string }> => {
   try {
-    return (await internalFetch('/integrations/google/create', 'POST', {})) as {
+    return (await internalFetch(
+      '/integrations/google/create',
+      'POST',
+      meeting,
+      {},
+      headers
+    )) as {
       url: string
     }
   } catch (e) {
