@@ -2282,6 +2282,7 @@ const scheduleMeeting = async (
         participants_mapping: participantData.sanitizedParticipants,
         start: startTime,
         title: meetingTitle || 'No Title',
+        meeting_type_id: meetingTypeId,
       })
     ).url
 
