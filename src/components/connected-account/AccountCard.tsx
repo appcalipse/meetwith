@@ -287,7 +287,11 @@ const AccountCard: FC<IProps> = props => {
     account: ConnectedAccount.STRIPE
     info: ActivePaymentAccount
   } => {
-    if (account.info && 'provider' in account.info) {
+    if (
+      account.account === ConnectedAccount.STRIPE &&
+      account.info &&
+      'provider' in account.info
+    ) {
       return true
     }
     return false
@@ -388,7 +392,7 @@ const AccountCard: FC<IProps> = props => {
             fontWeight={700}
             textTransform="capitalize"
           >
-            {`Disconnect ${props.account}`}
+            {`Disconnect ${props.account.replaceAll('-', ' ')}`}
           </Button>
         ) : (
           <Button
