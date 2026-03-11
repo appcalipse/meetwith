@@ -1,7 +1,5 @@
 import { SpacesServiceClient } from '@google-apps/meet'
 import * as Sentry from '@sentry/node'
-import { OAuth2Client } from 'google-auth-library'
-import { JSONClient } from 'google-auth-library/build/src/auth/googleauth'
 import { Auth, google } from 'googleapis'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
@@ -18,6 +16,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         const providers = await getConnectedMeetingProviders(
           req.session.account.address
         )
+
         const googleMeetProvider = providers?.find(
           p => p.provider === MeetingProvider.GOOGLE_MEET
         )
@@ -32,10 +31,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           )
 
           const meetClient = new SpacesServiceClient({
-            authClient: oAuth2Client as unknown as JSONClient,
+            // biome-ignore lint/suspicious/noExplicitAny: Suppressed as the type isn't explicitly exposed
+            authClient: oAuth2Client as any,
           })
-          const request = {}
-          const response = await meetClient.createSpace(request)
+
+          const response = await meetClient.createSpace({
+            space: {
+              config: {
+                accessType: 'TRUSTED',
+                entryPointAccess: 'ALL',
+              },
+            },
+          })
+
           link = response[0].meetingUri || undefined
         }
       }
@@ -49,6 +57,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       return res.json({ url: link })
     } catch (e) {
+      console.error(e)
       Sentry.captureException(e)
       return res.status(503).send('Google Meet Unavailable')
     }
