@@ -132,6 +132,7 @@ const ScheduleTimeSlot: FC<ScheduleTimeSlotProps> = ({
               currentUserEvent={currentUserEvent}
               eventUrl={eventUrl}
               activeAvailabilityBlocks={activeAvailabilityBlocks}
+              slot={slot}
             />
           </Box>
           <Tooltip.Arrow />

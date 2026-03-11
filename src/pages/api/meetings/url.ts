@@ -31,7 +31,10 @@ export const handleMeetingSchedule = async (
       let url = ''
       switch (meeting.meetingProvider) {
         case MeetingProvider.GOOGLE_MEET:
-          const googleResponse = await createGoogleRoom()
+          const googleResponse = await createGoogleRoom(
+            meeting,
+            req.headers.cookie ? { cookie: req.headers.cookie } : {}
+          )
           url = googleResponse?.url
           break
         case MeetingProvider.HUDDLE:

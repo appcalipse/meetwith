@@ -72,6 +72,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   let key: Auth.Credentials = {}
 
+  try {
   if (code) {
     const token = await oAuth2Client.getToken(code)
     key = token.res?.data
@@ -184,6 +185,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return res.redirect(
     `/poll/${stateObject?.pollSlug}?calendarResult=success&provider=google`
   )
+  } catch (err) {
+    Sentry.captureException(err)
+    return res.redirect(
+      `/poll/${stateObject?.pollSlug}?calendarResult=error&error=oauth_failed`
+    )
+  }
 }
 
 export default handler

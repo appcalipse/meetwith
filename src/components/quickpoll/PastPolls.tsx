@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Spinner, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Flex, VStack } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { FiRefreshCcw } from 'react-icons/fi'

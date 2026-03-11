@@ -10,7 +10,7 @@ import {
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
-import { TimeSlotSource } from '@/types/Meeting'
+import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -297,7 +297,29 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
                 ?.replaceAll('_R', '')
                 .replaceAll('T', '') || // for recurring meetings we remove the ical_uid underscores
               meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
-            location: meetingDetails.meeting_url,
+            location:
+              meetingDetails.meetingProvider !== MeetingProvider.GOOGLE_MEET
+                ? meetingDetails.meeting_url
+                : undefined,
+            conferenceData:
+              meetingDetails.meetingProvider === MeetingProvider.GOOGLE_MEET
+                ? {
+                    entryPoints: [
+                      {
+                        uri: meetingDetails.meeting_url,
+                        entryPointType: 'video',
+                        label: meetingDetails.meeting_url,
+                      },
+                    ],
+                    conferenceSolution: {
+                      key: {
+                        type: 'hangoutsMeet',
+                      },
+                    },
+                    conferenceId:
+                      meetingDetails.meeting_url.split('meet.google.com/')[1],
+                  }
+                : undefined,
             reminders: {
               overrides: [{ method: 'popup', minutes: 10 }],
               useDefault: false,
@@ -339,6 +361,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
               calendarId,
               conferenceDataVersion: 1,
               requestBody: payload,
+              sendNotifications: true,
+              sendUpdates: 'all',
             },
             function (err, event) {
               if (err || !event?.data) {
@@ -465,7 +489,27 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
       }
 
       if (meetingDetails.meeting_url) {
-        payload['location'] = meetingDetails.meeting_url
+        if (meetingDetails.meetingProvider !== MeetingProvider.GOOGLE_MEET) {
+          payload['location'] = meetingDetails.meeting_url
+        } else {
+          payload['hangoutLink'] = meetingDetails.meeting_url
+          payload['conferenceData'] = {
+            entryPoints: [
+              {
+                uri: meetingDetails.meeting_url,
+                entryPointType: 'video',
+              },
+            ],
+            conferenceSolution: {
+              key: {
+                type: 'hangoutsMeet',
+              },
+              name: 'Meetwith',
+              iconUri:
+                'https://mww-public.s3.eu-west-1.amazonaws.com/email/logo_mail.png',
+            },
+          }
+        }
       }
       if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
         payload.reminders.overrides = meetingDetails.meetingReminders.map(
@@ -1409,7 +1453,27 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
     }
 
     if (meetingDetails.meeting_url) {
-      payload['location'] = meetingDetails.meeting_url
+      if (meetingDetails.meetingProvider !== MeetingProvider.GOOGLE_MEET) {
+        payload['location'] = meetingDetails.meeting_url
+      } else {
+        payload['hangoutLink'] = meetingDetails.meeting_url
+        payload['conferenceData'] = {
+          entryPoints: [
+            {
+              uri: meetingDetails.meeting_url,
+              entryPointType: 'video',
+            },
+          ],
+          conferenceSolution: {
+            key: {
+              type: 'hangoutsMeet',
+            },
+            name: 'Meetwith',
+            iconUri:
+              'https://mww-public.s3.eu-west-1.amazonaws.com/email/logo_mail.png',
+          },
+        }
+      }
     }
     if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
       payload.reminders.overrides = meetingDetails.meetingReminders.map(

@@ -24,13 +24,14 @@ export const ConnectModal: React.FC = ({}) => {
   const { currentAccount, logged, logout } = useContext(AccountContext)
   const [tryingToConnect, setTryingToConnect] = useState(false)
   const wallet = useActiveWallet()
-
-  wallet?.subscribe('accountChanged', async account => {
-    if (!account || !account.address || !currentAccount || !logged) {
-      return
-    }
-    await doLogin(wallet)
-  })
+  useEffect(() => {
+    wallet?.subscribe('accountChanged', async account => {
+      if (!account || !account.address || !currentAccount || !logged) {
+        return
+      }
+      await doLogin(wallet)
+    })
+  }, [wallet])
 
   const { disconnect } = useDisconnect()
   const status = useActiveWalletConnectionStatus()

@@ -18,7 +18,10 @@ import {
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
-import { AccountNotifications } from '@/types/AccountNotifications'
+import {
+  AccountNotifications,
+  NotificationSegments,
+} from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
   CancelSubscriptionResponse,
@@ -1302,6 +1305,46 @@ export const setNotificationSubscriptions = async (
   )) as AccountNotifications
 }
 
+export type AcceptTermsSegments = {
+  productUpdates?: boolean
+  tipsAndEducation?: boolean
+  researchAndFeedbackRequests?: boolean
+}
+
+export const acceptTerms = async (
+  accepted: boolean,
+  email?: string,
+  segments?: AcceptTermsSegments
+): Promise<void> => {
+  await internalFetch('/secure/preferences/terms', 'POST', {
+    accepted,
+    ...(email && { email }),
+    ...(segments && {
+      productUpdates: segments.productUpdates,
+      tipsAndEducation: segments.tipsAndEducation,
+      researchAndFeedbackRequests: segments.researchAndFeedbackRequests,
+    }),
+  })
+}
+
+export const getNotificationSegments =
+  async (): Promise<NotificationSegments> => {
+    return (await internalFetch(
+      '/secure/preferences/notification-segments',
+      'GET'
+    )) as NotificationSegments
+  }
+
+export const saveNotificationSegments = async (
+  segments: NotificationSegments
+): Promise<NotificationSegments> => {
+  return (await internalFetch(
+    '/secure/preferences/notification-segments',
+    'POST',
+    segments
+  )) as NotificationSegments
+}
+
 export const getGoogleAuthConnectUrl = async (state?: string | null) => {
   return await internalFetch<ConnectResponse>(
     `/secure/calendar_integrations/google/connect${
@@ -1560,6 +1603,25 @@ export const deleteDiscordIntegration = async (): Promise<void> => {
   return await internalFetch(`/secure/discord`, 'DELETE')
 }
 
+export const deleteMeetingProvider = async (
+  provider: string
+): Promise<void> => {
+  return await internalFetch(
+    `/secure/accounts/meeting-provider?provider=${provider}`,
+    'DELETE'
+  )
+}
+
+export const getGoogleMeetAuthUrl = async (
+  state?: string
+): Promise<{ url: string }> => {
+  return await internalFetch(
+    `/secure/calendar_integrations/google/meet/connect${
+      state ? `?state=${state}` : ''
+    }`
+  )
+}
+
 export const getGateCondition = async (
   id: string
 ): Promise<GateConditionObject | null> => {
@@ -1728,9 +1790,18 @@ export const createHuddleRoom = async (
     throw e
   }
 }
-export const createGoogleRoom = async (): Promise<{ url: string }> => {
+export const createGoogleRoom = async (
+  meeting: UrlCreationRequest,
+  headers: HeadersInit = {}
+): Promise<{ url: string }> => {
   try {
-    return (await internalFetch('/integrations/google/create', 'POST', {})) as {
+    return (await internalFetch(
+      '/integrations/google/create',
+      'POST',
+      meeting,
+      {},
+      headers
+    )) as {
       url: string
     }
   } catch (e) {

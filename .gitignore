@@ -56,3 +56,9 @@ zoom-token.json
 .env.sentry-build-plugin
 test.http
 preview_email.js
+test.log
+
+# Playwright
+e2e/.auth/
+test-results/
+playwright-report/

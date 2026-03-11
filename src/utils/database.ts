@@ -678,6 +678,21 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
   return account
 }
 
+const updateTermsAccepted = async (
+  owner_account_address: string,
+  accepted: boolean
+): Promise<void> => {
+  const { error } = await db.supabase
+    .from<Tables<'account_preferences'>>('account_preferences')
+    .update({ terms_accepted: accepted })
+    .eq('owner_account_address', owner_account_address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error("Couldn't update terms acceptance")
+  }
+}
+
 const updatePreferenceAvatar = async (
   address: string,
   filename: string,
@@ -4825,6 +4840,73 @@ export const getDiscordAccount = async (
 
   return data[0] as DiscordAccount
 }
+
+export const addOrUpdateMeetingProvider = async (
+  account_address: string,
+  email: string,
+  provider: string,
+  payload: Record<string, unknown> | null
+) => {
+  const { data, error: selectError } = await db.supabase
+    .from('meeting_providers')
+    .select('id')
+    .eq('account_address', account_address)
+    .eq('provider', provider)
+
+  if (selectError) throw selectError
+
+  if (data && data.length > 0) {
+    const { error: updateError } = await db.supabase
+      .from('meeting_providers')
+      .update({
+        email,
+        payload,
+        updated: new Date().toISOString(),
+      })
+      .eq('id', data[0].id)
+
+    if (updateError) throw updateError
+  } else {
+    const { error: insertError } = await db.supabase
+      .from('meeting_providers')
+      .insert({
+        account_address,
+        email,
+        provider,
+        payload,
+      })
+
+    if (insertError) throw insertError
+  }
+}
+
+export const getConnectedMeetingProviders = async (account_address: string) => {
+  const { data, error } = await db.supabase
+    .from('meeting_providers')
+    .select('*')
+    .eq('account_address', account_address)
+
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+export const deleteMeetingProviderDB = async (
+  account_address: string,
+  provider: string
+) => {
+  const { error } = await db.supabase
+    .from('meeting_providers')
+    .delete()
+    .eq('account_address', account_address)
+    .eq('provider', provider)
+
+  if (error) {
+    throw error
+  }
+}
+
 export const getDiscordAccountAndInfo = async (
   account_address: string
 ): Promise<DiscordAccountInfo | undefined> => {
@@ -11227,6 +11309,7 @@ export {
   updateSubscriptionPeriodDomain,
   updateSubscriptionPeriodStatus,
   updateSubscriptionPeriodTransaction,
+  updateTermsAccepted,
   uploadIcsFile,
   upsertGateCondition,
   upsertSeries,

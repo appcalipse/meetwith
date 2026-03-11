@@ -4,6 +4,7 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { InviteContact } from '@/types/Contacts'
 import { appUrl } from '@/utils/constants'
 import {
+  getAccountFromDB,
   getAccountNotificationSubscriptionEmail,
   getOrCreateContactInvite,
   initDB,
@@ -58,7 +59,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       const invitationLink = `${appUrl}/contact/invite-accept?identifier=${invite.id}`
       const declineLink = `${appUrl}/contact/invite-decline?identifier=${invite.id}`
-      const inviterName = getAccountDisplayName(req.session.account)
+      const account = await getAccountFromDB(account_address)
+      const inviterName = getAccountDisplayName(account)
       try {
         if (userEmail) {
           await sendContactInvitationEmail(
