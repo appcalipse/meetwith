@@ -62,6 +62,7 @@ import {
   getQuickPollById,
   getSlotByMeetingId,
   getSlotInstanceById,
+  linkQuickPollToMeeting,
   updateQuickPoll,
 } from '@/utils/api_helper'
 import {
@@ -728,8 +729,10 @@ const ScheduleMain: FC<IInitialProps> = ({
             meeting_id: '',
           })
         )
+        let scheduledMeetingId: string | undefined
+
         if (meetingRepeat.value != MeetingRepeat.NO_REPEAT) {
-          await scheduleRecurringMeeting(
+          const recurringResult = await scheduleRecurringMeeting(
             start,
             end,
             quickpollParticipants,
@@ -742,8 +745,9 @@ const ScheduleMain: FC<IInitialProps> = ({
             meetingNotification.map(n => n.value),
             selectedPermissions
           )
+          scheduledMeetingId = recurringResult?.meeting_id
         } else {
-          await scheduleMeeting(
+          const result = await scheduleMeeting(
             true,
             SchedulingType.REGULAR,
             NO_MEETING_TYPE,
@@ -759,9 +763,14 @@ const ScheduleMain: FC<IInitialProps> = ({
             meetingNotification.map(n => n.value),
             selectedPermissions
           )
+          scheduledMeetingId = result?.meeting_id
         }
         try {
           await updateQuickPoll(pollId, { status: PollStatus.COMPLETED })
+
+          if (scheduledMeetingId) {
+            await linkQuickPollToMeeting(pollId, scheduledMeetingId)
+          }
 
           queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
           queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
