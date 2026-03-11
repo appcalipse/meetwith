@@ -25,7 +25,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     Sentry.captureException(error)
     if (!stateObject)
       return res.redirect(
-        `/dashboard/settings/connected-calendars?meetResult=error`
+        `/dashboard/settings/connected-accounts?meetResult=error`
       )
     else {
       stateObject.error = 'Google Meet integration failed.'
@@ -33,7 +33,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         'base64'
       )
       return res.redirect(
-        `/dashboard/settings/connected-calendars?meetResult=error&state=${newState64}`
+        `/dashboard/settings/connected-accounts?meetResult=error&state=${newState64}`
       )
     }
   }
@@ -79,7 +79,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const email = userInfoRes.data.email
   if (!email) {
     return res.redirect(
-      `/dashboard/settings/connected-calendars?meetResult=error`
+      `/dashboard/settings/connected-accounts?meetResult=error`
     )
   }
 
@@ -107,7 +107,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   return res.redirect(
-    `/dashboard/settings/connected-calendars?meetResult=success${
+    `/dashboard/settings/connected-accounts?meetResult=success${
       !!state ? `&state=${newState64}` : ''
     }`
   )
