@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
-import { QuickPollBySlugResponse } from '@/types/QuickPoll'
+import { PollStatus, QuickPollBySlugResponse } from '@/types/QuickPoll'
 import { queryClient } from '@/utils/react_query'
 
 import GuestDetailsForm from './GuestDetailsForm'
@@ -57,6 +57,7 @@ const QuickPollMain: React.FC<QuickPollMainProps> = ({
             <QuickPollAvailabilityDiscover
               pollId={pollId}
               pollData={pollData}
+              isScheduled={pollData?.poll.status === PollStatus.COMPLETED}
               onNavigateToGuestDetails={() =>
                 handlePageSwitch(QuickPollPage.GUEST_DETAILS)
               }
