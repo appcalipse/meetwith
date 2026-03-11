@@ -1790,9 +1790,18 @@ export const createHuddleRoom = async (
     throw e
   }
 }
-export const createGoogleRoom = async (): Promise<{ url: string }> => {
+export const createGoogleRoom = async (
+  meeting: UrlCreationRequest,
+  headers: HeadersInit = {}
+): Promise<{ url: string }> => {
   try {
-    return (await internalFetch('/integrations/google/create', 'POST', {})) as {
+    return (await internalFetch(
+      '/integrations/google/create',
+      'POST',
+      meeting,
+      {},
+      headers
+    )) as {
       url: string
     }
   } catch (e) {
