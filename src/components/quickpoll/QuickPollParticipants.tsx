@@ -44,6 +44,7 @@ interface QuickPollParticipantsProps {
   onParticipantAdded?: () => void
   onParticipantRemoved?: (participantId: string) => void
   onClose?: () => void
+  isScheduled?: boolean
 }
 
 const convertQuickPollParticipant = (
@@ -75,6 +76,7 @@ export function QuickPollParticipants({
   onParticipantAdded,
   onParticipantRemoved,
   onClose,
+  isScheduled,
 }: QuickPollParticipantsProps) {
   const { currentAccount } = useContext(AccountContext)
   const router = useRouter()
@@ -320,7 +322,9 @@ export function QuickPollParticipants({
     >
       <HStack gap={{ base: 6, md: 9 }} w="100%" justify={'space-between'}>
         <Heading size={{ base: 'xs', md: 'sm' }}>Participants</Heading>
-        {isHost && <Heading size={{ base: 'xs', md: 'sm' }}>Delete</Heading>}
+        {isHost && !pollData?.scheduled_meeting && (
+          <Heading size={{ base: 'xs', md: 'sm' }}>Delete</Heading>
+        )}
       </HStack>
       <Divider bg={'divider-dark'} />
 
@@ -414,23 +418,25 @@ export function QuickPollParticipants({
                     )}
                 </VStack>
               </HStack>
-              {isHost && participant.type !== ParticipantType.Scheduler && (
-                <Icon
-                  as={IoMdClose}
-                  w={{ base: 4, md: 5 }}
-                  h={{ base: 4, md: 5 }}
-                  display="block"
-                  cursor="pointer"
-                  color="text-highlight-primary"
-                  onClick={() => handleParticipantRemove(participant)}
-                />
-              )}
+              {isHost &&
+                !pollData?.scheduled_meeting &&
+                participant.type !== ParticipantType.Scheduler && (
+                  <Icon
+                    as={IoMdClose}
+                    w={{ base: 4, md: 5 }}
+                    h={{ base: 4, md: 5 }}
+                    display="block"
+                    cursor="pointer"
+                    color="text-highlight-primary"
+                    onClick={() => handleParticipantRemove(participant)}
+                  />
+                )}
             </HStack>
           )
         })}
       </VStack>
 
-      {canAddParticipants && (
+      {canAddParticipants && !isScheduled && (
         <Button
           colorScheme="primary"
           w="100%"

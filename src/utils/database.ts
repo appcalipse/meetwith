@@ -9517,6 +9517,45 @@ const expireStalePolls = async () => {
   }
 }
 
+const createQuickPollMeeting = async (pollId: string, meetingId: string) => {
+  const { error } = await db.supabase.from('quick_poll_meetings').insert([
+    {
+      poll_id: pollId,
+      meeting_id: meetingId,
+    },
+  ])
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+const getQuickPollMeetingByPollId = async (pollId: string) => {
+  const { data, error } = await db.supabase
+    .from('quick_poll_meetings')
+    .select(
+      `
+      poll_id,
+      meeting_id,
+      meetings (
+        id,
+        start,
+        end,
+        title,
+        meeting_url
+      )
+    `
+    )
+    .eq('poll_id', pollId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
 const updateQuickPollParticipantStatus = async (
   participantId: string,
   status: QuickPollParticipantStatus,
@@ -11131,6 +11170,7 @@ export {
   createPaymentPreferences,
   createPinHash,
   createQuickPoll,
+  createQuickPollMeeting,
   createStripeSubscription,
   createSubscriptionPeriod,
   createSubscriptionTransaction,
@@ -11150,6 +11190,7 @@ export {
   deleteVerifications,
   editGroup,
   expireStalePolls,
+  getQuickPollMeetingByPollId,
   expireStaleSubscriptionPeriods,
   findAccountByEmail,
   findAccountByIdentifier,

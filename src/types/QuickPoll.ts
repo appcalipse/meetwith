@@ -261,10 +261,19 @@ export interface CreatePollProps {
   pollSlug?: string
 }
 
+export interface ScheduledMeetingInfo {
+  meeting_id: string
+  start: string | null
+  end: string | null
+  title: string | null
+  meeting_url: string | null
+}
+
 export interface QuickPollBySlugResponse {
   poll: QuickPollWithParticipants
   is_participant: boolean
   can_edit: boolean
+  scheduled_meeting?: ScheduledMeetingInfo | null
 }
 
 export interface QuickPollBusyParticipant {

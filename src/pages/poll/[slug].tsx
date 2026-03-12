@@ -17,8 +17,6 @@ import { PermissionsProvider } from '@/providers/schedule/PermissionsContext'
 import { ScheduleStateProvider } from '@/providers/schedule/ScheduleContext'
 import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import { getQuickPollBySlug } from '@/utils/api_helper'
-import { handleApiError } from '@/utils/error_helper'
-import { ApiFetchError } from '@/utils/errors'
 import { isJson } from '@/utils/generic_utils'
 import { getQuickPollSignInContext } from '@/utils/storage'
 
@@ -47,9 +45,6 @@ const PollPage = () => {
     error,
   } = useQuery({
     enabled: !!slug && typeof slug === 'string',
-    onError: (err: unknown) => {
-      handleApiError('Failed to load poll', err)
-    },
     queryFn: () => getQuickPollBySlug(slug as string),
     queryKey: ['quickpoll-public', slug],
   })
@@ -59,35 +54,18 @@ const PollPage = () => {
   }
 
   if (error) {
-    const errorObj = error instanceof ApiFetchError ? error : undefined
-    let title = 'Failed to load poll'
-    let description =
-      "We couldn't load this poll. Please check the link and try again."
-
-    if (errorObj?.status === 404) {
-      title = 'Poll not found'
-      description = "This poll doesn't exist or may have been deleted."
-    } else if (errorObj?.status === 410) {
-      const rawMessage =
-        typeof errorObj?.message === 'string' ? errorObj.message.trim() : ''
-
-      let parsedMessage = rawMessage
-      if (isJson(rawMessage)) {
-        try {
-          const parsed = JSON.parse(rawMessage)
-          parsedMessage =
-            (parsed?.message as string | undefined)?.trim() ??
-            (parsed?.error as string | undefined)?.trim() ??
-            rawMessage
-        } catch {
-          parsedMessage = rawMessage
-        }
+    const rawMessage =
+      error instanceof Error
+        ? error.message
+        : "We couldn't load this poll. Please check the link and try again."
+    let description = rawMessage
+    if (isJson(rawMessage)) {
+      try {
+        const parsed = JSON.parse(rawMessage) as { error?: string }
+        if (typeof parsed?.error === 'string') description = parsed.error
+      } catch {
+        description = rawMessage
       }
-
-      title = 'Unable to load poll'
-      description =
-        parsedMessage ||
-        'This poll is no longer available and cannot be viewed.'
     }
 
     return (
@@ -95,7 +73,7 @@ const PollPage = () => {
         <CustomError
           description={description}
           imageAlt="Poll error"
-          title={title}
+          title="Failed to load poll"
         />
       </Box>
     )
