@@ -924,15 +924,6 @@ export const fetchBusySlotsRawForQuickPollParticipants = async (
   }))
 }
 
-export const linkQuickPollToMeeting = async (
-  pollId: string,
-  meetingId: string
-): Promise<void> => {
-  await internalFetch(`/secure/quickpoll/${pollId}/meeting`, 'POST', {
-    meeting_id: meetingId,
-  })
-}
-
 export const getMeetingsForDashboard = async (
   accountIdentifier: string,
   end: Date,
