@@ -1,6 +1,5 @@
 import { SpacesServiceClient } from '@google-apps/meet'
 import * as Sentry from '@sentry/node'
-import { OAuth2Client } from 'google-auth-library'
 import { Auth, google } from 'googleapis'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
@@ -23,7 +22,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         )
 
         if (googleMeetProvider?.payload) {
-          const oAuth2Client = new OAuth2Client(
+          const oAuth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET
           )
