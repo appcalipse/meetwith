@@ -2,11 +2,16 @@ import * as Sentry from '@sentry/node'
 import { utcToZonedTime } from 'date-fns-tz'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { MeetingRepeat } from '@/types/Meeting'
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { UrlCreationRequest } from '@/types/Requests'
-import { getAccountsNotificationSubscriptionEmails } from '@/utils/database'
+import {
+  getAccountsNotificationSubscriptionEmails,
+  getConnectedMeetingProviders,
+} from '@/utils/database'
 import { getAccessToken, ZOOM_API_URL } from '@/utils/zoom.helper'
+import { refreshUserAccessToken } from '@/utils/zoom.user.helper'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -25,8 +30,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         (address): address is string => address !== undefined
       )
 
-      const emails =
-        await getAccountsNotificationSubscriptionEmails(validAddresses)
+      const emails = await getAccountsNotificationSubscriptionEmails(
+        validAddresses
+      )
 
       const meeting_invitees = meeting.participants_mapping
         .filter(val => val.guest_email)
@@ -36,15 +42,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           email,
         }))
 
-      let owner = meeting.participants_mapping.find(
-        participant => participant.type == ParticipantType.Owner
+      const owner = meeting.participants_mapping.find(
+        participant => participant.type === ParticipantType.Scheduler
       )
 
-      if (!owner) {
-        owner = meeting.participants_mapping.find(
-          participant => participant.type == ParticipantType.Scheduler
-        )
-      }
       if (!owner) {
         return res.status(412).send('No host found')
       }
@@ -63,6 +64,32 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         | { [key: string]: Json | undefined }
         | Json[]
       const code = meeting.meeting_id.match(numberRegex)?.join('') || Date.now()
+
+      let token: string = ''
+
+      let isUserToken = false
+      if (req.session?.account?.address) {
+        const providers = await getConnectedMeetingProviders(
+          req.session.account.address
+        )
+        const zoomProvider = providers?.find(
+          p => p.provider === MeetingProvider.ZOOM
+        )
+        if (zoomProvider?.payload) {
+          let zoomTokens = zoomProvider.payload
+          if (zoomTokens.expires_at < Date.now()) {
+            zoomTokens = await refreshUserAccessToken(
+              req.session.account.address,
+              zoomProvider.email,
+              zoomTokens.refresh_token
+            )
+          }
+          token = zoomTokens.access_token
+          isUserToken = true
+        }
+      } else {
+        token = await getAccessToken()
+      }
       const payload: Record<string, Json> = {
         agenda: meeting.content || meeting.title,
         created_at: new Date(),
@@ -87,7 +114,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           in_meeting: false,
           internal_meeting: false,
           jbh_time: 0,
-          join_before_host: true,
+          join_before_host: isUserToken,
           meeting_authentication: false,
           meeting_invitees,
           mute_upon_entry: false,
@@ -100,7 +127,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           registration_type: 1,
           show_share_button: true,
           use_pmi: false,
-          waiting_room: false,
+          waiting_room: isUserToken,
           watermark: false,
         },
         start_time: meeting.start,
@@ -108,6 +135,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         topic: meeting.title,
         type: 2,
       }
+
       if (
         meeting.meetingRepeat &&
         meeting?.meetingRepeat !== MeetingRepeat.NO_REPEAT
@@ -127,10 +155,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             type = 1
             break
         }
+
         payload['recurrence'] = {
           repeat_interval: 1,
           type,
         }
+
         if (type === 2) {
           const meetingDate = new Date(meeting.start)
 
@@ -143,12 +173,14 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           payload['recurrence']['weekly_days'] = day_of_week
         }
       }
+
       const raw = JSON.stringify(payload)
 
       const myHeaders = new Headers()
       myHeaders.append('Content-Type', 'application/json')
       myHeaders.append('Accept', 'application/json')
-      myHeaders.append('Authorization', `Bearer ${await getAccessToken()}`)
+      myHeaders.append('Authorization', `Bearer ${token}`)
+
       const requestOptions = {
         body: raw,
         headers: myHeaders,
@@ -161,6 +193,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       const zoomMeeting = await zoomResponse.json()
       if (![200, 201].includes(zoomResponse.status)) {
+        if (isUserToken) {
+          return res.status(403).json({
+            error:
+              'Gated entry configuration failed on Zoom. Ensure your Zoom plan supports waiting rooms, or disconnect and try again.',
+          })
+        }
         Sentry.captureException(zoomResponse.statusText)
         return res.status(503).send('Zoom Unavailable')
       }
@@ -168,6 +206,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         url: zoomMeeting.join_url,
       })
     } catch (e) {
+      console.error(e)
       Sentry.captureException(e)
       return res.status(503).send('Zoom Unavailable')
     }
@@ -176,4 +215,4 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default handler
+export default withSessionRoute(handler)
