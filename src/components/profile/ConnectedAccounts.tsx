@@ -22,7 +22,7 @@ const ConnectedAccounts: React.FC = () => {
   const { updateUser, currentAccount } = useContext(AccountContext)
   const [isConnecting, setIsConnecting] = useState(false)
   const router = useRouter()
-  const { showSuccessToast } = useToastHelpers()
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
 
   const { data: connectedAccounts, isLoading: isConnectedAccountsLoading } =
     useQuery({
@@ -62,11 +62,16 @@ const ConnectedAccounts: React.FC = () => {
     if (isConnecting) return
     if (origin && code) {
       setIsConnecting(true)
-      const uri = window.location.href.toString()
-      if (uri.indexOf('?') > 0) {
-        const clean_uri = uri.substring(0, uri.indexOf('?'))
-        window.history.replaceState({}, document.title, clean_uri)
-      }
+      const { code: _code, state: _state, ...restQuery } = router.query
+
+      void router.replace(
+        {
+          pathname: router.pathname,
+          query: restQuery,
+        },
+        undefined,
+        { shallow: true }
+      )
       try {
         await generateDiscordAccount(code as string)
         await queryClient.invalidateQueries(
@@ -88,6 +93,48 @@ const ConnectedAccounts: React.FC = () => {
   useEffect(() => {
     void generateDiscord()
   }, [router.query])
+
+  useEffect(() => {
+    if (!router.isReady) return
+
+    const { meetResult, state } = router.query
+
+    if (meetResult) {
+      if (meetResult === 'success') {
+        showSuccessToast(
+          'Account Connected',
+          'Your meeting account has been connected successfully.'
+        )
+        void queryClient.invalidateQueries(
+          QueryKeys.connectedAccounts(currentAccount?.address)
+        )
+      } else if (meetResult === 'error') {
+        let errorMessage =
+          'Failed to connect meeting account. Please try again.'
+        if (state && typeof state === 'string') {
+          try {
+            const stateObj = JSON.parse(Buffer.from(state, 'base64').toString())
+            if (stateObj.error) {
+              errorMessage = stateObj.error
+            }
+          } catch (_e) {}
+        }
+        showErrorToast('Connection Failed', errorMessage)
+      }
+
+      const { meetResult: _, state: __, ...restQuery } = router.query
+
+      void router.replace(
+        {
+          pathname: router.pathname,
+          query: restQuery,
+        },
+        undefined,
+        { shallow: true }
+      )
+    }
+  }, [router.isReady, router.query, currentAccount?.address, router])
+
   return (
     <VStack w={'100%'} alignItems="flex-start">
       <Heading id="connected" fontSize="2xl" mb={8}>
