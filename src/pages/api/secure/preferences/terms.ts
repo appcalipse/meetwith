@@ -10,8 +10,9 @@ import {
   setAccountNotificationSubscriptions,
   updateTermsAccepted,
 } from '@/utils/database'
-import { addContactToResendSegments } from '@/utils/email_helper'
+import { addContactToResendSegment } from '@/utils/email_helper'
 import { isValidEmail } from '@/utils/validations'
+import { resendQueue } from '@/utils/workers/resend.queue'
 
 const RESEND_SEGMENT_PRODUCT_UPDATES =
   process.env.RESEND_SEGMENT_PRODUCT_UPDATES ?? ''
@@ -78,17 +79,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   const segmentIds = getSegmentIds(body)
 
   if (accountEmail) {
-    if (segmentIds.length > 0) {
-      try {
-        await addContactToResendSegments(accountEmail, firstName, segmentIds)
-      } catch (e) {
-        console.error('Failed to add existing email to Resend segments', e)
-        Sentry.captureException(e)
-        return res.status(503).json({
-          error:
-            "We couldn't add you to updates right now. Please try again in a moment.",
-        })
-      }
+    for (const audienceId of segmentIds) {
+      resendQueue.add(() =>
+        addContactToResendSegment(accountEmail, firstName, audienceId)
+      )
     }
     try {
       await updateTermsAccepted(address, true)
@@ -111,17 +105,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     })
   }
 
-  if (segmentIds.length > 0) {
-    try {
-      await addContactToResendSegments(providedEmail, firstName, segmentIds)
-    } catch (e) {
-      console.error('Failed to add provided email to Resend segments', e)
-      Sentry.captureException(e)
-      return res.status(503).json({
-        error:
-          "We couldn't add you to updates right now. Please try again in a moment.",
-      })
-    }
+  for (const audienceId of segmentIds) {
+    resendQueue.add(() =>
+      addContactToResendSegment(providedEmail, firstName, audienceId)
+    )
   }
 
   try {

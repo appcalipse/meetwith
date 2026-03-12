@@ -61,33 +61,29 @@ const RESEND_SEGMENT_RESEARCH_AND_FEEDBACK =
   process.env.RESEND_SEGMENT_RESEARCH_AND_FEEDBACK ?? ''
 
 /**
- * Add a contact to the given Resend audience IDs (segments). Used when users accept terms.
+ * Add a contact to a single Resend audience (segment).
  */
-export const addContactToResendSegments = async (
+export const addContactToResendSegment = async (
   email: string,
   firstName: string | undefined,
-  segmentIds: string[]
+  audienceId: string
 ): Promise<void> => {
-  if (segmentIds.length === 0) return
+  const { data, error } = await resend.contacts.create({
+    audienceId,
+    email,
+    firstName: firstName || undefined,
+    unsubscribed: false,
+  })
 
-  for (const audienceId of segmentIds) {
-    const { data, error } = await resend.contacts.create({
-      audienceId,
-      email,
-      firstName: firstName || undefined,
-      unsubscribed: false,
-    })
-
-    if (error) {
-      const err = new Error(error.message || 'Resend contact create failed')
-      Sentry.captureException(err)
-      throw err
-    }
-    if (!data?.id) {
-      const err = new Error('Resend contact create returned no id')
-      Sentry.captureException(err)
-      throw err
-    }
+  if (error) {
+    const err = new Error(error.message || 'Resend contact create failed')
+    Sentry.captureException(err)
+    throw err
+  }
+  if (!data?.id) {
+    const err = new Error('Resend contact create returned no id')
+    Sentry.captureException(err)
+    throw err
   }
 }
 
@@ -182,9 +178,11 @@ export const syncResendSegmentsForEmail = async (
     !!RESEND_SEGMENT_RESEARCH_AND_FEEDBACK
 
   if (productWillBeAdded) {
-    await addContactToResendSegments(email, firstName, [
-      RESEND_SEGMENT_PRODUCT_UPDATES,
-    ])
+    await addContactToResendSegment(
+      email,
+      firstName,
+      RESEND_SEGMENT_PRODUCT_UPDATES
+    )
   }
   if (productWillBeRemoved) {
     await removeContactFromResendSegment(email, RESEND_SEGMENT_PRODUCT_UPDATES)
@@ -193,9 +191,11 @@ export const syncResendSegmentsForEmail = async (
   await sleep(RESEND_RATE_LIMIT_DELAY_MS)
 
   if (tipsWillBeAdded) {
-    await addContactToResendSegments(email, firstName, [
-      RESEND_SEGMENT_TIPS_AND_EDUCATION,
-    ])
+    await addContactToResendSegment(
+      email,
+      firstName,
+      RESEND_SEGMENT_TIPS_AND_EDUCATION
+    )
   }
   if (tipsWillBeRemoved) {
     await removeContactFromResendSegment(
@@ -207,9 +207,11 @@ export const syncResendSegmentsForEmail = async (
   await sleep(RESEND_RATE_LIMIT_DELAY_MS)
 
   if (researchWillBeAdded) {
-    await addContactToResendSegments(email, firstName, [
-      RESEND_SEGMENT_RESEARCH_AND_FEEDBACK,
-    ])
+    await addContactToResendSegment(
+      email,
+      firstName,
+      RESEND_SEGMENT_RESEARCH_AND_FEEDBACK
+    )
   }
   if (researchWillBeRemoved) {
     await removeContactFromResendSegment(
