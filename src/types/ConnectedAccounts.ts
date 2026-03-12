@@ -8,6 +8,7 @@ export enum ConnectedAccount {
   TELEGRAM = 'telegram',
   STRIPE = 'stripe',
   GOOGLE_MEET = 'google-meet',
+  ZOOM = 'zoom',
 }
 
 export interface ConnectedAccountInfo {

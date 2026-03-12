@@ -36,8 +36,8 @@ export const refreshAccessToken = async () => {
   myHeaders.append(
     'Authorization',
     `Basic ${encodeServerKeys(
-      process.env.ZOOM_CLIENT_ID!,
-      process.env.ZOOM_CLIENT_SECRET!
+      process.env.ZOOM_SERVER_CLIENT_ID!,
+      process.env.ZOOM_SERVER_CLIENT_SECRET!
     )}`
   )
   const urlencoded = new URLSearchParams()

@@ -25,6 +25,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const google_meet = meeting_providers?.find(
         p => p.provider === MeetingProvider.GOOGLE_MEET
       )
+      const zoom = meeting_providers?.find(
+        p => p.provider === MeetingProvider.ZOOM
+      )
+
       const connectedAccounts = [
         {
           account: ConnectedAccount.DISCORD,
@@ -44,10 +48,17 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             ? { ...google_meet, username: google_meet.email }
             : null,
         },
+        {
+          account: ConnectedAccount.ZOOM,
+          info: zoom ? { ...zoom, username: zoom.email } : null,
+        },
       ]
 
       meeting_providers?.forEach(provider => {
-        if (provider.provider !== MeetingProvider.GOOGLE_MEET) {
+        if (
+          provider.provider !== MeetingProvider.GOOGLE_MEET &&
+          provider.provider !== MeetingProvider.ZOOM
+        ) {
           connectedAccounts.push({
             account: provider.provider as unknown as ConnectedAccount,
             info: { ...provider, username: provider.email },

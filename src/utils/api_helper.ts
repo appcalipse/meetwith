@@ -1814,13 +1814,16 @@ export const createGoogleRoom = async (
   }
 }
 export const createZoomMeeting = async (
-  payload: UrlCreationRequest
+  payload: UrlCreationRequest,
+  headers: HeadersInit = {}
 ): Promise<{ url: string }> => {
   try {
     return (await internalFetch(
       '/integrations/zoom/create',
       'POST',
-      payload
+      payload,
+      {},
+      headers
     )) as { url: string }
   } catch (e) {
     if (e instanceof ApiFetchError) {
@@ -3014,4 +3017,12 @@ export const joinQuickPollAsParticipant = async (
     participant: data.participant,
     alreadyInPoll: data.already_in_poll,
   }
+}
+
+export const getZoomAuthUrl = async (
+  state?: string
+): Promise<{ url: string }> => {
+  return await internalFetch(
+    `/secure/integrations/zoom/connect${state ? `?state=${state}` : ''}`
+  )
 }

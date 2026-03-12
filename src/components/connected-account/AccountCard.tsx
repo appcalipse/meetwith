@@ -21,6 +21,7 @@ import {
   getNotificationSubscriptions,
   getPendingTgConnection,
   getStripeOnboardingLink,
+  getZoomAuthUrl,
   setNotificationSubscriptions,
 } from '@utils/api_helper'
 import { discordRedirectUrl, OnboardingSubject } from '@utils/constants'
@@ -61,6 +62,8 @@ const getContent = (connect_account: ConnectedAccount) => {
       return 'Connect to receive notifications for your meetings.'
     case ConnectedAccount.GOOGLE_MEET:
       return 'Connect your Google Meet account to enable gated meeting entry.'
+    case ConnectedAccount.ZOOM:
+      return 'Connect your Zoom account to enable gated meeting entry and waiting rooms natively.'
     default:
       return null
   }
@@ -120,6 +123,13 @@ const AccountCard: FC<IProps> = props => {
         await deleteMeetingProvider(ConnectedAccount.GOOGLE_MEET)
       },
       errorMessage: 'Failed to disconnect Google Meet account',
+      logEvent: true,
+    },
+    [ConnectedAccount.ZOOM]: {
+      handler: async () => {
+        await deleteMeetingProvider(ConnectedAccount.ZOOM)
+      },
+      errorMessage: 'Failed to disconnect Zoom account',
       logEvent: true,
     },
   }
@@ -195,6 +205,7 @@ const AccountCard: FC<IProps> = props => {
       },
       errorMessage: 'Discord Connection error, Please retry',
       logEvent: true,
+      disableSuccessAction: true,
     },
     [ConnectedAccount.STRIPE]: {
       handler: async () => props.openSelectCountry(),
@@ -209,6 +220,16 @@ const AccountCard: FC<IProps> = props => {
       },
       errorMessage: 'Google Meet Connection error, Please retry',
       logEvent: true,
+      disableSuccessAction: true,
+    },
+    [ConnectedAccount.ZOOM]: {
+      handler: async () => {
+        const { url } = await getZoomAuthUrl()
+        window.open(url, '_self')
+      },
+      errorMessage: 'Zoom Connection error, Please retry',
+      logEvent: true,
+      disableSuccessAction: true,
     },
   }
   const handleUpdateDetails = async () => {
@@ -264,17 +285,14 @@ const AccountCard: FC<IProps> = props => {
         showErrorToast('Connection Failed', msg)
       )
 
+      await queryClient.invalidateQueries(
+        QueryKeys.connectedAccounts(currentAccount?.address)
+      )
       if (isSuccessful) {
-        await queryClient.invalidateQueries(
-          QueryKeys.connectedAccounts(currentAccount?.address)
+        showSuccessToast(
+          `${props.account} Connected`,
+          `Your ${props.account} account has been connected`
         )
-
-        if (props.account !== ConnectedAccount.DISCORD) {
-          showSuccessToast(
-            `${props.account} Connected`,
-            `Your ${props.account} account has been connected`
-          )
-        }
       }
     } finally {
       setIsConnecting(false)
@@ -353,27 +371,29 @@ const AccountCard: FC<IProps> = props => {
                 {isPaymentAccount(props) ? props.info.status : 'Connected'}
               </TagLabel>
             </Tag>
-            <Tag
-              variant="subtle"
-              bg="text-highlight-primary"
-              fontSize={{
-                lg: '16px',
-                md: '14px',
-                base: '12px',
-              }}
-            >
-              <TagLeftIcon
-                boxSize="12px"
-                w={5}
-                h={5}
-                as={GoDotFill}
-                m={0}
-                color="green.500"
-              />
-              <TagLabel px="2px" color={'bg-surface'}>
-                {props.info?.username}
-              </TagLabel>
-            </Tag>
+            {props.info?.username && (
+              <Tag
+                variant="subtle"
+                bg="text-highlight-primary"
+                fontSize={{
+                  lg: '16px',
+                  md: '14px',
+                  base: '12px',
+                }}
+              >
+                <TagLeftIcon
+                  boxSize="12px"
+                  w={5}
+                  h={5}
+                  as={GoDotFill}
+                  m={0}
+                  color="green.500"
+                />
+                <TagLabel px="2px" color={'bg-surface'}>
+                  {props.info?.username}
+                </TagLabel>
+              </Tag>
+            )}
           </HStack>
         )}
       </HStack>
