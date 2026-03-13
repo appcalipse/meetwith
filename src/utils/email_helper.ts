@@ -4,6 +4,7 @@ import Email from 'email-templates'
 import path from 'path'
 import puppeteer from 'puppeteer'
 import { CreateEmailOptions, Resend } from 'resend'
+import sanitizeHtml from 'sanitize-html'
 import { NotificationSegments } from '@/types/AccountNotifications'
 import {
   BillingEmailAccountInfo,
@@ -417,6 +418,25 @@ export const newMeetingEmail = async (
     meetingTypeId
   )
 
+  const safeDescription = description
+    ? sanitizeHtml(description, {
+        allowedTags: [
+          'a',
+          'p',
+          'br',
+          'strong',
+          'em',
+          'u',
+          'ul',
+          'ol',
+          'li',
+          'span',
+          'div',
+        ],
+        allowedAttributes: { a: ['href'] },
+      })
+    : description
+
   const locals = {
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?conferenceId=${meetingDetails.meeting_id}&intent=${Intents.CANCEL_MEETING}`
@@ -424,7 +444,7 @@ export const newMeetingEmail = async (
     // Only include reschedule link for guests
     changeUrl,
     meeting: {
-      description,
+      description: safeDescription,
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
       start: dateToHumanReadable(start, timezone, true),
       title,
@@ -751,7 +771,24 @@ export const updateMeetingEmail = async (
     changeUrl,
     currentActorDisplayName,
     meeting: {
-      description,
+      description: description
+        ? sanitizeHtml(description, {
+            allowedTags: [
+              'a',
+              'p',
+              'br',
+              'strong',
+              'em',
+              'u',
+              'ul',
+              'ol',
+              'li',
+              'span',
+              'div',
+            ],
+            allowedAttributes: { a: ['href'] },
+          })
+        : description,
       duration: durationToHumanReadable(newDuration),
       start: dateToHumanReadable(start, timezone, true),
       title,

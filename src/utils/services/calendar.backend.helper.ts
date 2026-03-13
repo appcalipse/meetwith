@@ -259,7 +259,7 @@ export const CalendarBackendHelper = {
           )
           return externalSlots
         } catch (error) {
-          console.error(`Error fetching events for ${calendar.email}:`, error)
+          console.error('Error fetching events for %s:', calendar.email, error)
           return []
         }
       })

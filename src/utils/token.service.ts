@@ -252,7 +252,8 @@ export const getTotalWalletBalance = async (
           return nativeBalance.balance
         } catch (error) {
           console.error(
-            `Error getting native balance for chain ${chain}:`,
+            'Error getting native balance for chain %s:',
+            chain,
             error
           )
           return 0
@@ -269,7 +270,8 @@ export const getTotalWalletBalance = async (
           return tokenBalance.balance
         } catch (error) {
           console.error(
-            `Error getting token balance for ${token.symbol}:`,
+            'Error getting token balance for %s:',
+            token.symbol,
             error
           )
           return 0
@@ -360,7 +362,8 @@ export const getNetworkWithHighestBalance = async (
           networkTotal += nativeBalance.balance
         } catch (error) {
           console.error(
-            `Error getting native balance for ${chainInfo.chain}:`,
+            'Error getting native balance for %s:',
+            chainInfo.chain,
             error
           )
         }
@@ -377,7 +380,9 @@ export const getNetworkWithHighestBalance = async (
               networkTotal += tokenBalance.balance
             } catch (error) {
               console.error(
-                `Error getting token balance for ${tokenInfo.token} on ${chainInfo.chain}:`,
+                'Error getting token balance for %s on %s:',
+                tokenInfo.token,
+                chainInfo.chain,
                 error
               )
             }
@@ -390,7 +395,8 @@ export const getNetworkWithHighestBalance = async (
         })
       } catch (error) {
         console.error(
-          `Error calculating balance for ${chainInfo.chain}:`,
+          'Error calculating balance for %s:',
+          chainInfo.chain,
           error
         )
       }

@@ -695,7 +695,8 @@ export default class GoogleCalendarService implements IGoogleCalendarService {
             } catch (error) {
               // Fallback to freebusy if events.list fails
               console.warn(
-                `Failed to get event details for calendar ${calendarId}, falling back to freebusy`,
+                'Failed to get event details for calendar %s, falling back to freebusy',
+                calendarId,
                 error
               )
               return []
