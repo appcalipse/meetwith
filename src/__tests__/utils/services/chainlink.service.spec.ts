@@ -52,7 +52,7 @@ describe('ChainlinkService', () => {
         AcceptedToken.USDC
       )
 
-      expect(result).toBe(1)
+      expect(result).toBe('$1.00')
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining('Failed to get price'),
         expect.any(Error)
