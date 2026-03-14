@@ -1,6 +1,6 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
 import dynamic from 'next/dynamic'
-import React, { useContext } from 'react'
+import React, { useContext, useState } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
 import type { PrivacyPolicyModalProps } from '@/components/privacy/PrivacyPolicyModal'
 import NotFound from '@/pages/404'
@@ -17,6 +17,14 @@ import Contact from './Contact'
 
 const PrivacyPolicyModal = dynamic<PrivacyPolicyModalProps>(
   () => import('@/components/privacy/PrivacyPolicyModal'),
+  { ssr: false }
+)
+
+const PrivateLinksAnnouncementModal = dynamic(
+  () =>
+    import('@/components/privacy/PrivateLinksAnnouncementModal').then(
+      mod => mod.PrivateLinksAnnouncementModal
+    ),
   { ssr: false }
 )
 
@@ -84,9 +92,27 @@ const DashboardContent: React.FC<{
 
   const showPrivacyModal = currentAccount?.preferences?.terms_accepted === null
 
+  const [showAnnouncement, setShowAnnouncement] = useState(false)
+
+  const handleCloseAnnouncement = () => {
+    setShowAnnouncement(false)
+  }
+
+  const handlePrivacyPolicyAccepted = () => {
+    setShowAnnouncement(true)
+  }
+
   return currentAccount ? (
     <MetricStateProvider currentAccount={currentAccount}>
-      {showPrivacyModal && <PrivacyPolicyModal isOpen />}
+      {showPrivacyModal && (
+        <PrivacyPolicyModal isOpen onAccepted={handlePrivacyPolicyAccepted} />
+      )}
+      {showAnnouncement && !showPrivacyModal && (
+        <PrivateLinksAnnouncementModal
+          isOpen={showAnnouncement}
+          onClose={handleCloseAnnouncement}
+        />
+      )}
       <HStack
         alignItems="start"
         width="100%"

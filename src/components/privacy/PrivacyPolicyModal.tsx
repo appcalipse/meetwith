@@ -43,9 +43,13 @@ const isEmailRequiredError = (e: unknown): boolean => {
 
 export interface PrivacyPolicyModalProps {
   isOpen: boolean
+  onAccepted?: () => void
 }
 
-const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
+const PrivacyPolicyModal = ({
+  isOpen,
+  onAccepted,
+}: PrivacyPolicyModalProps) => {
   const { showSuccessToast } = useToastHelpers()
   const { currentAccount, login } = useContext(AccountContext)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -139,6 +143,8 @@ const PrivacyPolicyModal = ({ isOpen }: PrivacyPolicyModalProps) => {
       queryClient.invalidateQueries(
         QueryKeys.account(currentAccount?.address?.toLowerCase())
       )
+
+      if (onAccepted) onAccepted()
     },
     onError: (e: unknown) => {
       if (isEmailRequiredError(e)) {

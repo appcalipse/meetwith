@@ -7,7 +7,7 @@ process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_SUPABASE_KEY = 'test-key'
 
 jest.mock('@/ironAuth/withSessionApiRoute', () => ({
-  withSessionRoute: jest.fn((handler) => handler),
+  withSessionRoute: jest.fn(handler => handler),
 }))
 
 jest.mock('@/utils/database', () => ({
@@ -30,10 +30,13 @@ import * as rpcHelper from '@/utils/rpc_helper'
 import * as subscriptionManager from '@/utils/subscription_manager'
 
 describe('/api/server/subscriptions/sync', () => {
-  const mockUpdateAccountSubscriptions = database.updateAccountSubscriptions as jest.Mock
-  const mockGetBlockchainSubscriptionsForAccount = rpcHelper.getBlockchainSubscriptionsForAccount as jest.Mock
+  const mockUpdateAccountSubscriptions =
+    database.updateAccountSubscriptions as jest.Mock
+  const mockGetBlockchainSubscriptionsForAccount =
+    rpcHelper.getBlockchainSubscriptionsForAccount as jest.Mock
   const mockGetDomainInfo = rpcHelper.getDomainInfo as jest.Mock
-  const mockConvertBlockchainSubscriptionToSubscription = subscriptionManager.convertBlockchainSubscriptionToSubscription as jest.Mock
+  const mockConvertBlockchainSubscriptionToSubscription =
+    subscriptionManager.convertBlockchainSubscriptionToSubscription as jest.Mock
 
   let req: Partial<NextApiRequest>
   let res: Partial<NextApiResponse>
@@ -68,6 +71,7 @@ describe('/api/server/subscriptions/sync', () => {
     res = {
       status: statusMock,
       send: sendMock,
+      json: sendMock,
     }
   })
 
@@ -82,7 +86,9 @@ describe('/api/server/subscriptions/sync', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(mockGetDomainInfo).toHaveBeenCalledWith('test.domain')
-      expect(mockConvertBlockchainSubscriptionToSubscription).toHaveBeenCalledWith(mockBlockchainSub)
+      expect(
+        mockConvertBlockchainSubscriptionToSubscription
+      ).toHaveBeenCalledWith(mockBlockchainSub)
       expect(mockUpdateAccountSubscriptions).toHaveBeenCalledWith([mockDbSub])
       expect(sendMock).toHaveBeenCalledWith({ success: true })
     })
@@ -90,13 +96,17 @@ describe('/api/server/subscriptions/sync', () => {
     it('should sync subscriptions by address', async () => {
       req.query = { address: '0x123', domain: 'test.domain' }
       mockGetDomainInfo.mockResolvedValue([])
-      mockGetBlockchainSubscriptionsForAccount.mockResolvedValue([mockBlockchainSub])
+      mockGetBlockchainSubscriptionsForAccount.mockResolvedValue([
+        mockBlockchainSub,
+      ])
       mockConvertBlockchainSubscriptionToSubscription.mockReturnValue(mockDbSub)
       mockUpdateAccountSubscriptions.mockResolvedValue({ success: true })
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(mockGetBlockchainSubscriptionsForAccount).toHaveBeenCalledWith('test.domain')
+      expect(mockGetBlockchainSubscriptionsForAccount).toHaveBeenCalledWith(
+        'test.domain'
+      )
       expect(mockUpdateAccountSubscriptions).toHaveBeenCalledWith([mockDbSub])
     })
 
@@ -104,7 +114,7 @@ describe('/api/server/subscriptions/sync', () => {
       req.query = { domain: 'test.domain', address: '0x123' }
       const domainSub = { ...mockBlockchainSub, plan_id: 'domain-plan' }
       const addressSub = { ...mockBlockchainSub, plan_id: 'address-plan' }
-      
+
       mockGetDomainInfo.mockResolvedValue([domainSub])
       mockGetBlockchainSubscriptionsForAccount.mockResolvedValue([addressSub])
       mockConvertBlockchainSubscriptionToSubscription
@@ -125,7 +135,7 @@ describe('/api/server/subscriptions/sync', () => {
     it('should filter out subscriptions without plan_id', async () => {
       req.query = { domain: 'test.domain' }
       const subWithoutPlan = { ...mockBlockchainSub, plan_id: null }
-      
+
       mockGetDomainInfo.mockResolvedValue([mockBlockchainSub, subWithoutPlan])
       mockGetBlockchainSubscriptionsForAccount.mockResolvedValue([])
       mockConvertBlockchainSubscriptionToSubscription
@@ -167,9 +177,9 @@ describe('/api/server/subscriptions/sync', () => {
       mockGetDomainInfo.mockRejectedValue(new Error('Blockchain error'))
       mockGetBlockchainSubscriptionsForAccount.mockResolvedValue([])
 
-      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow(
-        'Blockchain error'
-      )
+      await expect(
+        handler(req as NextApiRequest, res as NextApiResponse)
+      ).rejects.toThrow('Blockchain error')
     })
 
     it('should handle database update errors', async () => {
@@ -179,16 +189,16 @@ describe('/api/server/subscriptions/sync', () => {
       mockConvertBlockchainSubscriptionToSubscription.mockReturnValue(mockDbSub)
       mockUpdateAccountSubscriptions.mockRejectedValue(new Error('DB error'))
 
-      await expect(handler(req as NextApiRequest, res as NextApiResponse)).rejects.toThrow(
-        'DB error'
-      )
+      await expect(
+        handler(req as NextApiRequest, res as NextApiResponse)
+      ).rejects.toThrow('DB error')
     })
 
     it('should handle multiple subscriptions from same domain', async () => {
       req.query = { domain: 'test.domain' }
       const sub1 = { ...mockBlockchainSub, plan_id: 'plan-1' }
       const sub2 = { ...mockBlockchainSub, plan_id: 'plan-2' }
-      
+
       mockGetDomainInfo.mockResolvedValue([sub1, sub2])
       mockGetBlockchainSubscriptionsForAccount.mockResolvedValue([])
       mockConvertBlockchainSubscriptionToSubscription

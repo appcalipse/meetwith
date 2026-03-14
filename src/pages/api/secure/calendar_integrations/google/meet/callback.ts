@@ -103,12 +103,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     typeof stateObject.redirectTo === 'string' &&
     stateObject.redirectTo.startsWith('/')
   ) {
-    const containParams = stateObject.redirectTo.includes('?')
-    const redirect_url =
-      stateObject.redirectTo +
-      (newState64 && !stateObject.ignoreState
-        ? `${containParams ? '&' : '?'}state=${encodeURIComponent(newState64)}`
-        : '')
+    const redirect_url = stateObject.redirectTo
     return res.redirect(redirect_url)
   }
 

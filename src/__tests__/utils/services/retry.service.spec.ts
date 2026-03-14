@@ -7,11 +7,20 @@ import {
 } from '@/utils/services/retry.service'
 
 // Helper to create GaxiosError-like objects that pass instanceof checks
-function createGaxiosError(message: string, opts: { code?: string; status?: number; statusText?: string } = {}): GaxiosError {
+function createGaxiosError(
+  message: string,
+  opts: { code?: string; status?: number; statusText?: string } = {}
+): GaxiosError {
   const e = new GaxiosError(message, {} as any)
   if (opts.code) e.code = opts.code
   if (opts.status) {
-    e.response = { config: {} as any, data: {}, headers: {}, status: opts.status, statusText: opts.statusText || '' } as any
+    e.response = {
+      config: {} as any,
+      data: {},
+      headers: {},
+      status: opts.status,
+      statusText: opts.statusText || '',
+    } as any
   }
   return e
 }
@@ -52,7 +61,10 @@ describe('RetryService', () => {
     })
 
     it('should retry on rate limit errors', async () => {
-      const rateLimitError = createGaxiosError('Rate Limit', { status: 403, statusText: 'Forbidden' })
+      const rateLimitError = createGaxiosError('Rate Limit', {
+        status: 403,
+        statusText: 'Forbidden',
+      })
 
       const operation = jest
         .fn()
@@ -68,7 +80,9 @@ describe('RetryService', () => {
     })
 
     it('should retry on network errors (ECONNRESET)', async () => {
-      const networkError = createGaxiosError('Connection reset', { code: 'ECONNRESET' })
+      const networkError = createGaxiosError('Connection reset', {
+        code: 'ECONNRESET',
+      })
 
       const operation = jest
         .fn()
@@ -100,7 +114,10 @@ describe('RetryService', () => {
     })
 
     it('should retry on 500+ status codes', async () => {
-      const serverError = createGaxiosError('Server Error', { status: 503, statusText: 'Service Unavailable' })
+      const serverError = createGaxiosError('Server Error', {
+        status: 503,
+        statusText: 'Service Unavailable',
+      })
 
       const operation = jest
         .fn()
@@ -116,7 +133,10 @@ describe('RetryService', () => {
     })
 
     it('should not retry on non-retryable errors', async () => {
-      const clientError = createGaxiosError('Bad Request', { status: 400, statusText: 'Bad Request' })
+      const clientError = createGaxiosError('Bad Request', {
+        status: 400,
+        statusText: 'Bad Request',
+      })
 
       const operation = jest.fn().mockRejectedValue(clientError)
 
@@ -125,7 +145,10 @@ describe('RetryService', () => {
     })
 
     it('should respect maxRetries option', async () => {
-      const rateLimitError = createGaxiosError('Rate Limit', { status: 403, statusText: 'Forbidden' })
+      const rateLimitError = createGaxiosError('Rate Limit', {
+        status: 403,
+        statusText: 'Forbidden',
+      })
 
       const operation = jest.fn().mockRejectedValue(rateLimitError)
 
@@ -143,7 +166,10 @@ describe('RetryService', () => {
     })
 
     it('should use exponential backoff', async () => {
-      const rateLimitError = createGaxiosError('Rate Limit', { status: 403, statusText: 'Forbidden' })
+      const rateLimitError = createGaxiosError('Rate Limit', {
+        status: 403,
+        statusText: 'Forbidden',
+      })
 
       const operation = jest.fn().mockRejectedValue(rateLimitError)
 
@@ -164,7 +190,10 @@ describe('RetryService', () => {
     })
 
     it('should respect maxDelay option', async () => {
-      const rateLimitError = createGaxiosError('Rate Limit', { status: 403, statusText: 'Forbidden' })
+      const rateLimitError = createGaxiosError('Rate Limit', {
+        status: 403,
+        statusText: 'Forbidden',
+      })
 
       const operation = jest.fn().mockRejectedValue(rateLimitError)
 
@@ -221,7 +250,10 @@ describe('RetryService', () => {
     })
 
     it('should log retry attempts with console.warn', async () => {
-      const rateLimitError = createGaxiosError('Rate Limit', { status: 403, statusText: 'Forbidden' })
+      const rateLimitError = createGaxiosError('Rate Limit', {
+        status: 403,
+        statusText: 'Forbidden',
+      })
 
       const operation = jest
         .fn()
@@ -233,13 +265,19 @@ describe('RetryService', () => {
       await resultPromise
 
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Attempt 1/3 failed'),
+        expect.stringContaining('Attempt %d/%d failed.'),
+        1,
+        3,
+        expect.anything(),
         'Rate Limit'
       )
     })
 
     it('should apply jitter to delay', async () => {
-      const rateLimitError = createGaxiosError('Rate Limit', { status: 403, statusText: 'Forbidden' })
+      const rateLimitError = createGaxiosError('Rate Limit', {
+        status: 403,
+        statusText: 'Forbidden',
+      })
 
       const operation = jest.fn().mockRejectedValue(rateLimitError)
 
@@ -273,7 +311,9 @@ describe('RetryService', () => {
     })
 
     it('should handle rate limit with error code', async () => {
-      const rateLimitError = createGaxiosError('Rate Limited', { code: 'RATE_LIMIT_EXCEEDED' })
+      const rateLimitError = createGaxiosError('Rate Limited', {
+        code: 'RATE_LIMIT_EXCEEDED',
+      })
 
       const operation = jest
         .fn()
@@ -299,7 +339,10 @@ describe('RetryService', () => {
     })
 
     it('should throw last error after max retries exhausted', async () => {
-      const serverError = createGaxiosError('Server Error', { status: 503, statusText: 'Service Unavailable' })
+      const serverError = createGaxiosError('Server Error', {
+        status: 503,
+        statusText: 'Service Unavailable',
+      })
 
       const operation = jest.fn().mockRejectedValue(serverError)
 
