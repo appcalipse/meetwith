@@ -3,9 +3,10 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
-import { DBSlot } from '@/types/Meeting'
+import { DBSlot, SchedulingType } from '@/types/Meeting'
 import { MeetingCreationRequest } from '@/types/Requests'
 import {
+  createQuickPollMeeting,
   getAccountFromDB,
   getAccountNotificationSubscriptions,
   saveMeeting,
@@ -58,6 +59,11 @@ export const handleMeetingSchedule = async (
         participantActing,
         meeting
       )
+
+      if (meeting.type === SchedulingType.QUICKPOLL && meeting.pollId) {
+        await createQuickPollMeeting(meeting.pollId, meeting.meeting_id)
+      }
+
       return res.status(200).json(meetingResult)
     } catch (e) {
       console.error(e)

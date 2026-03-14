@@ -16,7 +16,7 @@ export const getPriceForChain = async (
     const price = await priceService.getPrice(chain, token)
     return `$${price.toFixed(2)}`
   } catch (error) {
-    console.warn(`Failed to get price for ${token} on ${chain}:`, error)
+    console.warn('Failed to get price for %s on %s:', token, chain, error)
     return '$1.00' // Fallback price
   }
 }

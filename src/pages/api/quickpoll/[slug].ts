@@ -2,10 +2,12 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { PollStatus } from '@/types/QuickPoll'
-import { getQuickPollBySlug } from '@/utils/database'
+import {
+  getQuickPollBySlug,
+  getQuickPollMeetingByPollId,
+} from '@/utils/database'
 import {
   QuickPollAlreadyClosedError,
-  QuickPollAlreadyCompletedError,
   QuickPollExpiredError,
   QuickPollSlugNotFoundError,
 } from '@/utils/errors'
@@ -36,12 +38,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     }
 
-    if (result.poll.status === PollStatus.COMPLETED) {
-      throw new QuickPollAlreadyCompletedError()
-    }
-
     if (result.poll.status === PollStatus.CLOSED) {
       throw new QuickPollAlreadyClosedError()
+    }
+
+    // For completed polls, include scheduled meeting info if available
+    if (result.poll.status === PollStatus.COMPLETED) {
+      const mapping = await getQuickPollMeetingByPollId(result.poll.id)
+
+      return res.status(200).json({
+        ...result,
+        scheduled_meeting: mapping?.meetings
+          ? {
+              meeting_id: mapping.meetings.id,
+              start: mapping.meetings.start,
+              end: mapping.meetings.end,
+              title: mapping.meetings.title,
+              meeting_url: mapping.meetings.meeting_url,
+            }
+          : null,
+      })
     }
 
     return res.status(200).json(result)
@@ -53,10 +69,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (error instanceof QuickPollExpiredError) {
-      return res.status(410).json({ error: error.message })
-    }
-
-    if (error instanceof QuickPollAlreadyCompletedError) {
       return res.status(410).json({ error: error.message })
     }
 

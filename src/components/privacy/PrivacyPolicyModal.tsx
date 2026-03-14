@@ -51,7 +51,7 @@ const PrivacyPolicyModal = ({
   onAccepted,
 }: PrivacyPolicyModalProps) => {
   const { showSuccessToast } = useToastHelpers()
-  const { currentAccount, updateUser } = useContext(AccountContext)
+  const { currentAccount, login } = useContext(AccountContext)
   const scrollRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false)
@@ -124,12 +124,23 @@ const PrivacyPolicyModal = ({
         researchAndFeedbackRequests: boolean
       }
     }) => acceptTerms(accepted, emailArg, segments),
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       showSuccessToast(
         'Preferences saved',
         "You're all set. We've recorded your choices and added you to our updates."
       )
-      await queryClient.invalidateQueries(
+
+      if (currentAccount) {
+        login({
+          ...currentAccount,
+          preferences: {
+            ...currentAccount.preferences!,
+            terms_accepted: variables.accepted,
+          },
+        })
+      }
+
+      queryClient.invalidateQueries(
         QueryKeys.account(currentAccount?.address?.toLowerCase())
       )
       await updateUser()

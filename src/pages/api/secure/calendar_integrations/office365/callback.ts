@@ -201,19 +201,25 @@ async function handler(
     const newState64 = stateObject
       ? Buffer.from(JSON.stringify(stateObject)).toString('base64')
       : undefined
-    if (stateObject?.redirectTo) {
+    if (
+      stateObject?.redirectTo &&
+      typeof stateObject.redirectTo === 'string' &&
+      stateObject.redirectTo.startsWith('/')
+    ) {
       const containParams = stateObject.redirectTo.includes('?')
       const redirect_url =
         stateObject.redirectTo +
         (newState64 && !stateObject.ignoreState
-          ? `${containParams ? '&' : '?'}calState=${newState64}`
+          ? `${containParams ? '&' : '?'}calState=${encodeURIComponent(
+              newState64
+            )}`
           : '')
       res.redirect(redirect_url)
       return
     }
     res.redirect(
       `/dashboard/settings/connected-calendars?calendarResult=success${
-        newState64 ? `&state=${newState64}` : ''
+        !!state ? `&state=${encodeURIComponent(newState64 || '')}` : ''
       }`
     )
   }

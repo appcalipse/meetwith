@@ -133,7 +133,7 @@ const moduleExports = {
               )
             },
             name(module) {
-              const hash = crypto.createHash('sha1')
+              const hash = crypto.createHash('sha256')
               if (module.identifier) {
                 hash.update(module.identifier())
               }

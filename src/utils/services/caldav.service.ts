@@ -563,7 +563,10 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
           .filter(e => e !== null)
       } catch (error) {
         console.warn(
-          `Failed to fetch events for calendar ${calendar.url} in range ${start} to ${end}`,
+          'Failed to fetch events for calendar %s in range %s to %s',
+          calendar.url,
+          start,
+          end,
           error
         )
         Sentry.captureException(error)
@@ -869,7 +872,10 @@ export default class CaldavCalendarService implements ICaldavCalendarService {
           .filter(e => e !== null)
       } catch (error) {
         console.warn(
-          `Failed to fetch events for calendar ${calendar.url} in range ${start} to ${end}`,
+          'Failed to fetch events for calendar %s in range %s to %s',
+          calendar.url,
+          start,
+          end,
           error
         )
         Sentry.captureException(error)

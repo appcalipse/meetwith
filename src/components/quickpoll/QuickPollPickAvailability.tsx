@@ -149,6 +149,7 @@ interface QuickPollPickAvailabilityProps {
   isPendingManualJoinForLoggedInUser?: boolean
   /** When isPendingManualJoinForLoggedInUser: true if at least one slot selected (enables Save) */
   hasManualAvailabilityChange?: boolean
+  isScheduled?: boolean
 }
 
 function getSelectedSlotsSignature(
@@ -173,6 +174,7 @@ export function QuickPollPickAvailability({
   onJoinAndStartManualEdit,
   isPendingManualJoinForLoggedInUser,
   hasManualAvailabilityChange,
+  isScheduled,
 }: QuickPollPickAvailabilityProps) {
   const _router = useRouter()
   const {
@@ -333,6 +335,39 @@ export function QuickPollPickAvailability({
       return null
     }
   }, [pollData?.poll?.expires_at, timezone])
+
+  const schedulerParticipant = useMemo(
+    () =>
+      pollData?.poll.participants.find(
+        p => p.participant_type === QuickPollParticipantType.SCHEDULER
+      ) || null,
+    [pollData?.poll.participants]
+  )
+
+  const scheduledMeetingDateTime = useMemo(() => {
+    if (!isScheduled || !pollData?.scheduled_meeting?.start) return null
+    const schedulerTz = schedulerParticipant?.timezone || timezone || 'UTC'
+    try {
+      return DateTime.fromISO(pollData.scheduled_meeting.start, {
+        zone: schedulerTz,
+      })
+    } catch {
+      return null
+    }
+  }, [
+    isScheduled,
+    pollData?.scheduled_meeting?.start,
+    schedulerParticipant?.timezone,
+    timezone,
+  ])
+
+  const scheduledMeetingLabel = useMemo(() => {
+    if (!scheduledMeetingDateTime) return ''
+    const datePart = scheduledMeetingDateTime.toFormat('d LLLL, yyyy')
+    const timePart = scheduledMeetingDateTime.toFormat('h:mma').toLowerCase()
+    const tzLabel = scheduledMeetingDateTime.zoneName || 'UTC'
+    return `${datePart} | ${timePart} ${tzLabel}`
+  }, [scheduledMeetingDateTime])
 
   useEffect(() => {
     // Only resolve after client-side rendering
@@ -575,6 +610,7 @@ export function QuickPollPickAvailability({
   }
 
   const getAvailabilityButtonText = () => {
+    if (isScheduled) return ''
     if (isEditingAvailability) return 'Save availability'
     return hasAvailability ? 'Edit availability' : 'Add Availability'
   }
@@ -1278,154 +1314,160 @@ export function QuickPollPickAvailability({
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
         {/* Mobile Controls */}
-        <VStack gap={4} w="100%" display={{ base: 'flex', md: 'none' }}>
-          <VStack gap={2} alignItems={'flex-start'} width="100%">
-            <HStack width="fit-content" gap={0}>
-              <Heading fontSize="14px">Show times in</Heading>
-              <InfoTooltip text="the default timezone is based on your availability settings" />
-            </HStack>
-            <Select
-              value={tz}
-              colorScheme="primary"
-              onChange={_onChange}
-              className="noLeftBorder timezone-select"
-              options={tzOptions}
-              components={customSelectComponents}
-              chakraStyles={selectChakraStyles}
-            />
-          </VStack>
+        {!isScheduled && (
+          <VStack gap={4} w="100%" display={{ base: 'flex', md: 'none' }}>
+            <VStack gap={2} alignItems={'flex-start'} width="100%">
+              <HStack width="fit-content" gap={0}>
+                <Heading fontSize="14px">Show times in</Heading>
+                <InfoTooltip text="the default timezone is based on your availability settings" />
+              </HStack>
+              <Select
+                value={tz}
+                colorScheme="primary"
+                onChange={_onChange}
+                className="noLeftBorder timezone-select"
+                options={tzOptions}
+                components={customSelectComponents}
+                chakraStyles={selectChakraStyles}
+              />
+            </VStack>
 
-          <VStack gap={2} alignItems={'flex-start'} width="100%">
-            <Heading fontSize="14px">Month</Heading>
-            <Select
-              value={monthValue}
-              colorScheme="primary"
-              onChange={newValue => _onChangeMonth(newValue)}
-              className="noLeftBorder timezone-select"
-              options={months}
-              components={customSelectComponents}
-              chakraStyles={selectChakraStyles}
-            />
+            <VStack gap={2} alignItems={'flex-start'} width="100%">
+              <Heading fontSize="14px">Month</Heading>
+              <Select
+                value={monthValue}
+                colorScheme="primary"
+                onChange={newValue => _onChangeMonth(newValue)}
+                className="noLeftBorder timezone-select"
+                options={months}
+                components={customSelectComponents}
+                chakraStyles={selectChakraStyles}
+              />
+            </VStack>
           </VStack>
-        </VStack>
+        )}
 
         {/* Desktop Controls */}
-        <Flex
-          w="100%"
-          alignItems={{ lg: 'flex-end' }}
-          flexDir={'row'}
-          flexWrap="wrap"
-          gap={6}
-          zIndex={2}
-          display={{ base: 'none', md: 'flex' }}
-        >
-          {onSaveAvailability && isEditAvailabilityIntent && (
-            <HStack spacing={3}>
-              <ChooseAvailabilityMethodModal
-                isOpen={showMethodModal}
-                onClose={() => setShowMethodModal(false)}
-                onSelectManual={handleSelectManual}
-                onSelectImport={handleSelectImport}
-                variant={isLoggedInAndNotInPoll ? 'logged-in' : 'guest'}
-              >
-                <Button
-                  colorScheme="primary"
-                  onClick={handleAvailabilityButtonClick}
-                  px="16px"
-                  py="8px"
-                  fontSize="16px"
-                  fontWeight="700"
-                  borderRadius="8px"
-                  width="230px"
-                  isLoading={isSavingAvailability}
-                  loadingText="Saving..."
-                  isDisabled={
-                    isSavingAvailability || isSaveAvailabilityDisabled
-                  }
+        {!isScheduled && (
+          <Flex
+            w="100%"
+            alignItems={{ lg: 'flex-end' }}
+            flexDir={'row'}
+            flexWrap="wrap"
+            gap={6}
+            zIndex={2}
+            display={{ base: 'none', md: 'flex' }}
+          >
+            {onSaveAvailability && isEditAvailabilityIntent && !isScheduled && (
+              <HStack spacing={3}>
+                <ChooseAvailabilityMethodModal
+                  isOpen={showMethodModal}
+                  onClose={() => setShowMethodModal(false)}
+                  onSelectManual={handleSelectManual}
+                  onSelectImport={handleSelectImport}
+                  variant={isLoggedInAndNotInPoll ? 'logged-in' : 'guest'}
                 >
-                  {getAvailabilityButtonText()}
-                </Button>
-              </ChooseAvailabilityMethodModal>
-              {isEditingAvailability && onCancelEditing && (
+                  <Button
+                    colorScheme="primary"
+                    onClick={handleAvailabilityButtonClick}
+                    px="16px"
+                    py="8px"
+                    fontSize="16px"
+                    fontWeight="700"
+                    borderRadius="8px"
+                    width="230px"
+                    isLoading={isSavingAvailability}
+                    loadingText="Saving..."
+                    isDisabled={
+                      isSavingAvailability || isSaveAvailabilityDisabled
+                    }
+                  >
+                    {getAvailabilityButtonText()}
+                  </Button>
+                </ChooseAvailabilityMethodModal>
+                {isEditingAvailability && onCancelEditing && (
+                  <Button
+                    variant="outline"
+                    colorScheme="primary"
+                    px="16px"
+                    py="8px"
+                    fontSize="16px"
+                    fontWeight="700"
+                    borderRadius="8px"
+                    onClick={onCancelEditing}
+                    isDisabled={isSavingAvailability}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </HStack>
+            )}
+            <VStack gap={2} alignItems={'flex-start'} minW={'max-content'}>
+              <HStack width="fit-content" gap={0}>
+                <Heading fontSize="16px">Show times in</Heading>
+                <InfoTooltip text="the default timezone is based on your availability settings" />
+              </HStack>
+              <Select
+                value={tz}
+                colorScheme="primary"
+                onChange={_onChange}
+                className="noLeftBorder timezone-select"
+                options={tzOptions}
+                components={customSelectComponents}
+                chakraStyles={selectChakraStyles}
+              />
+            </VStack>
+            <VStack
+              gap={2}
+              alignItems={'flex-start'}
+              width="fit-content"
+              minW={'10px'}
+            >
+              <Heading fontSize="16px">Month</Heading>
+
+              <Select
+                value={monthValue}
+                colorScheme="primary"
+                onChange={newValue => _onChangeMonth(newValue)}
+                className="noLeftBorder timezone-select"
+                options={months}
+                components={customSelectComponents}
+                chakraStyles={selectChakraStyles}
+              />
+            </VStack>
+
+            {onSharePoll && !isScheduled && (
+              <HStack spacing={3} display={{ base: 'none', lg: 'flex' }}>
                 <Button
                   variant="outline"
                   colorScheme="primary"
+                  leftIcon={<MdShare color="#F9B19A" size={20} />}
+                  onClick={onSharePoll}
                   px="16px"
                   py="8px"
                   fontSize="16px"
                   fontWeight="700"
                   borderRadius="8px"
-                  onClick={onCancelEditing}
-                  isDisabled={isSavingAvailability}
                 >
-                  Cancel
+                  Share Poll
                 </Button>
-              )}
-            </HStack>
-          )}
-          <VStack gap={2} alignItems={'flex-start'} minW={'max-content'}>
-            <HStack width="fit-content" gap={0}>
-              <Heading fontSize="16px">Show times in</Heading>
-              <InfoTooltip text="the default timezone is based on your availability settings" />
-            </HStack>
-            <Select
-              value={tz}
-              colorScheme="primary"
-              onChange={_onChange}
-              className="noLeftBorder timezone-select"
-              options={tzOptions}
-              components={customSelectComponents}
-              chakraStyles={selectChakraStyles}
-            />
-          </VStack>
-          <VStack
-            gap={2}
-            alignItems={'flex-start'}
-            width="fit-content"
-            minW={'10px'}
-          >
-            <Heading fontSize="16px">Month</Heading>
-
-            <Select
-              value={monthValue}
-              colorScheme="primary"
-              onChange={newValue => _onChangeMonth(newValue)}
-              className="noLeftBorder timezone-select"
-              options={months}
-              components={customSelectComponents}
-              chakraStyles={selectChakraStyles}
-            />
-          </VStack>
-
-          <HStack spacing={3} display={{ base: 'none', lg: 'flex' }}>
-            <Button
-              variant="outline"
-              colorScheme="primary"
-              leftIcon={<MdShare color="#F9B19A" size={20} />}
-              onClick={onSharePoll}
-              px="16px"
-              py="8px"
-              fontSize="16px"
-              fontWeight="700"
-              borderRadius="8px"
-            >
-              Share Poll
-            </Button>
-          </HStack>
-          {isUpdatingMeeting && (
-            <Button
-              rightIcon={<FaArrowRight />}
-              colorScheme="primary"
-              _disabled={{
-                bg: 'text-muted',
-              }}
-              isDisabled={!pickedTime}
-              onClick={() => handlePageSwitch(Page.SCHEDULE_DETAILS)}
-            >
-              Continue scheduling
-            </Button>
-          )}
-        </Flex>
+              </HStack>
+            )}
+            {isUpdatingMeeting && (
+              <Button
+                rightIcon={<FaArrowRight />}
+                colorScheme="primary"
+                _disabled={{
+                  bg: 'text-muted',
+                }}
+                isDisabled={!pickedTime}
+                onClick={() => handlePageSwitch(Page.SCHEDULE_DETAILS)}
+              >
+                Continue scheduling
+              </Button>
+            )}
+          </Flex>
+        )}
         {typeof daysUntilExpiry === 'number' && (
           <Box w="100%" px={{ base: 0, md: 0 }}>
             <Text
@@ -1463,7 +1505,7 @@ export function QuickPollPickAvailability({
 
         {/* Mobile Action Buttons */}
         <VStack gap={3} w="100%" display={{ base: 'flex', md: 'none' }}>
-          {onSaveAvailability && (
+          {onSaveAvailability && !isScheduled && (
             <>
               <ChooseAvailabilityMethodModal
                 isOpen={showMethodModal}
@@ -1508,7 +1550,7 @@ export function QuickPollPickAvailability({
               )}
             </>
           )}
-          {onSharePoll && (
+          {onSharePoll && !isScheduled && (
             <Button
               variant="outline"
               colorScheme="primary"
@@ -1532,17 +1574,19 @@ export function QuickPollPickAvailability({
           alignItems="center"
           display={{ base: 'flex', md: 'none' }}
         >
-          <VStack align="center" gap={2} w="100%" textAlign="center">
-            <Heading fontSize="16px" fontWeight={700} color="text-primary">
-              Select all the time slots that work for you
-            </Heading>
-            <Text fontSize="14px" color="text-primary">
-              Click on each cell to mark when you&apos;re available, so the host
-              can easily find the best time for everyone.
-            </Text>
-          </VStack>
+          {!isScheduled && (
+            <VStack align="center" gap={2} w="100%" textAlign="center">
+              <Heading fontSize="16px" fontWeight={700} color="text-primary">
+                Select all the time slots that work for you
+              </Heading>
+              <Text fontSize="14px" color="text-primary">
+                Click on each cell to mark when you&apos;re available, so the
+                host can easily find the best time for everyone.
+              </Text>
+            </VStack>
+          )}
 
-          {canScheduleFromPoll && isSchedulingIntent && (
+          {!isScheduled && canScheduleFromPoll && isSchedulingIntent && (
             <Button
               colorScheme="primary"
               onClick={handleJumpToBestSlot}
@@ -1558,7 +1602,37 @@ export function QuickPollPickAvailability({
           )}
         </VStack>
 
-        <QuickPollParticipationInstructions />
+        {!isScheduled && <QuickPollParticipationInstructions />}
+
+        {isScheduled && scheduledMeetingDateTime && (
+          <HStack
+            w="100%"
+            justify="flex-start"
+            alignItems="center"
+            mb={{ base: 2, md: 4 }}
+            spacing={{ base: 2, md: 12 }}
+            flexWrap="wrap"
+          >
+            <Text
+              fontSize={{ base: '14px', md: '16px' }}
+              fontWeight={600}
+              color="primary.400"
+            >
+              This Poll has been scheduled
+            </Text>
+            <Text
+              fontSize={{ base: '14px', md: '16px' }}
+              fontWeight={600}
+              color="text-primary"
+              textAlign="left"
+            >
+              Date/Time for the scheduled meeting:{' '}
+              <Text as="span" color="text-primary">
+                {scheduledMeetingLabel}
+              </Text>
+            </Text>
+          </HStack>
+        )}
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
           <VStack
@@ -1699,13 +1773,27 @@ export function QuickPollPickAvailability({
                 />
               </HStack>
               <Box maxW="400px" mx="auto" textAlign="center">
-                <Heading fontSize="20px" fontWeight={700}>
-                  Select all the time slots that work for you
-                </Heading>
-                <Text fontSize="12px">
-                  Click on each cell to mark when you&apos;re available, so the
-                  host can easily find the best time for everyone.
-                </Text>
+                {isScheduled ? (
+                  <>
+                    <Heading fontSize="20px" fontWeight={700}>
+                      Availabilities Provided by Participants
+                    </Heading>
+                    <Text fontSize="12px">
+                      All time slots shown below are the available times between
+                      you and those who are interested in the event.
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Heading fontSize="20px" fontWeight={700}>
+                      Select all the time slots that work for you
+                    </Heading>
+                    <Text fontSize="12px">
+                      Click on each cell to mark when you&apos;re available, so
+                      the host can easily find the best time for everyone.
+                    </Text>
+                  </>
+                )}
               </Box>
               <HStack w="100%" justify="center" gap={0}>
                 <Grid
@@ -1801,13 +1889,27 @@ export function QuickPollPickAvailability({
                 textAlign="center"
                 display={{ lg: 'block', base: 'none' }}
               >
-                <Heading fontSize="20px" fontWeight={700}>
-                  Select all the time slots that work for you
-                </Heading>
-                <Text fontSize="12px">
-                  Click on each cell to mark when you&apos;re available, so the
-                  host can easily find the best time for everyone.
-                </Text>
+                {isScheduled ? (
+                  <>
+                    <Heading fontSize="20px" fontWeight={700}>
+                      Availabilities Provided by Participants
+                    </Heading>
+                    <Text fontSize="12px">
+                      All time slots shown below are the available times between
+                      you and those who are interested in the event.
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Heading fontSize="20px" fontWeight={700}>
+                      Select all the time slots that work for you
+                    </Heading>
+                    <Text fontSize="12px">
+                      Click on each cell to mark when you&apos;re available, so
+                      the host can easily find the best time for everyone.
+                    </Text>
+                  </>
+                )}
               </Box>
 
               <HStack gap={0} ml="auto">
