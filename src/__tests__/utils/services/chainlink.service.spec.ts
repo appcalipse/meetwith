@@ -29,7 +29,9 @@ describe('ChainlinkService', () => {
   describe('getPriceForChain', () => {
     it('should return formatted price', async () => {
       const mockPrice = 1234.56
-      jest.spyOn(PriceFeedService.prototype, 'getPrice').mockResolvedValue(mockPrice)
+      jest
+        .spyOn(PriceFeedService.prototype, 'getPrice')
+        .mockResolvedValue(mockPrice)
 
       const result = await getPriceForChain(
         SupportedChain.ARBITRUM,
@@ -50,7 +52,7 @@ describe('ChainlinkService', () => {
         AcceptedToken.USDC
       )
 
-      expect(result).toBe('$1.00')
+      expect(result).toBe(1)
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining('Failed to get price'),
         expect.any(Error)
@@ -58,7 +60,9 @@ describe('ChainlinkService', () => {
     })
 
     it('should handle different chains and tokens', async () => {
-      jest.spyOn(PriceFeedService.prototype, 'getPrice').mockResolvedValue(2500.0)
+      jest
+        .spyOn(PriceFeedService.prototype, 'getPrice')
+        .mockResolvedValue(2500.0)
 
       const result = await getPriceForChain(
         SupportedChain.ETHEREUM,
@@ -129,7 +133,10 @@ describe('ChainlinkService', () => {
       })
 
       it('should query Chainlink for USDT on Arbitrum', async () => {
-        const mockContract = { address: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7', chain: { id: 42161 } }
+        const mockContract = {
+          address: '0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7',
+          chain: { id: 42161 },
+        }
         ;(getContract as jest.Mock).mockReturnValue(mockContract)
         ;(formatUnits as jest.Mock).mockReturnValue('0.99')
         ;(queryClient.fetchQuery as jest.Mock).mockResolvedValue([
@@ -223,7 +230,9 @@ describe('ChainlinkService', () => {
         expect(result).toBe(1)
         expect(Sentry.captureException).toHaveBeenCalledWith(
           expect.objectContaining({
-            message: expect.stringContaining('No feed for USDC on POLYGON_MATIC'),
+            message: expect.stringContaining(
+              'No feed for USDC on POLYGON_MATIC'
+            ),
           }),
           expect.any(Object)
         )
@@ -305,7 +314,6 @@ describe('ChainlinkService', () => {
         ;(formatUnits as jest.Mock).mockReturnValue('1.00')
 
         let capturedQueryFunction: (() => Promise<any>) | undefined
-
         ;(queryClient.fetchQuery as jest.Mock).mockImplementation(
           async (key, queryFn) => {
             capturedQueryFunction = queryFn
