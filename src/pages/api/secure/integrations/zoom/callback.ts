@@ -26,7 +26,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         'base64'
       )
       return res.redirect(
-        `/dashboard/settings/connected-accounts?meetResult=error&state=${newState64}`
+        `/dashboard/settings/connected-calendars?calendarResult=error&state=${encodeURIComponent(
+          newState64
+        )}`
       )
     }
   }
@@ -101,19 +103,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       ? Buffer.from(JSON.stringify(stateObject)).toString('base64')
       : undefined
 
-    if (stateObject?.redirectTo) {
-      const containParams = stateObject.redirectTo.includes('?')
-      const redirect_url =
-        stateObject.redirectTo +
-        (newState64 && !stateObject.ignoreState
-          ? `${containParams ? '&' : '?'}`
-          : '')
+    if (
+      stateObject?.redirectTo &&
+      typeof stateObject.redirectTo === 'string' &&
+      stateObject.redirectTo.startsWith('/')
+    ) {
+      const redirect_url = stateObject.redirectTo
       return res.redirect(redirect_url)
     }
-
     return res.redirect(
-      `/dashboard/settings/connected-accounts?meetResult=success${
-        !!state ? `&state=${newState64}` : ''
+      `/dashboard/settings/connected-calendars?calendarResult=success${
+        !!state ? `&state=${encodeURIComponent(newState64 || '')}` : ''
       }`
     )
   } catch (err) {

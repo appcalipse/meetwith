@@ -28,7 +28,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return convertBlockchainSubscriptionToSubscription(sub)
     })
 
-    return res.send(
+    return res.json(
       await updateAccountSubscriptions(dbSubs.filter(sub => !!sub.plan_id))
     )
   }

@@ -78,11 +78,12 @@ interface QuickPollAvailabilityDiscoverProps {
   pollId?: string
   pollData?: QuickPollBySlugResponse
   onNavigateToGuestDetails?: () => void
+  isScheduled?: boolean
 }
 
 const QuickPollAvailabilityDiscoverInner: React.FC<
   QuickPollAvailabilityDiscoverProps
-> = ({ pollId, pollData, onNavigateToGuestDetails }) => {
+> = ({ pollId, pollData, onNavigateToGuestDetails, isScheduled }) => {
   const { isOnboardingOpened } = useContext(OnboardingModalContext)
   const {
     isInviteParticipantsOpen,
@@ -918,13 +919,17 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           Poll Title: {currentPollTitle}
         </Heading>
 
-        <Grid4
-          w={8}
-          h={8}
-          onClick={() => setIsInviteParticipantsOpen(!isInviteParticipantsOpen)}
-          cursor={'pointer'}
-          display={{ base: 'block', lg: 'none' }}
-        />
+        {!isScheduled && (
+          <Grid4
+            w={8}
+            h={8}
+            onClick={() =>
+              setIsInviteParticipantsOpen(!isInviteParticipantsOpen)
+            }
+            cursor={'pointer'}
+            display={{ base: 'block', lg: 'none' }}
+          />
+        )}
       </HStack>
 
       {/* Mobile Layout */}
@@ -938,6 +943,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           onClose={() => setIsInviteParticipantsOpen(false)}
           isOpen={isInviteParticipantsOpen}
           pollData={currentPollData}
+          isScheduled={isScheduled}
         />
         <QuickPollPickAvailability
           openParticipantModal={() => setIsInviteParticipantsOpen(true)}
@@ -964,6 +970,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
               ? selectedSlots.length > 0
               : undefined
           }
+          isScheduled={isScheduled}
         />
       </VStack>
 
@@ -976,39 +983,42 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
           height={'fit-content'}
           gap={'14px'}
         >
-          <InviteParticipants
-            key={inviteKey}
-            onClose={() => setIsInviteParticipantsOpen(false)}
-            isOpen={isInviteParticipantsOpen}
-            isQuickPoll={true}
-            pollData={currentPollData}
-            onInviteSuccess={async () => {
-              await queryClient.invalidateQueries({
-                queryKey: ['quickpoll-public'],
-              })
-              await queryClient.invalidateQueries({
-                queryKey: ['quickpoll-schedule'],
-              })
-              setIsInviteParticipantsOpen(false)
-            }}
-            groupAvailability={groupAvailability}
-            groupParticipants={groupParticipants}
-            participants={participants}
-            handleUpdateGroups={(
-              groupAvailability: Record<string, Array<string> | undefined>,
-              groupParticipants: Record<string, Array<string> | undefined>
-            ) => {
-              setGroupAvailability(groupAvailability)
-              setGroupParticipants(groupParticipants)
-            }}
-            handleUpdateParticipants={setParticipants}
-          />
+          {!isScheduled && (
+            <InviteParticipants
+              key={inviteKey}
+              onClose={() => setIsInviteParticipantsOpen(false)}
+              isOpen={isInviteParticipantsOpen}
+              isQuickPoll={true}
+              pollData={currentPollData}
+              onInviteSuccess={async () => {
+                await queryClient.invalidateQueries({
+                  queryKey: ['quickpoll-public'],
+                })
+                await queryClient.invalidateQueries({
+                  queryKey: ['quickpoll-schedule'],
+                })
+                setIsInviteParticipantsOpen(false)
+              }}
+              groupAvailability={groupAvailability}
+              groupParticipants={groupParticipants}
+              participants={participants}
+              handleUpdateGroups={(
+                groupAvailability: Record<string, Array<string> | undefined>,
+                groupParticipants: Record<string, Array<string> | undefined>
+              ) => {
+                setGroupAvailability(groupAvailability)
+                setGroupParticipants(groupParticipants)
+              }}
+              handleUpdateParticipants={setParticipants}
+            />
+          )}
           <QuickPollParticipants
             pollData={currentPollData}
             onAddParticipants={() => setIsInviteParticipantsOpen(true)}
             onAvailabilityToggle={refreshAvailabilities}
             currentGuestEmail={currentGuestEmail}
             onParticipantRemoved={onParticipantRemoved}
+            isScheduled={isScheduled}
           />
           <QuickPollPickAvailability
             openParticipantModal={() => setIsInviteParticipantsOpen(true)}
@@ -1037,6 +1047,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
                 ? selectedSlots.length > 0
                 : undefined
             }
+            isScheduled={isScheduled}
           />
         </HStack>
       )}

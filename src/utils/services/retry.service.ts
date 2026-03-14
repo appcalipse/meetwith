@@ -9,10 +9,7 @@ export interface RetryOptions {
 }
 
 export class RetryableError extends Error {
-  constructor(
-    message: string,
-    public readonly originalError: unknown
-  ) {
+  constructor(message: string, public readonly originalError: unknown) {
     super(message)
     this.name = 'RetryableError'
   }
@@ -70,9 +67,10 @@ export async function withRetry<T>(
       const finalDelay = delay + jitter
       if (error instanceof Error) {
         console.warn(
-          `Attempt ${attempt}/${maxRetries} failed. Retrying in ${Math.round(
-            finalDelay
-          )}ms...`,
+          'Attempt %d/%d failed. Retrying in %dms...',
+          attempt,
+          maxRetries,
+          Math.round(finalDelay),
           error.message
         )
       }

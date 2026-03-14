@@ -76,7 +76,11 @@ export class PubSubManager {
       const channelInstance = await this.getChannel(channel)
       await channelInstance.publish(name, message)
     } catch (error) {
-      console.error(`Failed to publish message to channel "${channel}":`, error)
+      console.error(
+        'Failed to publish message to channel "%s":',
+        channel,
+        error
+      )
       throw error
     }
   }
@@ -106,7 +110,7 @@ export class PubSubManager {
       // Subscribe to the channel
       channelInstance.subscribe(name, callback)
     } catch (error) {
-      console.error(`Failed to subscribe to channel "${channel}":`, error)
+      console.error('Failed to subscribe to channel "%s":', channel, error)
       throw error
     }
   }
@@ -145,7 +149,7 @@ export class PubSubManager {
         }
       }
     } catch (error) {
-      console.error(`Failed to unsubscribe from channel "${channel}":`, error)
+      console.error('Failed to unsubscribe from channel "%s":', channel, error)
       throw error
     }
   }

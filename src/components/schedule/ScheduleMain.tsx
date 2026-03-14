@@ -728,8 +728,10 @@ const ScheduleMain: FC<IInitialProps> = ({
             meeting_id: '',
           })
         )
+        let scheduledMeetingId: string | undefined
+
         if (meetingRepeat.value != MeetingRepeat.NO_REPEAT) {
-          await scheduleRecurringMeeting(
+          const recurringResult = await scheduleRecurringMeeting(
             start,
             end,
             quickpollParticipants,
@@ -740,12 +742,14 @@ const ScheduleMain: FC<IInitialProps> = ({
             meetingUrl,
             title,
             meetingNotification.map(n => n.value),
-            selectedPermissions
+            selectedPermissions,
+            pollId
           )
+          scheduledMeetingId = recurringResult?.meeting_id
         } else {
-          await scheduleMeeting(
+          const result = await scheduleMeeting(
             true,
-            SchedulingType.REGULAR,
+            SchedulingType.QUICKPOLL,
             NO_MEETING_TYPE,
             start,
             end,
@@ -757,8 +761,11 @@ const ScheduleMain: FC<IInitialProps> = ({
             undefined,
             title,
             meetingNotification.map(n => n.value),
-            selectedPermissions
+            selectedPermissions,
+            undefined,
+            pollId
           )
+          scheduledMeetingId = result?.meeting_id
         }
         try {
           await updateQuickPoll(pollId, { status: PollStatus.COMPLETED })

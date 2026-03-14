@@ -15,6 +15,7 @@ jest.mock('@sentry/nextjs', () => ({
 // Mock database
 jest.mock('@/utils/database', () => ({
   getQuickPollBySlug: jest.fn(),
+  getQuickPollMeetingByPollId: jest.fn(),
 }))
 
 import * as Sentry from '@sentry/nextjs'
@@ -30,6 +31,8 @@ import {
 describe('/api/quickpoll/[slug]', () => {
   const mockCaptureException = Sentry.captureException as jest.Mock
   const mockGetQuickPollBySlug = database.getQuickPollBySlug as jest.Mock
+  const mockGetQuickPollMeetingByPollId =
+    database.getQuickPollMeetingByPollId as jest.Mock
 
   let req: Partial<NextApiRequest>
   let res: Partial<NextApiResponse>
@@ -167,7 +170,7 @@ describe('/api/quickpoll/[slug]', () => {
       expect(mockCaptureException).toHaveBeenCalled()
     })
 
-    it('should return 410 for completed poll', async () => {
+    it('should return 200 for completed poll with scheduled_meeting', async () => {
       const mockPollData = {
         poll: {
           id: 'poll_123',
@@ -175,16 +178,21 @@ describe('/api/quickpoll/[slug]', () => {
           status: PollStatus.COMPLETED,
           expires_at: null,
         },
+        participants: [],
       }
 
       mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
+      mockGetQuickPollMeetingByPollId.mockResolvedValue(null)
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
-      expect(statusMock).toHaveBeenCalledWith(410)
+      expect(mockGetQuickPollMeetingByPollId).toHaveBeenCalledWith('poll_123')
+      expect(statusMock).toHaveBeenCalledWith(200)
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          error: expect.any(String),
+          poll: mockPollData.poll,
+          participants: mockPollData.participants,
+          scheduled_meeting: null,
         })
       )
     })
@@ -194,7 +202,7 @@ describe('/api/quickpoll/[slug]', () => {
         poll: {
           id: 'poll_123',
           slug: 'test-poll-slug',
-          status: PollStatus.COMPLETED,
+          status: PollStatus.CLOSED,
           expires_at: null,
         },
       }
