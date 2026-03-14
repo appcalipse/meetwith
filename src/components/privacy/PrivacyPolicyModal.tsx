@@ -143,7 +143,7 @@ const PrivacyPolicyModal = ({
       queryClient.invalidateQueries(
         QueryKeys.account(currentAccount?.address?.toLowerCase())
       )
-      await updateUser()
+
       if (onAccepted) onAccepted()
     },
     onError: (e: unknown) => {
