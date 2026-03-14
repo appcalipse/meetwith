@@ -92,7 +92,7 @@ const DashboardContent: React.FC<{
 
   const showPrivacyModal = currentAccount?.preferences?.terms_accepted === null
 
-  const [showAnnouncement, setShowAnnouncement] = useState(true)
+  const [showAnnouncement, setShowAnnouncement] = useState(false)
 
   const handleCloseAnnouncement = () => {
     setShowAnnouncement(false)

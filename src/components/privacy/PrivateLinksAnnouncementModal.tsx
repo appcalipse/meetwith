@@ -29,7 +29,6 @@ export const PrivateLinksAnnouncementModal = ({
   isOpen,
   onClose,
 }: PrivateLinksAnnouncementModalProps) => {
-  const router = useRouter()
   const { showErrorToast } = useToastHelpers()
   const [connectGoogle, setConnectGoogle] = useState(false)
   const [connectZoom, setConnectZoom] = useState(false)
@@ -44,14 +43,7 @@ export const PrivateLinksAnnouncementModal = ({
     setIsConnecting(true)
     try {
       if (connectGoogle && connectZoom) {
-        const zoomState = Buffer.from(
-          JSON.stringify({
-            redirectTo: router.asPath,
-            origin: 'announcement',
-          })
-        ).toString('base64')
-        const { url: zoomUrl } = await getZoomAuthUrl(zoomState)
-
+        const { url: zoomUrl } = await getZoomAuthUrl()
         const googleState = Buffer.from(
           JSON.stringify({
             redirectTo: zoomUrl,
@@ -62,23 +54,11 @@ export const PrivateLinksAnnouncementModal = ({
 
         window.open(googleUrl, '_self')
       } else if (connectGoogle) {
-        const state = Buffer.from(
-          JSON.stringify({
-            redirectTo: router.asPath,
-            origin: 'announcement',
-          })
-        ).toString('base64')
-        const { url } = await getGoogleMeetAuthUrl(state)
+        const { url } = await getGoogleMeetAuthUrl()
 
         window.open(url, '_self')
       } else if (connectZoom) {
-        const state = Buffer.from(
-          JSON.stringify({
-            redirectTo: router.asPath,
-            origin: 'announcement',
-          })
-        ).toString('base64')
-        const { url } = await getZoomAuthUrl(state)
+        const { url } = await getZoomAuthUrl()
 
         window.open(url, '_self')
       }
@@ -164,7 +144,7 @@ export const PrivateLinksAnnouncementModal = ({
                       alt="Google Meet"
                     />
                     <Text color="text-primary" fontSize="md">
-                      Connect your Google Meet Account here
+                      Connect your Google Meet Account
                     </Text>
                   </Flex>
                 </Flex>
@@ -184,7 +164,7 @@ export const PrivateLinksAnnouncementModal = ({
                       alt="Zoom"
                     />
                     <Text color="text-primary" fontSize="md">
-                      Connect your Zoom Account here
+                      Connect your Zoom Account
                     </Text>
                   </Flex>
                 </Flex>

@@ -62,3 +62,4 @@ test.log
 e2e/.auth/
 test-results/
 playwright-report/
+.opencode/rules/git-commits.md

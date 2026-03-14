@@ -9,7 +9,6 @@ import { encodeServerKeys } from '@/utils/zoom.helper'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code, error, state } = req.query
-
   const stateObject =
     typeof state === 'string'
       ? JSON.parse(Buffer.from(state, 'base64').toString())
@@ -107,7 +106,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const redirect_url =
         stateObject.redirectTo +
         (newState64 && !stateObject.ignoreState
-          ? `${containParams ? '&' : '?'}state=${newState64}`
+          ? `${containParams ? '&' : '?'}`
           : '')
       return res.redirect(redirect_url)
     }
