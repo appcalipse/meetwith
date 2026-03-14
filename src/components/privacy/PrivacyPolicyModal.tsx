@@ -129,9 +129,6 @@ const PrivacyPolicyModal = ({
         'Preferences saved',
         "You're all set. We've recorded your choices and added you to our updates."
       )
-      await queryClient.invalidateQueries(
-        QueryKeys.account(currentAccount?.address?.toLowerCase())
-      )
       await updateUser()
       if (onAccepted) onAccepted()
     },
