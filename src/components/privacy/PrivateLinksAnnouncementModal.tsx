@@ -17,7 +17,7 @@ import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { FiArrowRight } from 'react-icons/fi'
 
-import { getGoogleMeetAuthUrl } from '@/utils/api_helper'
+import { getGoogleMeetAuthUrl, getZoomAuthUrl } from '@/utils/api_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 export interface PrivateLinksAnnouncementModalProps {
@@ -32,31 +32,62 @@ export const PrivateLinksAnnouncementModal = ({
   const router = useRouter()
   const { showErrorToast } = useToastHelpers()
   const [connectGoogle, setConnectGoogle] = useState(false)
+  const [connectZoom, setConnectZoom] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
 
   const handleContinue = async () => {
-    if (!connectGoogle) {
+    if (!connectGoogle && !connectZoom) {
       onClose()
       return
     }
 
     setIsConnecting(true)
     try {
-      const state = Buffer.from(
-        JSON.stringify({
-          redirectTo: router.asPath,
-          origin: 'announcement',
-        })
-      ).toString('base64')
+      if (connectGoogle && connectZoom) {
+        const zoomState = Buffer.from(
+          JSON.stringify({
+            redirectTo: router.asPath,
+            origin: 'announcement',
+          })
+        ).toString('base64')
+        const { url: zoomUrl } = await getZoomAuthUrl(zoomState)
 
-      const { url } = await getGoogleMeetAuthUrl(state)
-      window.open(url, '_self')
+        const googleState = Buffer.from(
+          JSON.stringify({
+            redirectTo: zoomUrl,
+            origin: 'announcement',
+          })
+        ).toString('base64')
+        const { url: googleUrl } = await getGoogleMeetAuthUrl(googleState)
+
+        window.open(googleUrl, '_self')
+      } else if (connectGoogle) {
+        const state = Buffer.from(
+          JSON.stringify({
+            redirectTo: router.asPath,
+            origin: 'announcement',
+          })
+        ).toString('base64')
+        const { url } = await getGoogleMeetAuthUrl(state)
+
+        window.open(url, '_self')
+      } else if (connectZoom) {
+        const state = Buffer.from(
+          JSON.stringify({
+            redirectTo: router.asPath,
+            origin: 'announcement',
+          })
+        ).toString('base64')
+        const { url } = await getZoomAuthUrl(state)
+
+        window.open(url, '_self')
+      }
       onClose()
     } catch {
       setIsConnecting(false)
       showErrorToast(
         'Connection failed',
-        'Could not connect to Google Meet. Please try again.'
+        'Could not connect your accounts. Please try again.'
       )
     }
   }
@@ -138,9 +169,13 @@ export const PrivateLinksAnnouncementModal = ({
                   </Flex>
                 </Flex>
 
-                {/* Zoom OAuth not yet implemented — hidden until user OAuth flow is built */}
-                <Flex align="center" gap={4} display="none">
-                  <Checkbox colorScheme="primary" size="lg" isDisabled />
+                <Flex align="center" gap={4}>
+                  <Checkbox
+                    colorScheme="primary"
+                    isChecked={connectZoom}
+                    onChange={e => setConnectZoom(e.target.checked)}
+                    size="lg"
+                  />
                   <Flex align="center" gap={3}>
                     <Image
                       src="/assets/connected-accounts/zoom.png"
