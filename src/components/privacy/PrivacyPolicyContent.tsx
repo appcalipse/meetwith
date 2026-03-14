@@ -108,8 +108,8 @@ export const PrivacyPolicyContent = () => (
     <Text color="text-primary" fontSize="sm" my={2}>
       Meetwith supports crypto payments (Arbitrum and Celo), traditional
       payments via Stripe, and manual invoicing for enterprise clients. We
-      don&apos;t store complete credit card numbers or crypto wallet private
-      keys. Payment processing is handled by our secure partners.
+      don&apos;t store credit card numbers or crypto wallet private keys.
+      Payment processing is handled by our secure partners.
     </Text>
 
     <Text as="h3" color="text-primary" fontWeight={600} fontSize="lg" mt={6}>
