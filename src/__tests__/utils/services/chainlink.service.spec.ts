@@ -55,6 +55,8 @@ describe('ChainlinkService', () => {
       expect(result).toBe('$1.00')
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining('Failed to get price'),
+        AcceptedToken.USDC,
+        SupportedChain.ARBITRUM,
         expect.any(Error)
       )
     })
