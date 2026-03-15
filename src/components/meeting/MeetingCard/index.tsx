@@ -533,20 +533,13 @@ const MeetingCard = ({
                     />
                   </Tooltip>
                 )}
-                <Tooltip
-                  label="Delete meeting"
-                  placement="top"
-                  display={
-                    meeting.decrypted.participants.length <= 2
-                      ? 'none'
-                      : undefined
-                  }
-                >
+                <Tooltip label="Delete meeting" placement="top">
                   <IconButton
                     aria-label="delete"
                     color={iconColor}
                     icon={<FaTrash size={16} />}
                     onClick={handleDelete}
+                    hidden={meeting.decrypted.participants.length <= 2}
                   />
                 </Tooltip>
                 <Menu>
