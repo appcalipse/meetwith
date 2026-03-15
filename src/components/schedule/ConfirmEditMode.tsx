@@ -14,18 +14,26 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import React from 'react'
-
-import { useScheduleState } from '@/providers/schedule/ScheduleContext'
+import {
+  ScheduleStateContext,
+  useScheduleState,
+} from '@/providers/schedule/ScheduleContext'
 import { UpdateMode, updateModes } from '@/utils/constants/meeting'
 
 export interface IConfirmEditModeModal {
+  editMode?: UpdateMode
+  setEditMode?: (mode: UpdateMode) => void
   onClose: () => void
   afterClose: () => void
   isOpen: boolean
 }
 
 const ConfirmEditModeModal: React.FC<IConfirmEditModeModal> = props => {
-  const { editMode, setEditMode } = useScheduleState()
+  const scheduleState = React.useContext(ScheduleStateContext)
+  const editMode =
+    props.editMode || scheduleState?.editMode || UpdateMode.SINGLE_EVENT
+  const setEditMode =
+    props.setEditMode || scheduleState?.setEditMode || (() => {})
 
   const handleClose = () => {
     props.onClose()
