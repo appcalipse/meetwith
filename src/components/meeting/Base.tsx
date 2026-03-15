@@ -37,7 +37,13 @@ import {
 } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { getCalendarEvents, getMeeting } from '@/utils/api_helper'
-import { decodeMeeting, deleteMeeting } from '@/utils/calendar_manager'
+import {
+  decodeMeeting,
+  deleteMeeting,
+  deleteMeetingInstance,
+  deleteMeetingSeries,
+} from '@/utils/calendar_manager'
+import { UpdateMode } from '@/utils/constants/meeting'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import { handleApiError } from '@/utils/error_helper'
 import {
@@ -352,17 +358,36 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
 
   const handleDelete = async (
     actor?: ParticipantInfo,
-    decryptedMeeting?: MeetingDecrypted
+    decryptedMeeting?: MeetingDecrypted,
+    editMode?: UpdateMode
   ) => {
     if (!decryptedMeeting) return
     try {
-      const meeting = await deleteMeeting(
-        true,
-        currentAccount?.address || '',
-        NO_MEETING_TYPE,
-        decryptedMeeting,
-        actor
-      )
+      let meeting
+      if (decryptedMeeting.id?.includes('_')) {
+        if (editMode === UpdateMode.SINGLE_EVENT) {
+          meeting = await deleteMeetingInstance(
+            decryptedMeeting.id,
+            currentAccount?.address || '',
+            decryptedMeeting,
+            actor
+          )
+        } else {
+          meeting = await deleteMeetingSeries(
+            decryptedMeeting.id,
+            currentAccount?.address || '',
+            actor
+          )
+        }
+      } else {
+        meeting = await deleteMeeting(
+          true,
+          currentAccount?.address || '',
+          NO_MEETING_TYPE,
+          decryptedMeeting,
+          actor
+        )
+      }
       toast({
         title: 'Meeting Deleted',
         description: 'The meeting was deleted successfully',

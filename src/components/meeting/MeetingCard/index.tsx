@@ -30,7 +30,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { FaEdit, FaEllipsisV, FaRegCopy, FaTrash } from 'react-icons/fa'
 import { MdCancel } from 'react-icons/md'
 import sanitizeHtml from 'sanitize-html'
-
+import ConfirmEditModeModal from '@/components/schedule/ConfirmEditMode'
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import { DeleteMeetingDialog } from '@/components/schedule/delete-dialog'
 import ScheduleParticipantsSchedulerModal from '@/components/schedule/ScheduleParticipantsSchedulerModal'
@@ -153,6 +153,17 @@ const MeetingCard = ({
     onOpen: onEditSchedulerOpen,
     onClose: onEditSchedulerClose,
   } = useDisclosure()
+  const {
+    isOpen: isEditModeConfirmOpen,
+    onOpen: onEditModeConfirmOpen,
+    onClose: onEditModeConfirmClose,
+  } = useDisclosure()
+
+  const [editMode, setEditMode] = useState<UpdateMode>(UpdateMode.SINGLE_EVENT)
+  const [currentAction, setCurrentAction] = useState<
+    'delete' | 'cancel' | null
+  >(null)
+
   const { showSuccessToast, showInfoToast, showErrorToast } = useToastHelpers()
 
   const rsvpAbortControllerRef = useRef<AbortController | null>(null)
@@ -344,8 +355,31 @@ const MeetingCard = ({
     ) {
       onEditSchedulerOpen()
     } else {
-      onDeleteOpen()
+      if (meeting.id?.includes('_')) {
+        setCurrentAction('delete')
+        onEditModeConfirmOpen()
+      } else {
+        onDeleteOpen()
+      }
     }
+  }
+
+  const handleCancelMeeting = () => {
+    if (meeting.id?.includes('_')) {
+      setCurrentAction('cancel')
+      onEditModeConfirmOpen()
+    } else {
+      onCancelOpen()
+    }
+  }
+
+  const handleConfirmEditMode = () => {
+    if (currentAction === 'delete') {
+      onDeleteOpen()
+    } else if (currentAction === 'cancel') {
+      onCancelOpen()
+    }
+    setCurrentAction(null)
   }
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
@@ -495,15 +529,17 @@ const MeetingCard = ({
                       aria-label="remove"
                       color={iconColor}
                       icon={<MdCancel size={16} />}
-                      onClick={onCancelOpen}
+                      onClick={handleCancelMeeting}
                     />
                   </Tooltip>
                 )}
                 <Tooltip
                   label="Delete meeting"
                   placement="top"
-                  hidden={
-                    meeting.decrypted.participants.length === 2 ? true : false
+                  display={
+                    meeting.decrypted.participants.length <= 2
+                      ? 'none'
+                      : undefined
                   }
                 >
                   <IconButton
@@ -710,12 +746,20 @@ const MeetingCard = ({
         onClose={onEditSchedulerClose}
         participants={meeting.decrypted?.participants || []}
       />
+      <ConfirmEditModeModal
+        isOpen={isEditModeConfirmOpen}
+        onClose={onEditModeConfirmClose}
+        afterClose={handleConfirmEditMode}
+        editMode={editMode}
+        setEditMode={setEditMode}
+      />
       <DeleteMeetingDialog
         afterCancel={onCancel}
         currentAccount={currentAccount}
         decryptedMeeting={meeting.decrypted}
         isOpen={isDeleteOpen}
         onClose={onDeleteClose}
+        editMode={editMode}
       />
       <CancelMeetingDialog
         afterCancel={onCancel}
@@ -723,9 +767,7 @@ const MeetingCard = ({
         decryptedMeeting={meeting.decrypted}
         isOpen={isCancelOpen}
         onClose={onCancelClose}
-        editMode={
-          meeting.id?.includes('_') ? UpdateMode.SINGLE_EVENT : undefined
-        }
+        editMode={editMode}
       />
     </>
   )
