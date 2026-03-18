@@ -40,7 +40,7 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.18",
     "@fortawesome/free-solid-svg-icons": "^5.8.2",
     "@fortawesome/react-fontawesome": "^0.1.4",
-    "@google-apps/meet": "^0.7.1",
+    "@google-apps/meet": "0.3.0",
     "@hapi/iron": "^6.0.0",
     "@lens-protocol/client": "^2.0.0-alpha.38",
     "@mdx-js/loader": "^2.0.0",
