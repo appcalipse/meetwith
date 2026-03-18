@@ -61,9 +61,9 @@ interface IScheduleStateContext {
   setEditMode: React.Dispatch<React.SetStateAction<UpdateMode>>
 }
 
-const ScheduleStateContext = createContext<IScheduleStateContext | undefined>(
-  undefined
-)
+export const ScheduleStateContext = createContext<
+  IScheduleStateContext | undefined
+>(undefined)
 
 export const useScheduleState = () => {
   const context = useContext(ScheduleStateContext)

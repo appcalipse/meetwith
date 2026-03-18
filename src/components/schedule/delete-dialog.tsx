@@ -15,6 +15,7 @@ import React, { useState } from 'react'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import { Account } from '@/types/Account'
 import { MeetingDecrypted } from '@/types/Meeting'
+import { UpdateMode } from '@/utils/constants/meeting'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 import { canAccountAccessPermission } from '@/utils/generic_utils'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -26,6 +27,7 @@ interface DeleteMeetingDialogProps {
   afterCancel?: (slotsRemoved: string[], skipToast?: boolean) => void
   isOpen: boolean
   onClose: () => void
+  editMode?: UpdateMode
 }
 
 export const DeleteMeetingDialog: React.FC<DeleteMeetingDialogProps> = ({
@@ -35,6 +37,7 @@ export const DeleteMeetingDialog: React.FC<DeleteMeetingDialogProps> = ({
   isOpen,
   onClose,
   afterCancel,
+  editMode,
 }) => {
   const { handleDelete } = useScheduleActions()
 
@@ -102,7 +105,7 @@ export const DeleteMeetingDialog: React.FC<DeleteMeetingDialogProps> = ({
               colorScheme="red"
               onClick={() => {
                 setIsDeleting(true)
-                handleDelete(undefined, decryptedMeeting)
+                handleDelete(undefined, decryptedMeeting, editMode)
                   .then(() => {
                     setIsDeleting(false)
                     afterCancel &&
