@@ -127,9 +127,11 @@ import {
   PollStatus,
   PollVisibility,
   QuickPollCalendar,
+  QuickPollMeetingJoinRow,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
   QuickPollParticipantUpdateFields,
+  ScheduledMeetingInfo,
   UpdateQuickPollParticipantAvailabilityOptions,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
@@ -9160,9 +9162,55 @@ const getQuickPollsForAccount = async (
       }
     })
 
+    const completedPollIds = processedPolls
+      .filter(p => p.status === PollStatus.COMPLETED)
+      .map(p => p.id)
+
+    const scheduledByPollId = new Map<string, ScheduledMeetingInfo>()
+
+    if (completedPollIds.length > 0) {
+      const { data: meetingRows, error: meetingRowsError } = await db.supabase
+        .from('quick_poll_meetings')
+        .select(
+          `
+          poll_id,
+          created_at,
+          meetings (
+            id,
+            start,
+            end,
+            title,
+            meeting_url
+          )
+        `
+        )
+        .in('poll_id', completedPollIds)
+        .order('created_at', { ascending: false })
+
+      if (meetingRowsError) throw meetingRowsError
+
+      for (const row of meetingRows ?? []) {
+        if (!row.poll_id || scheduledByPollId.has(row.poll_id)) continue
+        const meeting = row.meetings as QuickPollMeetingJoinRow | null
+        if (!meeting) continue
+        scheduledByPollId.set(row.poll_id, {
+          meeting_id: meeting.id,
+          start: meeting.start,
+          end: meeting.end,
+          title: meeting.title,
+          meeting_url: meeting.meeting_url,
+        })
+      }
+    }
+
+    const allPolls = processedPolls.map(p => ({
+      ...p,
+      scheduled_meeting: scheduledByPollId.get(p.id) ?? null,
+    }))
+
     return {
-      has_more: offset + processedPolls.length < (totalCount || 0),
-      polls: processedPolls,
+      has_more: offset + allPolls.length < (totalCount || 0),
+      polls: allPolls,
       total_count: totalCount || 0,
     }
   } catch (error) {
