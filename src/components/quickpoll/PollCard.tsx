@@ -25,6 +25,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
+import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import { useContext, useMemo, useState } from 'react'
 import { FaRegCopy } from 'react-icons/fa'
@@ -166,6 +167,43 @@ const PollCard = ({
   const { block: defaultAvailabilityBlock } = useAvailabilityBlock(
     currentAccount?.preferences?.availaibility_id
   )
+
+  const schedulerParticipant = useMemo(
+    () =>
+      poll.quick_poll_participants?.find(
+        p => p.participant_type === QuickPollParticipantType.SCHEDULER
+      ) ?? null,
+    [poll.quick_poll_participants]
+  )
+
+  const scheduledMeetingLabel = useMemo(() => {
+    if (
+      poll.status !== PollStatus.COMPLETED ||
+      !poll.scheduled_meeting?.start
+    ) {
+      return null
+    }
+    const schedulerTz =
+      schedulerParticipant?.timezone ||
+      currentAccount?.preferences?.timezone ||
+      'UTC'
+    try {
+      const dt = DateTime.fromISO(poll.scheduled_meeting.start, {
+        zone: schedulerTz,
+      })
+      const datePart = dt.toFormat('d LLLL, yyyy')
+      const timePart = dt.toFormat('h:mma').toLowerCase()
+      const tzLabel = dt.zoneName || 'UTC'
+      return `${datePart} | ${timePart} ${tzLabel}`
+    } catch {
+      return null
+    }
+  }, [
+    poll.status,
+    poll.scheduled_meeting?.start,
+    schedulerParticipant?.timezone,
+    currentAccount?.preferences?.timezone,
+  ])
 
   const currentUserAvailabilityBadges = useMemo(() => {
     if (!currentAccount?.address) return []
@@ -685,6 +723,25 @@ const PollCard = ({
                     </Tooltip>
                   )}
                 </HStack>
+              </HStack>
+            )}
+
+            {scheduledMeetingLabel && (
+              <HStack spacing={2} flexWrap="wrap">
+                <Text
+                  fontSize={{ base: '14px', md: '16px' }}
+                  color="text-primary"
+                  fontWeight="700"
+                >
+                  Date/Time for the scheduled meeting:
+                </Text>
+                <Text
+                  fontSize={{ base: '14px', md: '16px' }}
+                  color="text-primary"
+                  fontWeight="500"
+                >
+                  {scheduledMeetingLabel}
+                </Text>
               </HStack>
             )}
 

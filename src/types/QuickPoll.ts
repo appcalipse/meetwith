@@ -100,6 +100,22 @@ export interface QuickPollCalendar {
 }
 
 // Extended interfaces for API responses
+export interface ScheduledMeetingInfo {
+  meeting_id: string
+  start: string | null
+  end: string | null
+  title: string | null
+  meeting_url: string | null
+}
+
+export interface QuickPollMeetingJoinRow {
+  id: string
+  start: string | null
+  end: string | null
+  title: string | null
+  meeting_url: string | null
+}
+
 export interface QuickPollWithParticipants extends QuickPoll {
   participants: QuickPollParticipant[]
   participant_count: number
@@ -118,6 +134,7 @@ export interface QuickPollListItem extends Omit<QuickPoll, 'participants'> {
   user_availability_block_titles?: string[]
   user_available_slots?: QuickPollParticipant['available_slots']
   user_timezone?: string
+  scheduled_meeting?: ScheduledMeetingInfo | null
 }
 
 export interface QuickPollParticipantWithAccount extends QuickPollParticipant {
@@ -259,14 +276,6 @@ export interface CloseQuickPollResponse {
 export interface CreatePollProps {
   isEditMode?: boolean
   pollSlug?: string
-}
-
-export interface ScheduledMeetingInfo {
-  meeting_id: string
-  start: string | null
-  end: string | null
-  title: string | null
-  meeting_url: string | null
 }
 
 export interface QuickPollBySlugResponse {
