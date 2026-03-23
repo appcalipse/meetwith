@@ -1329,6 +1329,42 @@ export type Database = {
           }
         ]
       }
+      quick_poll_meetings: {
+        Row: {
+          created_at: string
+          id: string
+          meeting_id: string
+          poll_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meeting_id: string
+          poll_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          poll_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'quick_poll_meetings_meeting_id_fkey'
+            columns: ['meeting_id']
+            isOneToOne: false
+            referencedRelation: 'meetings'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'quick_poll_meetings_poll_id_fkey'
+            columns: ['poll_id']
+            isOneToOne: false
+            referencedRelation: 'quick_polls'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       quick_polls: {
         Row: {
           created_at: string
