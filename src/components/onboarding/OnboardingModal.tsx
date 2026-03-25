@@ -39,6 +39,7 @@ import {
   internalFetch,
   joinQuickPollAsParticipant,
   listConnectedCalendars,
+  migrateGuestPolls,
   saveAccountChanges,
   setNotificationSubscriptions,
   updateAvailabilityBlock,
@@ -51,7 +52,9 @@ import { handleApiError } from '@/utils/error_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import {
+  clearGuestIdentifier,
   clearQuickPollSignInContext,
+  getGuestIdentifier,
   getQuickPollSignInContext,
 } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
@@ -509,6 +512,13 @@ const OnboardingModal = () => {
       }
       logEvent('Updated account details')
       login(updatedAccount)
+
+      const guestId = getGuestIdentifier()
+      if (guestId) {
+        migrateGuestPolls(guestId)
+          .then(() => clearGuestIdentifier())
+          .catch(err => console.error('Failed to migrate guest polls:', err))
+      }
 
       const pollContext = getQuickPollSignInContext()
       if (pollContext) {

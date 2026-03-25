@@ -83,6 +83,7 @@ import { getMergedParticipants } from '@/utils/schedule.helper'
 import { getEmptySlots } from '@/utils/slots.helper'
 import { saveQuickPollSignInContext } from '@/utils/storage'
 
+import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import { useAvailabilityTracker } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
 import { AccountAddressRecord } from '../schedule/schedule-time-discover/SchedulePickTime'
@@ -194,6 +195,8 @@ export function QuickPollPickAvailability({
   const initialSlotsSignatureRef = useRef<string | null>(null)
   const { openConnection } = useContext(OnboardingModalContext)
   const [showMethodModal, setShowMethodModal] = useState(false)
+  const [showConnectCalendarModal, setShowConnectCalendarModal] =
+    useState(false)
 
   const isHost = useMemo(() => {
     if (!pollData || !currentAccount) return false
@@ -260,13 +263,21 @@ export function QuickPollPickAvailability({
       currentParticipant.available_slots &&
       currentParticipant.available_slots.length > 0
 
+    // Check if they have block-based availability (common for imported availability)
+    const hasBlockAvailability =
+      (currentParticipant.availability_block_ids &&
+        currentParticipant.availability_block_ids.length > 0) ||
+      currentParticipant.has_block_based_availability === true
+
     // Check if account owner has default availability blocks
     const hasDefaultAvailability =
       currentAccount &&
       currentAccount.preferences?.availabilities &&
       currentAccount.preferences.availabilities.length > 0
 
-    return hasManualAvailability || hasDefaultAvailability
+    return (
+      hasManualAvailability || hasBlockAvailability || hasDefaultAvailability
+    )
   }, [currentParticipant, currentAccount?.preferences?.availabilities])
 
   const { currentIntent } = useQuickPollAvailability()
@@ -620,7 +631,10 @@ export function QuickPollPickAvailability({
       initialSlotsSignatureRef.current = null
       return
     }
-    if (hasLoadedInitialSlots && initialSlotsSignatureRef.current === null) {
+    if (
+      (hasLoadedInitialSlots || !hasAvailability) &&
+      initialSlotsSignatureRef.current === null
+    ) {
       initialSlotsSignatureRef.current =
         getSelectedSlotsSignature(selectedSlots)
     }
@@ -628,6 +642,7 @@ export function QuickPollPickAvailability({
     isEditingAvailability,
     isPendingManualJoinForLoggedInUser,
     hasLoadedInitialSlots,
+    hasAvailability,
     selectedSlots,
   ])
 
@@ -1310,6 +1325,12 @@ export function QuickPollPickAvailability({
     }
   }
 
+  const handleSelectImportDirect = () => {
+    setShowMethodModal(false)
+    if (!pollData?.poll) return
+    setShowConnectCalendarModal(true)
+  }
+
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
@@ -1365,6 +1386,8 @@ export function QuickPollPickAvailability({
                   onClose={() => setShowMethodModal(false)}
                   onSelectManual={handleSelectManual}
                   onSelectImport={handleSelectImport}
+                  onSelectImportDirect={handleSelectImportDirect}
+                  showSignInCheckbox={!currentAccount}
                   variant={isLoggedInAndNotInPoll ? 'logged-in' : 'guest'}
                 >
                   <Button
@@ -1512,6 +1535,8 @@ export function QuickPollPickAvailability({
                 onClose={() => setShowMethodModal(false)}
                 onSelectManual={handleSelectManual}
                 onSelectImport={handleSelectImport}
+                onSelectImportDirect={handleSelectImportDirect}
+                showSignInCheckbox={!currentAccount}
                 variant={isLoggedInAndNotInPoll ? 'logged-in' : 'guest'}
               >
                 <Button
@@ -2142,6 +2167,15 @@ export function QuickPollPickAvailability({
           )}
         </VStack>
       </VStack>
+
+      <ConnectCalendarModal
+        isOpen={showConnectCalendarModal}
+        onClose={() => setShowConnectCalendarModal(false)}
+        isQuickPoll={true}
+        participantId={currentParticipantId ?? undefined}
+        pollData={pollData as QuickPollBySlugResponse | undefined}
+        pollSlug={pollData?.poll?.slug}
+      />
     </Tooltip.Provider>
   )
 }
