@@ -270,6 +270,10 @@ import {
   ParticipantInfoForNotification,
 } from '@/utils/notification_helper'
 import { generatePollSlug } from '@/utils/quickpoll_helper'
+import {
+  isValidSeriesOccurrence,
+  parseSlotInstanceId,
+} from '@/utils/slot_instance.helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 import {
   decryptConferenceMeeting,
@@ -10961,9 +10965,74 @@ const getSlotInstance = async (slotInstanceId: string) => {
   }
   const data = Array.isArray(slotInstance) ? slotInstance[0] : slotInstance
   if (!data) {
-    throw new MeetingNotFoundError(slotInstanceId)
+    await ensureSlotInstanceExists(slotInstanceId)
+    const { data: slotInstanceSecondRead, error: secondReadError } =
+      await db.supabase.rpc<SlotInstance>('get_slot_instance_by_id', {
+        instance_id: slotInstanceId,
+      })
+    if (secondReadError) {
+      throw new Error('Could not fetch slot instance')
+    }
+    const instanceSecondRead = Array.isArray(slotInstanceSecondRead)
+      ? slotInstanceSecondRead[0]
+      : slotInstanceSecondRead
+    if (!instanceSecondRead) {
+      throw new MeetingNotFoundError(slotInstanceId)
+    }
+    return instanceSecondRead
   }
   return data
+}
+
+const ensureSlotInstanceExists = async (slotInstanceId: string) => {
+  const parsed = parseSlotInstanceId(slotInstanceId)
+  if (!parsed) return
+  const { seriesId, startMillis } = parsed
+
+  const { data: series, error: seriesError } = await db.supabase
+    .from<Tables<'slot_series'>>('slot_series')
+    .select()
+    .eq('id', seriesId)
+    .maybeSingle()
+
+  if (seriesError || !series) return
+  if (!isValidSeriesOccurrence(series, startMillis)) return
+
+  const query = db.supabase
+    .from<Tables<'slot_series'>>('slot_series')
+    .select()
+    .eq('meeting_id', series.meeting_id)
+  if (series.ical_uid) {
+    query.eq('ical_uid', series.ical_uid)
+  }
+  const { data: participantSeries, error: participantSeriesError } = await query
+  if (participantSeriesError || !participantSeries?.length) return
+
+  const templateStart = DateTime.fromISO(series.template_start).toUTC()
+  const templateEnd = DateTime.fromISO(series.template_end).toUTC()
+  const durationMinutes = Math.abs(
+    templateEnd.diff(templateStart, 'minutes').minutes
+  )
+
+  const requestedStart = DateTime.fromMillis(startMillis).toUTC()
+  const requestedEnd = requestedStart.plus({ minutes: durationMinutes })
+
+  const toUpsert: Array<TablesInsert<'slot_instance'>> = participantSeries.map(
+    s => ({
+      account_address: s.account_address || null,
+      created_at: new Date().toISOString(),
+      end: requestedEnd.toISO()!,
+      guest_email: s.guest_email || null,
+      id: `${s.id}_${startMillis}`,
+      override_meeting_info_encrypted: null,
+      series_id: s.id,
+      start: requestedStart.toISO()!,
+      status: RecurringStatus.CONFIRMED,
+      version: 0,
+    })
+  )
+
+  await db.supabase.from('slot_instance').upsert(toUpsert, { onConflict: 'id' })
 }
 const syncConnectedCalendars = async (accountAddress: string) => {
   const calendars = await getConnectedCalendars(accountAddress, {
