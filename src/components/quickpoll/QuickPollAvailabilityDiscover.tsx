@@ -1,4 +1,5 @@
 import {
+  Button,
   Heading,
   HStack,
   Icon,
@@ -33,10 +34,12 @@ import {
   getPollParticipantByIdentifier,
   getQuickPollById,
   joinQuickPollAsParticipant,
+  scheduleGuestQuickPoll,
   updatePollParticipantAvailability,
   updateQuickPoll,
 } from '@/utils/api_helper'
 import { convertPollResultToAvailabilitySlots } from '@/utils/availability.helper'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import { parseMonthAvailabilitiesToDate } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import {
@@ -49,6 +52,7 @@ import {
 } from '@/utils/quickpoll_helper'
 import {
   clearQuickPollSignInContext,
+  getGuestIdentifier,
   getGuestPollDetails,
   getQuickPollSignInContext,
   hasPollAvailabilityModalBeenShown,
@@ -259,6 +263,35 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     setCurrentGuestEmail,
   ])
 
+  // Fallback: identify guest-scheduler by guest_identifier (covers guest-created polls)
+  useEffect(() => {
+    if (currentAccount) return
+    if (!currentPollData?.poll?.slug || !currentPollData?.poll?.id) return
+    if (currentParticipantId || currentGuestEmail) return
+
+    const guestIdentifier = getGuestIdentifier()
+    if (!guestIdentifier) return
+    ;(async () => {
+      try {
+        const participant = await getPollParticipantByIdentifier(
+          currentPollData.poll.slug,
+          guestIdentifier
+        )
+        if (participant?.id) setCurrentParticipantId(participant.id)
+        if (participant?.guest_email)
+          setCurrentGuestEmail(participant.guest_email)
+      } catch {}
+    })()
+  }, [
+    currentAccount,
+    currentPollData?.poll?.slug,
+    currentPollData?.poll?.id,
+    currentParticipantId,
+    currentGuestEmail,
+    setCurrentParticipantId,
+    setCurrentGuestEmail,
+  ])
+
   useEffect(() => {
     if (router.query.intent) {
       setCurrentIntent(router.query.intent as QuickPollIntent)
@@ -268,6 +301,51 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   }, [router.query.intent, setCurrentIntent])
 
   const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
+
+  const canGuestSchedule = useMemo(() => {
+    if (currentAccount || !currentPollData?.poll) return false
+    const permissions = currentPollData.poll.permissions || []
+    const isScheduler = currentPollData.poll.participants?.some(
+      p =>
+        p.participant_type === 'scheduler' &&
+        !p.account_address &&
+        p.guest_email === currentGuestEmail
+    )
+    return (
+      isScheduler || permissions.includes(MeetingPermissions.SCHEDULE_MEETING)
+    )
+  }, [currentAccount, currentPollData, currentGuestEmail])
+
+  const guestScheduleMutation = useMutation({
+    mutationFn: async (data: { start: string; end: string }) => {
+      if (!currentPollData?.poll?.slug) throw new Error('No poll data')
+      const guestDetails = getGuestPollDetails(currentPollData.poll.id)
+      return scheduleGuestQuickPoll(currentPollData.poll.slug, {
+        start: data.start,
+        end: data.end,
+        guest_email: guestDetails?.email || currentGuestEmail || '',
+        guest_name: guestDetails?.name,
+        guest_identifier: getGuestIdentifier() || undefined,
+        title: currentPollData.poll.title,
+      })
+    },
+    onSuccess: () => {
+      showSuccessToast(
+        'Meeting Scheduled!',
+        'The meeting has been scheduled successfully.'
+      )
+      queryClient.invalidateQueries({ queryKey: ['quickpoll-public'] })
+      queryClient.invalidateQueries({ queryKey: ['quickpoll-schedule'] })
+    },
+    onError: error => {
+      handleApiError('Failed to schedule meeting', error)
+    },
+  })
+
+  const handleGuestSchedule = () => {
+    if (!currentPollData?.poll?.slug) return
+    router.push(`/poll/${currentPollData.poll.slug}?intent=schedule`)
+  }
 
   // Show loading on poll page while waiting for onboarding (new user) or join modal (existing user) after auth return
   const showAuthReturnLoading = useMemo(() => {
@@ -881,6 +959,17 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
         <Heading fontSize="16px" fontWeight="500" color="text-primary">
           Poll Title: {currentPollTitle}
         </Heading>
+
+        {canGuestSchedule && !isScheduled && !isSchedulingIntent && (
+          <Button
+            colorScheme="primary"
+            size="sm"
+            onClick={handleGuestSchedule}
+            w="100%"
+          >
+            Schedule Meeting
+          </Button>
+        )}
       </VStack>
 
       {/* Desktop Header */}

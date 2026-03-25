@@ -1,4 +1,8 @@
-import { GuestPollDetails, QuickPollSignInContext } from '@/types/QuickPoll'
+import {
+  GuestPollDetails,
+  LocalPollEntry,
+  QuickPollSignInContext,
+} from '@/types/QuickPoll'
 import {
   CONTEXT_EXPIRY_MS,
   POLL_AVAILABILITY_MODAL_SHOWN_PREFIX,
@@ -10,6 +14,8 @@ const SCHEDULES = 'meetings_scheduled'
 const NOTIFICATION = 'group_notifications'
 const GUEST_POLL_DETAILS = 'quickpoll_guest_details'
 const SUBSCRIPTION_HANDLE = 'subscription_handle'
+const GUEST_IDENTIFIER_KEY = 'quickpoll_guest_identifier'
+const LOCAL_POLLS_KEY = 'quickpoll_local_polls'
 const ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
@@ -208,4 +214,51 @@ export const markPollAvailabilityModalAsShown = (
     `${POLL_AVAILABILITY_MODAL_SHOWN_PREFIX}:${pollId}:${participantId}`,
     '1'
   )
+}
+
+export const getOrCreateGuestIdentifier = (): string => {
+  const existing = localStorage.getItem(GUEST_IDENTIFIER_KEY)
+  if (existing) return existing
+  const id = crypto.randomUUID()
+  localStorage.setItem(GUEST_IDENTIFIER_KEY, id)
+  return id
+}
+
+export const getGuestIdentifier = (): string | null => {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(GUEST_IDENTIFIER_KEY)
+}
+
+export const clearGuestIdentifier = (): void => {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem(GUEST_IDENTIFIER_KEY)
+}
+
+export const saveLocalPoll = (poll: LocalPollEntry): void => {
+  if (typeof window === 'undefined') return
+  const polls = getLocalPolls()
+  const existing = polls.findIndex(p => p.pollId === poll.pollId)
+  if (existing >= 0) {
+    polls[existing] = poll
+  } else {
+    polls.unshift(poll)
+  }
+  localStorage.setItem(LOCAL_POLLS_KEY, JSON.stringify(polls))
+}
+
+export const getLocalPolls = (): LocalPollEntry[] => {
+  if (typeof window === 'undefined') return []
+  const stored = localStorage.getItem(LOCAL_POLLS_KEY)
+  if (!stored) return []
+  try {
+    return JSON.parse(stored) as LocalPollEntry[]
+  } catch {
+    return []
+  }
+}
+
+export const removeLocalPoll = (pollId: string): void => {
+  if (typeof window === 'undefined') return
+  const polls = getLocalPolls().filter(p => p.pollId !== pollId)
+  localStorage.setItem(LOCAL_POLLS_KEY, JSON.stringify(polls))
 }

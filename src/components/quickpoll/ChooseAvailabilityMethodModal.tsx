@@ -1,5 +1,6 @@
 import {
   Box,
+  Checkbox,
   Heading,
   HStack,
   Icon,
@@ -9,10 +10,9 @@ import {
   PopoverContent,
   PopoverTrigger,
   Text,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import React from 'react'
+import React, { useState } from 'react'
 
 const CalendarEditIcon = (props: React.ComponentProps<typeof Icon>) => (
   <Icon viewBox="0 0 24 24" fill="none" {...props}>
@@ -177,8 +177,10 @@ interface ChooseAvailabilityMethodModalProps {
   onClose: () => void
   onSelectManual: () => void
   onSelectImport: () => void
+  onSelectImportDirect?: () => void
+  showSignInCheckbox?: boolean
   variant?: ChooseAvailabilityMethodVariant
-  children: React.ReactNode // The trigger element
+  children: React.ReactNode
 }
 
 const ChooseAvailabilityMethodModal: React.FC<
@@ -188,14 +190,25 @@ const ChooseAvailabilityMethodModal: React.FC<
   onClose,
   onSelectManual,
   onSelectImport,
+  onSelectImportDirect,
+  showSignInCheckbox = false,
   variant = 'guest',
   children,
 }) => {
-  // Use semantic tokens for colors
+  const [wantsSignIn, setWantsSignIn] = useState(false)
+
   const bgColor = 'bg-surface'
   const borderColor = 'border-default'
   const iconColor = 'text-subtle'
   const textColor = 'text-primary'
+
+  const handleImportClick = () => {
+    if (showSignInCheckbox && !wantsSignIn && onSelectImportDirect) {
+      onSelectImportDirect()
+    } else {
+      onSelectImport()
+    }
+  }
 
   return (
     <Popover
@@ -210,7 +223,7 @@ const ChooseAvailabilityMethodModal: React.FC<
         borderColor={borderColor}
         borderRadius="12px"
         width={{ base: '300px', md: '459px' }}
-        height={{ base: 'auto', md: '230px' }}
+        height="auto"
         boxShadow="lg"
         _focus={{ outline: 'none' }}
       >
@@ -269,7 +282,7 @@ const ChooseAvailabilityMethodModal: React.FC<
 
               {/* Import Option */}
               <VStack
-                onClick={onSelectImport}
+                onClick={handleImportClick}
                 cursor="pointer"
                 align="center"
                 spacing={3}
@@ -314,19 +327,24 @@ const ChooseAvailabilityMethodModal: React.FC<
                     >
                       Import from Calendar
                     </Text>
-                    <Text
-                      fontSize="10.2px"
-                      fontWeight="400"
-                      color={textColor}
-                      textAlign="center"
-                      opacity={0.8}
-                    >
-                      (Sign in/Sign up)
-                    </Text>
                   </VStack>
                 )}
               </VStack>
             </HStack>
+
+            {showSignInCheckbox && variant === 'guest' && (
+              <Checkbox
+                size="sm"
+                colorScheme="orange"
+                isChecked={wantsSignIn}
+                onChange={e => setWantsSignIn(e.target.checked)}
+              >
+                <Text fontSize="11px" color={textColor}>
+                  Sign in/Sign up to Meetwith while Importing availability from
+                  Calendar
+                </Text>
+              </Checkbox>
+            )}
           </VStack>
         </PopoverBody>
       </PopoverContent>

@@ -1236,6 +1236,7 @@ export type Database = {
           available_slots: Json[]
           created_at: string
           guest_email: string
+          guest_identifier: string | null
           guest_name: string | null
           id: string
           participant_type:
@@ -1251,6 +1252,7 @@ export type Database = {
           available_slots?: Json[]
           created_at?: string
           guest_email: string
+          guest_identifier?: string | null
           guest_name?: string | null
           id?: string
           participant_type?:
@@ -1266,6 +1268,7 @@ export type Database = {
           available_slots?: Json[]
           created_at?: string
           guest_email?: string
+          guest_identifier?: string | null
           guest_name?: string | null
           id?: string
           participant_type?:
