@@ -106,7 +106,7 @@ const MeetingBase: FC<MeetingBaseProps> = ({ currentAccount }) => {
   const queryClient = useQueryClient()
   const startWindow = useMemo(
     () => ({
-      start: DateTime.now().startOf('hour'),
+      start: DateTime.now().startOf('hour').minus({ hours: 1 }),
       end: DateTime.now().plus({ weeks: WEEKS_TO_LOAD }),
     }),
     []
