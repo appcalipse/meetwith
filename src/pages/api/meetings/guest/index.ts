@@ -4,8 +4,9 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { DBSlot, SchedulingType } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
+import { PollStatus } from '@/types/QuickPoll'
 import { MeetingCreationRequest } from '@/types/Requests'
-import { saveMeeting } from '@/utils/database'
+import { createQuickPollMeeting, initDB, saveMeeting } from '@/utils/database'
 import {
   AllMeetingSlotsUsedError,
   GateConditionNotValidError,
@@ -13,6 +14,8 @@ import {
   TimeNotAvailableError,
   TransactionIsRequired,
 } from '@/utils/errors'
+
+const db = initDB()
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -31,6 +34,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         },
         meeting
       )
+
+      if (meeting.pollId) {
+        await createQuickPollMeeting(meeting.pollId, meeting.meeting_id)
+        await db.supabase
+          .from('quick_polls')
+          .update({ status: PollStatus.COMPLETED })
+          .eq('id', meeting.pollId)
+      }
+
       return res.status(200).json(meetingResult)
     } catch (e) {
       if (e instanceof TimeNotAvailableError) {

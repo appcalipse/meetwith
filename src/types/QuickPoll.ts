@@ -362,12 +362,3 @@ export interface UpdateGuestQuickPollRequest {
 export interface MigrateGuestPollsRequest {
   guest_identifier: string
 }
-
-export interface GuestScheduleRequest {
-  start: string
-  end: string
-  guest_email: string
-  guest_name?: string
-  guest_identifier?: string
-  title?: string
-}

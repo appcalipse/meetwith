@@ -90,7 +90,6 @@ import {
   CloseQuickPollResponse,
   CreateGuestQuickPollRequest,
   CreateQuickPollRequest,
-  GuestScheduleRequest,
   PollStatus,
   QuickPollBusyParticipant,
   QuickPollListResponse,
@@ -2535,13 +2534,6 @@ export const updateGuestQuickPoll = async (
   updateData: UpdateGuestQuickPollRequest
 ) => {
   return await internalFetch(`/quickpoll/${slug}/update`, 'PUT', updateData)
-}
-
-export const scheduleGuestQuickPoll = async (
-  slug: string,
-  data: GuestScheduleRequest
-) => {
-  return await internalFetch(`/quickpoll/${slug}/schedule`, 'POST', data)
 }
 
 export const getQuickPollById = async (pollId: string) => {
