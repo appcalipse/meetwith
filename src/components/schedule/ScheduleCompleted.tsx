@@ -6,12 +6,21 @@ import React from 'react'
 import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { EditMode, Intents } from '@/types/Dashboard'
 
-const ScheduleCompleted = () => {
+type ScheduleCompletedProps = {
+  guestPollOnDone?: () => void
+}
+
+const ScheduleCompleted = ({ guestPollOnDone }: ScheduleCompletedProps) => {
   const router = useRouter()
   const { intent } = router.query
   const { title, pickedTime, timezone } = useScheduleState()
   return (
-    <VStack maxW={{ base: '300px', md: '400px' }} w="fit-content" m="auto">
+    <VStack
+      maxW={{ base: '300px', md: '400px' }}
+      w="fit-content"
+      m="auto"
+      data-testid="schedule-completed"
+    >
       <Box display="flex" justifyContent="center" width="full" mb="32px">
         <Image
           src="/assets/schedule_success.svg"
@@ -58,7 +67,11 @@ const ScheduleCompleted = () => {
         has been {intent === Intents.UPDATE_MEETING ? 'updated' : 'scheduled'}.
       </Text>
       <Button
-        onClick={() => router.push(`/dashboard/${EditMode.MEETINGS}`)}
+        onClick={() =>
+          guestPollOnDone
+            ? guestPollOnDone()
+            : router.push(`/dashboard/${EditMode.MEETINGS}`)
+        }
         colorScheme="primary"
         size="md"
         height="48px"
@@ -66,7 +79,7 @@ const ScheduleCompleted = () => {
         w="full"
         mb="8px"
       >
-        View meetings
+        {guestPollOnDone ? 'Back to poll' : 'View meetings'}
       </Button>
       {router.query?.ref === 'group' && (
         <Button
