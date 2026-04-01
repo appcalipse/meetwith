@@ -1,4 +1,5 @@
 import {
+  Button,
   Heading,
   HStack,
   Icon,
@@ -37,6 +38,7 @@ import {
   updateQuickPoll,
 } from '@/utils/api_helper'
 import { convertPollResultToAvailabilitySlots } from '@/utils/availability.helper'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import { parseMonthAvailabilitiesToDate } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import {
@@ -49,6 +51,7 @@ import {
 } from '@/utils/quickpoll_helper'
 import {
   clearQuickPollSignInContext,
+  getGuestIdentifier,
   getGuestPollDetails,
   getQuickPollSignInContext,
   hasPollAvailabilityModalBeenShown,
@@ -69,6 +72,7 @@ import {
 } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import GuestIdentificationModal from './GuestIdentificationModal'
 import MobileQuickPollParticipantModal from './MobileQuickPollParticipant'
+import { PollGuestScheduleFlow } from './PollGuestScheduleFlow'
 import { QuickPollParticipants } from './QuickPollParticipants'
 import { QuickPollPickAvailability } from './QuickPollPickAvailability'
 import QuickPollSaveChangesModal from './QuickPollSaveChangesModal'
@@ -117,10 +121,12 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     [groupAvailability, groupParticipants, participants]
   )
   const router = useRouter()
+  const [showGuestScheduleStep, setShowGuestScheduleStep] = useState(false)
+  const openGuestPollScheduleStep = () => setShowGuestScheduleStep(true)
   const toast = useToast()
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const currentAccount = useAccountContext()
-  const { timezone, currentSelectedDate } = useScheduleState()
+  const { timezone, currentSelectedDate, setPickedTime } = useScheduleState()
   const { clearSlots, selectedSlots } = useAvailabilityTracker()
   const queryClient = useQueryClient()
   const { blocks: availabilityBlocks } = useAvailabilityBlocks(
@@ -259,6 +265,35 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
     setCurrentGuestEmail,
   ])
 
+  // Fallback: identify guest-scheduler by guest_identifier (covers guest-created polls)
+  useEffect(() => {
+    if (currentAccount) return
+    if (!currentPollData?.poll?.slug || !currentPollData?.poll?.id) return
+    if (currentParticipantId || currentGuestEmail) return
+
+    const guestIdentifier = getGuestIdentifier()
+    if (!guestIdentifier) return
+    ;(async () => {
+      try {
+        const participant = await getPollParticipantByIdentifier(
+          currentPollData.poll.slug,
+          guestIdentifier
+        )
+        if (participant?.id) setCurrentParticipantId(participant.id)
+        if (participant?.guest_email)
+          setCurrentGuestEmail(participant.guest_email)
+      } catch {}
+    })()
+  }, [
+    currentAccount,
+    currentPollData?.poll?.slug,
+    currentPollData?.poll?.id,
+    currentParticipantId,
+    currentGuestEmail,
+    setCurrentParticipantId,
+    setCurrentGuestEmail,
+  ])
+
   useEffect(() => {
     if (router.query.intent) {
       setCurrentIntent(router.query.intent as QuickPollIntent)
@@ -268,6 +303,25 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
   }, [router.query.intent, setCurrentIntent])
 
   const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
+
+  const canGuestSchedule = useMemo(() => {
+    if (currentAccount || !currentPollData?.poll) return false
+    const permissions = currentPollData.poll.permissions || []
+    const isScheduler = currentPollData.poll.participants?.some(
+      p =>
+        p.participant_type === 'scheduler' &&
+        !p.account_address &&
+        p.guest_email === currentGuestEmail
+    )
+    return (
+      isScheduler || permissions.includes(MeetingPermissions.SCHEDULE_MEETING)
+    )
+  }, [currentAccount, currentPollData, currentGuestEmail])
+
+  const handleGuestSchedule = () => {
+    if (!currentPollData?.poll?.slug) return
+    router.push(`/poll/${currentPollData.poll.slug}?intent=schedule`)
+  }
 
   // Show loading on poll page while waiting for onboarding (new user) or join modal (existing user) after auth return
   const showAuthReturnLoading = useMemo(() => {
@@ -853,203 +907,248 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
       gap={3}
       p={{ base: 4, md: 0 }}
     >
-      {/* Mobile Header */}
-      <VStack
-        display={{ base: 'flex', md: 'none' }}
-        align="stretch"
-        gap={4}
-        w="100%"
-      >
-        {showBack && (
-          <HStack
-            cursor="pointer"
-            onClick={handleClose}
-            gap={2}
-            alignItems={'center'}
+      {showGuestScheduleStep &&
+      !currentAccount &&
+      router.pathname.startsWith('/poll') &&
+      currentPollData ? (
+        <PollGuestScheduleFlow
+          pollData={currentPollData}
+          onBack={() => {
+            setShowGuestScheduleStep(false)
+            setPickedTime(null)
+          }}
+        />
+      ) : (
+        <>
+          {/* Mobile Header */}
+          <VStack
+            display={{ base: 'flex', md: 'none' }}
+            align="stretch"
+            gap={4}
+            w="100%"
           >
-            <Icon as={FaArrowLeft} size="1.2em" color={'primary.500'} />
-            <Heading fontSize={14} color="primary.500">
-              Back
+            {showBack && (
+              <HStack
+                cursor="pointer"
+                onClick={handleClose}
+                gap={2}
+                alignItems={'center'}
+              >
+                <Icon as={FaArrowLeft} size="1.2em" color={'primary.500'} />
+                <Heading fontSize={14} color="primary.500">
+                  Back
+                </Heading>
+              </HStack>
+            )}
+
+            <Heading fontSize="20px" fontWeight="700" color="text-primary">
+              {isSchedulingIntent
+                ? 'Schedule Meeting'
+                : 'Add/Edit Availability'}
             </Heading>
-          </HStack>
-        )}
 
-        <Heading fontSize="20px" fontWeight="700" color="text-primary">
-          {isSchedulingIntent ? 'Schedule Meeting' : 'Add/Edit Availability'}
-        </Heading>
+            <Heading fontSize="16px" fontWeight="500" color="text-primary">
+              Poll Title: {currentPollTitle}
+            </Heading>
 
-        <Heading fontSize="16px" fontWeight="500" color="text-primary">
-          Poll Title: {currentPollTitle}
-        </Heading>
-      </VStack>
+            {canGuestSchedule && !isScheduled && !isSchedulingIntent && (
+              <Button
+                colorScheme="primary"
+                size="sm"
+                onClick={handleGuestSchedule}
+                w="100%"
+              >
+                Schedule Meeting
+              </Button>
+            )}
+          </VStack>
 
-      {/* Desktop Header */}
-      <HStack
-        justifyContent={'flex-start'}
-        alignItems={'flex-start'}
-        display={{ base: 'none', md: 'flex' }}
-      >
-        <HStack mb={6} gap={4} alignItems={'center'}>
-          {showBack && (
-            <HStack
-              cursor="pointer"
-              onClick={handleClose}
-              gap={4}
-              alignItems={'center'}
-            >
-              <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
-              <Heading fontSize={16} color="primary.500">
-                Back
+          {/* Desktop Header */}
+          <HStack
+            justifyContent={'flex-start'}
+            alignItems={'flex-start'}
+            display={{ base: 'none', md: 'flex' }}
+          >
+            <HStack mb={6} gap={4} alignItems={'center'}>
+              {showBack && (
+                <HStack
+                  cursor="pointer"
+                  onClick={handleClose}
+                  gap={4}
+                  alignItems={'center'}
+                >
+                  <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
+                  <Heading fontSize={16} color="primary.500">
+                    Back
+                  </Heading>
+                </HStack>
+              )}
+
+              <Heading fontSize="24px" fontWeight="700" color="text-primary">
+                {isSchedulingIntent
+                  ? 'Schedule Meeting'
+                  : 'Add/Edit Availability'}
               </Heading>
             </HStack>
-          )}
 
-          <Heading fontSize="24px" fontWeight="700" color="text-primary">
-            {isSchedulingIntent ? 'Schedule Meeting' : 'Add/Edit Availability'}
-          </Heading>
-        </HStack>
+            <Heading
+              fontSize="24px"
+              fontWeight="700"
+              color="text-primary"
+              justifySelf={'center'}
+              ml="81px"
+            >
+              Poll Title: {currentPollTitle}
+            </Heading>
 
-        <Heading
-          fontSize="24px"
-          fontWeight="700"
-          color="text-primary"
-          justifySelf={'center'}
-          ml="81px"
-        >
-          Poll Title: {currentPollTitle}
-        </Heading>
+            {!isScheduled && (
+              <Grid4
+                w={8}
+                h={8}
+                onClick={() =>
+                  setIsInviteParticipantsOpen(!isInviteParticipantsOpen)
+                }
+                cursor={'pointer'}
+                display={{ base: 'block', lg: 'none' }}
+              />
+            )}
+          </HStack>
 
-        {!isScheduled && (
-          <Grid4
-            w={8}
-            h={8}
-            onClick={() =>
-              setIsInviteParticipantsOpen(!isInviteParticipantsOpen)
-            }
-            cursor={'pointer'}
-            display={{ base: 'block', lg: 'none' }}
-          />
-        )}
-      </HStack>
-
-      {/* Mobile Layout */}
-      <VStack
-        width="100%"
-        align="stretch"
-        gap={4}
-        display={{ base: 'flex', md: 'none' }}
-      >
-        <MobileQuickPollParticipantModal
-          onClose={() => setIsInviteParticipantsOpen(false)}
-          isOpen={isInviteParticipantsOpen}
-          pollData={currentPollData}
-          isScheduled={isScheduled}
-        />
-        <QuickPollPickAvailability
-          openParticipantModal={() => setIsInviteParticipantsOpen(true)}
-          pollData={currentPollData}
-          onSaveAvailability={handleAvailabilityAction}
-          onCancelEditing={handleCancelEditing}
-          onSharePoll={handleSharePoll}
-          isEditingAvailability={isEditingAvailability}
-          isSavingAvailability={isSavingAvailability}
-          isRefreshingAvailabilities={isRefreshingAvailabilities}
-          onJoinAndImportFromAccount={
-            isLoggedInAndNotInPoll ? handleJoinAndImportFromAccount : undefined
-          }
-          onJoinAndStartManualEdit={
-            isLoggedInAndNotInPoll
-              ? handleStartManualAvailabilityForLoggedInNotInPoll
-              : undefined
-          }
-          isPendingManualJoinForLoggedInUser={
-            isPendingManualJoinForLoggedInUser
-          }
-          hasManualAvailabilityChange={
-            isPendingManualJoinForLoggedInUser
-              ? selectedSlots.length > 0
-              : undefined
-          }
-          isScheduled={isScheduled}
-        />
-      </VStack>
-
-      {/* Desktop Layout */}
-      {isDesktop && (
-        <HStack
-          width="100%"
-          justifyContent={'flex-start'}
-          align={'flex-start'}
-          height={'fit-content'}
-          gap={'14px'}
-        >
-          {!isScheduled && (
-            <InviteParticipants
-              key={inviteKey}
+          {/* Mobile Layout */}
+          <VStack
+            width="100%"
+            align="stretch"
+            gap={4}
+            display={{ base: 'flex', md: 'none' }}
+          >
+            <MobileQuickPollParticipantModal
               onClose={() => setIsInviteParticipantsOpen(false)}
               isOpen={isInviteParticipantsOpen}
-              isQuickPoll={true}
               pollData={currentPollData}
-              onInviteSuccess={async () => {
-                await queryClient.invalidateQueries({
-                  queryKey: ['quickpoll-public'],
-                })
-                await queryClient.invalidateQueries({
-                  queryKey: ['quickpoll-schedule'],
-                })
-                setIsInviteParticipantsOpen(false)
-              }}
-              groupAvailability={groupAvailability}
-              groupParticipants={groupParticipants}
-              participants={participants}
-              handleUpdateGroups={(
-                groupAvailability: Record<string, Array<string> | undefined>,
-                groupParticipants: Record<string, Array<string> | undefined>
-              ) => {
-                setGroupAvailability(groupAvailability)
-                setGroupParticipants(groupParticipants)
-              }}
-              handleUpdateParticipants={setParticipants}
+              isScheduled={isScheduled}
             />
+            <QuickPollPickAvailability
+              openParticipantModal={() => setIsInviteParticipantsOpen(true)}
+              pollData={currentPollData}
+              onSaveAvailability={handleAvailabilityAction}
+              onCancelEditing={handleCancelEditing}
+              onSharePoll={handleSharePoll}
+              isEditingAvailability={isEditingAvailability}
+              isSavingAvailability={isSavingAvailability}
+              isRefreshingAvailabilities={isRefreshingAvailabilities}
+              onJoinAndImportFromAccount={
+                isLoggedInAndNotInPoll
+                  ? handleJoinAndImportFromAccount
+                  : undefined
+              }
+              onJoinAndStartManualEdit={
+                isLoggedInAndNotInPoll
+                  ? handleStartManualAvailabilityForLoggedInNotInPoll
+                  : undefined
+              }
+              isPendingManualJoinForLoggedInUser={
+                isPendingManualJoinForLoggedInUser
+              }
+              hasManualAvailabilityChange={
+                isPendingManualJoinForLoggedInUser
+                  ? selectedSlots.length > 0
+                  : undefined
+              }
+              isScheduled={isScheduled}
+              onPollShareLinkGuestScheduleTimeSelected={
+                !currentAccount && router.pathname.startsWith('/poll')
+                  ? openGuestPollScheduleStep
+                  : undefined
+              }
+            />
+          </VStack>
+
+          {/* Desktop Layout */}
+          {isDesktop && (
+            <HStack
+              width="100%"
+              justifyContent={'flex-start'}
+              align={'flex-start'}
+              height={'fit-content'}
+              gap={'14px'}
+            >
+              {!isScheduled && (
+                <InviteParticipants
+                  key={inviteKey}
+                  onClose={() => setIsInviteParticipantsOpen(false)}
+                  isOpen={isInviteParticipantsOpen}
+                  isQuickPoll={true}
+                  pollData={currentPollData}
+                  onInviteSuccess={async () => {
+                    await queryClient.invalidateQueries({
+                      queryKey: ['quickpoll-public'],
+                    })
+                    await queryClient.invalidateQueries({
+                      queryKey: ['quickpoll-schedule'],
+                    })
+                    setIsInviteParticipantsOpen(false)
+                  }}
+                  groupAvailability={groupAvailability}
+                  groupParticipants={groupParticipants}
+                  participants={participants}
+                  handleUpdateGroups={(
+                    groupAvailability: Record<
+                      string,
+                      Array<string> | undefined
+                    >,
+                    groupParticipants: Record<string, Array<string> | undefined>
+                  ) => {
+                    setGroupAvailability(groupAvailability)
+                    setGroupParticipants(groupParticipants)
+                  }}
+                  handleUpdateParticipants={setParticipants}
+                />
+              )}
+              <QuickPollParticipants
+                pollData={currentPollData}
+                onAddParticipants={() => setIsInviteParticipantsOpen(true)}
+                onAvailabilityToggle={refreshAvailabilities}
+                currentGuestEmail={currentGuestEmail}
+                onParticipantRemoved={onParticipantRemoved}
+                isScheduled={isScheduled}
+              />
+              <QuickPollPickAvailability
+                openParticipantModal={() => setIsInviteParticipantsOpen(true)}
+                pollData={currentPollData}
+                onSaveAvailability={handleAvailabilityAction}
+                onCancelEditing={handleCancelEditing}
+                onSharePoll={handleSharePoll}
+                isEditingAvailability={isEditingAvailability}
+                isSavingAvailability={isSavingAvailability}
+                isRefreshingAvailabilities={isRefreshingAvailabilities}
+                onJoinAndImportFromAccount={
+                  isLoggedInAndNotInPoll
+                    ? handleJoinAndImportFromAccount
+                    : undefined
+                }
+                onJoinAndStartManualEdit={
+                  isLoggedInAndNotInPoll
+                    ? handleStartManualAvailabilityForLoggedInNotInPoll
+                    : undefined
+                }
+                isPendingManualJoinForLoggedInUser={
+                  isPendingManualJoinForLoggedInUser
+                }
+                hasManualAvailabilityChange={
+                  isPendingManualJoinForLoggedInUser
+                    ? selectedSlots.length > 0
+                    : undefined
+                }
+                isScheduled={isScheduled}
+                onPollShareLinkGuestScheduleTimeSelected={
+                  !currentAccount && router.pathname.startsWith('/poll')
+                    ? openGuestPollScheduleStep
+                    : undefined
+                }
+              />
+            </HStack>
           )}
-          <QuickPollParticipants
-            pollData={currentPollData}
-            onAddParticipants={() => setIsInviteParticipantsOpen(true)}
-            onAvailabilityToggle={refreshAvailabilities}
-            currentGuestEmail={currentGuestEmail}
-            onParticipantRemoved={onParticipantRemoved}
-            isScheduled={isScheduled}
-          />
-          <QuickPollPickAvailability
-            openParticipantModal={() => setIsInviteParticipantsOpen(true)}
-            pollData={currentPollData}
-            onSaveAvailability={handleAvailabilityAction}
-            onCancelEditing={handleCancelEditing}
-            onSharePoll={handleSharePoll}
-            isEditingAvailability={isEditingAvailability}
-            isSavingAvailability={isSavingAvailability}
-            isRefreshingAvailabilities={isRefreshingAvailabilities}
-            onJoinAndImportFromAccount={
-              isLoggedInAndNotInPoll
-                ? handleJoinAndImportFromAccount
-                : undefined
-            }
-            onJoinAndStartManualEdit={
-              isLoggedInAndNotInPoll
-                ? handleStartManualAvailabilityForLoggedInNotInPoll
-                : undefined
-            }
-            isPendingManualJoinForLoggedInUser={
-              isPendingManualJoinForLoggedInUser
-            }
-            hasManualAvailabilityChange={
-              isPendingManualJoinForLoggedInUser
-                ? selectedSlots.length > 0
-                : undefined
-            }
-            isScheduled={isScheduled}
-          />
-        </HStack>
+        </>
       )}
 
       {currentPollData?.poll.visibility === PollVisibility.PRIVATE && (

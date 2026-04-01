@@ -123,9 +123,30 @@ export function QuickPollParticipants({
   const host = pollData?.poll.participants.find(
     p => p.participant_type === QuickPollParticipantType.SCHEDULER
   )
+  const currentViewerParticipant = useMemo(() => {
+    if (!pollData?.poll?.participants) return null
+    if (currentAccount?.address) {
+      return (
+        pollData.poll.participants.find(
+          p =>
+            p.account_address?.toLowerCase() ===
+            currentAccount.address.toLowerCase()
+        ) || null
+      )
+    }
+    if (currentGuestEmail) {
+      return (
+        pollData.poll.participants.find(
+          p => p.guest_email?.toLowerCase() === currentGuestEmail.toLowerCase()
+        ) || null
+      )
+    }
+    return null
+  }, [pollData?.poll?.participants, currentAccount?.address, currentGuestEmail])
+
   const isHost =
-    host?.account_address?.toLowerCase() ===
-    currentAccount?.address?.toLowerCase()
+    currentViewerParticipant?.participant_type ===
+    QuickPollParticipantType.SCHEDULER
 
   // Check if guest has permission to add participants
   const canAddParticipants = useMemo(() => {
@@ -148,20 +169,12 @@ export function QuickPollParticipants({
       convertQuickPollParticipant(participant)
     )
 
-    const currentGroupParticipants = groupParticipants[groupKey] || []
-    const currentGroupParticipantsSet = new Set(
-      currentGroupParticipants.map(p => p.toLowerCase())
-    )
-
-    const filteredParticipants = allParticipants.filter(participant => {
-      const identifier = (
-        participant.account_address || participant.guest_email
-      )?.toLowerCase()
-      return identifier && currentGroupParticipantsSet.has(identifier)
-    })
+    // For poll participant lists, we always start from all participants.
+    // (Group participant selection is for availability toggles, not membership visibility.)
+    const visibleParticipants = allParticipants
 
     if (isHost) {
-      return filteredParticipants
+      return visibleParticipants
     }
 
     const hasSeeGuestListPermission = pollData.poll.permissions?.includes(
@@ -169,11 +182,11 @@ export function QuickPollParticipants({
     )
 
     if (!hasSeeGuestListPermission) {
-      const scheduler = filteredParticipants.find(
+      const scheduler = visibleParticipants.find(
         p => p.type === ParticipantType.Scheduler
       )
 
-      const currentParticipant = filteredParticipants.find(
+      const currentParticipant = visibleParticipants.find(
         p =>
           p.account_address?.toLowerCase() ===
             currentAccount?.address?.toLowerCase() ||
@@ -186,15 +199,8 @@ export function QuickPollParticipants({
       ) as ParticipantInfo[]
     }
 
-    return filteredParticipants
-  }, [
-    pollData,
-    isHost,
-    currentAccount,
-    currentGuestEmail,
-    groupParticipants,
-    groupKey,
-  ])
+    return visibleParticipants
+  }, [pollData, isHost, currentAccount, currentGuestEmail])
 
   const totalParticipantsCount = useMemo(() => {
     if (!pollData) return 0
@@ -391,20 +397,18 @@ export function QuickPollParticipants({
                       participant.guest_email ||
                       ellipsizeAddress(participant.account_address || '')}
                   </Heading>
-                  {participant.type === ParticipantType.Scheduler && (
-                    <Text
-                      fontSize={{ base: 'xs', md: 'sm' }}
-                      color={'text-highlight-primary'}
-                    >
-                      Organizer
-                    </Text>
-                  )}
-                  {/* Show Edit profile link for guests viewing their own profile */}
-                  {!participant.account_address &&
-                    participant.guest_email &&
-                    currentGuestEmail &&
-                    participant.guest_email.toLowerCase() ===
-                      currentGuestEmail.toLowerCase() && (
+                  {(() => {
+                    const isCurrentGuest =
+                      !participant.account_address &&
+                      !!participant.guest_email &&
+                      !!currentGuestEmail &&
+                      participant.guest_email.toLowerCase() ===
+                        currentGuestEmail.toLowerCase()
+
+                    const isOrganizer =
+                      participant.type === ParticipantType.Scheduler
+
+                    const editProfileLink = isCurrentGuest ? (
                       <Link
                         fontSize={{ base: 'xs', md: 'sm' }}
                         color="primary.200"
@@ -415,7 +419,37 @@ export function QuickPollParticipants({
                       >
                         Edit profile
                       </Link>
-                    )}
+                    ) : null
+
+                    // For the organizer viewing their own guest profile, align "Organizer" and "Edit profile" on one row.
+                    if (isOrganizer && editProfileLink) {
+                      return (
+                        <HStack w="100%" justify="space-between" align="center">
+                          <Text
+                            fontSize={{ base: 'xs', md: 'sm' }}
+                            color={'text-highlight-primary'}
+                          >
+                            Organizer
+                          </Text>
+                          {editProfileLink}
+                        </HStack>
+                      )
+                    }
+
+                    return (
+                      <>
+                        {isOrganizer && (
+                          <Text
+                            fontSize={{ base: 'xs', md: 'sm' }}
+                            color={'text-highlight-primary'}
+                          >
+                            Organizer
+                          </Text>
+                        )}
+                        {editProfileLink}
+                      </>
+                    )
+                  })()}
                 </VStack>
               </HStack>
               {isHost &&

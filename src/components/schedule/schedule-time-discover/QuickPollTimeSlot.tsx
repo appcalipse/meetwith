@@ -83,7 +83,9 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
   }
 
   const isActive = isQuickPoll
-    ? isSelected
+    ? isSchedulingIntent && pickedTime
+      ? slot.start.hasSame(DateTime.fromJSDate(pickedTime), 'minute')
+      : isSelected
     : pickedTime
     ? slot.start.hasSame(DateTime.fromJSDate(pickedTime), 'minute')
     : false
@@ -92,7 +94,8 @@ const QuickPollTimeSlot: FC<QuickPollTimeSlotProps> = ({
 
   // Custom styling for selected availability slots
   const getButtonProps = () => {
-    const isInteractive = !isQuickPoll || isEditingAvailability
+    const isInteractive =
+      !isQuickPoll || isEditingAvailability || isSchedulingIntent
 
     if (isQuickPoll && isEditingAvailability && isSelected) {
       return {

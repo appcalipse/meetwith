@@ -1,8 +1,9 @@
-import { DateTime } from 'luxon'
+import { DateTime, Interval as LuxonInterval } from 'luxon'
 
 import { Account, TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import { AvailabilitySlot, PollCustomAvailability } from '@/types/QuickPoll'
+import { mergeTimeRanges } from '@/utils/quickpoll_helper'
 
 export const getHoursPerWeek = (
   availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
@@ -559,6 +560,135 @@ export function mergeWeeklyAvailabilities(
     weekly_availability: wa,
   }))
   return mergeWeeklyAvailabilityFromBlocks(fakeBlocks)
+}
+
+/**
+ * Converts per-date AvailabilitySlot[] (from AvailabilityTracker.getAvailabilitySlots())
+ * into a weekday-based PollCustomAvailability by merging ranges across dates that
+ * share the same weekday.
+ */
+export const selectedSlotsToCustomAvailability = (
+  slots: AvailabilitySlot[],
+  timezone: string
+): PollCustomAvailability => {
+  const byWeekday = new Map<number, Array<{ start: string; end: string }>>()
+
+  for (const slot of slots) {
+    const existing = byWeekday.get(slot.weekday) || []
+    existing.push(...slot.ranges)
+    byWeekday.set(slot.weekday, existing)
+  }
+
+  const weekly_availability = Array.from(byWeekday.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([weekday, ranges]) => ({
+      weekday,
+      ranges: mergeTimeRanges(ranges),
+    }))
+
+  return { timezone, weekly_availability }
+}
+
+const parseHHmmToMinutes = (time: string): number | null => {
+  if (!time) return null
+  const [hh, mm] = time.split(':')
+  const hours = Number(hh)
+  const minutes = Number(mm)
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null
+  return hours * 60 + minutes
+}
+
+/**
+ * Determines if a concrete slot interval (with real dates) is fully contained
+ * inside any weekly HH:mm range for that weekday.
+ */
+export const isSlotWithinWeeklyRanges = (
+  slotStart: DateTime,
+  slotEnd: DateTime,
+  ranges: Array<{ start: string; end: string }>
+): boolean => {
+  const slotStartMinutesBase = slotStart.hour * 60 + slotStart.minute
+  let slotEndMinutes = slotEnd.hour * 60 + slotEnd.minute
+
+  // If the slot end is on the next calendar day, shift end forward.
+  if (slotEnd.toFormat('yyyy-MM-dd') !== slotStart.toFormat('yyyy-MM-dd')) {
+    slotEndMinutes += 24 * 60
+  }
+
+  return ranges.some(range => {
+    const rangeStartMinutes = parseHHmmToMinutes(range.start)
+    const rangeEndMinutes = parseHHmmToMinutes(range.end)
+    if (rangeStartMinutes === null || rangeEndMinutes === null) return false
+
+    const rangeCrossesMidnight = rangeEndMinutes <= rangeStartMinutes
+    const rangeEndAdjusted = rangeCrossesMidnight
+      ? rangeEndMinutes + 24 * 60
+      : rangeEndMinutes
+
+    // If the weekly range crosses midnight and the slot is in the "early"
+    // part (after midnight), shift the slot's start/end forward as well.
+    const slotStartMinutes =
+      rangeCrossesMidnight && slotStartMinutesBase < rangeEndMinutes
+        ? slotStartMinutesBase + 24 * 60
+        : slotStartMinutesBase
+
+    const slotEndMinutesAdjusted =
+      rangeCrossesMidnight && slotStartMinutesBase < rangeEndMinutes
+        ? slotEndMinutes + 24 * 60
+        : slotEndMinutes
+
+    return (
+      slotStartMinutes >= rangeStartMinutes &&
+      slotEndMinutesAdjusted <= rangeEndAdjusted
+    )
+  })
+}
+
+interface SelectedTimeSlotForConversion {
+  start: DateTime
+  end: DateTime
+  date: string
+}
+
+/**
+ * Converts a weekday-based PollCustomAvailability back into per-slot selections
+ * that can be loaded into the AvailabilityTracker. Each date in the grid that matches
+ * a weekday with ranges produces SelectedTimeSlot entries for every slot interval
+ * that falls within those ranges.
+ */
+export const customAvailabilityToSelectedSlots = (
+  availability: PollCustomAvailability,
+  dates: Array<{ date: Date; slots: LuxonInterval<true>[] }>
+): SelectedTimeSlotForConversion[] => {
+  const weekdayRanges = new Map(
+    availability.weekly_availability.map(wa => [wa.weekday, wa.ranges])
+  )
+
+  const result: SelectedTimeSlotForConversion[] = []
+
+  for (const dateEntry of dates) {
+    const dt = DateTime.fromJSDate(dateEntry.date).setZone(
+      availability.timezone
+    )
+    const weekday = dt.weekday % 7 // luxon: 1=Mon..7=Sun → 0=Sun
+    const ranges = weekdayRanges.get(weekday) || []
+    if (ranges.length === 0) continue
+
+    for (const slot of dateEntry.slots) {
+      const slotStartDt = slot.start.setZone(availability.timezone)
+      const slotEndDt = slot.end.setZone(availability.timezone)
+      const isInRange = isSlotWithinWeeklyRanges(slotStartDt, slotEndDt, ranges)
+      if (isInRange) {
+        result.push({
+          start: slot.start,
+          end: slot.end,
+          date: slot.start.toFormat('yyyy-MM-dd'),
+        })
+      }
+    }
+  }
+
+  return result
 }
 
 export const convertPollResultToAvailabilitySlots = (

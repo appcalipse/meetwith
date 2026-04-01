@@ -5,7 +5,6 @@ import {
   FormControl,
   FormHelperText,
   FormLabel,
-  Heading,
   HStack,
   IconButton,
   Text,
@@ -25,8 +24,6 @@ import {
 import { appUrl } from '@/utils/constants'
 import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
-
-import AddFromContact from './AddFromContact'
 
 interface PollInviteSectionProps {
   pollData?: QuickPollBySlugResponse
@@ -74,20 +71,16 @@ const PollInviteSection: FC<PollInviteSectionProps> = ({
 
   return (
     <>
-      <Heading fontSize="22px" pb={2} mb={4}>
-        Add participants from contacts
-      </Heading>
-      <AddFromContact isQuickPoll={true} onRequestSignIn={onRequestSignIn} />
       <Divider my={6} borderColor="neutral.400" />
       <FormControl w="100%" maxW="100%">
         <FormLabel htmlFor="invite-participants">
-          Invite participants by their ID (Cc)
-          <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
+          Invite participants by their email addresses (Cc)
+          <InfoTooltip text="Enter guest email addresses to invite participants to this poll." />
         </FormLabel>
         <Box w="100%" maxW="100%">
           <ChipInput
             currentItems={inviteParticipants}
-            placeholder="Enter email, wallet address, or ENS of user"
+            placeholder="Enter email addresses"
             onChange={onInviteParticipantsChange}
             renderItem={renderParticipantItem}
           />

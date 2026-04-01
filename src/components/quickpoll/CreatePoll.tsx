@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   Flex,
   FormControl,
   FormHelperText,
@@ -17,6 +16,7 @@ import {
   ModalHeader,
   ModalOverlay,
   Spinner,
+  Switch,
   Text,
   Textarea,
   useColorModeValue,
@@ -47,6 +47,7 @@ import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import PublicPollScheduleView from '@/components/quickpoll/PublicPollScheduleView'
 import InviteParticipants from '@/components/schedule/participants/InviteParticipants'
 import { useAvailabilityBlocks } from '@/hooks/availability/useAvailabilityBlocks'
 import { AccountContext } from '@/providers/AccountProvider'
@@ -59,6 +60,7 @@ import {
 } from '@/types/ParticipantInfo'
 import {
   AddParticipantData,
+  CreateGuestQuickPollRequest,
   CreatePollProps,
   CreateQuickPollRequest,
   PollCustomAvailability,
@@ -70,6 +72,7 @@ import {
 import { isGroupParticipant } from '@/types/schedule'
 import {
   closeQuickPoll,
+  createGuestQuickPoll as createGuestQuickPollApi,
   createQuickPoll,
   getQuickPollBySlug,
   updateQuickPoll,
@@ -95,6 +98,7 @@ import {
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { quickPollSchema } from '@/utils/schemas'
+import { getOrCreateGuestIdentifier, saveLocalPoll } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
@@ -126,11 +130,18 @@ const mapQuickPollType = (type: QuickPollParticipantType): ParticipantType => {
   }
 }
 
-const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
+const CreatePoll = ({
+  isEditMode = false,
+  pollSlug,
+  isPublicMode = false,
+}: CreatePollProps) => {
   const { push } = useRouter()
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({})
+
+  const [guestEmail, setGuestEmail] = useState('')
+  const [guestName, setGuestName] = useState('')
 
   const {
     isOpen: isInviteModalOpen,
@@ -169,7 +180,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   const { currentAccount } = useContext(AccountContext)
   const { fetchPollCounts } = useContext(MetricStateContext)
   const { blocks: availabilityBlocks, isLoading: isAvailabilityBlocksLoading } =
-    useAvailabilityBlocks(currentAccount?.address)
+    useAvailabilityBlocks(isPublicMode ? undefined : currentAccount?.address)
   const defaultAvailabilityBlockId =
     availabilityBlocks?.find(b => b.isDefault)?.id ?? null
 
@@ -177,18 +188,17 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     title: '',
     duration: 30,
     startDate: new Date(),
-    endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+    endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     expiryTime: new Date(),
     description: '',
   })
 
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
-    MeetingPermissions.SCHEDULE_MEETING,
     MeetingPermissions.SEE_GUEST_LIST,
-    MeetingPermissions.INVITE_GUESTS,
   ])
-  const [removeExpiryDate, setRemoveExpiryDate] = useState(false)
+  const [showExpiryDate, setShowExpiryDate] = useState(false)
+  const removeExpiryDate = !showExpiryDate
   // Poll-specific availability: either block IDs or custom schedule
   const [pollAvailabilityBlockIds, setPollAvailabilityBlockIds] = useState<
     string[]
@@ -197,6 +207,10 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     useState<PollCustomAvailability | null>(null)
   const hasSetDefaultAvailability = React.useRef(false)
   const hasInitializedPollAvailabilityFromPoll = React.useRef(false)
+
+  const [currentView, setCurrentView] = useState<
+    'form' | 'schedule' | 'schedule-edit'
+  >('form')
 
   const durationOptions: Option<number>[] = useMemo(
     () =>
@@ -331,7 +345,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       const poll = pollResponse.poll
 
       const hasExpiry = !!poll.expires_at
-      setRemoveExpiryDate(!hasExpiry)
+      setShowExpiryDate(hasExpiry)
 
       // Set form data
       const defaultExpiryDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
@@ -476,11 +490,8 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         expiryTime: new Date(),
         description: '',
       })
-      setSelectedPermissions([
-        MeetingPermissions.SEE_GUEST_LIST,
-        MeetingPermissions.SCHEDULE_MEETING,
-      ])
-      setRemoveExpiryDate(false)
+      setSelectedPermissions([MeetingPermissions.SEE_GUEST_LIST])
+      setShowExpiryDate(false)
       setParticipants([])
       setGroupAvailability({})
       setGroupParticipants({})
@@ -493,6 +504,33 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         router.push(
           `/dashboard/schedule?ref=quickpoll&pollId=${pollId}&intent=edit_availability`
         )
+      }
+    },
+    onError: error => {
+      handleApiError('Failed to create poll', error)
+    },
+  })
+
+  const createGuestPollMutation = useMutation({
+    mutationFn: (pollData: CreateGuestQuickPollRequest) =>
+      createGuestQuickPollApi(pollData),
+    onSuccess: response => {
+      showSuccessToast(
+        'Poll Created Successfully!',
+        'Your quick poll has been created and is ready to share.'
+      )
+
+      const poll = (response as { poll?: { id?: string; slug?: string } })?.poll
+      if (poll?.id && poll?.slug) {
+        const guestId = getOrCreateGuestIdentifier()
+        saveLocalPoll({
+          pollId: poll.id,
+          slug: poll.slug,
+          title: formData.title,
+          createdAt: new Date().toISOString(),
+          guestIdentifier: guestId,
+        })
+        router.push(`/poll/${poll.slug}`)
       }
     },
     onError: error => {
@@ -603,8 +641,43 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
       }
 
       updatePollMutation.mutate(updateData)
+    } else if (isPublicMode) {
+      if (!guestEmail.trim()) {
+        setValidationErrors(prev => ({
+          ...prev,
+          guestEmail: 'Email is required',
+        }))
+        return
+      }
+      const guestPollData: CreateGuestQuickPollRequest = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        duration_minutes: formData.duration,
+        starts_at: createLocalDate(formData.startDate),
+        ends_at: createLocalDate(formData.endDate),
+        expires_at: removeExpiryDate
+          ? null
+          : createLocalDateTime(formData.expiryDate, formData.expiryTime),
+        permissions: selectedPermissions as MeetingPermissions[],
+        guest_email: guestEmail.trim().toLowerCase(),
+        guest_name: guestName.trim(),
+        guest_identifier: getOrCreateGuestIdentifier(),
+        participants:
+          allMergedParticipants.length > 0
+            ? allMergedParticipants.map(p => ({
+                account_address: p.account_address,
+                name: p.name,
+                guest_email: p.guest_email,
+                participant_type: QuickPollParticipantType.INVITEE,
+              }))
+            : [],
+      }
+      if (pollCustomAvailability) {
+        guestPollData.custom_availability = pollCustomAvailability
+      }
+
+      createGuestPollMutation.mutate(guestPollData)
     } else {
-      // Create mode - prepare create request
       const pollData: CreateQuickPollRequest = {
         title: formData.title.trim(),
         description: formData.description.trim(),
@@ -640,11 +713,11 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   }
 
   const handleBackToPolls = () => {
-    router.push('/dashboard/quickpoll')
+    router.push(isPublicMode ? '/quickpoll' : '/dashboard/quickpoll')
   }
 
   const handleBackToPollsFromHeader = () => {
-    push('/dashboard/quickpoll')
+    push(isPublicMode ? '/quickpoll' : '/dashboard/quickpoll')
   }
 
   // Function to calculate participant changes for update mode
@@ -818,6 +891,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
   const isLoading =
     createPollMutation.isLoading ||
+    createGuestPollMutation.isLoading ||
     updatePollMutation.isLoading ||
     closePollMutation.isLoading
 
@@ -826,7 +900,7 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     return (
       <Box
         width="100%"
-        minHeight="100vh"
+        minHeight={isPublicMode ? undefined : '100vh'}
         bg="bg-canvas"
         display="flex"
         alignItems="center"
@@ -840,8 +914,18 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
   // Show error state if there's an error fetching poll data in edit mode
   if (isEditMode && error) {
     return (
-      <Box width="100%" minHeight="100vh" bg="bg-canvas" px={6} py={8}>
-        <Flex justify="center" align="center" minH="100vh">
+      <Box
+        width="100%"
+        minHeight={isPublicMode ? undefined : '100vh'}
+        bg="bg-canvas"
+        px={6}
+        py={8}
+      >
+        <Flex
+          justify="center"
+          align="center"
+          minH={isPublicMode ? undefined : '100vh'}
+        >
           <Box maxW="500px" w="100%">
             <CustomError
               title="Failed to load poll"
@@ -872,10 +956,40 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
     )
   }
 
+  if (isPublicMode && currentView !== 'form') {
+    return (
+      <Box
+        width="100%"
+        bg="bg-canvas"
+        px={{ base: 4, md: 8 }}
+        py={{ base: 8, md: 8 }}
+        display="flex"
+        justifyContent="center"
+      >
+        <Box maxW="1200px" width="100%">
+          <PublicPollScheduleView
+            startDate={formData.startDate}
+            endDate={formData.endDate}
+            duration={formData.duration}
+            existingAvailability={pollCustomAvailability}
+            initialEditMode={currentView === 'schedule-edit'}
+            onSave={availability => {
+              setPollCustomAvailability(availability)
+              setPollAvailabilityBlockIds([])
+              setCurrentView('form')
+            }}
+            onBack={() => setCurrentView('form')}
+            pollTitle={formData.title}
+          />
+        </Box>
+      </Box>
+    )
+  }
+
   return (
     <Box
       width="100%"
-      minHeight="100vh"
+      minHeight={isPublicMode ? undefined : '100vh'}
       bg="bg-canvas"
       px={{ base: 4, md: 8 }}
       py={{ base: 32, md: 8 }}
@@ -908,52 +1022,54 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
         </VStack>
 
         <VStack spacing={5} align="stretch">
-          {/* Meeting Date Range */}
-          <FormControl>
-            <FormLabel htmlFor="date">
-              Meeting Date options (From → To)
-            </FormLabel>
-            <HStack w={'100%'} gap={4}>
-              <SingleDatepicker
-                date={formData.startDate}
-                onDateChange={date =>
-                  setFormData(prev => ({ ...prev, startDate: date }))
-                }
-                blockPast={true}
-                inputProps={{
-                  height: 'auto',
-                  py: 3,
-                  pl: 12,
-                  borderColor: 'neutral.400',
-                  _placeholder: {
-                    color: 'neutral.400',
-                  },
-                }}
-                iconColor="neutral.400"
-                iconSize={20}
-                disabled={isLoading}
-              />
-              <SingleDatepicker
-                date={formData.endDate}
-                onDateChange={date =>
-                  setFormData(prev => ({ ...prev, endDate: date }))
-                }
-                blockPast={true}
-                inputProps={{
-                  height: 'auto',
-                  py: 3,
-                  pl: 12,
-                  borderColor: 'neutral.400',
-                  _placeholder: {
-                    color: 'neutral.400',
-                  },
-                }}
-                iconColor="neutral.400"
-                iconSize={20}
-                disabled={isLoading}
-              />
+          {/* Guest Identity Fields (public mode only) */}
+          {isPublicMode && !currentAccount && (
+            <HStack w="100%" gap={4} align="flex-start">
+              <FormControl isRequired>
+                <FormLabel>Your Email</FormLabel>
+                <Input
+                  placeholder="Enter your email"
+                  value={guestEmail}
+                  onChange={e => {
+                    setGuestEmail(e.target.value)
+                    if (validationErrors.guestEmail) {
+                      setValidationErrors(prev => {
+                        const { guestEmail: _, ...rest } = prev
+                        return rest
+                      })
+                    }
+                  }}
+                  bg="bg-canvas"
+                  border="1px solid"
+                  borderColor={
+                    validationErrors.guestEmail ? 'red.500' : 'neutral.400'
+                  }
+                  color="text-primary"
+                  _placeholder={{ color: 'neutral.400' }}
+                  isDisabled={isLoading}
+                />
+                {validationErrors.guestEmail && (
+                  <FormHelperText color="red.500" mt={1}>
+                    {validationErrors.guestEmail}
+                  </FormHelperText>
+                )}
+              </FormControl>
+              <FormControl>
+                <FormLabel>Your Name</FormLabel>
+                <Input
+                  placeholder="Enter your name"
+                  value={guestName}
+                  onChange={e => setGuestName(e.target.value)}
+                  bg="bg-canvas"
+                  border="1px solid"
+                  borderColor="neutral.400"
+                  color="text-primary"
+                  _placeholder={{ color: 'neutral.400' }}
+                  isDisabled={isLoading}
+                />
+              </FormControl>
             </HStack>
-          </FormControl>
+          )}
 
           {/* Title and Duration - Same Line */}
           <HStack spacing={4} align="start">
@@ -1050,22 +1166,80 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
             </FormControl>
           </HStack>
 
+          {/* Meeting Date Range */}
+          <FormControl>
+            <FormLabel htmlFor="date">
+              Meeting Date options (From → To)
+            </FormLabel>
+            <HStack w={'100%'} gap={4}>
+              <SingleDatepicker
+                date={formData.startDate}
+                onDateChange={date =>
+                  setFormData(prev => ({ ...prev, startDate: date }))
+                }
+                blockPast={true}
+                inputProps={{
+                  height: 'auto',
+                  py: 3,
+                  pl: 12,
+                  borderColor: 'neutral.400',
+                  _placeholder: {
+                    color: 'neutral.400',
+                  },
+                }}
+                iconColor="neutral.400"
+                iconSize={20}
+                disabled={isLoading}
+              />
+              <SingleDatepicker
+                date={formData.endDate}
+                onDateChange={date =>
+                  setFormData(prev => ({ ...prev, endDate: date }))
+                }
+                blockPast={true}
+                inputProps={{
+                  height: 'auto',
+                  py: 3,
+                  pl: 12,
+                  borderColor: 'neutral.400',
+                  _placeholder: {
+                    color: 'neutral.400',
+                  },
+                }}
+                iconColor="neutral.400"
+                iconSize={20}
+                disabled={isLoading}
+              />
+            </HStack>
+          </FormControl>
+
           {/* Availability */}
           <FormControl>
             <FormLabel htmlFor="availability">
               Your Availability{' '}
-              <InfoTooltip text="Availability block(s) used for this poll. Click the pencil to choose or customize." />
+              {!isPublicMode && (
+                <InfoTooltip text="Availability block(s) used for this poll. Click the pencil to choose or customize." />
+              )}
             </FormLabel>
             <HStack
               w="100%"
               spacing={0}
-              border="1px solid"
-              borderColor="neutral.400"
+              border="1px dashed"
+              borderColor="primary.200"
               borderRadius="md"
               px={3}
               minH="40px"
               bg="bg-canvas"
               align="center"
+              cursor="pointer"
+              onClick={
+                isPublicMode
+                  ? () =>
+                      setCurrentView(
+                        pollCustomAvailability ? 'schedule-edit' : 'schedule'
+                      )
+                  : openAvailabilityModal
+              }
             >
               <Flex
                 flex={1}
@@ -1074,26 +1248,17 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                 py={2}
                 align="center"
                 minH="40px"
+                justifyContent="center"
               >
-                {isAvailabilityBlocksLoading ? (
+                {isAvailabilityBlocksLoading && !isPublicMode ? (
                   <HStack spacing={2}>
                     <Spinner size="sm" color="border-default" />
                   </HStack>
                 ) : pollCustomAvailability ? (
-                  <Box
-                    as="span"
-                    px={1.5}
-                    py={0.15}
-                    bg="border-default"
-                    border="1px solid"
-                    borderColor="border-default"
-                    color="text-primary"
-                    fontSize="12px"
-                    borderRadius={6}
-                  >
-                    Custom
-                  </Box>
-                ) : pollAvailabilityBlockIds.length > 0 ? (
+                  <Text color="primary.200" fontSize="16px" fontWeight="500">
+                    + Edit my availability
+                  </Text>
+                ) : !isPublicMode && pollAvailabilityBlockIds.length > 0 ? (
                   (availabilityBlocks || [])
                     .filter(b => pollAvailabilityBlockIds.includes(b.id))
                     .map(b => (
@@ -1113,24 +1278,29 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
                       </Box>
                     ))
                 ) : (
-                  <Text color="neutral.400" fontSize="sm">
-                    Availability block(s) used for poll
+                  <Text color="primary.200" fontSize="16px" fontWeight="700">
+                    + Add my availability
                   </Text>
                 )}
               </Flex>
-              <Button
-                aria-label="Edit availability"
-                variant="ghost"
-                size="sm"
-                p={1}
-                minW="auto"
-                onClick={openAvailabilityModal}
-                isDisabled={isLoading || isAvailabilityBlocksLoading}
-                _hover={{ bg: 'transparent' }}
-              >
-                <Icon as={HiOutlinePencilAlt} color={iconColor} boxSize={5} />
-              </Button>
             </HStack>
+            {isPublicMode && pollCustomAvailability && (
+              <Text
+                color="primary.200"
+                fontSize="16px"
+                fontWeight="700"
+                mt={2}
+                cursor="pointer"
+                textDecoration="underline"
+                onClick={e => {
+                  e.stopPropagation()
+                  setCurrentView('schedule')
+                }}
+                textAlign="center"
+              >
+                View my availability
+              </Text>
+            )}
           </FormControl>
 
           {/* Add Guest from Groups */}
@@ -1209,58 +1379,63 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
 
           {/* Poll Expiry Date */}
           <FormControl>
-            <FormLabel htmlFor="expiry-date">Poll Expiry Date</FormLabel>
-            <HStack w={'100%'} gap={4}>
-              <SingleDatepicker
-                date={formData.expiryDate}
-                onDateChange={date =>
-                  setFormData(prev => ({ ...prev, expiryDate: date }))
-                }
-                blockPast={true}
-                inputProps={{
-                  height: 'auto',
-                  py: 3,
-                  pl: 12,
-                  borderColor: 'neutral.400',
-                  _placeholder: {
-                    color: 'neutral.400',
-                  },
-                }}
-                iconColor="neutral.400"
-                iconSize={20}
-                disabled={isLoading || removeExpiryDate}
-              />
-              <InputTimePicker
-                value={format(formData.expiryTime, 'p')}
-                onChange={time =>
-                  setFormData(prev => ({ ...prev, expiryTime: new Date(time) }))
-                }
-                currentDate={formData.expiryDate}
-                inputProps={{
-                  height: 'auto',
-                  py: 3,
-                  pl: 12,
-                  borderColor: 'neutral.400',
-                  _placeholder: {
-                    color: 'neutral.400',
-                  },
-                  isDisabled: isLoading || removeExpiryDate,
-                }}
-                iconColor="neutral.400"
-                iconSize={20}
-              />
-            </HStack>
-            <HStack w="100%" justifyContent="space-between" mt={2}>
-              <Text fontSize="sm" color="text-primary">
-                Remove expiry date
-              </Text>
-              <Checkbox
-                isChecked={removeExpiryDate}
-                onChange={e => setRemoveExpiryDate(e.target.checked)}
+            <HStack w="100%" justifyContent="space-between">
+              <FormLabel htmlFor="expiry-toggle" mb={0}>
+                Add Poll Expiry Date (optional)
+              </FormLabel>
+              <Switch
+                id="expiry-toggle"
+                isChecked={showExpiryDate}
+                onChange={e => setShowExpiryDate(e.target.checked)}
                 colorScheme="primary"
                 isDisabled={isLoading}
               />
             </HStack>
+            {showExpiryDate && (
+              <HStack w={'100%'} gap={4} mt={3}>
+                <SingleDatepicker
+                  date={formData.expiryDate}
+                  onDateChange={date =>
+                    setFormData(prev => ({ ...prev, expiryDate: date }))
+                  }
+                  blockPast={true}
+                  inputProps={{
+                    height: 'auto',
+                    py: 3,
+                    pl: 12,
+                    borderColor: 'neutral.400',
+                    _placeholder: {
+                      color: 'neutral.400',
+                    },
+                  }}
+                  iconColor="neutral.400"
+                  iconSize={20}
+                  disabled={isLoading}
+                />
+                <InputTimePicker
+                  value={format(formData.expiryTime, 'p')}
+                  onChange={time =>
+                    setFormData(prev => ({
+                      ...prev,
+                      expiryTime: new Date(time),
+                    }))
+                  }
+                  currentDate={formData.expiryDate}
+                  inputProps={{
+                    height: 'auto',
+                    py: 3,
+                    pl: 12,
+                    borderColor: 'neutral.400',
+                    _placeholder: {
+                      color: 'neutral.400',
+                    },
+                    isDisabled: isLoading,
+                  }}
+                  iconColor="neutral.400"
+                  iconSize={20}
+                />
+              </HStack>
+            )}
           </FormControl>
 
           {/* Guest Permissions - Chip Select */}
@@ -1355,34 +1530,41 @@ const CreatePoll = ({ isEditMode = false, pollSlug }: CreatePollProps) => {
               colorScheme="primary"
               onClick={handleSubmit}
               isDisabled={isLoading}
-              isLoading={createPollMutation.isLoading}
+              isLoading={
+                createPollMutation.isLoading ||
+                createGuestPollMutation.isLoading
+              }
               loadingText="Creating poll..."
             >
-              {createPollMutation.isLoading
+              {createPollMutation.isLoading || createGuestPollMutation.isLoading
                 ? 'Creating poll...'
                 : 'Create Poll'}
             </Button>
           )}
         </VStack>
 
-        {/* Poll Availability Modal */}
-        <PollAvailabilityModal
-          isOpen={isAvailabilityModalOpen}
-          onClose={closeAvailabilityModal}
-          onSave={(result: PollAvailabilityResult) => {
-            if (result.type === 'blocks') {
-              setPollAvailabilityBlockIds(result.blockIds)
-              setPollCustomAvailability(null)
-            } else {
-              setPollCustomAvailability(result.custom)
-              setPollAvailabilityBlockIds([])
-            }
-          }}
-          availableBlocks={availabilityBlocks ?? []}
-          defaultBlockId={defaultAvailabilityBlockId}
-          initialBlockIds={pollAvailabilityBlockIds}
-          initialCustom={pollCustomAvailability}
-        />
+        {/* Poll Availability Modal (authenticated mode only) */}
+        {!isPublicMode && (
+          <PollAvailabilityModal
+            isOpen={isAvailabilityModalOpen}
+            onClose={closeAvailabilityModal}
+            onSave={(result: PollAvailabilityResult) => {
+              if (result.type === 'blocks') {
+                setPollAvailabilityBlockIds(result.blockIds)
+                setPollCustomAvailability(null)
+              } else {
+                setPollCustomAvailability(
+                  result.type === 'custom' ? result.custom : null
+                )
+                setPollAvailabilityBlockIds([])
+              }
+            }}
+            availableBlocks={availabilityBlocks ?? []}
+            defaultBlockId={defaultAvailabilityBlockId}
+            initialBlockIds={pollAvailabilityBlockIds}
+            initialCustom={pollCustomAvailability}
+          />
+        )}
 
         {/* Invite Participants Modal */}
         <InviteParticipants

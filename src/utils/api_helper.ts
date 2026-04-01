@@ -88,6 +88,7 @@ import {
   AddParticipantRequest,
   AvailabilitySlot,
   CloseQuickPollResponse,
+  CreateGuestQuickPollRequest,
   CreateQuickPollRequest,
   PollStatus,
   QuickPollBusyParticipant,
@@ -95,6 +96,7 @@ import {
   QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
+  UpdateGuestQuickPollRequest,
   UpdateParticipantAvailabilityRequest,
   UpdateQuickPollParticipantAvailabilityOptions,
   UpdateQuickPollRequest,
@@ -2513,6 +2515,25 @@ export const getUserLocale = async (): Promise<UserLocale> => {
 
 export const createQuickPoll = async (pollData: CreateQuickPollRequest) => {
   return await internalFetch('/secure/quickpoll', 'POST', pollData)
+}
+
+export const createGuestQuickPoll = async (
+  pollData: CreateGuestQuickPollRequest
+) => {
+  return await internalFetch('/quickpoll/create', 'POST', pollData)
+}
+
+export const migrateGuestPolls = async (guestIdentifier: string) => {
+  return await internalFetch('/secure/quickpoll/migrate', 'POST', {
+    guest_identifier: guestIdentifier,
+  })
+}
+
+export const updateGuestQuickPoll = async (
+  slug: string,
+  updateData: UpdateGuestQuickPollRequest
+) => {
+  return await internalFetch(`/quickpoll/${slug}/update`, 'PUT', updateData)
 }
 
 export const getQuickPollById = async (pollId: string) => {

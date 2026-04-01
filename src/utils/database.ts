@@ -122,6 +122,7 @@ import {
 import {
   AddParticipantData,
   AvailabilitySlot,
+  CreateGuestQuickPollRequest,
   CreateQuickPollRequest,
   PollCustomAvailability,
   PollStatus,
@@ -132,6 +133,7 @@ import {
   QuickPollParticipantType,
   QuickPollParticipantUpdateFields,
   ScheduledMeetingInfo,
+  UpdateGuestQuickPollRequest,
   UpdateQuickPollParticipantAvailabilityOptions,
   UpdateQuickPollRequest,
 } from '@/types/QuickPoll'
@@ -8805,6 +8807,199 @@ const createQuickPoll = async (
   }
 }
 
+const createGuestQuickPoll = async (pollData: CreateGuestQuickPollRequest) => {
+  try {
+    const slug = await generateUniquePollSlug(pollData.title)
+
+    const { data: poll, error: pollError } = await db.supabase
+      .from('quick_polls')
+      .insert([
+        {
+          description: pollData.description,
+          duration_minutes: pollData.duration_minutes,
+          ends_at: pollData.ends_at,
+          expires_at: pollData.expires_at,
+          permissions: pollData.permissions,
+          slug,
+          starts_at: pollData.starts_at,
+          status: PollStatus.ONGOING,
+          title: pollData.title,
+          visibility: PollVisibility.PUBLIC,
+        },
+      ])
+      .select()
+      .maybeSingle()
+
+    if (pollError) throw pollError
+
+    let ownerAvailableSlots: AvailabilitySlot[] = []
+    let ownerTimezone = 'UTC'
+
+    if (pollData.custom_availability) {
+      ownerAvailableSlots =
+        pollData.custom_availability.weekly_availability.map(day => ({
+          ranges: day.ranges || [],
+          weekday: day.weekday,
+        }))
+      ownerTimezone = pollData.custom_availability.timezone || 'UTC'
+    }
+
+    const ownerParticipant = {
+      available_slots: ownerAvailableSlots,
+      guest_email: pollData.guest_email,
+      guest_identifier: pollData.guest_identifier,
+      guest_name: pollData.guest_name || '',
+      participant_type: QuickPollParticipantType.SCHEDULER,
+      poll_id: poll.id,
+      status: QuickPollParticipantStatus.ACCEPTED,
+      timezone: ownerTimezone,
+    }
+
+    const invitees = (pollData.participants || []).map(p => ({
+      account_address: p.account_address,
+      available_slots: [] as AvailabilitySlot[],
+      guest_email: p.guest_email || '',
+      guest_name: p.name || '',
+      participant_type: QuickPollParticipantType.INVITEE,
+      poll_id: poll.id,
+      status: QuickPollParticipantStatus.PENDING,
+      timezone: 'UTC',
+    }))
+
+    const participantsToAdd = [ownerParticipant, ...invitees]
+
+    const { error: participantsError } = await db.supabase
+      .from('quick_poll_participants')
+      .insert(participantsToAdd)
+
+    if (participantsError) throw participantsError
+
+    const inviterName = pollData.guest_name || pollData.guest_email
+
+    for (const participant of invitees) {
+      const participantEmail = participant.guest_email
+      if (participantEmail) {
+        emailQueue.add(async () => {
+          try {
+            await sendPollInviteEmail(
+              participantEmail,
+              inviterName,
+              pollData.title,
+              slug
+            )
+            return true
+          } catch (error) {
+            console.error(
+              `Failed to send invitation email to ${participantEmail}:`,
+              error
+            )
+            return false
+          }
+        })
+      }
+    }
+
+    return poll
+  } catch (error) {
+    if (error instanceof QuickPollSlugGenerationError) {
+      throw error
+    }
+    throw new QuickPollCreationError(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+const migrateGuestPollsToAccount = async (
+  guestIdentifier: string,
+  accountAddress: string
+) => {
+  const { data, error } = await db.supabase
+    .from('quick_poll_participants')
+    .update({
+      account_address: accountAddress.toLowerCase(),
+      guest_identifier: null,
+      status: QuickPollParticipantStatus.ACCEPTED,
+    })
+    .eq('guest_identifier', guestIdentifier)
+    .is('account_address', null)
+    .select('id')
+
+  if (error) throw error
+  return { migrated_count: data?.length ?? 0 }
+}
+
+const updateGuestQuickPoll = async (
+  slug: string,
+  guestIdentifier: string,
+  updateData: UpdateGuestQuickPollRequest
+) => {
+  const { data: poll, error: pollError } = await db.supabase
+    .from('quick_polls')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle()
+
+  if (pollError || !poll) throw new QuickPollNotFoundError(slug)
+
+  const { data: scheduler } = await db.supabase
+    .from('quick_poll_participants')
+    .select('id')
+    .eq('poll_id', poll.id)
+    .eq('guest_identifier', guestIdentifier)
+    .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+    .maybeSingle()
+
+  if (!scheduler) throw new QuickPollUnauthorizedError()
+
+  const updateFields: Record<string, unknown> = {}
+  if (updateData.title !== undefined) updateFields.title = updateData.title
+  if (updateData.description !== undefined)
+    updateFields.description = updateData.description
+  if (updateData.duration_minutes !== undefined)
+    updateFields.duration_minutes = updateData.duration_minutes
+  if (updateData.starts_at !== undefined)
+    updateFields.starts_at = updateData.starts_at
+  if (updateData.ends_at !== undefined)
+    updateFields.ends_at = updateData.ends_at
+  if (updateData.expires_at !== undefined)
+    updateFields.expires_at = updateData.expires_at
+  if (updateData.permissions !== undefined)
+    updateFields.permissions = updateData.permissions
+
+  if (Object.keys(updateFields).length > 0) {
+    const { error } = await db.supabase
+      .from('quick_polls')
+      .update(updateFields)
+      .eq('id', poll.id)
+    if (error) throw new QuickPollUpdateError(error.message)
+  }
+
+  if (updateData.custom_availability) {
+    const slots = updateData.custom_availability.weekly_availability.map(
+      day => ({
+        ranges: day.ranges || [],
+        weekday: day.weekday,
+      })
+    )
+    await db.supabase
+      .from('quick_poll_participants')
+      .update({
+        available_slots: slots,
+        timezone: updateData.custom_availability.timezone || 'UTC',
+      })
+      .eq('id', scheduler.id)
+  }
+
+  const { data: updatedPoll } = await db.supabase
+    .from('quick_polls')
+    .select('*')
+    .eq('id', poll.id)
+    .maybeSingle()
+
+  return updatedPoll
+}
+
 const buildBlocksByParticipant = (
   rows:
     | (Pick<
@@ -10136,14 +10331,16 @@ const getQuickPollParticipantById = async (participantId: string) => {
 
 const getQuickPollParticipantByIdentifier = async (
   pollId: string,
-  identifier: string // either account_address or guest_email
+  identifier: string // account_address, guest_email, or guest_identifier
 ) => {
   try {
     const { data: participant, error } = await db.supabase
       .from('quick_poll_participants')
       .select('*')
       .eq('poll_id', pollId)
-      .or(`account_address.eq.${identifier},guest_email.eq.${identifier}`)
+      .or(
+        `account_address.eq.${identifier},guest_email.eq.${identifier},guest_identifier.eq.${identifier}`
+      )
       .maybeSingle()
 
     if (error) {
@@ -11286,6 +11483,7 @@ export {
   createOrUpdateEventNotification,
   createPaymentPreferences,
   createPinHash,
+  createGuestQuickPoll,
   createQuickPoll,
   createQuickPollMeeting,
   createStripeSubscription,
@@ -11423,6 +11621,7 @@ export {
   linkQuickPollParticipantAccount,
   linkTransactionToStripeSubscription,
   manageGroupInvite,
+  migrateGuestPollsToAccount,
   parseParticipantSlots,
   publicGroupJoin,
   recordOffRampTransaction,
@@ -11457,6 +11656,7 @@ export {
   updatePaymentPreferences,
   updatePreferenceAvatar,
   updatePreferenceBanner,
+  updateGuestQuickPoll,
   updateQuickPoll,
   updateQuickPollGuestDetails,
   updateQuickPollParticipantAvailability,
