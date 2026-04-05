@@ -38,9 +38,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (error) {
     Sentry.captureException(error)
-    if (!stateObject)
-      return res.redirect(`/poll/${stateObject?.pollSlug}?calendarResult=error`)
-    else {
+    if (!stateObject) {
+      return res.redirect(`/quickpoll?calendarResult=error`)
+    } else {
       stateObject.error = 'Office365 Calendar integration failed.'
       const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
         'base64'

@@ -39,7 +39,7 @@ interface QuickPollAvailabilityState {
   clearGuestAvailabilitySlots: () => void
 }
 
-const QuickPollAvailabilityContext = createContext<
+export const QuickPollAvailabilityContext = createContext<
   QuickPollAvailabilityState | undefined
 >(undefined)
 
