@@ -10,12 +10,29 @@ import redirectTo from '@/utils/redirect'
 
 import Hero from '../components/landing/Hero'
 
-const Why = dynamic(() => import('../components/landing/Why'), { ssr: true })
-const Features = dynamic(
-  () =>
-    import('../components/landing/Features').then(mod => ({
-      default: mod.Features,
-    })),
+const ImageShowcase = dynamic(
+  () => import('../components/landing/ImageShowcase'),
+  { ssr: true }
+)
+const HighlightedBox = dynamic(
+  () => import('../components/landing/HighlightedBox'),
+  { ssr: true }
+)
+const ProblemSection = dynamic(
+  () => import('../components/landing/ProblemSection'),
+  { ssr: true }
+)
+const HowItWorks = dynamic(() => import('../components/landing/HowItWorks'), {
+  ssr: true,
+})
+const WhoItsFor = dynamic(() => import('../components/landing/WhoItsFor'), {
+  ssr: true,
+})
+const WhatYouGet = dynamic(() => import('../components/landing/WhatYouGet'), {
+  ssr: true,
+})
+const Testimonials = dynamic(
+  () => import('../components/landing/Testimonials'),
   { ssr: true }
 )
 const Pricing = dynamic(
@@ -29,10 +46,9 @@ const Faq = dynamic(() => import('../components/landing/FAQ'), { ssr: true })
 
 const ProAccessPopUp = dynamic(
   () => import('@/components/landing/ProAccessPopUp'),
-  {
-    ssr: false,
-  }
+  { ssr: false }
 )
+
 const Home: NextPage = () => {
   const { colorMode, setColorMode } = useColorMode()
 
@@ -55,10 +71,15 @@ const Home: NextPage = () => {
         />
       </NextHead>
       <DarkMode>
-        <Box bg={'neutral.900'} fontWeight={500} pb={36}>
+        <Box bg="neutral.900" fontWeight={500}>
           <Hero />
-          <Why />
-          <Features />
+          <ImageShowcase />
+          <HighlightedBox />
+          <ProblemSection />
+          <HowItWorks />
+          <WhoItsFor />
+          <WhatYouGet />
+          <Testimonials />
           <Pricing />
           <Faq />
           <ProAccessPopUp />
