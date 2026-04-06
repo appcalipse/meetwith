@@ -1022,55 +1022,6 @@ const CreatePoll = ({
         </VStack>
 
         <VStack spacing={5} align="stretch">
-          {/* Guest Identity Fields (public mode only) */}
-          {isPublicMode && !currentAccount && (
-            <HStack w="100%" gap={4} align="flex-start">
-              <FormControl isRequired>
-                <FormLabel>Your Email</FormLabel>
-                <Input
-                  placeholder="Enter your email"
-                  value={guestEmail}
-                  onChange={e => {
-                    setGuestEmail(e.target.value)
-                    if (validationErrors.guestEmail) {
-                      setValidationErrors(prev => {
-                        const { guestEmail: _, ...rest } = prev
-                        return rest
-                      })
-                    }
-                  }}
-                  bg="bg-canvas"
-                  border="1px solid"
-                  borderColor={
-                    validationErrors.guestEmail ? 'red.500' : 'neutral.400'
-                  }
-                  color="text-primary"
-                  _placeholder={{ color: 'neutral.400' }}
-                  isDisabled={isLoading}
-                />
-                {validationErrors.guestEmail && (
-                  <FormHelperText color="red.500" mt={1}>
-                    {validationErrors.guestEmail}
-                  </FormHelperText>
-                )}
-              </FormControl>
-              <FormControl>
-                <FormLabel>Your Name</FormLabel>
-                <Input
-                  placeholder="Enter your name"
-                  value={guestName}
-                  onChange={e => setGuestName(e.target.value)}
-                  bg="bg-canvas"
-                  border="1px solid"
-                  borderColor="neutral.400"
-                  color="text-primary"
-                  _placeholder={{ color: 'neutral.400' }}
-                  isDisabled={isLoading}
-                />
-              </FormControl>
-            </HStack>
-          )}
-
           {/* Title and Duration - Same Line */}
           <HStack spacing={4} align="start">
             <FormControl isInvalid={!!validationErrors.title} flex={3} mb={0}>
@@ -1302,6 +1253,55 @@ const CreatePoll = ({
               </Text>
             )}
           </FormControl>
+
+          {/* Guest Identity Fields (public mode only) */}
+          {isPublicMode && !currentAccount && (
+            <HStack w="100%" gap={4} align="flex-start">
+              <FormControl isRequired>
+                <FormLabel>Your Email</FormLabel>
+                <Input
+                  placeholder="Enter your email"
+                  value={guestEmail}
+                  onChange={e => {
+                    setGuestEmail(e.target.value)
+                    if (validationErrors.guestEmail) {
+                      setValidationErrors(prev => {
+                        const { guestEmail: _, ...rest } = prev
+                        return rest
+                      })
+                    }
+                  }}
+                  bg="bg-canvas"
+                  border="1px solid"
+                  borderColor={
+                    validationErrors.guestEmail ? 'red.500' : 'neutral.400'
+                  }
+                  color="text-primary"
+                  _placeholder={{ color: 'neutral.400' }}
+                  isDisabled={isLoading}
+                />
+                {validationErrors.guestEmail && (
+                  <FormHelperText color="red.500" mt={1}>
+                    {validationErrors.guestEmail}
+                  </FormHelperText>
+                )}
+              </FormControl>
+              <FormControl>
+                <FormLabel>Your Name</FormLabel>
+                <Input
+                  placeholder="Enter your name"
+                  value={guestName}
+                  onChange={e => setGuestName(e.target.value)}
+                  bg="bg-canvas"
+                  border="1px solid"
+                  borderColor="neutral.400"
+                  color="text-primary"
+                  _placeholder={{ color: 'neutral.400' }}
+                  isDisabled={isLoading}
+                />
+              </FormControl>
+            </HStack>
+          )}
 
           {/* Add Guest from Groups */}
           <FormControl w="100%" maxW="100%">
