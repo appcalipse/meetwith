@@ -8,9 +8,11 @@ function ImageShowcase() {
     const video = videoRef.current
     if (!video) return
     video.muted = true
-    video.play().catch(() => {
-      // autoplay blocked by browser policy — poster image remains visible
-    })
+    if (typeof video.play === 'function') {
+      video.play()?.catch(() => {
+        // autoplay blocked by browser policy — poster image remains visible
+      })
+    }
   }, [videoRef])
 
   return (
