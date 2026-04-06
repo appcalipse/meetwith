@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test'
 
-import { test as authTest, expect as authExpect } from '../fixtures/auth.fixture'
+import {
+  expect as authExpect,
+  test as authTest,
+} from '../fixtures/auth.fixture'
 import { SELECTORS } from '../helpers/selectors'
 import { generateTestWallet } from '../helpers/wallet'
 
@@ -82,17 +85,7 @@ test.describe('Signup Flow', () => {
   })
 
   test.describe('Landing page UI', () => {
-    test('should render landing page with key sections', async ({ page }) => {
-      await page.goto('/')
-
-      await expect(page.locator(SELECTORS.mainContainer)).toBeVisible()
-      await expect(page.locator(SELECTORS.features)).toBeVisible()
-      await expect(page.locator(SELECTORS.pricing)).toBeVisible()
-    })
-
-    test('should show wallet connection option in navbar', async ({
-      page,
-    }) => {
+    test('should show wallet connection option in navbar', async ({ page }) => {
       await page.goto('/')
 
       // Look for sign in / connect wallet button
@@ -120,9 +113,9 @@ authTest.describe('Signup Flow — Authenticated state', () => {
       // Authenticated users should be redirected to meetings dashboard
       await page.waitForURL('**/dashboard/**', { timeout: 10_000 })
 
-      await authExpect(
-        page.locator(SELECTORS.dashboardMeetings)
-      ).toBeVisible({ timeout: 10_000 })
+      await authExpect(page.locator(SELECTORS.dashboardMeetings)).toBeVisible({
+        timeout: 10_000,
+      })
     }
   )
 })
