@@ -341,6 +341,80 @@ function PublicPollScheduleViewInner({
           My schedule
         </Heading>
 
+        {/* Mobile / small tablet: add / edit / save — desktop row is desktopLg-only */}
+        <HStack
+          display={{ base: 'flex', desktopLg: 'none' }}
+          w="100%"
+          justify="flex-start"
+          gap={3}
+          flexWrap="wrap"
+          pb={2}
+        >
+          {!isEditing ? (
+            !existingAvailability ? (
+              <ChooseAvailabilityMethodModal
+                isOpen={showMethodModal}
+                onClose={() => setShowMethodModal(false)}
+                onSelectManual={handleSelectManual}
+                onSelectImport={handleSelectImport}
+                onSelectImportDirect={handleSelectImportDirect}
+                showSignInCheckbox={true}
+                variant="guest"
+              >
+                <Button
+                  colorScheme="primary"
+                  onClick={() => setShowMethodModal(true)}
+                  px="16px"
+                  py="8px"
+                  fontSize="16px"
+                  fontWeight="700"
+                  borderRadius="8px"
+                >
+                  Add availability
+                </Button>
+              </ChooseAvailabilityMethodModal>
+            ) : (
+              <Button
+                colorScheme="primary"
+                onClick={() => setIsEditing(true)}
+                px="16px"
+                py="8px"
+                fontSize="16px"
+                fontWeight="700"
+                borderRadius="8px"
+              >
+                Edit availability
+              </Button>
+            )
+          ) : (
+            <HStack spacing={3} flexWrap="wrap">
+              <Button
+                colorScheme="primary"
+                onClick={handleSave}
+                px="16px"
+                py="8px"
+                fontSize="16px"
+                fontWeight="700"
+                borderRadius="8px"
+              >
+                Save availability
+              </Button>
+              <Button
+                variant="outline"
+                colorScheme="primary"
+                px="16px"
+                py="8px"
+                fontSize="16px"
+                fontWeight="700"
+                borderRadius="8px"
+                onClick={handleCancel}
+              >
+                Cancel
+              </Button>
+            </HStack>
+          )}
+        </HStack>
+
         {/* Controls (copied from QuickPollPickAvailability) */}
         <Flex
           w="100%"
@@ -469,7 +543,19 @@ function PublicPollScheduleViewInner({
                         Add availability
                       </Button>
                     </ChooseAvailabilityMethodModal>
-                  ) : null
+                  ) : (
+                    <Button
+                      colorScheme="primary"
+                      onClick={() => setIsEditing(true)}
+                      px="16px"
+                      py="8px"
+                      fontSize="16px"
+                      fontWeight="700"
+                      borderRadius="8px"
+                    >
+                      Edit availability
+                    </Button>
+                  )
                 ) : (
                   <HStack spacing={3}>
                     <Button
