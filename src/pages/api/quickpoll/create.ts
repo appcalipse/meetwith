@@ -1,21 +1,23 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { CreateGuestQuickPollRequest } from '@/types/QuickPoll'
 import {
   QUICKPOLL_MAX_DURATION_MINUTES,
   QUICKPOLL_MIN_DURATION_MINUTES,
 } from '@/utils/constants'
-import { createGuestQuickPoll } from '@/utils/database'
+import {
+  createGuestQuickPoll,
+  getQuickPollSchedulerParticipantIdForPoll,
+  saveQuickPollCalendar,
+} from '@/utils/database'
 import {
   QuickPollCreationError,
   QuickPollValidationError,
 } from '@/utils/errors'
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -87,6 +89,28 @@ export default async function handler(
 
     const poll = await createGuestQuickPoll(createPayload)
 
+    const pending = req.session.quickPollPendingCalendar
+    if (pending && poll?.id) {
+      const schedulerId = await getQuickPollSchedulerParticipantIdForPoll(
+        poll.id
+      )
+      if (schedulerId) {
+        try {
+          await saveQuickPollCalendar(
+            schedulerId,
+            pending.email,
+            pending.provider,
+            pending.payload,
+            pending.calendars
+          )
+        } catch (calendarError) {
+          Sentry.captureException(calendarError)
+        }
+      }
+      delete req.session.quickPollPendingCalendar
+      await req.session.save()
+    }
+
     return res.status(201).json({ poll })
   } catch (error) {
     Sentry.captureException(error)
@@ -105,3 +129,5 @@ export default async function handler(
     })
   }
 }
+
+export default withSessionRoute(handler)

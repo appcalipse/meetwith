@@ -32,6 +32,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { FaArrowLeft } from 'react-icons/fa'
@@ -98,7 +99,13 @@ import {
 import { queryClient } from '@/utils/react_query'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { quickPollSchema } from '@/utils/schemas'
-import { getOrCreateGuestIdentifier, saveLocalPoll } from '@/utils/storage'
+import {
+  clearQuickPollPublicCreateDraft,
+  getOrCreateGuestIdentifier,
+  loadQuickPollPublicCreateDraft,
+  saveLocalPoll,
+  saveQuickPollPublicCreateDraft,
+} from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
@@ -316,6 +323,75 @@ const CreatePoll = ({
   }, [allMergedParticipants.length, validationErrors.participants])
 
   const router = useRouter()
+
+  const savePublicCreateDraftSync = useCallback(() => {
+    if (!isPublicMode || typeof window === 'undefined') return
+    saveQuickPollPublicCreateDraft({
+      formData: {
+        description: formData.description,
+        duration: formData.duration,
+        endDate: formData.endDate.toISOString(),
+        expiryDate: formData.expiryDate.toISOString(),
+        expiryTime: formData.expiryTime.toISOString(),
+        startDate: formData.startDate.toISOString(),
+        title: formData.title,
+      },
+      guestEmail,
+      guestName,
+      pollAvailabilityBlockIds,
+      pollCustomAvailability,
+      selectedPermissions,
+      showExpiryDate,
+    })
+  }, [
+    formData,
+    guestEmail,
+    guestName,
+    isPublicMode,
+    pollAvailabilityBlockIds,
+    pollCustomAvailability,
+    selectedPermissions,
+    showExpiryDate,
+  ])
+
+  const handledCalendarPendingRef = useRef(false)
+
+  useEffect(() => {
+    if (!isPublicMode || !router.isReady) return
+    const pending = router.query.calendarPending
+    const isCalendarPending =
+      pending === '1' || (Array.isArray(pending) && pending[0] === '1')
+    if (!isCalendarPending) return
+    if (handledCalendarPendingRef.current) return
+    handledCalendarPendingRef.current = true
+
+    const draft = loadQuickPollPublicCreateDraft()
+    if (draft) {
+      setFormData({
+        description: draft.formData.description,
+        duration: draft.formData.duration,
+        endDate: new Date(draft.formData.endDate),
+        expiryDate: new Date(draft.formData.expiryDate),
+        expiryTime: new Date(draft.formData.expiryTime),
+        startDate: new Date(draft.formData.startDate),
+        title: draft.formData.title,
+      })
+      setGuestEmail(draft.guestEmail)
+      setGuestName(draft.guestName)
+      setPollAvailabilityBlockIds(draft.pollAvailabilityBlockIds)
+      setPollCustomAvailability(draft.pollCustomAvailability)
+      setSelectedPermissions(draft.selectedPermissions)
+      setShowExpiryDate(draft.showExpiryDate)
+    }
+    setCurrentView('schedule-edit')
+  }, [isPublicMode, router.isReady, router.query])
+
+  useEffect(() => {
+    if (!isPublicMode || typeof window === 'undefined') return
+    const id = window.setTimeout(() => savePublicCreateDraftSync(), 400)
+    return () => window.clearTimeout(id)
+  }, [isPublicMode, savePublicCreateDraftSync])
+
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const iconColor = useColorModeValue('#181F24', 'white')
   // Fetch poll data when in edit mode
@@ -515,6 +591,7 @@ const CreatePoll = ({
     mutationFn: (pollData: CreateGuestQuickPollRequest) =>
       createGuestQuickPollApi(pollData),
     onSuccess: response => {
+      clearQuickPollPublicCreateDraft()
       showSuccessToast(
         'Poll Created Successfully!',
         'Your quick poll has been created and is ready to share.'
@@ -962,7 +1039,7 @@ const CreatePoll = ({
         width="100%"
         bg="bg-canvas"
         px={{ base: 4, md: 8 }}
-        py={{ base: 8, md: 8 }}
+        py={{ base: 10, md: 8 }}
         display="flex"
         justifyContent="center"
       >
@@ -973,6 +1050,7 @@ const CreatePoll = ({
             duration={formData.duration}
             existingAvailability={pollCustomAvailability}
             initialEditMode={currentView === 'schedule-edit'}
+            onBeforeCalendarOAuth={savePublicCreateDraftSync}
             onSave={availability => {
               setPollCustomAvailability(availability)
               setPollAvailabilityBlockIds([])
@@ -992,7 +1070,7 @@ const CreatePoll = ({
       minHeight={isPublicMode ? undefined : '100vh'}
       bg="bg-canvas"
       px={{ base: 4, md: 8 }}
-      py={{ base: 32, md: 8 }}
+      py={{ base: 10, md: 8 }}
       display="flex"
       justifyContent="center"
     >
@@ -1022,55 +1100,6 @@ const CreatePoll = ({
         </VStack>
 
         <VStack spacing={5} align="stretch">
-          {/* Guest Identity Fields (public mode only) */}
-          {isPublicMode && !currentAccount && (
-            <HStack w="100%" gap={4} align="flex-start">
-              <FormControl isRequired>
-                <FormLabel>Your Email</FormLabel>
-                <Input
-                  placeholder="Enter your email"
-                  value={guestEmail}
-                  onChange={e => {
-                    setGuestEmail(e.target.value)
-                    if (validationErrors.guestEmail) {
-                      setValidationErrors(prev => {
-                        const { guestEmail: _, ...rest } = prev
-                        return rest
-                      })
-                    }
-                  }}
-                  bg="bg-canvas"
-                  border="1px solid"
-                  borderColor={
-                    validationErrors.guestEmail ? 'red.500' : 'neutral.400'
-                  }
-                  color="text-primary"
-                  _placeholder={{ color: 'neutral.400' }}
-                  isDisabled={isLoading}
-                />
-                {validationErrors.guestEmail && (
-                  <FormHelperText color="red.500" mt={1}>
-                    {validationErrors.guestEmail}
-                  </FormHelperText>
-                )}
-              </FormControl>
-              <FormControl>
-                <FormLabel>Your Name</FormLabel>
-                <Input
-                  placeholder="Enter your name"
-                  value={guestName}
-                  onChange={e => setGuestName(e.target.value)}
-                  bg="bg-canvas"
-                  border="1px solid"
-                  borderColor="neutral.400"
-                  color="text-primary"
-                  _placeholder={{ color: 'neutral.400' }}
-                  isDisabled={isLoading}
-                />
-              </FormControl>
-            </HStack>
-          )}
-
           {/* Title and Duration - Same Line */}
           <HStack spacing={4} align="start">
             <FormControl isInvalid={!!validationErrors.title} flex={3} mb={0}>
@@ -1302,6 +1331,55 @@ const CreatePoll = ({
               </Text>
             )}
           </FormControl>
+
+          {/* Guest Identity Fields (public mode only) */}
+          {isPublicMode && !currentAccount && (
+            <HStack w="100%" gap={4} align="flex-start">
+              <FormControl isRequired>
+                <FormLabel>Your Email</FormLabel>
+                <Input
+                  placeholder="Enter your email"
+                  value={guestEmail}
+                  onChange={e => {
+                    setGuestEmail(e.target.value)
+                    if (validationErrors.guestEmail) {
+                      setValidationErrors(prev => {
+                        const { guestEmail: _, ...rest } = prev
+                        return rest
+                      })
+                    }
+                  }}
+                  bg="bg-canvas"
+                  border="1px solid"
+                  borderColor={
+                    validationErrors.guestEmail ? 'red.500' : 'neutral.400'
+                  }
+                  color="text-primary"
+                  _placeholder={{ color: 'neutral.400' }}
+                  isDisabled={isLoading}
+                />
+                {validationErrors.guestEmail && (
+                  <FormHelperText color="red.500" mt={1}>
+                    {validationErrors.guestEmail}
+                  </FormHelperText>
+                )}
+              </FormControl>
+              <FormControl>
+                <FormLabel>Your Name</FormLabel>
+                <Input
+                  placeholder="Enter your name"
+                  value={guestName}
+                  onChange={e => setGuestName(e.target.value)}
+                  bg="bg-canvas"
+                  border="1px solid"
+                  borderColor="neutral.400"
+                  color="text-primary"
+                  _placeholder={{ color: 'neutral.400' }}
+                  isDisabled={isLoading}
+                />
+              </FormControl>
+            </HStack>
+          )}
 
           {/* Add Guest from Groups */}
           <FormControl w="100%" maxW="100%">

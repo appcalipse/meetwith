@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Auth, google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
 import {
@@ -16,6 +17,11 @@ import {
   getQuickPollParticipantByIdentifier,
   saveQuickPollCalendar,
 } from '@/utils/database'
+import {
+  isSameOriginQuickPollOAuthRedirect,
+  redirectQuickPollOAuthProviderErrorNoPoll,
+  redirectQuickPollPendingCalendarFallback,
+} from '@/utils/quickpoll_calendar_oauth'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -40,15 +46,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     Sentry.captureException(error)
     if (!stateObject) {
       return res.redirect(`/quickpoll?calendarResult=error`)
-    } else {
-      stateObject.error = 'Google Calendar integration failed.'
-      const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
-        'base64'
-      )
-      return res.redirect(
-        `/poll/${stateObject?.pollSlug}?calendarResult=error&state=${newState64}`
-      )
     }
+    if (!stateObject.pollSlug) {
+      return redirectQuickPollOAuthProviderErrorNoPoll(res, stateObject)
+    }
+    stateObject.error = 'Google Calendar integration failed.'
+    const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
+      'base64'
+    )
+    return res.redirect(
+      `/poll/${stateObject.pollSlug}?calendarResult=error&state=${newState64}`
+    )
   }
 
   if (code && typeof code !== 'string') {
@@ -113,16 +121,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       ]
     }
 
+    if (!stateObject?.pollSlug && !stateObject?.participantId) {
+      const redirectTo = stateObject?.redirectTo
+      if (
+        redirectTo &&
+        typeof redirectTo === 'string' &&
+        isSameOriginQuickPollOAuthRedirect(redirectTo)
+      ) {
+        req.session.quickPollPendingCalendar = {
+          provider: TimeSlotSource.GOOGLE,
+          email: userInfoRes.data.email!,
+          payload: key as Record<string, unknown>,
+          calendars,
+        }
+        await req.session.save()
+        const sep = redirectTo.includes('?') ? '&' : '?'
+        return res.redirect(`${redirectTo}${sep}calendarPending=1`)
+      }
+      return redirectQuickPollPendingCalendarFallback(res, stateObject)
+    }
+
     let participantId = stateObject?.participantId
 
     if (!participantId) {
       const guestEmail = stateObject?.guestEmail || userInfoRes.data.email!
-
-      if (!stateObject?.pollSlug) {
-        return res.redirect(
-          `/poll/undefined?calendarResult=error&error=missing_poll_slug`
-        )
-      }
 
       const pollData = await getQuickPollBySlug(stateObject.pollSlug)
 
@@ -190,10 +212,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     )
   } catch (err) {
     Sentry.captureException(err)
-    return res.redirect(
-      `/poll/${stateObject?.pollSlug}?calendarResult=error&error=oauth_failed`
-    )
+    if (stateObject?.pollSlug) {
+      return res.redirect(
+        `/poll/${stateObject.pollSlug}?calendarResult=error&error=oauth_failed`
+      )
+    }
+    return redirectQuickPollPendingCalendarFallback(res, stateObject)
   }
 }
 
-export default handler
+export default withSessionRoute(handler)

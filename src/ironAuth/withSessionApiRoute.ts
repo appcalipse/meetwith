@@ -5,14 +5,16 @@ import {
   NextApiHandler,
 } from 'next'
 
+import { sessionOptions } from '@/middleware'
+import { QuickPollPendingCalendar } from '@/types/QuickPoll'
+import { AccountSession } from '@/types/Session'
+
 declare module 'iron-session' {
   interface IronSessionData {
     account?: AccountSession
+    quickPollPendingCalendar?: QuickPollPendingCalendar
   }
 }
-
-import { sessionOptions } from '@/middleware'
-import { AccountSession } from '@/types/Session'
 
 export function withSessionRoute(handler: NextApiHandler) {
   return withIronSessionApiRoute(handler, sessionOptions)
@@ -20,7 +22,7 @@ export function withSessionRoute(handler: NextApiHandler) {
 
 // Theses types are compatible with InferGetStaticPropsType https://nextjs.org/docs/basic-features/data-fetching#typescript-use-getstaticprops
 export function withSessionSsr<
-  P extends { [key: string]: unknown } = { [key: string]: unknown },
+  P extends { [key: string]: unknown } = { [key: string]: unknown }
 >(
   handler: (
     context: GetServerSidePropsContext
