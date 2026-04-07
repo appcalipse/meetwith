@@ -5,6 +5,8 @@
 process.env.MS_GRAPH_CLIENT_ID = 'test-ms-graph-client-id'
 process.env.MS_GRAPH_CLIENT_SECRET = 'test-ms-graph-client-secret'
 process.env.NEXT_PUBLIC_ENV_CONFIG = 'test'
+process.env.IRON_COOKIE_PASSWORD = 't'.repeat(32)
+process.env.NEXT_PUBLIC_HOSTED_AT = 'http://localhost:3000'
 
 jest.mock('@/utils/database', () => ({
   addQuickPollParticipant: jest.fn(),
@@ -21,10 +23,15 @@ const mockFetch = jest.fn()
 global.fetch = mockFetch
 
 import * as Sentry from '@sentry/nextjs'
+import type { NextApiHandler } from 'next'
 import { NextApiRequest, NextApiResponse } from 'next'
-import handler from '@/pages/api/quickpoll/calendar/office365/callback'
 import { PollVisibility } from '@/types/QuickPoll'
 import * as database from '@/utils/database'
+
+// require after env + mocks so `middleware` sessionOptions gets IRON_COOKIE_PASSWORD
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const handler = require('@/pages/api/quickpoll/calendar/office365/callback')
+  .default as NextApiHandler
 
 describe('/api/quickpoll/calendar/office365/callback', () => {
   const mockAddQuickPollParticipant =
@@ -92,9 +99,12 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
     redirectMock = jest.fn().mockReturnThis()
 
     res = {
-      status: statusMock,
+      getHeader: jest.fn().mockReturnValue(undefined),
+      headersSent: false,
       json: jsonMock,
       redirect: redirectMock,
+      setHeader: jest.fn(),
+      status: statusMock,
     }
 
     mockFetch.mockImplementation((url: string) => {
@@ -122,6 +132,7 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
   describe('GET method', () => {
     beforeEach(() => {
       req = {
+        headers: { cookie: '' },
         method: 'GET',
         query: {
           code: 'test-auth-code',
@@ -448,6 +459,7 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
   describe('Non-GET methods', () => {
     it('should return 405 for POST method', async () => {
       req = {
+        headers: { cookie: '' },
         method: 'POST',
         query: {},
       }
@@ -460,6 +472,7 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
 
     it('should return 405 for PUT method', async () => {
       req = {
+        headers: { cookie: '' },
         method: 'PUT',
         query: {},
       }
@@ -471,6 +484,7 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
 
     it('should return 405 for DELETE method', async () => {
       req = {
+        headers: { cookie: '' },
         method: 'DELETE',
         query: {},
       }

@@ -5,6 +5,8 @@
 process.env.GOOGLE_CLIENT_ID = 'test-google-client-id'
 process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret'
 process.env.NEXT_PUBLIC_ENV_CONFIG = 'test'
+process.env.IRON_COOKIE_PASSWORD = 't'.repeat(32)
+process.env.NEXT_PUBLIC_HOSTED_AT = 'http://localhost:3000'
 
 const mockGetToken = jest.fn()
 const mockSetCredentials = jest.fn()
@@ -46,10 +48,15 @@ jest.mock('@sentry/nextjs', () => ({
 }))
 
 import * as Sentry from '@sentry/nextjs'
+import type { NextApiHandler } from 'next'
 import { NextApiRequest, NextApiResponse } from 'next'
-import handler from '@/pages/api/quickpoll/calendar/google/callback'
 import { PollVisibility, QuickPollParticipantType } from '@/types/QuickPoll'
 import * as database from '@/utils/database'
+
+// require after env + mocks so `middleware` sessionOptions gets IRON_COOKIE_PASSWORD
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const handler = require('@/pages/api/quickpoll/calendar/google/callback')
+  .default as NextApiHandler
 
 describe('/api/quickpoll/calendar/google/callback', () => {
   const mockAddQuickPollParticipant =
@@ -88,9 +95,12 @@ describe('/api/quickpoll/calendar/google/callback', () => {
     redirectMock = jest.fn().mockReturnThis()
 
     res = {
-      status: statusMock,
+      getHeader: jest.fn().mockReturnValue(undefined),
+      headersSent: false,
       json: jsonMock,
       redirect: redirectMock,
+      setHeader: jest.fn(),
+      status: statusMock,
     }
 
     mockGetToken.mockResolvedValue({
@@ -134,6 +144,7 @@ describe('/api/quickpoll/calendar/google/callback', () => {
   describe('GET method', () => {
     beforeEach(() => {
       req = {
+        headers: { cookie: '' },
         method: 'GET',
         query: {
           code: 'test-auth-code',
@@ -365,6 +376,7 @@ describe('/api/quickpoll/calendar/google/callback', () => {
   describe('Non-GET methods', () => {
     it('should return 405 for POST method', async () => {
       req = {
+        headers: { cookie: '' },
         method: 'POST',
         query: {},
       }
@@ -377,6 +389,7 @@ describe('/api/quickpoll/calendar/google/callback', () => {
 
     it('should return 405 for PUT method', async () => {
       req = {
+        headers: { cookie: '' },
         method: 'PUT',
         query: {},
       }
@@ -388,6 +401,7 @@ describe('/api/quickpoll/calendar/google/callback', () => {
 
     it('should return 405 for DELETE method', async () => {
       req = {
+        headers: { cookie: '' },
         method: 'DELETE',
         query: {},
       }
