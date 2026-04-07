@@ -422,7 +422,7 @@ const MobileNavItem = ({
         }}
         color={
           (shouldEnforceColorOnPath(pathname) && activeLink === href) ||
-          (!shouldEnforceColorOnPath(pathname) && pathname.includes(href))
+            (!shouldEnforceColorOnPath(pathname) && pathname.includes(href))
             ? linkHoverColor
             : color
         }
@@ -509,7 +509,7 @@ const NAV_ITEMS: Array<NavItem> = [
     href: '/#features',
   },
   {
-    label: 'Pricing',
+    label: 'Plans',
     href: '/#pricing',
   },
   {

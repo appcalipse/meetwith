@@ -117,11 +117,7 @@ export default function SmallWithLogoLeft() {
               md: 'medium',
             }}
           >
-            <Link
-              href="mailto:contact@meetwith.xyz"
-              isExternal
-              color={'inherit'}
-            >
+            <Link href="/#pricing" color={'inherit'}>
               Plans
             </Link>
           </Text>

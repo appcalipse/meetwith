@@ -1,23 +1,14 @@
-import {
-  Accordion,
-  AccordionButton,
-  AccordionItem,
-  AccordionPanel,
-  Box,
-  Heading,
-  List,
-  ListItem,
-  VStack,
-} from '@chakra-ui/react'
-import type { ReactElement } from 'react'
-import { BiCaretDown, BiCaretUp } from 'react-icons/bi'
+import { Box, Button, Heading, Icon, VStack } from '@chakra-ui/react'
+import NextLink from 'next/link'
+import { useState } from 'react'
+import { BiChevronDown, BiChevronUp } from 'react-icons/bi'
 
-interface Faq {
+interface FaqItem {
   title: string
-  body: string | ReactElement
+  body: string
 }
 
-const faqs: Faq[] = [
+const faqs: FaqItem[] = [
   {
     title:
       'What is Meetwith and how is it different from other scheduling tools?',
@@ -25,20 +16,7 @@ const faqs: Faq[] = [
   },
   {
     title: 'How does scheduling group meetings work?',
-    body: (
-      <>
-        <p>You can either:</p>
-        <List styleType="disc" ml={4} mt={1} spacing={1}>
-          <ListItem>
-            Find the best available time across all members using our discovery
-            tool, or
-          </ListItem>
-          <ListItem>
-            Set a fixed time (recurrent or one-off) and notify the group.
-          </ListItem>
-        </List>
-      </>
-    ),
+    body: 'You can either find the best available time across all members using our discovery tool, or set a fixed time (recurrent or one-off) and notify the group.',
   },
   {
     title: 'What payment methods does Meetwith accept?',
@@ -50,81 +28,158 @@ const faqs: Faq[] = [
   },
   {
     title: 'Can I offer different pricing for different session types?',
-    body: (
-      <>
-        <p>
-          Absolutely! Create multiple session types with different durations,
-          prices, and descriptions. For example: 30-min quick calls at $50,
-          90-min strategy sessions at $200.
-        </p>
-        <p>
-          These five directly address the biggest conversion questions from your
-          customer discovery interviews and remove the main barriers preventing
-          sign-ups from your key segments.
-        </p>
-      </>
-    ),
+    body: 'Absolutely! Create multiple session types with different durations, prices, and descriptions. For example: 30-min quick calls at $50, 90-min strategy sessions at $200.',
   },
 ]
 
-function Faq() {
+function GridBackground() {
   return (
-    <VStack
-      py={{ base: '10', md: '20' }}
-      px={{ base: 6, md: 40 }}
-      maxW="1360px"
-      mx="auto"
-      id="faq"
-      scrollMarginTop={{ base: '60px', md: '20px' }}
-      gap={10}
-      alignItems="center"
-      borderWidth={1}
-      borderColor="#2F3847"
-      rounded={10}
-      bg={{
-        md: 'none',
-        base: 'neutral.900',
-      }}
+    <Box
+      position="absolute"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      pointerEvents="none"
+      overflow="hidden"
     >
-      <Heading
-        fontSize={{
-          md: '4xl',
-          base: '2xl',
+      <Box
+        position="absolute"
+        top={0}
+        left={0}
+        right={0}
+        bottom={0}
+        sx={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)`,
+          backgroundSize: '80px 80px',
+          maskImage:
+            'radial-gradient(ellipse 80% 80% at 50% 0%, black 40%, transparent 100%)',
+          WebkitMaskImage:
+            'radial-gradient(ellipse 80% 80% at 50% 0%, black 40%, transparent 100%)',
         }}
-      >
-        Frequently Asked Questions
-      </Heading>
-      <Accordion allowToggle w="100%">
-        {faqs.map(faq => (
-          <AccordionItem
-            mb={2}
-            background="neutral.800"
-            p={2}
-            key={faq.title}
-            w="100%"
-            rounded={10}
-          >
-            {({ isExpanded }) => (
-              <>
-                <AccordionButton color="neutral.100">
-                  <Box as="span" flex={1} textAlign="left">
-                    <strong>{faq.title}</strong>
-                  </Box>
-                  {!isExpanded ? (
-                    <BiCaretDown width={24} height={24} />
-                  ) : (
-                    <BiCaretUp width={24} height={24} />
-                  )}
-                </AccordionButton>
-                <AccordionPanel pb={2} color="neutral.100">
-                  {faq.body}
-                </AccordionPanel>
-              </>
-            )}
-          </AccordionItem>
-        ))}
-      </Accordion>
-    </VStack>
+      />
+      <Box
+        position="absolute"
+        top="-10%"
+        left="-5%"
+        w="60%"
+        h="70%"
+        sx={{
+          background:
+            'radial-gradient(ellipse, rgba(244,103,57,0.12) 0%, transparent 70%)',
+        }}
+      />
+    </Box>
   )
 }
+
+function Faq() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
+
+  return (
+    <Box
+      as="section"
+      id="faq"
+      position="relative"
+      w="100%"
+      overflow="hidden"
+      px={{ base: 4, md: 8, lg: '131px' }}
+      py={{ base: 16, md: 24 }}
+      scrollMarginTop={{ base: '80px', md: '100px' }}
+    >
+      <GridBackground />
+
+      <Box maxW="1152px" mx="auto" w="100%" position="relative" zIndex={1}>
+        <Heading
+          as="h2"
+          fontSize={{ base: '3xl', md: '4xl', lg: '48.83px' }}
+          fontWeight="bold"
+          color="neutral.0"
+          lineHeight={1.2}
+          mb={10}
+        >
+          Frequently Asked Questions
+        </Heading>
+
+        <VStack spacing={4} w="100%">
+          {faqs.map((faq, index) => (
+            <Box
+              key={index}
+              w="100%"
+              bg="neutral.900"
+              borderWidth={1}
+              borderColor="neutral.700"
+              rounded="lg"
+              overflow="hidden"
+              sx={{ backdropFilter: 'blur(12.5px)' }}
+            >
+              <Box
+                as="button"
+                w="100%"
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+                p={6}
+                textAlign="left"
+                onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                _hover={{ bg: 'rgba(245, 247, 250, 0.02)' }}
+                transition="background 0.2s"
+              >
+                <Heading
+                  as="h3"
+                  fontSize={{ base: 'lg', md: 'xl' }}
+                  fontWeight="bold"
+                  color="neutral.0"
+                  lineHeight={1.4}
+                  pr={4}
+                  textAlign="left"
+                >
+                  {faq.title}
+                </Heading>
+
+                <Icon
+                  as={openIndex === index ? BiChevronUp : BiChevronDown}
+                  boxSize={6}
+                  color="primary.400"
+                  flexShrink={0}
+                  transition="transform 0.2s"
+                />
+              </Box>
+
+              {openIndex === index && (
+                <Box px={6} pb={6}>
+                  <Box
+                    fontWeight="medium"
+                    color="neutral.100"
+                    fontSize="md"
+                    lineHeight={1.7}
+                  >
+                    {faq.body}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          ))}
+        </VStack>
+
+        <Box mt={8}>
+          <Button
+            as={NextLink}
+            href="/faq"
+            colorScheme="orangeButton"
+            color="neutral.0"
+            h={12}
+            px={5}
+            py={2}
+            rounded="lg"
+            fontWeight="semibold"
+          >
+            See all FAQs
+          </Button>
+        </Box>
+      </Box>
+    </Box>
+  )
+}
+
 export default Faq
