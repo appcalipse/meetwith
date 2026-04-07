@@ -20,16 +20,18 @@ jest.mock('@sentry/nextjs', () => ({
 const mockFetch = jest.fn()
 global.fetch = mockFetch
 
-import { NextApiRequest, NextApiResponse } from 'next'
 import * as Sentry from '@sentry/nextjs'
+import { NextApiRequest, NextApiResponse } from 'next'
 import handler from '@/pages/api/quickpoll/calendar/office365/callback'
-import * as database from '@/utils/database'
 import { PollVisibility } from '@/types/QuickPoll'
+import * as database from '@/utils/database'
 
 describe('/api/quickpoll/calendar/office365/callback', () => {
-  const mockAddQuickPollParticipant = database.addQuickPollParticipant as jest.Mock
+  const mockAddQuickPollParticipant =
+    database.addQuickPollParticipant as jest.Mock
   const mockGetQuickPollBySlug = database.getQuickPollBySlug as jest.Mock
-  const mockGetQuickPollParticipantByIdentifier = database.getQuickPollParticipantByIdentifier as jest.Mock
+  const mockGetQuickPollParticipantByIdentifier =
+    database.getQuickPollParticipantByIdentifier as jest.Mock
   const mockSaveQuickPollCalendar = database.saveQuickPollCalendar as jest.Mock
 
   let req: Partial<NextApiRequest>
@@ -129,7 +131,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
     })
 
     it('should successfully process OAuth callback for new participant', async () => {
-      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(new Error('not found'))
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
       mockAddQuickPollParticipant.mockResolvedValue({
         id: 'participant-123',
       })
@@ -158,7 +162,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
         ])
       )
       expect(redirectMock).toHaveBeenCalledWith(
-        expect.stringContaining('tab=guest-details&participantId=participant-123')
+        expect.stringContaining(
+          'tab=guest-details&participantId=participant-123'
+        )
       )
     })
 
@@ -230,7 +236,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(redirectMock).toHaveBeenCalledWith(
-        expect.stringContaining('calendarResult=error&message=Failed to get access token')
+        expect.stringContaining(
+          'calendarResult=error&message=Failed to get access token'
+        )
       )
     })
 
@@ -240,7 +248,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
       const originalSecret = process.env.MS_GRAPH_CLIENT_SECRET
       delete process.env.MS_GRAPH_CLIENT_SECRET
 
-      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(new Error('not found'))
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
       mockAddQuickPollParticipant.mockResolvedValue({ id: 'participant-123' })
       mockSaveQuickPollCalendar.mockResolvedValue(undefined)
 
@@ -262,7 +272,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(redirectMock).toHaveBeenCalledWith(
-        expect.stringContaining('calendarResult=error&message=Failed to get access token')
+        expect.stringContaining(
+          'calendarResult=error&message=Failed to get access token'
+        )
       )
     })
 
@@ -274,7 +286,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
           visibility: PollVisibility.PRIVATE,
         },
       })
-      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(new Error('not found'))
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
 
       await handler(req as NextApiRequest, res as NextApiResponse)
 
@@ -284,7 +298,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
     })
 
     it('should handle participant creation failure', async () => {
-      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(new Error('not found'))
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
       mockAddQuickPollParticipant.mockRejectedValue(new Error('DB error'))
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -304,7 +320,7 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
       await handler(req as NextApiRequest, res as NextApiResponse)
 
       expect(redirectMock).toHaveBeenCalledWith(
-        '/poll/undefined?calendarResult=error&error=missing_poll_slug'
+        expect.stringMatching(/quickpoll\/create.*pending_calendar_failed/)
       )
     })
 
@@ -343,7 +359,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
         return Promise.reject(new Error('Unknown URL'))
       })
 
-      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(new Error('not found'))
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
       mockAddQuickPollParticipant.mockResolvedValue({ id: 'participant-123' })
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -357,7 +375,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
     })
 
     it('should map calendars correctly with isReadOnly flag', async () => {
-      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(new Error('not found'))
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
       mockAddQuickPollParticipant.mockResolvedValue({ id: 'participant-123' })
 
       await handler(req as NextApiRequest, res as NextApiResponse)
@@ -408,7 +428,9 @@ describe('/api/quickpoll/calendar/office365/callback', () => {
         return Promise.reject(new Error('Unknown URL'))
       })
 
-      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(new Error('not found'))
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
       mockAddQuickPollParticipant.mockResolvedValue({ id: 'participant-123' })
 
       await handler(req as NextApiRequest, res as NextApiResponse)

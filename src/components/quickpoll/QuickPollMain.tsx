@@ -53,7 +53,7 @@ const QuickPollMain: React.FC<QuickPollMainProps> = ({
     <Tabs index={currentPage} isLazy>
       <TabPanels>
         <TabPanel p={0}>
-          <Box px={{ base: 0, md: 8 }} py={12}>
+          <Box px={{ base: 0, md: 8 }} py={{ base: 10, md: 12 }}>
             <QuickPollAvailabilityDiscover
               pollId={pollId}
               pollData={pollData}
@@ -107,7 +107,13 @@ const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
   }
 
   return (
-    <Box width="100%" minHeight="100vh" bg="bg-canvas-dark">
+    <Box
+      width="100%"
+      minHeight="100vh"
+      bg="bg-canvas-dark"
+      px={{ base: 4, md: 8 }}
+      py={{ base: 10, md: 12 }}
+    >
       <GuestDetailsForm
         pollData={pollData}
         onSuccess={handleSuccess}
