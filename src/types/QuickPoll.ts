@@ -99,6 +99,36 @@ export interface QuickPollCalendar {
   calendars: CalendarSyncInfo[]
 }
 
+export interface QuickPollPendingCalendar {
+  provider: string
+  email: string
+  payload: Record<string, unknown>
+  calendars: CalendarSyncInfo[]
+}
+
+export interface QuickPollPendingCalendarPreviewResponse {
+  busy: Array<{ start: string; end: string }>
+  hasPendingCalendar: boolean
+}
+
+export type QuickPollPublicCreateDraftPayload = {
+  formData: {
+    title: string
+    duration: number
+    startDate: string
+    endDate: string
+    expiryDate: string
+    expiryTime: string
+    description: string
+  }
+  guestEmail: string
+  guestName: string
+  selectedPermissions: string[]
+  showExpiryDate: boolean
+  pollCustomAvailability: PollCustomAvailability | null
+  pollAvailabilityBlockIds: string[]
+}
+
 // Extended interfaces for API responses
 export interface ScheduledMeetingInfo {
   meeting_id: string

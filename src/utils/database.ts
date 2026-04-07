@@ -10311,6 +10311,22 @@ const findQuickPollParticipantByIdentifier = async (
   }
 }
 
+const getQuickPollSchedulerParticipantIdForPoll = async (
+  pollId: string
+): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('quick_poll_participants')
+    .select('id')
+    .eq('poll_id', pollId)
+    .eq('participant_type', QuickPollParticipantType.SCHEDULER)
+    .maybeSingle()
+
+  if (error) {
+    return null
+  }
+  return data?.id ?? null
+}
+
 const linkQuickPollParticipantAccount = async (
   participantId: string,
   accountAddress: string
@@ -11515,6 +11531,7 @@ export {
   getQuickPollCalendars,
   getQuickPollParticipantById,
   getQuickPollParticipantByIdentifier,
+  getQuickPollSchedulerParticipantIdForPoll,
   getQuickPollParticipants,
   getQuickPollsForAccount,
   getSeriesIdMapping,

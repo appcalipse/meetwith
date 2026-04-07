@@ -17,6 +17,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { Select } from 'chakra-react-select'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
+import { useRouter } from 'next/router'
 import React, {
   useCallback,
   useContext,
@@ -30,6 +31,7 @@ import { FaArrowLeft, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { PollCustomAvailability } from '@/types/QuickPoll'
+import { fetchQuickPollPendingCalendarPreview } from '@/utils/api_helper'
 import {
   customAvailabilityToSelectedSlots,
   getBrowserTimezone,
@@ -39,8 +41,13 @@ import {
 import { customSelectComponents, Option } from '@/utils/constants/select'
 import { getTimezones } from '@/utils/date_helper'
 import {
+  convertAvailabilityToSelectedSlots,
+  convertBusySlotsToIntervals,
   filterSlotsToPollRange,
+  generateFullDayBlocks,
   isDayInPollRange,
+  mergeLuxonIntervals,
+  subtractBusyTimesFromBlocks,
 } from '@/utils/quickpoll_helper'
 import { getEmptySlots } from '@/utils/slots.helper'
 import { saveQuickPollSignInContext } from '@/utils/storage'
@@ -82,6 +89,7 @@ interface PublicPollScheduleViewProps {
   duration: number
   existingAvailability: PollCustomAvailability | null
   initialEditMode: boolean
+  onBeforeCalendarOAuth?: () => void
   onSave: (availability: PollCustomAvailability) => void
   onBack: () => void
   pollTitle?: string
@@ -99,11 +107,13 @@ function PublicPollScheduleViewInner({
   duration,
   existingAvailability,
   initialEditMode,
+  onBeforeCalendarOAuth,
   onSave,
   onBack,
   pollTitle,
   pollSlug,
 }: PublicPollScheduleViewProps) {
+  const router = useRouter()
   const [timezone, setTimezone] = useState(
     existingAvailability?.timezone || getBrowserTimezone()
   )
@@ -112,6 +122,15 @@ function PublicPollScheduleViewInner({
   const { openConnection } = useContext(OnboardingModalContext)
 
   const [isEditing, setIsEditing] = useState(initialEditMode)
+  const [calendarPreviewActive, setCalendarPreviewActive] = useState(false)
+  const cancelSnapshotRef = useRef<Array<{
+    start: DateTime
+    end: DateTime
+    date: string
+  }> | null>(null)
+  const hasAppliedCalendarPreviewRef = useRef(false)
+  const dismissedPendingCalendarRef = useRef(false)
+  const selectedSlotsRef = useRef(selectedSlots)
   const [showMethodModal, setShowMethodModal] = useState(false)
   const [showConnectCalendarModal, setShowConnectCalendarModal] =
     useState(false)
@@ -121,6 +140,19 @@ function PublicPollScheduleViewInner({
   useEffect(() => {
     clearSlotsRef.current = clearSlots
   }, [clearSlots])
+
+  useEffect(() => {
+    selectedSlotsRef.current = selectedSlots
+  }, [selectedSlots])
+
+  useEffect(() => {
+    if (router.query.calendarPending !== '1') return
+    dismissedPendingCalendarRef.current = false
+    const { calendarPending: _c, ...rest } = router.query
+    void router.replace({ pathname: router.pathname, query: rest }, undefined, {
+      shallow: true,
+    })
+  }, [router])
 
   const SLOT_LENGTH =
     useBreakpointValue({ base: 3, md: 5, lg: 7 }, { ssr: true }) ?? 3
@@ -186,6 +218,74 @@ function PublicPollScheduleViewInner({
     })
   }, [currentSelectedDate, SLOT_LENGTH, timezone, pollStart, pollEnd, duration])
 
+  const allPollSlotIntervals = useMemo(() => {
+    const out: Interval[] = []
+    let cursor = pollStart.startOf('day')
+    const end = pollEnd.endOf('day')
+    while (cursor <= end) {
+      let daySlots = getEmptySlots(cursor, duration, timezone)
+      daySlots = filterSlotsToPollRange(daySlots, pollStart, pollEnd)
+      out.push(...daySlots)
+      cursor = cursor.plus({ days: 1 })
+    }
+    return out
+  }, [pollStart, pollEnd, duration, timezone])
+
+  useEffect(() => {
+    if (!isEditing) return
+    if (dismissedPendingCalendarRef.current) return
+
+    let cancelled = false
+    const run = async () => {
+      try {
+        const data = await fetchQuickPollPendingCalendarPreview(
+          startDate,
+          endDate
+        )
+        if (cancelled || !data.hasPendingCalendar) return
+
+        const fullDayBlocks = generateFullDayBlocks(
+          pollStart.startOf('day').toJSDate(),
+          pollEnd.endOf('day').toJSDate(),
+          timezone
+        )
+        const busyIntervals = convertBusySlotsToIntervals(data.busy)
+        const freeIntervals = mergeLuxonIntervals(
+          subtractBusyTimesFromBlocks(fullDayBlocks, busyIntervals)
+        )
+        const selected = convertAvailabilityToSelectedSlots(
+          freeIntervals,
+          allPollSlotIntervals
+        )
+        if (cancelled) return
+        if (!hasAppliedCalendarPreviewRef.current) {
+          cancelSnapshotRef.current = selectedSlotsRef.current.map(s => ({
+            date: s.date,
+            end: s.end,
+            start: s.start,
+          }))
+        }
+        loadSlots(selected)
+        setCalendarPreviewActive(true)
+        hasAppliedCalendarPreviewRef.current = true
+      } catch {}
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    allPollSlotIntervals,
+    duration,
+    endDate,
+    isEditing,
+    loadSlots,
+    pollEnd,
+    pollStart,
+    startDate,
+    timezone,
+  ])
+
   const slotsWithState = useMemo(() => {
     return dates.map(dateEntry => ({
       ...dateEntry,
@@ -243,6 +343,11 @@ function PublicPollScheduleViewInner({
     if (!initialEditMode && !existingAvailability) {
       clearSlotsRef.current()
     }
+    if (!initialEditMode) {
+      setCalendarPreviewActive(false)
+      hasAppliedCalendarPreviewRef.current = false
+      cancelSnapshotRef.current = null
+    }
   }, [initialEditMode, existingAvailability])
 
   useEffect(() => {
@@ -278,6 +383,19 @@ function PublicPollScheduleViewInner({
   }, [getAvailabilitySlots, timezone, onSave])
 
   const handleCancel = useCallback(() => {
+    if (calendarPreviewActive) {
+      dismissedPendingCalendarRef.current = true
+      if (cancelSnapshotRef.current) {
+        loadSlots(cancelSnapshotRef.current)
+      } else {
+        clearSlots()
+      }
+      setCalendarPreviewActive(false)
+      hasAppliedCalendarPreviewRef.current = false
+      cancelSnapshotRef.current = null
+      setIsEditing(false)
+      return
+    }
     if (existingAvailability && dates.length > 0) {
       const initialSlots = customAvailabilityToSelectedSlots(
         existingAvailability,
@@ -288,7 +406,13 @@ function PublicPollScheduleViewInner({
       clearSlots()
     }
     setIsEditing(false)
-  }, [existingAvailability, dates, loadSlots, clearSlots])
+  }, [
+    calendarPreviewActive,
+    clearSlots,
+    dates,
+    existingAvailability,
+    loadSlots,
+  ])
 
   const handleSelectManual = useCallback(() => {
     setShowMethodModal(false)
@@ -331,89 +455,91 @@ function PublicPollScheduleViewInner({
           <Text fontWeight="medium">Back</Text>
         </HStack>
 
-        <Heading
-          fontSize={{ base: '20px', md: '24px' }}
-          fontWeight={700}
-          textAlign="left"
-          alignSelf="flex-start"
-          py={6}
-        >
-          My schedule
-        </Heading>
+        <VStack align="stretch" w="100%" gap={{ base: 2, md: 4 }}>
+          <Heading
+            fontSize={{ base: '20px', md: '24px' }}
+            fontWeight={700}
+            textAlign="left"
+            alignSelf="flex-start"
+            pt={{ base: 2, md: 6 }}
+            pb={{ base: 2, md: 6 }}
+          >
+            My schedule
+          </Heading>
 
-        {/* Mobile / small tablet: add / edit / save — desktop row is desktopLg-only */}
-        <HStack
-          display={{ base: 'flex', desktopLg: 'none' }}
-          w="100%"
-          justify="flex-start"
-          gap={3}
-          flexWrap="wrap"
-          pb={2}
-        >
-          {!isEditing ? (
-            !existingAvailability ? (
-              <ChooseAvailabilityMethodModal
-                isOpen={showMethodModal}
-                onClose={() => setShowMethodModal(false)}
-                onSelectManual={handleSelectManual}
-                onSelectImport={handleSelectImport}
-                onSelectImportDirect={handleSelectImportDirect}
-                showSignInCheckbox={true}
-                variant="guest"
-              >
+          {/* Mobile / small tablet: add / edit / save — desktop row is desktopLg-only */}
+          <HStack
+            display={{ base: 'flex', desktopLg: 'none' }}
+            w="100%"
+            justify="flex-start"
+            gap={3}
+            flexWrap="wrap"
+          >
+            {!isEditing ? (
+              !existingAvailability ? (
+                <ChooseAvailabilityMethodModal
+                  isOpen={showMethodModal}
+                  onClose={() => setShowMethodModal(false)}
+                  onSelectManual={handleSelectManual}
+                  onSelectImport={handleSelectImport}
+                  onSelectImportDirect={handleSelectImportDirect}
+                  showSignInCheckbox={true}
+                  variant="guest"
+                >
+                  <Button
+                    colorScheme="primary"
+                    onClick={() => setShowMethodModal(true)}
+                    px="16px"
+                    py="8px"
+                    fontSize="16px"
+                    fontWeight="700"
+                    borderRadius="8px"
+                  >
+                    Add availability
+                  </Button>
+                </ChooseAvailabilityMethodModal>
+              ) : (
                 <Button
                   colorScheme="primary"
-                  onClick={() => setShowMethodModal(true)}
+                  onClick={() => setIsEditing(true)}
                   px="16px"
                   py="8px"
                   fontSize="16px"
                   fontWeight="700"
                   borderRadius="8px"
                 >
-                  Add availability
+                  Edit availability
                 </Button>
-              </ChooseAvailabilityMethodModal>
+              )
             ) : (
-              <Button
-                colorScheme="primary"
-                onClick={() => setIsEditing(true)}
-                px="16px"
-                py="8px"
-                fontSize="16px"
-                fontWeight="700"
-                borderRadius="8px"
-              >
-                Edit availability
-              </Button>
-            )
-          ) : (
-            <HStack spacing={3} flexWrap="wrap">
-              <Button
-                colorScheme="primary"
-                onClick={handleSave}
-                px="16px"
-                py="8px"
-                fontSize="16px"
-                fontWeight="700"
-                borderRadius="8px"
-              >
-                Save availability
-              </Button>
-              <Button
-                variant="outline"
-                colorScheme="primary"
-                px="16px"
-                py="8px"
-                fontSize="16px"
-                fontWeight="700"
-                borderRadius="8px"
-                onClick={handleCancel}
-              >
-                Cancel
-              </Button>
-            </HStack>
-          )}
-        </HStack>
+              <HStack spacing={3} flexWrap="wrap">
+                <Button
+                  colorScheme="primary"
+                  onClick={handleSave}
+                  px="16px"
+                  py="8px"
+                  fontSize="16px"
+                  fontWeight="700"
+                  borderRadius="8px"
+                >
+                  Save availability
+                </Button>
+                <Button
+                  variant="outline"
+                  colorScheme="primary"
+                  px="16px"
+                  py="8px"
+                  fontSize="16px"
+                  fontWeight="700"
+                  borderRadius="8px"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </Button>
+              </HStack>
+            )}
+          </HStack>
+        </VStack>
 
         {/* Controls (copied from QuickPollPickAvailability) */}
         <Flex
@@ -811,6 +937,7 @@ function PublicPollScheduleViewInner({
           isOpen={showConnectCalendarModal}
           onClose={() => setShowConnectCalendarModal(false)}
           isQuickPoll={true}
+          onBeforeOAuthRedirect={onBeforeCalendarOAuth}
         />
       </VStack>
     </Tooltip.Provider>

@@ -96,6 +96,7 @@ import {
   QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
+  QuickPollPendingCalendarPreviewResponse,
   UpdateGuestQuickPollRequest,
   UpdateParticipantAvailabilityRequest,
   UpdateQuickPollParticipantAvailabilityOptions,
@@ -924,6 +925,24 @@ export const fetchBusySlotsRawForQuickPollParticipants = async (
     end: new Date(slot.end),
     start: new Date(slot.start),
   }))
+}
+
+export const fetchQuickPollPendingCalendarPreview = async (
+  startDate: Date,
+  endDate: Date
+): Promise<QuickPollPendingCalendarPreviewResponse> => {
+  return await internalFetch<
+    QuickPollPendingCalendarPreviewResponse,
+    { endDate: string; startDate: string }
+  >(
+    `/quickpoll/calendar/pending-preview`,
+    'POST',
+    {
+      endDate: endDate.toISOString(),
+      startDate: startDate.toISOString(),
+    },
+    { credentials: 'include' }
+  )
 }
 
 export const getMeetingsForDashboard = async (
@@ -2489,7 +2508,9 @@ export const createQuickPoll = async (pollData: CreateQuickPollRequest) => {
 export const createGuestQuickPoll = async (
   pollData: CreateGuestQuickPollRequest
 ) => {
-  return await internalFetch('/quickpoll/create', 'POST', pollData)
+  return await internalFetch('/quickpoll/create', 'POST', pollData, {
+    credentials: 'include',
+  })
 }
 
 export const migrateGuestPolls = async (guestIdentifier: string) => {

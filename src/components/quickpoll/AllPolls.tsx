@@ -68,6 +68,7 @@ const AllPolls = () => {
         align="stretch"
         maxW="1200px"
         mx="auto"
+        pt={{ base: 10, md: 0 }}
         pb={10}
       >
         {/* Header Section */}

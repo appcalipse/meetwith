@@ -1,6 +1,8 @@
 import {
   GuestPollDetails,
   LocalPollEntry,
+  PollCustomAvailability,
+  QuickPollPublicCreateDraftPayload,
   QuickPollSignInContext,
 } from '@/types/QuickPoll'
 import {
@@ -16,6 +18,7 @@ const GUEST_POLL_DETAILS = 'quickpoll_guest_details'
 const SUBSCRIPTION_HANDLE = 'subscription_handle'
 const GUEST_IDENTIFIER_KEY = 'quickpoll_guest_identifier'
 const LOCAL_POLLS_KEY = 'quickpoll_local_polls'
+const QUICKPOLL_PUBLIC_CREATE_DRAFT_KEY = 'quickpoll_public_create_draft_v1'
 const ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
@@ -261,4 +264,37 @@ export const removeLocalPoll = (pollId: string): void => {
   if (typeof window === 'undefined') return
   const polls = getLocalPolls().filter(p => p.pollId !== pollId)
   localStorage.setItem(LOCAL_POLLS_KEY, JSON.stringify(polls))
+}
+
+export const saveQuickPollPublicCreateDraft = (
+  payload: QuickPollPublicCreateDraftPayload
+): void => {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(
+      QUICKPOLL_PUBLIC_CREATE_DRAFT_KEY,
+      JSON.stringify(payload)
+    )
+  } catch {}
+}
+
+export const loadQuickPollPublicCreateDraft =
+  (): QuickPollPublicCreateDraftPayload | null => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = window.sessionStorage.getItem(
+        QUICKPOLL_PUBLIC_CREATE_DRAFT_KEY
+      )
+      if (!raw) return null
+      return JSON.parse(raw) as QuickPollPublicCreateDraftPayload
+    } catch {
+      return null
+    }
+  }
+
+export const clearQuickPollPublicCreateDraft = (): void => {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.removeItem(QUICKPOLL_PUBLIC_CREATE_DRAFT_KEY)
+  } catch {}
 }
