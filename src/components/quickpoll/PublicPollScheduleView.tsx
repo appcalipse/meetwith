@@ -483,7 +483,7 @@ function PublicPollScheduleViewInner({
                   onSelectManual={handleSelectManual}
                   onSelectImport={handleSelectImport}
                   onSelectImportDirect={handleSelectImportDirect}
-                  showSignInCheckbox={false}
+                  showSignInCheckbox={true}
                   variant="guest"
                 >
                   <Button
@@ -654,7 +654,7 @@ function PublicPollScheduleViewInner({
                       onSelectManual={handleSelectManual}
                       onSelectImport={handleSelectImport}
                       onSelectImportDirect={handleSelectImportDirect}
-                      showSignInCheckbox={false}
+                      showSignInCheckbox={true}
                       variant="guest"
                     >
                       <Button
