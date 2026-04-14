@@ -131,6 +131,7 @@ function PublicPollScheduleViewInner({
   const hasAppliedCalendarPreviewRef = useRef(false)
   const dismissedPendingCalendarRef = useRef(false)
   const selectedSlotsRef = useRef(selectedSlots)
+  const loadSlotsRef = useRef(loadSlots)
   const [showMethodModal, setShowMethodModal] = useState(false)
   const [showConnectCalendarModal, setShowConnectCalendarModal] =
     useState(false)
@@ -144,6 +145,10 @@ function PublicPollScheduleViewInner({
   useEffect(() => {
     selectedSlotsRef.current = selectedSlots
   }, [selectedSlots])
+
+  useEffect(() => {
+    loadSlotsRef.current = loadSlots
+  }, [loadSlots])
 
   useEffect(() => {
     if (router.query.calendarPending !== '1') return
@@ -234,6 +239,7 @@ function PublicPollScheduleViewInner({
   useEffect(() => {
     if (!isEditing) return
     if (dismissedPendingCalendarRef.current) return
+    if (hasAppliedCalendarPreviewRef.current) return
 
     let cancelled = false
     const run = async () => {
@@ -265,7 +271,7 @@ function PublicPollScheduleViewInner({
             start: s.start,
           }))
         }
-        loadSlots(selected)
+        loadSlotsRef.current(selected)
         setCalendarPreviewActive(true)
         hasAppliedCalendarPreviewRef.current = true
       } catch {}
@@ -279,7 +285,6 @@ function PublicPollScheduleViewInner({
     duration,
     endDate,
     isEditing,
-    loadSlots,
     pollEnd,
     pollStart,
     startDate,

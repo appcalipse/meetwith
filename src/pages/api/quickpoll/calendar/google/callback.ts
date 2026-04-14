@@ -132,7 +132,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           provider: TimeSlotSource.GOOGLE,
           email: userInfoRes.data.email!,
           payload: key as Record<string, unknown>,
-          calendars,
         }
         await req.session.save()
         const sep = redirectTo.includes('?') ? '&' : '?'
