@@ -247,8 +247,9 @@ export const CalendarBackendHelper = {
     )
 
     try {
+      const calendars = await integration.refreshConnection()
       const calendarIds =
-        pending.calendars
+        calendars
           ?.filter((c: CalendarSyncInfo) => c.enabled)
           .map((c: CalendarSyncInfo) => c.calendarId) || []
       const externalSlots = await integration.getAvailability(
@@ -262,6 +263,25 @@ export const CalendarBackendHelper = {
         source: pending.provider as TimeSlotSource,
         start: new Date(it.start),
       }))
+    } catch (e: unknown) {
+      Sentry.captureException(e)
+      return []
+    }
+  },
+
+  getCalendarsForPendingQuickPollCalendar: async (
+    pending: QuickPollPendingCalendar
+  ): Promise<CalendarSyncInfo[]> => {
+    const integration = getConnectedCalendarIntegration(
+      '',
+      pending.email,
+      pending.provider as TimeSlotSource,
+      pending.payload
+    )
+
+    try {
+      const calendars = await integration.refreshConnection()
+      return calendars || []
     } catch (e: unknown) {
       Sentry.captureException(e)
       return []

@@ -103,7 +103,6 @@ export interface QuickPollPendingCalendar {
   provider: string
   email: string
   payload: Record<string, unknown>
-  calendars: CalendarSyncInfo[]
 }
 
 export interface QuickPollPendingCalendarPreviewResponse {
