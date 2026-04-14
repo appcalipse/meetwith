@@ -16,6 +16,7 @@ import {
   QuickPollCreationError,
   QuickPollValidationError,
 } from '@/utils/errors'
+import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -96,12 +97,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       )
       if (schedulerId) {
         try {
+          const calendars =
+            await CalendarBackendHelper.getCalendarsForPendingQuickPollCalendar(
+              pending
+            )
           await saveQuickPollCalendar(
             schedulerId,
             pending.email,
             pending.provider,
             pending.payload,
-            pending.calendars
+            calendars
           )
         } catch (calendarError) {
           Sentry.captureException(calendarError)

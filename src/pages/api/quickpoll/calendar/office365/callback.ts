@@ -152,7 +152,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         provider: TimeSlotSource.OFFICE,
         email: String(userData.mail || userData.userPrincipalName || ''),
         payload: tokenData as Record<string, unknown>,
-        calendars,
       }
       await req.session.save()
       const sep = redirectTo.includes('?') ? '&' : '?'
