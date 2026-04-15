@@ -780,6 +780,44 @@ export type Database = {
           }
         ]
       }
+      meeting_providers: {
+        Row: {
+          account_address: string
+          created_at: string
+          email: string
+          id: number
+          payload: Json
+          provider: Database['public']['Enums']['MeetingProvider']
+          updated: string | null
+        }
+        Insert: {
+          account_address: string
+          created_at?: string
+          email: string
+          id?: number
+          payload: Json
+          provider: Database['public']['Enums']['MeetingProvider']
+          updated?: string | null
+        }
+        Update: {
+          account_address?: string
+          created_at?: string
+          email?: string
+          id?: number
+          payload?: Json
+          provider?: Database['public']['Enums']['MeetingProvider']
+          updated?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'meeting_providers_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
       meeting_sessions: {
         Row: {
           created_at: string
@@ -1189,6 +1227,42 @@ export type Database = {
           }
         ]
       }
+      quick_poll_availabilities: {
+        Row: {
+          availability_id: string
+          created_at: string
+          id: string
+          participant_id: string
+        }
+        Insert: {
+          availability_id: string
+          created_at?: string
+          id?: string
+          participant_id: string
+        }
+        Update: {
+          availability_id?: string
+          created_at?: string
+          id?: string
+          participant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'quick_poll_availabilities_availability_id_fkey'
+            columns: ['availability_id']
+            isOneToOne: false
+            referencedRelation: 'availabilities'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'quick_poll_availabilities_participant_id_fkey'
+            columns: ['participant_id']
+            isOneToOne: false
+            referencedRelation: 'quick_poll_participants'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       quick_poll_calendars: {
         Row: {
           calendars: Json | null
@@ -1230,12 +1304,49 @@ export type Database = {
           }
         ]
       }
+      quick_poll_meetings: {
+        Row: {
+          created_at: string
+          id: string
+          meeting_id: string
+          poll_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meeting_id: string
+          poll_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          poll_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'quick_poll_meetings_meeting_id_fkey'
+            columns: ['meeting_id']
+            isOneToOne: false
+            referencedRelation: 'meetings'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'quick_poll_meetings_poll_id_fkey'
+            columns: ['poll_id']
+            isOneToOne: false
+            referencedRelation: 'quick_polls'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       quick_poll_participants: {
         Row: {
           account_address: string | null
           available_slots: Json[]
           created_at: string
           guest_email: string
+          guest_identifier: string | null
           guest_name: string | null
           id: string
           participant_type:
@@ -1251,6 +1362,7 @@ export type Database = {
           available_slots?: Json[]
           created_at?: string
           guest_email: string
+          guest_identifier?: string | null
           guest_name?: string | null
           id?: string
           participant_type?:
@@ -1266,6 +1378,7 @@ export type Database = {
           available_slots?: Json[]
           created_at?: string
           guest_email?: string
+          guest_identifier?: string | null
           guest_name?: string | null
           id?: string
           participant_type?:
@@ -1293,49 +1406,13 @@ export type Database = {
           }
         ]
       }
-      quick_poll_availabilities: {
-        Row: {
-          availability_id: string
-          created_at: string
-          id: string
-          participant_id: string
-        }
-        Insert: {
-          availability_id: string
-          created_at?: string
-          id?: string
-          participant_id: string
-        }
-        Update: {
-          availability_id?: string
-          created_at?: string
-          id?: string
-          participant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'quick_poll_availabilities_availability_id_fkey'
-            columns: ['availability_id']
-            isOneToOne: false
-            referencedRelation: 'availabilities'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'quick_poll_availabilities_participant_id_fkey'
-            columns: ['participant_id']
-            isOneToOne: false
-            referencedRelation: 'quick_poll_participants'
-            referencedColumns: ['id']
-          }
-        ]
-      }
       quick_polls: {
         Row: {
           created_at: string
           description: string
           duration_minutes: number
           ends_at: string
-          expires_at: string
+          expires_at: string | null
           id: string
           meeting_url: string | null
           permissions: Database['public']['Enums']['MeetingPermissions'][]
@@ -1351,7 +1428,7 @@ export type Database = {
           description: string
           duration_minutes: number
           ends_at: string
-          expires_at: string
+          expires_at?: string | null
           id?: string
           meeting_url?: string | null
           permissions: Database['public']['Enums']['MeetingPermissions'][]
@@ -1367,7 +1444,7 @@ export type Database = {
           description?: string
           duration_minutes?: number
           ends_at?: string
-          expires_at?: string
+          expires_at?: string | null
           id?: string
           meeting_url?: string | null
           permissions?: Database['public']['Enums']['MeetingPermissions'][]
@@ -1457,6 +1534,7 @@ export type Database = {
           ical_uid: string
           id: string
           meeting_id: string
+          participant_key: string
           role: Database['public']['Enums']['ParticipantType']
           rrule: string[]
           template_end: string
@@ -1472,6 +1550,7 @@ export type Database = {
           ical_uid: string
           id?: string
           meeting_id: string
+          participant_key?: string
           role: Database['public']['Enums']['ParticipantType']
           rrule: string[]
           template_end: string
@@ -1487,6 +1566,7 @@ export type Database = {
           ical_uid?: string
           id?: string
           meeting_id?: string
+          participant_key?: string
           role?: Database['public']['Enums']['ParticipantType']
           rrule?: string[]
           template_end?: string
@@ -1900,9 +1980,9 @@ export type Database = {
       get_availability_types_for_account_preferences: {
         Args: { address: string }
         Returns: {
-          duration: unknown
+          duration: string
           id: number
-          min_advance_time: unknown
+          min_advance_time: string
           title: string
           url: string
         }[]
@@ -1955,6 +2035,7 @@ export type Database = {
         Args: { slot_ids: string[] }
         Returns: {
           id: string
+          slot_id: string
         }[]
       }
       get_meeting_primary_slot: {
@@ -1969,15 +2050,18 @@ export type Database = {
         }
         Returns: {
           account_address: string
+          conferencedata: Json
           created_at: string
-          end: string
+          effective_end: string
+          effective_start: string
+          guest_email: string
+          ical_uid: string
           id: string
-          meeting_id: string
           meeting_info_encrypted: Json
-          recurrence: string
+          role: string
           rrule: string[]
-          slot_id: string
-          start: string
+          template_end: string
+          template_start: string
         }[]
       }
       get_meeting_type_plans_by_account: {
@@ -2062,7 +2146,6 @@ export type Database = {
           end: string
           id: string
           meeting_info_encrypted: Json
-          role: string
           series_id: string
           slot_id: string
           start: string
@@ -2166,9 +2249,9 @@ export type Database = {
       }
       update_slot_instances_times: {
         Args: {
-          p_end_offset: unknown
+          p_end_offset: string
           p_series_id: string
-          p_start_offset: unknown
+          p_start_offset: string
         }
         Returns: undefined
       }
@@ -2190,7 +2273,11 @@ export type Database = {
       ChannelType: 'discord' | 'email' | 'account' | 'telegram'
       ContactStatus: 'active' | 'inactive'
       GroupRole: 'admin' | 'member'
-      MeetingPermissions: 'see_guest_list' | 'invite_guests' | 'edit_meeting'
+      MeetingPermissions:
+        | 'see_guest_list'
+        | 'invite_guests'
+        | 'edit_meeting'
+        | 'schedule_meeting'
       MeetingProvider:
         | 'huddle01'
         | 'google-meet'
@@ -2207,7 +2294,7 @@ export type Database = {
       PaymentStatus: 'cancelled' | 'pending' | 'completed' | 'failed'
       PaymentType: 'fiat' | 'crypto'
       PlanType: 'one_off' | 'sessions'
-      PollStatus: 'ongoing' | 'completed' | 'cancelled' | 'expired'
+      PollStatus: 'ongoing' | 'completed' | 'cancelled' | 'expired' | 'closed'
       PollVisibility: 'public' | 'private'
       QuickPollParticipantStatus:
         | 'pending'
@@ -2372,7 +2459,12 @@ export const Constants = {
       ChannelType: ['discord', 'email', 'account', 'telegram'],
       ContactStatus: ['active', 'inactive'],
       GroupRole: ['admin', 'member'],
-      MeetingPermissions: ['see_guest_list', 'invite_guests', 'edit_meeting'],
+      MeetingPermissions: [
+        'see_guest_list',
+        'invite_guests',
+        'edit_meeting',
+        'schedule_meeting',
+      ],
       MeetingProvider: [
         'huddle01',
         'google-meet',
@@ -2390,7 +2482,7 @@ export const Constants = {
       PaymentStatus: ['cancelled', 'pending', 'completed', 'failed'],
       PaymentType: ['fiat', 'crypto'],
       PlanType: ['one_off', 'sessions'],
-      PollStatus: ['ongoing', 'completed', 'cancelled', 'expired'],
+      PollStatus: ['ongoing', 'completed', 'cancelled', 'expired', 'closed'],
       PollVisibility: ['public', 'private'],
       QuickPollParticipantStatus: [
         'pending',

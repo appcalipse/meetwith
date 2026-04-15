@@ -20,7 +20,14 @@ import { Select, SingleValue } from 'chakra-react-select'
 import { formatInTimeZone } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { FaAnglesRight } from 'react-icons/fa6'
 import { MdShare } from 'react-icons/md'
@@ -64,6 +71,7 @@ import {
   clampSlotTimeToPollRange,
   clipIntervalsToBounds,
   computeBaseAvailability,
+  convertAvailabilitySlotRangesToIntervals,
   convertAvailabilityToSelectedSlots,
   createMockMeetingMembers,
   extractOverrideIntervals,
@@ -83,9 +91,13 @@ import { getMergedParticipants } from '@/utils/schedule.helper'
 import { getEmptySlots } from '@/utils/slots.helper'
 import { saveQuickPollSignInContext } from '@/utils/storage'
 
+import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import { useAvailabilityTracker } from '../schedule/schedule-time-discover/AvailabilityTracker'
 import QuickPollTimeSlot from '../schedule/schedule-time-discover/QuickPollTimeSlot'
-import { AccountAddressRecord } from '../schedule/schedule-time-discover/SchedulePickTime'
+import {
+  AccountAddressRecord,
+  State as GridAvailabilityState,
+} from '../schedule/schedule-time-discover/SchedulePickTime'
 import ChooseAvailabilityMethodModal from './ChooseAvailabilityMethodModal'
 import { QuickPollParticipationInstructions } from './QuickPollParticipationInstructions'
 
@@ -149,6 +161,9 @@ interface QuickPollPickAvailabilityProps {
   isPendingManualJoinForLoggedInUser?: boolean
   /** When isPendingManualJoinForLoggedInUser: true if at least one slot selected (enables Save) */
   hasManualAvailabilityChange?: boolean
+  isScheduled?: boolean
+  /** `/poll/…` + guest: open on-page schedule confirm (no dashboard) */
+  onPollShareLinkGuestScheduleTimeSelected?: () => void
 }
 
 function getSelectedSlotsSignature(
@@ -173,6 +188,8 @@ export function QuickPollPickAvailability({
   onJoinAndStartManualEdit,
   isPendingManualJoinForLoggedInUser,
   hasManualAvailabilityChange,
+  isScheduled,
+  onPollShareLinkGuestScheduleTimeSelected,
 }: QuickPollPickAvailabilityProps) {
   const _router = useRouter()
   const {
@@ -192,27 +209,11 @@ export function QuickPollPickAvailability({
   const initialSlotsSignatureRef = useRef<string | null>(null)
   const { openConnection } = useContext(OnboardingModalContext)
   const [showMethodModal, setShowMethodModal] = useState(false)
+  const [showConnectCalendarModal, setShowConnectCalendarModal] =
+    useState(false)
 
-  const isHost = useMemo(() => {
-    if (!pollData || !currentAccount) return false
-
-    return pollData.poll.participants.some(
-      p =>
-        p.account_address === currentAccount.address &&
-        p.participant_type === QuickPollParticipantType.SCHEDULER
-    )
-  }, [pollData, currentAccount])
-
-  const canScheduleFromPoll = useMemo(() => {
-    if (!pollData?.poll) return false
-    return (
-      isHost ||
-      (pollData.poll.permissions?.includes(
-        MeetingPermissions.SCHEDULE_MEETING
-      ) ??
-        false)
-    )
-  }, [pollData?.poll, isHost])
+  /** `/poll/…` has no dashboard tabs — send users to dashboard schedule (same as PollCard) with time in query */
+  const isPollShareLinkPage = _router.pathname.startsWith('/poll')
 
   const isLoggedInAndNotInPoll = useMemo(
     () =>
@@ -249,6 +250,24 @@ export function QuickPollPickAvailability({
     return null
   }, [pollData, currentAccount, currentGuestEmail, currentParticipantId])
 
+  const isHost = useMemo(() => {
+    if (!currentParticipant) return false
+    return (
+      currentParticipant.participant_type === QuickPollParticipantType.SCHEDULER
+    )
+  }, [currentParticipant])
+
+  const canScheduleFromPoll = useMemo(() => {
+    if (!pollData?.poll) return false
+    return (
+      isHost ||
+      (pollData.poll.permissions?.includes(
+        MeetingPermissions.SCHEDULE_MEETING
+      ) ??
+        false)
+    )
+  }, [pollData?.poll, isHost])
+
   // Check if user has any availability
   const hasAvailability = useMemo(() => {
     if (!currentParticipant) return false
@@ -258,13 +277,21 @@ export function QuickPollPickAvailability({
       currentParticipant.available_slots &&
       currentParticipant.available_slots.length > 0
 
+    // Check if they have block-based availability (common for imported availability)
+    const hasBlockAvailability =
+      (currentParticipant.availability_block_ids &&
+        currentParticipant.availability_block_ids.length > 0) ||
+      currentParticipant.has_block_based_availability === true
+
     // Check if account owner has default availability blocks
     const hasDefaultAvailability =
       currentAccount &&
       currentAccount.preferences?.availabilities &&
       currentAccount.preferences.availabilities.length > 0
 
-    return hasManualAvailability || hasDefaultAvailability
+    return (
+      hasManualAvailability || hasBlockAvailability || hasDefaultAvailability
+    )
   }, [currentParticipant, currentAccount?.preferences?.availabilities])
 
   const { currentIntent } = useQuickPollAvailability()
@@ -272,6 +299,10 @@ export function QuickPollPickAvailability({
   const isEditAvailabilityIntent =
     currentIntent === QuickPollIntent.EDIT_AVAILABILITY ||
     (!currentIntent && !isSchedulingIntent)
+
+  const showSchedulingControls = isPollShareLinkPage
+    ? canScheduleFromPoll && !isEditingAvailability
+    : canScheduleFromPoll && isSchedulingIntent
 
   const {
     groupAvailability,
@@ -334,6 +365,39 @@ export function QuickPollPickAvailability({
     }
   }, [pollData?.poll?.expires_at, timezone])
 
+  const schedulerParticipant = useMemo(
+    () =>
+      pollData?.poll.participants.find(
+        p => p.participant_type === QuickPollParticipantType.SCHEDULER
+      ) || null,
+    [pollData?.poll.participants]
+  )
+
+  const scheduledMeetingDateTime = useMemo(() => {
+    if (!isScheduled || !pollData?.scheduled_meeting?.start) return null
+    const schedulerTz = schedulerParticipant?.timezone || timezone || 'UTC'
+    try {
+      return DateTime.fromISO(pollData.scheduled_meeting.start, {
+        zone: schedulerTz,
+      })
+    } catch {
+      return null
+    }
+  }, [
+    isScheduled,
+    pollData?.scheduled_meeting?.start,
+    schedulerParticipant?.timezone,
+    timezone,
+  ])
+
+  const scheduledMeetingLabel = useMemo(() => {
+    if (!scheduledMeetingDateTime) return ''
+    const datePart = scheduledMeetingDateTime.toFormat('d LLLL, yyyy')
+    const timePart = scheduledMeetingDateTime.toFormat('h:mma').toLowerCase()
+    const tzLabel = scheduledMeetingDateTime.zoneName || 'UTC'
+    return `${datePart} | ${timePart} ${tzLabel}`
+  }, [scheduledMeetingDateTime])
+
   useEffect(() => {
     // Only resolve after client-side rendering
     const timer = setTimeout(() => setIsBreakpointResolved(true), 100)
@@ -341,6 +405,37 @@ export function QuickPollPickAvailability({
   }, [])
 
   const { handlePageSwitch, inviteModalOpen } = useScheduleNavigation()
+
+  const goToScheduleStep = useCallback(
+    (scheduledAt?: Date) => {
+      if (isPollShareLinkPage && pollData?.poll?.id) {
+        const t = scheduledAt ?? pickedTime
+        if (!t) return
+        if (currentAccount) {
+          const params = new URLSearchParams({
+            ref: 'quickpoll',
+            pollId: pollData.poll.id,
+            intent: 'schedule_from_poll',
+            selectedTime: encodeURIComponent(t.toISOString()),
+          })
+          void _router.push(`/dashboard/schedule?${params.toString()}`)
+          return
+        }
+        onPollShareLinkGuestScheduleTimeSelected?.()
+        return
+      }
+      handlePageSwitch(Page.SCHEDULE_DETAILS)
+    },
+    [
+      isPollShareLinkPage,
+      pollData?.poll?.id,
+      pickedTime,
+      currentAccount,
+      onPollShareLinkGuestScheduleTimeSelected,
+      handlePageSwitch,
+      _router,
+    ]
+  )
 
   useEffect(() => {
     if (pollData) {
@@ -521,6 +616,26 @@ export function QuickPollPickAvailability({
     true
   )
 
+  /** When there are no wallet addresses (guests / poll-only participants), `/meetings/busy/suggest` cannot run — mirror "best" from the grid. */
+  const findBestSlotStartFromGrid = useCallback((): Date | null => {
+    const priority = [
+      GridAvailabilityState.ALL_AVAILABLE,
+      GridAvailabilityState.MOST_AVAILABLE,
+      GridAvailabilityState.SOME_AVAILABLE,
+    ]
+    const now = DateTime.now().setZone(timezone)
+    for (const st of priority) {
+      for (const day of datesSlotsWithAvailability) {
+        for (const slotData of day.slots) {
+          if (slotData.state !== st) continue
+          if (slotData.slot.start < now) continue
+          return slotData.slot.start.toJSDate()
+        }
+      }
+    }
+    return null
+  }, [datesSlotsWithAvailability, timezone])
+
   const [monthValue, setMonthValue] = useState<
     SingleValue<{ label: string; value: string }>
   >({
@@ -575,6 +690,7 @@ export function QuickPollPickAvailability({
   }
 
   const getAvailabilityButtonText = () => {
+    if (isScheduled) return ''
     if (isEditingAvailability) return 'Save availability'
     return hasAvailability ? 'Edit availability' : 'Add Availability'
   }
@@ -584,7 +700,10 @@ export function QuickPollPickAvailability({
       initialSlotsSignatureRef.current = null
       return
     }
-    if (hasLoadedInitialSlots && initialSlotsSignatureRef.current === null) {
+    if (
+      (hasLoadedInitialSlots || !hasAvailability) &&
+      initialSlotsSignatureRef.current === null
+    ) {
       initialSlotsSignatureRef.current =
         getSelectedSlotsSignature(selectedSlots)
     }
@@ -592,6 +711,7 @@ export function QuickPollPickAvailability({
     isEditingAvailability,
     isPendingManualJoinForLoggedInUser,
     hasLoadedInitialSlots,
+    hasAvailability,
     selectedSlots,
   ])
 
@@ -729,14 +849,19 @@ export function QuickPollPickAvailability({
             participant.available_slots.length > 0 &&
             participant.timezone
           ) {
-            defaultAvailability = mergeLuxonIntervals(
-              parseMonthAvailabilitiesToDate(
-                participant.available_slots,
-                monthStartDate,
-                monthEndDate,
-                participant.timezone
+            const intervals: Interval[] = []
+            for (const slot of participant.available_slots) {
+              intervals.push(
+                ...convertAvailabilitySlotRangesToIntervals(
+                  slot,
+                  monthStartDate,
+                  monthEndDate,
+                  timezone,
+                  participant.timezone
+                )
               )
-            )
+            }
+            defaultAvailability = mergeLuxonIntervals(intervals)
           }
           if (defaultAvailability.length === 0 && participant.account_address) {
             const account = quickPollAccountDetails.find(
@@ -1196,11 +1321,32 @@ export function QuickPollPickAvailability({
     const rangeEnd = pollEnd
       ? pollEnd.toJSDate()
       : currentSelectedDate.plus({ months: 1 }).toJSDate()
-    const suggestedTimes = await fetchBestSlot({
-      startDate: rangeStart,
-      endDate: rangeEnd,
-    })
+
+    let suggestedTimes: Awaited<ReturnType<typeof fetchBestSlot>> = []
+    if (addresses.length > 0) {
+      suggestedTimes = await fetchBestSlot({
+        startDate: rangeStart,
+        endDate: rangeEnd,
+      })
+    }
+
     if (suggestedTimes.length === 0) {
+      const local = findBestSlotStartFromGrid()
+      if (local) {
+        let bestSlotStart = DateTime.fromJSDate(local)
+        if (pollStart && pollEnd) {
+          bestSlotStart = clampSlotTimeToPollRange(
+            bestSlotStart,
+            pollStart,
+            pollEnd
+          )
+        }
+        const bestSlotStartDate = bestSlotStart.toJSDate()
+        setPickedTime(bestSlotStartDate)
+        setCurrentSelectedDate(bestSlotStart.setZone(timezone).startOf('day'))
+        goToScheduleStep(bestSlotStartDate)
+        return
+      }
       toast({
         title: 'No Matching Times',
         description:
@@ -1223,16 +1369,16 @@ export function QuickPollPickAvailability({
     setPickedTime(bestSlotStartDate)
     setCurrentSelectedDate(bestSlotStart.setZone(timezone).startOf('day'))
 
-    handlePageSwitch(Page.SCHEDULE_DETAILS)
+    goToScheduleStep(bestSlotStartDate)
   }
   const handleTimeSelection = (time: Date) => {
     React.startTransition(() => {
       setPickedTime(time)
     })
 
-    if (canScheduleFromPoll && isSchedulingIntent) {
+    if (showSchedulingControls) {
       if (pollData) {
-        handlePageSwitch(Page.SCHEDULE_DETAILS)
+        goToScheduleStep(time)
       }
     }
   }
@@ -1274,158 +1420,172 @@ export function QuickPollPickAvailability({
     }
   }
 
+  const handleSelectImportDirect = () => {
+    setShowMethodModal(false)
+    if (!pollData?.poll) return
+    setShowConnectCalendarModal(true)
+  }
+
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
         {/* Mobile Controls */}
-        <VStack gap={4} w="100%" display={{ base: 'flex', md: 'none' }}>
-          <VStack gap={2} alignItems={'flex-start'} width="100%">
-            <HStack width="fit-content" gap={0}>
-              <Heading fontSize="14px">Show times in</Heading>
-              <InfoTooltip text="the default timezone is based on your availability settings" />
-            </HStack>
-            <Select
-              value={tz}
-              colorScheme="primary"
-              onChange={_onChange}
-              className="noLeftBorder timezone-select"
-              options={tzOptions}
-              components={customSelectComponents}
-              chakraStyles={selectChakraStyles}
-            />
-          </VStack>
+        {!isScheduled && (
+          <VStack gap={4} w="100%" display={{ base: 'flex', md: 'none' }}>
+            <VStack gap={2} alignItems={'flex-start'} width="100%">
+              <HStack width="fit-content" gap={0}>
+                <Heading fontSize="14px">Show times in</Heading>
+                <InfoTooltip text="the default timezone is based on your availability settings" />
+              </HStack>
+              <Select
+                value={tz}
+                colorScheme="primary"
+                onChange={_onChange}
+                className="noLeftBorder timezone-select"
+                options={tzOptions}
+                components={customSelectComponents}
+                chakraStyles={selectChakraStyles}
+              />
+            </VStack>
 
-          <VStack gap={2} alignItems={'flex-start'} width="100%">
-            <Heading fontSize="14px">Month</Heading>
-            <Select
-              value={monthValue}
-              colorScheme="primary"
-              onChange={newValue => _onChangeMonth(newValue)}
-              className="noLeftBorder timezone-select"
-              options={months}
-              components={customSelectComponents}
-              chakraStyles={selectChakraStyles}
-            />
+            <VStack gap={2} alignItems={'flex-start'} width="100%">
+              <Heading fontSize="14px">Month</Heading>
+              <Select
+                value={monthValue}
+                colorScheme="primary"
+                onChange={newValue => _onChangeMonth(newValue)}
+                className="noLeftBorder timezone-select"
+                options={months}
+                components={customSelectComponents}
+                chakraStyles={selectChakraStyles}
+              />
+            </VStack>
           </VStack>
-        </VStack>
+        )}
 
         {/* Desktop Controls */}
-        <Flex
-          w="100%"
-          alignItems={{ lg: 'flex-end' }}
-          flexDir={'row'}
-          flexWrap="wrap"
-          gap={6}
-          zIndex={2}
-          display={{ base: 'none', md: 'flex' }}
-        >
-          {onSaveAvailability && isEditAvailabilityIntent && (
-            <HStack spacing={3}>
-              <ChooseAvailabilityMethodModal
-                isOpen={showMethodModal}
-                onClose={() => setShowMethodModal(false)}
-                onSelectManual={handleSelectManual}
-                onSelectImport={handleSelectImport}
-                variant={isLoggedInAndNotInPoll ? 'logged-in' : 'guest'}
-              >
-                <Button
-                  colorScheme="primary"
-                  onClick={handleAvailabilityButtonClick}
-                  px="16px"
-                  py="8px"
-                  fontSize="16px"
-                  fontWeight="700"
-                  borderRadius="8px"
-                  width="230px"
-                  isLoading={isSavingAvailability}
-                  loadingText="Saving..."
-                  isDisabled={
-                    isSavingAvailability || isSaveAvailabilityDisabled
-                  }
+        {!isScheduled && (
+          <Flex
+            w="100%"
+            alignItems={{ lg: 'flex-end' }}
+            flexDir={'row'}
+            flexWrap="wrap"
+            gap={6}
+            zIndex={2}
+            display={{ base: 'none', md: 'flex' }}
+          >
+            {onSaveAvailability && isEditAvailabilityIntent && !isScheduled && (
+              <HStack spacing={3}>
+                <ChooseAvailabilityMethodModal
+                  isOpen={showMethodModal}
+                  onClose={() => setShowMethodModal(false)}
+                  onSelectManual={handleSelectManual}
+                  onSelectImport={handleSelectImport}
+                  onSelectImportDirect={handleSelectImportDirect}
+                  showSignInCheckbox={!currentAccount}
+                  variant={isLoggedInAndNotInPoll ? 'logged-in' : 'guest'}
                 >
-                  {getAvailabilityButtonText()}
-                </Button>
-              </ChooseAvailabilityMethodModal>
-              {isEditingAvailability && onCancelEditing && (
+                  <Button
+                    colorScheme="primary"
+                    onClick={handleAvailabilityButtonClick}
+                    px="16px"
+                    py="8px"
+                    fontSize="16px"
+                    fontWeight="700"
+                    borderRadius="8px"
+                    width="230px"
+                    isLoading={isSavingAvailability}
+                    loadingText="Saving..."
+                    isDisabled={
+                      isSavingAvailability || isSaveAvailabilityDisabled
+                    }
+                  >
+                    {getAvailabilityButtonText()}
+                  </Button>
+                </ChooseAvailabilityMethodModal>
+                {isEditingAvailability && onCancelEditing && (
+                  <Button
+                    variant="outline"
+                    colorScheme="primary"
+                    px="16px"
+                    py="8px"
+                    fontSize="16px"
+                    fontWeight="700"
+                    borderRadius="8px"
+                    onClick={onCancelEditing}
+                    isDisabled={isSavingAvailability}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </HStack>
+            )}
+            <VStack gap={2} alignItems={'flex-start'} minW={'max-content'}>
+              <HStack width="fit-content" gap={0}>
+                <Heading fontSize="16px">Show times in</Heading>
+                <InfoTooltip text="the default timezone is based on your availability settings" />
+              </HStack>
+              <Select
+                value={tz}
+                colorScheme="primary"
+                onChange={_onChange}
+                className="noLeftBorder timezone-select"
+                options={tzOptions}
+                components={customSelectComponents}
+                chakraStyles={selectChakraStyles}
+              />
+            </VStack>
+            <VStack
+              gap={2}
+              alignItems={'flex-start'}
+              width="fit-content"
+              minW={'10px'}
+            >
+              <Heading fontSize="16px">Month</Heading>
+
+              <Select
+                value={monthValue}
+                colorScheme="primary"
+                onChange={newValue => _onChangeMonth(newValue)}
+                className="noLeftBorder timezone-select"
+                options={months}
+                components={customSelectComponents}
+                chakraStyles={selectChakraStyles}
+              />
+            </VStack>
+
+            {onSharePoll && !isScheduled && (
+              <HStack spacing={3} display={{ base: 'none', lg: 'flex' }}>
                 <Button
                   variant="outline"
                   colorScheme="primary"
+                  leftIcon={<MdShare color="#F9B19A" size={20} />}
+                  onClick={onSharePoll}
                   px="16px"
                   py="8px"
                   fontSize="16px"
                   fontWeight="700"
                   borderRadius="8px"
-                  onClick={onCancelEditing}
-                  isDisabled={isSavingAvailability}
                 >
-                  Cancel
+                  Share Poll
                 </Button>
-              )}
-            </HStack>
-          )}
-          <VStack gap={2} alignItems={'flex-start'} minW={'max-content'}>
-            <HStack width="fit-content" gap={0}>
-              <Heading fontSize="16px">Show times in</Heading>
-              <InfoTooltip text="the default timezone is based on your availability settings" />
-            </HStack>
-            <Select
-              value={tz}
-              colorScheme="primary"
-              onChange={_onChange}
-              className="noLeftBorder timezone-select"
-              options={tzOptions}
-              components={customSelectComponents}
-              chakraStyles={selectChakraStyles}
-            />
-          </VStack>
-          <VStack
-            gap={2}
-            alignItems={'flex-start'}
-            width="fit-content"
-            minW={'10px'}
-          >
-            <Heading fontSize="16px">Month</Heading>
-
-            <Select
-              value={monthValue}
-              colorScheme="primary"
-              onChange={newValue => _onChangeMonth(newValue)}
-              className="noLeftBorder timezone-select"
-              options={months}
-              components={customSelectComponents}
-              chakraStyles={selectChakraStyles}
-            />
-          </VStack>
-
-          <HStack spacing={3} display={{ base: 'none', lg: 'flex' }}>
-            <Button
-              variant="outline"
-              colorScheme="primary"
-              leftIcon={<MdShare color="#F9B19A" size={20} />}
-              onClick={onSharePoll}
-              px="16px"
-              py="8px"
-              fontSize="16px"
-              fontWeight="700"
-              borderRadius="8px"
-            >
-              Share Poll
-            </Button>
-          </HStack>
-          {isUpdatingMeeting && (
-            <Button
-              rightIcon={<FaArrowRight />}
-              colorScheme="primary"
-              _disabled={{
-                bg: 'text-muted',
-              }}
-              isDisabled={!pickedTime}
-              onClick={() => handlePageSwitch(Page.SCHEDULE_DETAILS)}
-            >
-              Continue scheduling
-            </Button>
-          )}
-        </Flex>
+              </HStack>
+            )}
+            {isUpdatingMeeting && (
+              <Button
+                rightIcon={<FaArrowRight />}
+                colorScheme="primary"
+                _disabled={{
+                  bg: 'text-muted',
+                }}
+                isDisabled={!pickedTime}
+                onClick={() => goToScheduleStep()}
+              >
+                Continue scheduling
+              </Button>
+            )}
+          </Flex>
+        )}
         {typeof daysUntilExpiry === 'number' && (
           <Box w="100%" px={{ base: 0, md: 0 }}>
             <Text
@@ -1463,13 +1623,15 @@ export function QuickPollPickAvailability({
 
         {/* Mobile Action Buttons */}
         <VStack gap={3} w="100%" display={{ base: 'flex', md: 'none' }}>
-          {onSaveAvailability && (
+          {onSaveAvailability && !isScheduled && (
             <>
               <ChooseAvailabilityMethodModal
                 isOpen={showMethodModal}
                 onClose={() => setShowMethodModal(false)}
                 onSelectManual={handleSelectManual}
                 onSelectImport={handleSelectImport}
+                onSelectImportDirect={handleSelectImportDirect}
+                showSignInCheckbox={!currentAccount}
                 variant={isLoggedInAndNotInPoll ? 'logged-in' : 'guest'}
               >
                 <Button
@@ -1508,7 +1670,7 @@ export function QuickPollPickAvailability({
               )}
             </>
           )}
-          {onSharePoll && (
+          {onSharePoll && !isScheduled && (
             <Button
               variant="outline"
               colorScheme="primary"
@@ -1532,17 +1694,19 @@ export function QuickPollPickAvailability({
           alignItems="center"
           display={{ base: 'flex', md: 'none' }}
         >
-          <VStack align="center" gap={2} w="100%" textAlign="center">
-            <Heading fontSize="16px" fontWeight={700} color="text-primary">
-              Select all the time slots that work for you
-            </Heading>
-            <Text fontSize="14px" color="text-primary">
-              Click on each cell to mark when you&apos;re available, so the host
-              can easily find the best time for everyone.
-            </Text>
-          </VStack>
+          {!isScheduled && (
+            <VStack align="center" gap={2} w="100%" textAlign="center">
+              <Heading fontSize="16px" fontWeight={700} color="text-primary">
+                Select all the time slots that work for you
+              </Heading>
+              <Text fontSize="14px" color="text-primary">
+                Click on each cell to mark when you&apos;re available, so the
+                host can easily find the best time for everyone.
+              </Text>
+            </VStack>
+          )}
 
-          {canScheduleFromPoll && isSchedulingIntent && (
+          {!isScheduled && showSchedulingControls && (
             <Button
               colorScheme="primary"
               onClick={handleJumpToBestSlot}
@@ -1558,7 +1722,37 @@ export function QuickPollPickAvailability({
           )}
         </VStack>
 
-        <QuickPollParticipationInstructions />
+        {!isScheduled && <QuickPollParticipationInstructions />}
+
+        {isScheduled && scheduledMeetingDateTime && (
+          <HStack
+            w="100%"
+            justify="flex-start"
+            alignItems="center"
+            mb={{ base: 2, md: 4 }}
+            spacing={{ base: 2, md: 12 }}
+            flexWrap="wrap"
+          >
+            <Text
+              fontSize={{ base: '14px', md: '16px' }}
+              fontWeight={600}
+              color="primary.400"
+            >
+              This Poll has been scheduled
+            </Text>
+            <Text
+              fontSize={{ base: '14px', md: '16px' }}
+              fontWeight={600}
+              color="text-primary"
+              textAlign="left"
+            >
+              Date/Time for the scheduled meeting:{' '}
+              <Text as="span" color="text-primary">
+                {scheduledMeetingLabel}
+              </Text>
+            </Text>
+          </HStack>
+        )}
 
         <VStack gap={0} w="100%" rounded={12} bg="bg-surface-secondary">
           <VStack
@@ -1678,7 +1872,7 @@ export function QuickPollPickAvailability({
                     isDisabled={isBackDisabled}
                     gap={0}
                   />
-                  {canScheduleFromPoll && isSchedulingIntent && (
+                  {showSchedulingControls && (
                     <Button
                       colorScheme="primary"
                       onClick={handleJumpToBestSlot}
@@ -1699,13 +1893,27 @@ export function QuickPollPickAvailability({
                 />
               </HStack>
               <Box maxW="400px" mx="auto" textAlign="center">
-                <Heading fontSize="20px" fontWeight={700}>
-                  Select all the time slots that work for you
-                </Heading>
-                <Text fontSize="12px">
-                  Click on each cell to mark when you&apos;re available, so the
-                  host can easily find the best time for everyone.
-                </Text>
+                {isScheduled ? (
+                  <>
+                    <Heading fontSize="20px" fontWeight={700}>
+                      Availabilities Provided by Participants
+                    </Heading>
+                    <Text fontSize="12px">
+                      All time slots shown below are the available times between
+                      you and those who are interested in the event.
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Heading fontSize="20px" fontWeight={700}>
+                      Select all the time slots that work for you
+                    </Heading>
+                    <Text fontSize="12px">
+                      Click on each cell to mark when you&apos;re available, so
+                      the host can easily find the best time for everyone.
+                    </Text>
+                  </>
+                )}
               </Box>
               <HStack w="100%" justify="center" gap={0}>
                 <Grid
@@ -1781,7 +1989,7 @@ export function QuickPollPickAvailability({
                   isDisabled={isBackDisabled}
                   gap={0}
                 />
-                {canScheduleFromPoll && isSchedulingIntent && (
+                {showSchedulingControls && (
                   <Button
                     colorScheme="primary"
                     onClick={handleJumpToBestSlot}
@@ -1801,13 +2009,27 @@ export function QuickPollPickAvailability({
                 textAlign="center"
                 display={{ lg: 'block', base: 'none' }}
               >
-                <Heading fontSize="20px" fontWeight={700}>
-                  Select all the time slots that work for you
-                </Heading>
-                <Text fontSize="12px">
-                  Click on each cell to mark when you&apos;re available, so the
-                  host can easily find the best time for everyone.
-                </Text>
+                {isScheduled ? (
+                  <>
+                    <Heading fontSize="20px" fontWeight={700}>
+                      Availabilities Provided by Participants
+                    </Heading>
+                    <Text fontSize="12px">
+                      All time slots shown below are the available times between
+                      you and those who are interested in the event.
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Heading fontSize="20px" fontWeight={700}>
+                      Select all the time slots that work for you
+                    </Heading>
+                    <Text fontSize="12px">
+                      Click on each cell to mark when you&apos;re available, so
+                      the host can easily find the best time for everyone.
+                    </Text>
+                  </>
+                )}
               </Box>
 
               <HStack gap={0} ml="auto">
@@ -2027,7 +2249,7 @@ export function QuickPollPickAvailability({
                               timezone={timezone}
                               isQuickPoll={true}
                               isEditingAvailability={isEditingAvailability}
-                              isSchedulingIntent={isSchedulingIntent}
+                              isSchedulingIntent={showSchedulingControls}
                             />
                           )
                         })}
@@ -2040,6 +2262,15 @@ export function QuickPollPickAvailability({
           )}
         </VStack>
       </VStack>
+
+      <ConnectCalendarModal
+        isOpen={showConnectCalendarModal}
+        onClose={() => setShowConnectCalendarModal(false)}
+        isQuickPoll={true}
+        participantId={currentParticipantId ?? undefined}
+        pollData={pollData as QuickPollBySlugResponse | undefined}
+        pollSlug={pollData?.poll?.slug}
+      />
     </Tooltip.Provider>
   )
 }

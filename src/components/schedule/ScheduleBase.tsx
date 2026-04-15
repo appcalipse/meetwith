@@ -48,6 +48,7 @@ import InfoTooltip from '@/components/profile/components/Tooltip'
 import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal'
 import { IInitialProps } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
+import { QuickPollAvailabilityContext } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import {
   Page,
@@ -59,8 +60,8 @@ import { useScheduleState } from '@/providers/schedule/ScheduleContext'
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
-import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
-import { isGroupParticipant, Participant } from '@/types/schedule'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { Participant } from '@/types/schedule'
 import { MeetingAction } from '@/utils/constants/meeting'
 import { BASE_PROVIDERS } from '@/utils/constants/meeting-types'
 import {
@@ -93,10 +94,18 @@ const meetingProviders: Array<Option<MeetingProvider>> = BASE_PROVIDERS.concat(
   value: provider,
   label: renderProviderName(provider),
 }))
-const ScheduleBase = () => {
+
+type ScheduleBaseProps = {
+  /** Public poll guest flow: repeat is not supported; hide the repeat control. */
+  hideMeetingRepeat?: boolean
+}
+
+const ScheduleBase = ({ hideMeetingRepeat = false }: ScheduleBaseProps) => {
   const { query } = useRouter()
   const { seriesId, meetingId } = query as IInitialProps
   const { currentAccount } = useContext(AccountContext)
+  const quickPollAvailability = useContext(QuickPollAvailabilityContext)
+  const guestSchedulerEmail = quickPollAvailability?.currentGuestEmail
   const [isTitleValid, setIsTitleValid] = useState(true)
   const toast = useToast()
   const { onOpen, isOpen, onClose } = useDisclosure()
@@ -276,13 +285,12 @@ const ScheduleBase = () => {
   )
   const renderParticipantChipLabel = useCallback(
     (participant: Participant) =>
-      currentAccount?.address
-        ? ParticipantService.renderParticipantChipLabel(
-            participant,
-            currentAccount?.address
-          )
-        : '',
-    [currentAccount?.address]
+      ParticipantService.renderParticipantChipLabel(
+        participant,
+        currentAccount?.address || '',
+        guestSchedulerEmail ? { guestSchedulerEmail } : undefined
+      ),
+    [currentAccount?.address, guestSchedulerEmail]
   )
   const handleChipInputChange = useCallback(
     (updatedItems: ParticipantInfo[]) => {
@@ -373,6 +381,20 @@ const ScheduleBase = () => {
 
   return (
     <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+      <input
+        type="submit"
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{
+          position: 'absolute',
+          width: 0,
+          height: 0,
+          padding: 0,
+          margin: 0,
+          border: 'none',
+          overflow: 'hidden',
+        }}
+      />
       <Box w="100%">
         <DiscoverATimeInfoModal
           isOpen={openWhatIsThis}
@@ -482,6 +504,9 @@ const ScheduleBase = () => {
                       <ChipInput
                         addDisabled={!canManageParticipants}
                         currentItems={displayParticipants}
+                        inputProps={
+                          { 'data-testid': 'participant-chip-input' } as never
+                        }
                         isReadOnly={!canManageParticipants}
                         onChange={handleChipInputChange}
                         placeholder="Add participants"
@@ -518,6 +543,7 @@ const ScheduleBase = () => {
                     bg="primary.200"
                     borderRadius="6px"
                     color="neutral.900"
+                    data-testid="add-participants-btn"
                     icon={<IoPersonAddOutline size={20} />}
                     isDisabled={!canManageParticipants}
                     onClick={handleParticipantsClick}
@@ -571,6 +597,7 @@ const ScheduleBase = () => {
                       bg: 'primary.300',
                     }}
                     aria-label="Edit date and time"
+                    data-testid="pick-new-time"
                     bg="primary.200"
                     borderRadius="6px"
                     color="neutral.900"
@@ -600,6 +627,7 @@ const ScheduleBase = () => {
                       color: 'neutral.400',
                     }}
                     borderColor="neutral.400"
+                    data-testid="meeting-title-input"
                     errorBorderColor="red.500"
                     isInvalid={!isTitleValid}
                     onChange={e => {
@@ -635,31 +663,33 @@ const ScheduleBase = () => {
                 w="100%"
               >
                 <FormLabel>Location</FormLabel>
-                <Select<Option<MeetingProvider>>
-                  chakraStyles={{
-                    container: provided => ({
-                      ...provided,
-                      border: '1px solid',
-                      borderTopColor: 'currentColor',
-                      borderLeftColor: 'currentColor',
-                      borderRightColor: 'currentColor',
-                      borderBottomColor: 'currentColor',
-                      borderColor: 'inherit',
-                      borderRadius: 'md',
-                      maxW: '100%',
-                      display: 'block',
-                    }),
-                  }}
-                  className="noLeftBorder timezone-select"
-                  colorScheme="primary"
-                  components={getCustomSelectComponents<
-                    Option<MeetingProvider>,
-                    false
-                  >()}
-                  onChange={newValue => _onChangeProvider(newValue)}
-                  options={meetingProviders}
-                  value={meetingProviderValue}
-                />
+                <Box data-testid="provider-select">
+                  <Select<Option<MeetingProvider>>
+                    chakraStyles={{
+                      container: provided => ({
+                        ...provided,
+                        border: '1px solid',
+                        borderTopColor: 'currentColor',
+                        borderLeftColor: 'currentColor',
+                        borderRightColor: 'currentColor',
+                        borderBottomColor: 'currentColor',
+                        borderColor: 'inherit',
+                        borderRadius: 'md',
+                        maxW: '100%',
+                        display: 'block',
+                      }),
+                    }}
+                    className="noLeftBorder timezone-select"
+                    colorScheme="primary"
+                    components={getCustomSelectComponents<
+                      Option<MeetingProvider>,
+                      false
+                    >()}
+                    onChange={newValue => _onChangeProvider(newValue)}
+                    options={meetingProviders}
+                    value={meetingProviderValue}
+                  />
+                </Box>
                 {meetingProvider === MeetingProvider.CUSTOM && (
                   <Input
                     isDisabled={isScheduling}
@@ -728,7 +758,7 @@ const ScheduleBase = () => {
                   value={meetingNotification}
                 />
               </FormControl>
-              {!seriesId && (
+              {!seriesId && !hideMeetingRepeat && (
                 <FormControl
                   isDisabled={!canEditMeetingDetails || isScheduling}
                   maxW="100%"
@@ -781,51 +811,58 @@ const ScheduleBase = () => {
                     Permissions for guests
                   </Heading>
 
-                  <ChakraSelect<Option<MeetingPermissions>, true>
-                    chakraStyles={{
-                      container: provided => ({
-                        ...provided,
-                        border: '0px solid',
-                        borderTopColor: 'currentColor',
-                        borderLeftColor: 'currentColor',
-                        borderRightColor: 'currentColor',
-                        borderBottomColor: 'currentColor',
-                        borderColor: 'inherit',
-                        borderRadius: 'md',
-                        maxW: '100%',
-                        display: 'block',
-                      }),
-
-                      placeholder: provided => ({
-                        ...provided,
-                        textAlign: 'left',
-                      }),
-                    }}
-                    className="noLeftBorder permissions-select"
-                    colorScheme="gray"
-                    components={getnoClearCustomSelectComponent<
-                      Option<MeetingPermissions>,
-                      true
-                    >()}
+                  <FormControl
                     isDisabled={!canEditMeetingDetails || isScheduling}
-                    isMulti
-                    onChange={val => {
-                      const selected = val
-                      setSelectedPermissions(selected.map(item => item.value))
-                    }}
-                    options={MeetingSchedulePermissions.map(permission => ({
-                      value: permission.value,
-                      label: permission.label,
-                    }))}
-                    placeholder="Select Permissions"
-                    tagVariant={'solid'}
-                    value={MeetingSchedulePermissions.filter(permission =>
-                      selectedPermissions?.includes(permission.value)
-                    ).map(permission => ({
-                      value: permission.value,
-                      label: permission.label,
-                    }))}
-                  />
+                    maxW="100%"
+                    w="100%"
+                  >
+                    <ChakraSelect<Option<MeetingPermissions>, true>
+                      chakraStyles={{
+                        container: provided => ({
+                          ...provided,
+                          border: '0px solid',
+                          borderTopColor: 'currentColor',
+                          borderLeftColor: 'currentColor',
+                          borderRightColor: 'currentColor',
+                          borderBottomColor: 'currentColor',
+                          borderColor: 'inherit',
+                          borderRadius: 'md',
+                          display: 'block',
+                          maxW: '100%',
+                          width: '100%',
+                        }),
+
+                        placeholder: provided => ({
+                          ...provided,
+                          textAlign: 'left',
+                        }),
+                      }}
+                      className="noLeftBorder permissions-select"
+                      colorScheme="gray"
+                      components={getnoClearCustomSelectComponent<
+                        Option<MeetingPermissions>,
+                        true
+                      >()}
+                      isDisabled={!canEditMeetingDetails || isScheduling}
+                      isMulti
+                      onChange={val => {
+                        const selected = val
+                        setSelectedPermissions(selected.map(item => item.value))
+                      }}
+                      options={MeetingSchedulePermissions.map(permission => ({
+                        value: permission.value,
+                        label: permission.label,
+                      }))}
+                      placeholder="Select Permissions"
+                      tagVariant={'solid'}
+                      value={MeetingSchedulePermissions.filter(permission =>
+                        selectedPermissions?.includes(permission.value)
+                      ).map(permission => ({
+                        value: permission.value,
+                        label: permission.label,
+                      }))}
+                    />
+                  </FormControl>
 
                   <FormControl>
                     <FormLabel
@@ -880,6 +917,7 @@ const ScheduleBase = () => {
               <HStack flexWrap="wrap" w="100%">
                 <Button
                   colorScheme="primary"
+                  data-testid="schedule-now-btn"
                   flex={1}
                   flexBasis="50%"
                   h={'auto'}

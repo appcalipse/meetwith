@@ -1,0 +1,414 @@
+/**
+ * Unit tests for /api/quickpoll/calendar/google/callback endpoint
+ */
+
+process.env.GOOGLE_CLIENT_ID = 'test-google-client-id'
+process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret'
+process.env.NEXT_PUBLIC_ENV_CONFIG = 'test'
+process.env.IRON_COOKIE_PASSWORD = 't'.repeat(32)
+process.env.NEXT_PUBLIC_HOSTED_AT = 'http://localhost:3000'
+
+const mockGetToken = jest.fn()
+const mockSetCredentials = jest.fn()
+const mockGenerateAuthUrl = jest.fn()
+const mockCalendarListList = jest.fn()
+const mockUserinfoGet = jest.fn()
+
+jest.mock('googleapis', () => ({
+  google: {
+    auth: {
+      OAuth2: jest.fn().mockImplementation(() => ({
+        generateAuthUrl: mockGenerateAuthUrl,
+        getToken: mockGetToken,
+        setCredentials: mockSetCredentials,
+      })),
+    },
+    calendar: jest.fn(() => ({
+      calendarList: {
+        list: mockCalendarListList,
+      },
+    })),
+    oauth2: jest.fn(() => ({
+      userinfo: {
+        get: mockUserinfoGet,
+      },
+    })),
+  },
+}))
+
+jest.mock('@/utils/database', () => ({
+  addQuickPollParticipant: jest.fn(),
+  getQuickPollBySlug: jest.fn(),
+  getQuickPollParticipantByIdentifier: jest.fn(),
+  saveQuickPollCalendar: jest.fn(),
+}))
+
+jest.mock('@sentry/nextjs', () => ({
+  captureException: jest.fn(),
+}))
+
+import * as Sentry from '@sentry/nextjs'
+import type { NextApiHandler } from 'next'
+import { NextApiRequest, NextApiResponse } from 'next'
+import { PollVisibility, QuickPollParticipantType } from '@/types/QuickPoll'
+import * as database from '@/utils/database'
+
+// require after env + mocks so `middleware` sessionOptions gets IRON_COOKIE_PASSWORD
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const handler = require('@/pages/api/quickpoll/calendar/google/callback')
+  .default as NextApiHandler
+
+describe('/api/quickpoll/calendar/google/callback', () => {
+  const mockAddQuickPollParticipant =
+    database.addQuickPollParticipant as jest.Mock
+  const mockGetQuickPollBySlug = database.getQuickPollBySlug as jest.Mock
+  const mockGetQuickPollParticipantByIdentifier =
+    database.getQuickPollParticipantByIdentifier as jest.Mock
+  const mockSaveQuickPollCalendar = database.saveQuickPollCalendar as jest.Mock
+
+  let req: Partial<NextApiRequest>
+  let res: Partial<NextApiResponse>
+  let statusMock: jest.Mock
+  let jsonMock: jest.Mock
+  let redirectMock: jest.Mock
+
+  const mockPollData = {
+    poll: {
+      id: 'poll-123',
+      slug: 'test-poll',
+      visibility: PollVisibility.PUBLIC,
+    },
+  }
+
+  const mockState = Buffer.from(
+    JSON.stringify({
+      pollSlug: 'test-poll',
+      guestEmail: 'test@example.com',
+    })
+  ).toString('base64')
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+
+    statusMock = jest.fn().mockReturnThis()
+    jsonMock = jest.fn().mockReturnThis()
+    redirectMock = jest.fn().mockReturnThis()
+
+    res = {
+      getHeader: jest.fn().mockReturnValue(undefined),
+      headersSent: false,
+      json: jsonMock,
+      redirect: redirectMock,
+      setHeader: jest.fn(),
+      status: statusMock,
+    }
+
+    mockGetToken.mockResolvedValue({
+      res: {
+        data: {
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+        },
+      },
+    })
+
+    mockUserinfoGet.mockResolvedValue({
+      data: {
+        email: 'user@example.com',
+        name: 'Test User',
+      },
+    })
+
+    mockCalendarListList.mockResolvedValue({
+      data: {
+        items: [
+          {
+            id: 'calendar-1',
+            summary: 'Primary Calendar',
+            backgroundColor: '#0000FF',
+            primary: true,
+          },
+          {
+            id: 'calendar-2',
+            summary: 'Secondary Calendar',
+            backgroundColor: '#FF0000',
+            primary: false,
+          },
+        ],
+      },
+    })
+
+    mockGetQuickPollBySlug.mockResolvedValue(mockPollData)
+  })
+
+  describe('GET method', () => {
+    beforeEach(() => {
+      req = {
+        headers: { cookie: '' },
+        method: 'GET',
+        query: {
+          code: 'test-auth-code',
+          state: mockState,
+        },
+      }
+    })
+
+    it('should successfully process OAuth callback for new participant', async () => {
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
+      mockAddQuickPollParticipant.mockResolvedValue({
+        id: 'participant-123',
+      })
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(mockGetToken).toHaveBeenCalledWith('test-auth-code')
+      expect(mockSaveQuickPollCalendar).toHaveBeenCalledWith(
+        'participant-123',
+        'user@example.com',
+        expect.any(String),
+        expect.objectContaining({
+          access_token: 'test-access-token',
+        }),
+        expect.arrayContaining([
+          expect.objectContaining({
+            calendarId: 'calendar-1',
+            enabled: true,
+          }),
+        ])
+      )
+      expect(redirectMock).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'tab=guest-details&participantId=participant-123'
+        )
+      )
+    })
+
+    it('should successfully process OAuth callback for existing participant', async () => {
+      mockGetQuickPollParticipantByIdentifier.mockResolvedValue({
+        id: 'existing-participant-123',
+      })
+
+      req.query = {
+        code: 'test-auth-code',
+        state: Buffer.from(
+          JSON.stringify({
+            pollSlug: 'test-poll',
+            participantId: 'existing-participant-123',
+          })
+        ).toString('base64'),
+      }
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(mockSaveQuickPollCalendar).toHaveBeenCalledWith(
+        'existing-participant-123',
+        'user@example.com',
+        expect.any(String),
+        expect.any(Object),
+        expect.any(Array)
+      )
+      expect(redirectMock).toHaveBeenCalledWith(
+        expect.stringContaining('calendarResult=success&provider=google')
+      )
+    })
+
+    it('should handle error query parameter', async () => {
+      req.query = {
+        error: 'access_denied',
+        state: mockState,
+      }
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(Sentry.captureException).toHaveBeenCalledWith('access_denied')
+      expect(redirectMock).toHaveBeenCalledWith(
+        expect.stringContaining('calendarResult=error')
+      )
+    })
+
+    it('should return 400 for invalid code parameter', async () => {
+      req.query = {
+        code: ['code1', 'code2'],
+        state: mockState,
+      }
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(statusMock).toHaveBeenCalledWith(400)
+      expect(jsonMock).toHaveBeenCalledWith({
+        message: '`code` must be a string',
+      })
+    })
+
+    it('should handle error when Google OAuth returns error', async () => {
+      mockGetToken.mockRejectedValue(new Error('OAuth error'))
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+    })
+
+    it('should handle private poll with non-invited participant', async () => {
+      mockGetQuickPollBySlug.mockResolvedValue({
+        poll: {
+          id: 'poll-123',
+          slug: 'private-poll',
+          visibility: PollVisibility.PRIVATE,
+        },
+      })
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(redirectMock).toHaveBeenCalledWith(
+        expect.stringContaining('error=not_invited')
+      )
+    })
+
+    it('should handle participant creation failure', async () => {
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
+      mockAddQuickPollParticipant.mockRejectedValue(new Error('DB error'))
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(Sentry.captureException).toHaveBeenCalled()
+      expect(redirectMock).toHaveBeenCalledWith(
+        expect.stringContaining('error=participant_creation_failed')
+      )
+    })
+
+    it('should handle missing poll slug in state', async () => {
+      req.query = {
+        code: 'test-code',
+        state: Buffer.from(JSON.stringify({})).toString('base64'),
+      }
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(redirectMock).toHaveBeenCalledWith(
+        expect.stringMatching(/quickpoll\/create.*pending_calendar_failed/)
+      )
+    })
+
+    it('should handle calendar list fetch failure with fallback', async () => {
+      mockCalendarListList.mockRejectedValue(new Error('Calendar API error'))
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
+      mockAddQuickPollParticipant.mockResolvedValue({ id: 'participant-123' })
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(mockSaveQuickPollCalendar).toHaveBeenCalledWith(
+        'participant-123',
+        'user@example.com',
+        expect.any(String),
+        expect.any(Object),
+        expect.arrayContaining([
+          expect.objectContaining({
+            calendarId: 'user@example.com',
+            name: 'user@example.com',
+          }),
+        ])
+      )
+    })
+
+    it('should map calendars correctly with colors and primary flag', async () => {
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
+      mockAddQuickPollParticipant.mockResolvedValue({ id: 'participant-123' })
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(mockSaveQuickPollCalendar).toHaveBeenCalledWith(
+        'participant-123',
+        'user@example.com',
+        expect.any(String),
+        expect.any(Object),
+        [
+          {
+            calendarId: 'calendar-1',
+            color: '#0000FF',
+            enabled: true,
+            name: 'Primary Calendar',
+            sync: true,
+          },
+          {
+            calendarId: 'calendar-2',
+            color: '#FF0000',
+            enabled: false,
+            name: 'Secondary Calendar',
+            sync: true,
+          },
+        ]
+      )
+    })
+
+    it('should use guest email from state when userinfo email is not available', async () => {
+      mockUserinfoGet.mockResolvedValue({
+        data: {
+          name: 'Test User',
+        },
+      })
+      mockGetQuickPollParticipantByIdentifier.mockRejectedValue(
+        new Error('not found')
+      )
+      mockAddQuickPollParticipant.mockResolvedValue({ id: 'participant-123' })
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(mockAddQuickPollParticipant).toHaveBeenCalledWith(
+        'poll-123',
+        expect.objectContaining({
+          guest_email: 'test@example.com',
+        })
+      )
+    })
+  })
+
+  describe('Non-GET methods', () => {
+    it('should return 405 for POST method', async () => {
+      req = {
+        headers: { cookie: '' },
+        method: 'POST',
+        query: {},
+      }
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(statusMock).toHaveBeenCalledWith(405)
+      expect(jsonMock).toHaveBeenCalledWith({ error: 'Method not allowed' })
+    })
+
+    it('should return 405 for PUT method', async () => {
+      req = {
+        headers: { cookie: '' },
+        method: 'PUT',
+        query: {},
+      }
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(statusMock).toHaveBeenCalledWith(405)
+    })
+
+    it('should return 405 for DELETE method', async () => {
+      req = {
+        headers: { cookie: '' },
+        method: 'DELETE',
+        query: {},
+      }
+
+      await handler(req as NextApiRequest, res as NextApiResponse)
+
+      expect(statusMock).toHaveBeenCalledWith(405)
+    })
+  })
+})

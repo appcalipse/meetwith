@@ -15,6 +15,7 @@ export interface IMobileQuickPollParticipantModal {
   onClose: () => void
   isOpen: boolean
   pollData?: QuickPollBySlugResponse
+  isScheduled?: boolean
 }
 
 const MobileQuickPollParticipantModal: React.FC<
@@ -43,6 +44,7 @@ const MobileQuickPollParticipantModal: React.FC<
           isMobile
           pollData={props.pollData}
           onClose={props.onClose}
+          isScheduled={props.isScheduled}
         />
       </ModalContent>
     </Modal>

@@ -14,11 +14,14 @@ import { logEvent } from '@utils/analytics'
 import {
   createTelegramHash,
   deleteDiscordIntegration,
+  deleteMeetingProvider,
   disconnectStripeAccount,
   generateDashboardLink,
+  getGoogleMeetAuthUrl,
   getNotificationSubscriptions,
   getPendingTgConnection,
   getStripeOnboardingLink,
+  getZoomAuthUrl,
   setNotificationSubscriptions,
 } from '@utils/api_helper'
 import { discordRedirectUrl, OnboardingSubject } from '@utils/constants'
@@ -57,6 +60,10 @@ const getContent = (connect_account: ConnectedAccount) => {
       return 'Connect your Discord to enable notifications and Discord bot commands'
     case ConnectedAccount.TELEGRAM:
       return 'Connect to receive notifications for your meetings.'
+    case ConnectedAccount.GOOGLE_MEET:
+      return 'Connect your Google Meet account to enable gated meeting entry.'
+    case ConnectedAccount.ZOOM:
+      return 'Connect your Zoom account to enable gated meeting entry and waiting rooms natively.'
     default:
       return null
   }
@@ -109,6 +116,20 @@ const AccountCard: FC<IProps> = props => {
         await disconnectStripeAccount()
       },
       errorMessage: 'Failed to disconnect Stripe account',
+      logEvent: true,
+    },
+    [ConnectedAccount.GOOGLE_MEET]: {
+      handler: async () => {
+        await deleteMeetingProvider(ConnectedAccount.GOOGLE_MEET)
+      },
+      errorMessage: 'Failed to disconnect Google Meet account',
+      logEvent: true,
+    },
+    [ConnectedAccount.ZOOM]: {
+      handler: async () => {
+        await deleteMeetingProvider(ConnectedAccount.ZOOM)
+      },
+      errorMessage: 'Failed to disconnect Zoom account',
       logEvent: true,
     },
   }
@@ -184,10 +205,29 @@ const AccountCard: FC<IProps> = props => {
       },
       errorMessage: 'Discord Connection error, Please retry',
       logEvent: true,
+      disableSuccessAction: true,
     },
     [ConnectedAccount.STRIPE]: {
       handler: async () => props.openSelectCountry(),
       errorMessage: 'Stripe Connection error, Please retry',
+      logEvent: true,
+      disableSuccessAction: true,
+    },
+    [ConnectedAccount.GOOGLE_MEET]: {
+      handler: async () => {
+        const { url } = await getGoogleMeetAuthUrl()
+        window.open(url, '_self')
+      },
+      errorMessage: 'Google Meet Connection error, Please retry',
+      logEvent: true,
+      disableSuccessAction: true,
+    },
+    [ConnectedAccount.ZOOM]: {
+      handler: async () => {
+        const { url } = await getZoomAuthUrl()
+        window.open(url, '_self')
+      },
+      errorMessage: 'Zoom Connection error, Please retry',
       logEvent: true,
       disableSuccessAction: true,
     },
@@ -245,17 +285,14 @@ const AccountCard: FC<IProps> = props => {
         showErrorToast('Connection Failed', msg)
       )
 
+      await queryClient.invalidateQueries(
+        QueryKeys.connectedAccounts(currentAccount?.address)
+      )
       if (isSuccessful) {
-        await queryClient.invalidateQueries(
-          QueryKeys.connectedAccounts(currentAccount?.address)
+        showSuccessToast(
+          `${props.account} Connected`,
+          `Your ${props.account} account has been connected`
         )
-
-        if (props.account !== ConnectedAccount.DISCORD) {
-          showSuccessToast(
-            `${props.account} Connected`,
-            `Your ${props.account} account has been connected`
-          )
-        }
       }
     } finally {
       setIsConnecting(false)
@@ -268,7 +305,11 @@ const AccountCard: FC<IProps> = props => {
     account: ConnectedAccount.STRIPE
     info: ActivePaymentAccount
   } => {
-    if (account.info && 'provider' in account.info) {
+    if (
+      account.account === ConnectedAccount.STRIPE &&
+      account.info &&
+      'provider' in account.info
+    ) {
       return true
     }
     return false
@@ -330,27 +371,29 @@ const AccountCard: FC<IProps> = props => {
                 {isPaymentAccount(props) ? props.info.status : 'Connected'}
               </TagLabel>
             </Tag>
-            <Tag
-              variant="subtle"
-              bg="text-highlight-primary"
-              fontSize={{
-                lg: '16px',
-                md: '14px',
-                base: '12px',
-              }}
-            >
-              <TagLeftIcon
-                boxSize="12px"
-                w={5}
-                h={5}
-                as={GoDotFill}
-                m={0}
-                color="green.500"
-              />
-              <TagLabel px="2px" color={'bg-surface'}>
-                {props.info?.username}
-              </TagLabel>
-            </Tag>
+            {props.info?.username && (
+              <Tag
+                variant="subtle"
+                bg="text-highlight-primary"
+                fontSize={{
+                  lg: '16px',
+                  md: '14px',
+                  base: '12px',
+                }}
+              >
+                <TagLeftIcon
+                  boxSize="12px"
+                  w={5}
+                  h={5}
+                  as={GoDotFill}
+                  m={0}
+                  color="green.500"
+                />
+                <TagLabel px="2px" color={'bg-surface'}>
+                  {props.info?.username}
+                </TagLabel>
+              </Tag>
+            )}
           </HStack>
         )}
       </HStack>
@@ -369,7 +412,7 @@ const AccountCard: FC<IProps> = props => {
             fontWeight={700}
             textTransform="capitalize"
           >
-            {`Disconnect ${props.account}`}
+            {`Disconnect ${props.account.replaceAll('-', ' ')}`}
           </Button>
         ) : (
           <Button
@@ -381,7 +424,7 @@ const AccountCard: FC<IProps> = props => {
             fontWeight={700}
             textTransform="capitalize"
           >
-            {`Connect ${props.account}`}
+            {`Connect ${props.account.replaceAll('-', ' ')}`}
           </Button>
         )}
         {isPaymentAccount(props) &&

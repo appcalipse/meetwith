@@ -310,7 +310,7 @@ const syncUpdatedEventWithCalendar = async (
             participantPromises.push(
               new Promise<void>(async resolve => {
                 try {
-                  integration.updateEvent(
+                  await integration.updateEvent(
                     targetAccount,
                     meetingDetails,
                     innerCalendar.calendarId
@@ -539,7 +539,8 @@ export const ExternalCalendarSync = {
                 )
               } catch (error) {
                 console.error(
-                  `Failed to update instance in ${calendar.provider}:`,
+                  'Failed to update instance in %s:',
+                  calendar.provider,
                   error
                 )
                 Sentry.captureException(error)
@@ -580,7 +581,8 @@ export const ExternalCalendarSync = {
                     )
                   } catch (error) {
                     console.error(
-                      `Failed to update instance for participant ${participant.account_address}:`,
+                      'Failed to update instance for participant %s:',
+                      participant.account_address,
                       error
                     )
                     Sentry.captureException(error)

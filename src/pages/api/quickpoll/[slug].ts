@@ -2,7 +2,6 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { PollStatus } from '@/types/QuickPoll'
-import { getQuickPollBySlug } from '@/utils/database'
 import {
   QuickPollAlreadyClosedError,
   QuickPollAlreadyCompletedError,
@@ -31,13 +30,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const now = new Date()
       const expiresAt = new Date(result.poll.expires_at)
 
-      if (now > expiresAt) {
+      if (now >= expiresAt) {
         throw new QuickPollExpiredError()
       }
     }
 
-    if (result.poll.status === PollStatus.COMPLETED) {
-      throw new QuickPollAlreadyCompletedError()
+    if (result.poll.status === PollStatus.CLOSED) {
+      throw new QuickPollAlreadyClosedError()
     }
 
     if (result.poll.status === PollStatus.CLOSED) {

@@ -1,8 +1,9 @@
-import { DateTime } from 'luxon'
+import { DateTime, Interval as LuxonInterval } from 'luxon'
 
 import { Account, TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import { AvailabilitySlot, PollCustomAvailability } from '@/types/QuickPoll'
+import { mergeTimeRanges } from '@/utils/quickpoll_helper'
 
 export const getHoursPerWeek = (
   availabilities: Array<{ weekday: number; ranges: TimeRange[] }>

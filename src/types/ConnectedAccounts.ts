@@ -7,11 +7,18 @@ export enum ConnectedAccount {
   DISCORD = 'discord',
   TELEGRAM = 'telegram',
   STRIPE = 'stripe',
+  GOOGLE_MEET = 'google-meet',
+  ZOOM = 'zoom',
 }
 
 export interface ConnectedAccountInfo {
   account: ConnectedAccount
-  info: DiscordAccountInfo | TelegramAccountInfo | ActivePaymentAccount | null
+  info:
+    | DiscordAccountInfo
+    | TelegramAccountInfo
+    | ActivePaymentAccount
+    | { username?: string; [key: string]: unknown }
+    | null
 }
 export interface StripeCountry {
   id: string

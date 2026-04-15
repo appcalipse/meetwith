@@ -51,7 +51,7 @@ export const getTimezones = () =>
           const number = gmtOffset.replace(/^[+-]/, '')
           return `GMT${sign}${number}`
         })} (UTC${offsetStr})`,
-        offset,
+        offset: Number.isNaN(offset) ? 0 : offset,
         tzCode: key,
       }
     })

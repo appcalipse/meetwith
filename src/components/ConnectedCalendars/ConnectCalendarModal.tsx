@@ -14,6 +14,7 @@ import React, { useState } from 'react'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 import { LuCalendarSearch } from 'react-icons/lu'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { TimeSlotSource } from '@/types/Meeting'
 import { QuickPollBySlugResponse } from '@/types/QuickPoll'
 import {
@@ -34,6 +35,7 @@ interface ConnectCalendarProps {
   state?: string | null
   refetch?: () => Promise<void>
   isQuickPoll?: boolean
+  onBeforeOAuthRedirect?: () => void
   participantId?: string
   pollData?: QuickPollBySlugResponse
   pollSlug?: string
@@ -45,59 +47,86 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   state,
   refetch,
   isQuickPoll = false,
+  onBeforeOAuthRedirect,
   participantId,
   pollData,
   pollSlug,
 }) => {
+  const currentAccount = useAccountContext()
+  const isLoggedIn = Boolean(currentAccount?.address)
   const [loading, setLoading] = useState<TimeSlotSource | undefined>()
   const [selectedProvider, setSelectedProvider] = useState<
     TimeSlotSource | undefined
   >()
 
+  /**
+   * During public poll creation there is no poll slug yet — unauthenticated users
+   */
+  const slug = pollSlug || pollData?.poll?.slug
+  const useQuickPollOAuth =
+    isQuickPoll && (!isLoggedIn || Boolean(participantId || slug))
+
   const selectOption = (provider: TimeSlotSource) => async () => {
     setLoading(provider)
-    await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
+    try {
+      await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
 
-    const isGuestFlow = isQuickPoll && (participantId || pollSlug)
+      const getGoogleUrl = useQuickPollOAuth
+        ? getQuickPollGoogleAuthConnectUrl
+        : getGoogleAuthConnectUrl
+      const getOfficeUrl = useQuickPollOAuth
+        ? getQuickPollOffice365ConnectUrl
+        : getOffice365ConnectUrl
 
-    const getGoogleUrl = isGuestFlow
-      ? getQuickPollGoogleAuthConnectUrl
-      : getGoogleAuthConnectUrl
-    const getOfficeUrl = isGuestFlow
-      ? getQuickPollOffice365ConnectUrl
-      : getOffice365ConnectUrl
-
-    let oauthState = state
-    if (isGuestFlow) {
-      const slug = pollSlug || pollData?.poll?.slug
-      const stateObject = {
-        participantId,
-        pollSlug: slug,
-        redirectTo: `/poll/${slug}`,
+      let oauthState = state
+      if (useQuickPollOAuth) {
+        const stateObject: {
+          participantId?: string
+          pollSlug?: string
+          redirectTo?: string
+        } = {
+          participantId,
+          ...(slug ? { pollSlug: slug } : {}),
+          redirectTo:
+            typeof window !== 'undefined' ? window.location.href : undefined,
+        }
+        oauthState = Buffer.from(JSON.stringify(stateObject)).toString('base64')
       }
-      oauthState = Buffer.from(JSON.stringify(stateObject)).toString('base64')
-    }
 
-    switch (provider) {
-      case TimeSlotSource.GOOGLE:
-        const googleResponse = await getGoogleUrl(oauthState)
-        !!googleResponse && window.location.assign(googleResponse.url)
-        return
-      case TimeSlotSource.OFFICE:
-        const officeResponse = await getOfficeUrl(oauthState)
-        !!officeResponse && window.location.assign(officeResponse.url)
-        return
-      case TimeSlotSource.ICLOUD:
-      case TimeSlotSource.WEBDAV:
-      case TimeSlotSource.WEBCAL:
-        // no redirect, these providers will handle the logic
-        break
-      default:
-        throw new Error(`Invalid provider selected: ${provider}`)
-    }
+      switch (provider) {
+        case TimeSlotSource.GOOGLE: {
+          const googleResponse = await getGoogleUrl(oauthState)
+          if (googleResponse?.url) {
+            onBeforeOAuthRedirect?.()
+            window.location.assign(googleResponse.url)
+            return
+          }
+          break
+        }
+        case TimeSlotSource.OFFICE: {
+          const officeResponse = await getOfficeUrl(oauthState)
+          if (officeResponse?.url) {
+            onBeforeOAuthRedirect?.()
+            window.location.assign(officeResponse.url)
+            return
+          }
+          break
+        }
+        case TimeSlotSource.ICLOUD:
+        case TimeSlotSource.WEBDAV:
+        case TimeSlotSource.WEBCAL:
+          // no redirect, these providers will handle the logic
+          break
+        default:
+          throw new Error(`Invalid provider selected: ${provider}`)
+      }
 
-    setSelectedProvider(provider)
-    setLoading(undefined)
+      setSelectedProvider(provider)
+    } catch (e) {
+      console.error('Calendar connect failed:', e)
+    } finally {
+      setLoading(undefined)
+    }
   }
   const handleWebDavSuccess = async () => {
     if (refetch) {

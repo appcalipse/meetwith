@@ -71,6 +71,7 @@ export interface MeetingCreationRequest {
   encrypted_metadata?: Encrypted
   rrule: Array<string>
   version: number
+  pollId?: string
 }
 
 export interface UrlCreationRequest {
@@ -84,6 +85,7 @@ export interface UrlCreationRequest {
   meeting_id: ConferenceMeeting['id']
   meetingReminders?: Array<MeetingReminders>
   meetingRepeat?: MeetingRepeat
+  meeting_type_id?: string
 }
 export interface RequestParticipantMapping {
   account_address?: string

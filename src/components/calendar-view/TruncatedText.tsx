@@ -35,7 +35,7 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
       const mid = Math.floor((start + end) / 2)
       const testContent = content.substring(0, mid) + '...'
 
-      element.innerHTML = testContent
+      element.innerHTML = sanitizeHtml(testContent)
 
       if (element.scrollHeight <= maxHeightPx) {
         bestFit = testContent

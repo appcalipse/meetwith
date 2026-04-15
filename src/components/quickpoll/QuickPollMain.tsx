@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 
 import { useQuickPollAvailability } from '@/providers/quickpoll/QuickPollAvailabilityContext'
-import { QuickPollBySlugResponse } from '@/types/QuickPoll'
+import { PollStatus, QuickPollBySlugResponse } from '@/types/QuickPoll'
 import { queryClient } from '@/utils/react_query'
 
 import GuestDetailsForm from './GuestDetailsForm'
@@ -53,10 +53,11 @@ const QuickPollMain: React.FC<QuickPollMainProps> = ({
     <Tabs index={currentPage} isLazy>
       <TabPanels>
         <TabPanel p={0}>
-          <Box px={{ base: 0, md: 8 }} py={12}>
+          <Box px={{ base: 0, md: 8 }} py={{ base: 10, md: 12 }}>
             <QuickPollAvailabilityDiscover
               pollId={pollId}
               pollData={pollData}
+              isScheduled={pollData?.poll.status === PollStatus.COMPLETED}
               onNavigateToGuestDetails={() =>
                 handlePageSwitch(QuickPollPage.GUEST_DETAILS)
               }
@@ -106,7 +107,13 @@ const QuickPollGuestDetailsTab: React.FC<QuickPollGuestDetailsTabProps> = ({
   }
 
   return (
-    <Box width="100%" minHeight="100vh" bg="bg-canvas-dark">
+    <Box
+      width="100%"
+      minHeight="100vh"
+      bg="bg-canvas-dark"
+      px={{ base: 4, md: 8 }}
+      py={{ base: 10, md: 12 }}
+    >
       <GuestDetailsForm
         pollData={pollData}
         onSuccess={handleSuccess}

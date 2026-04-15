@@ -95,6 +95,8 @@ import {
   QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
+  QuickPollPendingCalendarPreviewResponse,
+  UpdateGuestQuickPollRequest,
   UpdateParticipantAvailabilityRequest,
   UpdateQuickPollParticipantAvailabilityOptions,
   UpdateQuickPollRequest,
@@ -924,6 +926,24 @@ export const fetchBusySlotsRawForQuickPollParticipants = async (
   }))
 }
 
+export const fetchQuickPollPendingCalendarPreview = async (
+  startDate: Date,
+  endDate: Date
+): Promise<QuickPollPendingCalendarPreviewResponse> => {
+  return await internalFetch<
+    QuickPollPendingCalendarPreviewResponse,
+    { endDate: string; startDate: string }
+  >(
+    `/quickpoll/calendar/pending-preview`,
+    'POST',
+    {
+      endDate: endDate.toISOString(),
+      startDate: startDate.toISOString(),
+    },
+    { credentials: 'include' }
+  )
+}
+
 export const getMeetingsForDashboard = async (
   accountIdentifier: string,
   end: Date,
@@ -1603,6 +1623,25 @@ export const deleteDiscordIntegration = async (): Promise<void> => {
   return await internalFetch(`/secure/discord`, 'DELETE')
 }
 
+export const deleteMeetingProvider = async (
+  provider: string
+): Promise<void> => {
+  return await internalFetch(
+    `/secure/accounts/meeting-provider?provider=${provider}`,
+    'DELETE'
+  )
+}
+
+export const getGoogleMeetAuthUrl = async (
+  state?: string
+): Promise<{ url: string }> => {
+  return await internalFetch(
+    `/secure/calendar_integrations/google/meet/connect${
+      state ? `?state=${state}` : ''
+    }`
+  )
+}
+
 export const getGateCondition = async (
   id: string
 ): Promise<GateConditionObject | null> => {
@@ -1771,9 +1810,18 @@ export const createHuddleRoom = async (
     throw e
   }
 }
-export const createGoogleRoom = async (): Promise<{ url: string }> => {
+export const createGoogleRoom = async (
+  meeting: UrlCreationRequest,
+  headers: HeadersInit = {}
+): Promise<{ url: string }> => {
   try {
-    return (await internalFetch('/integrations/google/create', 'POST', {})) as {
+    return (await internalFetch(
+      '/integrations/google/create',
+      'POST',
+      meeting,
+      {},
+      headers
+    )) as {
       url: string
     }
   } catch (e) {
@@ -1786,13 +1834,16 @@ export const createGoogleRoom = async (): Promise<{ url: string }> => {
   }
 }
 export const createZoomMeeting = async (
-  payload: UrlCreationRequest
+  payload: UrlCreationRequest,
+  headers: HeadersInit = {}
 ): Promise<{ url: string }> => {
   try {
     return (await internalFetch(
       '/integrations/zoom/create',
       'POST',
-      payload
+      payload,
+      {},
+      headers
     )) as { url: string }
   } catch (e) {
     if (e instanceof ApiFetchError) {
@@ -2484,6 +2535,27 @@ export const createQuickPoll = async (pollData: CreateQuickPollRequest) => {
   return await internalFetch('/secure/quickpoll', 'POST', pollData)
 }
 
+export const createGuestQuickPoll = async (
+  pollData: CreateGuestQuickPollRequest
+) => {
+  return await internalFetch('/quickpoll/create', 'POST', pollData, {
+    credentials: 'include',
+  })
+}
+
+export const migrateGuestPolls = async (guestIdentifier: string) => {
+  return await internalFetch('/secure/quickpoll/migrate', 'POST', {
+    guest_identifier: guestIdentifier,
+  })
+}
+
+export const updateGuestQuickPoll = async (
+  slug: string,
+  updateData: UpdateGuestQuickPollRequest
+) => {
+  return await internalFetch(`/quickpoll/${slug}/update`, 'PUT', updateData)
+}
+
 export const getQuickPollById = async (pollId: string) => {
   return await internalFetch(`/secure/quickpoll/${pollId}`)
 }
@@ -2986,4 +3058,12 @@ export const joinQuickPollAsParticipant = async (
     participant: data.participant,
     alreadyInPoll: data.already_in_poll,
   }
+}
+
+export const getZoomAuthUrl = async (
+  state?: string
+): Promise<{ url: string }> => {
+  return await internalFetch(
+    `/secure/integrations/zoom/connect${state ? `?state=${state}` : ''}`
+  )
 }

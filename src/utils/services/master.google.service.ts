@@ -45,7 +45,8 @@ async function authorize() {
 async function createSpace(): Promise<string | undefined | null> {
   const authClient = await authorize()
   const meetClient = new SpacesServiceClient({
-    authClient: authClient as JSONClient,
+    // biome-ignore lint/suspicious/noExplicitAny: Suppressed as the type isn't explicitly exposed
+    authClient: authClient as any,
   })
   const request: google.apps.meet.v2.ICreateSpaceRequest = {
     space: {

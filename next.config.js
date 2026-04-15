@@ -41,20 +41,29 @@ const moduleExports = {
   },
 
   async rewrites() {
-    return [
-      {
-        source: '/ingest/static/:path*',
-        destination: 'https://eu-assets.i.posthog.com/static/:path*',
-      },
-      {
-        source: '/ingest/:path*',
-        destination: 'https://eu.i.posthog.com/:path*',
-      },
-      {
-        source: '/ingest/decide',
-        destination: 'https://eu.i.posthog.com/decide',
-      },
-    ]
+    return {
+      beforeFiles: [
+        {
+          source: '/:path*',
+          has: [{ type: 'host', value: 'poll.meetwith.xyz' }],
+          destination: '/quickpoll/:path*',
+        },
+      ],
+      afterFiles: [
+        {
+          source: '/ingest/static/:path*',
+          destination: 'https://eu-assets.i.posthog.com/static/:path*',
+        },
+        {
+          source: '/ingest/:path*',
+          destination: 'https://eu.i.posthog.com/:path*',
+        },
+        {
+          source: '/ingest/decide',
+          destination: 'https://eu.i.posthog.com/decide',
+        },
+      ],
+    }
   },
 
   // This is required to support PostHog trailing slash API requests
@@ -133,7 +142,7 @@ const moduleExports = {
               )
             },
             name(module) {
-              const hash = crypto.createHash('sha1')
+              const hash = crypto.createHash('sha256')
               if (module.identifier) {
                 hash.update(module.identifier())
               }

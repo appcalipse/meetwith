@@ -31,7 +31,10 @@ export const handleMeetingSchedule = async (
       let url = ''
       switch (meeting.meetingProvider) {
         case MeetingProvider.GOOGLE_MEET:
-          const googleResponse = await createGoogleRoom()
+          const googleResponse = await createGoogleRoom(
+            meeting,
+            req.headers.cookie ? { cookie: req.headers.cookie } : {}
+          )
           url = googleResponse?.url
           break
         case MeetingProvider.HUDDLE:
@@ -42,7 +45,10 @@ export const handleMeetingSchedule = async (
           url = `https://meet.jit.si/meetwith/${meeting.meeting_id}`
           break
         case MeetingProvider.ZOOM:
-          const zoomResponse = await createZoomMeeting(meeting)
+          const zoomResponse = await createZoomMeeting(
+            meeting,
+            req.headers.cookie ? { cookie: req.headers.cookie } : {}
+          )
           url = zoomResponse.url
           break
         default:

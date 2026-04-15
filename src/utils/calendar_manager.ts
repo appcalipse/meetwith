@@ -337,7 +337,8 @@ const buildMeetingData = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[],
   txHash?: Address | null,
-  version?: number
+  version?: number,
+  pollId?: string
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -463,6 +464,7 @@ const buildMeetingData = async (
     txHash,
     type: schedulingType,
     version: version || 0,
+    pollId,
   }
 }
 
@@ -2263,7 +2265,8 @@ const scheduleMeeting = async (
     MeetingPermissions.INVITE_GUESTS,
     MeetingPermissions.EDIT_MEETING,
   ],
-  txHash?: Address | null
+  txHash?: Address | null,
+  pollId?: string
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
@@ -2282,6 +2285,7 @@ const scheduleMeeting = async (
         participants_mapping: participantData.sanitizedParticipants,
         start: startTime,
         title: meetingTitle || 'No Title',
+        meeting_type_id: meetingTypeId,
       })
     ).url
 
@@ -2301,7 +2305,9 @@ const scheduleMeeting = async (
     meetingReminders,
     MeetingRepeat.NO_REPEAT,
     selectedPermissions,
-    txHash
+    txHash,
+    undefined,
+    pollId
   )
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = participants
@@ -2380,7 +2386,8 @@ const scheduleRecurringMeeting = async (
     MeetingPermissions.SEE_GUEST_LIST,
     MeetingPermissions.INVITE_GUESTS,
     MeetingPermissions.EDIT_MEETING,
-  ]
+  ],
+  pollId?: string
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
@@ -2402,8 +2409,11 @@ const scheduleRecurringMeeting = async (
       })
     ).url
 
+  const schedulingType = pollId
+    ? SchedulingType.QUICKPOLL
+    : SchedulingType.REGULAR
   const meeting = await buildMeetingData(
-    SchedulingType.REGULAR,
+    schedulingType,
     NO_MEETING_TYPE,
     startTime,
     endTime,
@@ -2417,7 +2427,10 @@ const scheduleRecurringMeeting = async (
     meetingTitle,
     meetingReminders,
     meetingRepeat,
-    selectedPermissions
+    selectedPermissions,
+    undefined,
+    undefined,
+    pollId
   )
 
   try {

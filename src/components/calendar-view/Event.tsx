@@ -52,7 +52,7 @@ interface EventProps {
 
 const Event: React.FC<EventProps> = ({ bg, dayEvents, event, timeSlot }) => {
   const currentAccount = useAccountContext()
-  const { setSelectedSlot, currentDate } = useCalendarContext()
+  const { setSelectedSlot } = useCalendarContext()
   const {
     isOpen: isCancelOpen,
     onOpen: onCancelOpen,

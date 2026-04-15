@@ -2,16 +2,16 @@ import { createContext, useContext } from 'react'
 
 import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { UpdateMode } from '@/utils/constants/meeting'
 
 export interface IActionsContext {
   handleSchedule: () => Promise<void>
   handleCancel: () => void
-  handleDelete:
-    | ((actor?: ParticipantInfo) => Promise<void>)
-    | ((
-        actor?: ParticipantInfo,
-        decryptedMeeting?: MeetingDecrypted
-      ) => Promise<DBSlot | undefined>)
+  handleDelete: (
+    actor?: ParticipantInfo,
+    decryptedMeeting?: MeetingDecrypted,
+    editMode?: UpdateMode
+  ) => Promise<DBSlot | MeetingDecrypted | void | undefined>
 }
 
 export const ActionsContext = createContext<IActionsContext | undefined>(

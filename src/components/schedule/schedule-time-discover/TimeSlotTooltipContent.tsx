@@ -1,8 +1,8 @@
 import { Box, HStack, Link, Text, VStack } from '@chakra-ui/react'
+import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import React from 'react'
 import { FaArrowRight } from 'react-icons/fa6'
-
 import { TimeSlotTooltipContentProps } from '@/types/schedule'
 
 export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
@@ -11,9 +11,10 @@ export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
   eventUrl,
   otherUserStates,
   activeAvailabilityBlocks,
+  slot,
 }) => {
   const router = useRouter()
-
+  const isAfterNow = slot.start >= DateTime.now()
   const handleOpenAvailabilityBlock = () => {
     if (activeAvailabilityBlocks && activeAvailabilityBlocks.length === 1) {
       router.push(
@@ -77,100 +78,121 @@ export const TimeSlotTooltipContent: React.FC<TimeSlotTooltipContentProps> = ({
       )}
 
       {/* Show event details or availability block message if current user is unavailable */}
-      {currentUserState && !currentUserState.state && (
-        <Box
-          mb={3}
-          p={3}
-          bg="neutral.200"
-          borderRadius={10}
-          borderWidth={0}
-          maxW={{ base: '100%', md: '450px' }}
-        >
-          {currentUserEvent ? (
-            <>
-              <Text
-                fontSize="12.8px"
-                fontWeight="500"
-                mb={1.5}
-                color="neutral.900"
-              >
-                YOUR CALENDAR EVENT BLOCKING SLOT
-                {currentUserEvent.eventEmail && (
-                  <span
-                    style={{
-                      fontSize: '12.8px',
-                      fontWeight: '700',
-                      color: 'neutral.900',
-                    }}
+      {isAfterNow ? (
+        currentUserState &&
+        !currentUserState.state && (
+          <Box
+            mb={3}
+            p={3}
+            bg="neutral.200"
+            borderRadius={10}
+            borderWidth={0}
+            maxW={{ base: '100%', md: '450px' }}
+          >
+            {currentUserEvent ? (
+              <>
+                <Text
+                  fontSize="12.8px"
+                  fontWeight="500"
+                  mb={1.5}
+                  color="neutral.900"
+                >
+                  YOUR CALENDAR EVENT BLOCKING SLOT
+                  {currentUserEvent.eventEmail && (
+                    <span
+                      style={{
+                        fontSize: '12.8px',
+                        fontWeight: '700',
+                        color: 'neutral.900',
+                      }}
+                    >
+                      {' '}
+                      - {currentUserEvent.eventEmail}
+                    </span>
+                  )}
+                </Text>
+                {currentUserEvent.eventTitle && (
+                  <Text
+                    fontSize="16px"
+                    fontWeight="500"
+                    color="neutral.900"
+                    mb={2}
+                    noOfLines={1}
+                    overflow="hidden"
+                    textOverflow="ellipsis"
                   >
-                    {' '}
-                    - {currentUserEvent.eventEmail}
-                  </span>
+                    {currentUserEvent.eventTitle}
+                  </Text>
                 )}
-              </Text>
-              {currentUserEvent.eventTitle && (
+                {eventUrl && (
+                  <HStack gap={1}>
+                    <Link
+                      href={eventUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      fontSize="16px"
+                      color="primary.500"
+                      fontWeight="500"
+                      textDecoration="underline"
+                    >
+                      Open this event
+                    </Link>
+                    <FaArrowRight size={12} color="#F35826" />
+                  </HStack>
+                )}
+              </>
+            ) : (
+              <>
                 <Text
                   fontSize="16px"
                   fontWeight="500"
                   color="neutral.900"
                   mb={2}
-                  noOfLines={1}
-                  overflow="hidden"
-                  textOverflow="ellipsis"
                 >
-                  {currentUserEvent.eventTitle}
+                  You&apos;re unavailable because of {getBlockNamesDisplay()}{' '}
+                  availability block settings. You can update{' '}
+                  {isSingleBlock ? 'it' : 'them'} to make this time slot
+                  available.
                 </Text>
-              )}
-              {eventUrl && (
-                <HStack gap={1}>
-                  <Link
-                    href={eventUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    fontSize="16px"
-                    color="primary.500"
-                    fontWeight="500"
-                    textDecoration="underline"
-                  >
-                    Open this event
-                  </Link>
-                  <FaArrowRight size={12} color="#F35826" />
-                </HStack>
-              )}
-            </>
-          ) : (
-            <>
-              <Text fontSize="16px" fontWeight="500" color="neutral.900" mb={2}>
-                You&apos;re unavailable because of {getBlockNamesDisplay()}{' '}
-                availability block settings. You can update{' '}
-                {isSingleBlock ? 'it' : 'them'} to make this time slot
-                available.
-              </Text>
-              {hasBlocks && (
-                <HStack gap={1}>
-                  <Link
-                    as="button"
-                    onClick={handleOpenAvailabilityBlock}
-                    fontSize="16px"
-                    color="primary.500"
-                    fontWeight="500"
-                    textDecoration="underline"
-                    bg="transparent"
-                    border="none"
-                    p={0}
-                    m={0}
-                    cursor="pointer"
-                    _hover={{
-                      color: 'primary.300',
-                    }}
-                  >
-                    Update availability block{isSingleBlock ? '' : 's'}
-                  </Link>
-                  <FaArrowRight size={12} color="#F35826" />
-                </HStack>
-              )}
-            </>
-          )}
+                {hasBlocks && (
+                  <HStack gap={1}>
+                    <Link
+                      as="button"
+                      onClick={handleOpenAvailabilityBlock}
+                      fontSize="16px"
+                      color="primary.500"
+                      fontWeight="500"
+                      textDecoration="underline"
+                      bg="transparent"
+                      border="none"
+                      p={0}
+                      m={0}
+                      cursor="pointer"
+                      _hover={{
+                        color: 'primary.300',
+                      }}
+                    >
+                      Update availability block{isSingleBlock ? '' : 's'}
+                    </Link>
+                    <FaArrowRight size={12} color="#F35826" />
+                  </HStack>
+                )}
+              </>
+            )}
+          </Box>
+        )
+      ) : (
+        <Box
+          p={3}
+          mb={3}
+          bg="neutral.200"
+          borderRadius={10}
+          borderWidth={0}
+          maxW={{ base: '100%', md: '450px' }}
+        >
+          <Text fontSize="16px" fontWeight="500" color="neutral.900">
+            You are unavailable because this slot is in the past.
+          </Text>
         </Box>
       )}
 
