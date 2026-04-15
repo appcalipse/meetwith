@@ -151,7 +151,7 @@ function Testimonials() {
                     color="primary.400"
                     lineHeight={1.4}
                   >
-                    Meetwith customer
+                    Meetwith user
                   </Text>
                 </VStack>
 
