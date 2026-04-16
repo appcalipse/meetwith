@@ -131,6 +131,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         req.session.quickPollPendingCalendar = {
           provider: TimeSlotSource.GOOGLE,
           email: userInfoRes.data.email!,
+          name:
+            typeof userInfoRes.data.name === 'string'
+              ? userInfoRes.data.name
+              : undefined,
           payload: key as Record<string, unknown>,
         }
         await req.session.save()
