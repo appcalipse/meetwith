@@ -15,6 +15,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(200).json({
       busy: [] as Array<{ start: string; end: string }>,
       hasPendingCalendar: false,
+      pendingEmail: undefined,
+      pendingName: undefined,
     })
   }
 
@@ -49,6 +51,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(200).json({
       busy,
       hasPendingCalendar: true,
+      pendingEmail: pending.email,
+      pendingName: pending.name,
     })
   } catch (error) {
     Sentry.captureException(error)

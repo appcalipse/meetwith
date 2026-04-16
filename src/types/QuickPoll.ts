@@ -102,12 +102,15 @@ export interface QuickPollCalendar {
 export interface QuickPollPendingCalendar {
   provider: string
   email: string
+  name?: string
   payload: Record<string, unknown>
 }
 
 export interface QuickPollPendingCalendarPreviewResponse {
   busy: Array<{ start: string; end: string }>
   hasPendingCalendar: boolean
+  pendingEmail?: string
+  pendingName?: string
 }
 
 export type QuickPollPublicCreateDraftPayload = {
