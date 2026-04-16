@@ -75,6 +75,7 @@ import {
   closeQuickPoll,
   createGuestQuickPoll as createGuestQuickPollApi,
   createQuickPoll,
+  fetchQuickPollPendingCalendarPreview,
   getQuickPollBySlug,
   updateQuickPoll,
 } from '@/utils/api_helper'
@@ -366,16 +367,20 @@ const CreatePoll = ({
     handledCalendarPendingRef.current = true
 
     const draft = loadQuickPollPublicCreateDraft()
+    const nextFormData = draft
+      ? {
+          description: draft.formData.description,
+          duration: draft.formData.duration,
+          endDate: new Date(draft.formData.endDate),
+          expiryDate: new Date(draft.formData.expiryDate),
+          expiryTime: new Date(draft.formData.expiryTime),
+          startDate: new Date(draft.formData.startDate),
+          title: draft.formData.title,
+        }
+      : formData
+
     if (draft) {
-      setFormData({
-        description: draft.formData.description,
-        duration: draft.formData.duration,
-        endDate: new Date(draft.formData.endDate),
-        expiryDate: new Date(draft.formData.expiryDate),
-        expiryTime: new Date(draft.formData.expiryTime),
-        startDate: new Date(draft.formData.startDate),
-        title: draft.formData.title,
-      })
+      setFormData(nextFormData)
       setGuestEmail(draft.guestEmail)
       setGuestName(draft.guestName)
       setPollAvailabilityBlockIds(draft.pollAvailabilityBlockIds)
@@ -383,6 +388,22 @@ const CreatePoll = ({
       setSelectedPermissions(draft.selectedPermissions)
       setShowExpiryDate(draft.showExpiryDate)
     }
+
+    void (async () => {
+      try {
+        const pendingPreview = await fetchQuickPollPendingCalendarPreview(
+          nextFormData.startDate,
+          nextFormData.endDate
+        )
+        if (!draft?.guestEmail?.trim() && pendingPreview.pendingEmail) {
+          setGuestEmail(pendingPreview.pendingEmail)
+        }
+        if (!draft?.guestName?.trim() && pendingPreview.pendingName) {
+          setGuestName(pendingPreview.pendingName)
+        }
+      } catch {}
+    })()
+
     setCurrentView('schedule-edit')
   }, [isPublicMode, router.isReady, router.query])
 
