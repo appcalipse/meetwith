@@ -91,7 +91,7 @@ function Testimonials() {
             lineHeight={1.2}
             mb={4}
           >
-            What customers say about{' '}
+            What users say about{' '}
             <Box as="span" color="primary.400">
               Meetwith
             </Box>
@@ -151,7 +151,7 @@ function Testimonials() {
                     color="primary.400"
                     lineHeight={1.4}
                   >
-                    Meetwith customer
+                    Meetwith user
                   </Text>
                 </VStack>
 
