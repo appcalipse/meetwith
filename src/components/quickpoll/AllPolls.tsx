@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Center,
   Flex,
   Heading,
   Icon,
@@ -17,34 +18,52 @@ import {
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { FiSearch } from 'react-icons/fi'
 import { HiMiniPlusCircle } from 'react-icons/hi2'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { MetricStateContext } from '@/providers/MetricStateProvider'
-import { PollStatus } from '@/types/QuickPoll'
-import { getQuickPolls } from '@/utils/api_helper'
+import {
+  PollStatus,
+  QuickPollBySlugResponse,
+  QuickPollListItem,
+  QuickPollParticipantType,
+} from '@/types/QuickPoll'
+import { getQuickPollBySlug, getQuickPolls } from '@/utils/api_helper'
 import { QUICKPOLL_MIN_LIMIT } from '@/utils/constants'
-
+import { getLocalPolls } from '@/utils/storage'
+import CustomLoading from '../CustomLoading'
 import CountSkeleton from './CountSkeleton'
 import OngoingPolls from './OngoingPolls'
 import PastPolls from './PastPolls'
+import PollCard from './PollCard'
 
-const AllPolls = () => {
+type AllPollsProps = {
+  isPublicMode?: boolean
+}
+
+const AllPolls = ({ isPublicMode = false }: AllPollsProps) => {
   const { push } = useRouter()
   const [activeTab, setActiveTab] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 500)
+  const [hasLocalPollsLoaded, setHasLocalPollsLoaded] = useState(false)
+  const [localPollSlugs, setLocalPollSlugs] = useState<string[]>([])
 
   const { data: pollsMetadata } = useQuery({
     queryKey: ['quickpolls-metadata'],
     queryFn: () =>
       getQuickPolls(QUICKPOLL_MIN_LIMIT, 0, undefined, PollStatus.ONGOING),
     staleTime: 30000,
+    enabled: !isPublicMode,
   })
-  const canCreateQuickPoll = !pollsMetadata?.upgradeRequired
-  const canSchedulePolls = pollsMetadata?.canSchedule ?? true
+  const canCreateQuickPoll = isPublicMode
+    ? true
+    : !pollsMetadata?.upgradeRequired
+  const canSchedulePolls = isPublicMode
+    ? true
+    : pollsMetadata?.canSchedule ?? true
 
   const {
     ongoingPollsCount,
@@ -54,8 +73,97 @@ const AllPolls = () => {
   } = useContext(MetricStateContext)
 
   useEffect(() => {
+    if (isPublicMode) return
     void fetchPollCounts(debouncedSearchQuery)
-  }, [debouncedSearchQuery])
+  }, [debouncedSearchQuery, fetchPollCounts, isPublicMode])
+
+  useEffect(() => {
+    if (!isPublicMode) return
+    const slugs = getLocalPolls()
+      .map(p => p.slug)
+      .filter(Boolean)
+    setLocalPollSlugs(slugs)
+    setHasLocalPollsLoaded(true)
+  }, [isPublicMode])
+
+  const handlePublicPollRemoved = (pollId: string) => {
+    setLocalPollSlugs(prev =>
+      prev.filter(slug => {
+        const poll = publicPollItems.find(p => p.slug === slug)
+        return poll?.id !== pollId
+      })
+    )
+  }
+
+  const {
+    data: publicPollItems = [],
+    isLoading: isLoadingPublicPolls,
+    isFetching: isFetchingPublicPolls,
+  } = useQuery({
+    queryKey: ['public-quickpolls-by-local-slug', localPollSlugs],
+    queryFn: async () => {
+      const settled = await Promise.allSettled(
+        localPollSlugs.map(async slug => getQuickPollBySlug(slug))
+      )
+
+      const polls: QuickPollListItem[] = settled
+        .filter(
+          (result): result is PromiseFulfilledResult<QuickPollBySlugResponse> =>
+            result.status === 'fulfilled'
+        )
+        .map(result => {
+          const pollResponse = result.value
+          const scheduler = pollResponse.poll.participants.find(
+            p => p.participant_type === QuickPollParticipantType.SCHEDULER
+          )
+          return {
+            ...pollResponse.poll,
+            host_address: scheduler?.account_address,
+            host_name: scheduler?.account_name || scheduler?.guest_name,
+            participant_count: pollResponse.poll.participants.length,
+            quick_poll_participants: pollResponse.poll.participants,
+            scheduled_meeting: pollResponse.scheduled_meeting,
+            user_participant_type: QuickPollParticipantType.SCHEDULER,
+          } as QuickPollListItem
+        })
+
+      return polls
+    },
+    enabled: isPublicMode && hasLocalPollsLoaded && localPollSlugs.length > 0,
+    staleTime: 30000,
+  })
+
+  const filteredPublicPollItems = useMemo(() => {
+    if (!debouncedSearchQuery.trim()) return publicPollItems
+    const query = debouncedSearchQuery.toLowerCase()
+    return publicPollItems.filter(
+      p =>
+        p.title?.toLowerCase().includes(query) ||
+        p.host_name?.toLowerCase().includes(query) ||
+        p.slug?.toLowerCase().includes(query)
+    )
+  }, [debouncedSearchQuery, publicPollItems])
+
+  const ongoingPublicPolls = useMemo(() => {
+    const now = new Date()
+    return filteredPublicPollItems.filter(p => {
+      const isExpired = p.expires_at !== null && new Date(p.expires_at) < now
+      return p.status === PollStatus.ONGOING && !isExpired
+    })
+  }, [filteredPublicPollItems])
+
+  const pastPublicPolls = useMemo(() => {
+    const now = new Date()
+    return filteredPublicPollItems.filter(p => {
+      const isExpired = p.expires_at !== null && new Date(p.expires_at) < now
+      return (
+        p.status === PollStatus.COMPLETED ||
+        p.status === PollStatus.CLOSED ||
+        p.status === PollStatus.EXPIRED ||
+        isExpired
+      )
+    })
+  }, [filteredPublicPollItems])
 
   const handleTabChange = (index: number) => {
     setActiveTab(index)
@@ -115,7 +223,11 @@ const AllPolls = () => {
               _active={{
                 bg: 'primary.400',
               }}
-              onClick={() => push('/dashboard/create-poll')}
+              onClick={() =>
+                push(
+                  isPublicMode ? '/quickpoll/create' : '/dashboard/create-poll'
+                )
+              }
               isDisabled={!canCreateQuickPoll}
               title={
                 !canCreateQuickPoll
@@ -159,7 +271,18 @@ const AllPolls = () => {
                 }}
               >
                 Ongoing Polls (
-                {isLoadingPollCounts ? <CountSkeleton /> : ongoingPollsCount})
+                {isPublicMode ? (
+                  isLoadingPublicPolls || isFetchingPublicPolls ? (
+                    <CountSkeleton />
+                  ) : (
+                    ongoingPublicPolls.length
+                  )
+                ) : isLoadingPollCounts ? (
+                  <CountSkeleton />
+                ) : (
+                  ongoingPollsCount
+                )}
+                )
               </Tab>
               <Tab
                 rounded={4}
@@ -175,7 +298,18 @@ const AllPolls = () => {
                 }}
               >
                 Past Polls (
-                {isLoadingPollCounts ? <CountSkeleton /> : pastPollsCount})
+                {isPublicMode ? (
+                  isLoadingPublicPolls || isFetchingPublicPolls ? (
+                    <CountSkeleton />
+                  ) : (
+                    pastPublicPolls.length
+                  )
+                ) : isLoadingPollCounts ? (
+                  <CountSkeleton />
+                ) : (
+                  pastPollsCount
+                )}
+                )
               </Tab>
             </TabList>
 
@@ -210,14 +344,57 @@ const AllPolls = () => {
           {/* Poll Cards */}
           <TabPanels mt={6}>
             <TabPanel p={0}>
-              <OngoingPolls
-                searchQuery={debouncedSearchQuery}
-                upgradeRequired={pollsMetadata?.upgradeRequired}
-                canSchedule={canSchedulePolls}
-              />
+              {isPublicMode ? (
+                isLoadingPublicPolls || isFetchingPublicPolls ? (
+                  <CustomLoading text="Loading ongoing polls..." />
+                ) : ongoingPublicPolls.length > 0 ? (
+                  <VStack spacing={4} align="stretch">
+                    {ongoingPublicPolls.map(poll => (
+                      <PollCard
+                        key={poll.id}
+                        poll={poll}
+                        canSchedule={canSchedulePolls}
+                        hideAvailabilitySection
+                        hideEditPollMenuItem
+                        isPublicMode
+                        onPublicPollRemoved={handlePublicPollRemoved}
+                      />
+                    ))}
+                  </VStack>
+                ) : (
+                  <Text color="neutral.400">No ongoing polls</Text>
+                )
+              ) : (
+                <OngoingPolls
+                  searchQuery={debouncedSearchQuery}
+                  upgradeRequired={pollsMetadata?.upgradeRequired}
+                  canSchedule={canSchedulePolls}
+                />
+              )}
             </TabPanel>
             <TabPanel p={0}>
-              <PastPolls searchQuery={debouncedSearchQuery} />
+              {isPublicMode ? (
+                isLoadingPublicPolls || isFetchingPublicPolls ? (
+                  <CustomLoading text="Loading past polls..." />
+                ) : pastPublicPolls.length > 0 ? (
+                  <VStack spacing={4} align="stretch">
+                    {pastPublicPolls.map(poll => (
+                      <PollCard
+                        key={poll.id}
+                        poll={poll}
+                        hideAvailabilitySection
+                        hideEditPollMenuItem
+                        isPublicMode
+                        onPublicPollRemoved={handlePublicPollRemoved}
+                      />
+                    ))}
+                  </VStack>
+                ) : (
+                  <Text color="neutral.400">No past polls</Text>
+                )
+              ) : (
+                <PastPolls searchQuery={debouncedSearchQuery} />
+              )}
             </TabPanel>
           </TabPanels>
         </Tabs>
