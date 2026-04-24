@@ -46,18 +46,27 @@ import { MeetingPermissions } from '@/utils/constants/schedule'
 import { formatPollDateRange, formatPollSingleDate } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 import { queryClient } from '@/utils/react_query'
+import { removeLocalPoll } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
 
 interface PollCardProps {
   poll: QuickPollListItem
   showActions?: boolean
   canSchedule?: boolean
+  hideAvailabilitySection?: boolean
+  hideEditPollMenuItem?: boolean
+  isPublicMode?: boolean
+  onPublicPollRemoved?: (pollId: string) => void
 }
 
 const PollCard = ({
   poll,
   showActions = true,
   canSchedule = true,
+  hideAvailabilitySection = false,
+  hideEditPollMenuItem = false,
+  isPublicMode = false,
+  onPublicPollRemoved,
 }: PollCardProps) => {
   const { showSuccessToast } = useToastHelpers()
   const { push } = useRouter()
@@ -90,14 +99,35 @@ const PollCard = ({
   // Generate poll link
   const pollLink = `${appUrl}/poll/${poll.slug}`
 
+  const scheduleRoute = isPublicMode
+    ? `/poll/${poll.slug}`
+    : `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
+  const editAvailabilityRoute = isPublicMode
+    ? `/poll/${poll.slug}?intent=edit_availability`
+    : `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=edit_availability`
+
   // Delete poll mutation
   const deletePollMutation = useMutation({
-    mutationFn: () => deleteQuickPoll(poll.id),
+    mutationFn: async () => {
+      if (isPublicMode) {
+        removeLocalPoll(poll.id)
+        return { success: true }
+      }
+      return deleteQuickPoll(poll.id)
+    },
     onSuccess: () => {
-      showSuccessToast(
-        'Poll deleted successfully',
-        'The poll has been permanently deleted'
-      )
+      if (isPublicMode) {
+        showSuccessToast(
+          'Poll removed',
+          'The poll has been removed from your local list'
+        )
+        onPublicPollRemoved?.(poll.id)
+      } else {
+        showSuccessToast(
+          'Poll deleted successfully',
+          'The poll has been permanently deleted'
+        )
+      }
       setIsDeleteModalOpen(false)
       queryClient.invalidateQueries({ queryKey: ['ongoing-quickpolls'] })
       queryClient.invalidateQueries({ queryKey: ['past-quickpolls'] })
@@ -363,17 +393,19 @@ const PollCard = ({
                           ) : (
                             // Ongoing poll menu items
                             <>
-                              <MenuItem
-                                icon={<FiEdit3 size={16} />}
-                                bg="menu-bg"
-                                color="text-primary"
-                                _hover={{ bg: 'menu-item-hover' }}
-                                onClick={() =>
-                                  push(`/dashboard/edit-poll/${poll.slug}`)
-                                }
-                              >
-                                Edit Poll
-                              </MenuItem>
+                              {!hideEditPollMenuItem && (
+                                <MenuItem
+                                  icon={<FiEdit3 size={16} />}
+                                  bg="menu-bg"
+                                  color="text-primary"
+                                  _hover={{ bg: 'menu-item-hover' }}
+                                  onClick={() =>
+                                    push(`/dashboard/edit-poll/${poll.slug}`)
+                                  }
+                                >
+                                  Edit Poll
+                                </MenuItem>
+                              )}
                               <MenuItem
                                 icon={<FiTrash2 size={16} />}
                                 bg="menu-bg"
@@ -423,11 +455,7 @@ const PollCard = ({
                               ? 'Upgrade to Pro to schedule more polls this month'
                               : undefined
                           }
-                          onClick={() =>
-                            push(
-                              `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
-                            )
-                          }
+                          onClick={() => push(scheduleRoute)}
                         >
                           Schedule now
                         </Button>
@@ -443,11 +471,7 @@ const PollCard = ({
                         fontSize="14px"
                         fontWeight="600"
                         borderRadius="8px"
-                        onClick={() =>
-                          push(
-                            `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=edit_availability`
-                          )
-                        }
+                        onClick={() => push(editAvailabilityRoute)}
                       >
                         Edit your availability
                       </Button>
@@ -483,11 +507,7 @@ const PollCard = ({
                               ? 'Upgrade to Pro to schedule more polls this month'
                               : undefined
                           }
-                          onClick={() =>
-                            push(
-                              `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
-                            )
-                          }
+                          onClick={() => push(scheduleRoute)}
                         >
                           Schedule now
                         </Button>
@@ -503,11 +523,7 @@ const PollCard = ({
                         fontSize="14px"
                         fontWeight="600"
                         borderRadius="8px"
-                        onClick={() =>
-                          push(
-                            `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=edit_availability`
-                          )
-                        }
+                        onClick={() => push(editAvailabilityRoute)}
                       >
                         Edit your availability
                       </Button>
@@ -541,11 +557,7 @@ const PollCard = ({
                           ? 'Upgrade to Pro to schedule more polls this month'
                           : undefined
                       }
-                      onClick={() =>
-                        push(
-                          `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=schedule`
-                        )
-                      }
+                      onClick={() => push(scheduleRoute)}
                     >
                       Schedule now
                     </Button>
@@ -561,11 +573,7 @@ const PollCard = ({
                     fontSize="14px"
                     fontWeight="600"
                     borderRadius="8px"
-                    onClick={() =>
-                      push(
-                        `/dashboard/schedule?ref=quickpoll&pollId=${poll.id}&intent=edit_availability`
-                      )
-                    }
+                    onClick={() => push(editAvailabilityRoute)}
                   >
                     Edit your availability
                   </Button>
@@ -610,17 +618,19 @@ const PollCard = ({
                       ) : (
                         // Ongoing poll menu items
                         <>
-                          <MenuItem
-                            icon={<FiEdit3 size={16} />}
-                            bg="menu-bg"
-                            color="text-primary"
-                            _hover={{ bg: 'menu-item-hover' }}
-                            onClick={() =>
-                              push(`/dashboard/edit-poll/${poll.slug}`)
-                            }
-                          >
-                            Edit Poll
-                          </MenuItem>
+                          {!hideEditPollMenuItem && (
+                            <MenuItem
+                              icon={<FiEdit3 size={16} />}
+                              bg="menu-bg"
+                              color="text-primary"
+                              _hover={{ bg: 'menu-item-hover' }}
+                              onClick={() =>
+                                push(`/dashboard/edit-poll/${poll.slug}`)
+                              }
+                            >
+                              Edit Poll
+                            </MenuItem>
+                          )}
                           <MenuItem
                             icon={<FiTrash2 size={16} />}
                             bg="menu-bg"
@@ -677,54 +687,55 @@ const PollCard = ({
               </Text>
             </HStack>
             {/* Availability */}
-            {currentUserAvailabilityBadges.length > 0 && (
-              <HStack spacing={2} flexWrap="wrap" align="flex-start">
-                <Text
-                  fontSize={{ base: '14px', md: '16px' }}
-                  color="text-primary"
-                  fontWeight="700"
-                >
-                  Availability:
-                </Text>
-                <HStack gap={2} flexWrap="wrap">
-                  {currentUserAvailabilityBadges.slice(0, 2).map(title => (
-                    <Tooltip
-                      key={title}
-                      label="Availability block used for this poll"
-                      placement="top"
-                    >
-                      <Badge
-                        bg="bg-surface-tertiary-2"
-                        color="text-primary"
-                        borderRadius={6}
-                        fontSize="xs"
-                        px={2}
-                        py={0.5}
+            {!hideAvailabilitySection &&
+              currentUserAvailabilityBadges.length > 0 && (
+                <HStack spacing={2} flexWrap="wrap" align="flex-start">
+                  <Text
+                    fontSize={{ base: '14px', md: '16px' }}
+                    color="text-primary"
+                    fontWeight="700"
+                  >
+                    Availability:
+                  </Text>
+                  <HStack gap={2} flexWrap="wrap">
+                    {currentUserAvailabilityBadges.slice(0, 2).map(title => (
+                      <Tooltip
+                        key={title}
+                        label="Availability block used for this poll"
+                        placement="top"
                       >
-                        {title}
-                      </Badge>
-                    </Tooltip>
-                  ))}
-                  {currentUserAvailabilityBadges.length > 2 && (
-                    <Tooltip
-                      label="Availability block used for this poll"
-                      placement="top"
-                    >
-                      <Badge
-                        bg="bg-surface-tertiary-2"
-                        color="text-primary"
-                        borderRadius={6}
-                        fontSize="xs"
-                        px={2}
-                        py={0.5}
+                        <Badge
+                          bg="bg-surface-tertiary-2"
+                          color="text-primary"
+                          borderRadius={6}
+                          fontSize="xs"
+                          px={2}
+                          py={0.5}
+                        >
+                          {title}
+                        </Badge>
+                      </Tooltip>
+                    ))}
+                    {currentUserAvailabilityBadges.length > 2 && (
+                      <Tooltip
+                        label="Availability block used for this poll"
+                        placement="top"
                       >
-                        +{currentUserAvailabilityBadges.length - 2} more
-                      </Badge>
-                    </Tooltip>
-                  )}
+                        <Badge
+                          bg="bg-surface-tertiary-2"
+                          color="text-primary"
+                          borderRadius={6}
+                          fontSize="xs"
+                          px={2}
+                          py={0.5}
+                        >
+                          +{currentUserAvailabilityBadges.length - 2} more
+                        </Badge>
+                      </Tooltip>
+                    )}
+                  </HStack>
                 </HStack>
-              </HStack>
-            )}
+              )}
 
             {scheduledMeetingLabel && (
               <HStack spacing={2} flexWrap="wrap">

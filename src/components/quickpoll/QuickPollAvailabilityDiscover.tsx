@@ -231,6 +231,7 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
 
   const [showPollAvailabilityOneTime, setShowPollAvailabilityOneTime] =
     useState(false)
+  const handledEditIntentKeyRef = useRef<string | null>(null)
 
   // Track participant removals to prompt save
   const [removedParticipantIds, setRemovedParticipantIds] = useState<string[]>(
@@ -301,6 +302,45 @@ const QuickPollAvailabilityDiscoverInner: React.FC<
       setCurrentIntent(QuickPollIntent.EDIT_AVAILABILITY)
     }
   }, [router.query.intent, setCurrentIntent])
+
+  useEffect(() => {
+    const intent = router.query.intent
+    if (intent !== QuickPollIntent.EDIT_AVAILABILITY) return
+
+    const pollSlug =
+      currentPollData?.poll?.slug ||
+      (typeof router.query.slug === 'string' ? router.query.slug : '')
+    if (!pollSlug) return
+
+    const activationKey = `${pollSlug}:${QuickPollIntent.EDIT_AVAILABILITY}`
+    if (handledEditIntentKeyRef.current === activationKey) return
+    if (isEditingAvailability) {
+      handledEditIntentKeyRef.current = activationKey
+      return
+    }
+
+    if (
+      !currentAccount &&
+      currentPollData?.poll?.visibility === PollVisibility.PRIVATE &&
+      (!currentParticipantId || !currentGuestEmail)
+    ) {
+      setShowGuestIdModal(true)
+    } else {
+      setIsEditingAvailability(true)
+    }
+    handledEditIntentKeyRef.current = activationKey
+  }, [
+    router.query.intent,
+    router.query.slug,
+    currentPollData?.poll?.slug,
+    currentPollData?.poll?.visibility,
+    currentAccount,
+    currentParticipantId,
+    currentGuestEmail,
+    isEditingAvailability,
+    setIsEditingAvailability,
+    setShowGuestIdModal,
+  ])
 
   const isSchedulingIntent = currentIntent === QuickPollIntent.SCHEDULE
 
