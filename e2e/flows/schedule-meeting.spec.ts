@@ -82,6 +82,7 @@ test.describe('Schedule Meeting Flow', () => {
       // Click the back arrow to return
       const backBtn = page.locator(SELECTORS.gridBackBtn)
       await expect(backBtn).toBeVisible()
+      await expect(backBtn).toBeEnabled({ timeout: 10_000 })
       await backBtn.click()
 
       // Wait for the day header text to revert back
