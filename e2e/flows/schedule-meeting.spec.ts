@@ -65,7 +65,13 @@ test.describe('Schedule Meeting Flow', () => {
       // Capture the initial day header text
       const dayHeaders = page.locator(SELECTORS.dayHeaders)
       const firstDayHeader = dayHeaders.locator('p').first()
-      const initialText = await firstDayHeader.textContent()
+      const initialText = (await firstDayHeader.textContent())?.trim() || ''
+      const getVisibleDayNumbers = async () => {
+        const texts = await dayHeaders.locator('p').allTextContents()
+        return texts
+          .map(text => text.trim())
+          .filter(text => /^\d{1,2}$/.test(text))
+      }
 
       // Click the forward arrow
       const forwardBtn = page.locator(SELECTORS.gridForwardBtn)
@@ -85,9 +91,15 @@ test.describe('Schedule Meeting Flow', () => {
       await expect(backBtn).toBeEnabled({ timeout: 10_000 })
       await backBtn.click()
 
-      // Wait for the day header text to revert back
-      await expect(firstDayHeader).toHaveText(initialText || '', {
-        timeout: 5_000,
+      // Wait for initial day to reappear after navigating back.
+      // Using the day-number set is resilient to transient transition nodes.
+      await expect
+        .poll(getVisibleDayNumbers, {
+          timeout: 10_000,
+        })
+        .toContain(initialText)
+      await expect(firstDayHeader).not.toHaveText(updatedText || '', {
+        timeout: 10_000,
       })
     })
   })
