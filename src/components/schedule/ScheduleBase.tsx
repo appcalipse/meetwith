@@ -48,6 +48,7 @@ import InfoTooltip from '@/components/profile/components/Tooltip'
 import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal'
 import { IInitialProps } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
+import { QuickPollAvailabilityContext } from '@/providers/quickpoll/QuickPollAvailabilityContext'
 import { useScheduleActions } from '@/providers/schedule/ActionsContext'
 import {
   Page,
@@ -93,10 +94,18 @@ const meetingProviders: Array<Option<MeetingProvider>> = BASE_PROVIDERS.concat(
   value: provider,
   label: renderProviderName(provider),
 }))
-const ScheduleBase = () => {
+
+type ScheduleBaseProps = {
+  /** Public poll guest flow: repeat is not supported; hide the repeat control. */
+  hideMeetingRepeat?: boolean
+}
+
+const ScheduleBase = ({ hideMeetingRepeat = false }: ScheduleBaseProps) => {
   const { query } = useRouter()
   const { seriesId, meetingId } = query as IInitialProps
   const { currentAccount } = useContext(AccountContext)
+  const quickPollAvailability = useContext(QuickPollAvailabilityContext)
+  const guestSchedulerEmail = quickPollAvailability?.currentGuestEmail
   const [isTitleValid, setIsTitleValid] = useState(true)
   const toast = useToast()
   const { onOpen, isOpen, onClose } = useDisclosure()
@@ -276,13 +285,12 @@ const ScheduleBase = () => {
   )
   const renderParticipantChipLabel = useCallback(
     (participant: Participant) =>
-      currentAccount?.address
-        ? ParticipantService.renderParticipantChipLabel(
-            participant,
-            currentAccount?.address
-          )
-        : '',
-    [currentAccount?.address]
+      ParticipantService.renderParticipantChipLabel(
+        participant,
+        currentAccount?.address || '',
+        guestSchedulerEmail ? { guestSchedulerEmail } : undefined
+      ),
+    [currentAccount?.address, guestSchedulerEmail]
   )
   const handleChipInputChange = useCallback(
     (updatedItems: ParticipantInfo[]) => {
@@ -728,7 +736,7 @@ const ScheduleBase = () => {
                   value={meetingNotification}
                 />
               </FormControl>
-              {!seriesId && (
+              {!seriesId && !hideMeetingRepeat && (
                 <FormControl
                   isDisabled={!canEditMeetingDetails || isScheduling}
                   maxW="100%"
@@ -781,51 +789,58 @@ const ScheduleBase = () => {
                     Permissions for guests
                   </Heading>
 
-                  <ChakraSelect<Option<MeetingPermissions>, true>
-                    chakraStyles={{
-                      container: provided => ({
-                        ...provided,
-                        border: '0px solid',
-                        borderTopColor: 'currentColor',
-                        borderLeftColor: 'currentColor',
-                        borderRightColor: 'currentColor',
-                        borderBottomColor: 'currentColor',
-                        borderColor: 'inherit',
-                        borderRadius: 'md',
-                        maxW: '100%',
-                        display: 'block',
-                      }),
-
-                      placeholder: provided => ({
-                        ...provided,
-                        textAlign: 'left',
-                      }),
-                    }}
-                    className="noLeftBorder permissions-select"
-                    colorScheme="gray"
-                    components={getnoClearCustomSelectComponent<
-                      Option<MeetingPermissions>,
-                      true
-                    >()}
+                  <FormControl
                     isDisabled={!canEditMeetingDetails || isScheduling}
-                    isMulti
-                    onChange={val => {
-                      const selected = val
-                      setSelectedPermissions(selected.map(item => item.value))
-                    }}
-                    options={MeetingSchedulePermissions.map(permission => ({
-                      value: permission.value,
-                      label: permission.label,
-                    }))}
-                    placeholder="Select Permissions"
-                    tagVariant={'solid'}
-                    value={MeetingSchedulePermissions.filter(permission =>
-                      selectedPermissions?.includes(permission.value)
-                    ).map(permission => ({
-                      value: permission.value,
-                      label: permission.label,
-                    }))}
-                  />
+                    maxW="100%"
+                    w="100%"
+                  >
+                    <ChakraSelect<Option<MeetingPermissions>, true>
+                      chakraStyles={{
+                        container: provided => ({
+                          ...provided,
+                          border: '0px solid',
+                          borderTopColor: 'currentColor',
+                          borderLeftColor: 'currentColor',
+                          borderRightColor: 'currentColor',
+                          borderBottomColor: 'currentColor',
+                          borderColor: 'inherit',
+                          borderRadius: 'md',
+                          display: 'block',
+                          maxW: '100%',
+                          width: '100%',
+                        }),
+
+                        placeholder: provided => ({
+                          ...provided,
+                          textAlign: 'left',
+                        }),
+                      }}
+                      className="noLeftBorder permissions-select"
+                      colorScheme="gray"
+                      components={getnoClearCustomSelectComponent<
+                        Option<MeetingPermissions>,
+                        true
+                      >()}
+                      isDisabled={!canEditMeetingDetails || isScheduling}
+                      isMulti
+                      onChange={val => {
+                        const selected = val
+                        setSelectedPermissions(selected.map(item => item.value))
+                      }}
+                      options={MeetingSchedulePermissions.map(permission => ({
+                        value: permission.value,
+                        label: permission.label,
+                      }))}
+                      placeholder="Select Permissions"
+                      tagVariant={'solid'}
+                      value={MeetingSchedulePermissions.filter(permission =>
+                        selectedPermissions?.includes(permission.value)
+                      ).map(permission => ({
+                        value: permission.value,
+                        label: permission.label,
+                      }))}
+                    />
+                  </FormControl>
 
                   <FormControl>
                     <FormLabel

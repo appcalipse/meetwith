@@ -15,7 +15,10 @@ import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
 import { MeetingChangeType, TimeSlot, TimeSlotSource } from '@/types/Meeting'
 import { ParticipationStatus } from '@/types/ParticipantInfo'
-import { QuickPollBusyParticipant } from '@/types/QuickPoll'
+import {
+  QuickPollBusyParticipant,
+  QuickPollPendingCalendar,
+} from '@/types/QuickPoll'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 import {
   createAlarm,
@@ -230,6 +233,61 @@ export const CalendarBackendHelper = {
 
     return busySlots
   },
+
+  getBusySlotsForPendingQuickPollCalendar: async (
+    pending: QuickPollPendingCalendar,
+    startDate: Date,
+    endDate: Date
+  ): Promise<TimeSlot[]> => {
+    const integration = getConnectedCalendarIntegration(
+      '',
+      pending.email,
+      pending.provider as TimeSlotSource,
+      pending.payload
+    )
+
+    try {
+      const calendars = await integration.refreshConnection()
+      const calendarIds =
+        calendars
+          ?.filter((c: CalendarSyncInfo) => c.enabled)
+          .map((c: CalendarSyncInfo) => c.calendarId) || []
+      const externalSlots = await integration.getAvailability(
+        calendarIds,
+        startDate.toISOString(),
+        endDate.toISOString()
+      )
+      return externalSlots.map(it => ({
+        account_address: 'quickpoll_pending',
+        end: new Date(it.end),
+        source: pending.provider as TimeSlotSource,
+        start: new Date(it.start),
+      }))
+    } catch (e: unknown) {
+      Sentry.captureException(e)
+      return []
+    }
+  },
+
+  getCalendarsForPendingQuickPollCalendar: async (
+    pending: QuickPollPendingCalendar
+  ): Promise<CalendarSyncInfo[]> => {
+    const integration = getConnectedCalendarIntegration(
+      '',
+      pending.email,
+      pending.provider as TimeSlotSource,
+      pending.payload
+    )
+
+    try {
+      const calendars = await integration.refreshConnection()
+      return calendars || []
+    } catch (e: unknown) {
+      Sentry.captureException(e)
+      return []
+    }
+  },
+
   getCalendarEventsForAccount: async (
     account_address: string,
     startDate: Date,

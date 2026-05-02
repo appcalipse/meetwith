@@ -88,6 +88,7 @@ import {
   AddParticipantRequest,
   AvailabilitySlot,
   CloseQuickPollResponse,
+  CreateGuestQuickPollRequest,
   CreateQuickPollRequest,
   PollStatus,
   QuickPollBusyParticipant,
@@ -95,6 +96,8 @@ import {
   QuickPollParticipant,
   QuickPollParticipantStatus,
   QuickPollParticipantType,
+  QuickPollPendingCalendarPreviewResponse,
+  UpdateGuestQuickPollRequest,
   UpdateParticipantAvailabilityRequest,
   UpdateQuickPollParticipantAvailabilityOptions,
   UpdateQuickPollRequest,
@@ -922,6 +925,24 @@ export const fetchBusySlotsRawForQuickPollParticipants = async (
     end: new Date(slot.end),
     start: new Date(slot.start),
   }))
+}
+
+export const fetchQuickPollPendingCalendarPreview = async (
+  startDate: Date,
+  endDate: Date
+): Promise<QuickPollPendingCalendarPreviewResponse> => {
+  return await internalFetch<
+    QuickPollPendingCalendarPreviewResponse,
+    { endDate: string; startDate: string }
+  >(
+    `/quickpoll/calendar/pending-preview`,
+    'POST',
+    {
+      endDate: endDate.toISOString(),
+      startDate: startDate.toISOString(),
+    },
+    { credentials: 'include' }
+  )
 }
 
 export const getMeetingsForDashboard = async (
@@ -2482,6 +2503,27 @@ export const getUserLocale = async (): Promise<UserLocale> => {
 
 export const createQuickPoll = async (pollData: CreateQuickPollRequest) => {
   return await internalFetch('/secure/quickpoll', 'POST', pollData)
+}
+
+export const createGuestQuickPoll = async (
+  pollData: CreateGuestQuickPollRequest
+) => {
+  return await internalFetch('/quickpoll/create', 'POST', pollData, {
+    credentials: 'include',
+  })
+}
+
+export const migrateGuestPolls = async (guestIdentifier: string) => {
+  return await internalFetch('/secure/quickpoll/migrate', 'POST', {
+    guest_identifier: guestIdentifier,
+  })
+}
+
+export const updateGuestQuickPoll = async (
+  slug: string,
+  updateData: UpdateGuestQuickPollRequest
+) => {
+  return await internalFetch(`/quickpoll/${slug}/update`, 'PUT', updateData)
 }
 
 export const getQuickPollById = async (pollId: string) => {

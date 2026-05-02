@@ -99,6 +99,38 @@ export interface QuickPollCalendar {
   calendars: CalendarSyncInfo[]
 }
 
+export interface QuickPollPendingCalendar {
+  provider: string
+  email: string
+  name?: string
+  payload: Record<string, unknown>
+}
+
+export interface QuickPollPendingCalendarPreviewResponse {
+  busy: Array<{ start: string; end: string }>
+  hasPendingCalendar: boolean
+  pendingEmail?: string
+  pendingName?: string
+}
+
+export type QuickPollPublicCreateDraftPayload = {
+  formData: {
+    title: string
+    duration: number
+    startDate: string
+    endDate: string
+    expiryDate: string
+    expiryTime: string
+    description: string
+  }
+  guestEmail: string
+  guestName: string
+  selectedPermissions: string[]
+  showExpiryDate: boolean
+  pollCustomAvailability: PollCustomAvailability | null
+  pollAvailabilityBlockIds: string[]
+}
+
 // Extended interfaces for API responses
 export interface ScheduledMeetingInfo {
   meeting_id: string
@@ -276,6 +308,7 @@ export interface CloseQuickPollResponse {
 export interface CreatePollProps {
   isEditMode?: boolean
   pollSlug?: string
+  isPublicMode?: boolean
 }
 
 export interface QuickPollBySlugResponse {
@@ -310,3 +343,54 @@ export type PollDateRange = {
 }
 
 export type MonthOption = { value: string; label: string }
+
+// Guest / public poll types
+
+export interface LocalPollEntry {
+  pollId: string
+  slug: string
+  title: string
+  createdAt: string
+  guestIdentifier: string
+}
+
+export interface CreateGuestQuickPollRequest {
+  title: string
+  description?: string
+  duration_minutes: number
+  starts_at: string
+  ends_at: string
+  expires_at: string | null
+  permissions: MeetingPermissions[]
+  guest_email: string
+  guest_name?: string
+  guest_identifier: string
+  participants?: {
+    account_address?: string
+    name?: string
+    guest_email?: string
+    participant_type: QuickPollParticipantType
+    timezone?: string
+  }[]
+  custom_availability?: PollCustomAvailability
+}
+
+export interface UpdateGuestQuickPollRequest {
+  title?: string
+  description?: string
+  duration_minutes?: number
+  starts_at?: string
+  ends_at?: string
+  expires_at?: string | null
+  permissions?: MeetingPermissions[]
+  guest_identifier: string
+  participants?: {
+    toAdd?: AddParticipantData[]
+    toRemove?: string[]
+  }
+  custom_availability?: PollCustomAvailability
+}
+
+export interface MigrateGuestPollsRequest {
+  guest_identifier: string
+}

@@ -39,6 +39,7 @@ import {
   internalFetch,
   joinQuickPollAsParticipant,
   listConnectedCalendars,
+  migrateGuestPolls,
   saveAccountChanges,
   setNotificationSubscriptions,
   updateAvailabilityBlock,
@@ -51,7 +52,9 @@ import { handleApiError } from '@/utils/error_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import {
+  clearGuestIdentifier,
   clearQuickPollSignInContext,
+  getGuestIdentifier,
   getQuickPollSignInContext,
 } from '@/utils/storage'
 import { useToastHelpers } from '@/utils/toasts'
@@ -278,7 +281,8 @@ const OnboardingModal = () => {
   async function doJoinPollAndRedirect(
     pollId: string,
     participantEmail: string | undefined,
-    participantName: string | undefined
+    participantName: string | undefined,
+    pollSlug?: string
   ) {
     try {
       await joinQuickPollAsParticipant(
@@ -291,9 +295,13 @@ const OnboardingModal = () => {
         "You're in!",
         "You've been added to the poll. Add your availability on the next screen."
       )
-      await router.push(
-        `/dashboard/schedule?ref=quickpoll&pollId=${pollId}&intent=edit_availability`
-      )
+      if (pollSlug) {
+        await router.push(`/poll/${pollSlug}?intent=edit_availability`)
+      } else {
+        await router.push(
+          `/dashboard/schedule?ref=quickpoll&pollId=${pollId}&intent=edit_availability`
+        )
+      }
     } catch (e) {
       handleApiError('Failed to add you to the poll. Please try again.', e)
     }
@@ -510,10 +518,22 @@ const OnboardingModal = () => {
       logEvent('Updated account details')
       login(updatedAccount)
 
+      const guestId = getGuestIdentifier()
+      if (guestId) {
+        migrateGuestPolls(guestId)
+          .then(() => clearGuestIdentifier())
+          .catch(err => console.error('Failed to migrate guest polls:', err))
+      }
+
       const pollContext = getQuickPollSignInContext()
       if (pollContext) {
         setLoadingSave(false)
-        await doJoinPollAndRedirect(pollContext.pollId, email, name)
+        await doJoinPollAndRedirect(
+          pollContext.pollId,
+          email,
+          name,
+          pollContext.pollSlug
+        )
         closeOnboarding()
         return
       }
@@ -536,9 +556,12 @@ const OnboardingModal = () => {
   const handleClose = () => {
     const pollContext = getQuickPollSignInContext()
     if (pollContext) {
-      doJoinPollAndRedirect(pollContext.pollId, email, name).then(() =>
-        closeOnboarding()
-      )
+      doJoinPollAndRedirect(
+        pollContext.pollId,
+        email,
+        name,
+        pollContext.pollSlug
+      ).then(() => closeOnboarding())
     } else {
       closeOnboarding(stateObject.redirect)
     }

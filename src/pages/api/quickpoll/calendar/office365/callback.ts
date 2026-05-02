@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
 import { CalendarInfo } from '@/types/Office365'
@@ -9,13 +10,18 @@ import {
   PollVisibility,
   QuickPollParticipantType,
 } from '@/types/QuickPoll'
-import { apiUrl } from '@/utils/constants'
+import { apiUrl, appUrl } from '@/utils/constants'
 import {
   addQuickPollParticipant,
   getQuickPollBySlug,
   getQuickPollParticipantByIdentifier,
   saveQuickPollCalendar,
 } from '@/utils/database'
+import {
+  isSameOriginQuickPollOAuthRedirect,
+  redirectQuickPollOAuthProviderErrorNoPoll,
+  redirectQuickPollPendingCalendarFallback,
+} from '@/utils/quickpoll_calendar_oauth'
 
 const credentials = {
   client_id: process.env.MS_GRAPH_CLIENT_ID,
@@ -38,17 +44,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (error) {
     Sentry.captureException(error)
-    if (!stateObject)
-      return res.redirect(`/poll/${stateObject?.pollSlug}?calendarResult=error`)
-    else {
-      stateObject.error = 'Office365 Calendar integration failed.'
-      const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
-        'base64'
-      )
-      return res.redirect(
-        `/poll/${stateObject?.pollSlug}?calendarResult=error&state=${newState64}`
-      )
+    if (!stateObject) {
+      return res.redirect(`/quickpoll?calendarResult=error`)
     }
+    if (!stateObject.pollSlug) {
+      return redirectQuickPollOAuthProviderErrorNoPoll(res, stateObject)
+    }
+    stateObject.error = 'Office365 Calendar integration failed.'
+    const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
+      'base64'
+    )
+    return res.redirect(
+      `/poll/${stateObject.pollSlug}?calendarResult=error&state=${newState64}`
+    )
   }
 
   if (code && typeof code !== 'string') {
@@ -90,8 +98,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const tokenData = await tokenResponse.json()
 
   if (!tokenData.access_token) {
+    if (stateObject?.pollSlug) {
+      return res.redirect(
+        `/poll/${stateObject.pollSlug}?calendarResult=error&message=Failed to get access token`
+      )
+    }
     return res.redirect(
-      `/poll/${stateObject?.pollSlug}?calendarResult=error&message=Failed to get access token`
+      `${appUrl.replace(
+        /\/$/,
+        ''
+      )}/quickpoll/create?calendarResult=error&error=token_failed`
     )
   }
 
@@ -125,17 +141,34 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sync: true,
     })) || []
 
+  if (!stateObject?.pollSlug && !stateObject?.participantId) {
+    const redirectTo = stateObject?.redirectTo
+    if (
+      redirectTo &&
+      typeof redirectTo === 'string' &&
+      isSameOriginQuickPollOAuthRedirect(redirectTo)
+    ) {
+      req.session.quickPollPendingCalendar = {
+        provider: TimeSlotSource.OFFICE,
+        email: String(userData.mail || userData.userPrincipalName || ''),
+        name:
+          typeof userData.displayName === 'string'
+            ? userData.displayName
+            : undefined,
+        payload: tokenData as Record<string, unknown>,
+      }
+      await req.session.save()
+      const sep = redirectTo.includes('?') ? '&' : '?'
+      return res.redirect(`${redirectTo}${sep}calendarPending=1`)
+    }
+    return redirectQuickPollPendingCalendarFallback(res, stateObject)
+  }
+
   let participantId = stateObject?.participantId
 
   if (!participantId) {
     const guestEmail =
       stateObject?.guestEmail || userData.mail || userData.userPrincipalName
-
-    if (!stateObject?.pollSlug) {
-      return res.redirect(
-        `/poll/undefined?calendarResult=error&error=missing_poll_slug`
-      )
-    }
 
     const pollData = await getQuickPollBySlug(stateObject.pollSlug)
 
@@ -200,4 +233,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   )
 }
 
-export default handler
+export default withSessionRoute(handler)

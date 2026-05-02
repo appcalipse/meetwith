@@ -97,7 +97,8 @@ class ParticipantService {
   }
   static renderParticipantChipLabel(
     participant: Participant,
-    currentAccountAddress: string
+    currentAccountAddress: string,
+    options?: { guestSchedulerEmail?: string }
   ) {
     if (isGroupParticipant(participant)) {
       return participant.name
@@ -108,9 +109,14 @@ class ParticipantService {
 
     if (isParticipantScheduler) {
       const isCurrentUser =
-        participantInfo.account_address &&
-        participantInfo.account_address.toLowerCase() ===
-          currentAccountAddress.toLowerCase()
+        (!!currentAccountAddress &&
+          participantInfo.account_address &&
+          participantInfo.account_address.toLowerCase() ===
+            currentAccountAddress.toLowerCase()) ||
+        (!!options?.guestSchedulerEmail &&
+          !!participantInfo.guest_email &&
+          participantInfo.guest_email.toLowerCase() ===
+            options.guestSchedulerEmail.toLowerCase())
       if (isCurrentUser) {
         return 'You (Scheduler)'
       }
