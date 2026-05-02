@@ -53,12 +53,14 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { PollVisibility, QuickPollParticipantType } from '@/types/QuickPoll'
 import * as database from '@/utils/database'
 
-// require after env + mocks so `middleware` sessionOptions gets IRON_COOKIE_PASSWORD
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const handler = require('@/pages/api/quickpoll/calendar/google/callback')
-  .default as NextApiHandler
-
 describe('/api/quickpoll/calendar/google/callback', () => {
+  let handler: NextApiHandler
+
+  beforeAll(async () => {
+    const mod = await import('@/pages/api/quickpoll/calendar/google/callback')
+    handler = mod.default
+  })
+
   const mockAddQuickPollParticipant =
     database.addQuickPollParticipant as jest.Mock
   const mockGetQuickPollBySlug = database.getQuickPollBySlug as jest.Mock
