@@ -1,17 +1,20 @@
 FROM node:20.17.0-alpine AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
-RUN apk add git
-RUN apk add --update python3 make g++\
-   && rm -rf /var/cache/apk/*
-
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/cache/apk/*
 RUN corepack enable
 RUN corepack prepare yarn@4.9.1 --activate
-
 WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY ./patches ./patches
-# Install all dependencies since we need them for building
 RUN yarn install --immutable
 
 # Rebuild the source code only when needed
@@ -33,7 +36,7 @@ COPY --from=deps /app/.yarnrc.yml ./
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 RUN yarn build
 
 
@@ -46,8 +49,9 @@ WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY ./patches ./patches
 
+RUN apk add --no-cache libc6-compat python3 make g++ git
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-RUN yarn workspaces focus --all --production
+RUN yarn workspaces focus --production
 
 
 FROM node:20.17.0-alpine AS runner
