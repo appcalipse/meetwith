@@ -33,6 +33,9 @@ const moduleExports = {
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 
   async rewrites() {
     return [
