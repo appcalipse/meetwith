@@ -36,6 +36,11 @@ const moduleExports = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  i18n: {
+    locales: ['en', 'es'],
+    defaultLocale: 'en',
+    localeDetection: true,
+  },
 
   async rewrites() {
     return [

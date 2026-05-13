@@ -1,7 +1,11 @@
 import { useToast } from '@chakra-ui/react'
 
+import { translateText } from '@/i18n'
+import { useI18n } from '@/i18n/I18nProvider'
+
 export const useToastHelpers = () => {
   const toast = useToast()
+  const { locale } = useI18n()
 
   const showSuccessToast = (
     title: string,
@@ -9,12 +13,12 @@ export const useToastHelpers = () => {
     duration = 3000
   ) => {
     toast({
-      description,
+      description: translateText(locale, description),
       duration,
       isClosable: true,
       position: 'top',
       status: 'success',
-      title,
+      title: translateText(locale, title),
     })
   }
 
@@ -24,12 +28,12 @@ export const useToastHelpers = () => {
     duration = 3000
   ) => {
     toast({
-      description,
+      description: translateText(locale, description),
       duration,
       isClosable: true,
       position: 'top',
       status: 'error',
-      title,
+      title: translateText(locale, title),
     })
   }
 
@@ -39,12 +43,12 @@ export const useToastHelpers = () => {
     duration = 3000
   ) => {
     toast({
-      description,
+      description: translateText(locale, description),
       duration,
       isClosable: true,
       position: 'top',
       status: 'info',
-      title,
+      title: translateText(locale, title),
     })
   }
 

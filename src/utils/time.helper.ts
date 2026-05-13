@@ -55,8 +55,9 @@ export const parseTime = (date: Date, roundMinutes?: boolean): string => {
   return format(_date, 'p')
 }
 
-export const getLocaleForDateFNS = (): Locale => {
-  let browserLocale = window.navigator.language || 'en'
+export const getLocaleForDateFNS = (locale?: string): Locale => {
+  let browserLocale =
+    locale || (typeof window !== 'undefined' ? window.navigator.language : 'en')
 
   if (browserLocale.indexOf('en') !== -1) {
     if (browserLocale !== 'en-US') {

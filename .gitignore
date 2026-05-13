@@ -56,3 +56,5 @@ zoom-token.json
 .env.sentry-build-plugin
 test.http
 preview_email.js
+.opencode/rules/git-commits.md
+docker-build.sh

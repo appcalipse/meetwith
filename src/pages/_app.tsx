@@ -16,6 +16,8 @@ import { ThirdwebProvider } from 'thirdweb/react'
 import { Head } from '@/components/Head'
 import RedirectHandler from '@/components/redirect'
 import RedirectNotifier from '@/components/redirect/RedirectNotifier'
+import { ClientAutoTranslator } from '@/i18n/ClientAutoTranslator'
+import { I18nProvider } from '@/i18n/I18nProvider'
 import { BaseLayout } from '@/layouts/Base'
 import { AccountProvider } from '@/providers/AccountProvider'
 import { OnboardingModalProvider } from '@/providers/OnboardingModalProvider'
@@ -34,6 +36,7 @@ interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
   currentAccount?: Account | null
   checkAuthOnClient?: boolean
+  currentLocale?: string
 }
 
 let appDidInit = false
@@ -45,19 +48,24 @@ function MyApp({
   consentCookie,
   currentAccount,
   checkAuthOnClient,
+  currentLocale,
 }: MyAppProps) {
   React.useEffect(() => {
     if (appDidInit) return
     const initApp = async () => {
       setDefaultOptions({
-        locale: getLocaleForDateFNS(),
+        locale: getLocaleForDateFNS(currentLocale ?? router.locale),
       })
       await initAnalytics()
       pageView(router.asPath)
       appDidInit = true
     }
     initApp()
-  }, [])
+  }, [currentLocale, router.locale])
+
+  React.useEffect(() => {
+    document.documentElement.lang = currentLocale ?? router.locale ?? 'en'
+  }, [currentLocale, router.locale])
 
   React.useEffect(() => {
     const handleRouteChange = (url: string) => {
@@ -81,20 +89,23 @@ function MyApp({
           <ReactQueryDevtools initialIsOpen={true} />
         )}
         <ThirdwebProvider>
-          <OnboardingModalProvider>
-            <AccountProvider
-              currentAccount={currentAccount}
-              logged={!!currentAccount}
-            >
-              <Head />
-              <RedirectNotifier />
-              <BaseLayout consentCookie={consentCookie ?? false}>
-                <RedirectHandler />
-                <Component {...customProps} />
-              </BaseLayout>
-              <ConnectModal />
-            </AccountProvider>
-          </OnboardingModalProvider>
+          <I18nProvider locale={currentLocale ?? router.locale}>
+            <ClientAutoTranslator />
+            <OnboardingModalProvider>
+              <AccountProvider
+                currentAccount={currentAccount}
+                logged={!!currentAccount}
+              >
+                <Head />
+                <RedirectNotifier />
+                <BaseLayout consentCookie={consentCookie ?? false}>
+                  <RedirectHandler />
+                  <Component {...customProps} />
+                </BaseLayout>
+                <ConnectModal />
+              </AccountProvider>
+            </OnboardingModalProvider>
+          </I18nProvider>
         </ThirdwebProvider>
       </QueryClientProvider>
     </PostHogProvider>
@@ -117,8 +128,14 @@ MyApp.getInitialProps = async (appContext: AppContext) => {
     // only force check on the client side if we have an account and we came from the backend
     const checkAuthOnClient = !!currentAccount && !!appContext.ctx.req
 
-    return { ...appProps, consentCookie, currentAccount, checkAuthOnClient }
-  } catch (e) {
+    return {
+      ...appProps,
+      checkAuthOnClient,
+      consentCookie,
+      currentAccount,
+      currentLocale: appContext.ctx.locale,
+    }
+  } catch {
     return {}
   }
 }
