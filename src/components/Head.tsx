@@ -1,5 +1,7 @@
 import NextHead from 'next/head'
 
+import { useI18n } from '@/i18n/I18nProvider'
+
 interface HeadProps {
   url: string
   title: string
@@ -16,7 +18,16 @@ const defaultProps: HeadProps = {
 }
 
 export const Head: React.FC<Partial<HeadProps>> = props => {
-  const { title, description, url, ogImage } = { ...defaultProps, ...props }
+  const { t } = useI18n()
+  const localizedDefaults = {
+    ...defaultProps,
+    description: t('head.default.description'),
+    title: t('head.default.title'),
+  }
+  const { title, description, url, ogImage } = {
+    ...localizedDefaults,
+    ...props,
+  }
 
   return (
     <NextHead>

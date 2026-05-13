@@ -8,7 +8,7 @@ import {
 import * as Sentry from '@sentry/nextjs'
 import { DateTime } from 'luxon'
 import { DAVCalendar } from 'tsdav'
-
+import { normalizeLocale, translateText } from '@/i18n'
 import {
   Account,
   GetMeetingTypesResponseWithMetadata,
@@ -183,6 +183,40 @@ type RequestOption = {
   signal?: AbortSignal
 }
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+
+const getClientLocale = () => {
+  if (typeof document !== 'undefined' && document.documentElement.lang) {
+    return normalizeLocale(document.documentElement.lang)
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.language) {
+    return normalizeLocale(navigator.language)
+  }
+
+  return normalizeLocale()
+}
+
+const localizeApiErrorText = (text: string) => {
+  const locale = getClientLocale()
+
+  try {
+    const body = JSON.parse(text) as Record<string, unknown>
+    const translatedBody = { ...body }
+
+    if (typeof translatedBody.error === 'string') {
+      translatedBody.error = translateText(locale, translatedBody.error)
+    }
+
+    if (typeof translatedBody.message === 'string') {
+      translatedBody.message = translateText(locale, translatedBody.message)
+    }
+
+    return JSON.stringify(translatedBody)
+  } catch {
+    return translateText(locale, text)
+  }
+}
+
 export const internalFetch = async <T, J = unknown>(
   path: string,
   method: Method = 'GET',
@@ -199,6 +233,8 @@ export const internalFetch = async <T, J = unknown>(
     const response = await fetch(`${apiUrl}${path}`, {
       headers: {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        'Accept-Language': getClientLocale(),
+        'X-Locale': getClientLocale(),
         ...headers,
       },
       method,
@@ -212,7 +248,10 @@ export const internalFetch = async <T, J = unknown>(
       return (await response.json()) as T
     }
 
-    throw new ApiFetchError(response.status, await response.text())
+    throw new ApiFetchError(
+      response.status,
+      localizeApiErrorText(await response.text())
+    )
   } catch (e: unknown) {
     // Check if error is retryable
     const isRetryableError =

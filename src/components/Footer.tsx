@@ -16,16 +16,19 @@ import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
 
+import { localizePath } from '@/i18n'
+import { useI18n } from '@/i18n/I18nProvider'
 import { MWW_DISCORD_SERVER } from '@/utils/constants'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
 const Logo = () => {
+  const { locale } = useI18n()
   const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
     ssr: true,
     fallback: false,
   })
   return (
-    <Link href={'/'}>
+    <Link href={localizePath(locale, '/')}>
       <Image
         width={53}
         height={33}
@@ -77,6 +80,7 @@ const SocialButton = ({
 }
 
 export default function SmallWithLogoLeft() {
+  const { locale, t } = useI18n()
   const router = useRouter()
   const footerBg = useColorModeValue('#F8F8FA', 'neutral.900')
   const footerColor = useColorModeValue('gray.700', 'neutral.0')
@@ -104,9 +108,7 @@ export default function SmallWithLogoLeft() {
       >
         <HStack gap={5} display={{ lg: 'flex', base: 'none' }}>
           <Logo />
-          <Text textAlign="center">
-            Meetwith. Some rights reserved, maybe...
-          </Text>
+          <Text textAlign="center">{t('footer.rights')}</Text>
         </HStack>
         <HStack gap={3}>
           <Text
@@ -117,8 +119,8 @@ export default function SmallWithLogoLeft() {
               md: 'medium',
             }}
           >
-            <Link href="/#pricing" color={'inherit'}>
-              Plans
+            <Link href={localizePath(locale, '/#pricing')} color={'inherit'}>
+              {t('footer.plans')}
             </Link>
           </Text>
           <Text
@@ -129,8 +131,8 @@ export default function SmallWithLogoLeft() {
               md: 'medium',
             }}
           >
-            <Link href="/#faq" color={'inherit'}>
-              FAQ
+            <Link href={localizePath(locale, '/#faq')} color={'inherit'}>
+              {t('footer.faq')}
             </Link>
           </Text>
           <Text
@@ -146,18 +148,24 @@ export default function SmallWithLogoLeft() {
               color={'inherit'}
               isExternal
             >
-              Feature Requests
+              {t('footer.featureRequests')}
             </Link>
           </Text>
         </HStack>
         <Stack direction={'row'} spacing={6}>
-          <SocialButton label={'Eamil'} href={'mailto:contact@meetwith.xyz'}>
+          <SocialButton
+            label={t('footer.email')}
+            href={'mailto:contact@meetwith.xyz'}
+          >
             <FaEnvelope size={22} />
           </SocialButton>
-          <SocialButton label={'Twitter'} href={'https://x.com/meetwithhq'}>
+          <SocialButton
+            label={t('footer.twitter')}
+            href={'https://x.com/meetwithhq'}
+          >
             <FaTwitter size={22} />
           </SocialButton>
-          <SocialButton label={'Discord'} href={MWW_DISCORD_SERVER}>
+          <SocialButton label={t('footer.discord')} href={MWW_DISCORD_SERVER}>
             <FaDiscord size={22} />
           </SocialButton>
         </Stack>
@@ -175,7 +183,7 @@ export default function SmallWithLogoLeft() {
               md: 'medium',
             }}
           >
-            Meetwith. Some rights reserved, maybe...
+            {t('footer.rights')}
           </Text>
         </VStack>
         <HStack gap={3}>
@@ -187,8 +195,8 @@ export default function SmallWithLogoLeft() {
               md: 'medium',
             }}
           >
-            <Link href={'/legal/terms'} color={'inherit'}>
-              Terms of Service
+            <Link href={localizePath(locale, '/legal/terms')} color={'inherit'}>
+              {t('footer.terms')}
             </Link>
           </Text>
           <Text
@@ -199,8 +207,11 @@ export default function SmallWithLogoLeft() {
               md: 'medium',
             }}
           >
-            <Link href={'/legal/privacy'} color={'inherit'}>
-              Privacy Policy
+            <Link
+              href={localizePath(locale, '/legal/privacy')}
+              color={'inherit'}
+            >
+              {t('footer.privacy')}
             </Link>
           </Text>
           <Text
@@ -211,8 +222,8 @@ export default function SmallWithLogoLeft() {
               md: 'medium',
             }}
           >
-            <Link href={'/legal/dpa'} color={'inherit'}>
-              Data Protection
+            <Link href={localizePath(locale, '/legal/dpa')} color={'inherit'}>
+              {t('footer.dataProtection')}
             </Link>
           </Text>
         </HStack>

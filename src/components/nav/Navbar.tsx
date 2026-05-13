@@ -21,6 +21,9 @@ import { BiMenuAltRight } from 'react-icons/bi'
 import { FaWallet } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
 
+import { LocaleSwitcher } from '@/components/LocaleSwitcher'
+import { localizePath, type TranslationKey } from '@/i18n'
+import { useI18n } from '@/i18n/I18nProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
@@ -34,6 +37,7 @@ import { ThemeSwitcher } from '../ThemeSwitcher'
 
 export const Navbar = () => {
   const { openConnection } = useContext(OnboardingModalContext)
+  const { locale, t } = useI18n()
   const { isOpen, onToggle } = useDisclosure()
 
   const { pathname, asPath, query } = useRouter()
@@ -152,7 +156,7 @@ export const Navbar = () => {
             </Flex>
             <Flex flex={{ base: 1 }} justifyContent={'space-between'}>
               <Link
-                href={'/'}
+                href={localizePath(locale, '/')}
                 display={{ base: 'none', lg: 'flex' }}
                 onClick={() => {
                   handleSetActiveLink('/')
@@ -195,6 +199,7 @@ export const Navbar = () => {
               spacing={4}
             >
               {!shouldEnforceColorOnPath(pathname) && <ThemeSwitcher />}
+              <LocaleSwitcher />
               {!logged && (
                 <Button
                   size="md"
@@ -206,7 +211,7 @@ export const Navbar = () => {
                   borderColor={signInBorderColor}
                   leftIcon={<FaWallet />}
                 >
-                  Sign in
+                  {t('nav.signIn')}
                   <Box display={{ base: 'none', md: 'flex' }} as="span">
                     &#160;
                   </Box>
@@ -274,6 +279,7 @@ const MobileNav = ({
   activeLink,
 }: MobileNavProps) => {
   const { currentAccount, logged, loginIn } = useLogin()
+  const { t } = useI18n()
   const { logout } = useContext(AccountContext)
   const wallet = useActiveWallet()
   const signInButtonColor = useColorModeValue('primary.600', 'white')
@@ -362,8 +368,9 @@ const MobileNav = ({
               disableNavMenu={true}
             />
             <Button onClick={doLogout} variant="link">
-              Logout
+              {t('nav.logout')}
             </Button>
+            <LocaleSwitcher />
             {!shouldEnforceColorOnPath(pathname) && <ThemeSwitcher />}
           </Flex>
         ) : (
@@ -377,7 +384,7 @@ const MobileNav = ({
             borderWidth={1}
             borderColor={signInBorderColor}
           >
-            Sign in
+            {t('nav.signIn')}
             <Box display={{ base: 'none', md: 'flex' }} as="span">
               &#160;
             </Box>
@@ -400,6 +407,7 @@ const MobileNavItem = ({
   handleSetActiveLink: (id: string) => void
   activeLink: string
 }) => {
+  const { locale, t } = useI18n()
   const linkHoverColor = 'primary.500'
   const bgColor = useColorModeValue('neutral.100', '#1F2933')
   const color = useColorModeValue('neutral.800', 'neutral.0')
@@ -409,7 +417,7 @@ const MobileNavItem = ({
         bg={bgColor}
         py={3}
         as={Link}
-        href={href ?? '#'}
+        href={localizePath(locale, href ?? '#')}
         justify={'center'}
         rounded={8}
         align={'center'}
@@ -422,12 +430,12 @@ const MobileNavItem = ({
         }}
         color={
           (shouldEnforceColorOnPath(pathname) && activeLink === href) ||
-            (!shouldEnforceColorOnPath(pathname) && pathname.includes(href))
+          (!shouldEnforceColorOnPath(pathname) && pathname.includes(href))
             ? linkHoverColor
             : color
         }
       >
-        <Text fontWeight={700}>{label}</Text>
+        <Text fontWeight={700}>{t(label)}</Text>
       </Flex>
     </Stack>
   )
@@ -445,6 +453,7 @@ const DesktopNav = ({
   activeLink,
 }: DesktopNavProps) => {
   const { logged } = useContext(AccountContext)
+  const { locale, t } = useI18n()
   const linkHoverColor = 'primary.500'
   const linkColor = useColorModeValue('neutral.800', 'neutral.0')
 
@@ -459,7 +468,7 @@ const DesktopNav = ({
         navItem => (
           <Box key={navItem.label}>
             <Link
-              href={navItem.href ?? '#'}
+              href={localizePath(locale, navItem.href ?? '#')}
               p={2}
               fontWeight={activeLink === navItem.href ? 700 : 500}
               onClick={() => handleSetActiveLink(navItem.href)}
@@ -469,15 +478,15 @@ const DesktopNav = ({
                     ? linkHoverColor
                     : 'neutral.0'
                   : pathname.includes(navItem.href)
-                    ? linkHoverColor
-                    : linkColor
+                  ? linkHoverColor
+                  : linkColor
               }
               _hover={{
                 textDecoration: 'none',
                 color: linkHoverColor,
               }}
             >
-              {navItem.label}
+              {t(navItem.label)}
             </Link>
           </Box>
         )
@@ -487,7 +496,7 @@ const DesktopNav = ({
 }
 
 type NavItem = {
-  label: string
+  label: TranslationKey
   href: string
   onToggle?: () => void
   logged?: boolean
@@ -496,28 +505,28 @@ type NavItem = {
 
 const NAV_ITEMS: Array<NavItem> = [
   {
-    label: 'Dashboard',
+    label: 'nav.dashboard',
     logged: true,
     href: '/dashboard',
   },
   {
-    label: 'Home',
+    label: 'nav.home',
     href: '/#home',
   },
   {
-    label: 'Features',
+    label: 'nav.features',
     href: '/#features',
   },
   {
-    label: 'Plans',
+    label: 'nav.plans',
     href: '/#pricing',
   },
   {
-    label: 'Discord bot',
+    label: 'nav.discordBot',
     href: '/features/discord',
   },
   {
-    label: 'FAQ',
+    label: 'nav.faq',
     href: '/#faq',
   },
 ]
